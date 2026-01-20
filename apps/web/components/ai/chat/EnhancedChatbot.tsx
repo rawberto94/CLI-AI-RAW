@@ -13,14 +13,10 @@ import {
   Maximize2,
   Minimize2,
   Settings,
-  RefreshCw,
-  Download,
   Trash2,
-  Moon,
   Sun,
   Volume2,
   VolumeX,
-  Info,
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -28,7 +24,7 @@ import { cn } from '@/lib/utils';
 // Import chat components
 import { MessageBubble, ChatMessage, MessageAttachment } from './MessageBubble';
 import { EnhancedChatInput, Attachment } from './EnhancedChatInput';
-import { TypingIndicator, ThinkingStatus } from './TypingIndicator';
+import { ThinkingStatus } from './TypingIndicator';
 import { SmartSuggestions } from './SmartSuggestions';
 import { ConversationSidebar } from './ConversationSidebar';
 import { ChatContextProvider, useChatContext } from './ChatContext';
@@ -637,7 +633,7 @@ const ChatbotInner = memo(({
     } finally {
       setIsLoading(false);
     }
-  }, [addMessage, setIsLoading, setStreamingMessage, contractContext]);
+  }, [addMessage, setIsLoading, setStreamingMessage, contractContext, currentConversationId]);
 
   // Convert conversations for sidebar
   const sidebarConversations = useMemo(() => 
@@ -680,7 +676,7 @@ const ChatbotInner = memo(({
               onSelectConversation={loadConversation}
               onNewConversation={() => createConversation()}
               onDeleteConversation={deleteConversation}
-              onRenameConversation={(id, title) => {
+              onRenameConversation={(_id, _title) => {
                 // Rename logic would go here
               }}
               isCollapsed={false}

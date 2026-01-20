@@ -4419,13 +4419,13 @@ model AiMemory {
 
   // Memory content
   type       String // insight, preference, fact, decision, interaction
-  content    String @db.Text
-  context    String? @db.Text
+  content    String   @db.Text
+  context    String?  @db.Text
   tags       String[] @default([])
-  importance Float @default(0.5)
+  importance Float    @default(0.5)
 
   // Memory metadata
-  sourceConversationId String? @map("source_conversation_id")
+  sourceConversationId String?                      @map("source_conversation_id")
   embedding            Unsupported("vector(1024)")? // For semantic retrieval
 
   // Timestamps
@@ -4452,7 +4452,7 @@ model ContractAnalysis {
   pageNumber Int    @map("page_number")
 
   // Extracted content
-  extractedText String? @db.Text @map("extracted_text")
+  extractedText String? @map("extracted_text") @db.Text
   tables        String? @db.Text // JSON string of extracted tables
   signatures    String? @db.Text // JSON string of detected signatures
   layout        String? @db.Text // JSON string of document layout

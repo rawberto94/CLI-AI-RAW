@@ -11,16 +11,14 @@ import {
   createConnector,
   IContractSourceConnector,
   RemoteFile,
-  SyncJobConfig,
   SyncJobProgress,
   SyncJobResult,
   ConnectorCredentials,
-  matchesFilePattern,
-  isSupportedMimeType,
 } from './connectors';
 import { uploadToStorage } from '@/lib/storage';
 
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB default
+// File size limit for sync (may be used for validation in future)
+const _MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB default
 
 export interface ContractSourceConfig {
   id: string;

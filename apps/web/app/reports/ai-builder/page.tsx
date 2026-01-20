@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 // Sanitize HTML to prevent XSS attacks
 const sanitizeHtml = (str: string): string => {
@@ -39,13 +39,11 @@ import {
   Clock,
   AlertTriangle,
   TrendingUp,
-  TrendingDown,
   Printer,
   ChevronRight,
   ChevronDown,
   Eye,
   PieChart,
-  Activity,
   Shield,
   Target,
   Zap,
@@ -59,13 +57,57 @@ import {
   Award,
   Gauge,
   LineChart,
+  Save,
+  FolderOpen,
+  Trash2,
+  Mail,
+  Bell,
+  History,
+  GitCompare,
+  FileSpreadsheet,
+  Star,
+  StarOff,
+  Plus,
 } from 'lucide-react';
+
+// ============= SAVED PRESETS TYPES =============
+interface SavedPreset {
+  id: string;
+  name: string;
+  filters: FilterState;
+  createdAt: string;
+  lastUsed: string | null;
+  isFavorite: boolean;
+}
+
+// ============= REPORT HISTORY TYPES =============
+interface ReportHistoryItem {
+  id: string;
+  filters: FilterState;
+  generatedAt: string;
+  summary: {
+    totalContracts: number;
+    totalValue: number;
+  };
+}
+
+// ============= SCHEDULE TYPES =============
+interface ScheduleConfig {
+  enabled: boolean;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  dayOfWeek?: number; // 0-6 for weekly
+  dayOfMonth?: number; // 1-31 for monthly
+  time: string; // HH:mm format
+  emails: string[];
+  includeExcel: boolean;
+  includePdf: boolean;
+}
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+// Tabs removed - not currently used in this view
 import {
   Tooltip,
   TooltipContent,
@@ -74,7 +116,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface FilterState {
   suppliers: string[];
@@ -199,8 +241,8 @@ const RECOMMENDATION_TYPE_ICONS: Record<string, typeof Target> = {
   strategic: Target,
 };
 
-// Score gauge component
-function ScoreGauge({ 
+// Score gauge component - reserved for future dashboard enhancement
+function _ScoreGauge({ 
   score, 
   label, 
   color = 'blue',
@@ -288,6 +330,222 @@ export default function AIReportBuilderPage() {
   const [showContractList, setShowContractList] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
   
+  // ============= NEW ENHANCED FEATURES STATE =============
+  const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
+  const [reportHistory, setReportHistory] = useState<ReportHistoryItem[]>([]);
+  const [showPresetPanel, setShowPresetPanel] = useState(false);
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [newPresetName, setNewPresetName] = useState('');
+  const [comparisonReport, setComparisonReport] = useState<ReportResult | null>(null);
+  const [isComparisonMode, setIsComparisonMode] = useState(false);
+  const [scheduleConfig, setScheduleConfig] = useState<ScheduleConfig>({
+    enabled: false,
+    frequency: 'weekly',
+    dayOfWeek: 1, // Monday
+    time: '09:00',
+    emails: [],
+    includeExcel: true,
+    includePdf: true,
+  });
+  const [newEmail, setNewEmail] = useState('');
+  
+  // Load presets and history from localStorage on mount
+  useEffect(() => {
+    const storedPresets = localStorage.getItem('ai-report-presets');
+    if (storedPresets) {
+      setSavedPresets(JSON.parse(storedPresets));
+    }
+    const storedHistory = localStorage.getItem('ai-report-history');
+    if (storedHistory) {
+      setReportHistory(JSON.parse(storedHistory));
+    }
+    const storedSchedule = localStorage.getItem('ai-report-schedule');
+    if (storedSchedule) {
+      setScheduleConfig(JSON.parse(storedSchedule));
+    }
+  }, []);
+  
+  // Save preset function
+  const saveCurrentPreset = useCallback(() => {
+    if (!newPresetName.trim()) return;
+    
+    const newPreset: SavedPreset = {
+      id: crypto.randomUUID(),
+      name: newPresetName.trim(),
+      filters,
+      createdAt: new Date().toISOString(),
+      lastUsed: null,
+      isFavorite: false,
+    };
+    
+    const updatedPresets = [...savedPresets, newPreset];
+    setSavedPresets(updatedPresets);
+    localStorage.setItem('ai-report-presets', JSON.stringify(updatedPresets));
+    setNewPresetName('');
+  }, [newPresetName, filters, savedPresets]);
+  
+  // Load preset function
+  const loadPreset = useCallback((preset: SavedPreset) => {
+    setFilters(preset.filters);
+    
+    // Update last used
+    const updatedPresets = savedPresets.map(p => 
+      p.id === preset.id ? { ...p, lastUsed: new Date().toISOString() } : p
+    );
+    setSavedPresets(updatedPresets);
+    localStorage.setItem('ai-report-presets', JSON.stringify(updatedPresets));
+    setShowPresetPanel(false);
+  }, [savedPresets]);
+  
+  // Delete preset function
+  const deletePreset = useCallback((presetId: string) => {
+    const updatedPresets = savedPresets.filter(p => p.id !== presetId);
+    setSavedPresets(updatedPresets);
+    localStorage.setItem('ai-report-presets', JSON.stringify(updatedPresets));
+  }, [savedPresets]);
+  
+  // Toggle favorite preset
+  const toggleFavorite = useCallback((presetId: string) => {
+    const updatedPresets = savedPresets.map(p =>
+      p.id === presetId ? { ...p, isFavorite: !p.isFavorite } : p
+    );
+    setSavedPresets(updatedPresets);
+    localStorage.setItem('ai-report-presets', JSON.stringify(updatedPresets));
+  }, [savedPresets]);
+  
+  // Add to report history
+  const addToHistory = useCallback((reportData: ReportResult) => {
+    const historyItem: ReportHistoryItem = {
+      id: crypto.randomUUID(),
+      filters: { ...filters },
+      generatedAt: new Date().toISOString(),
+      summary: {
+        totalContracts: reportData.summary.totalContracts,
+        totalValue: reportData.summary.totalValue,
+      },
+    };
+    
+    const updatedHistory = [historyItem, ...reportHistory].slice(0, 20); // Keep last 20
+    setReportHistory(updatedHistory);
+    localStorage.setItem('ai-report-history', JSON.stringify(updatedHistory));
+  }, [filters, reportHistory]);
+  
+  // Load from history
+  const loadFromHistory = useCallback((item: ReportHistoryItem) => {
+    setFilters(item.filters);
+    setShowHistoryPanel(false);
+  }, []);
+  
+  // Save schedule config
+  const saveScheduleConfig = useCallback(() => {
+    localStorage.setItem('ai-report-schedule', JSON.stringify(scheduleConfig));
+    setShowScheduleModal(false);
+    // In production, this would also call an API to register the schedule
+  }, [scheduleConfig]);
+  
+  // Add email to schedule
+  const addEmailToSchedule = useCallback(() => {
+    if (!newEmail.trim() || !newEmail.includes('@')) return;
+    if (scheduleConfig.emails.includes(newEmail.trim())) return;
+    
+    setScheduleConfig(prev => ({
+      ...prev,
+      emails: [...prev.emails, newEmail.trim()],
+    }));
+    setNewEmail('');
+  }, [newEmail, scheduleConfig.emails]);
+  
+  // Remove email from schedule
+  const removeEmailFromSchedule = useCallback((email: string) => {
+    setScheduleConfig(prev => ({
+      ...prev,
+      emails: prev.emails.filter(e => e !== email),
+    }));
+  }, []);
+  
+  // Export to Excel function
+  const exportToExcel = useCallback(async () => {
+    if (!report) return;
+    
+    setIsExporting(true);
+    
+    try {
+      // Generate CSV data for Excel compatibility
+      const csvRows: string[] = [];
+      
+      // Header
+      csvRows.push('AI Report Builder - Portfolio Analysis');
+      csvRows.push(`Generated: ${generatedAt ? new Date(generatedAt).toLocaleString() : 'N/A'}`);
+      csvRows.push('');
+      
+      // Summary section
+      csvRows.push('EXECUTIVE SUMMARY');
+      csvRows.push('Metric,Value');
+      csvRows.push(`Total Contracts,${report.summary.totalContracts}`);
+      csvRows.push(`Active Contracts,${report.summary.activeContracts}`);
+      csvRows.push(`Total Value,"${report.summary.totalValue}"`);
+      csvRows.push(`Average Value,"${report.summary.averageValue}"`);
+      csvRows.push(`Health Score,${report.summary.healthScore}`);
+      csvRows.push(`Compliance Score,${report.summary.complianceScore}`);
+      csvRows.push(`Risk Score,${report.summary.riskScore}`);
+      csvRows.push('');
+      
+      // Contract details
+      csvRows.push('CONTRACT DETAILS');
+      csvRows.push('Title,Supplier,Value,Status,Category,Days Until Expiry,Risk Level');
+      report.contracts.forEach(contract => {
+        csvRows.push(`"${contract.title}","${contract.supplierName}","${contract.value}","${contract.status}","${contract.category}","${contract.daysUntilExpiry ?? 'N/A'}","${contract.riskLevel}"`);
+      });
+      csvRows.push('');
+      
+      // By Category
+      csvRows.push('BY CATEGORY');
+      csvRows.push('Category,Count,Value');
+      Object.entries(report.byCategory).forEach(([category, data]) => {
+        csvRows.push(`"${category}",${data.count},"${data.value}"`);
+      });
+      csvRows.push('');
+      
+      // By Supplier
+      if (report.bySupplier && report.bySupplier.length > 0) {
+        csvRows.push('SUPPLIER ANALYSIS');
+        csvRows.push('Supplier,Total Value,Contract Count,Avg Value,Active,Expiring,Risk Score');
+        report.bySupplier.forEach(supplier => {
+          csvRows.push(`"${supplier.name}","${supplier.totalValue}",${supplier.contractCount},"${supplier.avgValue}",${supplier.activeCount},${supplier.expiringCount},${supplier.riskScore}`);
+        });
+      }
+      
+      // Create and download CSV
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `portfolio-report-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+      
+    } catch {
+      setError('Failed to export to Excel');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [report, generatedAt]);
+  
+  // Set comparison report
+  const setAsComparison = useCallback(() => {
+    if (report) {
+      setComparisonReport(report);
+      setIsComparisonMode(true);
+    }
+  }, [report]);
+  
+  // Clear comparison
+  const clearComparison = useCallback(() => {
+    setComparisonReport(null);
+    setIsComparisonMode(false);
+  }, []);
+  
   // Fetch available filter options on mount
   useEffect(() => {
     async function fetchFilterOptions() {
@@ -310,8 +568,8 @@ export default function AIReportBuilderPage() {
     fetchFilterOptions();
   }, []);
   
-  // Toggle filter selection
-  const toggleFilter = useCallback((type: keyof FilterState, value: string) => {
+  // Toggle filter selection - reserved for checkbox-style filters
+  const _toggleFilter = useCallback((type: keyof FilterState, value: string) => {
     setFilters(prev => ({
       ...prev,
       [type]: prev[type].includes(value)
@@ -358,18 +616,23 @@ export default function AIReportBuilderPage() {
         throw new Error(data.error || 'Failed to generate report');
       }
       
-      setReport({
+      const reportData = {
         ...data.analysis,
         aiSummary: data.aiSummary,
-      });
+      };
+      
+      setReport(reportData);
       setGeneratedAt(new Date().toISOString());
+      
+      // Add to history
+      addToHistory(reportData);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setIsGenerating(false);
     }
-  }, [filters]);
+  }, [filters, addToHistory]);
   
   // Export to PDF
   const exportToPDF = useCallback(async () => {
@@ -470,7 +733,49 @@ export default function AIReportBuilderPage() {
               </div>
             </div>
             
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Presets Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowPresetPanel(!showPresetPanel)}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <FolderOpen className="h-4 w-4 mr-1" />
+                Presets
+                {savedPresets.length > 0 && (
+                  <Badge className="ml-1 bg-white/20 text-white text-xs">{savedPresets.length}</Badge>
+                )}
+              </Button>
+              
+              {/* History Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+              >
+                <History className="h-4 w-4 mr-1" />
+                History
+              </Button>
+              
+              {/* Schedule Button */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowScheduleModal(true)}
+                className={cn(
+                  "bg-white/10 border-white/20 text-white hover:bg-white/20",
+                  scheduleConfig.enabled && "bg-green-500/20 border-green-400/40"
+                )}
+              >
+                <Bell className="h-4 w-4 mr-1" />
+                Schedule
+                {scheduleConfig.enabled && (
+                  <CheckCircle className="h-3 w-3 ml-1" />
+                )}
+              </Button>
+              
               {activeFilterCount > 0 && (
                 <Button 
                   variant="outline" 
@@ -503,6 +808,383 @@ export default function AIReportBuilderPage() {
           </div>
         </div>
       </div>
+      
+      {/* ============= PRESETS SLIDE-OUT PANEL ============= */}
+      {showPresetPanel && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowPresetPanel(false)} />
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="ml-auto w-full max-w-md bg-white shadow-2xl relative flex flex-col h-full"
+          >
+            <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5" />
+                  Saved Presets
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowPresetPanel(false)} className="text-white hover:bg-white/20">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-blue-100 text-sm mt-1">Save and reuse filter configurations</p>
+            </div>
+            
+            {/* Save New Preset */}
+            <div className="p-4 border-b bg-gray-50">
+              <p className="text-sm font-medium text-gray-700 mb-2">Save Current Filters</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Preset name..."
+                  value={newPresetName}
+                  onChange={(e) => setNewPresetName(e.target.value)}
+                  className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onKeyDown={(e) => e.key === 'Enter' && saveCurrentPreset()}
+                />
+                <Button onClick={saveCurrentPreset} disabled={!newPresetName.trim()} size="sm">
+                  <Save className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            
+            {/* Presets List */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {savedPresets.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <FolderOpen className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No saved presets yet</p>
+                  <p className="text-sm">Save your first filter configuration above</p>
+                </div>
+              ) : (
+                <>
+                  {/* Favorites first */}
+                  {savedPresets.filter(p => p.isFavorite).length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Favorites</p>
+                      {savedPresets.filter(p => p.isFavorite).map(preset => (
+                        <div key={preset.id} className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                              <span className="font-medium text-gray-900">{preset.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => toggleFavorite(preset.id)} className="h-7 w-7 p-0">
+                                <Star className="h-4 w-4 text-amber-500 fill-amber-500" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => deletePreset(preset.id)} className="h-7 w-7 p-0 text-red-500 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-2">
+                            {preset.filters.suppliers.map(s => <Badge key={s} variant="outline" className="text-xs">{s}</Badge>)}
+                            {preset.filters.categories.map(c => <Badge key={c} variant="outline" className="text-xs">{c}</Badge>)}
+                            {preset.filters.years.map(y => <Badge key={y} variant="outline" className="text-xs">{y}</Badge>)}
+                          </div>
+                          <div className="mt-2 flex justify-between items-center">
+                            <span className="text-xs text-gray-500">
+                              {preset.lastUsed ? `Last used ${new Date(preset.lastUsed).toLocaleDateString()}` : 'Never used'}
+                            </span>
+                            <Button size="sm" variant="default" onClick={() => loadPreset(preset)} className="h-7 text-xs">
+                              Load
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Regular presets */}
+                  {savedPresets.filter(p => !p.isFavorite).length > 0 && (
+                    <>
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-4">All Presets</p>
+                      {savedPresets.filter(p => !p.isFavorite).map(preset => (
+                        <div key={preset.id} className="p-3 bg-white border rounded-lg hover:border-blue-300 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-gray-900">{preset.name}</span>
+                            <div className="flex items-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => toggleFavorite(preset.id)} className="h-7 w-7 p-0 text-gray-400 hover:text-amber-500">
+                                <StarOff className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => deletePreset(preset.id)} className="h-7 w-7 p-0 text-red-500 hover:text-red-700">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                          <div className="flex gap-1 flex-wrap mt-2">
+                            {preset.filters.suppliers.map(s => <Badge key={s} variant="outline" className="text-xs">{s}</Badge>)}
+                            {preset.filters.categories.map(c => <Badge key={c} variant="outline" className="text-xs">{c}</Badge>)}
+                            {preset.filters.years.map(y => <Badge key={y} variant="outline" className="text-xs">{y}</Badge>)}
+                            {Object.values(preset.filters).flat().length === 0 && <span className="text-xs text-gray-400">All contracts</span>}
+                          </div>
+                          <div className="mt-2 flex justify-between items-center">
+                            <span className="text-xs text-gray-500">
+                              Created {new Date(preset.createdAt).toLocaleDateString()}
+                            </span>
+                            <Button size="sm" variant="default" onClick={() => loadPreset(preset)} className="h-7 text-xs">
+                              Load
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+      
+      {/* ============= HISTORY SLIDE-OUT PANEL ============= */}
+      {showHistoryPanel && (
+        <div className="fixed inset-0 z-50 flex">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowHistoryPanel(false)} />
+          <motion.div 
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            className="ml-auto w-full max-w-md bg-white shadow-2xl relative flex flex-col h-full"
+          >
+            <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Report History
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowHistoryPanel(false)} className="text-white hover:bg-white/20">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-purple-100 text-sm mt-1">View and restore previous reports</p>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {reportHistory.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <History className="h-12 w-12 mx-auto mb-3 opacity-30" />
+                  <p>No report history yet</p>
+                  <p className="text-sm">Generate your first report to start tracking history</p>
+                </div>
+              ) : (
+                reportHistory.map((item, idx) => (
+                  <div key={item.id} className="p-3 bg-white border rounded-lg hover:border-purple-300 transition-colors">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-gray-500">{new Date(item.generatedAt).toLocaleString()}</span>
+                      {idx === 0 && <Badge className="bg-purple-100 text-purple-700 text-xs">Latest</Badge>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm mb-3">
+                      <div className="p-2 bg-blue-50 rounded">
+                        <p className="text-xs text-gray-500">Contracts</p>
+                        <p className="font-bold text-blue-700">{item.summary.totalContracts}</p>
+                      </div>
+                      <div className="p-2 bg-green-50 rounded">
+                        <p className="text-xs text-gray-500">Value</p>
+                        <p className="font-bold text-green-700">{formatCurrency(item.summary.totalValue)}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 flex-wrap mb-2">
+                      {item.filters.suppliers.map(s => <Badge key={s} variant="outline" className="text-xs">{s}</Badge>)}
+                      {item.filters.categories.map(c => <Badge key={c} variant="outline" className="text-xs">{c}</Badge>)}
+                      {Object.values(item.filters).flat().length === 0 && <span className="text-xs text-gray-400">All contracts</span>}
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => loadFromHistory(item)} className="w-full h-7 text-xs">
+                      Restore Filters
+                    </Button>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+        </div>
+      )}
+      
+      {/* ============= SCHEDULE MODAL ============= */}
+      {showScheduleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowScheduleModal(false)} />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="p-6 border-b bg-gradient-to-r from-green-500 to-teal-600 text-white">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <Bell className="h-5 w-5" />
+                  Schedule Reports
+                </h2>
+                <Button variant="ghost" size="sm" onClick={() => setShowScheduleModal(false)} className="text-white hover:bg-white/20">
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+              <p className="text-green-100 text-sm mt-1">Automatically generate and email reports</p>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Enable Toggle */}
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div>
+                  <p className="font-medium text-gray-900">Enable Scheduled Reports</p>
+                  <p className="text-sm text-gray-500">Automatically generate reports on a schedule</p>
+                </div>
+                <button
+                  onClick={() => setScheduleConfig(prev => ({ ...prev, enabled: !prev.enabled }))}
+                  className={cn(
+                    "relative w-14 h-7 rounded-full transition-colors",
+                    scheduleConfig.enabled ? "bg-green-500" : "bg-gray-300"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute w-5 h-5 bg-white rounded-full top-1 transition-all shadow",
+                    scheduleConfig.enabled ? "left-8" : "left-1"
+                  )} />
+                </button>
+              </div>
+              
+              {scheduleConfig.enabled && (
+                <>
+                  {/* Frequency */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Frequency</p>
+                    <div className="flex gap-2">
+                      {(['daily', 'weekly', 'monthly'] as const).map(freq => (
+                        <button
+                          key={freq}
+                          onClick={() => setScheduleConfig(prev => ({ ...prev, frequency: freq }))}
+                          className={cn(
+                            "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize",
+                            scheduleConfig.frequency === freq
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          )}
+                        >
+                          {freq}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Day Selection (for weekly/monthly) */}
+                  {scheduleConfig.frequency === 'weekly' && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Day of Week</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                          <button
+                            key={day}
+                            onClick={() => setScheduleConfig(prev => ({ ...prev, dayOfWeek: idx }))}
+                            className={cn(
+                              "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                              scheduleConfig.dayOfWeek === idx
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            )}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {scheduleConfig.frequency === 'monthly' && (
+                    <div>
+                      <p className="text-sm font-medium text-gray-700 mb-2">Day of Month</p>
+                      <select
+                        value={scheduleConfig.dayOfMonth || 1}
+                        onChange={(e) => setScheduleConfig(prev => ({ ...prev, dayOfMonth: parseInt(e.target.value) }))}
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  
+                  {/* Time */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Time</p>
+                    <input
+                      type="time"
+                      value={scheduleConfig.time}
+                      onChange={(e) => setScheduleConfig(prev => ({ ...prev, time: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  
+                  {/* Email Recipients */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Email Recipients</p>
+                    <div className="flex gap-2 mb-2">
+                      <input
+                        type="email"
+                        placeholder="Add email address..."
+                        value={newEmail}
+                        onChange={(e) => setNewEmail(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && addEmailToSchedule()}
+                        className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <Button onClick={addEmailToSchedule} disabled={!newEmail.includes('@')} size="sm">
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex gap-2 flex-wrap">
+                      {scheduleConfig.emails.map(email => (
+                        <Badge key={email} className="bg-blue-100 text-blue-700 gap-1 pr-1">
+                          <Mail className="h-3 w-3" />
+                          {email}
+                          <button onClick={() => removeEmailFromSchedule(email)} className="hover:text-red-600 ml-1">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Export Options */}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700 mb-2">Include in Email</p>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={scheduleConfig.includePdf}
+                          onChange={(e) => setScheduleConfig(prev => ({ ...prev, includePdf: e.target.checked }))}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">PDF Report</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={scheduleConfig.includeExcel}
+                          onChange={(e) => setScheduleConfig(prev => ({ ...prev, includeExcel: e.target.checked }))}
+                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm text-gray-700">Excel Data</span>
+                      </label>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+            
+            <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowScheduleModal(false)}>Cancel</Button>
+              <Button onClick={saveScheduleConfig} className="bg-green-600 hover:bg-green-700">
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Save Schedule
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+      )}
       
       <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
         {/* Filter Section - Dropdown Filters */}
@@ -662,7 +1344,7 @@ export default function AIReportBuilderPage() {
         {report && !isGenerating && (
           <div className="space-y-6" ref={reportRef}>
             {/* Report Header with Actions */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between flex-wrap gap-4">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis Report</h2>
                 {generatedAt && (
@@ -670,8 +1352,51 @@ export default function AIReportBuilderPage() {
                     Generated {new Date(generatedAt).toLocaleString()}
                   </p>
                 )}
+                {isComparisonMode && comparisonReport && (
+                  <Badge className="mt-1 bg-purple-100 text-purple-700">
+                    <GitCompare className="h-3 w-3 mr-1" />
+                    Comparison Mode Active
+                  </Badge>
+                )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {/* Comparison Button */}
+                {!isComparisonMode ? (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={setAsComparison}
+                    className="gap-2"
+                    title="Set as baseline for comparison"
+                  >
+                    <GitCompare className="h-4 w-4" />
+                    Compare
+                  </Button>
+                ) : (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={clearComparison}
+                    className="gap-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                  >
+                    <X className="h-4 w-4" />
+                    Clear Comparison
+                  </Button>
+                )}
+                
+                {/* Excel Export */}
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={exportToExcel}
+                  disabled={isExporting}
+                  className="gap-2"
+                >
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Export Excel
+                </Button>
+                
+                {/* PDF Export */}
                 <Button 
                   variant="outline" 
                   size="sm" 
@@ -696,6 +1421,80 @@ export default function AIReportBuilderPage() {
                 </Button>
               </div>
             </div>
+            
+            {/* ============= COMPARISON SUMMARY (if in comparison mode) ============= */}
+            {isComparisonMode && comparisonReport && (
+              <Card className="border-2 border-purple-200 bg-purple-50/50">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-purple-800">
+                    <GitCompare className="h-4 w-4" />
+                    Comparison vs Previous Report
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="p-3 bg-white rounded-lg border">
+                      <p className="text-xs text-gray-500 mb-1">Contracts Change</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold">
+                          {report.summary.totalContracts - comparisonReport.summary.totalContracts >= 0 ? '+' : ''}
+                          {report.summary.totalContracts - comparisonReport.summary.totalContracts}
+                        </span>
+                        {report.summary.totalContracts >= comparisonReport.summary.totalContracts ? (
+                          <ArrowUpRight className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <p className="text-xs text-gray-500 mb-1">Value Change</p>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-xl font-bold",
+                          report.summary.totalValue >= comparisonReport.summary.totalValue ? "text-green-600" : "text-red-600"
+                        )}>
+                          {formatCurrency(Math.abs(report.summary.totalValue - comparisonReport.summary.totalValue))}
+                        </span>
+                        {report.summary.totalValue >= comparisonReport.summary.totalValue ? (
+                          <ArrowUpRight className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <p className="text-xs text-gray-500 mb-1">Health Score</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold">
+                          {report.summary.healthScore - comparisonReport.summary.healthScore >= 0 ? '+' : ''}
+                          {report.summary.healthScore - comparisonReport.summary.healthScore}
+                        </span>
+                        {report.summary.healthScore >= comparisonReport.summary.healthScore ? (
+                          <ArrowUpRight className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="p-3 bg-white rounded-lg border">
+                      <p className="text-xs text-gray-500 mb-1">Risk Score</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl font-bold">
+                          {report.summary.riskScore - comparisonReport.summary.riskScore >= 0 ? '+' : ''}
+                          {report.summary.riskScore - comparisonReport.summary.riskScore}
+                        </span>
+                        {report.summary.riskScore <= comparisonReport.summary.riskScore ? (
+                          <ArrowUpRight className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <ArrowDownRight className="h-4 w-4 text-red-500" />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
             
             {/* Health Scores Dashboard */}
             <Card className="border-0 shadow-lg overflow-hidden">
@@ -889,7 +1688,7 @@ export default function AIReportBuilderPage() {
                   <div className="space-y-4">
                     {report.recommendations.slice(0, 8).map((rec, idx) => {
                       const TypeIcon = RECOMMENDATION_TYPE_ICONS[rec.type] || Lightbulb;
-                      const priorityConfig = PRIORITY_CONFIG[rec.priority] || PRIORITY_CONFIG.medium;
+                      const _priorityConfig = PRIORITY_CONFIG[rec.priority] || PRIORITY_CONFIG.medium;
                       
                       return (
                         <motion.div
@@ -1075,7 +1874,7 @@ export default function AIReportBuilderPage() {
                       <div>
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Value by Quarter</p>
                         <div className="flex items-end gap-2 h-32">
-                          {report.trends.valueByQuarter.map((trend, idx) => {
+                          {report.trends.valueByQuarter.map((trend, _idx) => {
                             const maxValue = Math.max(...report.trends.valueByQuarter.map(t => t.value));
                             const height = maxValue > 0 ? (trend.value / maxValue) * 100 : 0;
                             return (
@@ -1127,7 +1926,7 @@ export default function AIReportBuilderPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {report.benchmarks.map((benchmark, idx) => (
+                      {report.benchmarks.map((benchmark, _idx) => (
                         <div key={benchmark.metric} className="flex items-center gap-4">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">

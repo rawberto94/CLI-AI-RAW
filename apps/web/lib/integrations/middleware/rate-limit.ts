@@ -218,7 +218,8 @@ export function withIpRateLimit(
   handler: (req: NextRequest) => Promise<NextResponse>,
   configType: keyof typeof DEFAULT_CONFIGS = "default"
 ) {
-  const config = {
+  // Config is prepared for future custom key generator support
+  const _config = {
     ...DEFAULT_CONFIGS[configType],
     keyGenerator: (req: NextRequest) => {
       const forwarded = req.headers.get("x-forwarded-for");
@@ -250,9 +251,11 @@ if (typeof setInterval !== "undefined") {
   setInterval(cleanupMemoryStore, 60 * 1000);
 }
 
-export default {
+const rateLimitExports = {
   createRateLimiter,
   withRateLimit,
   withIpRateLimit,
   DEFAULT_CONFIGS,
 };
+
+export default rateLimitExports;

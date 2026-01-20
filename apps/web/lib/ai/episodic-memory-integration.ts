@@ -283,7 +283,7 @@ export async function applyMemoryDecay(
 /**
  * Consolidate similar memories
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 export async function consolidateMemories(
   _userId: string,
   _tenantId: string
@@ -454,7 +454,7 @@ function calculateMemoryRelevance(
   return Math.min(1, score);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function calculateImportance(
   type: Memory['type'],
   content: string,

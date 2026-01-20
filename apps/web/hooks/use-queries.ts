@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useQueryClient, type UseQueryOptions } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useCallback, useRef } from 'react';
 import { STALE_TIMES } from '@/lib/query-client';
 import { getTenantId } from '@/lib/tenant';
@@ -177,7 +177,7 @@ export const queryKeys = {
 // Helper Functions
 // =====================
 
-function getDataMode(): string {
+function _getDataMode(): string {
   // PRODUCTION: Always use real data mode
   // The mock mode was causing issues - disabled for reliability
   return 'real';
@@ -577,7 +577,7 @@ export function useClauseLibrary() {
 // Rate Cards Hooks
 // =====================
 
-export function useRateCards(filters?: Record<string, unknown>) {
+export function useRateCards(_filters?: Record<string, unknown>) {
   return useQuery({
     queryKey: queryKeys.rateCards.lists(),
     queryFn: () => fetchAPI<{ rateCards: unknown[] }>('/api/rate-cards'),
@@ -953,7 +953,11 @@ export function useCrossModuleInvalidation() {
      * Updates: contracts, dashboard, rate cards (if applicable), analytics
      */
     onContractChange: (contractId?: string) => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.contracts.all });
+      // Force refetch all contract queries immediately
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.contracts.all,
+        refetchType: 'all',
+      });
       queryClient.invalidateQueries({ queryKey: ['dashboard'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-summary'] });
       queryClient.invalidateQueries({ queryKey: queryKeys.analytics.dashboard() });
@@ -1500,7 +1504,7 @@ export function useTaxonomyPresets(options?: { enabled?: boolean }) {
  * Create a new taxonomy category
  */
 export function useCreateCategory() {
-  const queryClient = useQueryClient();
+  const _queryClient = useQueryClient();
   const crossModule = useCrossModuleInvalidation();
   
   return useMutation({

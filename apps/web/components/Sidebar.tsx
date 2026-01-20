@@ -364,7 +364,9 @@ function MobileSidebar({
           >
             {/* Close button */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200/60">
-              <ConTigoLogoSVG size="md" />
+              <Link href="/dashboard" aria-label="Go to Dashboard">
+                <ConTigoLogoSVG size="md" />
+              </Link>
               <Button
                 variant="ghost"
                 size="icon"
@@ -467,7 +469,9 @@ export function Sidebar() {
         <div className="flex h-full max-h-screen flex-col">
         {/* Header with enhanced branding */}
         <div className="flex h-16 items-center border-b border-slate-200/60 px-4 lg:px-5 bg-white/80 backdrop-blur-xl">
-          <ConTigoLogoSVG size="md" />
+          <Link href="/dashboard" aria-label="Go to Dashboard">
+            <ConTigoLogoSVG size="md" />
+          </Link>
           <div className="ml-auto flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>

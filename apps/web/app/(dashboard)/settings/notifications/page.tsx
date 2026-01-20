@@ -115,7 +115,7 @@ export default function NotificationPreferencesPage() {
       if (pushData.success) {
         setPushConfig(pushData.data);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to load notification preferences");
     } finally {
       setIsLoading(false);
@@ -225,7 +225,7 @@ export default function NotificationPreferencesPage() {
       } else {
         toast.error(data.error || "Failed to save preferences");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to save preferences");
     } finally {
       setIsSaving(false);
@@ -286,7 +286,7 @@ export default function NotificationPreferencesPage() {
       } else {
         toast.error(data.error || "Failed to disable push notifications");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to disable push notifications");
     }
   };

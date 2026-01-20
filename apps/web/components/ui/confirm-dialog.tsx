@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { AlertTriangle, Trash2, Info, AlertCircle } from 'lucide-react';
+import { AlertTriangle, Trash2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ConfirmDialogProps {
@@ -60,12 +60,9 @@ export function ConfirmDialog({
   const Icon = config.icon;
 
   const handleConfirm = async () => {
-    console.log('[ConfirmDialog] handleConfirm called');
     setIsPending(true);
     try {
-      console.log('[ConfirmDialog] Calling onConfirm...');
       await onConfirm();
-      console.log('[ConfirmDialog] onConfirm completed successfully');
       // Close dialog on success
       onOpenChange(false);
     } catch (error) {

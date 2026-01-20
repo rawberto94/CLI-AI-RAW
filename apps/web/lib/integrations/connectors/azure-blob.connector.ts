@@ -108,8 +108,8 @@ export class AzureBlobConnector implements IContractSourceConnector {
         };
       }
 
-      // Get container properties
-      const properties = await this.containerClient.getProperties();
+      // Get container properties to verify access
+      const _properties = await this.containerClient.getProperties();
 
       // Count blobs for stats
       let blobCount = 0;
@@ -162,7 +162,7 @@ export class AzureBlobConnector implements IContractSourceConnector {
       throw new Error('Client not initialized');
     }
 
-    const { pageToken, pageSize = 100, filePatterns } = options || {};
+    const { pageToken: _pageToken, pageSize = 100, filePatterns } = options || {};
     const prefix = folderId && folderId !== 'root' ? folderId : '';
 
     const files: RemoteFile[] = [];

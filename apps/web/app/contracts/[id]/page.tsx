@@ -1437,6 +1437,8 @@ export default function ContractDetailPage() {
             headers: { 'x-tenant-id': 'demo' }
           })
           if (!response.ok) throw new Error('Failed to delete contract')
+          // Invalidate cache before navigating so list page shows fresh data
+          crossModule.onContractChange(params.id as string)
           router.push('/contracts')
         }}
         onArchive={async () => {

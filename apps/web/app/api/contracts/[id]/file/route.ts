@@ -117,8 +117,7 @@ export async function GET(
     
     if (shouldFetchFromSource && syncedFile?.source) {
       try {
-        console.log(`[File API] Fetching from client source: ${syncedFile.source.provider}`);
-        
+        // Fetching from client source
         const connector = createConnector(
           syncedFile.source.provider as any,
           syncedFile.source.credentials as any
@@ -140,7 +139,7 @@ export async function GET(
         await (connector as any).disconnect?.();
         
         if (fileBuffer) {
-          console.log(`[File API] Successfully fetched ${fileBuffer.length} bytes from source`);
+          // Successfully fetched from source
         }
       } catch (sourceError) {
         console.error('[File API] Failed to fetch from source:', sourceError);
@@ -221,7 +220,7 @@ export async function GET(
         // Check if file exists
         await fs.access(localPath);
         fileBuffer = await fs.readFile(localPath);
-      } catch (localError) {
+      } catch (_localError) {
         // Try alternate paths with sanitized filename
         const alternatePaths = [
           path.join(process.cwd(), 'uploads', contractId, safeFileName),

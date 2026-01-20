@@ -22,7 +22,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   DropdownMenu,
@@ -58,9 +57,6 @@ import {
   Cloud,
   Server,
   HardDrive,
-  ExternalLink,
-  Play,
-  Pause,
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 
@@ -126,7 +122,7 @@ export default function ContractSourcesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedSource, setSelectedSource] = useState<ContractSource | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isTestingConnection, setIsTestingConnection] = useState<string | null>(null);
+  const [_isTestingConnection, setIsTestingConnection] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState<string | null>(null);
 
   // Fetch sources
@@ -137,7 +133,7 @@ export default function ContractSourcesPage() {
       if (data.success) {
         setSources(data.data.sources);
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch contract sources");
     } finally {
       setIsLoading(false);
@@ -164,7 +160,7 @@ export default function ContractSourcesPage() {
       } else {
         toast.error(data.data?.error || "Connection failed");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to test connection");
     } finally {
       setIsTestingConnection(null);
@@ -189,7 +185,7 @@ export default function ContractSourcesPage() {
       } else {
         toast.error(data.error || "Sync failed");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to start sync");
     } finally {
       setIsSyncing(null);
@@ -210,7 +206,7 @@ export default function ContractSourcesPage() {
       } else {
         toast.error("Failed to delete source");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to delete source");
     }
   };
@@ -230,7 +226,7 @@ export default function ContractSourcesPage() {
         toast.success(source.syncEnabled ? "Sync disabled" : "Sync enabled");
         fetchSources();
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to update source");
     }
   };
@@ -548,7 +544,7 @@ function CreateSourceDialog({
       } else {
         toast.error(data.error || "Failed to create source");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to create source");
     } finally {
       setIsCreating(false);
@@ -855,7 +851,7 @@ function SourceSettingsDialog({
       } else {
         toast.error("Failed to save settings");
       }
-    } catch (error) {
+    } catch {
       toast.error("Failed to save settings");
     } finally {
       setIsSaving(false);

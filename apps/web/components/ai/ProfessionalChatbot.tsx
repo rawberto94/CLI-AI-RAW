@@ -6,11 +6,10 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback, memo, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   MessageSquare,
-  Send,
   Sparkles,
   X,
   Minimize2,
@@ -25,25 +24,16 @@ import {
   ChevronDown,
   ArrowUp,
   Lightbulb,
-  Zap,
   History,
   Settings,
   MoreVertical,
-  Search,
   FileText,
   TrendingUp,
   Calendar,
   AlertCircle,
-  CheckCircle2,
-  ExternalLink,
-  Wand2,
-  Mic,
   Paperclip,
-  Sun,
-  Moon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -59,7 +49,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 
 // =============================================================================
@@ -470,7 +459,7 @@ export function ProfessionalChatbot({
   contractId,
   className,
   position = 'bottom-right',
-  theme = 'system',
+  theme: _theme = 'system',
 }: ChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -478,7 +467,7 @@ export function ProfessionalChatbot({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [showScrollButton, _setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 

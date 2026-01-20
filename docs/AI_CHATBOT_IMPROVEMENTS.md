@@ -4,9 +4,11 @@
 
 ### 1. Semantic Cache Service (`/apps/web/lib/ai/semantic-cache.service.ts`)
 
-**Problem Solved:** RAG queries are expensive (OpenAI embeddings + reranking). Similar queries were hitting the API repeatedly.
+**Problem Solved:** RAG queries are expensive (OpenAI embeddings + reranking). Similar queries were
+hitting the API repeatedly.
 
-**Solution:** 
+**Solution:**
+
 - Caches query-response pairs using semantic similarity (not just exact match)
 - Uses smaller 256-dimension embeddings for cache keys (efficient)
 - LRU eviction when cache is full
@@ -14,6 +16,7 @@
 - Upstash Redis backend with in-memory fallback
 
 **Impact:**
+
 - 60-80% reduction in API calls for repeated/similar queries
 - Sub-10ms response time for cache hits
 - Cost savings on OpenAI API usage
@@ -34,28 +37,26 @@ await semanticCache.set(query, response, tenantId);
 
 ### 2. Agentic Chat Service (`/apps/web/lib/ai/agentic-chat.service.ts`)
 
-**Problem Solved:** The current chat relies on pattern-matching intent detection. It can't autonomously decide which tools to use.
+**Problem Solved:** The current chat relies on pattern-matching intent detection. It can't
+autonomously decide which tools to use.
 
 **Solution:**
+
 - OpenAI Function Calling for dynamic tool selection
 - AI decides which tools to call based on context
 - Multi-step reasoning (chain of tool calls)
 - Parallel tool execution when independent
 - 8 built-in tools covering major use cases
 
-**Tools Provided:**
-| Tool | Description |
-|------|-------------|
-| `search_contracts` | Semantic search across contracts |
-| `get_contract_details` | Detailed info about specific contract |
-| `list_expiring_contracts` | Contracts expiring within N days |
-| `get_spend_analysis` | Financial analysis by supplier/category |
-| `compare_contracts` | Side-by-side comparison |
-| `get_risk_assessment` | Risk analysis and alerts |
-| `get_supplier_info` | Comprehensive supplier data |
-| `extract_clause` | Find specific clause types |
+**Tools Provided:** | Tool | Description | |------|-------------| | `search_contracts` | Semantic
+search across contracts | | `get_contract_details` | Detailed info about specific contract | |
+`list_expiring_contracts` | Contracts expiring within N days | | `get_spend_analysis` | Financial
+analysis by supplier/category | | `compare_contracts` | Side-by-side comparison | |
+`get_risk_assessment` | Risk analysis and alerts | | `get_supplier_info` | Comprehensive supplier
+data | | `extract_clause` | Find specific clause types |
 
 **Impact:**
+
 - More intelligent query handling
 - Handles complex multi-step queries automatically
 - Reduced need for hardcoded intent patterns
@@ -65,6 +66,7 @@ await semanticCache.set(query, response, tenantId);
 ### 3. Enhanced Streaming with Cache Integration (`/apps/web/app/api/ai/chat/stream/route.ts`)
 
 **Implemented:**
+
 - Semantic cache check before processing
 - Parallel RAG + memory retrieval
 - Dynamic confidence calculation on responses
@@ -86,22 +88,19 @@ const [ragResults, memories] = await Promise.all([
 **Problem Solved:** Sequential query expansion limits recall.
 
 **Solution:**
+
 - Runs multiple query variations in parallel
 - HyDE (Hypothetical Document Embeddings) for better matching
 - Query expansion with GPT
 - Legal synonym expansion
 - Multi-Query RRF (Reciprocal Rank Fusion)
 
-**Features:**
-| Strategy | Description |
-|----------|-------------|
-| Original Query | Direct search |
-| HyDE | Hypothetical answer then embed |
-| Expanded | GPT-generated variations |
-| Synonyms | Legal domain synonyms |
-| Keyword | BM25 full-text search |
+**Features:** | Strategy | Description | |----------|-------------| | Original Query | Direct search
+| | HyDE | Hypothetical answer then embed | | Expanded | GPT-generated variations | | Synonyms |
+Legal domain synonyms | | Keyword | BM25 full-text search |
 
 **Impact:**
+
 - 20-40% better recall on complex queries
 - Better handling of domain-specific terminology
 - All queries run in parallel (faster)
@@ -113,12 +112,14 @@ const [ragResults, memories] = await Promise.all([
 **New Function:** `calculateDynamicConfidence(ragResults, response, query)`
 
 **Calculation Components:**
+
 - Retrieval Quality (40%): Average score of top-k results
 - Coverage Score (20%): Number of high-quality results found
 - Source Diversity (20%): Hybrid vs semantic-only matches
 - Alignment Score (20%): Query-response term overlap
 
 **Output:**
+
 ```typescript
 {
   confidence: 0.78,
@@ -134,6 +135,7 @@ const [ragResults, memories] = await Promise.all([
 **Problem Solved:** AI has no long-term memory of past interactions.
 
 **Solution:**
+
 - Store important interactions as memories
 - Retrieve relevant memories based on context
 - Memory importance scoring
@@ -141,6 +143,7 @@ const [ragResults, memories] = await Promise.all([
 - Memory consolidation (deduplication)
 
 **Memory Types:**
+
 - `insight` - Key learnings from conversations
 - `preference` - User preferences detected
 - `fact` - Specific facts discovered
@@ -158,6 +161,7 @@ const [ragResults, memories] = await Promise.all([
 **Solution:** GPT-4o Vision for document analysis
 
 **Features:**
+
 - OCR for scanned documents
 - Table extraction from images
 - Signature detection (handwritten, digital, stamp)
@@ -219,25 +223,28 @@ RAG_EMBED_DIMENSIONS="1024"
 │  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
 ```typescript
 // For scanned PDFs with complex layouts
 async function analyzeWithVision(contractId: string, query: string) {
   const pages = await getContractPages(contractId); // Get page images
-  
+
   const response = await openai.chat.completions.create({
     model: 'gpt-4o',
-    messages: [{
-      role: 'user',
-      content: [
-        { type: 'text', text: query },
-        ...pages.map(p => ({ 
-          type: 'image_url', 
-          image_url: { url: p.imageUrl } 
-        })),
-      ],
-    }],
+    messages: [
+      {
+        role: 'user',
+        content: [
+          { type: 'text', text: query },
+          ...pages.map(p => ({
+            type: 'image_url',
+            image_url: { url: p.imageUrl },
+          })),
+        ],
+      },
+    ],
   });
-  
+
   return response.choices[0].message.content;
 }
 ```
@@ -255,7 +262,7 @@ import { semanticCache } from '@/lib/ai/semantic-cache.service';
 
 export async function POST(request: NextRequest) {
   // ... existing auth code ...
-  
+
   // Check cache first
   const cached = await semanticCache.get(message, tenantId);
   if (cached) {
@@ -266,21 +273,25 @@ export async function POST(request: NextRequest) {
       ...cached.metadata,
     });
   }
-  
+
   // ... existing processing ...
-  
+
   // Cache the response
-  await semanticCache.set(message, {
-    content: response.response,
-    sources: response.sources,
-    ragResults: response.ragResults,
-    metadata: {
-      intent: intent.type,
-      confidence: response.confidence,
-      tokensUsed: response.tokensUsed || 0,
+  await semanticCache.set(
+    message,
+    {
+      content: response.response,
+      sources: response.sources,
+      ragResults: response.ragResults,
+      metadata: {
+        intent: intent.type,
+        confidence: response.confidence,
+        tokensUsed: response.tokensUsed || 0,
+      },
     },
-  }, tenantId);
-  
+    tenantId
+  );
+
   return NextResponse.json(response);
 }
 ```
@@ -306,20 +317,20 @@ if (agentic) {
 
 ## 📊 Performance Metrics to Track
 
-| Metric | Target | Current | After Improvements |
-|--------|--------|---------|-------------------|
-| Avg Response Time | < 2s | ~3-4s | ~1.5s (cached) |
-| Cache Hit Rate | > 60% | 0% | 65-75% |
-| Tool Call Success | > 95% | N/A | 97% |
-| RAG Relevance | > 0.8 | 0.72 | 0.85 |
-| Token Usage/Query | < 3000 | ~4500 | ~2500 |
+| Metric            | Target | Current | After Improvements |
+| ----------------- | ------ | ------- | ------------------ |
+| Avg Response Time | < 2s   | ~3-4s   | ~1.5s (cached)     |
+| Cache Hit Rate    | > 60%  | 0%      | 65-75%             |
+| Tool Call Success | > 95%  | N/A     | 97%                |
+| RAG Relevance     | > 0.8  | 0.72    | 0.85               |
+| Token Usage/Query | < 3000 | ~4500   | ~2500              |
 
 ---
 
 ## 🎯 Priority Order
 
 1. **Semantic Cache** - Immediate cost savings (implemented ✅)
-2. **Agentic Chat** - Better query handling (implemented ✅)  
+2. **Agentic Chat** - Better query handling (implemented ✅)
 3. **Response Streaming** - Better UX (partial)
 4. **Confidence Calibration** - User trust
 5. **Memory Integration** - Personalization

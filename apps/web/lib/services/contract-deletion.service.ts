@@ -7,6 +7,7 @@
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { deleteContractFile } from '@/lib/storage/delete';
+import { invalidateCache } from '@/lib/cache';
 
 interface DeleteOptions {
   deleteFromStorage?: boolean;
@@ -302,6 +303,13 @@ export async function safeDeleteContract(
       });
     } catch {
       // Event publishing failed - non-fatal
+    }
+
+    // Invalidate Redis cache so the contracts list refreshes
+    try {
+      await invalidateCache.contract(contractId);
+    } catch {
+      // Cache invalidation failed - non-fatal
     }
 
     return {

@@ -6,7 +6,6 @@ import {
   FileText,
   Building2,
   DollarSign,
-  Calendar,
   Clock,
   Shield,
   AlertTriangle,
@@ -14,9 +13,7 @@ import {
   Loader2,
   Eye,
   Brain,
-  ArrowRight,
   Tag,
-  User,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -87,7 +84,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
   align = 'start',
   delay = 400,
 }: ContractHoverPreviewProps) {
-  const [isHovered, setIsHovered] = useState(false);
+  const [_isHovered, setIsHovered] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);

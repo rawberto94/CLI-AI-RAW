@@ -100,12 +100,15 @@ export default function RateCardEntriesPage() {
     
     try {
       await fetch(`/api/rate-cards/${rateCardToDelete}`, { method: 'DELETE' });
+      // Invalidate the local query AND the cross-module cache
+      await queryClient.invalidateQueries({ queryKey: ['rate-cards'] });
       crossModule.onRateCardChange();
       toast.success('Rate card deleted successfully');
     } catch {
       toast.error('Failed to delete rate card');
     } finally {
       setRateCardToDelete(null);
+      setDeleteDialogOpen(false);
     }
   };
 

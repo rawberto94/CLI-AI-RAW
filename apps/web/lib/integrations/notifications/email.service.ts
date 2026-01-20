@@ -6,7 +6,7 @@
  */
 
 // Note: nodemailer is optional - install with `npm install nodemailer @types/nodemailer` if needed
- 
+/* eslint-disable @typescript-eslint/no-require-imports */
 let nodemailer: any;
 try {
   // Dynamic import to avoid build errors if not installed
@@ -136,7 +136,7 @@ export class EmailNotificationService {
           text,
           html,
         });
-        console.log(`[Email] Sent failure alert to ${recipient.email}`);
+        // Email sent successfully to recipient
       } catch (error) {
         console.error(`[Email] Failed to send to ${recipient.email}:`, error);
       }
@@ -169,7 +169,7 @@ export class EmailNotificationService {
           text,
           html,
         });
-        console.log(`[Email] Sent summary report to ${recipient.email}`);
+        // Summary report sent successfully to recipient
       } catch (error) {
         console.error(`[Email] Failed to send to ${recipient.email}:`, error);
       }

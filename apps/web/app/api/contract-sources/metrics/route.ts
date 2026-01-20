@@ -9,7 +9,7 @@ import { getServerSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { subDays, subHours } from "date-fns";
 
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
@@ -74,7 +74,7 @@ export async function GET(req: NextRequest) {
 
     // Sync stats
     const completedSyncs = syncLogs.filter((log) => log.status === "COMPLETED");
-    const failedSyncs = syncLogs.filter((log) => log.status === "FAILED");
+    const _failedSyncs = syncLogs.filter((log) => log.status === "FAILED");
     const successRate =
       syncLogs.length > 0
         ? (completedSyncs.length / syncLogs.length) * 100

@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,6 @@ import {
   DollarSign,
   Download,
   Copy,
-  Loader2,
   Sparkles,
   Target,
   Shield,

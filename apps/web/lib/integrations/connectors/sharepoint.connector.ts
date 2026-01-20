@@ -12,7 +12,6 @@
  */
 
 import {
-  IContractSourceConnector,
   IOAuthConnector,
   ConnectionTestResult,
   ListFilesResult,

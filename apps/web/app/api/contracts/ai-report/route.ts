@@ -204,7 +204,7 @@ function calculatePortfolioStats(contracts: ContractInput[]): PortfolioStats {
 async function generateAIReport(
   contracts: ContractSummary[],
   stats: PortfolioStats,
-  reportType: string
+  _reportType: string
 ): Promise<Partial<AIReportResult>> {
   const contractList = contracts.map(c => `
 Contract: ${c.fileName}

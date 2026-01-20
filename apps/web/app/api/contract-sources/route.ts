@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Remove sensitive credentials from response
-      const { credentials, accessToken, refreshToken, ...safeSource } = source;
+      const { credentials: _credentials, accessToken, refreshToken: _refreshToken, ...safeSource } = source;
 
       return NextResponse.json({
         success: true,
@@ -125,7 +125,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Remove sensitive data
-    const safeSources = sources.map(({ credentials, accessToken, refreshToken, ...source }) => ({
+    const safeSources = sources.map(({ credentials: _creds, accessToken, refreshToken: _refreshToken, ...source }) => ({
       ...source,
       hasCredentials: !!credentials,
       isOAuthConnected: !!accessToken,
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Remove credentials from response
-    const { credentials, ...safeSource } = source;
+    const { credentials: _credentials, ...safeSource } = source;
 
     return NextResponse.json({
       success: true,
@@ -272,7 +272,7 @@ export async function PUT(request: NextRequest) {
     });
 
     // Remove credentials from response
-    const { credentials, accessToken, refreshToken, ...safeSource } = source;
+    const { credentials: _c, accessToken: _a, refreshToken: _r, ...safeSource } = source;
 
     return NextResponse.json({
       success: true,

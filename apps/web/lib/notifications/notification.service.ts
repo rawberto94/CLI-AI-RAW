@@ -12,7 +12,6 @@
 
 import { PrismaClient } from "@prisma/client";
 import webpush from "web-push";
-import { createHash } from "crypto";
 
 const prisma = new PrismaClient();
 
@@ -517,7 +516,7 @@ export class AdvancedNotificationService {
   private isInQuietHours(preferences: NotificationPreferences | null): boolean {
     if (!preferences?.globalQuietHours) return false;
 
-    const { start, end, timezone } = preferences.globalQuietHours;
+    const { start, end, timezone: _timezone } = preferences.globalQuietHours;
     const now = new Date();
     
     // Simple hour comparison (would need proper timezone handling in production)

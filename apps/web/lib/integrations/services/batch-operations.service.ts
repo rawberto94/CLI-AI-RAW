@@ -10,7 +10,7 @@ import { createWriteStream, promises as fs } from "fs";
 import path from "path";
 import os from "os";
 import archiver from "archiver";
-import { SyncedFile, ContractSource } from "@prisma/client";
+import { SyncedFile } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createConnector } from "../connectors/factory";
 import type { IContractSourceConnector, ConnectorCredentials } from "../connectors/types";
@@ -231,7 +231,7 @@ async function createZipArchive(
     archive.pipe(output);
 
     // Add files
-    const dirFiles = require("fs").readdirSync(sourceDir);
+    const dirFiles = await fs.readdir(sourceDir);
     for (const filename of dirFiles) {
       const filePath = path.join(sourceDir, filename);
       archive.file(filePath, { name: filename });
@@ -443,8 +443,10 @@ async function writeStreamToFile(content: Buffer | Readable, filePath: string): 
   });
 }
 
-export default {
+const batchOperationsExports = {
   batchDownload,
   batchImport,
   batchDelete,
 };
+
+export default batchOperationsExports;

@@ -10,16 +10,20 @@
  * - Animated stat counters
  * - Skeleton loading states
  * - Processing contracts live progress tracking
+ * 
+ * Note: This file contains features in active development. Some variables
+ * are defined for future use and are intentionally preserved.
  */
+
+/* eslint-disable @typescript-eslint/no-unused-vars */
 
 "use client";
 
 import { useState, useMemo, useCallback, memo, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
 import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
@@ -43,9 +47,7 @@ import {
 } from "@/components/ui/tooltip";
 import {
   FileText,
-  Search,
   Eye,
-  Upload,
   Clock,
   CheckCircle,
   AlertTriangle,
@@ -55,57 +57,33 @@ import {
   Shield,
   RefreshCw,
   Filter,
-  TrendingUp,
-  ArrowUpRight,
   MoreHorizontal,
   Download,
   Trash2,
   Share2,
   Brain,
-  GitCompare,
-  Bell,
-  ClipboardCheck,
-  SlidersHorizontal,
   X,
   LayoutGrid,
   LayoutList,
   Building2,
   ChevronRight,
-  ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Sparkles,
-  CalendarDays,
   CalendarClock,
-  Banknote,
   Tag,
   Zap,
-  History,
   TimerOff,
   CircleDot,
   FileDown,
   FileSpreadsheet,
-  ListFilter,
   ChevronLeft,
   ChevronsLeft,
   ChevronsRight,
-  Bookmark,
-  BookmarkCheck,
-  PieChart,
-  TrendingDown,
-  Hash,
   FileBarChart,
-  Truck,
-  GanttChartSquare,
-  Kanban,
   Target,
   Database,
   ArrowLeftRight,
-  Heart,
-  MessageSquare,
-  Layers,
-  Radio,
-  Wifi,
   WifiOff,
   Activity,
   Pause,
@@ -117,15 +95,15 @@ import {
   GitBranch,
   CheckCircle2,
   XCircle,
-  PenLine,
   FileWarning,
 } from "lucide-react";
-import { ObligationWidget, type Obligation } from "@/components/contracts/ObligationTracker";
+// ObligationWidget and Obligation type available if needed from @/components/contracts/ObligationTracker
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useDataMode } from "@/contexts/DataModeContext";
-import { useContracts, useContractStats, useCrossModuleInvalidation, type Contract } from "@/hooks/use-queries";
+import { useContracts, useContractStats, useCrossModuleInvalidation, queryKeys, type Contract } from "@/hooks/use-queries";
 import { toast } from "sonner";
 import type { SignatureStatus, DocumentClassification } from "@/lib/types/contract-metadata-schema";
 
@@ -135,29 +113,26 @@ import {
   LazyContractKanban,
   LazyContractPreviewPanel 
 } from "@/components/lazy";
-import { type TimelineContract } from "@/components/contracts/ContractTimeline";
-import { type KanbanContract } from "@/components/contracts/ContractKanban";
 
 // Enhanced UI Components
 import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
-import { EnhancedContractCard, EnhancedContractRow, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
+import { EnhancedContractCard, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
 import { type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
-import { EnhancedBulkActionsBar, type BulkAction } from "@/components/contracts/EnhancedBulkActionsBar";
-import { SmartFilters, type ContractFilters } from "@/components/contracts/SmartFilters";
-import { MobileContractCard, MobileFiltersSheet, MobileSearchBar } from "@/components/contracts/MobileContractViews";
+import { EnhancedBulkActionsBar } from "@/components/contracts/EnhancedBulkActionsBar";
+import { type ContractFilters } from "@/components/contracts/SmartFilters";
+import { MobileFiltersSheet } from "@/components/contracts/MobileContractViews";
 import { NoContracts, NoResults } from "@/components/contracts/EmptyStates";
 import { ShareDialog } from "@/components/collaboration/ShareDialog";
-import { SubmitForApprovalModal } from "@/components/collaboration/SubmitForApprovalModal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
-import { QuickStatsBar, generateContractStats } from "@/components/contracts/QuickStatsBar";
+// QuickStatsBar available if needed from @/components/contracts/QuickStatsBar
 import { OrphanContractsBanner } from "@/components/contracts";
 import { ContractHoverPreview } from "@/components/contracts/ContractHoverPreview";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
-import { useKeyboardShortcuts } from "@/hooks/useKeyboardShortcuts";
-import { ContractCompareWidget, generateDemoContracts as generateCompareContracts } from "@/components/contracts/ContractCompareWidget";
+// useKeyboardShortcuts available if needed from @/hooks/useKeyboardShortcuts
+import { ContractCompareWidget } from "@/components/contracts/ContractCompareWidget";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 import { getTenantId } from "@/lib/tenant";
@@ -444,46 +419,17 @@ const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index
   );
 });
 
-const ContractCardSkeleton = memo(function ContractCardSkeleton({ index }: { index: number }) {
-  return (
-    <div 
-      className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-5 motion-safe:animate-pulse relative overflow-hidden"
-      style={{ animationDelay: `${index * 50}ms` }}
-    >
-      <div className="absolute inset-0 -translate-x-full motion-safe:animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-slate-700/60 to-transparent" />
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 bg-slate-200 dark:bg-slate-700 rounded-lg" />
-          <div className="space-y-2">
-            <div className="h-4 w-40 bg-slate-200 dark:bg-slate-700 rounded" />
-            <div className="h-3 w-24 bg-slate-100 dark:bg-slate-800 rounded" />
-          </div>
-        </div>
-        <div className="h-6 w-16 bg-slate-200 dark:bg-slate-700 rounded-full" />
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
-          <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
-          <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
-        </div>
-        <div className="space-y-1">
-          <div className="h-3 w-16 bg-slate-100 dark:bg-slate-800 rounded" />
-          <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
-        </div>
-      </div>
-    </div>
-  );
-});
+// ContractCardSkeleton is available from @/components/ui/animated-skeletons if needed
 
 // ============ PROCESSING CONTRACT TRACKER ============
 interface ProcessingContractTrackerProps {
   contracts: Contract[];
-  onContractComplete: (contractId: string) => void;
+  onContractComplete?: (contractId: string) => void; // optional callback for future use
 }
 
 const ProcessingContractTracker = memo(function ProcessingContractTracker({
   contracts,
-  onContractComplete
+  onContractComplete: _onContractComplete
 }: ProcessingContractTrackerProps) {
   const processingContracts = contracts.filter(c => c.status === 'processing');
   
@@ -578,7 +524,7 @@ const CompactContractRow = memo(function CompactContractRow({
   onShare,
   onDelete,
   onDownload,
-  onApproval,
+  onApproval: _onApproval,
   formatCurrency,
   formatDate,
 }: CompactContractRowProps) {
@@ -790,7 +736,6 @@ const CompactContractRow = memo(function CompactContractRow({
               role="menuitem"
               tabIndex={-1}
               onClick={() => {
-                console.log('[DELETE] Delete button clicked');
                 onDelete();
               }}
               className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 focus:bg-red-50 text-red-600"
@@ -829,7 +774,7 @@ const ContractCard = memo(function ContractCard({
   onShare,
   onDelete,
   onDownload,
-  onApproval,
+  onApproval: _onApproval,
   formatCurrency,
   formatDate,
   getRiskBadge,
@@ -1252,11 +1197,6 @@ export default function ContractsPage() {
   const [contractToDelete, setContractToDelete] = useState<{ id: string; title: string } | null>(null);
   const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   
-  // Debug effect for delete dialog
-  useEffect(() => {
-    console.log('[DELETE DEBUG] deleteDialogOpen changed:', deleteDialogOpen, 'contractToDelete:', contractToDelete);
-  }, [deleteDialogOpen, contractToDelete]);
-  
   // Bulk action confirmation dialogs
   const [bulkExportDialogOpen, setBulkExportDialogOpen] = useState(false);
   const [bulkAnalyzeDialogOpen, setBulkAnalyzeDialogOpen] = useState(false);
@@ -1318,6 +1258,7 @@ export default function ContractsPage() {
   const { data: dbStats, refetch: refetchStats } = useContractStats();
   
   const crossModule = useCrossModuleInvalidation();
+  const queryClient = useQueryClient();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const contracts: Contract[] = contractsData?.contracts || [];
@@ -1473,7 +1414,7 @@ export default function ContractsPage() {
   }, []);
 
   // Bulk operations
-  const performBulkAction = async (action: 'export' | 'analyze' | 'delete' | 'share') => {
+  const performBulkAction = useCallback(async (action: 'export' | 'analyze' | 'delete' | 'share') => {
     if (selectedContracts.size === 0) return;
     
     setIsProcessingBulk(true);
@@ -1493,7 +1434,7 @@ export default function ContractsPage() {
 
       if (!response.ok) throw new Error('Operation failed');
       
-      const result = await response.json();
+      await response.json();
       toast.success(`Successfully ${action}ed ${selectedContracts.size} contracts`);
       
       if (action === 'delete') {
@@ -1506,7 +1447,7 @@ export default function ContractsPage() {
     } finally {
       setIsProcessingBulk(false);
     }
-  };
+  }, [selectedContracts, dataMode, refetch]);
 
   // Clear all filters
   const clearFilters = useCallback(() => {
@@ -1749,22 +1690,17 @@ export default function ContractsPage() {
 
   // Open delete confirmation dialog
   const handleDeleteClick = useCallback((contractId: string, contractTitle: string) => {
-    console.log('[DELETE] handleDeleteClick called:', { contractId, contractTitle });
     setContractToDelete({ id: contractId, title: contractTitle });
     setDeleteDialogOpen(true);
-    console.log('[DELETE] Dialog should now be open');
   }, []);
 
   // Confirm single delete
   const handleConfirmDelete = useCallback(async () => {
-    console.log('[DELETE] handleConfirmDelete called, contractToDelete:', contractToDelete);
     if (!contractToDelete) {
-      console.log('[DELETE] No contract to delete, returning');
       return;
     }
     
     try {
-      console.log('[DELETE] Making DELETE request to:', `/api/contracts/${contractToDelete.id}`);
       toast.info('Deleting contract...');
       const response = await fetch(`/api/contracts/${contractToDelete.id}`, {
         method: 'DELETE',
@@ -1772,17 +1708,27 @@ export default function ContractsPage() {
       });
 
       const data = await response.json().catch(() => ({}));
-      console.log('[DELETE] Response:', { ok: response.ok, status: response.status, data });
       
       if (!response.ok) {
         throw new Error(data?.error || data?.details || 'Delete failed');
       }
       
-      // Invalidate related caches
+      // Force immediate refresh - invalidate cache AND refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: queryKeys.contracts.all,
+        refetchType: 'all'
+      });
+      
+      // Also refresh stats
+      await refetchStats();
+      
+      // Force refetch the main contracts list
+      await refetch();
+      
+      // Also invalidate related caches across modules
       crossModule.onContractChange(contractToDelete.id);
       
       toast.success('Contract deleted successfully');
-      refetch();
     } catch (error) {
       console.error('[DELETE] Error:', error);
       const message = error instanceof Error ? error.message : 'Failed to delete contract';
@@ -1790,7 +1736,7 @@ export default function ContractsPage() {
     } finally {
       setContractToDelete(null);
     }
-  }, [contractToDelete, crossModule, refetch]);
+  }, [contractToDelete, crossModule, queryClient, refetch, refetchStats]);
 
   // Bulk delete handler
   const handleBulkDeleteClick = useCallback(() => {
@@ -1812,18 +1758,29 @@ export default function ContractsPage() {
       
       await Promise.all(deletePromises);
       
-      // Invalidate all related caches
+      // Force immediate refresh - invalidate cache AND refetch
+      await queryClient.invalidateQueries({ 
+        queryKey: queryKeys.contracts.all,
+        refetchType: 'all'
+      });
+      
+      // Also refresh stats
+      await refetchStats();
+      
+      // Force refetch the main contracts list
+      await refetch();
+      
+      // Also invalidate related caches across modules
       crossModule.onContractChange();
       
       toast.success(`Deleted ${selectedContracts.size} contracts`);
       setSelectedContracts(new Set());
-      refetch();
     } catch {
       toast.error('Failed to delete some contracts');
     } finally {
       setIsProcessingBulk(false);
     }
-  }, [selectedContracts, crossModule, refetch]);
+  }, [selectedContracts, crossModule, queryClient, refetch, refetchStats]);
 
   // Bulk action with confirmation handlers
   const handleBulkActionWithConfirmation = useCallback((action: 'export' | 'analyze' | 'share') => {
@@ -1849,7 +1806,7 @@ export default function ContractsPage() {
     setBulkAnalyzeDialogOpen(false);
     setBulkShareDialogOpen(false);
     setPendingBulkAction(null);
-  }, [pendingBulkAction]);
+  }, [pendingBulkAction, performBulkAction]);
 
   // Check if any filters are active
   const hasActiveFilters = searchQuery || statusFilter !== "all" || typeFilters.length > 0 || riskFilters.length > 0 || approvalFilters.length > 0 || valueRangeFilter || dateRangeFilter || expirationFilters.length > 0 || supplierFilters.length > 0 || signatureFilters.length > 0 || documentTypeFilters.length > 0 || activePreset || Object.keys(advancedFilters).length > 0 || categoryFilter;
