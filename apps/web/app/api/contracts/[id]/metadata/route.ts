@@ -11,6 +11,7 @@ import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { getContractQueue } from "@repo/utils/queue/contract-queue";
+import { semanticCache } from "@/lib/ai/semantic-cache.service";
 
 // Fields that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_FIELDS = [
@@ -489,6 +490,11 @@ export async function PUT(
         ...legacyUpdates,
         updatedAt: new Date(),
       }
+    });
+
+    // Invalidate semantic cache so chatbot sees updated metadata
+    semanticCache.invalidate(tenantId, contractId).catch(() => {
+      // Non-blocking - ignore cache errors
     });
 
     await publishRealtimeEvent({

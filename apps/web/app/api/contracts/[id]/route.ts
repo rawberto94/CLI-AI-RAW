@@ -18,6 +18,7 @@ import { getErrorMessage, type JsonRecord } from "@/lib/types/common";
 import { safeDeleteContract } from "@/lib/services/contract-deletion.service";
 import { contractUpdateSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
+import { semanticCache } from "@/lib/ai/semantic-cache.service";
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -586,6 +587,11 @@ export async function PUT(
       },
     });
 
+    // Invalidate semantic cache for this contract (chatbot will see changes)
+    semanticCache.invalidate(tenantId, contractId).catch(() => {
+      // Non-blocking - ignore cache errors
+    });
+
     return NextResponse.json({
       success: true,
       data: updatedContract,
@@ -635,6 +641,11 @@ export async function DELETE(
         { status: 400 }
       );
     }
+
+    // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
+    semanticCache.invalidate(tenantId, contractId).catch(() => {
+      // Non-blocking - ignore cache errors
+    });
 
     // Legacy file cleanup (if exists)
     try {
