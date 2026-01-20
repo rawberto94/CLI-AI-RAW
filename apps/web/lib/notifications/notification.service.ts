@@ -183,14 +183,12 @@ export class AdvancedNotificationService {
         tenantId: recipient.tenantId,
         type: payload.type,
         title: payload.title,
+        message: payload.body,
         body: payload.body,
-        data: payload.data as any,
-        actionUrl: payload.actionUrl,
-        imageUrl: payload.imageUrl,
-        priority: payload.priority || "normal",
+        metadata: payload.data ? JSON.parse(JSON.stringify(payload.data)) : null,
+        link: payload.actionUrl,
         expiresAt: payload.expiresAt,
-        groupKey: payload.groupKey,
-        read: false,
+        isRead: false,
       },
     });
 
@@ -372,7 +370,19 @@ export class AdvancedNotificationService {
       where: { userId },
     });
 
-    return prefs ? (prefs.preferences as NotificationPreferences) : null;
+    if (!prefs) return null;
+    
+    // Map database flat fields to NotificationPreferences interface
+    return {
+      userId: prefs.userId,
+      channels: {}, // Would need to be stored in metadata or separate table
+      globalQuietHours: prefs.quietHoursStart && prefs.quietHoursEnd ? {
+        start: prefs.quietHoursStart,
+        end: prefs.quietHoursEnd,
+        timezone: prefs.quietHoursTimezone ?? "UTC",
+      } : undefined,
+      emailDigestFrequency: prefs.emailDigest as NotificationPreferences["emailDigestFrequency"],
+    };
   }
 
   /**
@@ -382,10 +392,19 @@ export class AdvancedNotificationService {
     userId: string,
     preferences: Partial<NotificationPreferences>
   ): Promise<void> {
+    const data = {
+      emailEnabled: true,
+      pushEnabled: true,
+      emailDigest: preferences.emailDigestFrequency || "daily",
+      quietHoursStart: preferences.globalQuietHours?.start,
+      quietHoursEnd: preferences.globalQuietHours?.end,
+      quietHoursTimezone: preferences.globalQuietHours?.timezone,
+    };
+    
     await prisma.notificationPreferences.upsert({
       where: { userId },
-      update: { preferences: preferences as any },
-      create: { userId, preferences: preferences as any },
+      update: data,
+      create: { userId, tenantId: userId, ...data },
     });
   }
 
@@ -401,13 +420,16 @@ export class AdvancedNotificationService {
         endpoint: subscription.endpoint,
       },
       update: {
-        keys: subscription.keys as any,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
         userId,
       },
       create: {
         userId,
+        tenantId: userId,
         endpoint: subscription.endpoint,
-        keys: subscription.keys as any,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
       },
     });
   }
@@ -422,7 +444,7 @@ export class AdvancedNotificationService {
     return prisma.notification.findMany({
       where: {
         userId,
-        read: false,
+        isRead: false,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } },
@@ -439,7 +461,7 @@ export class AdvancedNotificationService {
   async markAsRead(notificationIds: string[]): Promise<void> {
     await prisma.notification.updateMany({
       where: { id: { in: notificationIds } },
-      data: { read: true, readAt: new Date() },
+      data: { isRead: true, readAt: new Date() },
     });
   }
 
@@ -448,8 +470,8 @@ export class AdvancedNotificationService {
    */
   async markAllAsRead(userId: string): Promise<void> {
     await prisma.notification.updateMany({
-      where: { userId, read: false },
-      data: { read: true, readAt: new Date() },
+      where: { userId, isRead: false },
+      data: { isRead: true, readAt: new Date() },
     });
   }
 
@@ -460,7 +482,7 @@ export class AdvancedNotificationService {
     return prisma.notification.count({
       where: {
         userId,
-        read: false,
+        isRead: false,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } },
@@ -479,7 +501,7 @@ export class AdvancedNotificationService {
     const result = await prisma.notification.deleteMany({
       where: {
         OR: [
-          { createdAt: { lt: cutoff }, read: true },
+          { createdAt: { lt: cutoff }, isRead: true },
           { expiresAt: { lt: new Date() } },
         ],
       },
@@ -664,14 +686,16 @@ export class AdvancedNotificationService {
     const integration = await prisma.integration.findFirst({
       where: { tenantId, provider: "SLACK", isActive: true },
     });
-    return integration?.config?.webhookUrl as string | null;
+    const config = integration?.config as Record<string, unknown> | null;
+    return config?.webhookUrl as string | null;
   }
 
   private async getTeamsWebhook(tenantId: string): Promise<string | null> {
     const integration = await prisma.integration.findFirst({
       where: { tenantId, provider: "TEAMS", isActive: true },
     });
-    return integration?.config?.webhookUrl as string | null;
+    const config = integration?.config as Record<string, unknown> | null;
+    return config?.webhookUrl as string | null;
   }
 
   private async removeExpiredSubscription(userId: string): Promise<void> {

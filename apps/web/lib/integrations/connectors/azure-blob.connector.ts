@@ -114,7 +114,7 @@ export class AzureBlobConnector implements IContractSourceConnector {
       // Count blobs for stats
       let blobCount = 0;
       let totalSize = 0;
-      const blobs = this.containerClient.listBlobsFlat({ maxPageSize: 1000 });
+      const blobs = this.containerClient.listBlobsFlat();
       for await (const blob of blobs) {
         blobCount++;
         totalSize += blob.properties.contentLength || 0;

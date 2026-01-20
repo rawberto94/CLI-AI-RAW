@@ -76,8 +76,8 @@ export async function GET(
         originalName: true,
         uploadedAt: true,
         externalId: true,
-        // Include source file info if exists
-        sourceFiles: {
+        // Include synced file info if exists
+        syncedFiles: {
           select: {
             id: true,
             remoteId: true,
@@ -87,7 +87,6 @@ export async function GET(
                 id: true,
                 provider: true,
                 credentials: true,
-                settings: true,
               },
             },
           },
@@ -111,37 +110,34 @@ export async function GET(
     const storageConfig = getStorageConfig();
     
     // Strategy 1: Fetch from client source (if requested or no local copy)
-    const sourceFile = contract.sourceFiles?.[0];
+    const syncedFile = contract.syncedFiles?.[0];
     const shouldFetchFromSource = fetchFromSource || 
-      (!contract.storagePath && sourceFile) ||
-      (storageConfig.mode === 'minimal' && sourceFile);
+      (!contract.storagePath && syncedFile) ||
+      (storageConfig.mode === 'minimal' && syncedFile);
     
-    if (shouldFetchFromSource && sourceFile?.source) {
+    if (shouldFetchFromSource && syncedFile?.source) {
       try {
-        console.log(`[File API] Fetching from client source: ${sourceFile.source.provider}`);
+        console.log(`[File API] Fetching from client source: ${syncedFile.source.provider}`);
         
         const connector = createConnector(
-          sourceFile.source.provider as any,
-          sourceFile.source.credentials as any,
-          sourceFile.source.settings as any
+          syncedFile.source.provider as any,
+          syncedFile.source.credentials as any
         );
         
-        await connector.connect();
-        const downloaded = await connector.downloadFile(sourceFile.remoteId);
+        await (connector as any).connect?.();
+        const downloaded = await connector.downloadFile(syncedFile.remoteId);
         
         // Convert stream/buffer to Buffer
         if (downloaded.content instanceof Buffer) {
           fileBuffer = downloaded.content;
-        } else if (downloaded.content && typeof downloaded.content.pipe === 'function') {
-          // It's a stream, collect it
-          const chunks: Buffer[] = [];
-          for await (const chunk of downloaded.content) {
-            chunks.push(Buffer.from(chunk));
-          }
-          fileBuffer = Buffer.concat(chunks);
+        } else if (Buffer.isBuffer(downloaded.content)) {
+          fileBuffer = downloaded.content;
+        } else {
+          // Assume it's binary data that can be converted
+          fileBuffer = Buffer.from(downloaded.content as ArrayBuffer);
         }
         
-        await connector.disconnect();
+        await (connector as any).disconnect?.();
         
         if (fileBuffer) {
           console.log(`[File API] Successfully fetched ${fileBuffer.length} bytes from source`);
@@ -156,7 +152,7 @@ export async function GET(
     if (!fileBuffer && contract.storagePath) {
       if (!isDocumentAccessible(contract.uploadedAt, storageConfig)) {
         // Document expired but might have source
-        if (sourceFile?.source && !shouldFetchFromSource) {
+        if (syncedFile?.source && !shouldFetchFromSource) {
           return NextResponse.json(
             { 
               success: false, 

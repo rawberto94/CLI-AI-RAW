@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "@/lib/auth";
-import prisma from "@/lib/prisma";
+import { prisma } from "@/lib/prisma";
 import { subDays, subHours } from "date-fns";
 
 export async function GET(req: NextRequest) {
@@ -35,13 +35,13 @@ export async function GET(req: NextRequest) {
     });
 
     // Get sync logs for the last 7 days
-    const syncLogs = await prisma.contractSyncLog.findMany({
+    const syncLogs = await prisma.sourceSync.findMany({
       where: {
-        contractSource: { tenantId },
+        source: { tenantId },
         startedAt: { gte: last7d },
       },
       include: {
-        contractSource: {
+        source: {
           select: { id: true, name: true, provider: true },
         },
       },
@@ -54,21 +54,21 @@ export async function GET(req: NextRequest) {
     const errorSources = sources.filter((s) => s.status === "ERROR").length;
 
     // File counts
-    const totalFilesSynced = await prisma.contractFile.count({
-      where: { contractSource: { tenantId } },
+    const totalFilesSynced = await prisma.syncedFile.count({
+      where: { source: { tenantId } },
     });
 
-    const filesLast24h = await prisma.contractFile.count({
+    const filesLast24h = await prisma.syncedFile.count({
       where: {
-        contractSource: { tenantId },
-        syncedAt: { gte: last24h },
+        source: { tenantId },
+        lastSyncedAt: { gte: last24h },
       },
     });
 
-    const filesLast7d = await prisma.contractFile.count({
+    const filesLast7d = await prisma.syncedFile.count({
       where: {
-        contractSource: { tenantId },
-        syncedAt: { gte: last7d },
+        source: { tenantId },
+        lastSyncedAt: { gte: last7d },
       },
     });
 
@@ -91,8 +91,8 @@ export async function GET(req: NextRequest) {
     // Recent syncs
     const recentSyncs = syncLogs.slice(0, 10).map((log) => ({
       id: log.id,
-      sourceName: log.contractSource.name,
-      provider: log.contractSource.provider,
+      sourceName: log.source.name,
+      provider: log.source.provider,
       status: log.status,
       filesProcessed: log.filesProcessed,
       duration: log.completedAt
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
     // Source health
     const sourceHealth = await Promise.all(
       sources.map(async (source) => {
-        const sourceLogs = syncLogs.filter((l) => l.contractSource.id === source.id);
+        const sourceLogs = syncLogs.filter((l) => l.source.id === source.id);
         const sourceSuccess = sourceLogs.filter((l) => l.status === "COMPLETED").length;
         const sourceErrors = sourceLogs.filter((l) => l.status === "FAILED").length;
 

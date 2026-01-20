@@ -1174,7 +1174,7 @@ export default function ContractDetailPage() {
                   <EnhancedContractMetadataSection
                     contractId={params.id as string}
                     tenantId="demo"
-                    contract={contract}
+                    contract={contract as unknown as Record<string, unknown>}
                     overviewData={overviewData}
                     financialData={financialData}
                     onRefresh={loadContract}

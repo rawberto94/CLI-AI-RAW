@@ -73,9 +73,27 @@ export async function GET() {
       emailDigestFrequency: "instant" as const,
     };
 
+    // Map flat database fields to API response
+    const responsePreferences = preferences ? {
+      emailEnabled: preferences.emailEnabled,
+      pushEnabled: preferences.pushEnabled,
+      emailDigestFrequency: preferences.emailDigest,
+      contractDeadlines: preferences.contractDeadlines,
+      approvalRequests: preferences.approvalRequests,
+      systemUpdates: preferences.systemUpdates,
+      systemAlerts: preferences.systemAlerts,
+      globalQuietHours: preferences.quietHoursStart ? {
+        start: preferences.quietHoursStart,
+        end: preferences.quietHoursEnd,
+        timezone: preferences.quietHoursTimezone ?? "UTC",
+      } : null,
+      // Include default channel settings
+      channels: defaultPreferences.channels,
+    } : defaultPreferences;
+
     return NextResponse.json({
       success: true,
-      data: preferences?.preferences || defaultPreferences,
+      data: responsePreferences,
     });
   } catch (error) {
     console.error("[Notification Preferences GET Error]", error);
@@ -100,18 +118,38 @@ export async function PUT(req: NextRequest) {
     const body = await req.json();
     const validated = preferencesSchema.parse(body);
 
+    // Map API input to flat database fields
+    const updateData = {
+      emailEnabled: true,
+      pushEnabled: true,
+      emailDigest: validated.emailDigestFrequency || "daily",
+      quietHoursStart: validated.globalQuietHours?.start || null,
+      quietHoursEnd: validated.globalQuietHours?.end || null,
+      quietHoursTimezone: validated.globalQuietHours?.timezone || "UTC",
+    };
+
     const updated = await prisma.notificationPreferences.upsert({
       where: { userId: session.user.id },
-      update: { preferences: validated as any, updatedAt: new Date() },
+      update: { ...updateData, updatedAt: new Date() },
       create: {
         userId: session.user.id,
-        preferences: validated as any,
+        tenantId: session.user.id,
+        ...updateData,
       },
     });
 
     return NextResponse.json({
       success: true,
-      data: updated.preferences,
+      data: {
+        emailEnabled: updated.emailEnabled,
+        pushEnabled: updated.pushEnabled,
+        emailDigestFrequency: updated.emailDigest,
+        globalQuietHours: updated.quietHoursStart ? {
+          start: updated.quietHoursStart,
+          end: updated.quietHoursEnd,
+          timezone: updated.quietHoursTimezone ?? "UTC",
+        } : null,
+      },
     });
   } catch (error) {
     if (error instanceof z.ZodError) {

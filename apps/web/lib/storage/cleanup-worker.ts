@@ -116,7 +116,7 @@ export async function runStorageCleanup(
         }
         
         result.deleted++;
-        result.freedSpaceMB += (contract.fileSize || 0) / 1024 / 1024;
+        result.freedSpaceMB += Number(contract.fileSize || 0) / 1024 / 1024;
         
         console.log(`[Storage Cleanup] ${dryRun ? '[DRY RUN] Would delete' : 'Deleted'}: ${contract.storagePath}`);
       } catch (error) {
@@ -169,7 +169,7 @@ export async function getStorageStats(tenantId?: string): Promise<{
   );
   
   const estimatedStorageMB = contracts.reduce(
-    (sum, c) => sum + (c.fileSize || 0),
+    (sum, c) => sum + Number(c.fileSize || 0),
     0
   ) / 1024 / 1024;
   

@@ -113,6 +113,7 @@ interface SyncHistory {
   triggeredBy?: string;
   filesFound: number;
   filesProcessed: number;
+  filesSkipped: number;
   filesFailed: number;
   startedAt: string;
   completedAt?: string;

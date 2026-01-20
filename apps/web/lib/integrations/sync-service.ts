@@ -25,6 +25,7 @@ const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB default
 export interface ContractSourceConfig {
   id: string;
   tenantId: string;
+  name: string;
   provider: ContractSourceProvider;
   credentials: ConnectorCredentials;
   syncFolder: string;
@@ -100,7 +101,7 @@ class ContractSourceSyncService {
         name: data.name,
         description: data.description,
         provider: data.provider,
-        credentials: encryptedCredentials,
+        credentials: JSON.parse(JSON.stringify(encryptedCredentials)),
         syncFolder: data.syncFolder || '/',
         filePatterns: data.filePatterns || ['*.pdf', '*.docx', '*.doc'],
         syncInterval: data.syncInterval || 60,
@@ -264,10 +265,16 @@ class ContractSourceSyncService {
       // Perform sync based on mode
       let newSyncCursor: string | undefined;
 
+      // Cast source to the expected type with proper credentials
+      const sourceConfig = {
+        ...source,
+        credentials: source.credentials as unknown as ConnectorCredentials,
+      };
+
       if (syncMode === SyncMode.DELTA && connector.supportsDeltaSync() && connector.getDeltaChanges) {
         // Delta sync
         newSyncCursor = await this.performDeltaSync(
-          source,
+          sourceConfig as ContractSourceConfig & { syncCursor: string | null },
           connector,
           sync.id,
           progress
@@ -275,7 +282,7 @@ class ContractSourceSyncService {
       } else {
         // Full or incremental sync
         await this.performFullSync(
-          source,
+          sourceConfig as ContractSourceConfig & { syncFolder: string | null; filePatterns: string[] },
           connector,
           sync.id,
           progress,
@@ -643,12 +650,12 @@ class ContractSourceSyncService {
   private async encryptCredentials(credentials: ConnectorCredentials): Promise<Record<string, unknown>> {
     // In production, use proper encryption (e.g., AES-256-GCM with KMS)
     // For now, return as-is (credentials should be encrypted at rest in DB)
-    return credentials as Record<string, unknown>;
+    return credentials as unknown as Record<string, unknown>;
   }
 
   private async decryptCredentials(encrypted: Record<string, unknown>): Promise<ConnectorCredentials> {
     // In production, decrypt using the same key
-    return encrypted as ConnectorCredentials;
+    return encrypted as unknown as ConnectorCredentials;
   }
 }
 

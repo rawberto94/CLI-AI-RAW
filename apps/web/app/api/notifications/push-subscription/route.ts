@@ -79,20 +79,23 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const validated = subscriptionSchema.parse(body);
 
-    // Create or update the subscription
+    // Create or update the subscription with flat fields
     await prisma.pushSubscription.upsert({
       where: { endpoint: validated.endpoint },
       update: {
         userId: session.user.id,
-        keys: validated.keys as any,
-        expirationTime: validated.expirationTime,
+        p256dh: validated.keys.p256dh,
+        auth: validated.keys.auth,
+        expirationTime: validated.expirationTime ? BigInt(validated.expirationTime) : null,
         updatedAt: new Date(),
       },
       create: {
         userId: session.user.id,
+        tenantId: session.user.id,
         endpoint: validated.endpoint,
-        keys: validated.keys as any,
-        expirationTime: validated.expirationTime,
+        p256dh: validated.keys.p256dh,
+        auth: validated.keys.auth,
+        expirationTime: validated.expirationTime ? BigInt(validated.expirationTime) : null,
       },
     });
 

@@ -6,7 +6,7 @@
  */
 
 // Note: nodemailer is optional - install with `npm install nodemailer @types/nodemailer` if needed
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 let nodemailer: any;
 try {
   // Dynamic import to avoid build errors if not installed
@@ -70,7 +70,7 @@ export interface SyncSummaryNotification {
 }
 
 export class EmailNotificationService {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   private transporter: any = null;
   private config: EmailConfig;
 

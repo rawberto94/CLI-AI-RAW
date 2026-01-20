@@ -202,7 +202,7 @@ export async function POST(request: NextRequest) {
         name: data.name,
         description: data.description,
         provider: data.provider,
-        credentials: data.credentials,
+        credentials: JSON.parse(JSON.stringify(data.credentials)),
         syncFolder: data.syncFolder,
         filePatterns: data.filePatterns,
         syncInterval: data.syncInterval,

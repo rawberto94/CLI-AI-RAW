@@ -715,6 +715,7 @@ model ProcessingJob {
   id                    String    @id @default(cuid())
   contractId            String
   tenantId              String
+  jobType               String?   @map("job_type") // FULL_EXTRACTION, INCREMENTAL, REPROCESS
   status                JobStatus @default(PENDING)
   progress              Int       @default(0)
   currentStep           String?
@@ -3554,9 +3555,11 @@ model Notification {
   type      String    @default("SYSTEM") // APPROVAL_REQUEST, APPROVAL_COMPLETED, COMMENT_MENTION, CONTRACT_DEADLINE, WORKFLOW_STEP, SHARE_INVITE, SYSTEM
   title     String
   message   String
+  body      String? // Additional notification body content
   link      String?
   metadata  Json?
   isRead    Boolean   @default(false) @map("is_read")
+  readAt    DateTime? @map("read_at")
   expiresAt DateTime? @map("expires_at")
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -4337,4 +4340,70 @@ enum AgentTriggerType {
   EVENT // Event-driven
   THRESHOLD // Metric-based
   MANUAL // User-initiated
+}
+
+// ============================================
+// Notification Preferences & Push Subscriptions
+// ============================================
+
+model NotificationPreferences {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @unique @map("user_id")
+
+  // Email notifications
+  emailEnabled Boolean @default(true) @map("email_enabled")
+  emailDigest  String  @default("INSTANT") // INSTANT, DAILY, WEEKLY, NONE
+
+  // Push notifications
+  pushEnabled Boolean @default(true) @map("push_enabled")
+
+  // Notification types
+  contractDeadlines Boolean @default(true) @map("contract_deadlines")
+  approvalRequests  Boolean @default(true) @map("approval_requests")
+  commentMentions   Boolean @default(true) @map("comment_mentions")
+  workflowUpdates   Boolean @default(true) @map("workflow_updates")
+  systemAlerts      Boolean @default(true) @map("system_alerts")
+  systemUpdates     Boolean @default(true) @map("system_updates")
+  shareInvites      Boolean @default(true) @map("share_invites")
+
+  // Quiet hours (UTC)
+  quietHoursStart    String? @map("quiet_hours_start") // e.g. "22:00"
+  quietHoursEnd      String? @map("quiet_hours_end") // e.g. "07:00"
+  quietHoursTimezone String? @default("UTC") @map("quiet_hours_timezone")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("notification_preferences")
+}
+
+model PushSubscription {
+  id       String @id @default(cuid())
+  tenantId String @map("tenant_id")
+  userId   String @map("user_id")
+
+  // Web Push subscription data
+  endpoint       String  @unique
+  p256dh         String  @map("p256dh_key") // Public key
+  auth           String  @map("auth_key") // Auth secret
+  expirationTime BigInt? @map("expiration_time") // Subscription expiration timestamp
+
+  // Device info
+  userAgent  String? @map("user_agent")
+  deviceName String? @map("device_name")
+
+  // Status
+  isActive Boolean   @default(true) @map("is_active")
+  lastUsed DateTime? @map("last_used")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("push_subscriptions")
 }
