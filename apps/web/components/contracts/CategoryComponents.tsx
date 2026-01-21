@@ -10,11 +10,10 @@
  */
 
 import React, { useState, useEffect, useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
   Tag,
   Sparkles,
-  ChevronDown,
   ChevronRight,
   Check,
   Loader2,
@@ -23,7 +22,7 @@ import {
   RefreshCw,
   X,
 } from "lucide-react";
-import { useTaxonomyCategories, type TaxonomyCategory as TaxonomyCategoryType } from "@/hooks/use-queries";
+import { useTaxonomyCategories } from "@/hooks/use-queries";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -147,14 +146,14 @@ interface CategorySelectorProps {
 export function CategorySelector({
   value,
   onChange,
-  tenantId = "demo",
+  tenantId: _tenantId = "demo",
   disabled = false,
-  placeholder = "Select category...",
+  placeholder: _placeholder = "Select category...",
   className = "",
-  inline = true,
+  inline: _inline = true,
 }: CategorySelectorProps) {
   // Use React Query for automatic cache invalidation
-  const { data: categories = [], isLoading, refetch } = useTaxonomyCategories();
+  const { data: categories = [], isLoading, refetch: _refetch } = useTaxonomyCategories();
   
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<TaxonomyCategory | null>(null);
@@ -267,6 +266,17 @@ export function CategorySelector({
           <div className="flex flex-col items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
             <p className="text-sm text-slate-500">Loading categories...</p>
+          </div>
+        ) : categories.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+            <FolderTree className="w-12 h-12 mb-3 opacity-50" />
+            <p className="font-medium text-slate-600">No categories defined</p>
+            <p className="text-sm text-center px-4 mt-1">
+              Set up your taxonomy in{" "}
+              <a href="/settings/taxonomy" className="text-blue-500 hover:underline">
+                Settings → Taxonomy
+              </a>
+            </p>
           </div>
         ) : filteredCategories.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400">

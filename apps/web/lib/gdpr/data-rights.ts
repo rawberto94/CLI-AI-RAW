@@ -6,6 +6,8 @@
  * - Right to Erasure (Account Deletion)
  * - Right to Rectification (handled via standard APIs)
  * - Right to Data Portability
+ * 
+ * Uses Prisma models: DataExportRequest, DeletionRequest
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -13,46 +15,71 @@ import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import { randomBytes } from 'crypto';
+import { GdprRequestStatus, DeletionRequestStatus } from '@prisma/client';
 
-// Stub for queue job - replace with actual implementation when queue service is available
- 
-async function addJob(jobName: string, data: Record<string, any>): Promise<void> {
-  // TODO: Integrate with actual queue service (e.g., BullMQ)
-  console.log(`[GDPR Queue] Job queued: ${jobName}`, { data });
-  // In production, this should add to a real job queue
+// Queue integration using BullMQ (when available) or notification service
+async function addJob(jobName: string, data: Record<string, unknown>): Promise<void> {
+  // Try to use BullMQ if available, otherwise log for manual processing
+  try {
+    // Dynamic import to avoid build errors if BullMQ not installed
+    const bullMQ = await import('bullmq').catch(() => null);
+    if (bullMQ && process.env.REDIS_URL) {
+      const { Queue } = bullMQ;
+      const queue = new Queue('gdpr-jobs', {
+        connection: { url: process.env.REDIS_URL }
+      });
+      await queue.add(jobName, data, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 60000 },
+        removeOnComplete: { age: 86400 * 7 }, // Keep 7 days
+        removeOnFail: { age: 86400 * 30 }, // Keep 30 days
+      });
+      await queue.close();
+      return;
+    }
+  } catch {
+    // BullMQ not available, fall through to logging
+  }
+  
+  // Fallback: Log for manual processing or webhook trigger
+  console.warn(`[GDPR Job] ${jobName}:`, JSON.stringify(data, null, 2));
+  
+  // In production, you might want to trigger a webhook or serverless function
+  if (process.env.GDPR_WEBHOOK_URL) {
+    await fetch(process.env.GDPR_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.GDPR_WEBHOOK_SECRET || ''}`
+      },
+      body: JSON.stringify({ job: jobName, data }),
+    }).catch(err => console.error('[GDPR Webhook Error]', err));
+  }
 }
 
-// NOTE: Some GDPR models (DataExportRequest, DeletionRequest) are not yet in the Prisma schema.
-// This file uses in-memory storage as a fallback until the models are added.
-// TODO: Add dataExportRequest and deletionRequest models to schema.prisma
-
-// In-memory storage for GDPR requests (temporary until models are added)
-const pendingExportRequests = new Map<string, DataExportRequest>();
-const pendingDeletionRequests = new Map<string, DeletionRequest & { confirmationToken?: string }>();
-
 // =============================================================================
-// Types
+// Types (for external use - matches Prisma models)
 // =============================================================================
 
-export interface DataExportRequest {
+export interface DataExportRequestData {
   id: string;
   userId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed';
+  status: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED';
   format: 'json' | 'csv';
-  downloadUrl?: string;
-  expiresAt?: Date;
+  downloadUrl?: string | null;
+  expiresAt?: Date | null;
   createdAt: Date;
-  completedAt?: Date;
+  completedAt?: Date | null;
 }
 
-export interface DeletionRequest {
+export interface DeletionRequestData {
   id: string;
   userId: string;
-  status: 'pending' | 'scheduled' | 'processing' | 'completed' | 'cancelled' | 'failed';
+  status: 'PENDING' | 'SCHEDULED' | 'PROCESSING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
   scheduledFor: Date;
-  reason?: string;
+  reason?: string | null;
   createdAt: Date;
-  completedAt?: Date;
+  completedAt?: Date | null;
 }
 
 // =============================================================================
@@ -92,10 +119,23 @@ export async function requestDataExport(request: NextRequest) {
     const body = await request.json();
     const validated = ExportRequestSchema.parse(body);
     
-    // Check for existing pending export (using in-memory storage)
-    const existingExport = Array.from(pendingExportRequests.values()).find(
-      (req) => req.userId === session.user.id && ['pending', 'processing'].includes(req.status)
-    );
+    // Get user's tenantId
+    const user = await prisma.user.findUnique({ 
+      where: { id: session.user.id }, 
+      select: { tenantId: true } 
+    });
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    // Check for existing pending export using Prisma
+    const existingExport = await prisma.dataExportRequest.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: [GdprRequestStatus.PENDING, GdprRequestStatus.PROCESSING] }
+      }
+    });
     
     if (existingExport) {
       return NextResponse.json(
@@ -107,38 +147,39 @@ export async function requestDataExport(request: NextRequest) {
       );
     }
     
-    // Create export request (using in-memory storage)
-    const exportRequest: DataExportRequest = {
-      id: `exp_${randomBytes(16).toString('hex')}`,
-      userId: session.user.id,
-      status: 'pending',
-      format: validated.format,
-      createdAt: new Date(),
-    };
-    pendingExportRequests.set(exportRequest.id, exportRequest);
+    // Create export request using Prisma
+    const exportRequest = await prisma.dataExportRequest.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: session.user.id,
+        status: GdprRequestStatus.PENDING,
+        format: validated.format,
+        includeContracts: validated.includeContracts,
+        includeActivity: validated.includeActivity,
+        includeChats: validated.includeChats,
+      }
+    });
     
     // Queue background job
     await addJob('gdpr-data-export', {
       exportRequestId: exportRequest.id,
       userId: session.user.id,
+      tenantId: user.tenantId,
       format: validated.format,
       options: validated,
     });
     
-    // Log for audit - get user's tenantId first
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true } });
-    if (user) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'GDPR_EXPORT_REQUESTED',
-          userId: session.user.id,
-          tenantId: user.tenantId,
-          resourceType: 'DataExportRequest',
-          entityId: exportRequest.id,
-          metadata: { format: validated.format },
-        },
-      });
-    }
+    // Log for audit
+    await prisma.auditLog.create({
+      data: {
+        action: 'GDPR_EXPORT_REQUESTED',
+        userId: session.user.id,
+        tenantId: user.tenantId,
+        resourceType: 'DataExportRequest',
+        entityId: exportRequest.id,
+        metadata: { format: validated.format },
+      },
+    });
     
     return NextResponse.json({
       message: 'Data export request submitted',
@@ -183,10 +224,23 @@ export async function requestAccountDeletion(request: NextRequest) {
       );
     }
     
-    // Check for existing deletion request (using in-memory storage)
-    const existingDeletion = Array.from(pendingDeletionRequests.values()).find(
-      (req) => req.userId === session.user.id && ['pending', 'scheduled', 'processing'].includes(req.status)
-    );
+    // Get user's tenantId
+    const user = await prisma.user.findUnique({ 
+      where: { id: session.user.id }, 
+      select: { tenantId: true, firstName: true } 
+    });
+    
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    
+    // Check for existing deletion request using Prisma
+    const existingDeletion = await prisma.deletionRequest.findFirst({
+      where: {
+        userId: session.user.id,
+        status: { in: [DeletionRequestStatus.PENDING, DeletionRequestStatus.SCHEDULED, DeletionRequestStatus.PROCESSING] }
+      }
+    });
     
     if (existingDeletion) {
       return NextResponse.json(
@@ -202,36 +256,37 @@ export async function requestAccountDeletion(request: NextRequest) {
     // Schedule deletion for 30 days (grace period for cancellation)
     const scheduledFor = new Date();
     scheduledFor.setDate(scheduledFor.getDate() + 30);
+    const gracePeriodEnds = new Date(scheduledFor);
     
     const confirmationToken = randomBytes(32).toString('hex');
-    const deletionRequest: DeletionRequest & { confirmationToken?: string } = {
-      id: `del_${randomBytes(16).toString('hex')}`,
-      userId: session.user.id,
-      status: 'scheduled',
-      scheduledFor,
-      reason: validated.reason,
-      createdAt: new Date(),
-      confirmationToken,
-    };
-    pendingDeletionRequests.set(deletionRequest.id, deletionRequest);
     
-    // Log for audit - get user's tenantId first
-    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { tenantId: true, firstName: true } });
-    if (user) {
-      await prisma.auditLog.create({
-        data: {
-          action: 'GDPR_DELETION_REQUESTED',
-          userId: session.user.id,
-          tenantId: user.tenantId,
-          resourceType: 'DeletionRequest',
-          entityId: deletionRequest.id,
-          metadata: { 
-            scheduledFor: scheduledFor.toISOString(),
-            reason: validated.reason,
-          },
+    // Create deletion request using Prisma
+    const deletionRequest = await prisma.deletionRequest.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: session.user.id,
+        status: DeletionRequestStatus.SCHEDULED,
+        scheduledFor,
+        gracePeriodEnds,
+        reason: validated.reason,
+        confirmationToken,
+      }
+    });
+    
+    // Log for audit
+    await prisma.auditLog.create({
+      data: {
+        action: 'GDPR_DELETION_REQUESTED',
+        userId: session.user.id,
+        tenantId: user.tenantId,
+        resourceType: 'DeletionRequest',
+        entityId: deletionRequest.id,
+        metadata: { 
+          scheduledFor: scheduledFor.toISOString(),
+          reason: validated.reason,
         },
-      });
-    }
+      },
+    });
     
     // Send confirmation email
     await addJob('send-email', {
@@ -644,8 +699,8 @@ function convertToCSV(data: Record<string, any>): string {
 
 async function uploadToSecureStorage(
   fileName: string, 
-  content: string, 
-  contentType: string
+  _content: string, 
+  _contentType: string
 ): Promise<string> {
   // Implementation depends on storage provider (S3, etc.)
   // This is a placeholder - implement based on your infrastructure

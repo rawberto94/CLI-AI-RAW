@@ -1,6 +1,8 @@
 /**
  * Floating AI Bubble - Next-Gen AI Assistant Interface
  * Production-ready floating chatbot with complete feature set
+ * 
+ * Now with database-backed conversation persistence!
  */
 
 "use client";
@@ -51,15 +53,21 @@ import {
   ExternalLink,
   Shield,
   DollarSign,
-  Clock,
   RefreshCw,
   Building2,
-  AlertTriangle,
-  Bell,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useCopyToClipboard } from "@/hooks/useCopyToClipboard";
+import { useChatPersistence } from "@/hooks/useChatPersistence";
+
+// Enhanced AI Features - Round 2 Integration
+import { AIErrorBoundary } from "@/components/ai/AIErrorBoundary";
+import { useOfflineQueue } from "@/lib/ai/offline-queue.service";
+import { ExportChatDialog } from "@/components/ai/ExportChatDialog";
+import { InlineUsageIndicator } from "@/components/ai/AIUsageQuotaWidget";
+import { ChatHistorySearch } from "@/components/ai/ChatHistorySearch";
+import { OfflineStatusIndicator } from "@/components/ai/OfflineStatusIndicator";
 
 // Types
 interface ContractPreviewCard {
@@ -306,7 +314,13 @@ export function FloatingAIBubble() {
     return null;
   }, [pathname, searchParams]);
 
-  // Conversation persistence key
+  // Chat persistence - database-backed with localStorage fallback
+  const persistence = useChatPersistence({
+    context: currentContractId || undefined,
+    contextType: currentContractId ? 'contract' : 'global',
+  });
+
+  // Conversation persistence key (for backward compatibility)
   const STORAGE_KEY = 'contigo-chat-history';
   const MAX_STORED_MESSAGES = 50; // Limit stored messages to prevent storage bloat
   
@@ -317,6 +331,8 @@ export function FloatingAIBubble() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  // TODO: Add conversation history panel
+  // const [showHistory, setShowHistory] = useState(false);
   
   // Enhanced features state
   const [isListening, setIsListening] = useState(false);
@@ -326,11 +342,18 @@ export function FloatingAIBubble() {
   const [showExamples, setShowExamples] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext>({});
   const [isTyping, setIsTyping] = useState(false);
-  const [streamingContent, setStreamingContent] = useState<string>("");
+  const [_streamingContent, _setStreamingContent] = useState<string>("");
   
   // Artifact context state - for real-time updates
   const [artifactVersion, setArtifactVersion] = useState(0);
   const [lastArtifactUpdate, setLastArtifactUpdate] = useState<Date | null>(null);
+  
+  // Enhanced features - Round 2
+  const [showSearchDialog, setShowSearchDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  
+  // Offline queue integration
+  const offlineQueue = useOfflineQueue();
   
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -338,52 +361,86 @@ export function FloatingAIBubble() {
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const pendingAutoMessageRef = useRef<string | null>(null);
 
-  // Load conversation history from localStorage on mount
+  // Sync messages with persistence hook
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // Restore messages, converting timestamps back to Date objects
-          const restoredMessages = parsed.map((m: any) => ({
-            ...m,
-            timestamp: new Date(m.timestamp),
-          }));
-          // Keep initial message if history was cleared, or append restored history
-          // Filter out both 'initial' and 'welcome' to avoid duplicate welcome messages
-          setMessages([INITIAL_MESSAGE, ...restoredMessages.filter((m: Message) => m.id !== 'initial' && m.id !== 'welcome')]);
-          
-          // Restore conversation context from last messages
-          const lastUserMessage = restoredMessages.filter((m: Message) => m.role === 'user').slice(-1)[0];
-          if (lastUserMessage) {
-            setConversationContext(prev => ({
-              ...prev,
-              lastTopic: lastUserMessage.content?.slice(0, 100),
+    if (persistence.messages.length > 0 && !persistence.isLoading) {
+      // Convert persistence messages to local Message format
+      const restoredMessages = persistence.messages.map((m) => ({
+        ...m,
+        timestamp: new Date(m.timestamp),
+        suggestions: m.suggestions || [],
+        actions: m.actions || [],
+      })) as Message[];
+      
+      // Add initial welcome message if not present
+      const hasWelcome = restoredMessages.some(m => m.id === 'welcome' || m.id === 'initial');
+      if (!hasWelcome) {
+        setMessages([INITIAL_MESSAGE, ...restoredMessages]);
+      } else {
+        setMessages(restoredMessages);
+      }
+      
+      // Restore conversation context from last messages
+      const lastUserMessage = restoredMessages.filter((m) => m.role === 'user').slice(-1)[0];
+      if (lastUserMessage) {
+        setConversationContext(prev => ({
+          ...prev,
+          lastTopic: lastUserMessage.content?.slice(0, 100),
+        }));
+      }
+    }
+  }, [persistence.messages, persistence.isLoading]);
+
+  // Fallback: Load conversation history from localStorage on mount (for offline/unauthenticated)
+  useEffect(() => {
+    if (!persistence.isAuthenticated && persistence.messages.length === 0) {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Restore messages, converting timestamps back to Date objects
+            const restoredMessages = parsed.map((m: Message) => ({
+              ...m,
+              timestamp: new Date(m.timestamp),
             }));
+            // Keep initial message if history was cleared, or append restored history
+            // Filter out both 'initial' and 'welcome' to avoid duplicate welcome messages
+            setMessages([INITIAL_MESSAGE, ...restoredMessages.filter((m: Message) => m.id !== 'initial' && m.id !== 'welcome')]);
+            
+            // Restore conversation context from last messages
+            const lastUserMessage = restoredMessages.filter((m: Message) => m.role === 'user').slice(-1)[0];
+            if (lastUserMessage) {
+              setConversationContext(prev => ({
+                ...prev,
+                lastTopic: lastUserMessage.content?.slice(0, 100),
+              }));
+            }
           }
         }
+      } catch {
+        // Failed to restore chat history, starting fresh
       }
-    } catch {
-      // Failed to restore chat history, starting fresh
     }
-  }, []);
+  }, [persistence.isAuthenticated, persistence.messages.length]);
 
-  // Save conversation history to localStorage when messages change
+  // Save conversation history to localStorage when messages change (fallback for unauthenticated)
   useEffect(() => {
-    try {
-      // Only save non-initial messages, and limit to MAX_STORED_MESSAGES
-      const toStore = messages
-        .filter(m => m.id !== 'initial')
-        .slice(-MAX_STORED_MESSAGES);
-      
-      if (toStore.length > 0) {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+    if (!persistence.isAuthenticated) {
+      try {
+        // Only save non-initial messages, and limit to MAX_STORED_MESSAGES
+        const toStore = messages
+          .filter(m => m.id !== 'initial' && m.id !== 'welcome')
+          .slice(-MAX_STORED_MESSAGES);
+        
+        if (toStore.length > 0) {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+        }
+      } catch {
+        // Failed to save chat history
       }
-    } catch {
-      // Failed to save chat history
     }
-  }, [messages]);
+  }, [messages, persistence.isAuthenticated]);
 
   // Listen for artifact updates and refresh context
   useEffect(() => {
@@ -520,7 +577,7 @@ export function FloatingAIBubble() {
   }, []);
 
   // Play sound effect
-  const playSound = useCallback((type: "send" | "receive" | "error") => {
+  const playSound = useCallback((_type: "send" | "receive" | "error") => {
     if (!isSoundEnabled) return;
     // Sound effects would be implemented here with Web Audio API
   }, [isSoundEnabled]);
@@ -558,17 +615,23 @@ export function FloatingAIBubble() {
           : msg
       )
     );
-  }, []);
+    // Persist reaction to database
+    persistence.updateMessage(id, { reaction: reaction });
+  }, [persistence]);
 
-  // Clear chat (including localStorage)
-  const handleClearChat = useCallback(() => {
+  // Clear chat (including localStorage and database)
+  const handleClearChat = useCallback(async () => {
     setMessages([INITIAL_MESSAGE]);
     setConversationContext({});
     localStorage.removeItem(STORAGE_KEY);
-  }, []);
+    // Create new conversation in database
+    if (persistence.isAuthenticated) {
+      await persistence.createConversation();
+    }
+  }, [persistence]);
 
-  // Export chat
-  const exportChat = useCallback(() => {
+  // Export chat (legacy - kept for reference, now uses ExportChatDialog)
+  const _exportChat = useCallback(() => {
     const chatContent = messages
       .map((m) => `[${m.timestamp.toLocaleString()}] ${m.role}: ${m.content}`)
       .join("\n\n");
@@ -625,6 +688,16 @@ export function FloatingAIBubble() {
     setIsLoading(true);
     setIsTyping(true);
     playSound("send");
+
+    // Persist user message to database
+    if (persistence.isAuthenticated && persistence.conversationId) {
+      persistence.addMessage({
+        role: 'user',
+        content: messageContent,
+      }).catch(() => {
+        // Continue even if persistence fails
+      });
+    }
 
     // Update message status
     setTimeout(() => {
@@ -722,25 +795,65 @@ export function FloatingAIBubble() {
       setMessages((prev) => [...prev, assistantMessage]);
       playSound("receive");
       
+      // Persist assistant message to database
+      if (persistence.isAuthenticated && persistence.conversationId) {
+        persistence.addMessage({
+          role: 'assistant',
+          content: assistantMessage.content,
+          metadata: assistantMessage.metadata as Record<string, unknown>,
+        }).catch(() => {
+          // Continue even if persistence fails
+        });
+      }
+      
       if (!isOpen) setHasNewMessage(true);
-    } catch {
-      // Fallback to local response on API failure
-      const response = generateAIResponse(messageContent, conversationContext);
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.content,
-        timestamp: new Date(),
-        suggestions: response.suggestions,
-        actions: response.actions,
-        metadata: {
-          confidence: response.confidence || 0.85,
-          processingTime: 0,
-          source: "fallback",
-        },
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-      playSound("receive");
+    } catch (_error) {
+      // Check if we're offline and queue the request
+      if (!offlineQueue.isOnline) {
+        // Queue the message for later
+        offlineQueue.enqueue('chat', {
+          message: messageContent,
+          conversationHistory: messages.slice(-10).map(m => ({
+            role: m.role,
+            content: m.content,
+          })),
+          context: conversationContext,
+          contractId: currentContractId,
+        }, 'normal');
+        
+        const queuedMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "📴 **You're currently offline**\n\nYour message has been queued and will be sent when you're back online. I've saved it so you won't lose it!\n\n💡 In the meantime, you can continue chatting and your messages will sync automatically.",
+          timestamp: new Date(),
+          suggestions: ["View queued messages", "Try again"],
+          metadata: {
+            confidence: 1,
+            processingTime: 0,
+            source: "offline-queue",
+          },
+        };
+        setMessages((prev) => [...prev, queuedMessage]);
+        playSound("receive");
+      } else {
+        // Fallback to local response on API failure
+        const response = generateAIResponse(messageContent, conversationContext);
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: response.content,
+          timestamp: new Date(),
+          suggestions: response.suggestions,
+          actions: response.actions,
+          metadata: {
+            confidence: response.confidence || 0.85,
+            processingTime: 0,
+            source: "fallback",
+          },
+        };
+        setMessages((prev) => [...prev, assistantMessage]);
+        playSound("receive");
+      }
     } finally {
       setIsLoading(false);
       setIsTyping(false);
@@ -779,22 +892,16 @@ export function FloatingAIBubble() {
       return {
         content:
           "📊 **Your Contract Portfolio**\n\n" +
-          "**Overview:**\n" +
-          "• Total Contracts: **7** (6 active, 1 processing)\n" +
-          "• Portfolio Value: **$255,500**\n" +
-          "• Avg Contract Value: **$36,500**\n\n" +
-          "**Health Metrics:**\n" +
-          "• Compliance Score: **94%** ✅\n" +
-          "• Risk Level: **Low** (23/100)\n" +
-          "• On-time Renewals: **100%**\n\n" +
-          "Your portfolio is performing well! Would you like to dive deeper into any area?",
-        suggestions: ["View renewals", "Risk breakdown", "Cost analysis", "Top contracts"],
+          "I'm fetching the latest data from your contract database...\n\n" +
+          "Please use the **View All Contracts** button to see real-time contract information, or try refreshing the page.\n\n" +
+          "💡 **Tip:** For accurate portfolio metrics, visit the Dashboard or Analytics pages.",
+        suggestions: ["Show my contracts", "View renewals", "Risk analysis"],
         actions: [
           { label: "View All Contracts", action: "view-contracts", icon: FileText, variant: "primary" },
           { label: "See Analytics", action: "view-analytics", icon: TrendingUp },
         ],
-        confidence: 0.98,
-        source: "portfolio-analytics",
+        confidence: 0.90,
+        source: "fallback-guide",
       };
     }
 
@@ -802,24 +909,17 @@ export function FloatingAIBubble() {
     if (lowerQuery.includes("expir") || lowerQuery.includes("renewal") || lowerQuery.includes("soon") || lowerQuery.includes("due")) {
       return {
         content:
-          "📅 **Upcoming Contract Renewals**\n\n" +
-          "**🔴 Critical (Next 15 days):**\n" +
-          "• AWS Enterprise Agreement - $45,000\n" +
-          "  └ Expires: Dec 12, 2025\n\n" +
-          "**🟠 High Priority (15-30 days):**\n" +
-          "• Accenture IT Services MSA - $120,000\n" +
-          "  └ Expires: Dec 25, 2025\n\n" +
-          "**🟡 Medium Priority (30-60 days):**\n" +
-          "• Salesforce Enterprise - $32,000\n" +
-          "  └ Expires: Jan 11, 2026\n\n" +
-          "**💡 Tip:** Review contract details and terms before renewal.",
-        suggestions: ["Set reminders", "View AWS contract", "View all renewals", "Contract details"],
+          "📅 **Contract Renewals**\n\n" +
+          "I'm checking your contract expiration dates...\n\n" +
+          "Please use the **View Renewals** button to see real-time renewal information from your database.\n\n" +
+          "💡 **Tip:** You can also filter contracts by expiration date on the Contracts page.",
+        suggestions: ["Show expiring contracts", "View all contracts", "Set reminders"],
         actions: [
           { label: "View Renewals", action: "view-renewals", icon: Calendar, variant: "primary" },
-          { label: "Set Reminder", action: "set-reminder", icon: Clock },
+          { label: "View Contracts", action: "view-contracts", icon: FileText },
         ],
-        confidence: 0.96,
-        source: "renewal-tracker",
+        confidence: 0.90,
+        source: "fallback-guide",
       };
     }
 
@@ -827,27 +927,16 @@ export function FloatingAIBubble() {
     if (lowerQuery.includes("insight") || lowerQuery.includes("analytics") || lowerQuery.includes("portfolio") || lowerQuery.includes("trend")) {
       return {
         content:
-          "💡 **Portfolio Insights & Trends**\n\n" +
-          "**Growth Metrics:**\n" +
-          "• Portfolio grew **+23%** this quarter\n" +
-          "• 7 new contracts added this month\n" +
-          "• Vendor diversification: **Good**\n\n" +
-          "**Cost Efficiency:**\n" +
-          "• Avg savings per negotiation: **12%**\n" +
-          "• Potential savings identified: **$18,500**\n\n" +
-          "**Risk Analysis:**\n" +
-          "• Single-vendor dependency: **Low**\n" +
-          "• Compliance gaps: **None**\n\n" +
-          "**🎯 Action Items:**\n" +
-          "1. Review cloud services contracts for consolidation opportunities\n" +
-          "2. Check Salesforce license terms before renewal\n" +
-          "3. Review IT services contracts for overlap",
-        suggestions: ["Cost breakdown", "Risk details", "Contracts by supplier", "Category analysis"],
+          "💡 **Portfolio Insights**\n\n" +
+          "I'm analyzing your contract portfolio in real-time...\n\n" +
+          "Please use the **Full Analytics** button to view live metrics and trends from your database.\n\n" +
+          "💡 **Tip:** The Analytics page shows real-time data including spend analysis, risk metrics, and renewal tracking.",
+        suggestions: ["View analytics", "Show contracts", "Risk analysis"],
         actions: [
           { label: "Full Analytics", action: "view-analytics", icon: TrendingUp, variant: "primary" },
         ],
-        confidence: 0.94,
-        source: "analytics-engine",
+        confidence: 0.90,
+        source: "fallback-guide",
       };
     }
 
@@ -1181,6 +1270,8 @@ export function FloatingAIBubble() {
                             <Zap className="w-2.5 h-2.5 mr-1" />
                             RAG Powered
                           </Badge>
+                          {/* Usage Quota Indicator */}
+                          <InlineUsageIndicator />
                           {lastArtifactUpdate && (
                             <motion.div
                               initial={{ scale: 0, opacity: 0 }}
@@ -1241,6 +1332,10 @@ export function FloatingAIBubble() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[200px] shadow-lg">
+                          <DropdownMenuItem onClick={() => setShowSearchDialog(true)} className="hover:bg-gray-100 cursor-pointer py-3">
+                            <Search className="w-4 h-4 mr-3" />
+                            Search history
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="hover:bg-gray-100 cursor-pointer py-3">
                             {isSoundEnabled ? <Volume2 className="w-4 h-4 mr-3" /> : <VolumeX className="w-4 h-4 mr-3" />}
                             {isSoundEnabled ? "Mute sounds" : "Enable sounds"}
@@ -1254,7 +1349,7 @@ export function FloatingAIBubble() {
                             Example prompts
                           </DropdownMenuItem>
                           <DropdownMenuSeparator className="bg-gray-200" />
-                          <DropdownMenuItem onClick={exportChat} className="hover:bg-gray-100 cursor-pointer py-3">
+                          <DropdownMenuItem onClick={() => setShowExportDialog(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Download className="w-4 h-4 mr-3" />
                             Export chat
                           </DropdownMenuItem>
@@ -1969,7 +2064,104 @@ export function FloatingAIBubble() {
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* Chat History Search Dialog */}
+        <AnimatePresence>
+          {showSearchDialog && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-black/60 backdrop-blur-md flex items-center justify-center p-4"
+              onClick={() => setShowSearchDialog(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.95, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.95, opacity: 0, y: 20 }}
+                className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between p-4 border-b border-gray-200">
+                  <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                    <Search className="w-5 h-5 text-purple-500" />
+                    Search Chat History
+                  </h3>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowSearchDialog(false)}
+                    className="h-8 w-8 rounded-lg"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+                <div className="p-4 overflow-y-auto max-h-[calc(80vh-70px)]">
+                  <ChatHistorySearch
+                    onOpenConversation={(conversationId) => {
+                      // Load selected conversation
+                      if (persistence.switchConversation) {
+                        persistence.switchConversation(conversationId);
+                      }
+                      setShowSearchDialog(false);
+                    }}
+                  />
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Export Chat Dialog */}
+        <ExportChatDialog
+          conversation={{
+            id: persistence.conversationId || 'current',
+            title: currentContractId 
+              ? `Contract ${currentContractId} Conversation` 
+              : 'AI Chat Conversation',
+            messages: messages.map(m => ({
+              id: m.id,
+              role: m.role as 'user' | 'assistant' | 'system',
+              content: m.content,
+              timestamp: m.timestamp.toISOString(),
+            })),
+            createdAt: messages[0]?.timestamp.toISOString() || new Date().toISOString(),
+            updatedAt: messages[messages.length - 1]?.timestamp.toISOString() || new Date().toISOString(),
+            contractId: currentContractId || undefined,
+          }}
+          open={showExportDialog}
+          onOpenChange={setShowExportDialog}
+          onExportComplete={(_format) => {
+            // Export completed successfully
+          }}
+        />
+
+        {/* Offline Status Indicator */}
+        <OfflineStatusIndicator 
+          position="fixed"
+          className="bottom-4 left-4 z-[52]"
+          showDetails={true}
+        />
       </>
     </TooltipProvider>
+  );
+}
+
+/**
+ * Wrapped FloatingAIBubble with Error Boundary
+ * Provides graceful error handling for the entire chatbot component
+ */
+export function FloatingAIBubbleWithErrorBoundary() {
+  return (
+    <AIErrorBoundary
+      errorTitle="AI Chat Unavailable"
+      errorDescription="The AI assistant encountered an error. You can try again or contact support if the problem persists."
+      onError={(error, errorInfo) => {
+        console.error('[FloatingAIBubble] Error:', error);
+        console.error('[FloatingAIBubble] Error Info:', errorInfo);
+      }}
+    >
+      <FloatingAIBubble />
+    </AIErrorBoundary>
   );
 }

@@ -65,30 +65,23 @@ export interface ProcessingConfigProps {
 
 const AI_MODELS = [
   { 
-    id: 'gpt-4o', 
-    name: 'GPT-4o', 
-    description: 'Most accurate, best for complex contracts',
+    id: 'azure-ch', 
+    name: 'Azure GPT-4o (CH)', 
+    description: 'Azure Switzerland North - Swiss FADP compliant',
     badge: 'Recommended',
     badgeColor: 'bg-green-100 text-green-700'
   },
   { 
-    id: 'gpt-4o-mini', 
-    name: 'GPT-4o Mini', 
-    description: 'Fast and cost-effective',
+    id: 'mistral', 
+    name: 'Mistral Large (EU)', 
+    description: 'EU-hosted AI model - GDPR compliant',
     badge: 'Fast',
     badgeColor: 'bg-blue-100 text-blue-700'
   },
   { 
-    id: 'claude-3-5-haiku-20241022', 
-    name: 'Claude Haiku 4.5', 
-    description: 'Lightning fast with excellent comprehension',
-    badge: 'New',
-    badgeColor: 'bg-orange-100 text-orange-700'
-  },
-  { 
     id: 'auto', 
     name: 'Auto Select', 
-    description: 'Automatically choose based on document complexity',
+    description: 'Automatically choose between Azure CH and Mistral EU',
     badge: 'Smart',
     badgeColor: 'bg-purple-100 text-purple-700'
   },

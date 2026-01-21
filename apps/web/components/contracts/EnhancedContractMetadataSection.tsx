@@ -2104,24 +2104,26 @@ export function EnhancedContractMetadataSection({
                 )}
               </Button>
               {verifiedFieldsCount > 0 && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleResetAllVerifications}
-                      disabled={isResettingAll}
-                      className="text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl h-10 font-medium"
-                    >
-                      {isResettingAll ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Undo2 className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Reset all verifications</TooltipContent>
-                </Tooltip>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleResetAllVerifications}
+                        disabled={isResettingAll}
+                        className="text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-xl h-10 font-medium"
+                      >
+                        {isResettingAll ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Undo2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Reset all verifications</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
               <Button 
                 size="sm" 

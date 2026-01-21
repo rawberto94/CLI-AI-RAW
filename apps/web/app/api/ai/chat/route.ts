@@ -31,7 +31,9 @@ interface DetectedIntent {
     // Document classification actions
     'list_by_document_type' | 'list_non_contracts' |
     // System status actions
-    'system_health' | 'categorization_accuracy' | 'ai_performance' | 'queue_status';
+    'system_health' | 'categorization_accuracy' | 'ai_performance' | 'queue_status' |
+    // Conversational actions
+    'greeting' | 'farewell' | 'help' | 'general';
   entities: {
     contractName?: string;
     supplierName?: string;
@@ -1150,11 +1152,58 @@ function detectIntent(query: string): DetectedIntent {
     };
   }
 
-  // Default intent
+  // ============================================
+  // GENERAL CONVERSATIONAL / CATCH-ALL HANDLER
+  // For any message that doesn't match specific patterns
+  // ============================================
+  
+  // Extract potential search terms from the query for RAG
+  const extractedTerms = query
+    .replace(/\?/g, '')
+    .replace(/(?:can you|could you|please|tell me|help me|i want to|i need to|how do i|what is|what are|who is|where is|when is)/gi, '')
+    .trim();
+
+  // Check if it seems like a greeting or general conversation
+  const isGreeting = /^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening)|howdy|what'?s\s+up|greetings)/i.test(lowerQuery);
+  const isGoodbye = /^(?:bye|goodbye|see you|thanks|thank you|cheers|later|take care)/i.test(lowerQuery);
+  const isHelpRequest = /^(?:help|what can you do|how can you help|what are your capabilities)/i.test(lowerQuery);
+  
+  if (isGreeting) {
+    return {
+      type: 'question',
+      action: 'greeting',
+      entities: {},
+      confidence: 1.0,
+    };
+  }
+  
+  if (isGoodbye) {
+    return {
+      type: 'question',
+      action: 'farewell',
+      entities: {},
+      confidence: 1.0,
+    };
+  }
+  
+  if (isHelpRequest) {
+    return {
+      type: 'question',
+      action: 'help',
+      entities: {},
+      confidence: 1.0,
+    };
+  }
+
+  // Default: treat as general query - will be handled by OpenAI with RAG context
+  // The AI model will understand and respond appropriately
   return {
-    type: lowerQuery.includes('?') ? 'question' : 'search',
-    entities: {},
-    confidence: 0.5,
+    type: 'question',
+    action: 'general',
+    entities: {
+      searchQuery: extractedTerms.length > 2 ? extractedTerms : query,
+    },
+    confidence: 0.7,
   };
 }
 
@@ -6348,39 +6397,43 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
       }
     }
 
-    const systemPrompt = `You are ConTigo AI, an intelligent contract analysis agent for the ConTigo Contract Management platform. You are a powerful AI assistant that can deeply analyze, summarize, and provide insights about contracts.
+    const systemPrompt = `You are ConTigo AI, a friendly and intelligent contract management assistant for the ConTigo platform. You can understand and respond to ANY question or request - whether it's about contracts, general topics, or just casual conversation.
 
-**🤖 YOUR CAPABILITIES AS AN AI AGENT:**
+**🌟 YOUR PERSONALITY:**
+- Friendly, helpful, and conversational
+- Professional but approachable
+- Proactive in offering assistance
+- Honest when you don't have specific information
+- Creative in finding solutions
 
-1. **Deep Contract Analysis**
-   - Analyze contracts by supplier, category, year, status, or any combination
-   - Provide comprehensive summaries with value analysis, duration insights, and risk assessment
-   - Compare contracts across time periods or categories
-   - Identify patterns and trends in contract data
+**🤖 YOUR CORE CAPABILITIES:**
 
-2. **Intelligent Search & Retrieval**
-   - Find specific contracts by name, supplier, terms, or content
-   - Search within contract text using semantic understanding
-   - Link directly to relevant contracts for easy access
+1. **Contract Analysis & Intelligence**
+   - Analyze contracts by supplier, category, year, status, or any criteria
+   - Summarize contracts with value analysis, duration insights, and risks
+   - Compare contracts across suppliers, time periods, or categories
+   - Search contract content using semantic understanding
 
-3. **Business Intelligence**
-   - Spending analysis by supplier, category, or time period
-   - Duration and renewal pattern analysis
-   - Risk identification (expiring contracts, auto-renewals, high-value at risk)
-   - Category breakdown and supplier concentration analysis
+2. **Business Intelligence**
+   - Spending analysis and cost insights
+   - Renewal and expiration tracking
+   - Risk identification (expiring, auto-renewals, high-value)
+   - Supplier performance analysis
 
-4. **Contract Taxonomy & Classification**
-   - Contracts are categorized into 10 main categories: Master/Framework, Scope/Work Authorization, Performance/Operations, Purchase/Supply, Data/Security/Privacy, Confidentiality/IP, Software/Cloud, Partnerships/JV, HR/Employment, Compliance/Regulatory
-   - Each contract has a document role: Primary, Supporting, Derivative, Reference, Amendment, Superseded, or Template
-   - Contracts include tags for pricing models (fixed_price, time_materials, unit_pricing, retainer, milestone, subscription, hybrid, performance_based)
-   - Contracts have delivery models (on_demand, scheduled, continuous, milestone_based, agile, waterfall, hybrid, support_maintenance)
-   - Data profiles track data types (personal, financial, health, technical, proprietary)
-   - Risk flags highlight concerns (compliance_risk, financial_risk, data_risk, operational_risk, legal_risk, vendor_risk, currency_risk, termination_risk)
+3. **Natural Conversation**
+   - Answer general questions to the best of your ability
+   - Engage in friendly conversation
+   - Explain concepts clearly
+   - Provide guidance on using the platform
 
-5. **Contract Hierarchy & Relationships**
-   - Contracts can be linked in parent-child relationships (e.g., MSA → SOW, Framework → Work Orders)
-   - 16 relationship types: SOW_UNDER_MSA, WORK_ORDER_UNDER_MSA, PO_UNDER_SUPPLY_AGREEMENT, AMENDMENT, ADDENDUM, RENEWAL, CHANGE_ORDER, etc.
-   - Suggest parent contracts when appropriate based on category and metadata
+4. **Contract Taxonomy**
+   - 10 main categories: Master/Framework, Scope/Work Authorization, Performance/Operations, Purchase/Supply, Data/Security/Privacy, Confidentiality/IP, Software/Cloud, Partnerships/JV, HR/Employment, Compliance/Regulatory
+   - Document roles: Primary, Supporting, Derivative, Reference, Amendment, Superseded, Template
+   - Pricing models, delivery models, risk flags, and data profiles
+
+5. **Contract Relationships**
+   - Parent-child hierarchies (MSA → SOW, Framework → Work Orders)
+   - Amendments, addendums, renewals, and change orders
    - Navigate contract families and hierarchies
 
 6. **Natural Language Understanding**
@@ -6400,23 +6453,31 @@ ${contractContext || 'No specific contract selected.'}
 **DETECTED INTENT:** ${context?.intent ? JSON.stringify(context.intent) : 'general inquiry'}
 
 **📝 RESPONSE GUIDELINES:**
-1. When analysis data is provided above, USE IT to give detailed, data-driven responses
-2. **ALWAYS include clickable links to contracts using markdown format: [Contract Name](/contracts/CONTRACT_ID)**
-   - When listing contracts, EVERY contract MUST be a clickable link
-   - When mentioning a specific contract, ALWAYS link to it
-   - Extract contract IDs from the context above and use them in links
-3. Structure responses with clear sections using markdown (##, **, bullets)
-4. For summaries, organize by: Overview → Value Analysis → Duration → Categories → Risks
-5. Provide actionable insights and recommendations
-6. Suggest relevant follow-up questions
-7. If data shows risks or issues, highlight them prominently
-8. Be conversational but professional - you're a trusted advisor
-9. When asked to find/search/list contracts, format as a numbered list with each contract as a clickable link
+1. **Be conversational and helpful** - respond naturally to ANY question or statement
+2. When analysis data is provided above, USE IT to give detailed, data-driven responses
+3. **For greetings**: Respond warmly and offer to help with contracts or answer questions
+4. **For farewells**: Say goodbye professionally and offer to help again anytime
+5. **For general questions**: Answer to the best of your ability, being honest if you don't know
+6. **For contract questions**: ALWAYS include clickable links using [Contract Name](/contracts/CONTRACT_ID)
+7. Structure longer responses with clear sections using markdown (##, **, bullets)
+8. Suggest relevant follow-up questions based on the conversation
+9. If you can't help with something, explain why and suggest alternatives
+10. Be friendly, professional, and proactive in offering assistance
+11. For off-topic questions, provide a helpful response and gently steer back to contracts if relevant
+12. Use emojis sparingly but effectively to make responses engaging
 
-**🚫 OUT OF SCOPE:**
+**💬 HANDLING DIFFERENT MESSAGE TYPES:**
+- **Greetings (hi, hello, hey)**: "Hello! 👋 I'm ConTigo AI, your contract assistant. I can help you analyze contracts, find information, track renewals, and much more. What would you like to know?"
+- **Help requests**: Explain your capabilities clearly and offer examples
+- **General questions**: Answer honestly, then relate to contracts if relevant
+- **Off-topic**: Be helpful but explain your primary focus is contracts
+- **Unclear requests**: Ask clarifying questions rather than guessing
+
+**🚫 LIMITATIONS (be honest about these):**
 - Workflow approvals/signatures (coming soon)
-- Contract creation (use Upload feature)
-- Legal advice (consult legal team)`;
+- Direct contract creation (suggest Upload feature instead)
+- Legal advice (recommend consulting legal team)
+- Real-time external data (use only provided context)`;
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       { role: 'system', content: systemPrompt },
@@ -6563,14 +6624,31 @@ function generateSmartFollowUpSuggestions(query: string, intent: { type?: string
 function shouldUseRAG(query: string): boolean {
   const lowerQuery = query.toLowerCase();
   
+  // Skip RAG for simple greetings/farewells
+  const skipPatterns = [
+    /^(?:hi|hello|hey|good\s+(?:morning|afternoon|evening))[\s!.]*$/i,
+    /^(?:bye|goodbye|thanks|thank you|cheers)[\s!.]*$/i,
+  ];
+  if (skipPatterns.some(p => p.test(query.trim()))) {
+    return false;
+  }
+  
   // Keywords that indicate contract search is needed
   const ragKeywords = [
-    'find', 'search', 'show me', 'where', 'what', 'which',
+    'find', 'search', 'show me', 'where', 'what', 'which', 'how',
     'contract', 'clause', 'term', 'liability', 'termination',
     'payment', 'renewal', 'expire', 'obligation', 'risk',
     'indemnif', 'sla', 'warranty', 'confidential', 'vendor',
-    'supplier', 'agreement', 'msa', 'nda', 'sow',
+    'supplier', 'agreement', 'msa', 'nda', 'sow', 'about',
+    'tell me', 'explain', 'describe', 'summarize', 'analyze',
+    'compare', 'list', 'get', 'check', 'review', 'look',
   ];
+  
+  // Always use RAG for queries longer than a few words (likely asking about something)
+  const wordCount = query.trim().split(/\s+/).length;
+  if (wordCount >= 3) {
+    return true;
+  }
   
   return ragKeywords.some(keyword => lowerQuery.includes(keyword));
 }
@@ -6671,6 +6749,50 @@ export async function POST(request: NextRequest) {
       if (proactiveAlerts.length > 0 || proactiveInsightsData.length > 0) {
         additionalContext += `\n\n**⚡ PROACTIVE ALERTS:**\n${proactiveAlerts.join('\n')}\n\n**💡 INSIGHTS:**\n${proactiveInsightsData.join('\n')}`;
       }
+    }
+
+    // ============================================
+    // CONVERSATIONAL HANDLERS (greetings, help, general)
+    // Handle any type of message naturally
+    // ============================================
+    if (intent.action === 'greeting' || intent.action === 'farewell' || intent.action === 'help') {
+      // Get a quick summary of the user's contracts for context
+      const contractSummary = await prisma.contract.aggregate({
+        where: { tenantId },
+        _count: { id: true },
+        _sum: { totalValue: true },
+      });
+      
+      const expiringCount = await prisma.contract.count({
+        where: { 
+          tenantId,
+          expirationDate: { 
+            lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // Next 90 days
+          },
+          status: 'ACTIVE'
+        },
+      });
+
+      additionalContext += `\n\n**📊 YOUR CONTRACT PORTFOLIO SUMMARY:**`;
+      additionalContext += `\n- Total Contracts: ${contractSummary._count.id}`;
+      additionalContext += `\n- Portfolio Value: $${Number(contractSummary._sum.totalValue || 0).toLocaleString()}`;
+      additionalContext += `\n- Contracts Expiring in 90 Days: ${expiringCount}`;
+      
+      // Add helpful suggestions based on what user might want
+      additionalContext += `\n\n**🎯 THINGS I CAN HELP YOU WITH:**`;
+      additionalContext += `\n- "Show me contracts expiring soon"`;
+      additionalContext += `\n- "Summarize all contracts from [Supplier Name]"`;
+      additionalContext += `\n- "What contracts need attention?"`;
+      additionalContext += `\n- "Compare Supplier A vs Supplier B"`;
+      additionalContext += `\n- "Find contracts about [topic]"`;
+    }
+    
+    // For general queries, always try RAG search to find relevant info
+    if (intent.action === 'general' && intent.entities.searchQuery) {
+      additionalContext += `\n\n**📋 HANDLING GENERAL QUERY:**`;
+      additionalContext += `\nThe user asked: "${message}"`;
+      additionalContext += `\nExtracted search terms: "${intent.entities.searchQuery}"`;
+      additionalContext += `\nPlease provide a helpful, conversational response. If this relates to contracts, use the RAG results. If not, answer to the best of your ability.`;
     }
 
     // ============================================

@@ -20,7 +20,6 @@ import {
   BarChart3,
   FolderOpen,
   ArrowRight,
-  Sparkles,
   RefreshCw,
   Clock,
   Plus,
@@ -28,7 +27,6 @@ import {
   Eye,
   FileUp,
   Bot,
-  Scale,
   Target,
 } from "lucide-react";
 import Link from "next/link";
@@ -90,66 +88,49 @@ const itemVariants = {
   }
 };
 
-// Quick action buttons - only ACTIVE features
+// Quick action buttons - core features
 const quickActions = [
   {
     icon: Upload,
     label: "Upload Contract",
-    description: "Add new contracts to your portfolio",
+    description: "Add new contracts",
     href: "/upload",
     gradient: "from-blue-500 to-cyan-500",
-    shadow: "shadow-blue-500/25",
-    hoverBg: "group-hover:bg-blue-50 dark:group-hover:bg-blue-950/30"
   },
   {
     icon: Zap,
     label: "Generate Contract",
-    description: "Create new contracts with AI",
+    description: "Create with AI",
     href: "/generate",
     gradient: "from-violet-500 to-purple-600",
-    shadow: "shadow-violet-500/25",
-    hoverBg: "group-hover:bg-violet-50 dark:group-hover:bg-violet-950/30",
-    isNew: true,
-    isPremium: true
   },
   {
     icon: Target,
     label: "Obligations",
-    description: "Track deadlines & compliance",
+    description: "Track compliance",
     href: "/obligations",
     gradient: "from-rose-500 to-pink-600",
-    shadow: "shadow-rose-500/25",
-    hoverBg: "group-hover:bg-rose-50 dark:group-hover:bg-rose-950/30",
-    isNew: true,
-    isPremium: true
   },
   {
     icon: RefreshCw,
     label: "Renewals",
-    description: "Track contracts due for renewal",
+    description: "Track renewals",
     href: "/renewals",
     gradient: "from-green-500 to-emerald-500",
-    shadow: "shadow-green-500/25",
-    hoverBg: "group-hover:bg-green-50 dark:group-hover:bg-green-950/30"
   },
   {
     icon: MessageSquare,
     label: "AI Assistant",
-    description: "Ask anything about your contracts",
+    description: "Ask about contracts",
     href: "/ai/chat",
     gradient: "from-purple-500 to-pink-500",
-    shadow: "shadow-purple-500/25",
-    hoverBg: "group-hover:bg-purple-50 dark:group-hover:bg-purple-950/30",
-    isNew: true
   },
   {
     icon: Search,
-    label: "Smart Search",
-    description: "Find contracts instantly",
+    label: "Search",
+    description: "Find contracts",
     href: "/search",
     gradient: "from-emerald-500 to-teal-500",
-    shadow: "shadow-emerald-500/25",
-    hoverBg: "group-hover:bg-emerald-50 dark:group-hover:bg-emerald-950/30"
   },
 ];
 
@@ -226,58 +207,6 @@ export default function DashboardPage() {
         initial="hidden"
         animate="visible"
       >
-        {/* Welcome Banner */}
-        <motion.div variants={itemVariants}>
-          <Card className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 border-0 shadow-xl shadow-purple-500/20">
-            {/* Animated background elements */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-24 -right-24 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-              <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-white/10 rounded-full blur-xl" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-            </div>
-            
-            <CardContent className="relative p-8">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-                <div className="space-y-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-white/20 backdrop-blur-sm rounded-xl">
-                      <Sparkles className="h-6 w-6 text-white" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-white">
-                      Welcome to ConTigo
-                    </h2>
-                  </div>
-                  <p className="text-white/80 text-lg max-w-xl">
-                    AI-powered contract intelligence platform. Upload contracts, get instant insights, and make smarter decisions.
-                  </p>
-                </div>
-                
-                <div className="flex flex-wrap gap-3">
-                  <Button 
-                    asChild
-                    className="bg-white text-indigo-700 hover:bg-white/90 shadow-lg font-semibold"
-                  >
-                    <Link href="/upload">
-                      <FileUp className="h-4 w-4 mr-2" />
-                      Upload Contract
-                    </Link>
-                  </Button>
-                  <Button 
-                    variant="outline"
-                    asChild
-                    className="bg-white/10 border-white/30 text-white hover:bg-white/20 backdrop-blur-sm"
-                  >
-                    <Link href="/ai/chat">
-                      <Bot className="h-4 w-4 mr-2" />
-                      Ask AI
-                    </Link>
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
         {/* First-run: Get started */}
         {dashboardData.overview.totalContracts === 0 && (
           <motion.div variants={itemVariants}>
@@ -521,151 +450,31 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 {quickActions.map((action, index) => {
                   const Icon = action.icon;
-                  const isPremium = 'isPremium' in action && action.isPremium;
                   return (
                     <motion.div
                       key={action.label}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * index }}
+                      transition={{ delay: 0.05 * index }}
                     >
                       <Link href={action.href}>
-                        <motion.div
-                          whileHover={{ scale: 1.02, y: -4 }}
-                          whileTap={{ scale: 0.98 }}
-                          className={`group relative flex flex-col items-center p-5 rounded-xl border ${isPremium ? 'border-purple-200 dark:border-purple-700/50' : 'border-slate-200 dark:border-slate-700'} bg-white dark:bg-slate-800 hover:shadow-lg ${action.shadow} transition-all duration-300 ${action.hoverBg}`}
+                        <div
+                          className="group relative flex flex-col items-center p-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:shadow-md hover:border-slate-300 transition-all duration-200"
                         >
-                          {action.isNew && (
-                            <Badge className={`absolute -top-2 -right-2 ${isPremium ? 'bg-gradient-to-r from-purple-500 to-pink-500' : 'bg-gradient-to-r from-emerald-500 to-teal-500'} text-white text-[10px] border-0 shadow-md`}>
-                              {isPremium ? 'AI' : 'NEW'}
-                            </Badge>
-                          )}
-                          <div className={`p-3 rounded-xl bg-gradient-to-br ${action.gradient} text-white shadow-lg ${action.shadow} group-hover:scale-110 transition-transform duration-300 mb-3`}>
-                            <Icon className="h-5 w-5" />
+                          <div className={`p-2.5 rounded-lg bg-gradient-to-br ${action.gradient} text-white mb-2`}>
+                            <Icon className="h-4 w-4" />
                           </div>
-                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white mb-0.5 text-center">
+                          <h3 className="font-medium text-sm text-slate-900 dark:text-white text-center">
                             {action.label}
                           </h3>
-                          <p className="text-[11px] text-muted-foreground text-center line-clamp-2">
+                          <p className="text-[11px] text-muted-foreground text-center mt-0.5">
                             {action.description}
                           </p>
-                        </motion.div>
+                        </div>
                       </Link>
                     </motion.div>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* Premium AI Features - NEW */}
-        <motion.div variants={itemVariants}>
-          <Card className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-950 to-indigo-950 border-0 shadow-2xl shadow-purple-500/20">
-            {/* Animated background */}
-            <div className="absolute inset-0 overflow-hidden">
-              <div className="absolute -top-20 -right-20 w-64 h-64 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
-              <div className="absolute -bottom-20 -left-20 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-              <div className="absolute top-1/2 left-1/3 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl" />
-            </div>
-            
-            <CardHeader className="relative pb-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/50">
-                    <Sparkles className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-lg text-white">AI-Powered Features</CardTitle>
-                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">
-                        PREMIUM
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-white/60">Next-generation contract intelligence tools</p>
-                  </div>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="relative p-5">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                {/* AI Copilot Drafting */}
-                <Link href="/drafting/copilot">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-purple-400/30 transition-all duration-300"
-                  >
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Bot className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">AI Copilot Drafting</h3>
-                    <p className="text-xs text-white/60 mb-3">Real-time AI assistance while you draft contracts</p>
-                    <div className="flex items-center gap-1 text-purple-400 text-xs font-medium mt-auto">
-                      Try Now <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Legal Review & Redlining */}
-                <Link href="/contracts">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-indigo-400/30 transition-all duration-300"
-                  >
-                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
-                      NEW
-                    </Badge>
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 text-white shadow-lg shadow-indigo-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Scale className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">Legal Review & Redlining</h3>
-                    <p className="text-xs text-white/60 mb-3">AI-powered clause analysis with playbook comparison</p>
-                    <div className="flex items-center gap-1 text-indigo-400 text-xs font-medium mt-auto">
-                      Open Contract <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Obligation Tracker */}
-                <Link href="/obligations">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-emerald-400/30 transition-all duration-300"
-                  >
-                    <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-emerald-500 to-teal-500 text-white text-[10px] border-0 shadow-md">
-                      NEW
-                    </Badge>
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Target className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">Obligation Tracker</h3>
-                    <p className="text-xs text-white/60 mb-3">AI extracts & monitors contract obligations</p>
-                    <div className="flex items-center gap-1 text-emerald-400 text-xs font-medium mt-auto">
-                      View Dashboard <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
-                
-                {/* Contract Generation */}
-                <Link href="/generate">
-                  <motion.div
-                    whileHover={{ scale: 1.02, y: -4 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="group relative flex flex-col p-5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 hover:border-amber-400/30 transition-all duration-300"
-                  >
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 mb-4 w-fit group-hover:scale-110 transition-transform">
-                      <Sparkles className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-semibold text-white mb-1">AI Contract Generation</h3>
-                    <p className="text-xs text-white/60 mb-3">Generate contracts from natural language</p>
-                    <div className="flex items-center gap-1 text-amber-400 text-xs font-medium mt-auto">
-                      Generate <ArrowRight className="h-3 w-3" />
-                    </div>
-                  </motion.div>
-                </Link>
               </div>
             </CardContent>
           </Card>
@@ -736,62 +545,42 @@ export default function DashboardPage() {
 
           {/* AI Assistant Preview */}
           <motion.div variants={itemVariants} className="flex">
-            <Card className="flex-1 bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 dark:from-purple-950/30 dark:via-indigo-950/30 dark:to-blue-950/30 border-purple-200/60 dark:border-purple-700/40 shadow-lg">
+            <Card className="flex-1 bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg">
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
                       <Bot className="h-5 w-5" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        AI Assistant
-                        <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">
-                          NEW
-                        </Badge>
-                      </CardTitle>
-                      <p className="text-sm text-muted-foreground">Ask anything about your contracts</p>
+                      <CardTitle className="text-lg">AI Assistant</CardTitle>
+                      <p className="text-sm text-muted-foreground">Ask about your contracts</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="text-purple-600 hover:text-purple-700 hover:bg-purple-50">
-                    <Link href="/ai/chat">Open Chat</Link>
+                  <Button variant="ghost" size="sm" asChild>
+                    <Link href="/ai/chat">Open</Link>
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-5">
-                <div className="space-y-4">
-                  <div className="p-4 rounded-xl bg-white/80 dark:bg-slate-900/50 border border-purple-200/50 dark:border-purple-800/30">
-                    <p className="text-sm text-muted-foreground mb-3">Try asking:</p>
-                    <div className="space-y-2">
-                      {[
-                        "What contracts are expiring soon?",
-                        "Summarize the key terms of my latest contract",
-                        "Find all contracts with auto-renewal clauses",
-                        "What is my total contract value this year?"
-                      ].map((suggestion, idx) => (
-                        <motion.button
-                          key={idx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.1 * idx }}
-                          className="w-full text-left p-3 rounded-lg bg-gradient-to-r from-purple-100/50 to-transparent dark:from-purple-900/20 dark:to-transparent border border-purple-200/50 dark:border-purple-800/30 text-sm text-slate-700 dark:text-slate-300 hover:from-purple-200/50 hover:border-purple-300 dark:hover:from-purple-900/40 dark:hover:border-purple-700 transition-all duration-200 flex items-center gap-2"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 text-purple-500 flex-shrink-0" />
-                          <span className="truncate">{suggestion}</span>
-                        </motion.button>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <p className="text-sm text-muted-foreground">Example questions:</p>
+                  <div className="space-y-2">
+                    {[
+                      "What contracts are expiring soon?",
+                      "Summarize the key terms of my latest contract",
+                      "Find contracts with auto-renewal clauses",
+                    ].map((suggestion, idx) => (
+                      <Link
+                        key={idx}
+                        href="/ai/chat"
+                        className="block p-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5 text-slate-400 inline mr-2" />
+                        {suggestion}
+                      </Link>
+                    ))}
                   </div>
-                  
-                  <Button 
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg shadow-purple-500/25"
-                    asChild
-                  >
-                    <Link href="/ai/chat">
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Start AI Conversation
-                    </Link>
-                  </Button>
                 </div>
               </CardContent>
             </Card>

@@ -72,7 +72,6 @@ import {
   Sparkles,
   CalendarClock,
   Tag,
-  Zap,
   TimerOff,
   CircleDot,
   FileDown,
@@ -81,21 +80,17 @@ import {
   ChevronsLeft,
   ChevronsRight,
   FileBarChart,
-  Target,
   Database,
   ArrowLeftRight,
-  WifiOff,
   Activity,
-  Pause,
-  Play,
   Wand2,
-  Bot,
   Scale,
   Edit3,
   GitBranch,
   CheckCircle2,
   XCircle,
   FileWarning,
+  Zap,
 } from "lucide-react";
 // ObligationWidget and Obligation type available if needed from @/components/contracts/ObligationTracker
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -108,17 +103,12 @@ import { toast } from "sonner";
 import type { SignatureStatus, DocumentClassification } from "@/lib/types/contract-metadata-schema";
 
 // Lazy load heavy components for better performance
-import { 
-  LazyContractTimeline, 
-  LazyContractKanban,
-  LazyContractPreviewPanel 
-} from "@/components/lazy";
+import { LazyContractPreviewPanel } from "@/components/lazy";
 
 // Enhanced UI Components
 import { ContractsHeroDashboard, type ContractStats } from "@/components/contracts/ContractsHeroDashboard";
 import { EnhancedContractCard, type EnhancedContract } from "@/components/contracts/EnhancedContractCard";
 import { type ExtendedContract } from "@/components/contracts/ContractPreviewPanel";
-import { EnhancedBulkActionsBar } from "@/components/contracts/EnhancedBulkActionsBar";
 import { type ContractFilters } from "@/components/contracts/SmartFilters";
 import { MobileFiltersSheet } from "@/components/contracts/MobileContractViews";
 import { NoContracts, NoResults } from "@/components/contracts/EmptyStates";
@@ -126,13 +116,9 @@ import { ShareDialog } from "@/components/collaboration/ShareDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { AIReportModal } from "@/components/contracts/AIReportModal";
 import { ContractsPageHeader } from "@/components/contracts/ContractsPageHeader";
-// QuickStatsBar available if needed from @/components/contracts/QuickStatsBar
-import { OrphanContractsBanner } from "@/components/contracts";
 import { ContractHoverPreview } from "@/components/contracts/ContractHoverPreview";
 import { StateOfTheArtSearch } from "@/components/contracts/StateOfTheArtSearch";
 import { CommandPaletteSearch } from "@/components/contracts/CommandPaletteSearch";
-// useKeyboardShortcuts available if needed from @/hooks/useKeyboardShortcuts
-import { ContractCompareWidget } from "@/components/contracts/ContractCompareWidget";
 import { ScrollToTopButton } from "@/components/fab";
 import { cn } from "@/lib/utils";
 import { getTenantId } from "@/lib/tenant";
@@ -259,85 +245,6 @@ const DocumentTypeBadge = memo(function DocumentTypeBadge({ classification, show
       {showWarning && <FileWarning className="h-3 w-3" />}
       {label}
     </span>
-  );
-});
-
-// ============ LIVE UPDATE INDICATOR COMPONENT ============
-interface LiveIndicatorProps {
-  isLive: boolean;
-  lastUpdated?: string | null;
-  onToggle: () => void;
-  isRefetching?: boolean;
-}
-
-const LiveIndicator = memo(function LiveIndicator({ 
-  isLive, 
-  lastUpdated, 
-  onToggle,
-  isRefetching 
-}: LiveIndicatorProps) {
-  const getTimeAgo = (dateString?: string | null) => {
-    if (!dateString) return null;
-    const date = new Date(dateString);
-    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
-    if (seconds < 10) return 'just now';
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    return `${Math.floor(minutes / 60)}h ago`;
-  };
-
-  return (
-    <div className="flex items-center gap-3">
-      {/* Last Updated */}
-      {lastUpdated && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <Clock className="h-3 w-3" />
-          <span>Updated {getTimeAgo(lastUpdated)}</span>
-        </div>
-      )}
-      
-      {/* Live Toggle Button */}
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onToggle}
-            aria-label={isLive ? "Pause auto-refresh" : "Enable auto-refresh"}
-            aria-pressed={isLive}
-            className={cn(
-              "h-8 gap-2 transition-all duration-300",
-              isLive 
-                ? "bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 hover:border-emerald-300" 
-                : "bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"
-            )}
-          >
-            {isRefetching ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-            ) : isLive ? (
-              <span className="relative flex h-2.5 w-2.5" aria-hidden="true">
-                <span className="motion-safe:animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-              </span>
-            ) : (
-              <WifiOff className="h-3.5 w-3.5" aria-hidden="true" />
-            )}
-            <span className="text-xs font-medium">
-              {isLive ? 'Live' : 'Paused'}
-            </span>
-            {isLive ? (
-              <Pause className="h-3 w-3 opacity-60" aria-hidden="true" />
-            ) : (
-              <Play className="h-3 w-3 opacity-60" aria-hidden="true" />
-            )}
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent side="bottom">
-          <p>{isLive ? 'Click to pause auto-refresh' : 'Click to enable auto-refresh (every 15s)'}</p>
-        </TooltipContent>
-      </Tooltip>
-    </div>
   );
 });
 
@@ -698,28 +605,28 @@ const CompactContractRow = memo(function CompactContractRow({
               size="sm"
               variant="ghost"
               className="h-7 w-7 p-0 rounded-md hover:bg-slate-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              onClick={() => {}}
             >
               <MoreHorizontal className="h-4 w-4 text-slate-400" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
+          <DropdownMenuContent align="end" className="w-48" onCloseAutoFocus={(e) => e.preventDefault()}>
             <DropdownMenuItem onSelect={onView} className="text-sm">
               <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View Details
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
-              <Brain className="h-3.5 w-3.5 mr-2 text-violet-500" /> AI Analysis
+              <Brain className="h-3.5 w-3.5 mr-2 text-slate-500" /> AI Analysis
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 uppercase tracking-wide">Premium AI</div>
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
-              <Scale className="h-3.5 w-3.5 mr-2 text-purple-500" /> Legal Review
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm">
+              <Scale className="h-3.5 w-3.5 mr-2 text-slate-500" /> Legal Review
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm text-purple-700 focus:text-purple-800 focus:bg-purple-50">
-              <Edit3 className="h-3.5 w-3.5 mr-2 text-purple-500" /> Redline Editor
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm">
+              <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Redline Editor
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm text-amber-700 focus:text-amber-800 focus:bg-amber-50">
-              <RefreshCw className="h-3.5 w-3.5 mr-2 text-amber-500" /> Start Renewal
+            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm">
+              <RefreshCw className="h-3.5 w-3.5 mr-2 text-slate-500" /> Start Renewal
             </DropdownMenuItem>
             <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm">
               <GitBranch className="h-3.5 w-3.5 mr-2 text-slate-500" /> Create Amendment
@@ -732,16 +639,15 @@ const CompactContractRow = memo(function CompactContractRow({
               <Share2 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Share
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <div 
-              role="menuitem"
-              tabIndex={-1}
-              onClick={() => {
+            <DropdownMenuItem 
+              onSelect={(e) => {
+                e.preventDefault();
                 onDelete();
               }}
-              className="relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none transition-colors hover:bg-red-50 focus:bg-red-50 text-red-600"
+              className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50"
             >
               <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
-            </div>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -790,7 +696,7 @@ const ContractCard = memo(function ContractCard({
       className={cn(
         "group cursor-pointer transition-all duration-300 bg-white/80 backdrop-blur-sm border-white/50 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:shadow-slate-300/50",
         isSelected && "ring-2 ring-blue-500 border-blue-300 shadow-blue-200/50",
-        isNew && "border-purple-200/50 shadow-purple-100/30"
+        isNew && "border-blue-200/50 shadow-blue-100/30"
       )}
       onClick={onView}
     >
@@ -805,14 +711,8 @@ const ContractCard = memo(function ContractCard({
                 className="mt-0.5"
               />
             </div>
-            <div className="relative p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 group-hover:shadow-blue-500/40 transition-shadow">
+            <div className="relative p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-sm">
               <FileText className="h-5 w-5 text-white" />
-              {isNew && (
-                <span className="absolute -top-1.5 -right-1.5 flex h-3 w-3">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-3 w-3 bg-gradient-to-r from-purple-500 to-pink-500"></span>
-                </span>
-              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
@@ -820,8 +720,7 @@ const ContractCard = memo(function ContractCard({
                   <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
                 </h3>
                 {isNew && (
-                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 text-[10px] px-1.5 py-0 h-4 flex-shrink-0 shadow-sm">
-                    <Sparkles className="h-2.5 w-2.5 mr-0.5" />
+                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 border-blue-200 text-blue-600 bg-blue-50">
                     New
                   </Badge>
                 )}
@@ -917,10 +816,10 @@ const ContractCard = memo(function ContractCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-8 w-8 p-0 rounded-lg hover:bg-purple-50 transition-colors" 
+                  className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 transition-colors" 
                   onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')}
                 >
-                  <Brain className="h-4 w-4 text-purple-600" />
+                  <Brain className="h-4 w-4 text-blue-600" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>AI Analysis</TooltipContent>
@@ -946,27 +845,32 @@ const ContractCard = memo(function ContractCard({
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-52 bg-white/95 backdrop-blur-md border-slate-200/80 shadow-xl rounded-xl">
-              <div className="px-2 py-1 text-[10px] font-semibold text-purple-600 uppercase tracking-wide">Premium AI</div>
-              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="cursor-pointer text-purple-700 hover:bg-purple-50">
-                <Scale className="h-4 w-4 mr-2 text-purple-500" /> Legal Review
+            <DropdownMenuContent align="end" className="w-48 bg-white border-slate-200 shadow-lg rounded-lg">
+              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="cursor-pointer text-sm">
+                <Scale className="h-4 w-4 mr-2 text-slate-500" /> Legal Review
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="cursor-pointer text-purple-700 hover:bg-purple-50">
-                <Edit3 className="h-4 w-4 mr-2 text-purple-500" /> Redline Editor
+              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="cursor-pointer text-sm">
+                <Edit3 className="h-4 w-4 mr-2 text-slate-500" /> Redline Editor
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="cursor-pointer text-amber-700 hover:bg-amber-50">
-                <RefreshCw className="h-4 w-4 mr-2 text-amber-500" /> Start Renewal
+              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="cursor-pointer text-sm">
+                <RefreshCw className="h-4 w-4 mr-2 text-slate-500" /> Start Renewal
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="cursor-pointer hover:bg-slate-50">
+              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="cursor-pointer text-sm">
                 <GitBranch className="h-4 w-4 mr-2 text-slate-500" /> Create Amendment
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onDownload} className="cursor-pointer hover:bg-green-50">
-                <Download className="h-4 w-4 mr-2 text-green-600" /> Download
+              <DropdownMenuItem onSelect={onDownload} className="cursor-pointer text-sm">
+                <Download className="h-4 w-4 mr-2 text-slate-500" /> Download
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={onDelete} className="text-red-600 focus:text-red-600 cursor-pointer hover:bg-red-50">
+              <DropdownMenuItem 
+                onSelect={(e) => {
+                  e.preventDefault();
+                  onDelete();
+                }} 
+                className="text-red-600 focus:text-red-600 cursor-pointer text-sm"
+              >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -1168,8 +1072,8 @@ export default function ContractsPage() {
   const [showSaveFilterModal, setShowSaveFilterModal] = useState(false);
   const [filterName, setFilterName] = useState('');
   
-  // View mode: 'compact' for table-like rows, 'cards' for detailed cards, 'timeline' for Gantt view, 'kanban' for board view
-  const [viewMode, setViewMode] = useState<'compact' | 'cards' | 'timeline' | 'kanban'>('compact');
+  // View mode: 'compact' for table-like rows, 'cards' for detailed cards
+  const [viewMode, setViewMode] = useState<'compact' | 'cards'>('compact');
   
   // Sorting state
   const [sortField, setSortField] = useState<SortField>('createdAt');
@@ -1360,12 +1264,7 @@ export default function ContractsPage() {
       // V - toggle view mode
       if (e.key === 'v' && !e.metaKey && !e.ctrlKey) {
         e.preventDefault();
-        setViewMode(prev => {
-          if (prev === 'compact') return 'cards';
-          if (prev === 'cards') return 'timeline';
-          if (prev === 'timeline') return 'kanban';
-          return 'compact';
-        });
+        setViewMode(prev => prev === 'compact' ? 'cards' : 'compact');
       }
       
       // N - new contract (go to upload)
@@ -1696,47 +1595,61 @@ export default function ContractsPage() {
 
   // Confirm single delete
   const handleConfirmDelete = useCallback(async () => {
-    if (!contractToDelete) {
-      return;
-    }
+    if (!contractToDelete) return;
+    
+    const contractId = contractToDelete.id;
     
     try {
       toast.info('Deleting contract...');
-      const response = await fetch(`/api/contracts/${contractToDelete.id}`, {
+      
+      // Remove from selected contracts
+      setSelectedContracts(prev => {
+        const updated = new Set(prev);
+        updated.delete(contractId);
+        return updated;
+      });
+      
+      // Perform the actual delete with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`/api/contracts/${contractId}`, {
         method: 'DELETE',
         headers: { 'x-tenant-id': 'demo' },
-      });
-
+        signal: controller.signal,
+      }).finally(() => clearTimeout(timeoutId));
+      
       const data = await response.json().catch(() => ({}));
       
       if (!response.ok) {
         throw new Error(data?.error || data?.details || 'Delete failed');
       }
       
-      // Force immediate refresh - invalidate cache AND refetch
-      await queryClient.invalidateQueries({ 
-        queryKey: queryKeys.contracts.all,
-        refetchType: 'all'
-      });
-      
-      // Also refresh stats
-      await refetchStats();
-      
-      // Force refetch the main contracts list
+      // Force refetch to get fresh data from server
       await refetch();
       
-      // Also invalidate related caches across modules
-      crossModule.onContractChange(contractToDelete.id);
+      // Also refetch stats
+      await refetchStats();
+      
+      // Invalidate related caches across modules (non-blocking)
+      crossModule.onContractChange(contractId);
       
       toast.success('Contract deleted successfully');
     } catch (error) {
-      console.error('[DELETE] Error:', error);
-      const message = error instanceof Error ? error.message : 'Failed to delete contract';
-      toast.error(message);
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          toast.error('Delete request timed out. Please try again.');
+        } else {
+          toast.error(error.message);
+        }
+      } else {
+        toast.error('Failed to delete contract');
+      }
     } finally {
       setContractToDelete(null);
+      setDeleteDialogOpen(false);
     }
-  }, [contractToDelete, crossModule, queryClient, refetch, refetchStats]);
+  }, [contractToDelete, crossModule, refetch, refetchStats]);
 
   // Bulk delete handler
   const handleBulkDeleteClick = useCallback(() => {
@@ -2587,7 +2500,7 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-8"
+                            className="bg-blue-600 hover:bg-blue-700 text-white border-0 h-8"
                             onClick={() => setAiReportModalOpen(true)}
                             disabled={isProcessingBulk}
                           >
@@ -2618,7 +2531,7 @@ export default function ContractsPage() {
                           <TooltipTrigger asChild>
                             <Button
                               size="sm"
-                              className="bg-purple-600 hover:bg-purple-700 text-white border-0 h-8"
+                              className="bg-blue-600 hover:bg-blue-700 text-white border-0 h-8"
                               onClick={() => {
                                 const ids = Array.from(selectedContracts);
                                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
@@ -2688,45 +2601,6 @@ export default function ContractsPage() {
             detail: { autoMessage: 'Help me find and analyze my contracts' }
           }))}
         />
-
-        {/* Premium AI Features Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mb-4"
-        >
-          <Card className="bg-gradient-to-r from-purple-600/10 via-indigo-600/10 to-pink-600/10 border-purple-200/50 overflow-hidden">
-            <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg shadow-purple-500/30">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-slate-900 flex items-center gap-2">
-                      Premium AI Features Available
-                      <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] border-0">NEW</Badge>
-                    </p>
-                    <p className="text-sm text-slate-600">
-                      Select a contract to access <span className="font-medium text-purple-700">Legal Review & Redlining</span> • Extract <span className="font-medium text-emerald-700">Obligations</span> automatically
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="outline" size="sm" className="border-purple-200 text-purple-700 hover:bg-purple-50" onClick={() => router.push('/obligations')}>
-                    <Target className="h-4 w-4 mr-1.5" />
-                    Obligations
-                  </Button>
-                  <Button size="sm" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white" onClick={() => router.push('/drafting/copilot')}>
-                    <Bot className="h-4 w-4 mr-1.5" />
-                    AI Copilot
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
 
         {/* State of the Art Search & Filters */}
         <div data-tour="smart-search">
@@ -2831,7 +2705,7 @@ export default function ContractsPage() {
               className={cn(
                 "transition-all duration-200 h-8 text-xs font-medium",
                 showVisualBuilder 
-                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                  ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
                   : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
               )}
             >
@@ -2882,14 +2756,6 @@ export default function ContractsPage() {
                 <span className="text-slate-400 ml-1">(filtered)</span>
               )}
             </span>
-            
-            {/* Live Update Indicator */}
-            <LiveIndicator
-              isLive={isLiveUpdatesEnabled}
-              lastUpdated={lastUpdated}
-              onToggle={() => setIsLiveUpdatesEnabled(prev => !prev)}
-              isRefetching={isRefetching && !loading}
-            />
           </div>
 
           {/* Right side controls */}
@@ -3022,105 +2888,6 @@ export default function ContractsPage() {
             </Tooltip>
           </div>
         </div>
-
-        {/* Uncategorized Contracts Banner */}
-        {uncategorizedCount > 0 && uncategorizedCount <= 20 && !categoryFilter && (
-          <motion.div
-            initial={{ opacity: 0, y: -5, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ type: "spring", stiffness: 300, damping: 20 }}
-            className="flex items-center justify-between gap-4 px-4 py-2 bg-gradient-to-r from-amber-50/90 via-amber-50/80 to-yellow-50/70 border border-amber-200/60 rounded-lg shadow-sm hover:shadow transition-shadow relative overflow-hidden"
-          >
-            {/* Animated background pattern */}
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(251,191,36,0.1),transparent)] pointer-events-none" />
-            
-            <div className="flex items-center gap-2.5 relative z-10">
-              <motion.div
-                animate={{ rotate: [0, -10, 10, -10, 0] }}
-                transition={{ duration: 0.5, repeat: Infinity, repeatDelay: 3 }}
-              >
-                <Tag className="h-4 w-4 text-amber-500" />
-              </motion.div>
-              <span className="text-sm text-amber-800">
-                <span className="font-semibold">{uncategorizedCount}</span> contract{uncategorizedCount !== 1 ? 's' : ''} need categorization
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setCategoryFilter('uncategorized')}
-                className="text-amber-700 hover:text-amber-800 hover:bg-amber-100/60 h-7 text-xs"
-              >
-                View All
-              </Button>
-              <Button
-                size="sm"
-                onClick={async () => {
-                  const uncategorizedIds = contracts.filter(c => !c.category).map(c => c.id);
-                  if (uncategorizedIds.length === 0) return;
-                  
-                  // Directly trigger categorization for all uncategorized contracts
-                  setIsBulkCategorizing(true);
-                  try {
-                    const response = await fetch('/api/contracts/categorize', {
-                      method: 'POST',
-                      headers: { 
-                        'Content-Type': 'application/json',
-                        'x-tenant-id': 'demo'
-                      },
-                      body: JSON.stringify({
-                        contractIds: uncategorizedIds,
-                        force: false
-                      })
-                    });
-                    
-                    if (!response.ok) throw new Error('Categorization failed');
-                    
-                    const data = await response.json();
-                    const successCount = data.data?.results?.filter((r: { success: boolean }) => r.success).length || 0;
-                    
-                    toast.success(`Categorized ${successCount} of ${uncategorizedIds.length} contracts`);
-                    refetch();
-                  } catch {
-                    toast.error('Failed to categorize contracts');
-                  } finally {
-                    setIsBulkCategorizing(false);
-                  }
-                }}
-                disabled={isBulkCategorizing}
-                className="bg-amber-500 hover:bg-amber-600 text-white h-7 text-xs gap-1.5"
-              >
-                {isBulkCategorizing ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5" />
-                )}
-                Categorize
-              </Button>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Orphan Contracts Banner - AI-powered parent suggestions */}
-        <OrphanContractsBanner 
-          maxItems={3}
-          onRefresh={refetch}
-          className="mb-4"
-        />
-
-        {/* Processing Contracts Live Tracker */}
-        <AnimatePresence>
-          <ProcessingContractTracker 
-            contracts={contracts} 
-            onContractComplete={(id) => {
-              toast.success('Contract processing completed!', {
-                icon: <CheckCircle className="h-4 w-4 text-emerald-500" />,
-              });
-              refetch();
-            }}
-          />
-        </AnimatePresence>
 
         {/* Selection Count & Quick Pagination Bar */}
         {(selectedContracts.size > 0 || totalPages > 1) && (
@@ -3279,7 +3046,7 @@ export default function ContractsPage() {
                 </div>
               </Card>
             </motion.div>
-          ) : viewMode === 'cards' ? (
+          ) : (
             /* ============ ENHANCED CARD VIEW ============ */
             <motion.div 
               key="card-list"
@@ -3334,88 +3101,6 @@ export default function ContractsPage() {
                 </motion.div>
               );
               })}
-            </motion.div>
-          ) : viewMode === 'timeline' ? (
-            /* ============ TIMELINE VIEW ============ */
-            <motion.div
-              key="timeline-view"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <LazyContractTimeline
-                contracts={paginatedContracts.map(contract => ({
-                  id: contract.id,
-                  title: contract.title || 'Untitled Contract',
-                  startDate: contract.effectiveDate ? new Date(contract.effectiveDate) : new Date(contract.createdAt || Date.now()),
-                  endDate: contract.expirationDate ? new Date(contract.expirationDate) : new Date(new Date().setFullYear(new Date().getFullYear() + 1)),
-                  status: (contract.status || 'draft') as 'draft' | 'active' | 'pending' | 'expired' | 'expiring',
-                  supplierName: contract.parties?.supplier || 'Unknown Party',
-                  value: contract.value ?? undefined,
-                  events: contract.expirationDate ? [
-                    {
-                      id: `${contract.id}-renewal`,
-                      contractId: contract.id,
-                      contractTitle: contract.title || 'Untitled Contract',
-                      date: new Date(new Date(contract.expirationDate).setMonth(new Date(contract.expirationDate).getMonth() - 1)),
-                      type: 'renewal' as const,
-                      description: 'Renewal Decision',
-                      status: 'upcoming' as const,
-                    }
-                  ] : [],
-                }))}
-                onContractClick={(contractId) => pushToContract(contractId)}
-              />
-            </motion.div>
-          ) : (
-            /* ============ KANBAN VIEW ============ */
-            <motion.div
-              key="kanban-view"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <LazyContractKanban
-                contracts={paginatedContracts.map(contract => ({
-                  id: contract.id,
-                  title: contract.title || 'Untitled Contract',
-                  supplierName: contract.parties?.supplier || 'Unknown Party',
-                  totalValue: contract.value ?? undefined,
-                  currency: 'USD',
-                  status: (contract.status || 'draft') as 'draft' | 'pending_review' | 'in_negotiation' | 'pending_approval' | 'active' | 'expiring' | 'expired' | 'archived',
-                  expirationDate: contract.expirationDate ? new Date(contract.expirationDate) : undefined,
-                  priority: 'medium' as const,
-                  tags: [contract.parties?.supplier || 'Contract'].slice(0, 2),
-                }))}
-                onContractClick={(contractId) => pushToContract(contractId)}
-                onStatusChange={async (contractId, newStatus) => {
-                  try {
-                    const response = await fetch('/api/contracts/bulk', {
-                      method: 'POST',
-                      headers: {
-                        'Content-Type': 'application/json',
-                        'x-tenant-id': 'demo',
-                      },
-                      body: JSON.stringify({
-                        operation: 'status',
-                        contractIds: [contractId],
-                        newStatus: newStatus.toUpperCase(),
-                      }),
-                    });
-                    
-                    if (!response.ok) {
-                      throw new Error('Failed to update status');
-                    }
-                    
-                    toast.success(`Contract moved to ${newStatus.replace(/_/g, ' ')}`);
-                    
-                    // Refresh contracts list
-                    refetch();
-                  } catch {
-                    toast.error('Failed to update contract status');
-                  }
-                }}
-              />
             </motion.div>
           )}
         </AnimatePresence>
@@ -3667,159 +3352,6 @@ export default function ContractsPage() {
         }))}
       />
 
-      {/* Enhanced Bulk Actions Bar (floating) */}
-      <EnhancedBulkActionsBar
-        selectedCount={selectedContracts.size}
-        totalCount={filteredContracts.length}
-        selectedContracts={enhancedContracts.filter(c => selectedContracts.has(c.id))}
-        onSelectAll={() => {
-          const allIds = new Set(filteredContracts.map(c => c.id));
-          setSelectedContracts(allIds);
-        }}
-        onDeselectAll={() => setSelectedContracts(new Set())}
-        onClearSelection={() => setSelectedContracts(new Set())}
-        onAction={async (action, params) => {
-          const actionId = typeof action === 'string' ? action : action.id;
-          switch (actionId) {
-            case 'export':
-            case 'export-pdf':
-            case 'export-csv':
-            case 'export-json':
-              handleBulkActionWithConfirmation('export');
-              break;
-            case 'analyze':
-            case 'ai-analyze':
-            case 'ai-summarize':
-              handleBulkActionWithConfirmation('analyze');
-              break;
-            case 'ai_report':
-            case 'ai-report':
-              setAiReportModalOpen(true);
-              break;
-            case 'categorize':
-              await handleBulkCategorize();
-              break;
-            case 'share':
-              handleBulkActionWithConfirmation('share');
-              break;
-            case 'delete':
-              // Delete is confirmed in EnhancedBulkActionsBar, so execute directly
-              await handleConfirmBulkDelete();
-              break;
-            case 'archive':
-              handleBulkActionWithConfirmation('export'); // Treat as export confirmation first
-              toast.success('Contracts archived');
-              break;
-            case 'tag':
-              // Open tag management dialog
-              toast.info('Opening tag management for selected contracts');
-              router.push(`/settings/tags?contracts=${Array.from(selectedContracts).join(',')}`);
-              break;
-            case 'compare':
-              if (selectedContracts.size === 2) {
-                const ids = Array.from(selectedContracts);
-                router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
-              } else {
-                toast.warning('Please select exactly 2 contracts to compare');
-              }
-              break;
-            case 'reclassify':
-              // Handled by EnhancedBulkActionsBar via its own dialog
-              if (params?.classification) {
-                const { classification, signatureUpdate } = params as { classification: string; signatureUpdate?: string };
-                try {
-                  const response = await fetch('/api/contracts/bulk', {
-                    method: 'POST',
-                    headers: {
-                      'Content-Type': 'application/json',
-                      'x-data-mode': dataMode,
-                      'x-tenant-id': tenantId || '',
-                      'x-user-id': userId || 'system',
-                    },
-                    body: JSON.stringify({
-                      operation: 'reclassify',
-                      contractIds: Array.from(selectedContracts),
-                      classification,
-                      signatureUpdate,
-                    }),
-                  });
-                  const result = await response.json();
-                  if (result.success) {
-                    toast.success(result.message);
-                    router.refresh();
-                  } else {
-                    toast.error(result.error || 'Failed to reclassify documents');
-                  }
-                } catch (error) {
-                  toast.error('Failed to reclassify documents');
-                  console.error('Reclassify error:', error);
-                }
-              }
-              break;
-            case 'mark-signed':
-            case 'mark_signed':
-              try {
-                const signedResponse = await fetch('/api/contracts/bulk', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-data-mode': dataMode,
-                    'x-tenant-id': tenantId || '',
-                    'x-user-id': userId || 'system',
-                  },
-                  body: JSON.stringify({
-                    operation: 'mark-signed',
-                    contractIds: Array.from(selectedContracts),
-                  }),
-                });
-                const signedResult = await signedResponse.json();
-                if (signedResult.success) {
-                  toast.success(signedResult.message);
-                  router.refresh();
-                } else {
-                  toast.error(signedResult.error || 'Failed to mark as signed');
-                }
-              } catch (error) {
-                toast.error('Failed to mark as signed');
-                console.error('Mark signed error:', error);
-              }
-              break;
-            case 'mark-unsigned':
-            case 'mark_unsigned':
-              try {
-                const unsignedResponse = await fetch('/api/contracts/bulk', {
-                  method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'x-data-mode': dataMode,
-                    'x-tenant-id': tenantId || '',
-                    'x-user-id': userId || 'system',
-                  },
-                  body: JSON.stringify({
-                    operation: 'mark-unsigned',
-                    contractIds: Array.from(selectedContracts),
-                  }),
-                });
-                const unsignedResult = await unsignedResponse.json();
-                if (unsignedResult.success) {
-                  toast.success(unsignedResult.message);
-                  router.refresh();
-                } else {
-                  toast.error(unsignedResult.error || 'Failed to mark as unsigned');
-                }
-              } catch (error) {
-                toast.error('Failed to mark as unsigned');
-                console.error('Mark unsigned error:', error);
-              }
-              break;
-            default:
-              toast.warning(`Action "${actionId}" is not available for the current selection`);
-              break;
-          }
-        }}
-        isProcessing={isProcessingBulk}
-      />
-
       {/* Mobile Filters Sheet */}
       <MobileFiltersSheet
         isOpen={showMobileFilters}
@@ -3844,22 +3376,6 @@ export default function ContractsPage() {
 
       {/* Scroll to Top Button */}
       <ScrollToTopButton threshold={600} />
-      
-      {/* Contract Compare Widget - Floating */}
-      <ContractCompareWidget
-        contracts={contracts.map(c => ({
-          id: c.id,
-          name: c.title || c.filename || 'Untitled',
-          supplier: c.parties?.supplier,
-          type: c.type,
-          status: c.status,
-          value: c.value,
-        }))}
-        onCompare={(a, b) => {
-          router.push(`/contracts/compare?a=${a}&b=${b}`);
-        }}
-        showKeyboardHint={true}
-      />
     </div>
     </TooltipProvider>
   );

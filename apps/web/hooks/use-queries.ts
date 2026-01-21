@@ -171,6 +171,13 @@ export const queryKeys = {
     presets: () => [...queryKeys.taxonomy.all, 'presets'] as const,
     detail: (id: string) => [...queryKeys.taxonomy.all, 'detail', id] as const,
   },
+  
+  // Stats / Dashboard
+  stats: {
+    all: ['stats'] as const,
+    contracts: () => [...queryKeys.stats.all, 'contracts'] as const,
+    dashboard: () => [...queryKeys.stats.all, 'dashboard'] as const,
+  },
 };
 
 // =====================

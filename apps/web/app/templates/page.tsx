@@ -844,20 +844,17 @@ export default function TemplatesPage() {
     setShowDependenciesModal(true)
     
     try {
-      // Simulated dependencies - in real app, fetch from API
-      // const response = await fetch(`/api/templates/${template.id}/dependencies`)
-      // const data = await response.json()
+      // Fetch actual dependencies from API
+      const response = await fetch(`/api/templates/${template.id}/dependencies`)
       
-      // Mock data for demonstration
-      const mockDependencies = [
-        { contractId: 'c1', contractName: 'Acme Corp Service Agreement', status: 'active', createdAt: '2025-12-15' },
-        { contractId: 'c2', contractName: 'TechStart NDA', status: 'pending', createdAt: '2025-12-20' },
-        { contractId: 'c3', contractName: 'GlobalFin Master Agreement', status: 'active', createdAt: '2026-01-05' },
-      ]
-      
-      // Filter based on usage count
-      const count = template.usageCount || 0
-      setTemplateDependencies(mockDependencies.slice(0, Math.min(count, 3)))
+      if (response.ok) {
+        const data = await response.json()
+        setTemplateDependencies(data.dependencies || [])
+      } else {
+        // If API not available, show empty state with helpful message
+        console.warn('Template dependencies API not available')
+        setTemplateDependencies([])
+      }
     } catch {
       toast.error('Failed to load template dependencies')
       setTemplateDependencies([])
@@ -871,37 +868,37 @@ export default function TemplatesPage() {
     setAuditTrailTemplate(template)
     setShowAuditTrail(true)
     
-    // Mock audit data - in real app, fetch from API
-    const mockAudit = [
-      { 
-        id: '1', 
-        action: 'created', 
-        user: template.createdBy || 'System',
-        timestamp: new Date(template.createdAt),
-      },
-      { 
-        id: '2', 
-        action: 'modified', 
-        user: 'Jane Smith',
-        timestamp: new Date(new Date(template.createdAt).getTime() + 86400000 * 2),
-        changes: { description: { old: 'Initial version', new: template.description } },
-      },
-      { 
-        id: '3', 
-        action: 'status changed', 
-        user: 'Admin',
-        timestamp: new Date(new Date(template.createdAt).getTime() + 86400000 * 5),
-        changes: { status: { old: 'draft', new: template.status } },
-      },
-      { 
-        id: '4', 
-        action: 'exported', 
-        user: 'Current User',
-        timestamp: new Date(),
-      },
-    ]
-    
-    setAuditEntries(mockAudit)
+    try {
+      // Fetch audit trail from API
+      const response = await fetch(`/api/templates/${template.id}/audit`)
+      
+      if (response.ok) {
+        const data = await response.json()
+        setAuditEntries(data.entries || [])
+      } else {
+        // If API not available, create minimal audit entry from template data
+        const minimalAudit = [
+          { 
+            id: '1', 
+            action: 'created', 
+            user: template.createdBy || 'System',
+            timestamp: new Date(template.createdAt),
+          },
+        ]
+        if (template.updatedAt && template.updatedAt !== template.createdAt) {
+          minimalAudit.push({
+            id: '2',
+            action: 'modified',
+            user: 'System',
+            timestamp: new Date(template.updatedAt),
+          })
+        }
+        setAuditEntries(minimalAudit)
+      }
+    } catch {
+      toast.error('Failed to load audit trail')
+      setAuditEntries([])
+    }
   }
 
   // ============= SMART TAGS =============
@@ -911,48 +908,49 @@ export default function TemplatesPage() {
     setShowTagSuggestions(true)
     
     try {
-      // In real app, this would call an AI service
-      // const response = await fetch('/api/ai/generate-tags', { method: 'POST', body: JSON.stringify({ content: template.content }) })
+      // Try AI-based tag generation first
+      const response = await fetch('/api/ai/generate-tags', { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          name: template.name,
+          description: template.description,
+          category: template.category,
+          content: template.content?.substring(0, 5000) // Limit content for API
+        }) 
+      })
       
-      // Smart tag generation based on template content
-      const keywords: string[] = []
-      const name = template.name.toLowerCase()
-      const desc = template.description.toLowerCase()
-      const category = template.category.toLowerCase()
-      
-      // Category-based tags
-      if (category.includes('technology') || name.includes('software') || desc.includes('software')) {
-        keywords.push('software', 'technology', 'digital')
+      if (response.ok) {
+        const data = await response.json()
+        const existingTags = template.tags || []
+        const uniqueTags = (data.tags || []).filter((t: string) => !existingTags.includes(t))
+        setSuggestedTags(uniqueTags.slice(0, 8))
+      } else {
+        // Fallback to local keyword extraction if AI not available
+        const keywords: string[] = []
+        const name = template.name.toLowerCase()
+        const desc = template.description.toLowerCase()
+        const category = template.category.toLowerCase()
+        
+        // Extract keywords from category, name, and description
+        const words = `${category} ${name} ${desc}`.split(/\W+/).filter(w => w.length > 3)
+        const wordFreq = new Map<string, number>()
+        words.forEach(w => wordFreq.set(w, (wordFreq.get(w) || 0) + 1))
+        
+        // Get top keywords by frequency
+        const sortedWords = [...wordFreq.entries()]
+          .sort((a, b) => b[1] - a[1])
+          .slice(0, 10)
+          .map(([word]) => word)
+        
+        keywords.push(...sortedWords)
+        
+        // Remove duplicates and existing tags
+        const existingTags = template.tags || []
+        const uniqueTags = [...new Set(keywords)].filter(t => !existingTags.includes(t))
+        
+        setSuggestedTags(uniqueTags.slice(0, 8))
       }
-      if (category.includes('services') || name.includes('service') || desc.includes('service')) {
-        keywords.push('services', 'professional', 'consulting')
-      }
-      if (category.includes('legal') || name.includes('nda') || desc.includes('confidential')) {
-        keywords.push('legal', 'confidential', 'compliance')
-      }
-      if (category.includes('hr') || name.includes('employment') || desc.includes('employee')) {
-        keywords.push('hr', 'employment', 'personnel')
-      }
-      if (category.includes('procurement') || name.includes('purchase') || desc.includes('vendor')) {
-        keywords.push('procurement', 'vendor', 'purchasing')
-      }
-      if (category.includes('finance') || name.includes('payment') || desc.includes('financial')) {
-        keywords.push('finance', 'payment', 'billing')
-      }
-      
-      // Content-based tags
-      if (desc.includes('agreement')) keywords.push('agreement')
-      if (desc.includes('contract')) keywords.push('contract')
-      if (desc.includes('terms')) keywords.push('terms')
-      if (desc.includes('renewal')) keywords.push('renewable')
-      if (desc.includes('master')) keywords.push('master-agreement')
-      if (desc.includes('sow') || desc.includes('statement of work')) keywords.push('sow')
-      
-      // Remove duplicates and existing tags
-      const existingTags = template.tags || []
-      const uniqueTags = [...new Set(keywords)].filter(t => !existingTags.includes(t))
-      
-      setSuggestedTags(uniqueTags.slice(0, 8))
     } catch {
       toast.error('Failed to generate tag suggestions')
       setSuggestedTags([])
@@ -963,8 +961,16 @@ export default function TemplatesPage() {
   
   const applySmartTags = async (templateId: string, tags: string[]) => {
     try {
-      // In real app, save to backend
-      // await fetch(`/api/templates/${templateId}`, { method: 'PATCH', body: JSON.stringify({ tags }) })
+      // Save tags to backend
+      const response = await fetch(`/api/templates/${templateId}`, { 
+        method: 'PATCH', 
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tags }) 
+      })
+      
+      if (!response.ok) {
+        throw new Error('Failed to save tags')
+      }
       
       toast.success(`Applied ${tags.length} tags to template`)
       addActivity('added tags', tagSuggestionTemplate?.name || 'template')
@@ -1127,135 +1133,13 @@ export default function TemplatesPage() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [bulkActionMode, clearSelection, selectAllTemplates, closePreviewSidebar, closeContextMenu, focusedTemplateIndex, templates, openPreviewSidebar])
 
-  // Fallback to mock data if API returns empty
+  // Use templates from API - no fallback to mock data in production
   const templates: ContractTemplate[] = useMemo(() => {
     if (templatesData?.templates && (templatesData.templates as ContractTemplate[]).length > 0) {
       return templatesData.templates as ContractTemplate[]
     }
-    // Mock data fallback
-    return [
-      {
-        id: '1',
-        name: 'Software License Agreement',
-        description: 'Standard SaaS software licensing agreement with usage terms',
-        category: 'Technology',
-        language: 'en-US',
-        variables: 12,
-        clauses: 18,
-        createdBy: 'Sarah Chen',
-        createdAt: '2024-01-15',
-        lastModified: '2024-12-20',
-        status: 'active',
-        usageCount: 45,
-        tags: ['SaaS', 'Software', 'Licensing'],
-        content: 'This Software License Agreement ("Agreement") is entered into...',
-      },
-      {
-        id: '2',
-        name: 'Master Services Agreement',
-        description: 'Comprehensive MSA template for professional services',
-        category: 'Services',
-        language: 'en-US',
-        variables: 15,
-        clauses: 25,
-        createdBy: 'Roberto Ostojic',
-        createdAt: '2024-02-10',
-        lastModified: '2024-12-18',
-        status: 'active',
-        usageCount: 78,
-        tags: ['MSA', 'Professional Services'],
-      },
-      {
-        id: '3',
-        name: 'Non-Disclosure Agreement',
-        description: 'Mutual NDA with customizable confidentiality terms',
-        category: 'Legal',
-        language: 'en-US',
-        variables: 8,
-        clauses: 12,
-        createdBy: 'Mike Johnson',
-        createdAt: '2024-03-05',
-        lastModified: '2024-11-30',
-        status: 'active',
-        usageCount: 120,
-        tags: ['NDA', 'Confidentiality'],
-      },
-      {
-        id: '4',
-        name: 'Employment Agreement',
-        description: 'Standard employment contract with benefits and termination clauses',
-        category: 'HR',
-        language: 'en-US',
-        variables: 20,
-        clauses: 30,
-        createdBy: 'Sarah Chen',
-        createdAt: '2024-04-12',
-        lastModified: '2024-12-10',
-        status: 'active',
-        usageCount: 65,
-        tags: ['Employment', 'HR'],
-      },
-      {
-        id: '5',
-        name: 'Vendor Agreement',
-        description: 'Procurement contract for goods and services',
-        category: 'Procurement',
-        language: 'en-US',
-        variables: 18,
-        clauses: 22,
-        createdBy: 'Alex Brown',
-        createdAt: '2024-05-20',
-        lastModified: '2024-12-05',
-        status: 'active',
-        usageCount: 32,
-        tags: ['Vendor', 'Procurement'],
-      },
-      {
-        id: '6',
-        name: 'Consulting Agreement (Draft)',
-        description: 'Independent contractor consulting agreement',
-        category: 'Services',
-        language: 'en-US',
-        variables: 10,
-        clauses: 15,
-        createdBy: 'Jane Smith',
-        createdAt: '2024-12-01',
-        lastModified: '2024-12-15',
-        status: 'draft',
-        usageCount: 0,
-        tags: ['Consulting', 'Contractor'],
-      },
-      {
-        id: '7',
-        name: 'Standard Renewal Agreement',
-        description: 'Template for renewing existing contracts with updated terms and dates',
-        category: 'Renewal',
-        language: 'en-US',
-        variables: 14,
-        clauses: 12,
-        createdBy: 'Sarah Chen',
-        createdAt: '2024-06-15',
-        lastModified: '2025-01-10',
-        status: 'active',
-        usageCount: 28,
-        tags: ['Renewal', 'Amendment'],
-      },
-      {
-        id: '8',
-        name: 'MSA Renewal Amendment',
-        description: 'Amendment template for extending Master Services Agreements',
-        category: 'Renewal',
-        language: 'en-US',
-        variables: 8,
-        clauses: 6,
-        createdBy: 'Mike Johnson',
-        createdAt: '2024-09-20',
-        lastModified: '2025-01-05',
-        status: 'active',
-        usageCount: 42,
-        tags: ['MSA', 'Amendment', 'Renewal'],
-      },
-    ]
+    // Return empty array if no templates - let UI show empty state
+    return []
   }, [templatesData])
 
   // Get unique categories and statuses
@@ -1380,12 +1264,9 @@ export default function TemplatesPage() {
   }, [templates])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/10 to-pink-50/20 p-6 relative">
-      {/* Decorative background elements */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-purple-200/20 rounded-full blur-3xl" />
-        <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-slate-50 p-6 relative">
+      {/* Background */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none" />
       
       {/* Loading progress bar */}
       <AnimatePresence>
@@ -1396,9 +1277,9 @@ export default function TemplatesPage() {
             exit={{ opacity: 0 }}
             className="fixed top-0 left-0 right-0 z-50"
           >
-            <div className="h-1.5 bg-gray-100 overflow-hidden">
+            <div className="h-1 bg-slate-100 overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500 rounded-full"
+                className="h-full bg-blue-600 rounded-full"
                 initial={{ width: '0%', x: '-100%' }}
                 animate={{ width: '30%', x: '400%' }}
                 transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
@@ -1419,14 +1300,11 @@ export default function TemplatesPage() {
         >
           <div>
             <div className="flex items-center gap-4 mb-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl blur-lg opacity-50" />
-                <div className="relative p-4 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-xl shadow-purple-500/30">
-                  <FileText className="h-8 w-8 text-white" />
-                </div>
+              <div className="p-3 bg-blue-600 rounded-xl">
+                <FileText className="h-7 w-7 text-white" />
               </div>
               <div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 via-purple-900 to-pink-900 bg-clip-text text-transparent">
+                <h1 className="text-3xl font-bold text-slate-900">
                   Contract Templates
                 </h1>
                 <p className="text-gray-500 text-base mt-1">
@@ -1490,8 +1368,8 @@ export default function TemplatesPage() {
               >
                 {recentActivity.length > 0 ? (
                   <>
-                    <BellDot className="h-5 w-5 text-purple-600" />
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 text-white text-[10px] font-bold flex items-center justify-center shadow-sm">
+                    <BellDot className="h-5 w-5 text-blue-600" />
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
                       {recentActivity.length > 9 ? '9+' : recentActivity.length}
                     </span>
                   </>
@@ -1516,14 +1394,14 @@ export default function TemplatesPage() {
             <Button 
               variant="outline"
               onClick={() => setShowAISuggestions(true)}
-              className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200 text-purple-700 hover:from-purple-100 hover:to-pink-100 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-md"
+              className="border-slate-200 hover:bg-slate-50 rounded-lg"
             >
               <Wand2 className="h-5 w-5 mr-2" />
               AI Suggest
             </Button>
             
             <Link href="/templates/new">
-              <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-xl shadow-purple-500/30 hover:shadow-2xl hover:shadow-purple-500/40 rounded-xl px-6 transition-all duration-300 hover:scale-105 hover:-translate-y-0.5">
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5">
                 <Plus className="h-5 w-5 mr-2" />
                 Create Template
               </Button>
@@ -1581,15 +1459,14 @@ export default function TemplatesPage() {
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer">
-            <Card className="bg-gradient-to-br from-purple-50 to-violet-100/70 border-purple-200/50 shadow-lg shadow-purple-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-white border-slate-200 shadow-sm hover:shadow-md transition-all rounded-lg overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-purple-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-md">
-                  <Clock className="h-5 w-5 text-white" />
+                <div className="p-2 bg-slate-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-slate-600" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-700">{templateStats.pending}</p>
-                  <p className="text-xs font-medium text-purple-600/80">Pending</p>
+                  <p className="text-2xl font-bold text-slate-700">{templateStats.pending}</p>
+                  <p className="text-xs font-medium text-slate-500">Pending</p>
                 </div>
               </CardContent>
             </Card>
@@ -2271,55 +2148,45 @@ export default function TemplatesPage() {
           </div>
         ) : filteredAndSortedTemplates.length === 0 ? (
           // Enhanced Empty State with Illustration
-          <Card className="shadow-2xl border-0 bg-gradient-to-br from-white via-purple-50/20 to-pink-50/30 backdrop-blur-sm overflow-hidden">
-            <CardContent className="p-16 text-center relative">
-              {/* Decorative background elements */}
-              <div className="absolute top-0 left-0 w-72 h-72 bg-purple-200/30 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-              <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px]">
-                <div className="absolute inset-0 border border-purple-200/30 rounded-full animate-[spin_60s_linear_infinite]" />
-                <div className="absolute inset-4 border border-purple-200/20 rounded-full animate-[spin_45s_linear_infinite_reverse]" />
-                <div className="absolute inset-8 border border-purple-200/10 rounded-full animate-[spin_30s_linear_infinite]" />
-              </div>
-              
+          <Card className="shadow-sm border-slate-200 bg-white overflow-hidden">
+            <CardContent className="p-12 text-center relative">
               {/* Illustration */}
-              <div className="relative inline-block mb-8">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-300 to-pink-300 rounded-3xl blur-2xl opacity-40 scale-110" />
-                <div className="relative p-8 bg-gradient-to-br from-white to-purple-50 rounded-3xl shadow-xl border border-purple-100/50">
+              <div className="relative inline-block mb-6">
+                <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200">
                   <div className="relative">
                     {/* Stack of papers illustration */}
-                    <div className="absolute -top-2 -left-2 w-24 h-32 bg-gradient-to-br from-gray-100 to-gray-50 rounded-lg border border-gray-200 shadow-sm transform -rotate-6" />
-                    <div className="absolute -top-1 -left-1 w-24 h-32 bg-gradient-to-br from-purple-50 to-white rounded-lg border border-purple-200 shadow-sm transform -rotate-3" />
-                    <div className="relative w-24 h-32 bg-gradient-to-br from-white to-purple-50 rounded-lg border border-purple-200 shadow-lg flex flex-col items-center justify-center">
-                      <FileText className="h-10 w-10 text-purple-400 mb-2" />
+                    <div className="absolute -top-2 -left-2 w-20 h-28 bg-white rounded-lg border border-slate-200 shadow-sm transform -rotate-6" />
+                    <div className="absolute -top-1 -left-1 w-20 h-28 bg-white rounded-lg border border-slate-200 shadow-sm transform -rotate-3" />
+                    <div className="relative w-20 h-28 bg-white rounded-lg border border-slate-200 shadow-sm flex flex-col items-center justify-center">
+                      <FileText className="h-8 w-8 text-slate-400 mb-2" />
                       <div className="space-y-1">
-                        <div className="h-1 w-12 bg-purple-200 rounded" />
-                        <div className="h-1 w-10 bg-purple-100 rounded" />
-                        <div className="h-1 w-14 bg-purple-100 rounded" />
+                        <div className="h-1 w-10 bg-slate-200 rounded" />
+                        <div className="h-1 w-8 bg-slate-100 rounded" />
+                        <div className="h-1 w-12 bg-slate-100 rounded" />
                       </div>
                     </div>
                     {/* Floating plus icon */}
-                    <div className="absolute -bottom-3 -right-3 p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-lg">
-                      <Plus className="h-5 w-5 text-white" />
+                    <div className="absolute -bottom-2 -right-2 p-1.5 bg-blue-600 rounded-full shadow">
+                      <Plus className="h-4 w-4 text-white" />
                     </div>
                   </div>
                 </div>
               </div>
               
-              <h3 className="relative text-3xl font-bold bg-gradient-to-r from-gray-800 via-purple-700 to-pink-700 bg-clip-text text-transparent mb-3">
+              <h3 className="relative text-2xl font-semibold text-slate-900 mb-2">
                 {searchQuery || categoryFilter !== 'all' || statusFilter !== 'all' || showFavoritesOnly
                   ? "No matching templates"
                   : "Start your template library"
                 }
               </h3>
-              <p className="relative text-gray-500 mb-8 max-w-lg mx-auto text-lg leading-relaxed">
+              <p className="relative text-slate-500 mb-6 max-w-md mx-auto">
                 {searchQuery || categoryFilter !== 'all' || statusFilter !== 'all' || showFavoritesOnly
                   ? "Try adjusting your search or filters to find what you're looking for."
-                  : "Templates help you create contracts faster. Build reusable templates with dynamic fields, clauses, and AI-powered suggestions."
+                  : "Templates help you create contracts faster. Build reusable templates with dynamic fields and clauses."
                 }
               </p>
               
-              <div className="relative flex gap-4 justify-center flex-wrap">
+              <div className="relative flex gap-3 justify-center flex-wrap">
                 {(searchQuery || categoryFilter !== 'all' || statusFilter !== 'all' || showFavoritesOnly) ? (
                   <Button 
                     variant="outline" 
@@ -2329,25 +2196,25 @@ export default function TemplatesPage() {
                       setSearchQuery(''); 
                       setShowFavoritesOnly(false);
                     }}
-                    className="gap-2 px-6 py-5 text-base rounded-xl border-2 hover:border-purple-300 hover:bg-purple-50 transition-all duration-300"
+                    className="gap-2"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                     Clear all filters
                   </Button>
                 ) : (
                   <>
                     <Link href="/templates/new">
-                      <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white gap-2 px-8 py-6 text-lg rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-xl hover:shadow-purple-500/30 transition-all duration-300 hover:-translate-y-0.5">
-                        <Plus className="h-5 w-5" />
+                      <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                        <Plus className="h-4 w-4" />
                         Create Template
                       </Button>
                     </Link>
-                    <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2 px-6 py-6 text-lg rounded-xl border-2 hover:border-purple-300 hover:bg-purple-50 transition-all duration-300">
-                      <Upload className="h-5 w-5" />
+                    <Button variant="outline" onClick={() => setShowImportModal(true)} className="gap-2">
+                      <Upload className="h-4 w-4" />
                       Import
                     </Button>
-                    <Button variant="outline" onClick={() => setShowAISuggestions(true)} className="gap-2 px-6 py-6 text-lg rounded-xl border-2 hover:border-pink-300 hover:bg-pink-50 transition-all duration-300">
-                      <Wand2 className="h-5 w-5" />
+                    <Button variant="outline" onClick={() => setShowAISuggestions(true)} className="gap-2">
+                      <Wand2 className="h-4 w-4" />
                       AI Generate
                     </Button>
                   </>
@@ -2355,22 +2222,20 @@ export default function TemplatesPage() {
               </div>
               
               {!searchQuery && categoryFilter === 'all' && !showFavoritesOnly && (
-                <div className="relative mt-12 pt-10 border-t border-purple-100">
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 bg-white">
-                    <span className="text-sm text-gray-400">or</span>
-                  </div>
-                  <p className="text-sm text-gray-500 mb-5 font-medium">Quick start with popular templates:</p>
-                  <div className="flex gap-3 justify-center flex-wrap">
+                <div className="relative mt-8 pt-6 border-t border-slate-100">
+                  <p className="text-sm text-slate-500 mb-4">Quick start with popular templates:</p>
+                  <div className="flex gap-2 justify-center flex-wrap">
                     {[
-                      { type: 'NDA', icon: '🔒', color: 'from-blue-500 to-cyan-500' },
-                      { type: 'MSA', icon: '📋', color: 'from-purple-500 to-indigo-500' },
-                      { type: 'Employment', icon: '👔', color: 'from-green-500 to-emerald-500' },
-                      { type: 'SaaS Agreement', icon: '☁️', color: 'from-pink-500 to-rose-500' }
-                    ].map(({ type, icon, color }) => (
+                      { type: 'NDA', icon: '🔒' },
+                      { type: 'MSA', icon: '📋' },
+                      { type: 'Employment', icon: '👔' },
+                      { type: 'SaaS Agreement', icon: '☁️' }
+                    ].map(({ type, icon }) => (
                       <Button 
                         key={type}
                         variant="outline" 
-                        className="gap-2 px-5 py-3 rounded-xl border-2 hover:scale-105 transition-all duration-300 group"
+                        size="sm"
+                        className="gap-1.5"
                         onClick={() => {
                           setAISuggestionQuery(type)
                           setShowAISuggestions(true)

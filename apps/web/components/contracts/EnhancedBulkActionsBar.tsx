@@ -838,7 +838,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                 <TooltipTrigger asChild>
                   <Button
                     size="sm"
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 h-8 px-2 sm:px-3"
+                    className="bg-blue-600 hover:bg-blue-700 h-8 px-2 sm:px-3"
                     onClick={() => handleAction("ai_report")}
                     disabled={processing !== null}
                   >

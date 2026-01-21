@@ -24,9 +24,7 @@ import {
   Sparkles,
   Save,
   X,
-  GripVertical,
   Search,
-  FileText,
   AlertCircle,
   CheckCircle,
   Loader2,
@@ -678,6 +676,145 @@ function DeleteConfirmModal({
 }
 
 // ============================================================================
+// SAVE PRESET MODAL
+// ============================================================================
+
+function SavePresetModal({
+  isOpen,
+  onClose,
+  onSave,
+  isLoading,
+  categoryCount,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (name: string, description: string, isShared: boolean) => Promise<void>;
+  isLoading: boolean;
+  categoryCount: number;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [isShared, setIsShared] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+    await onSave(name.trim(), description.trim(), isShared);
+    setName("");
+    setDescription("");
+    setIsShared(false);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="w-full max-w-md bg-white rounded-xl shadow-xl border border-slate-200"
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="px-6 py-4 border-b border-slate-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Save className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-lg text-slate-900">Save as Preset</h3>
+                  <p className="text-sm text-slate-500">
+                    Save your {categoryCount} categories as a reusable preset
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Preset Name *
+              </label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., My Company Categories"
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+                         text-slate-900"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Description (optional)
+              </label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe what this preset is for..."
+                rows={2}
+                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
+                         focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+                         resize-none text-slate-900"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              <input
+                type="checkbox"
+                id="isShared"
+                checked={isShared}
+                onChange={(e) => setIsShared(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-300 text-blue-600 
+                         focus:ring-blue-500/50"
+              />
+              <label htmlFor="isShared" className="text-sm text-slate-700">
+                <span className="font-medium">Share with other tenants</span>
+                <p className="text-xs text-slate-500">
+                  Other tenants can use this preset but cannot modify it
+                </p>
+              </label>
+            </div>
+          </div>
+
+          <div className="px-6 py-4 border-t border-slate-200 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim() || isLoading}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+                       transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                       flex items-center gap-2"
+            >
+              {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+              Save Preset
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+// ============================================================================
 // MAIN COMPONENT
 // ============================================================================
 
@@ -695,14 +832,26 @@ export default function TaxonomyPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showPresetsModal, setShowPresetsModal] = useState(false);
+  const [showSavePresetModal, setShowSavePresetModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState<TaxonomyCategory | null>(null);
   const [parentCategory, setParentCategory] = useState<TaxonomyCategory | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApplyingPreset, setIsApplyingPreset] = useState(false);
+  const [isSavingPreset, setIsSavingPreset] = useState(false);
   const [notification, setNotification] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Custom presets data
+  const [customPresets, setCustomPresets] = useState<Array<{
+    id: string;
+    name: string;
+    description?: string;
+    categoryCount: number;
+    isShared: boolean;
+    isOwn: boolean;
+  }>>([]);
 
   // Preset data
   const [presets, setPresets] = useState<Array<{
@@ -711,6 +860,21 @@ export default function TaxonomyPage() {
     description: string;
     categoryCount: number;
   }>>([]);
+
+  // Fetch custom presets
+  const fetchCustomPresets = useCallback(async () => {
+    try {
+      const response = await fetch("/api/taxonomy/custom-presets", {
+        headers: { "x-tenant-id": "demo" },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setCustomPresets(data.data || []);
+      }
+    } catch {
+      // Error handled silently
+    }
+  }, []);
 
   // Fetch presets
   const fetchPresets = useCallback(async () => {
@@ -755,6 +919,81 @@ export default function TaxonomyPage() {
     }
   };
 
+  // Save current taxonomy as custom preset
+  const saveAsPreset = async (name: string, description: string, isShared: boolean) => {
+    try {
+      setIsSavingPreset(true);
+      const response = await fetch("/api/taxonomy/custom-presets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-tenant-id": "demo",
+        },
+        body: JSON.stringify({ name, description, isShared }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to save preset");
+      }
+
+      const data = await response.json();
+      showNotification("success", data.message || "Preset saved successfully");
+      setShowSavePresetModal(false);
+      await fetchCustomPresets();
+    } catch (err) {
+      showNotification("error", err instanceof Error ? err.message : "Failed to save preset");
+    } finally {
+      setIsSavingPreset(false);
+    }
+  };
+
+  // Apply custom preset
+  const applyCustomPreset = async (presetId: string, clearExisting: boolean = false) => {
+    try {
+      setIsApplyingPreset(true);
+      const response = await fetch("/api/taxonomy/custom-presets", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-tenant-id": "demo",
+        },
+        body: JSON.stringify({ presetId, clearExisting }),
+      });
+
+      if (!response.ok) throw new Error("Failed to apply preset");
+
+      const data = await response.json();
+      showNotification("success", data.message || "Preset applied successfully");
+      setShowPresetsModal(false);
+      await fetchCategories();
+      
+      crossModule.onTaxonomyChange();
+      notifyTaxonomyChange('preset_applied', { presetId });
+    } catch (err) {
+      showNotification("error", err instanceof Error ? err.message : "Failed to apply preset");
+    } finally {
+      setIsApplyingPreset(false);
+    }
+  };
+
+  // Delete custom preset
+  const deleteCustomPreset = async (presetId: string) => {
+    try {
+      const response = await fetch(`/api/taxonomy/custom-presets?id=${presetId}`, {
+        method: "DELETE",
+        headers: { "x-tenant-id": "demo" },
+      });
+
+      if (!response.ok) throw new Error("Failed to delete preset");
+
+      showNotification("success", "Preset deleted");
+      await fetchCustomPresets();
+    } catch (err) {
+      showNotification("error", err instanceof Error ? err.message : "Failed to delete preset");
+    }
+  };
+
   // Fetch categories
   const fetchCategories = useCallback(async () => {
     try {
@@ -778,7 +1017,8 @@ export default function TaxonomyPage() {
   useEffect(() => {
     fetchCategories();
     fetchPresets();
-  }, [fetchCategories, fetchPresets]);
+    fetchCustomPresets();
+  }, [fetchCategories, fetchPresets, fetchCustomPresets]);
 
   // Show notification
   const showNotification = (type: "success" | "error", message: string) => {
@@ -970,13 +1210,54 @@ export default function TaxonomyPage() {
                 Analytics
               </Link>
               
+              {/* Export Dropdown */}
+              {categories.length > 0 && (
+                <div className="relative group">
+                  <button
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200
+                             rounded-lg transition-colors text-sm text-slate-700"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export
+                  </button>
+                  <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border 
+                               border-slate-200 opacity-0 invisible group-hover:opacity-100 
+                               group-hover:visible transition-all z-50">
+                    <a
+                      href="/api/taxonomy/export?format=json"
+                      download
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
+                               hover:bg-slate-50 rounded-t-lg"
+                    >
+                      Export as JSON
+                    </a>
+                    <a
+                      href="/api/taxonomy/export?format=csv"
+                      download
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
+                               hover:bg-slate-50"
+                    >
+                      Export as CSV
+                    </a>
+                    <button
+                      onClick={() => setShowSavePresetModal(true)}
+                      className="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 
+                               hover:bg-slate-50 rounded-b-lg w-full text-left border-t border-slate-100"
+                    >
+                      <Save className="w-4 h-4" />
+                      Save as Preset
+                    </button>
+                  </div>
+                </div>
+              )}
+              
               <button
                 onClick={() => setShowPresetsModal(true)}
                 className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200
                          rounded-lg transition-colors text-sm text-slate-700"
               >
-                <Download className="w-4 h-4" />
-                Import Preset
+                <Sparkles className="w-4 h-4" />
+                Load Preset
               </button>
               
               <button
@@ -1258,7 +1539,7 @@ export default function TaxonomyPage() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               className="w-full max-w-2xl bg-white 
-                       rounded-xl shadow-xl border border-slate-200 overflow-hidden"
+                       rounded-xl shadow-xl border border-slate-200 overflow-hidden max-h-[80vh] flex flex-col"
             >
               <div className="px-6 py-4 border-b border-slate-200">
                 <div className="flex items-center justify-between">
@@ -1269,7 +1550,7 @@ export default function TaxonomyPage() {
                     <div>
                       <h3 className="font-semibold text-lg text-slate-900">Choose a Template</h3>
                       <p className="text-sm text-slate-500">
-                        Start with pre-configured categories for your industry
+                        Start with pre-configured categories or use a saved preset
                       </p>
                     </div>
                   </div>
@@ -1282,35 +1563,97 @@ export default function TaxonomyPage() {
                 </div>
               </div>
 
-              <div className="p-6 grid grid-cols-2 gap-4">
-                {presets.map((preset) => (
-                  <motion.button
-                    key={preset.id}
-                    whileHover={{ scale: 1.02 }}
-                    onClick={() => applyPreset(preset.id, true)}
-                    disabled={isApplyingPreset}
-                    className="p-5 bg-slate-50 hover:bg-slate-100 border border-slate-200
-                             hover:border-slate-300 rounded-xl text-left transition-all
-                             disabled:opacity-50 disabled:cursor-not-allowed group"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-lg text-slate-900">{preset.name}</h4>
-                      <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                        {preset.categoryCount} categories
-                      </span>
+              <div className="p-6 overflow-y-auto flex-1">
+                {/* Custom Presets Section */}
+                {customPresets.length > 0 && (
+                  <div className="mb-6">
+                    <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wider">
+                      Your Saved Presets
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      {customPresets.map((preset) => (
+                        <div
+                          key={preset.id}
+                          className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200
+                                   rounded-xl transition-all group relative"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <h5 className="font-semibold text-slate-900">{preset.name}</h5>
+                            <div className="flex items-center gap-1">
+                              {preset.isShared && (
+                                <span className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                  Shared
+                                </span>
+                              )}
+                              <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                                {preset.categoryCount}
+                              </span>
+                            </div>
+                          </div>
+                          {preset.description && (
+                            <p className="text-xs text-slate-600 mb-3">{preset.description}</p>
+                          )}
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => applyCustomPreset(preset.id, true)}
+                              disabled={isApplyingPreset}
+                              className="flex-1 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg
+                                       hover:bg-blue-700 transition-colors disabled:opacity-50"
+                            >
+                              {isApplyingPreset ? "Applying..." : "Apply"}
+                            </button>
+                            {preset.isOwn && (
+                              <button
+                                onClick={() => deleteCustomPreset(preset.id)}
+                                className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Delete preset"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                    <p className="text-sm text-slate-600 mb-3">{preset.description}</p>
-                    <div className="flex items-center gap-2 text-sm text-blue-600 
-                                  opacity-0 group-hover:opacity-100 transition-opacity">
-                      {isApplyingPreset ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Plus className="w-4 h-4" />
-                      )}
-                      Apply Template
-                    </div>
-                  </motion.button>
-                ))}
+                  </div>
+                )}
+
+                {/* Built-in Presets Section */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wider">
+                    Industry Templates
+                  </h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    {presets.map((preset) => (
+                      <motion.button
+                        key={preset.id}
+                        whileHover={{ scale: 1.02 }}
+                        onClick={() => applyPreset(preset.id, true)}
+                        disabled={isApplyingPreset}
+                        className="p-5 bg-slate-50 hover:bg-slate-100 border border-slate-200
+                                 hover:border-slate-300 rounded-xl text-left transition-all
+                                 disabled:opacity-50 disabled:cursor-not-allowed group"
+                      >
+                        <div className="flex items-center justify-between mb-3">
+                          <h4 className="font-semibold text-lg text-slate-900">{preset.name}</h4>
+                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                            {preset.categoryCount} categories
+                          </span>
+                        </div>
+                        <p className="text-sm text-slate-600 mb-3">{preset.description}</p>
+                        <div className="flex items-center gap-2 text-sm text-blue-600 
+                                      opacity-0 group-hover:opacity-100 transition-opacity">
+                          {isApplyingPreset ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4" />
+                          )}
+                          Apply Template
+                        </div>
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
               </div>
 
               <div className="px-6 py-4 border-t border-slate-200 bg-slate-50">
@@ -1320,6 +1663,19 @@ export default function TaxonomyPage() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Save Preset Modal */}
+      <AnimatePresence>
+        {showSavePresetModal && (
+          <SavePresetModal
+            isOpen={showSavePresetModal}
+            onClose={() => setShowSavePresetModal(false)}
+            onSave={saveAsPreset}
+            isLoading={isSavingPreset}
+            categoryCount={totalCategories}
+          />
         )}
       </AnimatePresence>
 

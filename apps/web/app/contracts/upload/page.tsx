@@ -79,7 +79,7 @@ interface UploadFile {
 }
 
 const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
-  aiModel: 'gpt-4o-mini',
+  aiModel: 'azure-ch',
   processingMode: 'standard',
   concurrency: 2,
   enabledArtifacts: [
@@ -385,9 +385,9 @@ export default function UploadPage() {
             </Badge>
             <Badge className="bg-white/20 text-white border-white/30 px-4 py-2 text-sm font-medium backdrop-blur-sm">
               <Brain className="h-4 w-4 mr-2" />
-              {processingOptions.aiModel === 'gpt-4o' ? 'GPT-4o' : 
-               processingOptions.aiModel === 'gpt-4o-mini' ? 'GPT-4o Mini' :
-               processingOptions.aiModel === 'claude-3-5-haiku-20241022' ? 'Claude Haiku 4.5' : 'Auto'}
+              {processingOptions.aiModel === 'azure-ch' ? 'Azure GPT-4o (CH)' : 
+               processingOptions.aiModel === 'mistral' ? 'Mistral Large (EU)' :
+               processingOptions.aiModel === 'auto' ? 'Auto Select' : 'Azure GPT-4o (CH)'}
             </Badge>
             {isUploading && (
               <Badge className="bg-green-500/30 text-green-100 border-green-300/30 px-4 py-2 text-sm backdrop-blur-sm motion-safe:animate-pulse">

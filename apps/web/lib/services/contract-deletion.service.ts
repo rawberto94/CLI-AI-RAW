@@ -245,29 +245,6 @@ export async function safeDeleteContract(
           where: { id: contractId, tenantId },
         });
 
-        // 30. Log activity
-        try {
-          await tx.auditLog.create({
-            data: {
-              tenantId,
-              userId: userId || 'system',
-              action: 'contract_deleted',
-              resource: 'contract',
-              metadata: JSON.stringify({
-                fileName: contract.fileName,
-                cascade: true,
-                deletedRecords,
-                unlinkedChildren: unlinkedChildren.count,
-                reason: reason || 'User initiated deletion',
-              }),
-              ipAddress: null,
-              userAgent: null,
-            },
-          });
-        } catch {
-          // Activity logging failure shouldn't stop deletion
-        }
-
         return {
           success: true,
           deletedRecords,
@@ -288,6 +265,29 @@ export async function safeDeleteContract(
       } catch {
         // Storage deletion failed - non-fatal
       }
+    }
+
+    // Log activity after successful deletion (outside transaction to prevent rollback)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          tenantId,
+          userId: userId || null,  // Use null if no valid userId
+          action: 'contract_deleted',
+          resource: 'contract',
+          metadata: JSON.stringify({
+            fileName: result.contract.fileName,
+            cascade: true,
+            deletedRecords: result.deletedRecords,
+            unlinkedChildren: result.unlinkedChildren,
+            reason: reason || 'User initiated deletion',
+          }),
+          ipAddress: null,
+          userAgent: null,
+        },
+      });
+    } catch {
+      // Audit logging failed - non-fatal, don't affect the deletion result
     }
 
     // Publish realtime event

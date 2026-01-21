@@ -5,11 +5,10 @@
  */
 
 // Secure AI Processing (with anonymization)
-// TODO: Fix type mismatches in secure-ai-processor - temporarily disabled
-// export {
-//   analyzeContractSecurely,
-//   processDocumentSecurely,
-// } from './secure-ai-processor';
+export {
+  analyzeContractSecurely,
+  processDocumentSecurely,
+} from './secure-ai-processor';
 
 // Custom AI Analysis
 export {
@@ -155,26 +154,18 @@ export {
 } from './extraction-presets';
 
 // Enhanced Secure Processing
-// TODO: Fix type mismatches in secure-ai-processor - temporarily disabled
-// export {
-//   analyzeContractIntelligently,
-//   processDocumentWithMetadata,
-//   processDocumentAdvanced,
-//   processDocumentStreaming,
-//   quickAnalyze,
-//   batchProcessContracts,
-//   clearProcessingCache,
-//   pruneProcessingCache,
-//   isEUCompliantOCRConfigured,
-//   getRecommendedProvider,
-//   type IntelligentAnalysisResult,
-//   type AdvancedAnalysisResult,
-//   type AdvancedProcessingOptions,
-//   type FullProcessingOptions,
-//   type ProcessingStage,
-//   type ProgressCallback,
-//   type StreamingOptions,
-// } from './secure-ai-processor';
+export {
+  analyzeContractIntelligently,
+  processDocumentAdvanced,
+  isEUCompliantOCRConfigured,
+  getRecommendedProvider,
+  type IntelligentAnalysisResult,
+  type AdvancedAnalysisResult,
+  type AdvancedProcessingOptions,
+  type ProcessingStage,
+  type ProgressCallback,
+  type StreamingOptions,
+} from './secure-ai-processor';
 
 // Data Anonymization
 export {
@@ -339,3 +330,44 @@ export {
   type DocumentLayout,
   type ExtractedEntity,
 } from './multimodal-analysis.service';
+
+// ============================================
+// New Services (Session 2)
+// ============================================
+
+// AI Response Caching
+export { aiCache, withCache } from './cache.service';
+export type { CacheEntry, CacheConfig, CacheStats } from './cache.service';
+
+// Prompt Templates Library
+export { promptTemplates, buildPrompt } from './prompt-templates';
+export type {
+  PromptTemplate,
+  TemplateCategory,
+  TemplateVariable,
+  BuiltPrompt,
+} from './prompt-templates';
+
+// Scheduled Analysis Service
+export { scheduledAnalysis } from './scheduled-analysis.service';
+export type {
+  ScheduledJob,
+  JobRun,
+  JobRunResults,
+  ScheduleType,
+  CronSchedule,
+  JobConfig,
+  JobStatus,
+} from './scheduled-analysis.service';
+
+// Offline Queue Service
+export {
+  offlineQueue,
+  useOfflineQueue,
+  offlineFetch,
+} from './offline-queue.service';
+export type {
+  QueuedRequest,
+  OfflineQueueConfig,
+  SyncResult,
+} from './offline-queue.service';

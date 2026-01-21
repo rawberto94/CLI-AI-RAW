@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
+import { AdvancedNotificationService, NotificationPayload } from '@/lib/notifications/notification.service';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const notificationService = new AdvancedNotificationService();
 
 const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
 
@@ -77,11 +80,34 @@ export async function POST(request: NextRequest) {
         const contract = contractMap.get(alert.contractId);
         const owner = contract?.uploadedBy;
 
-        // TODO: Integrate with notification service
-        // Example integrations:
-        // - Email: await sendEmail({ to: owner, subject: `[${alert.severity.toUpperCase()}] ${contract?.contractTitle}`, body: alert.message })
-        // - Slack: await sendSlackMessage({ channel: '#contracts', text: alert.message })
-        // - In-app: await createNotification({ userId: ownerId, type: 'contract_alert', message: alert.message })
+        // Send notification via the notification service
+        if (owner) {
+          // Get user details for email
+          const user = await prisma.user.findFirst({
+            where: { id: owner },
+            select: { id: true, tenantId: true, email: true }
+          });
+          
+          if (user) {
+            const payload: NotificationPayload = {
+              type: 'contract_expiring',
+              title: `[${alert.severity.toUpperCase()}] Contract Alert`,
+              body: alert.message,
+              data: {
+                contractId: alert.contractId,
+                severity: alert.severity,
+                alertType: alert.alertType,
+              },
+              actionUrl: `/contracts/${alert.contractId}`,
+              priority: alert.severity === 'CRITICAL' ? 'urgent' : alert.severity === 'HIGH' ? 'high' : 'normal',
+            };
+
+            await notificationService.notify(
+              { userId: user.id, tenantId: user.tenantId, email: user.email },
+              payload
+            );
+          }
+        }
 
         // Mark alert as sent
         await prisma.expirationAlert.update({

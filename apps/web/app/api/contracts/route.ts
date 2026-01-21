@@ -168,12 +168,19 @@ async function handler(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
 
-  // Check data mode from header
+  // Mock mode is disabled in production for data integrity
+  // To enable mock mode for testing, set ENABLE_MOCK_MODE=true in environment
   const dataMode = request.headers.get('x-data-mode') || 'real';
+  const mockModeEnabled = process.env.ENABLE_MOCK_MODE === 'true' && process.env.NODE_ENV !== 'production';
   
-  // If mock mode, return mock data
-  if (dataMode === 'mock') {
+  if (dataMode === 'mock' && mockModeEnabled) {
     return returnMockContracts(searchParams);
+  }
+  
+  // In production, always use real data regardless of header
+  // Log if someone tries to use mock mode in production
+  if (dataMode === 'mock' && !mockModeEnabled) {
+    console.warn('[API] Mock mode requested but disabled in this environment');
   }
 
   // Use proper tenant resolution (session > header > query > demo in dev only)

@@ -28,7 +28,6 @@ import {
   DollarSign,
   Download,
   Copy,
-  Sparkles,
   Target,
   Shield,
   Lightbulb,
@@ -209,15 +208,15 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-white/95 backdrop-blur-xl border-slate-200/80 shadow-2xl rounded-2xl">
         <DialogHeader className="flex-shrink-0 pb-4 border-b border-slate-100">
           <DialogTitle className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-purple-500/25">
+            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-sm">
               <Brain className="h-5 w-5" />
             </div>
             <div>
-              <span className="text-xl bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent font-semibold">
+              <span className="text-xl font-semibold text-slate-900">
                 AI Contract Report
               </span>
               {report && (
-                <Badge className="ml-3 bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-700 border-0">
+                <Badge variant="outline" className="ml-3 border-blue-200 text-blue-700 bg-blue-50">
                   {report.contractCount} contracts analyzed
                 </Badge>
               )}
@@ -231,13 +230,10 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-12 px-4"
           >
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-full blur-2xl opacity-30 animate-pulse" />
-              <div className="relative w-24 h-24 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center mb-6 shadow-lg">
-                <Sparkles className="h-12 w-12 text-purple-600" />
-              </div>
+            <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-6 border border-blue-100">
+              <Brain className="h-10 w-10 text-blue-600" />
             </div>
-            <h3 className="text-2xl font-semibold mb-2 bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+            <h3 className="text-2xl font-semibold mb-2 text-slate-900">
               Generate AI Report
             </h3>
             <p className="text-slate-600 text-center mb-6 max-w-md">
@@ -271,7 +267,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             <Button 
               onClick={generateReport} 
               size="lg" 
-              className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 shadow-lg shadow-purple-500/25 rounded-xl px-6 py-3 text-base"
+              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-3 text-base"
             >
               <Brain className="h-5 w-5" />
               Generate AI Report
@@ -286,11 +282,10 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             className="flex flex-col items-center justify-center py-16"
           >
             <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-full blur-xl opacity-30 animate-pulse" />
-              <div className="relative w-20 h-20 rounded-full border-4 border-purple-100" />
-              <div className="absolute inset-0 w-20 h-20 rounded-full border-4 border-purple-600 border-t-transparent animate-spin" />
+              <div className="w-16 h-16 rounded-full border-4 border-blue-100" />
+              <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
             </div>
-            <p className="mt-8 text-xl font-semibold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            <p className="mt-8 text-lg font-medium text-slate-700">
               Analyzing contracts...
             </p>
             <p className="text-slate-500 text-sm mt-2">This may take a moment</p>
@@ -386,11 +381,11 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                   </div>
 
                   {/* Executive Summary */}
-                  <Card className="bg-gradient-to-br from-slate-50 to-slate-100/50 border-slate-200/50 shadow-sm overflow-hidden">
-                    <CardHeader className="pb-2 bg-gradient-to-r from-purple-50/50 to-indigo-50/50 border-b border-slate-100">
+                  <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
+                    <CardHeader className="pb-2 bg-slate-50 border-b border-slate-100">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <div className="p-1.5 bg-purple-100 rounded-lg">
-                          <Sparkles className="h-4 w-4 text-purple-600" />
+                        <div className="p-1.5 bg-blue-100 rounded-lg">
+                          <Brain className="h-4 w-4 text-blue-600" />
                         </div>
                         <span className="font-semibold text-slate-800">Executive Summary</span>
                       </CardTitle>

@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Search, Filter, X, DollarSign, Building2, Truck, FileText, Sparkles } from 'lucide-react';
+import { Search, X, DollarSign, Building2, Truck, FileText } from 'lucide-react';
 
 export interface AdvancedSearchFilters {
   query?: string;
@@ -44,14 +44,14 @@ export function AdvancedSearchModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] bg-white/95 backdrop-blur-xl border-slate-200/80 shadow-2xl rounded-2xl">
+      <DialogContent className="sm:max-w-[640px] bg-white border-slate-200 shadow-lg rounded-lg">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-lg shadow-blue-500/25">
+            <div className="p-2.5 bg-blue-600 rounded-lg text-white">
               <Search className="h-5 w-5" />
             </div>
             <div>
-              <span className="bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent font-semibold">
+              <span className="font-semibold text-slate-900">
                 Advanced Search
               </span>
               <p className="text-sm font-normal text-slate-500 mt-0.5">Find contracts with precision</p>
@@ -144,15 +144,15 @@ export function AdvancedSearchModal({
             <Button 
               variant="outline" 
               onClick={() => onOpenChange?.(false)}
-              className="rounded-xl border-slate-200 hover:bg-slate-100"
+              className="rounded-lg border-slate-200 hover:bg-slate-100"
             >
               Cancel
             </Button>
             <Button 
               onClick={handleSearch}
-              className="rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25 transition-all"
+              className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
             >
-              <Sparkles className="mr-2 h-4 w-4" />
+              <Search className="mr-2 h-4 w-4" />
               Apply Filters
             </Button>
           </div>

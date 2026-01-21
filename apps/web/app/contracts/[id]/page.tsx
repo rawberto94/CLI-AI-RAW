@@ -30,7 +30,6 @@ import {
   Globe,
   Link2,
   MessageSquare,
-  TrendingUp,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -77,7 +76,6 @@ import {
   ContractNotes,
   ContractTimeline,
   RelatedContracts,
-  ContractSearch,
   SkipToContent,
   SectionErrorBoundary,
 } from './components'
@@ -228,13 +226,11 @@ export default function ContractDetailPage() {
   const [showAISummarizer, setShowAISummarizer] = useState(false)
   const [showComparison, setShowComparison] = useState(false)
   const [showCategorySelector, setShowCategorySelector] = useState(false)
-  const [showCategoryConfirm, setShowCategoryConfirm] = useState(false)
   const [showReminderDialog, setShowReminderDialog] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
   const [showPdfViewer, setShowPdfViewer] = useState(false)
   const [isExtractingAI, setIsExtractingAI] = useState(false)
   const [isSavingCategory, setIsSavingCategory] = useState(false)
-  const [pendingCategory, setPendingCategory] = useState<{ id: string; name: string } | null>(null)
   const [isFavorite, setIsFavorite] = useState(false)
   const [showRenewalModal, setShowRenewalModal] = useState(false)
   
@@ -878,7 +874,12 @@ export default function ContractDetailPage() {
                 {/* Category */}
                 <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-2.5 sm:px-3 py-1.5 hover:border-slate-300 transition-colors">
                   <Tag className="h-3.5 w-3.5 text-slate-400" />
-                  {contract?.category ? (
+                  {isSavingCategory ? (
+                    <span className="text-xs text-slate-500 flex items-center gap-1.5 px-2">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Saving...
+                    </span>
+                  ) : contract?.category ? (
                     <Button variant="ghost" size="sm" onClick={() => setShowCategorySelector(true)} className="h-7 px-2">
                       <CategoryBadge category={contract.category.name} color={contract.category.color} icon={contract.category.icon} size="sm" />
                     </Button>
@@ -970,35 +971,23 @@ export default function ContractDetailPage() {
                 
                 <div className="flex-1" />
                 
-                {/* Search Contract */}
-                <ContractSearch contractId={params.id as string} />
-
                 {/* Copy link */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
-                        variant="outline"
-                        size="icon"
+                        variant="ghost"
+                        size="sm"
                         onClick={handleCopyLink}
                         aria-label="Copy link"
-                        className="h-9 w-9"
+                        className="h-8 px-2 text-slate-500 hover:text-slate-700"
                       >
                         <Link2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Copy link</p>
-                    </TooltipContent>
+                    <TooltipContent>Copy link</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                
-                {/* AI Analyze Button */}
-                <Button onClick={handleAnalyzeWithAI} size="sm" className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  <span className="hidden sm:inline">Analyze with AI</span>
-                  <span className="sm:hidden">Analyze</span>
-                </Button>
               </div>
             </motion.div>
 
@@ -1075,81 +1064,43 @@ export default function ContractDetailPage() {
                       documentText={contract.rawText || undefined}
                     />
                   ) : (
-                    <Card className="border-slate-200 overflow-hidden">
-                      <div className="bg-gradient-to-br from-violet-50 via-indigo-50 to-blue-50 px-6 py-8 sm:py-12 text-center">
-                        <motion.div
-                          initial={{ scale: 0.9, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                          className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-lg shadow-violet-500/25 mb-4 sm:mb-6"
-                        >
-                          <Brain className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-                        </motion.div>
-                        <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-2">
-                          Unlock AI-Powered Insights
-                        </h3>
-                        <p className="text-sm sm:text-base text-slate-600 max-w-md mx-auto mb-6">
-                          Our AI will analyze this contract to extract key terms, identify risks, benchmark against industry standards, and provide actionable recommendations.
-                        </p>
-                        
-                        {/* Feature highlights */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-2xl mx-auto mb-6 sm:mb-8 text-left">
-                          {[
-                            { icon: FileText, label: 'Smart Summary', desc: 'Key points extracted' },
-                            { icon: AlertCircle, label: 'Risk Analysis', desc: 'Identify potential issues' },
-                            { icon: TrendingUp, label: 'Benchmarking', desc: 'Compare to standards' },
-                            { icon: Sparkles, label: 'Recommendations', desc: 'Actionable insights' },
-                          ].map((feature, i) => (
-                            <motion.div
-                              key={feature.label}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              transition={{ delay: 0.1 + i * 0.05 }}
-                              className="bg-white/80 backdrop-blur-sm rounded-xl p-3 border border-white/50 shadow-sm"
+                    <Card className="border-slate-200">
+                      <CardContent className="py-12">
+                        <div className="text-center max-w-sm mx-auto">
+                          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-slate-100 mb-4">
+                            <Brain className="h-6 w-6 text-slate-600" />
+                          </div>
+                          <h3 className="text-base font-semibold text-slate-900 mb-2">
+                            AI Analysis Not Available
+                          </h3>
+                          <p className="text-sm text-slate-500 mb-6">
+                            Run AI analysis to extract key terms, identify risks, and get actionable insights.
+                          </p>
+                          <div className="flex items-center justify-center gap-3">
+                            <Button 
+                              onClick={handleAIExtraction} 
+                              disabled={isExtractingAI}
+                              className="gap-2"
                             >
-                              <feature.icon className="h-4 w-4 text-violet-600 mb-1.5" />
-                              <p className="text-xs font-semibold text-slate-800">{feature.label}</p>
-                              <p className="text-[10px] text-slate-500">{feature.desc}</p>
-                            </motion.div>
-                          ))}
+                              {isExtractingAI ? (
+                                <>
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  Analyzing...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="h-4 w-4" />
+                                  Run Analysis
+                                </>
+                              )}
+                            </Button>
+                            <Button variant="outline" onClick={handleAnalyzeWithAI} className="gap-2">
+                              <MessageSquare className="h-4 w-4" />
+                              Chat with AI
+                            </Button>
+                          </div>
                         </div>
-                        
-                        {/* Action buttons */}
-                        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-                          <Button 
-                            onClick={handleAIExtraction} 
-                            disabled={isExtractingAI} 
-                            size="lg"
-                            className="gap-2 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 shadow-lg shadow-violet-500/25"
-                          >
-                            {isExtractingAI ? (
-                              <>
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                                <span>Analyzing Contract...</span>
-                              </>
-                            ) : (
-                              <>
-                                <Sparkles className="h-4 w-4" />
-                                <span>Run AI Analysis</span>
-                              </>
-                            )}
-                          </Button>
-                          <Button variant="outline" onClick={handleAnalyzeWithAI} size="lg" className="gap-2">
-                            <MessageSquare className="h-4 w-4" />
-                            <span>Chat with AI</span>
-                          </Button>
-                        </div>
-                        
-                        {isExtractingAI && (
-                          <motion.p
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="text-xs text-slate-500 mt-4"
-                          >
-                            This typically takes 15-30 seconds depending on document length
-                          </motion.p>
-                        )}
-                      </div>
+                      </CardContent>
                     </Card>
                   )}
                 </TabsContent>
@@ -1339,47 +1290,32 @@ export default function ContractDetailPage() {
       <Dialog open={showCategorySelector} onOpenChange={setShowCategorySelector}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl font-semibold">Assign Category</DialogTitle>
-            <p className="text-sm text-muted-foreground">Select a category to organize this contract</p>
+            <DialogTitle className="flex items-center justify-between text-base font-semibold">
+              <span>Assign Category</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setShowCategorySelector(false)
+                  handleAICategorize()
+                }}
+                className="gap-1.5 text-xs"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                AI Categorize
+              </Button>
+            </DialogTitle>
           </DialogHeader>
           <div className="mt-2">
             <CategorySelector
               value={contract?.category?.id || null}
               onChange={(category) => {
                 if (category) {
-                  setPendingCategory({ id: category.id, name: category.name })
-                  setShowCategorySelector(false)
-                  setShowCategoryConfirm(true)
+                  handleCategorySelect(category.id)
                 }
               }}
               tenantId="demo"
             />
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showCategoryConfirm} onOpenChange={setShowCategoryConfirm}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-lg sm:text-xl font-semibold">Confirm Category Change</DialogTitle>
-            <p className="text-sm text-muted-foreground mt-2">
-              Change category to <span className="font-medium text-foreground">&ldquo;{pendingCategory?.name}&rdquo;</span>?
-            </p>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 mt-4">
-            <Button variant="outline" onClick={() => { setShowCategoryConfirm(false); setPendingCategory(null) }}>
-              Cancel
-            </Button>
-            <Button
-              onClick={() => {
-                if (pendingCategory) handleCategorySelect(pendingCategory.id)
-                setShowCategoryConfirm(false)
-                setPendingCategory(null)
-              }}
-              disabled={isSavingCategory}
-            >
-              {isSavingCategory ? "Saving..." : "Confirm"}
-            </Button>
           </div>
         </DialogContent>
       </Dialog>

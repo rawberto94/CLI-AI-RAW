@@ -19,7 +19,6 @@ import {
   ChevronDown,
   Loader2,
   UserPlus,
-  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -152,7 +151,7 @@ export function ShareDialog({
       } else {
         throw new Error(data.error);
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         title: 'Share failed',
         description: 'Failed to share document. Please try again.',
@@ -234,7 +233,7 @@ export function ShareDialog({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200">
+          <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -391,7 +390,7 @@ export function ShareDialog({
             <button
               onClick={handleShare}
               disabled={emails.length === 0 || sharing}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg font-medium hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {sharing ? (
                 <>
@@ -448,7 +447,7 @@ export function ShareDialog({
                       className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                           {share.sharedWith.charAt(0).toUpperCase()}
                         </div>
                         <div>

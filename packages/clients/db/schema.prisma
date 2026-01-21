@@ -643,6 +643,23 @@ model TaxonomyCategory {
   @@map("taxonomy_categories")
 }
 
+model TaxonomyPreset {
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  description   String?
+  categories    Json // Hierarchical category structure
+  categoryCount Int      @default(0)
+  isShared      Boolean  @default(false) // If true, other tenants can use this preset
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@index([isShared])
+  @@map("taxonomy_presets")
+}
+
 model Party {
   id                String     @id @default(cuid())
   name              String
@@ -4472,4 +4489,275 @@ model ContractAnalysis {
   @@index([tenantId])
   @@index([analysisType])
   @@map("contract_analyses")
+}
+
+// ============================================
+// GDPR Data Subject Rights Models
+// ============================================
+
+/// Data Export Request - Tracks GDPR data export (Right to Access) requests
+model DataExportRequest {
+  id       String            @id @default(cuid())
+  tenantId String            @map("tenant_id")
+  userId   String            @map("user_id")
+  status   GdprRequestStatus @default(PENDING)
+  format   String            @default("json") // json, csv
+
+  // Options
+  includeContracts Boolean @default(true) @map("include_contracts")
+  includeActivity  Boolean @default(true) @map("include_activity")
+  includeChats     Boolean @default(true) @map("include_chats")
+
+  // Result
+  downloadUrl String?   @map("download_url")
+  expiresAt   DateTime? @map("expires_at")
+  fileSize    BigInt?   @map("file_size")
+
+  // Processing
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  error       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("data_export_requests")
+}
+
+/// Deletion Request - Tracks GDPR account deletion (Right to Erasure) requests
+model DeletionRequest {
+  id       String                @id @default(cuid())
+  tenantId String                @map("tenant_id")
+  userId   String                @map("user_id")
+  status   DeletionRequestStatus @default(PENDING)
+
+  // Request details
+  reason            String?
+  confirmationToken String?   @unique @map("confirmation_token")
+  scheduledFor      DateTime  @map("scheduled_for")
+  gracePeriodEnds   DateTime? @map("grace_period_ends")
+
+  // Processing
+  cancelledAt  DateTime? @map("cancelled_at")
+  cancelReason String?   @map("cancel_reason")
+  startedAt    DateTime? @map("started_at")
+  completedAt  DateTime? @map("completed_at")
+  error        String?
+
+  // Audit
+  deletedData Json? @map("deleted_data") // Summary of what was deleted
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([scheduledFor])
+  @@index([confirmationToken])
+  @@map("deletion_requests")
+}
+
+enum GdprRequestStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum DeletionRequestStatus {
+  PENDING
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+// ============================================================================
+// AI ANALYTICS & MONITORING MODELS
+// ============================================================================
+
+/// AI Usage Log - Tracks all AI API calls for analytics
+model AIUsageLog {
+  id         String  @id @default(cuid())
+  tenantId   String? @map("tenant_id")
+  userId     String? @map("user_id")
+  contractId String? @map("contract_id")
+
+  // Request details
+  model    String
+  endpoint String
+  feature  String
+
+  // Token usage
+  inputTokens  Int @map("input_tokens")
+  outputTokens Int @map("output_tokens")
+  totalTokens  Int @map("total_tokens")
+
+  // Performance
+  latencyMs Int   @map("latency_ms")
+  cost      Float @default(0)
+
+  // Status
+  success   Boolean @default(true)
+  errorType String? @map("error_type")
+
+  // Metadata
+  metadata String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([model])
+  @@index([endpoint])
+  @@index([feature])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
+}
+
+/// Webhook Config - Stores webhook configurations for notifications
+model WebhookConfig {
+  id       String   @id @default(cuid())
+  tenantId String   @map("tenant_id")
+  url      String
+  secret   String?
+  events   String[] // Array of event types
+  active   Boolean  @default(true)
+
+  // Metadata
+  name        String?
+  description String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  logs WebhookLog[]
+
+  @@index([tenantId])
+  @@index([active])
+  @@map("webhook_configs")
+}
+
+/// Webhook Log - Tracks webhook delivery attempts
+model WebhookLog {
+  id         String  @id @default(cuid())
+  webhookId  String  @map("webhook_id")
+  event      String
+  success    Boolean
+  statusCode Int?    @map("status_code")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  webhook WebhookConfig @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+
+  @@index([webhookId])
+  @@index([event])
+  @@index([createdAt])
+  @@map("webhook_logs")
+}
+
+/// Cost Threshold - Stores cost alert thresholds per tenant
+model CostThreshold {
+  id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  period        String // daily, weekly, monthly
+  threshold     Float
+  enabled       Boolean   @default(true)
+  notifyEmail   String?   @map("notify_email")
+  notifyWebhook Boolean   @default(true) @map("notify_webhook")
+  lastAlertAt   DateTime? @map("last_alert_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([tenantId, period])
+  @@index([tenantId])
+  @@map("cost_thresholds")
+}
+
+/// Cost Alert - Records cost alert events
+model CostAlert {
+  id           String  @id @default(cuid())
+  tenantId     String  @map("tenant_id")
+  type         String // threshold_exceeded, unusual_spike, budget_warning
+  currentCost  Float   @map("current_cost")
+  threshold    Float?
+  period       String
+  message      String  @db.Text
+  acknowledged Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([tenantId])
+  @@index([type])
+  @@index([acknowledged])
+  @@index([createdAt])
+  @@map("cost_alerts")
+}
+
+/// A/B Test - Stores A/B test configurations
+model ABTest {
+  id          String  @id @default(cuid())
+  tenantId    String? @map("tenant_id")
+  name        String
+  description String? @db.Text
+  modelA      String  @map("model_a")
+  modelB      String  @map("model_b")
+  promptType  String  @map("prompt_type")
+  active      Boolean @default(true)
+
+  // Results
+  runsCount Int @default(0) @map("runs_count")
+  winsA     Int @default(0) @map("wins_a")
+  winsB     Int @default(0) @map("wins_b")
+  ties      Int @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  results ABTestResult[]
+
+  @@index([tenantId])
+  @@index([active])
+  @@map("ab_tests")
+}
+
+/// A/B Test Result - Individual test run results
+model ABTestResult {
+  id     String  @id @default(cuid())
+  testId String  @map("test_id")
+  userId String? @map("user_id")
+
+  // Inputs
+  prompt String @db.Text
+
+  // Outputs
+  responseA String? @map("response_a") @db.Text
+  responseB String? @map("response_b") @db.Text
+  latencyA  Int?    @map("latency_a")
+  latencyB  Int?    @map("latency_b")
+  tokensA   Int?    @map("tokens_a")
+  tokensB   Int?    @map("tokens_b")
+
+  // Rating
+  winner   String? // 'a', 'b', 'tie'
+  rating   Int? // 1-5 stars
+  feedback String? @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  test ABTest @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  @@index([testId])
+  @@index([userId])
+  @@index([winner])
+  @@index([createdAt])
+  @@map("ab_test_results")
 }

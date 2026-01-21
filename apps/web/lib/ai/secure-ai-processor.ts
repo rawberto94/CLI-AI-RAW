@@ -39,14 +39,13 @@
 
 import { ContractAnonymizer, processWithAnonymization } from './anonymizer';
 import {
-  performEUCompliantOCR,
   secureOCRWithAnonymization,
   getAvailableProviders,
-  logProviderStatus,
   type OCRResult,
   type OCROptions,
 } from './eu-compliant-ocr';
-import { SchemaAwareMetadataExtractor, type ExtractionResult, type MetadataExtractionResult } from './metadata-extractor';
+import { SchemaAwareMetadataExtractor, type MetadataExtractionResult } from './metadata-extractor';
+import type { ExtractionResult as _ExtractionResult } from './metadata-extractor';
 import { detectContractType, getExtractionHintsForType } from './contract-templates';
 import { FieldValueValidator, type ValidationResult } from './field-validator';
 import { getExtractionAnalytics } from './extraction-analytics';
@@ -368,7 +367,7 @@ export async function analyzeContractSecurely(
   contractText: string,
   options: SecureProcessingOptions = {}
 ): Promise<ContractAnalysisResult> {
-  const { model = 'gpt-4o-mini', temperature = 0.3, debug = false } = options;
+  const { model = 'gpt-4o-mini', temperature = 0.3, debug: _debug = false } = options;
 
   const anonymizer = new ContractAnonymizer();
 
@@ -662,15 +661,15 @@ export async function analyzeContractIntelligently(
     model = 'gpt-4o-mini',
     temperature = 0.3,
     tenantId = 'demo',
-    contractId,
-    debug = false,
+    contractId: _contractId,
+    debug: _debug = false,
     extractMetadata = true,
-    autoPopulate = false,
-    autoApplyThreshold = 0.85,
+    autoPopulate: _autoPopulate = false,
+    autoApplyThreshold: _autoApplyThreshold = 0.85,
   } = options;
 
-  const analytics = getExtractionAnalytics();
-  const calibrationService = getCalibrationService();
+  const _analytics = getExtractionAnalytics();
+  const _calibrationService = getCalibrationService();
 
   // Step 1: Detect contract type
   const detectedType = detectContractType(contractText);
@@ -976,7 +975,7 @@ export async function processDocumentAdvanced(
   options: AdvancedProcessingOptions = {}
 ): Promise<AdvancedAnalysisResult & { ocrResult: OCRResult }> {
   const {
-    debug = false,
+    debug: _debug = false,
     onProgress,
     parallel = true,
     useCache = true,

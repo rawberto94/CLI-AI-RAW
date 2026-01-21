@@ -352,7 +352,7 @@ function logQualityMetrics(metrics: ExtractionQualityMetrics): void {
   }
 }
 
-// Circuit breakers for external services
+// Circuit breakers for external services (Swiss-compliant only)
 const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
   failureThreshold: 7,                    // Increased tolerance
   successThreshold: 2,                    // Faster recovery
@@ -366,16 +366,16 @@ const mistralCircuitBreaker = new CircuitBreaker('mistral-ocr', {
   },
 });
 
-const openaiCircuitBreaker = new CircuitBreaker('openai-ocr', {
+const azureCircuitBreaker = new CircuitBreaker('azure-ch-ocr', {
   failureThreshold: 7,                    // Increased tolerance
   successThreshold: 2,                    // Faster recovery
-  resetTimeout: 45000,                    // 45 seconds - faster reset
-  requestTimeout: 180000,                 // 3 minutes for AI (increased)
+  resetTimeout: 45000,                    // 45 seconds
+  requestTimeout: 180000,                 // 3 minutes for OCR
   onStateChange: (from, to, metrics) => {
-    logger.warn({ from, to, metrics }, 'OpenAI circuit breaker state changed');
+    logger.warn({ from, to, metrics }, 'Azure Switzerland circuit breaker state changed');
   },
   onFailure: (error, metrics) => {
-    logger.error({ error: error.message, metrics }, 'OpenAI circuit breaker failure');
+    logger.error({ error: error.message, metrics }, 'Azure Switzerland circuit breaker failure');
   },
 });
 
@@ -397,8 +397,8 @@ import { ocrCache, artifactCache } from '@repo/utils/cache/distributed-cache';
 const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
 const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
-// OCR fallback chain - try in order until one succeeds
-const OCR_FALLBACK_CHAIN = ['mistral', 'gpt4', 'tesseract'] as const;
+// OCR fallback chain - includes OpenAI for testing, Swiss FADP compliant options (Azure CH → Mistral EU)
+const OCR_FALLBACK_CHAIN = ['openai', 'azure-ch', 'mistral'] as const;
 type OCRMode = typeof OCR_FALLBACK_CHAIN[number];
 
 // Preload heavy modules to reduce cold start time
@@ -474,15 +474,25 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
       logger.warn('Mistral circuit breaker is open, skipping');
       continue;
     }
-    if (mode === 'gpt4' && openaiCircuitBreaker.getState() === CircuitState.OPEN) {
-      logger.warn('OpenAI circuit breaker is open, skipping');
+    if (mode === 'azure-ch' && azureCircuitBreaker.getState() === CircuitState.OPEN) {
+      logger.warn('Azure Switzerland circuit breaker is open, skipping');
       continue;
     }
     
     try {
       let result: string;
       
-      if (mode === 'mistral') {
+      if (mode === 'openai') {
+        // OpenAI GPT-4 Vision OCR (for testing/development)
+        result = await retry(() => performGPT4OCR(filePath), {
+          maxAttempts: 3,
+          initialDelay: 1000,
+          maxDelay: 10000,
+          onRetry: (error, attempt, delay) => {
+            logger.warn({ error: error.message, attempt, delay }, 'OpenAI OCR retry');
+          },
+        });
+      } else if (mode === 'mistral') {
         result = await mistralCircuitBreaker.execute(() => 
           retry(() => performMistralOCR(filePath), {
             maxAttempts: 3,
@@ -493,12 +503,19 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
             },
           })
         );
-      } else if (mode === 'gpt4') {
-        result = await openaiCircuitBreaker.execute(() => 
-          retryOpenAI(() => performGPT4OCR(filePath))
+      } else if (mode === 'azure-ch') {
+        result = await azureCircuitBreaker.execute(() => 
+          retry(() => performAzureSwitzerlandOCR(filePath), {
+            maxAttempts: 3,
+            initialDelay: 1000,
+            maxDelay: 10000,
+            onRetry: (error, attempt, delay) => {
+              logger.warn({ error: error.message, attempt, delay }, 'Azure Switzerland OCR retry');
+            },
+          })
         );
       } else {
-        // tesseract/fallback
+        // Fallback to basic extraction
         result = await extractTextFallback(filePath);
       }
       
@@ -546,6 +563,105 @@ async function extractTextFallback(filePath: string): Promise<string> {
   } catch (error) {
     logger.error({ error, filePath }, 'Fallback extraction failed');
     return `[Error extracting text from: ${filePath}]`;
+  }
+}
+
+/**
+ * Azure Switzerland OCR extraction (Swiss FADP compliant)
+ * Uses Azure Computer Vision API in Switzerland North region
+ */
+async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
+  try {
+    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
+    const apiKey = process.env.AZURE_VISION_KEY_CH;
+    
+    if (!endpoint || !apiKey) {
+      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH, AZURE_VISION_KEY_CH)');
+    }
+    
+    const fileBuffer = await fs.readFile(filePath);
+    const ext = filePath.toLowerCase().split('.').pop() || '';
+    const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
+    
+    // For text files, just read directly
+    if (isTextFile) {
+      logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
+      return fileBuffer.toString('utf-8');
+    }
+    
+    // Use Azure Computer Vision Read API for OCR
+    const readUrl = `${endpoint}/vision/v3.2/read/analyze`;
+    
+    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR');
+    
+    // Submit the document for reading
+    const submitResponse = await fetch(readUrl, {
+      method: 'POST',
+      headers: {
+        'Ocp-Apim-Subscription-Key': apiKey,
+        'Content-Type': 'application/octet-stream',
+      },
+      body: fileBuffer,
+    });
+    
+    if (!submitResponse.ok) {
+      const errorText = await submitResponse.text();
+      throw new Error(`Azure OCR submit failed: ${submitResponse.status} ${errorText}`);
+    }
+    
+    // Get the operation location from the response headers
+    const operationLocation = submitResponse.headers.get('Operation-Location');
+    if (!operationLocation) {
+      throw new Error('Azure OCR did not return Operation-Location header');
+    }
+    
+    // Poll for results
+    let result;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds max wait
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      
+      const resultResponse = await fetch(operationLocation, {
+        headers: {
+          'Ocp-Apim-Subscription-Key': apiKey,
+        },
+      });
+      
+      if (!resultResponse.ok) {
+        throw new Error(`Azure OCR result failed: ${resultResponse.status}`);
+      }
+      
+      result = await resultResponse.json();
+      
+      if (result.status === 'succeeded') {
+        break;
+      } else if (result.status === 'failed') {
+        throw new Error('Azure OCR processing failed');
+      }
+      
+      attempts++;
+    }
+    
+    if (!result || result.status !== 'succeeded') {
+      throw new Error('Azure OCR timed out or failed');
+    }
+    
+    // Extract text from all pages and lines
+    const extractedText = result.analyzeResult.readResults
+      .map((page: any) => 
+        page.lines.map((line: any) => line.text).join('\n')
+      )
+      .join('\n\n');
+    
+    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed');
+    
+    return extractedText;
+  } catch (error) {
+    const err = error as Error;
+    logger.error({ error: err, message: err.message }, 'Azure Switzerland OCR failed');
+    throw error;
   }
 }
 
