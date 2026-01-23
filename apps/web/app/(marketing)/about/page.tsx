@@ -262,14 +262,14 @@ export default function AboutPage() {
             Join Our Journey
           </h2>
           <p className="mt-4 text-lg text-indigo-100 max-w-2xl mx-auto">
-            Be part of the contract management revolution. Start your free trial today.
+            Be part of the contract management revolution. Get started today.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/signin"
               className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-indigo-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
             >
-              Start Free Trial
+              Get Started
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link

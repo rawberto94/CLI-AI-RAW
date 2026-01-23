@@ -525,10 +525,17 @@ export default function LandingPage() {
               <span className="px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full font-bold">NEW</span>
             </div>
 
-            {/* Logo with Glow */}
-            <div className="flex justify-center mb-8 relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-400/20 via-emerald-400/20 to-cyan-400/20 blur-3xl scale-150" />
-              <Image src="/logo.png" alt="ConTigo" width={800} height={213} className="h-48 md:h-64 lg:h-80 w-auto drop-shadow-2xl relative z-10" priority />
+            {/* Logo - Hero Size */}
+            <div className="flex justify-center mb-2 relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-teal-400/30 via-emerald-400/30 to-cyan-400/30 blur-3xl scale-150" />
+              <Image 
+                src="/logo-transparent.png" 
+                alt="ConTigo" 
+                width={1600} 
+                height={427} 
+                className="h-80 md:h-[400px] lg:h-[500px] xl:h-[550px] w-auto relative z-10 drop-shadow-xl" 
+                priority 
+              />
             </div>
             
             {/* Main Headline with Gradient Animation */}
@@ -558,7 +565,7 @@ export default function LandingPage() {
             {/* CTA Buttons with Enhanced Effects */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
               <ShimmerButton href="/auth/signin">
-                Start Free Trial
+                Get Started
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
                   <ArrowRight className="w-4 h-4" />
                 </div>
@@ -795,20 +802,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* AI Technology Section - NEW */}
-      <section id="ai-technology" className="py-24 px-6 bg-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-violet-100/50 to-transparent rounded-full blur-3xl" />
+      {/* AI Technology Section - Enhanced */}
+      <section id="ai-technology" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-teal-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Brain className="w-4 h-4" />
               AI Technology
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-500 animate-pulse" />
             </div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
-              The AI Engine Behind<br />ConTigo
+              The AI Engine Behind{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">ConTigo</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto font-light">
+            <p className="text-xl text-gray-600 max-w-3xl mx-auto font-light leading-relaxed">
               Our multi-stage AI pipeline doesn&apos;t just search—it understands. Trained on millions of contracts,
               it extracts 18+ artifact types with enterprise-grade accuracy.
             </p>
@@ -850,64 +860,67 @@ export default function LandingPage() {
               />
             </div>
 
-            {/* Right: AI Capabilities Visual */}
-            <div className="bg-gradient-to-br from-gray-900 to-gray-800 rounded-3xl p-8 text-white sticky top-24">
-              <div className="flex items-center gap-3 mb-8">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                  <Cpu className="w-6 h-6" />
+            {/* Right: AI Capabilities Visual - Enhanced */}
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-teal-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
+              <div className="relative bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 rounded-3xl p-8 text-white sticky top-24 overflow-hidden">
+                {/* Animated Background Pattern */}
+                <div className="absolute inset-0 opacity-5">
+                  <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
                 </div>
-                <div>
-                  <h3 className="font-bold text-lg">ConTigo AI Engine</h3>
-                  <p className="text-gray-400 text-sm">Real-time contract intelligence</p>
-                </div>
-              </div>
+                
+                <div className="relative">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl blur-lg opacity-50" />
+                      <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                        <Cpu className="w-6 h-6" />
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">ConTigo AI Engine</h3>
+                      <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <p className="text-gray-400 text-sm">Real-time contract intelligence</p>
+                      </div>
+                    </div>
+                  </div>
 
-              <div className="space-y-4 mb-8">
-                <div className="bg-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-300">Entity Extraction</span>
-                    <span className="text-sm text-teal-400">99.2%</span>
+                  <div className="space-y-4 mb-8">
+                    {[
+                      { label: 'Entity Extraction', value: 99.2, color: 'from-teal-500 to-emerald-400' },
+                      { label: 'Clause Classification', value: 98.7, color: 'from-violet-500 to-purple-400' },
+                      { label: 'Risk Detection', value: 97.5, color: 'from-amber-500 to-orange-400' },
+                    ].map((item, i) => (
+                      <div key={i} className="bg-white/5 backdrop-blur rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-sm text-gray-300">{item.label}</span>
+                          <span className="text-sm font-bold text-teal-400">{item.value}%</span>
+                        </div>
+                        <div className="h-2 bg-gray-700/50 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full bg-gradient-to-r ${item.color} rounded-full transition-all duration-1000`} 
+                            style={{ width: `${item.value}%` }} 
+                          />
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full" style={{ width: '99.2%' }} />
-                  </div>
-                </div>
-                <div className="bg-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-300">Clause Classification</span>
-                    <span className="text-sm text-teal-400">98.7%</span>
-                  </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full" style={{ width: '98.7%' }} />
-                  </div>
-                </div>
-                <div className="bg-white/10 rounded-xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-gray-300">Risk Detection</span>
-                    <span className="text-sm text-teal-400">97.5%</span>
-                  </div>
-                  <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-teal-500 to-emerald-400 rounded-full" style={{ width: '97.5%' }} />
-                  </div>
-                </div>
-              </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-teal-400 mb-1">50+</div>
-                  <div className="text-xs text-gray-400">Clause Types</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-teal-400 mb-1">20+</div>
-                  <div className="text-xs text-gray-400">Languages</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-teal-400 mb-1">&lt;3s</div>
-                  <div className="text-xs text-gray-400">Avg. Analysis</div>
-                </div>
-                <div className="bg-white/5 rounded-xl p-4 text-center">
-                  <div className="text-2xl font-bold text-teal-400 mb-1">10M+</div>
-                  <div className="text-xs text-gray-400">Docs Trained</div>
+                  <div className="grid grid-cols-2 gap-3">
+                    {[
+                      { value: '50+', label: 'Clause Types', icon: FileText },
+                      { value: '20+', label: 'Languages', icon: MessageSquare },
+                      { value: '<3s', label: 'Avg. Analysis', icon: Zap },
+                      { value: '10M+', label: 'Docs Trained', icon: Database },
+                    ].map((stat, i) => (
+                      <div key={i} className="bg-white/5 backdrop-blur rounded-xl p-4 text-center border border-white/10 hover:bg-white/10 hover:border-teal-500/30 transition-all group/stat">
+                        <stat.icon className="w-4 h-4 text-teal-500 mx-auto mb-2 opacity-50 group-hover/stat:opacity-100 transition-opacity" />
+                        <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400 mb-1">{stat.value}</div>
+                        <div className="text-xs text-gray-500">{stat.label}</div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -997,19 +1010,22 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* AI Chatbot Demo Section */}
-      <section className="py-24 px-6 bg-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-[400px] h-[400px] bg-gradient-to-br from-teal-100/50 to-transparent rounded-full blur-3xl" />
+      {/* AI Chatbot Demo Section - Enhanced */}
+      <section className="py-32 px-6 bg-gradient-to-b from-white via-teal-50/20 to-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-teal-200/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-emerald-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-6xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-teal-50 border border-teal-200 text-teal-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 text-teal-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
                 <MessageSquare className="w-4 h-4" />
                 AI Chatbot
+                <span className="px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full">SMART</span>
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">
-                Ask Anything About<br />Your Contracts
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+                Ask Anything About{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Your Contracts</span>
               </h2>
               <p className="text-xl text-gray-600 mb-8 font-light leading-relaxed">
                 Our AI chatbot understands natural language. Ask questions, get instant answers with source citations, and take action—all through conversation.
@@ -1024,7 +1040,7 @@ export default function LandingPage() {
                     '"Find all NDAs with auto-renewal"',
                     '"Summarize the risk factors"',
                   ].map((q, i) => (
-                    <span key={i} className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-full text-sm">
+                    <span key={i} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-full text-sm hover:border-teal-300 hover:bg-teal-50 transition-all cursor-pointer shadow-sm">
                       {q}
                     </span>
                   ))}
@@ -1032,62 +1048,85 @@ export default function LandingPage() {
               </div>
             </div>
             
-            {/* Chat Demo */}
-            <div className="bg-white rounded-3xl border border-gray-200 shadow-2xl overflow-hidden">
-              <div className="bg-gradient-to-r from-teal-600 to-emerald-600 p-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-white" />
-                  </div>
-                  <div>
-                    <div className="font-semibold text-white">ConTigo AI</div>
-                    <div className="text-teal-100 text-sm">Always online • Instant responses</div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="p-6 space-y-4 bg-gray-50 min-h-[300px]">
-                {/* User message */}
-                <div className="flex justify-end">
-                  <div className="bg-teal-600 text-white px-4 py-3 rounded-2xl rounded-br-md max-w-[80%]">
-                    Show me all contracts expiring in the next 30 days
+            {/* Chat Demo - Enhanced */}
+            <div className="relative group">
+              <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
+              <div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl overflow-hidden">
+                {/* Chat Header */}
+                <div className="bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 p-5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                          <Sparkles className="w-6 h-6 text-white" />
+                        </div>
+                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 border-2 border-teal-600 rounded-full" />
+                      </div>
+                      <div>
+                        <div className="font-bold text-white text-lg">ConTigo AI</div>
+                        <div className="text-teal-100 text-sm flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                          Online • Instant responses
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      <div className="w-3 h-3 rounded-full bg-white/20" />
+                      <div className="w-3 h-3 rounded-full bg-white/20" />
+                      <div className="w-3 h-3 rounded-full bg-white/20" />
+                    </div>
                   </div>
                 </div>
                 
-                {/* AI response */}
-                <div className="flex justify-start">
-                  <div className="bg-white border border-gray-200 px-4 py-3 rounded-2xl rounded-bl-md max-w-[85%] shadow-sm">
-                    <p className="text-gray-800 mb-3">I found <span className="font-semibold text-teal-600">3 contracts</span> expiring in the next 30 days:</p>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">Acme Corp - MSA</span>
-                        <span className="text-orange-600 font-medium">Jan 28</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">TechStart - SLA</span>
-                        <span className="text-orange-600 font-medium">Feb 5</span>
-                      </div>
-                      <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
-                        <span className="text-gray-700">GlobalCo - NDA</span>
-                        <span className="text-red-600 font-medium">Feb 12</span>
-                      </div>
+                {/* Chat Messages */}
+                <div className="p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white min-h-[320px]">
+                  {/* User message */}
+                  <div className="flex justify-end">
+                    <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-5 py-3 rounded-2xl rounded-br-md max-w-[80%] shadow-lg">
+                      Show me all contracts expiring in the next 30 days
                     </div>
-                    <p className="text-gray-500 text-sm mt-3">Would you like me to start the renewal process for any of these?</p>
+                  </div>
+                  
+                  {/* AI response */}
+                  <div className="flex justify-start">
+                    <div className="bg-white border border-gray-100 px-5 py-4 rounded-2xl rounded-bl-md max-w-[85%] shadow-lg">
+                      <p className="text-gray-800 mb-4">I found <span className="font-bold text-teal-600">3 contracts</span> expiring in the next 30 days:</p>
+                      <div className="space-y-2 text-sm">
+                        {[
+                          { name: 'Acme Corp - MSA', date: 'Jan 28', urgent: false },
+                          { name: 'TechStart - SLA', date: 'Feb 5', urgent: false },
+                          { name: 'GlobalCo - NDA', date: 'Feb 12', urgent: true },
+                        ].map((contract, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group/item">
+                            <div className="flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-gray-400" />
+                              <span className="text-gray-700 group-hover/item:text-teal-700 transition-colors">{contract.name}</span>
+                            </div>
+                            <span className={`font-semibold ${contract.urgent ? 'text-red-600' : 'text-orange-600'}`}>{contract.date}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-gray-500 text-sm mt-4 flex items-center gap-2">
+                        <ArrowRight className="w-4 h-4 text-teal-500" />
+                        Would you like me to start the renewal process?
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-              
-              <div className="p-4 border-t border-gray-200 bg-white">
-                <div className="flex items-center gap-3">
-                  <input 
-                    type="text" 
-                    placeholder="Ask about your contracts..." 
-                    className="flex-1 px-4 py-3 bg-gray-100 rounded-xl border-0 focus:ring-2 focus:ring-teal-500 outline-none"
-                    disabled
-                  />
-                  <button className="w-12 h-12 bg-teal-600 rounded-xl flex items-center justify-center text-white">
-                    <ArrowRight className="w-5 h-5" />
-                  </button>
+                
+                {/* Chat Input */}
+                <div className="p-4 border-t border-gray-100 bg-white">
+                  <div className="flex items-center gap-3">
+                    <input 
+                      type="text" 
+                      placeholder="Ask about your contracts..." 
+                      className="flex-1 px-5 py-3.5 bg-gray-100 rounded-xl border-0 focus:ring-2 focus:ring-teal-500 outline-none text-gray-700 placeholder-gray-400"
+                      disabled
+                    />
+                    <button className="w-12 h-12 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/40 transition-all hover:scale-105">
+                      <ArrowRight className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1095,20 +1134,23 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Why We're Innovative Section - NEW */}
-      <section id="innovation" className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-violet-100/50 to-transparent rounded-full blur-3xl" />
+      {/* Why We're Innovative Section - Enhanced */}
+      <section id="innovation" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
+        <div className="absolute bottom-0 left-0 w-[700px] h-[700px] bg-gradient-to-tr from-violet-200/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-teal-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
-          <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Rocket className="w-4 h-4" />
               Why Choose ConTigo
+              <span className="px-2 py-0.5 bg-violet-500 text-white text-xs rounded-full">BEST</span>
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">
-              Not Just Another CLM
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Not Just Another{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">CLM</span>
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto font-light">
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto font-light leading-relaxed">
               We built ConTigo from the ground up with AI at its core—not bolted on as an afterthought.
             </p>
           </div>
@@ -1158,168 +1200,232 @@ export default function LandingPage() {
             />
           </div>
 
-          {/* Comparison */}
-          <div className="bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-gray-100">
-            <div className="text-center mb-12">
-              <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">ConTigo vs. Legacy CLM Solutions</h3>
-              <p className="text-gray-600 max-w-2xl mx-auto">See how next-generation AI contract intelligence compares to traditional contract management</p>
-            </div>
-            <div className="grid md:grid-cols-2 gap-8 md:gap-12">
-              {/* Traditional CLM - Left Side */}
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-red-50 to-orange-50 rounded-2xl" />
-                <div className="relative p-8">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
-                      <X className="w-5 h-5 text-red-500" />
-                    </div>
-                    <h4 className="text-xl font-bold text-gray-900">Traditional CLM</h4>
-                  </div>
-                  <ul className="space-y-4">
-                    {[
-                      { text: 'Keyword-based search only', detail: 'Miss important context' },
-                      { text: 'Manual metadata tagging', detail: 'Hours of tedious work' },
-                      { text: 'Minutes to process documents', detail: 'Slow turnaround times' },
-                      { text: 'Complex, dated interfaces', detail: 'Steep learning curve' },
-                      { text: 'On-premise deployment required', detail: 'High infrastructure costs' },
-                      { text: 'Limited or no API access', detail: 'No integration flexibility' },
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <X className="w-3.5 h-3.5 text-red-500" />
-                        </div>
-                        <div>
-                          <span className="text-gray-900 font-medium">{item.text}</span>
-                          <span className="text-gray-500 text-sm block">{item.detail}</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+          {/* Comparison - Enhanced */}
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-teal-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
+            <div className="relative bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-gray-100/50 overflow-hidden">
+              {/* Background Pattern */}
+              <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #6b7280 1px, transparent 0)', backgroundSize: '24px 24px' }} />
               
-              {/* ConTigo - Right Side */}
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-teal-50 to-emerald-50 rounded-2xl" />
-                <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl opacity-20 blur-sm" />
-                <div className="relative p-8 border-2 border-teal-200 rounded-2xl bg-white/80 backdrop-blur-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
-                      <Check className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold text-gray-900">ConTigo</h4>
-                      <span className="text-xs text-teal-600 font-semibold uppercase tracking-wide">AI-Powered</span>
-                    </div>
+                <div className="text-center mb-12">
+                  <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-4 py-2 rounded-full text-sm font-semibold mb-4">
+                    <BarChart3 className="w-4 h-4" />
+                    Direct Comparison
                   </div>
-                  <ul className="space-y-4">
-                    {[
-                      { text: 'AI-powered semantic search', detail: 'Find contracts by meaning, not just keywords' },
-                      { text: 'Automatic entity extraction', detail: 'Parties, dates, values extracted instantly' },
-                      { text: 'Analysis in under 3 seconds', detail: '100x faster than manual review' },
-                      { text: 'Modern, intuitive interface', detail: 'Get started in minutes, not days' },
-                      { text: 'Cloud-native, deploy anywhere', detail: 'Swiss data centers, global access' },
-                      { text: 'Full API access included', detail: 'Integrate with any system seamlessly' },
-                    ].map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Check className="w-3.5 h-3.5 text-white" />
+                  <h3 className="text-2xl md:text-3xl lg:text-4xl font-bold text-gray-900 mb-4">
+                    ConTigo vs. <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-gray-500">Legacy CLM</span>
+                  </h3>
+                  <p className="text-gray-600 max-w-2xl mx-auto leading-relaxed">See how next-generation AI contract intelligence compares to traditional contract management</p>
+                </div>
+                
+                <div className="grid md:grid-cols-2 gap-8 md:gap-12">
+                  {/* Traditional CLM - Left Side */}
+                  <div className="relative group/card">
+                    <div className="absolute inset-0 bg-gradient-to-br from-red-100/50 to-orange-100/50 rounded-2xl transition-all duration-300 group-hover/card:from-red-100/70 group-hover/card:to-orange-100/70" />
+                    <div className="relative p-8">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-red-400 rounded-xl blur-lg opacity-30" />
+                          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-orange-400 flex items-center justify-center">
+                            <X className="w-6 h-6 text-white" />
+                          </div>
                         </div>
                         <div>
-                          <span className="text-gray-900 font-medium">{item.text}</span>
-                          <span className="text-teal-600 text-sm block">{item.detail}</span>
+                          <h4 className="text-xl font-bold text-gray-900">Traditional CLM</h4>
+                          <span className="text-xs text-gray-500 font-medium">Outdated Approach</span>
                         </div>
-                      </li>
-                    ))}
-                  </ul>
+                      </div>
+                      <ul className="space-y-4">
+                        {[
+                          { text: 'Keyword-based search only', detail: 'Miss important context' },
+                          { text: 'Manual metadata tagging', detail: 'Hours of tedious work' },
+                          { text: 'Minutes to process documents', detail: 'Slow turnaround times' },
+                          { text: 'Complex, dated interfaces', detail: 'Steep learning curve' },
+                          { text: 'On-premise deployment required', detail: 'High infrastructure costs' },
+                          { text: 'Limited or no API access', detail: 'No integration flexibility' },
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 group/item">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-red-200 to-orange-200 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover/item:from-red-300 group-hover/item:to-orange-300 transition-colors">
+                              <X className="w-3.5 h-3.5 text-red-600" />
+                            </div>
+                            <div>
+                              <span className="text-gray-900 font-medium">{item.text}</span>
+                              <span className="text-gray-500 text-sm block">{item.detail}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  {/* ConTigo - Right Side */}
+                  <div className="relative group/card">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl opacity-30 blur-sm group-hover/card:opacity-50 transition-opacity" />
+                    <div className="relative p-8 border-2 border-teal-300/50 rounded-2xl bg-gradient-to-br from-white to-teal-50/50 backdrop-blur-sm shadow-lg">
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-teal-500 rounded-xl blur-lg opacity-40" />
+                          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
+                            <Check className="w-6 h-6 text-white" />
+                          </div>
+                        </div>
+                        <div>
+                          <h4 className="text-xl font-bold text-gray-900">ConTigo</h4>
+                          <span className="text-xs text-teal-600 font-semibold uppercase tracking-wide flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" /> AI-Powered
+                          </span>
+                        </div>
+                      </div>
+                      <ul className="space-y-4">
+                        {[
+                          { text: 'AI-powered semantic search', detail: 'Find contracts by meaning, not just keywords' },
+                          { text: 'Automatic entity extraction', detail: 'Parties, dates, values extracted instantly' },
+                          { text: 'Analysis in under 3 seconds', detail: '100x faster than manual review' },
+                          { text: 'Modern, intuitive interface', detail: 'Get started in minutes, not days' },
+                          { text: 'Cloud-native, deploy anywhere', detail: 'Swiss data centers, global access' },
+                          { text: 'Full API access included', detail: 'Integrate with any system seamlessly' },
+                        ].map((item, i) => (
+                          <li key={i} className="flex items-start gap-3 group/item">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md group-hover/item:scale-110 transition-transform">
+                              <Check className="w-3.5 h-3.5 text-white" />
+                            </div>
+                            <div>
+                              <span className="text-gray-900 font-medium">{item.text}</span>
+                              <span className="text-teal-600 text-sm block font-medium">{item.detail}</span>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            {/* Bottom CTA */}
-            <div className="mt-12 text-center">
-              <Link 
-                href="/auth/signin" 
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl hover:shadow-teal-500/25 transition-all group"
-              >
-                Start Your Free Trial
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </Link>
-              <p className="text-gray-500 text-sm mt-4">No credit card required • 14-day free trial</p>
-            </div>
+          </div>
+          
+          {/* Bottom CTA */}
+          <div className="mt-12 text-center">
+            <Link 
+              href="/auth/signin" 
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl hover:shadow-teal-500/25 transition-all group"
+            >
+              Get Started Today
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            </Link>
+            <p className="text-gray-500 text-sm mt-4">Swiss data residency • Enterprise-grade security</p>
           </div>
         </div>
       </section>
 
-      {/* Security Section */}
-      <section id="security" className="py-24 px-6 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 text-white relative overflow-hidden">
+      {/* Security Section - Enhanced */}
+      <section id="security" className="py-32 px-6 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white relative overflow-hidden">
+        {/* Animated Background */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-500/10 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+          <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
         
         <div className="max-w-7xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-teal-500/20 border border-teal-500/30 text-teal-400 px-4 py-2 rounded-full text-sm font-medium mb-8">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 text-teal-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
                 <ShieldCheck className="w-4 h-4" />
                 Enterprise Security
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               </div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-8 tracking-tight leading-tight text-white">
-                Your Data is<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">Protected</span>
+              <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 tracking-tight leading-tight text-white">
+                Your Data is{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400">Protected</span>
               </h2>
               <p className="text-xl text-gray-300 mb-12 leading-relaxed font-light">
                 Security isn&apos;t an afterthought—it&apos;s built into every layer of ConTigo.
               </p>
               
-              <div className="space-y-6">
+              <div className="space-y-4">
                 {[
-                  { icon: Lock, title: 'AES-256 Encryption', desc: 'Military-grade encryption for all data at rest and in transit' },
-                  { icon: Shield, title: 'SOC 2 Type II', desc: 'Rigorous security compliance and regular audits' },
-                  { icon: Users, title: 'Multi-Factor Auth', desc: 'MFA, SSO, and advanced access controls' },
-                  { icon: FileCheck, title: 'Immutable Audit Logs', desc: 'Complete, tamper-proof activity tracking' },
+                  { icon: Lock, title: 'AES-256 Encryption', desc: 'Military-grade encryption for all data at rest and in transit', color: 'from-teal-500 to-emerald-500' },
+                  { icon: Shield, title: 'SOC 2 Type II', desc: 'Rigorous security compliance and regular audits', color: 'from-blue-500 to-cyan-500' },
+                  { icon: Users, title: 'Multi-Factor Auth', desc: 'MFA, SSO, and advanced access controls', color: 'from-violet-500 to-purple-500' },
+                  { icon: FileCheck, title: 'Immutable Audit Logs', desc: 'Complete, tamper-proof activity tracking', color: 'from-amber-500 to-orange-500' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors">
-                    <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <item.icon className="w-6 h-6 text-white" />
+                  <div key={i} className="group flex items-start gap-4 p-5 rounded-2xl bg-white/[0.03] backdrop-blur border border-white/10 hover:bg-white/[0.06] hover:border-teal-500/30 transition-all duration-300">
+                    <div className="relative">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity`} />
+                      <div className={`relative w-12 h-12 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <item.icon className="w-6 h-6 text-white" />
+                      </div>
                     </div>
                     <div>
-                      <h4 className="font-bold text-lg mb-1 text-white">{item.title}</h4>
-                      <p className="text-gray-300">{item.desc}</p>
+                      <h4 className="font-bold text-lg mb-1 text-white group-hover:text-teal-300 transition-colors">{item.title}</h4>
+                      <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{item.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
             
-            <div className="relative">
-              <div className="bg-gradient-to-br from-gray-800 to-gray-900 p-8 rounded-3xl border border-gray-700 shadow-2xl">
-                <div className="flex items-center gap-3 mb-8">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-white" />
+            {/* Security Dashboard Visual */}
+            <div className="relative group">
+              <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
+              <div className="relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-2xl">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="relative">
+                      <div className="absolute inset-0 bg-green-500 rounded-xl blur-lg opacity-50" />
+                      <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                        <Shield className="w-6 h-6 text-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <div className="font-bold text-lg">Security Status</div>
+                      <div className="text-sm text-gray-400 flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        All systems operational
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="font-bold">Security Status</div>
-                    <div className="text-sm text-gray-400">All systems operational</div>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-green-400">100%</div>
+                    <div className="text-xs text-gray-500">Protected</div>
                   </div>
                 </div>
                 
-                <div className="space-y-4">
+                {/* Status Items */}
+                <div className="space-y-3">
                   {[
-                    { label: 'Data Encryption', status: 'Active' },
-                    { label: 'Access Control', status: 'Enforced' },
-                    { label: 'Audit Logging', status: 'Enabled' },
-                    { label: 'MFA Protection', status: 'Required' },
-                    { label: 'Threat Detection', status: 'Monitoring' },
+                    { label: 'Data Encryption', status: 'Active', color: 'green' },
+                    { label: 'Access Control', status: 'Enforced', color: 'green' },
+                    { label: 'Audit Logging', status: 'Enabled', color: 'green' },
+                    { label: 'MFA Protection', status: 'Required', color: 'green' },
+                    { label: 'Threat Detection', status: 'Monitoring', color: 'blue' },
                   ].map((item, i) => (
-                    <div key={i} className="flex items-center justify-between p-4 bg-gray-700/30 rounded-xl border border-gray-700">
+                    <div key={i} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-xl border border-white/5 hover:bg-white/[0.06] transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <div className={`w-2.5 h-2.5 rounded-full ${item.color === 'green' ? 'bg-green-500' : 'bg-blue-500'} animate-pulse`} />
                         <span className="text-gray-300">{item.label}</span>
                       </div>
-                      <span className="text-sm font-medium text-green-400">{item.status}</span>
+                      <span className={`text-sm font-semibold ${item.color === 'green' ? 'text-green-400' : 'text-blue-400'}`}>{item.status}</span>
                     </div>
                   ))}
+                </div>
+                
+                {/* Bottom Stats */}
+                <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-xl font-bold text-teal-400">99.99%</div>
+                    <div className="text-xs text-gray-500">Uptime</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-teal-400">0</div>
+                    <div className="text-xs text-gray-500">Breaches</div>
+                  </div>
+                  <div>
+                    <div className="text-xl font-bold text-teal-400">24/7</div>
+                    <div className="text-xs text-gray-500">Monitoring</div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1327,50 +1433,61 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* FAQ Section */}
-      <section id="faq" className="py-24 px-6 bg-white">
-        <div className="max-w-4xl mx-auto">
+      {/* FAQ Section - Enhanced */}
+      <section id="faq" className="py-32 px-6 bg-gradient-to-b from-white via-amber-50/30 to-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-amber-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-orange-200/20 to-transparent rounded-full blur-3xl" />
+        
+        <div className="max-w-4xl mx-auto relative">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 text-amber-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <HelpCircle className="w-4 h-4" />
               Got Questions?
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">
-              Frequently Asked Questions
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Frequently Asked{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-600 to-orange-600">Questions</span>
             </h2>
-            <p className="text-xl text-gray-600 font-light">
+            <p className="text-xl text-gray-600 font-light leading-relaxed">
               Everything you need to know about ConTigo.
             </p>
           </div>
           
-          <div className="bg-white rounded-3xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="px-8">
-              {faqs.map((faq, index) => (
-                <FAQItem 
-                  key={index}
-                  question={faq.question}
-                  answer={faq.answer}
-                  isOpen={openFaq === index}
-                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                />
-              ))}
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-gradient-to-r from-amber-400 via-orange-400 to-amber-400 rounded-[2rem] opacity-20 blur-lg group-hover:opacity-30 transition-opacity duration-500" />
+            <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-amber-100/50 shadow-xl overflow-hidden">
+              <div className="px-6 md:px-10">
+                {faqs.map((faq, index) => (
+                  <FAQItem 
+                    key={index}
+                    question={faq.question}
+                    answer={faq.answer}
+                    isOpen={openFaq === index}
+                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  />
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Support Section */}
-      <section id="support" className="py-24 px-6 bg-gray-50">
-        <div className="max-w-7xl mx-auto">
+      {/* Support Section - Enhanced */}
+      <section id="support" className="py-32 px-6 bg-gradient-to-b from-gray-50 via-rose-50/30 to-gray-50 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-blue-200/30 rounded-full blur-3xl" />
+        
+        <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-rose-50 border border-rose-200 text-rose-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50 text-rose-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <MessageSquare className="w-4 h-4" />
               We&apos;re Here to Help
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
             </div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6 tracking-tight">
-              Support & Resources
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Support &{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600">Resources</span>
             </h2>
-            <p className="text-xl text-gray-600 font-light">
+            <p className="text-xl text-gray-600 font-light leading-relaxed">
               Everything you need to succeed with ConTigo.
             </p>
           </div>
@@ -1381,61 +1498,95 @@ export default function LandingPage() {
               { icon: HelpCircle, title: 'Help Center', desc: 'Tutorials and best practices', link: 'Visit Help Center', gradient: 'from-blue-500 to-indigo-600' },
               { icon: MessageSquare, title: 'Contact Support', desc: 'Get help from our team', link: 'Contact Us', gradient: 'from-teal-500 to-emerald-600' },
             ].map((item, i) => (
-              <div key={i} className="bg-white p-10 rounded-3xl border border-gray-100 hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-500 group text-center">
-                <div className={`w-20 h-20 bg-gradient-to-br ${item.gradient} rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg`}>
-                  <item.icon className="w-10 h-10 text-white" />
+              <div key={i} className="relative group">
+                <div className={`absolute -inset-1 bg-gradient-to-br ${item.gradient} rounded-[2rem] opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500`} />
+                <div className="relative bg-white/80 backdrop-blur-xl p-10 rounded-3xl border border-gray-100/50 hover:border-gray-200 hover:shadow-2xl transition-all duration-500 text-center h-full">
+                  <div className="relative inline-block mb-8">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} rounded-3xl blur-xl opacity-40 group-hover:opacity-60 transition-opacity`} />
+                    <div className={`relative w-20 h-20 bg-gradient-to-br ${item.gradient} rounded-3xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-lg`}>
+                      <item.icon className="w-10 h-10 text-white" />
+                    </div>
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors">{item.title}</h3>
+                  <p className="text-gray-600 mb-8 text-lg leading-relaxed">{item.desc}</p>
+                  <a href="#" className="inline-flex items-center text-teal-600 font-semibold hover:text-teal-700 text-lg group/link">
+                    {item.link}
+                    <ArrowUpRight className="w-5 h-5 ml-2 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
+                  </a>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-900 mb-4">{item.title}</h3>
-                <p className="text-gray-600 mb-8 text-lg">{item.desc}</p>
-                <a href="#" className="inline-flex items-center text-teal-600 font-semibold hover:text-teal-700 text-lg group">
-                  {item.link}
-                  <ArrowUpRight className="w-5 h-5 ml-2 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-                </a>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 px-6 bg-gray-900 relative overflow-hidden">
+      {/* CTA Section - Enhanced */}
+      <section className="py-32 px-6 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden">
+        {/* Animated Background */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-gradient-to-b from-teal-500/20 to-transparent rounded-full blur-3xl" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-gradient-to-b from-teal-500/20 via-emerald-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-tl from-violet-500/15 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+          <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         </div>
         
         <div className="max-w-4xl mx-auto text-center relative">
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-8 tracking-tight leading-tight">
-            Ready to Transform Your<br />Contract Management?
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 text-teal-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
+            <Rocket className="w-4 h-4" />
+            Get Started Today
+          </div>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-8 tracking-tight leading-tight">
+            Ready to Transform Your{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400">Contract Management</span>?
           </h2>
-          <p className="text-xl text-gray-400 mb-12 max-w-2xl mx-auto font-light">
+          <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto font-light leading-relaxed">
             Join forward-thinking teams using ConTigo to streamline their workflows.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/auth/signin" className="group bg-white text-gray-900 px-10 py-5 rounded-full font-semibold hover:bg-gray-100 transition-all hover:shadow-2xl flex items-center gap-3 text-lg">
-              Start Free Trial
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+            <Link href="/auth/signin" className="group relative">
+              <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full opacity-60 blur-lg group-hover:opacity-80 transition-opacity" />
+              <div className="relative bg-white text-gray-900 px-10 py-5 rounded-full font-semibold hover:bg-gray-100 transition-all flex items-center gap-3 text-lg">
+                Get Started
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              </div>
             </Link>
-            <a href="mailto:sales@contigo.com" className="text-white px-10 py-5 rounded-full font-semibold border-2 border-white/20 hover:border-white/50 hover:bg-white/5 transition-all">
+            <a href="mailto:sales@contigo.com" className="text-white px-10 py-5 rounded-full font-semibold border-2 border-white/20 hover:border-teal-500/50 hover:bg-teal-500/10 transition-all backdrop-blur-sm">
               Contact Sales
             </a>
+          </div>
+          
+          {/* Trust indicators */}
+          <div className="mt-16 pt-10 border-t border-white/10">
+            <p className="text-gray-500 text-sm mb-6">Trusted by teams worldwide</p>
+            <div className="flex flex-wrap items-center justify-center gap-8 opacity-50">
+              {['Fortune 500', 'Enterprise', 'Startups', 'Law Firms', 'Consulting'].map((item, i) => (
+                <span key={i} className="text-gray-400 font-medium">{item}</span>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-950 text-gray-400 py-20 px-6">
-        <div className="max-w-7xl mx-auto">
+      {/* Footer - Enhanced */}
+      <footer className="bg-gray-950 text-gray-400 py-20 px-6 relative overflow-hidden">
+        {/* Subtle Background */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
+        
+        <div className="max-w-7xl mx-auto relative">
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
             <div className="lg:col-span-2">
-              <Image src="/logo.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
+              <Image src="/logo-transparent.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
               <p className="text-gray-500 leading-relaxed mb-6 max-w-sm">
                 Enterprise contract management platform built for modern teams. Secure, intelligent, and scalable.
               </p>
               <div className="flex items-center gap-3">
-                {['twitter', 'linkedin', 'github'].map((social) => (
-                  <a key={social} href="#" className="w-10 h-10 bg-gray-800 rounded-xl flex items-center justify-center hover:bg-teal-600 transition-colors">
-                    <span className="sr-only">{social}</span>
-                    <div className="w-5 h-5 bg-current rounded-sm" />
+                {[
+                  { name: 'twitter', icon: '𝕏' },
+                  { name: 'linkedin', icon: 'in' },
+                  { name: 'github', icon: '◉' },
+                ].map((social) => (
+                  <a key={social.name} href="#" className="w-10 h-10 bg-gray-800/50 border border-gray-700/50 rounded-xl flex items-center justify-center hover:bg-teal-600 hover:border-teal-500 transition-all duration-300 group">
+                    <span className="sr-only">{social.name}</span>
+                    <span className="text-gray-400 group-hover:text-white transition-colors font-bold text-sm">{social.icon}</span>
                   </a>
                 ))}
               </div>
@@ -1451,7 +1602,7 @@ export default function LandingPage() {
                 <ul className="space-y-4">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link href={link.href} className="hover:text-white transition-colors">{link.label}</Link>
+                      <Link href={link.href} className="hover:text-teal-400 transition-colors duration-200">{link.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -1459,13 +1610,12 @@ export default function LandingPage() {
             ))}
           </div>
           
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="border-t border-gray-800/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-gray-500 text-sm">© {new Date().getFullYear()} ConTigo. All rights reserved.</p>
             <div className="flex items-center gap-8 text-sm">
-              <a href="#" className="hover:text-white transition-colors">Privacy</a>
-              <a href="#" className="hover:text-white transition-colors">Terms</a>
-              <a href="#" className="hover:text-white transition-colors">Cookies</a>
-              <a href="#" className="hover:text-white transition-colors">GDPR</a>
+              {['Privacy', 'Terms', 'Cookies', 'GDPR'].map((item) => (
+                <a key={item} href="#" className="hover:text-teal-400 transition-colors duration-200">{item}</a>
+              ))}
             </div>
           </div>
         </div>

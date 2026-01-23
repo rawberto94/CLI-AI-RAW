@@ -44,8 +44,7 @@ We reserve the right to modify, suspend, or discontinue any part of the Service 
 • Prices may change with 30 days notice
 • Failed payments may result in service suspension
 • You are responsible for all applicable taxes
-• Annual subscriptions may be cancelled for a prorated refund within the first 30 days
-• Free trials automatically convert to paid subscriptions unless cancelled`,
+• Annual subscriptions may be cancelled for a prorated refund within the first 30 days`,
   },
   {
     icon: AlertTriangle,

@@ -119,7 +119,7 @@ const tourSteps: TourStep[] = [
       { text: 'Recent activity feed', icon: Zap },
       { text: 'Quick action shortcuts', icon: Rocket },
     ],
-    action: { label: 'Go to Dashboard', href: '/' },
+    action: { label: 'Go to Dashboard', href: '/dashboard' },
     gradient: 'from-blue-600 via-indigo-600 to-purple-600',
     accentColor: 'blue',
     duration: '2 min',

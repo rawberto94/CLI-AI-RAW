@@ -88,7 +88,7 @@ export default function EnhancedUIShowcase() {
                     Upgrade to Pro
                   </Button>
                   <Button variant="gradient" size="sm">
-                    Start Free Trial
+                    Get Started
                   </Button>
                   <Button variant="gradient" size="lg">
                     Get Premium Access

@@ -85,7 +85,7 @@ const navigationGroups: NavigationGroup[] = [
     id: 'main',
     label: 'Main',
     items: [
-      { name: 'Dashboard', href: '/', icon: LayoutDashboard, description: 'Overview & insights' },
+      { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
       { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals', badge: 'Live' },
       { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },

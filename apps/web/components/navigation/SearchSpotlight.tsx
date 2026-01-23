@@ -44,7 +44,7 @@ interface SpotlightItem {
 
 const defaultItems: SpotlightItem[] = [
   // Navigation
-  { id: 'nav-home', title: 'Home', description: 'Go to dashboard', icon: Home, category: 'navigation', href: '/', keywords: ['dashboard', 'main'] },
+  { id: 'nav-home', title: 'Dashboard', description: 'Go to dashboard', icon: Home, category: 'navigation', href: '/dashboard', keywords: ['dashboard', 'main', 'home'] },
   { id: 'nav-contracts', title: 'Contracts', description: 'Browse all contracts', icon: FileText, category: 'navigation', href: '/contracts', keywords: ['files', 'documents'] },
   { id: 'nav-upload', title: 'Upload', description: 'Upload new contracts', icon: Upload, category: 'navigation', href: '/upload', keywords: ['new', 'add', 'import'] },
   { id: 'nav-ai-chat', title: 'AI Assistant', description: 'Chat with AI', icon: MessageSquare, category: 'navigation', href: '/ai/chat', keywords: ['chatbot', 'ask', 'help'] },

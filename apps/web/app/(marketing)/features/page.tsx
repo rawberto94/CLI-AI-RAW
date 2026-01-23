@@ -324,14 +324,14 @@ export default function FeaturesPage() {
             Ready to Experience These Features?
           </h2>
           <p className="mt-4 text-lg text-slate-400 max-w-2xl mx-auto">
-            Start your free trial today and see how ConTigo can transform your contract management.
+            Request a demo today and see how ConTigo can transform your contract management.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/signin"
               className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-indigo-500/30 transition-all hover:shadow-indigo-500/50 hover:scale-105"
             >
-              Start Free Trial
+              Get Started
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Link>
             <Link

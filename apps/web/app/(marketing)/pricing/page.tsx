@@ -26,7 +26,8 @@ import {
   CheckCircle2,
   Briefcase,
   Building,
-  Rocket
+  Rocket,
+  Layers
 } from 'lucide-react';
 
 // Mobile Menu Component
@@ -59,7 +60,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
               Sign In
             </Link>
             <Link href="/auth/signin" className="block w-full text-center py-3 bg-teal-600 text-white rounded-xl font-medium">
-              Start Free Trial
+              Get Started
             </Link>
           </div>
         </nav>
@@ -319,8 +320,8 @@ const pricingFAQs = [
     answer: 'We offer flexible pricing tailored to your organization\'s specific needs. Pricing is based on factors including number of users, contract volume, required features, and deployment preferences. Contact us for a personalized quote.',
   },
   {
-    question: 'Is there a free trial available?',
-    answer: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required to start. Our team will help you get set up and answer any questions during your trial.',
+    question: 'Can I see a demo before purchasing?',
+    answer: 'Absolutely! We offer personalized demos tailored to your specific needs. Our team will walk you through the platform, answer your questions, and help you understand how ConTigo can benefit your organization.',
   },
   {
     question: 'Do you offer annual billing discounts?',
@@ -389,7 +390,7 @@ export default function PricingPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link href="/">
-              <Image src="/logo.png" alt="ConTigo" width={140} height={48} className="h-10 w-auto" priority />
+              <Image src="/logo-transparent.png" alt="ConTigo" width={140} height={48} className="h-10 w-auto" priority />
             </Link>
             
             <div className="hidden lg:flex items-center gap-8">
@@ -423,27 +424,31 @@ export default function PricingPage() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-16 px-6 bg-gradient-to-b from-gray-50 to-white">
-        <div className="max-w-5xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 border border-teal-100 rounded-full mb-8">
+      <section className="pt-32 pb-16 px-6 bg-gradient-to-b from-gray-50 via-white to-white relative overflow-hidden">
+        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-teal-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute top-40 right-1/4 w-[500px] h-[500px] bg-violet-200/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+        <div className="max-w-5xl mx-auto text-center relative">
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-8 shadow-sm">
             <Globe className="w-4 h-4 text-teal-600" />
-            <span className="text-sm font-medium text-teal-700">Swiss-Based • Swiss Data Residency • Tailored Pricing</span>
+            <span className="text-sm font-semibold text-teal-700">Swiss-Based • Swiss Data Residency • Tailored Pricing</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           </div>
           
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
-            Flexible Plans for<br />Every Organization
+          <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-8 tracking-tight leading-tight">
+            Flexible Plans for{' '}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-emerald-500 to-cyan-500">Every Organization</span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10 font-light">
+          <p className="text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
             We offer customized pricing based on your specific needs. 
             Contact us for a personalized quote tailored to your organization.
           </p>
 
           <button
             onClick={scrollToForm}
-            className="inline-flex items-center gap-3 bg-teal-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-teal-700 transition-all hover:shadow-xl hover:shadow-teal-600/25 text-lg"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-10 py-5 rounded-full font-semibold hover:shadow-xl hover:shadow-teal-500/25 transition-all text-lg"
           >
             Request a Quote
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
       </section>
@@ -464,25 +469,27 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <div
                 key={plan.name}
-                className={`relative rounded-3xl p-8 bg-white border-2 transition-all duration-300 hover:shadow-2xl ${
+                className={`relative rounded-3xl p-8 bg-white border-2 transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 ${
                   plan.popular 
-                    ? 'border-teal-500 ring-4 ring-teal-500/20 scale-[1.02]' 
+                    ? 'border-teal-500 ring-4 ring-teal-500/20 scale-[1.02] shadow-lg shadow-teal-500/10' 
                     : 'border-gray-100 hover:border-teal-200'
                 }`}
               >
                 {/* Popular Badge */}
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-teal-500 to-cyan-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold shadow-lg flex items-center gap-1.5">
+                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-5 py-2 rounded-full text-sm font-semibold shadow-lg shadow-teal-500/30 flex items-center gap-2">
                       <Star className="w-4 h-4" />
                       Most Popular
                     </div>
                   </div>
                 )}
 
-                {/* Plan Icon */}
-                <div className={`w-14 h-14 bg-gradient-to-br ${plan.gradient} rounded-2xl flex items-center justify-center mb-6 shadow-lg`}>
-                  <plan.icon className="w-7 h-7 text-white" />
+                <div className="relative inline-block mb-6">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${plan.gradient} rounded-2xl blur-xl opacity-40`} />
+                  <div className={`relative w-16 h-16 bg-gradient-to-br ${plan.gradient} rounded-2xl flex items-center justify-center shadow-lg`}>
+                    <plan.icon className="w-8 h-8 text-white" />
+                  </div>
                 </div>
 
                 {/* Plan Header */}
@@ -499,27 +506,25 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                {/* CTA Button */}
                 <button
                   onClick={scrollToForm}
-                  className={`w-full py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 mb-8 ${
+                  className={`group w-full py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 mb-8 ${
                     plan.popular
-                      ? 'bg-teal-600 text-white hover:bg-teal-700'
+                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-teal-500/25'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   }`}
                 >
                   Contact for Pricing
-                  <ArrowRight className="w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                 </button>
 
-                {/* Features List */}
                 <ul className="space-y-3">
                   {plan.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <div className="w-5 h-5 rounded-full bg-teal-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <Check className="w-3 h-3 text-teal-600" />
+                    <li key={i} className="flex items-start gap-3 group">
+                      <div className={`w-5 h-5 rounded-full bg-gradient-to-br ${plan.gradient} flex items-center justify-center flex-shrink-0 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity`}>
+                        <Check className="w-3 h-3 text-white" />
                       </div>
-                      <span className="text-sm text-gray-700">{feature}</span>
+                      <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">{feature}</span>
                     </li>
                   ))}
                 </ul>
@@ -530,20 +535,24 @@ export default function PricingPage() {
       </section>
 
       {/* Trust Badges */}
-      <section className="py-16 px-6 bg-gray-50">
-        <div className="max-w-5xl mx-auto">
+      <section className="py-20 px-6 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="max-w-5xl mx-auto relative">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Shield, label: 'Swiss Data Residency', sublabel: 'All data stored in Switzerland' },
-              { icon: Lock, label: 'Bank-Grade Security', sublabel: 'AES-256 encryption' },
-              { icon: Award, label: 'SOC 2 Type II', sublabel: 'Certified compliant' },
-              { icon: Globe, label: 'GDPR & nDSG', sublabel: 'Fully compliant' },
+              { icon: Shield, label: 'Swiss Data Residency', sublabel: 'All data stored in Switzerland', gradient: 'from-teal-500 to-emerald-500' },
+              { icon: Lock, label: 'Bank-Grade Security', sublabel: 'AES-256 encryption', gradient: 'from-blue-500 to-cyan-500' },
+              { icon: Award, label: 'SOC 2 Type II', sublabel: 'Certified compliant', gradient: 'from-violet-500 to-purple-500' },
+              { icon: Globe, label: 'GDPR & nDSG', sublabel: 'Fully compliant', gradient: 'from-orange-500 to-amber-500' },
             ].map((item, i) => (
-              <div key={i} className="text-center">
-                <div className="w-14 h-14 bg-white rounded-2xl shadow-lg flex items-center justify-center mx-auto mb-4">
-                  <item.icon className="w-7 h-7 text-teal-600" />
+              <div key={i} className="text-center group">
+                <div className="relative inline-block mb-4">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} rounded-2xl blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
+                  <div className={`relative w-16 h-16 bg-gradient-to-br ${item.gradient} rounded-2xl shadow-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300`}>
+                    <item.icon className="w-8 h-8 text-white" />
+                  </div>
                 </div>
-                <h3 className="font-semibold text-gray-900 mb-1">{item.label}</h3>
+                <h3 className="font-bold text-gray-900 mb-1">{item.label}</h3>
                 <p className="text-sm text-gray-500">{item.sublabel}</p>
               </div>
             ))}
@@ -552,35 +561,42 @@ export default function PricingPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section id="contact-form" className="py-24 px-6 bg-gradient-to-b from-white to-gray-50">
-        <div className="max-w-5xl mx-auto">
+      <section id="contact-form" className="py-32 px-6 bg-gradient-to-b from-white via-teal-50/30 to-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-teal-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-200/20 to-transparent rounded-full blur-3xl" />
+        <div className="max-w-5xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Left Column - Info */}
             <div>
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 border border-teal-100 rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-6 shadow-sm">
                 <Mail className="w-4 h-4 text-teal-600" />
-                <span className="text-sm font-medium text-teal-700">Get in Touch</span>
+                <span className="text-sm font-semibold text-teal-700">Get in Touch</span>
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               </div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-                Request Your<br />Custom Quote
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
+                Request Your{' '}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Custom Quote</span>
               </h2>
-              <p className="text-xl text-gray-600 mb-10">
+              <p className="text-xl text-gray-600 mb-10 leading-relaxed">
                 Tell us about your organization and we&apos;ll create a personalized pricing plan that fits your needs.
               </p>
 
-              <div className="space-y-6">
+              <div className="space-y-5">
                 {[
-                  { icon: Clock, title: 'Quick Response', desc: 'We\'ll get back to you within 24 hours' },
-                  { icon: Users, title: 'Dedicated Support', desc: 'Personal account manager from day one' },
-                  { icon: Zap, title: 'Free Trial', desc: '14-day trial with full feature access' },
-                  { icon: Shield, title: 'No Commitment', desc: 'No credit card required to get started' },
+                  { icon: Clock, title: 'Quick Response', desc: 'We\'ll get back to you within 24 hours', gradient: 'from-teal-500 to-emerald-500' },
+                  { icon: Users, title: 'Dedicated Support', desc: 'Personal account manager from day one', gradient: 'from-blue-500 to-cyan-500' },
+                  { icon: Zap, title: 'Personalized Demo', desc: 'See the platform tailored to your needs', gradient: 'from-violet-500 to-purple-500' },
+                  { icon: Shield, title: 'Flexible Terms', desc: 'Plans customized for your business', gradient: 'from-orange-500 to-amber-500' },
                 ].map((item, i) => (
-                  <div key={i} className="flex items-start gap-4">
-                    <div className="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                      <item.icon className="w-6 h-6 text-teal-600" />
+                  <div key={i} className="flex items-start gap-4 group">
+                    <div className="relative">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} rounded-xl blur-lg opacity-30 group-hover:opacity-50 transition-opacity`} />
+                      <div className={`relative w-12 h-12 bg-gradient-to-br ${item.gradient} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
+                        <item.icon className="w-6 h-6 text-white" />
+                      </div>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{item.title}</h3>
+                      <h3 className="font-bold text-gray-900">{item.title}</h3>
                       <p className="text-sm text-gray-500">{item.desc}</p>
                     </div>
                   </div>
@@ -609,7 +625,9 @@ export default function PricingPage() {
             </div>
 
             {/* Right Column - Form */}
-            <div className="bg-white rounded-3xl p-8 shadow-xl border border-gray-100">
+            <div className="relative">
+              <div className="absolute -inset-2 bg-gradient-to-br from-teal-500/20 via-emerald-500/10 to-violet-500/20 rounded-[2rem] blur-xl" />
+              <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-100/50">
               {isSubmitted ? (
                 <div className="text-center py-12">
                   <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -735,8 +753,10 @@ export default function PricingPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full bg-teal-600 text-white py-4 rounded-xl font-semibold hover:bg-teal-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full relative group overflow-hidden bg-gradient-to-r from-teal-600 to-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl hover:shadow-teal-500/25 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
+                    <span className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <span className="relative flex items-center gap-2">
                     {isSubmitting ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
@@ -748,6 +768,7 @@ export default function PricingPage() {
                         Request Quote
                       </>
                     )}
+                    </span>
                   </button>
 
                   <p className="text-xs text-gray-500 text-center">
@@ -758,17 +779,25 @@ export default function PricingPage() {
                   </p>
                 </form>
               )}
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Feature Comparison Table */}
-      <section className="py-24 px-6 bg-white">
-        <div className="max-w-6xl mx-auto">
+      <section className="py-32 px-6 bg-gradient-to-b from-gray-50 via-white to-gray-50 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '48px 48px' }} />
+        <div className="absolute top-40 left-0 w-[800px] h-[800px] bg-gradient-to-r from-teal-100/30 to-transparent rounded-full blur-3xl" />
+        <div className="max-w-6xl mx-auto relative">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Feature Comparison
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200/50 rounded-full mb-6 shadow-sm">
+              <Layers className="w-4 h-4 text-gray-600" />
+              <span className="text-sm font-semibold text-gray-700">Detailed Comparison</span>
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">Feature</span>{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Comparison</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Compare what&apos;s included in each plan
@@ -776,7 +805,7 @@ export default function PricingPage() {
           </div>
 
           {/* Desktop Table */}
-          <div className="hidden lg:block overflow-hidden rounded-3xl border border-gray-200 bg-white">
+          <div className="hidden lg:block overflow-hidden rounded-3xl border border-gray-200/50 bg-white/80 backdrop-blur-sm shadow-xl">
             <table className="w-full">
               <thead>
                 <tr className="bg-gray-50">
@@ -846,10 +875,10 @@ export default function PricingPage() {
           {/* Mobile Accordion */}
           <div className="lg:hidden space-y-4">
             {comparisonCategories.map((category, catIndex) => (
-              <details key={catIndex} className="bg-white rounded-2xl border border-gray-200 overflow-hidden group">
-                <summary className="p-6 font-semibold text-gray-900 cursor-pointer flex items-center justify-between hover:bg-gray-50">
+              <details key={catIndex} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 overflow-hidden group shadow-lg">
+                <summary className="p-6 font-bold text-gray-900 cursor-pointer flex items-center justify-between hover:bg-gray-50/50">
                   {category.name}
-                  <ChevronRight className="w-5 h-5 text-gray-400 group-open:rotate-90 transition-transform" />
+                  <ChevronRight className="w-5 h-5 text-teal-600 group-open:rotate-90 transition-transform" />
                 </summary>
                 <div className="px-6 pb-6">
                   {category.features.map((feature, featIndex) => (
@@ -891,32 +920,37 @@ export default function PricingPage() {
           <div className="text-center mt-12">
             <button
               onClick={scrollToForm}
-              className="inline-flex items-center gap-2 bg-teal-600 text-white px-8 py-4 rounded-full font-semibold hover:bg-teal-700 transition-all"
+              className="group inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-full font-bold hover:shadow-xl hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all"
             >
               Get Your Custom Quote
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
         </div>
       </section>
 
       {/* Pricing FAQ */}
-      <section className="py-24 px-6 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
+      <section className="py-32 px-6 bg-gradient-to-b from-white via-gray-50 to-white relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-teal-100/30 to-transparent rounded-full blur-3xl" />
+        <div className="max-w-4xl mx-auto relative">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-teal-50 border border-teal-100 rounded-full mb-6">
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-6 shadow-sm">
               <HelpCircle className="w-4 h-4 text-teal-600" />
-              <span className="text-sm font-medium text-teal-700">Frequently Asked Questions</span>
+              <span className="text-sm font-semibold text-teal-700">Frequently Asked Questions</span>
             </div>
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Common Questions
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
+              Common{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Questions</span>
             </h2>
             <p className="text-xl text-gray-600">
               Everything you need to know about our pricing
             </p>
           </div>
 
-          <div className="bg-white rounded-3xl p-8 shadow-sm">
+          <div className="relative">
+            <div className="absolute -inset-1 bg-gradient-to-br from-teal-500/10 via-transparent to-emerald-500/10 rounded-[2rem] blur-xl" />
+            <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-100/50">
             {pricingFAQs.map((faq, index) => (
               <FAQItem
                 key={index}
@@ -926,26 +960,31 @@ export default function PricingPage() {
                 onClick={() => setOpenFAQ(openFAQ === index ? null : index)}
               />
             ))}
+            </div>
           </div>
 
           <div className="text-center mt-12">
             <p className="text-gray-600 mb-4">Have more questions?</p>
             <a
               href="mailto:sales@contigo.ch"
-              className="inline-flex items-center gap-2 text-teal-600 font-semibold hover:text-teal-700"
+              className="inline-flex items-center gap-2 text-teal-600 font-bold hover:text-teal-700 group"
             >
               <Mail className="w-4 h-4" />
               Contact our sales team
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </a>
           </div>
         </div>
       </section>
 
       {/* Final CTA */}
-      <section className="py-24 px-6 bg-gradient-to-r from-teal-600 to-cyan-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6">
+      <section className="py-32 px-6 bg-gradient-to-br from-teal-600 via-emerald-600 to-cyan-600 relative overflow-hidden">
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-cyan-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+        </div>
+        <div className="max-w-4xl mx-auto text-center relative">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
             Ready to Transform Your<br />Contract Management?
           </h2>
           <p className="text-xl text-teal-100 mb-10 max-w-2xl mx-auto">
@@ -954,31 +993,32 @@ export default function PricingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={scrollToForm}
-              className="bg-white text-teal-700 px-10 py-5 rounded-full font-semibold hover:bg-gray-100 transition-all hover:shadow-2xl flex items-center gap-3 text-lg"
+              className="group bg-white text-teal-700 px-10 py-5 rounded-full font-bold hover:bg-gray-50 transition-all hover:shadow-2xl hover:shadow-black/20 flex items-center gap-3 text-lg hover:-translate-y-1"
             >
               Request a Quote
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </button>
             <a
               href="tel:+41445551234"
-              className="text-white px-10 py-5 rounded-full font-semibold border-2 border-white/30 hover:border-white hover:bg-white/10 transition-all flex items-center gap-2"
+              className="text-white px-10 py-5 rounded-full font-bold border-2 border-white/30 hover:border-white hover:bg-white/10 transition-all flex items-center gap-2"
             >
               <Phone className="w-5 h-5" />
               Call Us
             </a>
           </div>
-          <p className="text-teal-200 mt-6 text-sm">
-            14-day free trial • No credit card required • Swiss data residency
+          <p className="text-teal-200 mt-8 text-sm">
+            Personalized demo available • Swiss data residency • Enterprise-grade security
           </p>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-950 text-gray-400 py-20 px-6">
-        <div className="max-w-7xl mx-auto">
+      <footer className="bg-gray-950 text-gray-400 py-20 px-6 relative overflow-hidden">
+        <div className="absolute inset-0 opacity-[0.03]\" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        <div className="max-w-7xl mx-auto relative">
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
             <div className="lg:col-span-2">
-              <Image src="/logo.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
+              <Image src="/logo-transparent.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
               <p className="text-gray-500 leading-relaxed mb-6 max-w-sm">
                 Swiss-based enterprise contract management platform. Secure, intelligent, and built for compliance.
               </p>
@@ -1016,7 +1056,7 @@ export default function PricingPage() {
                 <ul className="space-y-4">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link href={link.href} className="hover:text-white transition-colors">{link.label}</Link>
+                      <Link href={link.href} className="hover:text-teal-400 transition-colors">{link.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -1027,10 +1067,10 @@ export default function PricingPage() {
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-gray-500 text-sm">© {new Date().getFullYear()} ConTigo AG. All rights reserved. Made in Switzerland 🇨🇭</p>
             <div className="flex items-center gap-8 text-sm">
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-              <Link href="/cookies" className="hover:text-white transition-colors">Cookies</Link>
-              <Link href="/gdpr" className="hover:text-white transition-colors">GDPR</Link>
+              <Link href="/privacy" className="hover:text-teal-400 transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-teal-400 transition-colors">Terms</Link>
+              <Link href="/cookies" className="hover:text-teal-400 transition-colors">Cookies</Link>
+              <Link href="/gdpr" className="hover:text-teal-400 transition-colors">GDPR</Link>
             </div>
           </div>
         </div>
