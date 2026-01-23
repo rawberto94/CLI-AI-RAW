@@ -61,6 +61,7 @@ import {
   Scale,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import Link from 'next/link'
 
 interface UploadFile {
@@ -196,7 +197,7 @@ export default function UploadPage() {
         method: 'POST',
         body: formData,
         headers: {
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
           'x-data-mode': dataMode
         }
       })

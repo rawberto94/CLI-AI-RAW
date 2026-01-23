@@ -15,6 +15,7 @@
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { PrismaClient } from '@prisma/client';
+import { prisma as defaultPrisma } from './lib/prisma';
 import OpenAI from 'openai';
 
 // ============================================================================
@@ -186,7 +187,7 @@ export class ObligationTrackingAgent extends EventEmitter {
 
   constructor(prisma?: PrismaClient) {
     super();
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || defaultPrisma;
     this.openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
   }
 
@@ -498,14 +499,11 @@ Return a JSON object with:
 
   /**
    * Get dashboard metrics for a tenant
+   * Note: ContractObligation model not yet in schema, returns placeholder metrics
    */
-  async getDashboardMetrics(tenantId: string): Promise<ObligationDashboardMetrics> {
-    // In production, this would query from database with aggregations
-    const now = new Date();
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-
-    // Placeholder metrics - would be calculated from actual data
+  async getDashboardMetrics(_tenantId: string): Promise<ObligationDashboardMetrics> {
+    // ContractObligation model doesn't exist in schema yet
+    // Return placeholder metrics until model is added
     return {
       totalObligations: 0,
       byStatus: {
@@ -517,31 +515,17 @@ Return a JSON object with:
         waived: 0,
         cancelled: 0
       },
-      byPriority: {
-        critical: 0,
-        high: 0,
-        medium: 0,
-        low: 0
-      },
+      byPriority: { critical: 0, high: 0, medium: 0, low: 0 },
       byType: {
-        payment: 0,
-        delivery: 0,
-        performance: 0,
-        reporting: 0,
-        compliance: 0,
-        notification: 0,
-        renewal: 0,
-        termination: 0,
-        audit: 0,
-        insurance: 0,
-        milestone: 0,
-        other: 0
+        payment: 0, delivery: 0, performance: 0, reporting: 0,
+        compliance: 0, notification: 0, renewal: 0, termination: 0,
+        audit: 0, insurance: 0, milestone: 0, other: 0
       },
       overdueCount: 0,
       atRiskCount: 0,
       dueSoon: 0,
       completedThisMonth: 0,
-      complianceRate: 0,
+      complianceRate: 100,
       avgCompletionTime: 0,
       upcomingDeadlines: []
     };

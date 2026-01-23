@@ -157,7 +157,7 @@ export class ScheduledReportsService {
       await this.redis.connect();
     } catch {
       this.redis = null;
-      console.log('[ScheduledReports] Redis unavailable, using memory storage');
+      console.warn('[ScheduledReports] Redis unavailable, using memory storage');
     }
   }
 
@@ -682,12 +682,12 @@ export class ScheduledReportsService {
 
   private async sendReportByEmail(
     schedule: ReportSchedule,
-    report: { url: string; content: Buffer }
+    _report: { url: string; content: Buffer }
   ): Promise<void> {
     if (!schedule.delivery.email?.recipients?.length) return;
 
     // In production, use SendGrid, SES, or other email service
-    console.log(`[ScheduledReports] Sending report to: ${schedule.delivery.email.recipients.join(', ')}`);
+    console.warn(`[ScheduledReports] Sending report to: ${schedule.delivery.email.recipients.join(', ')}`);
     
     // Simulate email sending
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -730,13 +730,117 @@ export class ScheduledReportsService {
   ): Promise<string> {
     if (!schedule.delivery.storage?.provider) return '';
 
-    // In production, upload to cloud storage
-    const filename = `${schedule.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${schedule.format}`;
+    const filename = `reports/${schedule.tenantId}/${schedule.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${schedule.format}`;
+    const bucket = schedule.delivery.storage.bucket || 'contigo-reports';
     
-    console.log(`[ScheduledReports] Uploading to ${schedule.delivery.storage.provider}: ${filename}`);
-    
-    // Placeholder - would use cloud SDK
-    return `https://storage.example.com/${schedule.delivery.storage.bucket}/${filename}`;
+    console.warn(`[ScheduledReports] Uploading to ${schedule.delivery.storage.provider}: ${filename}`);
+
+    // AWS S3
+    if (schedule.delivery.storage.provider === 's3' && process.env.AWS_ACCESS_KEY_ID) {
+      try {
+        const { S3Client, PutObjectCommand } = await import('@aws-sdk/client-s3');
+        const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+
+        const s3 = new S3Client({
+          region: process.env.AWS_REGION || 'us-east-1',
+          credentials: {
+            accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+            secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+          },
+        });
+
+        const mimeTypes: Record<string, string> = {
+          pdf: 'application/pdf',
+          xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          csv: 'text/csv',
+          json: 'application/json',
+        };
+
+        await s3.send(new PutObjectCommand({
+          Bucket: bucket,
+          Key: filename,
+          Body: report.content,
+          ContentType: mimeTypes[schedule.format] || 'application/octet-stream',
+          ServerSideEncryption: 'AES256',
+        }));
+
+        // Generate pre-signed URL for 7 days
+        const { GetObjectCommand } = await import('@aws-sdk/client-s3');
+        const getCommand = new GetObjectCommand({ Bucket: bucket, Key: filename });
+        const signedUrl = await getSignedUrl(s3, getCommand, { expiresIn: 7 * 24 * 60 * 60 });
+        
+        console.warn(`[ScheduledReports] Uploaded to S3: s3://${bucket}/${filename}`);
+        return signedUrl;
+      } catch (error) {
+        console.error('[ScheduledReports] S3 upload failed:', error);
+      }
+    }
+
+    // Azure Blob Storage
+    if (schedule.delivery.storage.provider === 'azure' && process.env.AZURE_STORAGE_CONNECTION_STRING) {
+      try {
+        const { BlobServiceClient } = await import('@azure/storage-blob');
+        const blobService = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+        const containerClient = blobService.getContainerClient(bucket);
+        
+        await containerClient.createIfNotExists();
+        
+        const blobClient = containerClient.getBlockBlobClient(filename);
+        await blobClient.upload(report.content, report.content.length);
+
+        console.warn(`[ScheduledReports] Uploaded to Azure: ${blobClient.url}`);
+        return blobClient.url;
+      } catch (error) {
+        console.error('[ScheduledReports] Azure upload failed:', error);
+      }
+    }
+
+    // Google Cloud Storage
+    if (schedule.delivery.storage.provider === 'gcs' && process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+      try {
+        // Dynamic import with fallback - @google-cloud/storage is optional dependency
+        // Use string variable to prevent TypeScript from trying to resolve the module
+        const moduleName = '@google-cloud/storage';
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const gcsModule: any = await import(/* webpackIgnore: true */ moduleName).catch(() => null);
+        if (gcsModule) {
+          const { Storage } = gcsModule;
+          const storage = new Storage();
+          const bucketObj = storage.bucket(bucket);
+          const file = bucketObj.file(filename);
+
+          await file.save(report.content);
+
+          // Make file accessible with signed URL
+          const [url] = await file.getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+          });
+
+          console.warn(`[ScheduledReports] Uploaded to GCS: gs://${bucket}/${filename}`);
+          return url;
+        }
+      } catch (error) {
+        console.error('[ScheduledReports] GCS upload failed:', error);
+      }
+    }
+
+    // Fallback: Local storage (for development)
+    try {
+      const fs = await import('fs/promises');
+      const path = await import('path');
+      const localPath = path.join(process.cwd(), 'tmp', 'reports', schedule.tenantId);
+      await fs.mkdir(localPath, { recursive: true });
+      const localFile = path.join(localPath, `${schedule.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${schedule.format}`);
+      await fs.writeFile(localFile, report.content);
+      
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      return `${baseUrl}/api/reports/download?path=${encodeURIComponent(localFile)}`;
+    } catch {
+      console.error('[ScheduledReports] Local storage fallback failed');
+    }
+
+    return '';
   }
 
   // --------------------------------------------------------------------------

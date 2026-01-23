@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from '@repo/data-orchestration';
 
 // ============================================================================
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const legalReviewService = getLegalReviewService();
     const playbooks = await legalReviewService.listPlaybooks(tenantId);
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
 
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.createPlaybook({

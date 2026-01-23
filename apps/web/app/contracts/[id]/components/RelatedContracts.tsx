@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { formatCurrency, formatDate } from '@/lib/design-tokens'
 import Link from 'next/link'
 import {
@@ -146,7 +147,7 @@ export const RelatedContracts = memo(function RelatedContracts({
       if (categoryId) params.append('categoryId', categoryId)
       
       const response = await fetch(`/api/contracts/${contractId}/related?${params}`, {
-        headers: { 'x-tenant-id': 'demo' }
+        headers: { 'x-tenant-id': getTenantId() }
       })
       
       if (!response.ok) throw new Error('Failed to fetch')

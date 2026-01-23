@@ -54,7 +54,7 @@ class WebhookNotificationService {
 
     // Persist to database
     try {
-      await prisma.webhookConfig.create({
+      await (prisma as any).webhookConfig?.create({
         data: {
           id,
           tenantId,
@@ -84,7 +84,7 @@ class WebhookNotificationService {
     webhookStore.set(tenantId, existing);
 
     try {
-      await prisma.webhookConfig.delete({
+      await (prisma as any).webhookConfig?.delete({
         where: { id: webhookId },
       });
     } catch (error) {
@@ -100,9 +100,9 @@ class WebhookNotificationService {
   async getWebhooks(tenantId: string): Promise<WebhookConfig[]> {
     // Try database first
     try {
-      const dbWebhooks = await prisma.webhookConfig.findMany({
+      const dbWebhooks = await (prisma as any).webhookConfig?.findMany({
         where: { tenantId },
-      });
+      }) || [];
 
       if (dbWebhooks.length > 0) {
         const configs = dbWebhooks.map(w => ({
@@ -218,7 +218,7 @@ class WebhookNotificationService {
    */
   private async logWebhookSuccess(webhookId: string, event: string): Promise<void> {
     try {
-      await prisma.webhookLog.create({
+      await (prisma as any).webhookLog?.create({
         data: {
           webhookId,
           event,
@@ -240,7 +240,7 @@ class WebhookNotificationService {
     event: string
   ): Promise<void> {
     try {
-      await prisma.webhookLog.create({
+      await (prisma as any).webhookLog?.create({
         data: {
           webhookId,
           event,

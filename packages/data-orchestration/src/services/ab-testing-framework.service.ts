@@ -387,6 +387,9 @@ export class ABTestingService {
       const variance = values.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / values.length;
       const stdDev = Math.sqrt(variance);
 
+      // Calculate trend over time using linear regression on recent values
+      const trend = this.calculateTrend(events, metricType);
+
       metrics[metricType] = {
         mean,
         median,
@@ -394,7 +397,7 @@ export class ABTestingService {
         min: sorted[0],
         max: sorted[sorted.length - 1],
         p95: sorted[Math.floor(sorted.length * 0.95)] || sorted[sorted.length - 1],
-        trend: 'stable', // TODO: Calculate trend over time
+        trend,
       };
     }
 
@@ -403,6 +406,58 @@ export class ABTestingService {
       sampleSize: events.length,
       metrics,
     };
+  }
+
+  /**
+   * Calculate trend over time using simple linear regression
+   * Compares first half vs second half averages
+   */
+  private calculateTrend(
+    events: ExperimentEvent[],
+    metricType: MetricType
+  ): 'improving' | 'stable' | 'declining' {
+    if (events.length < 4) {
+      return 'stable'; // Not enough data points
+    }
+
+    // Sort events by timestamp
+    const sortedEvents = [...events]
+      .filter(e => e.metrics[metricType] !== undefined && e.metrics[metricType] !== null)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+    if (sortedEvents.length < 4) {
+      return 'stable';
+    }
+
+    // Split into first half and second half
+    const midpoint = Math.floor(sortedEvents.length / 2);
+    const firstHalf = sortedEvents.slice(0, midpoint);
+    const secondHalf = sortedEvents.slice(midpoint);
+
+    // Calculate averages for each half
+    const firstAvg = firstHalf.reduce((sum, e) => sum + (e.metrics[metricType] || 0), 0) / firstHalf.length;
+    const secondAvg = secondHalf.reduce((sum, e) => sum + (e.metrics[metricType] || 0), 0) / secondHalf.length;
+
+    // Determine if higher is better for this metric
+    const isHigherBetter = !['latency_ms', 'cost', 'user_corrections'].includes(metricType);
+
+    // Calculate percentage change
+    const percentChange = firstAvg !== 0 ? ((secondAvg - firstAvg) / Math.abs(firstAvg)) * 100 : 0;
+
+    // Use 5% threshold to determine significance
+    const threshold = 5;
+
+    if (Math.abs(percentChange) < threshold) {
+      return 'stable';
+    }
+
+    // If higher is better: positive change = improving
+    // If lower is better: negative change = improving
+    if (isHigherBetter) {
+      return percentChange > 0 ? 'improving' : 'declining';
+    } else {
+      return percentChange < 0 ? 'improving' : 'declining';
+    }
   }
 
   private determineWinner(

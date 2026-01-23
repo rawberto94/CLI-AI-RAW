@@ -584,10 +584,16 @@ export class RateCardBenchmarkingEngine {
    * Save benchmark snapshot to database
    */
   private async saveBenchmarkSnapshot(result: BenchmarkResult): Promise<void> {
+    // Get tenantId from the rate card entry
+    const rateCard = await this.prisma.rateCardEntry.findUnique({
+      where: { id: result.rateCardEntryId },
+      select: { tenantId: true },
+    });
+
     await this.prisma.benchmarkSnapshot.create({
       data: {
         rateCardEntryId: result.rateCardEntryId,
-        tenantId: '', // TODO: Get from rate card entry
+        tenantId: rateCard?.tenantId || '',
         snapshotDate: result.calculatedAt,
         periodStart: subMonths(new Date(), result.cohortDefinition.periodMonths || 12),
         periodEnd: new Date(),
@@ -1017,11 +1023,17 @@ export class RateCardBenchmarkingEngine {
         },
       });
     } else {
+      // Get tenantId from the rate card entry
+      const rateCard = await this.prisma.rateCardEntry.findUnique({
+        where: { id: opportunity.rateCardEntryId },
+        select: { tenantId: true },
+      });
+
       // Create new opportunity
       await this.prisma.rateSavingsOpportunity.create({
         data: {
           rateCardEntryId: opportunity.rateCardEntryId,
-          tenantId: '', // TODO: Get from rate card
+          tenantId: rateCard?.tenantId || '',
           title: opportunity.title,
           description: opportunity.description,
           category: opportunity.category,

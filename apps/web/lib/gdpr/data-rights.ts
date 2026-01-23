@@ -102,6 +102,38 @@ const DeletionRequestSchema = z.object({
 });
 
 // =============================================================================
+// In-Memory Storage (for development/single-instance deployments)
+// =============================================================================
+
+// Type for in-memory export requests
+interface DataExportRequest {
+  id: string;
+  userId: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
+  format: 'json' | 'csv';
+  downloadUrl?: string;
+  expiresAt?: Date;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+// Type for in-memory deletion requests
+interface DeletionRequest {
+  id: string;
+  userId: string;
+  status: 'pending' | 'scheduled' | 'processing' | 'completed' | 'cancelled' | 'failed';
+  scheduledFor: Date;
+  reason?: string;
+  confirmationToken?: string;
+  createdAt: Date;
+  completedAt?: Date;
+}
+
+// In-memory stores (replace with Redis/database in production)
+const pendingExportRequests = new Map<string, DataExportRequest>();
+const pendingDeletionRequests = new Map<string, DeletionRequest>();
+
+// =============================================================================
 // Data Export Handler
 // =============================================================================
 
@@ -699,17 +731,101 @@ function convertToCSV(data: Record<string, any>): string {
 
 async function uploadToSecureStorage(
   fileName: string, 
-  _content: string, 
-  _contentType: string
+  content: string, 
+  contentType: string
 ): Promise<string> {
-  // Implementation depends on storage provider (S3, etc.)
-  // This is a placeholder - implement based on your infrastructure
   const bucket = process.env.GDPR_EXPORT_BUCKET || 'contigo-gdpr-exports';
+  const region = process.env.AWS_REGION || 'us-east-1';
+
+  // Try AWS S3 first
+  if (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY) {
+    try {
+      const { S3Client, PutObjectCommand, GetObjectCommand } = await import('@aws-sdk/client-s3');
+      const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+
+      const s3 = new S3Client({
+        region,
+        credentials: {
+          accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+          secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+        },
+      });
+
+      await s3.send(new PutObjectCommand({
+        Bucket: bucket,
+        Key: `exports/${fileName}`,
+        Body: Buffer.from(content),
+        ContentType: contentType,
+        // Server-side encryption
+        ServerSideEncryption: 'AES256',
+        // Set object expiration (30 days for GDPR exports)
+        Metadata: {
+          'x-amz-meta-expiration': new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      }));
+
+      // Generate signed URL (7 day expiration)
+      const command = new GetObjectCommand({
+        Bucket: bucket,
+        Key: `exports/${fileName}`,
+      });
+      const signedUrl = await getSignedUrl(s3, command, { expiresIn: 7 * 24 * 60 * 60 });
+
+      // Successfully exported to S3
+      return signedUrl;
+    } catch (error) {
+      console.error('[GDPR] S3 upload failed, falling back to local:', error);
+    }
+  }
+
+  // Try Azure Blob Storage
+  if (process.env.AZURE_STORAGE_CONNECTION_STRING) {
+    try {
+      const { BlobServiceClient } = await import('@azure/storage-blob');
+      const blobService = BlobServiceClient.fromConnectionString(process.env.AZURE_STORAGE_CONNECTION_STRING);
+      const containerClient = blobService.getContainerClient(bucket);
+      
+      // Ensure container exists
+      await containerClient.createIfNotExists();
+      
+      const blobClient = containerClient.getBlockBlobClient(`exports/${fileName}`);
+      await blobClient.upload(Buffer.from(content), Buffer.byteLength(content), {
+        blobHTTPHeaders: { blobContentType: contentType },
+      });
+
+      // Generate SAS URL (7 day expiration)
+      const { generateBlobSASQueryParameters, BlobSASPermissions, StorageSharedKeyCredential } = await import('@azure/storage-blob');
+      const accountName = process.env.AZURE_STORAGE_ACCOUNT_NAME;
+      const accountKey = process.env.AZURE_STORAGE_ACCOUNT_KEY;
+      
+      if (accountName && accountKey) {
+        const sharedKeyCredential = new StorageSharedKeyCredential(accountName, accountKey);
+        const sasToken = generateBlobSASQueryParameters({
+          containerName: bucket,
+          blobName: `exports/${fileName}`,
+          permissions: BlobSASPermissions.parse('r'),
+          expiresOn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        }, sharedKeyCredential).toString();
+        
+        // Successfully exported to Azure
+        return `${blobClient.url}?${sasToken}`;
+      }
+
+      return blobClient.url;
+    } catch (error) {
+      console.error('[GDPR] Azure upload failed, falling back to local:', error);
+    }
+  }
+
+  // Fallback: Generate local file URL (for development)
+  // Using local storage fallback
+  const fs = await import('fs/promises');
+  const path = await import('path');
+  const exportDir = path.join(process.cwd(), 'tmp', 'gdpr-exports');
+  await fs.mkdir(exportDir, { recursive: true });
+  await fs.writeFile(path.join(exportDir, fileName), content);
   
-  // In production, use AWS SDK or similar
-  // const s3 = new S3Client({ region: process.env.AWS_REGION });
-  // await s3.send(new PutObjectCommand({...}));
-  
-  // Return signed URL with expiration
-  return `https://${bucket}.s3.amazonaws.com/${fileName}?signed=true`;
+  // Return API endpoint to serve the file
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  return `${baseUrl}/api/gdpr/download/${encodeURIComponent(fileName)}`;
 }

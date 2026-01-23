@@ -23,6 +23,8 @@ export interface ValidationIssue {
 export interface ValidationResult {
   valid: boolean;
   issues: ValidationIssue[];
+  validRows: Record<string, unknown>[];
+  invalidRows: Record<string, unknown>[];
   summary: {
     totalRows: number;
     validRows: number;
@@ -42,6 +44,7 @@ export class DataValidator {
   static validate(rows: Record<string, unknown>[], mappings: Record<string, string>): ValidationResult {
     const issues: ValidationIssue[] = [];
     const rules = this.getValidationRules();
+    const rowsWithErrors = new Set<number>();
 
     rows.forEach((row, index) => {
       const rowNumber = index + 1;
@@ -62,12 +65,18 @@ export class DataValidator {
             message: rule.message,
             severity: rule.severity,
           });
+          if (rule.severity === 'error') {
+            rowsWithErrors.add(index);
+          }
         }
       }
 
       // Check for duplicates
       const duplicateIssues = this.checkDuplicates(row, rows, rowNumber, mappings);
       issues.push(...duplicateIssues);
+      if (duplicateIssues.some(i => i.severity === 'error')) {
+        rowsWithErrors.add(index);
+      }
 
       // Check for outliers
       const outlierIssues = this.checkOutliers(row, rows, rowNumber, mappings);
@@ -78,12 +87,18 @@ export class DataValidator {
     const warningCount = issues.filter(i => i.severity === 'warning').length;
     const infoCount = issues.filter(i => i.severity === 'info').length;
 
+    // Separate valid and invalid rows
+    const validRows = rows.filter((_, index) => !rowsWithErrors.has(index));
+    const invalidRows = rows.filter((_, index) => rowsWithErrors.has(index));
+
     return {
       valid: errorCount === 0,
       issues,
+      validRows,
+      invalidRows,
       summary: {
         totalRows: rows.length,
-        validRows: rows.length - new Set(issues.filter(i => i.severity === 'error').map(i => i.rowNumber)).size,
+        validRows: validRows.length,
         errorCount,
         warningCount,
         infoCount,

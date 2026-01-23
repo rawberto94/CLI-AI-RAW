@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { prisma } from '@/lib/prisma';
 import { marketIntelligenceService } from 'data-orchestration/services';
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const marketIntelService = new marketIntelligenceService(prisma);
 
     const trendingRoles = await marketIntelService.getTrendingRoles(
-      session.user.tenantId || 'default',
+      getSessionTenantId(session),
       periodMonths
     );
 

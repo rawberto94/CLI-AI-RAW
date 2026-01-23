@@ -88,6 +88,7 @@ import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForAppr
 
 // Utils
 import { cn } from '@/lib/utils';
+import { getTenantId } from '@/lib/tenant';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -334,7 +335,7 @@ export default function ContractsPageRefactored() {
     const fetchCategories = async () => {
       try {
         const res = await fetch('/api/taxonomy/categories', {
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         });
         if (res.ok) {
           const data = await res.json();
@@ -470,7 +471,7 @@ export default function ContractsPageRefactored() {
     try {
       const res = await fetch(`/api/contracts/${deleteContractId}`, {
         method: 'DELETE',
-        headers: { 'x-tenant-id': 'demo', 'x-data-mode': dataMode },
+        headers: { 'x-tenant-id': getTenantId(), 'x-data-mode': dataMode },
       });
       
       if (!res.ok) throw new Error('Delete failed');
@@ -494,7 +495,7 @@ export default function ContractsPageRefactored() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
           'x-data-mode': dataMode,
         },
         body: JSON.stringify({ contractIds: Array.from(selectedIds) }),
@@ -923,7 +924,7 @@ export default function ContractsPageRefactored() {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'x-tenant-id': 'demo',
+                    'x-tenant-id': getTenantId(),
                   },
                   body: JSON.stringify({
                     operation: 'status',

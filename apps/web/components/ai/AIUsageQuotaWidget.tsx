@@ -97,11 +97,11 @@ export function AIUsageQuotaWidget({
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load usage');
-      // Set mock data for demo
+      // Show empty/zero state on error instead of mock data
       setUsage({
-        requests: { used: 23, limit: 100, percentUsed: 23 },
-        tokens: { used: 45000, limit: 200000, percentUsed: 22.5 },
-        cost: { used: 0.82, limit: 5.00, percentUsed: 16.4 },
+        requests: { used: 0, limit: 100, percentUsed: 0 },
+        tokens: { used: 0, limit: 200000, percentUsed: 0 },
+        cost: { used: 0, limit: 5.00, percentUsed: 0 },
         resetAt: new Date(Date.now() + 3600000).toISOString(),
         tier: 'professional',
       });

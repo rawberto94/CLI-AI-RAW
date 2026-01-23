@@ -271,7 +271,7 @@ async function executeGetContractDetails(
         include: {
           artifacts: args.includeArtifacts !== false,
           clauses: true,
-          _count: { select: { versions: true, notes: true } },
+          _count: { select: { versions: true } },
         },
       });
     } else if (args.contractName) {
@@ -286,7 +286,7 @@ async function executeGetContractDetails(
         include: {
           artifacts: args.includeArtifacts !== false,
           clauses: true,
-          _count: { select: { versions: true, notes: true } },
+          _count: { select: { versions: true } },
         },
       });
     }
@@ -423,8 +423,8 @@ async function executeGetSpendAnalysis(
       select: {
         supplierName: true,
         totalValue: true,
-        categoryId: true,
-        category: { select: { name: true } },
+        categoryL1: true,
+        category: true,
         effectiveDate: true,
       },
     });
@@ -436,7 +436,7 @@ async function executeGetSpendAnalysis(
       let key: string;
       switch (args.groupBy) {
         case 'category':
-          key = c.category?.name || 'Uncategorized';
+          key = c.category || 'Uncategorized';
           break;
         case 'month':
           key = c.effectiveDate 

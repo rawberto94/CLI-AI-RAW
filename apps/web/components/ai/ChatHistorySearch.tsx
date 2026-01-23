@@ -132,13 +132,13 @@ export function ChatHistorySearch({
       if (data.success) {
         setResults(data.results || []);
       } else {
-        // Demo fallback with mock data
-        setResults(generateMockResults(searchQuery, searchFilters));
+        // Show empty results when API returns no data
+        setResults([]);
       }
     } catch (error) {
       console.error('Search failed:', error);
-      // Fallback to mock data for demo
-      setResults(generateMockResults(searchQuery, searchFilters));
+      // Show empty results on error
+      setResults([]);
     } finally {
       setIsSearching(false);
     }

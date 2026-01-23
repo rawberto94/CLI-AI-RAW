@@ -142,6 +142,19 @@ export async function GET(request: NextRequest) {
           select: { type: true, data: true },
         },
         contractMetadata: true,
+        workflowExecutions: {
+          where: { 
+            status: { in: ['PENDING', 'IN_PROGRESS'] },
+          },
+          include: {
+            stepExecutions: {
+              where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+              select: { assignedTo: true, status: true },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 1,
+        },
       },
       orderBy: [
         { endDate: 'asc' },
@@ -149,8 +162,8 @@ export async function GET(request: NextRequest) {
       ],
     });
 
-    // Transform to renewal records
-    let renewals: RenewalContract[] = contracts.map((contract) => {
+    // Transform to renewal records (async for user lookups)
+    let renewals: RenewalContract[] = await Promise.all(contracts.map(async (contract) => {
       // Use endDate or expirationDate
       const expiryDate = contract.endDate || contract.expirationDate;
       const daysUntilExpiry = expiryDate 
@@ -182,6 +195,52 @@ export async function GET(request: NextRequest) {
       const healthScore = calculateHealthScore(contract);
       const hasRenewalRecord = contract.renewalStatus === 'INITIATED';
 
+      // Get assigned user from workflow if available
+      let assignedTo: RenewalContract['assignedTo'] = null;
+      if (contract.workflowExecutions?.length > 0) {
+        // Find active renewal workflow execution
+        const activeExecution = contract.workflowExecutions.find(
+          (we: { status: string; stepExecutions?: Array<{ assignedTo?: string | null; status: string }> }) => 
+            we.status === 'IN_PROGRESS' || we.status === 'PENDING'
+        );
+        if (activeExecution?.stepExecutions?.length > 0) {
+          // Find current step with assigned user
+          const currentStep = activeExecution.stepExecutions.find(
+            (se: { assignedTo?: string | null; status: string }) => 
+              se.assignedTo && (se.status === 'PENDING' || se.status === 'IN_PROGRESS')
+          );
+          if (currentStep?.assignedTo) {
+            // Look up user info
+            const user = await prisma.user.findUnique({
+              where: { id: currentStep.assignedTo },
+              select: { id: true, firstName: true, lastName: true, email: true },
+            });
+            if (user) {
+              assignedTo = {
+                id: user.id,
+                name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName || user.lastName || 'Unknown'),
+                email: user.email,
+              };
+            }
+          }
+        }
+      }
+
+      // Fallback to renewalInitiatedBy user if no workflow assignment
+      if (!assignedTo && contract.renewalInitiatedBy) {
+        const user = await prisma.user.findUnique({
+          where: { id: contract.renewalInitiatedBy },
+          select: { id: true, firstName: true, lastName: true, email: true },
+        });
+        if (user) {
+          assignedTo = {
+            id: user.id,
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : (user.firstName || user.lastName || 'Unknown'),
+            email: user.email,
+          };
+        }
+      }
+
       return {
         id: `renewal-${contract.id}`,
         contractId: contract.id,
@@ -202,9 +261,9 @@ export async function GET(request: NextRequest) {
         healthScore,
         riskLevel: calculateRiskLevel(healthScore),
         contractType: contract.contractType || contract.category || null,
-        assignedTo: null, // TODO: Link to user assignments
+        assignedTo,
       };
-    });
+    }));
 
     // Deduplicate by contractId (keep the first occurrence)
     const seenContractIds = new Set<string>();

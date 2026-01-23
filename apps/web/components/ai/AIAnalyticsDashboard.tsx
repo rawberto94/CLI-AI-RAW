@@ -83,9 +83,10 @@ interface AIMetrics {
   successRate: number;
   tokenUsageByDay: TokenUsage[];
   modelBreakdown: ModelMetrics[];
-  endpointBreakdown: EndpointMetrics[];
+  endpointBreakdown?: EndpointMetrics[];
   topFeatures: Array<{ feature: string; usage: number }>;
-  errors: Array<{ type: string; count: number; lastOccurred: string }>;
+  errors?: Array<{ type: string; count: number; lastOccurred: string }>;
+  errorBreakdown?: Array<{ type: string; count: number; lastOccurred?: string }>;
 }
 
 // Color palette
@@ -246,19 +247,66 @@ export function AIAnalyticsDashboard() {
   const [period, setPeriod] = useState('7d');
   const [metrics, setMetrics] = useState<AIMetrics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load metrics
+  // Load metrics from API
   const loadMetrics = useCallback(async () => {
     setIsLoading(true);
+    setError(null);
     
-    // In production, fetch from your analytics API:
-    // const response = await fetch(`/api/ai/analytics?period=${period}`);
-    // const data = await response.json();
-    
-    // Using mock data for now
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setMetrics(generateMockMetrics(period));
-    setIsLoading(false);
+    try {
+      // Fetch from analytics API
+      const response = await fetch(`/api/ai/analytics?period=${period}`);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Transform API response to AIMetrics format
+        setMetrics({
+          period,
+          totalRequests: data.data.requests || 0,
+          totalTokens: data.data.tokens || 0,
+          totalCost: data.data.cost || 0,
+          avgLatency: data.data.avgLatency || 0,
+          successRate: data.data.successRate || 100,
+          tokenUsageByDay: data.data.tokenUsageByDay || [],
+          modelBreakdown: data.data.modelBreakdown || [],
+          topFeatures: data.data.topFeatures || [],
+          errorBreakdown: data.data.errorBreakdown || [],
+        });
+      } else {
+        // No data available - show empty state
+        setMetrics({
+          period,
+          totalRequests: 0,
+          totalTokens: 0,
+          totalCost: 0,
+          avgLatency: 0,
+          successRate: 100,
+          tokenUsageByDay: [],
+          modelBreakdown: [],
+          topFeatures: [],
+          errorBreakdown: [],
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load AI analytics:', err);
+      setError('Failed to load analytics data');
+      // Empty state on error
+      setMetrics({
+        period,
+        totalRequests: 0,
+        totalTokens: 0,
+        totalCost: 0,
+        avgLatency: 0,
+        successRate: 100,
+        tokenUsageByDay: [],
+        modelBreakdown: [],
+        topFeatures: [],
+        errorBreakdown: [],
+      });
+    } finally {
+      setIsLoading(false);
+    }
   }, [period]);
 
   useEffect(() => {

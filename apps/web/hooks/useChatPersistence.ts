@@ -44,6 +44,16 @@ export interface Conversation {
   createdAt: Date;
 }
 
+export interface ConversationListItem {
+  id: string;
+  title: string;
+  context?: string;
+  contextType?: 'contract' | 'supplier' | 'global';
+  messages?: ChatMessage[];
+  createdAt: Date | string;
+  updatedAt: Date | string;
+}
+
 export interface ChatPersistenceOptions {
   /** Context identifier (e.g., contract ID) */
   context?: string;
@@ -66,6 +76,8 @@ export interface UseChatPersistenceReturn {
   messages: ChatMessage[];
   /** List of user's conversations */
   conversations: Conversation[];
+  /** List of conversations for UI display (alias for conversations) */
+  conversationList?: ConversationListItem[];
   /** Loading state */
   isLoading: boolean;
   /** Whether user is authenticated (DB persistence available) */
@@ -79,9 +91,11 @@ export interface UseChatPersistenceReturn {
   /** Switch to a different conversation */
   switchConversation: (conversationId: string) => Promise<void>;
   /** Delete current conversation */
-  deleteConversation: () => Promise<void>;
+  deleteConversation: (conversationId?: string) => Promise<void>;
   /** Clear all messages (new conversation) */
   clearChat: () => void;
+  /** Start a new conversation (alias for createConversation) */
+  startNewConversation?: () => Promise<void>;
   /** Refresh conversations list */
   refreshConversations: () => Promise<void>;
   /** Pin/unpin conversation */

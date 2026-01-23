@@ -164,6 +164,7 @@ export async function analyzeDocumentImage(
 
     return {
       success: true,
+      confidence: analysis.confidence || 0.8,
       ...analysis,
       rawAnalysis: content,
       processingTimeMs: Date.now() - startTime,

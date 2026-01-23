@@ -280,9 +280,28 @@ export async function GET(request: NextRequest) {
     const agentType = searchParams.get('agentType'); // Filter by agent type
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    // In production, fetch from database/cache
-    let traces = generateMockTraces(tenantId);
-    const metrics = generateMockMetrics(tenantId);
+    // In production, return empty data (no mock)
+    // TODO: Implement actual agent trace storage
+    let traces: AgentTrace[] = [];
+    let metrics: AgentMetrics = {
+      totalAgents: 0,
+      activeAgents: 0,
+      completedToday: 0,
+      failedToday: 0,
+      avgCompletionTimeMs: 0,
+      avgTokensPerTask: 0,
+      successRate: 0,
+      topAgents: [],
+      topTools: [],
+      costToday: 0,
+      costTrend: 0,
+    };
+
+    // In development only, use mock data for testing
+    if (process.env.NODE_ENV !== 'production') {
+      traces = generateMockTraces(tenantId);
+      metrics = generateMockMetrics(tenantId);
+    }
 
     // Apply filters
     if (status && status !== 'all') {

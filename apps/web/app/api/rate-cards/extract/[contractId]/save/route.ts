@@ -75,14 +75,31 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
     });
 
     if (!supplier) {
+      // Map country to region
+      const countryToRegion: Record<string, string> = {
+        'United States': 'Americas', 'Canada': 'Americas', 'Mexico': 'Americas',
+        'Brazil': 'Americas', 'Argentina': 'Americas', 'Chile': 'Americas', 'Colombia': 'Americas',
+        'United Kingdom': 'EMEA', 'Germany': 'EMEA', 'France': 'EMEA', 'Netherlands': 'EMEA',
+        'Switzerland': 'EMEA', 'Spain': 'EMEA', 'Italy': 'EMEA', 'Belgium': 'EMEA',
+        'Sweden': 'EMEA', 'Norway': 'EMEA', 'Denmark': 'EMEA', 'Finland': 'EMEA',
+        'Poland': 'EMEA', 'Ireland': 'EMEA', 'Portugal': 'EMEA', 'Austria': 'EMEA',
+        'South Africa': 'EMEA', 'UAE': 'EMEA', 'Saudi Arabia': 'EMEA', 'Israel': 'EMEA',
+        'India': 'APAC', 'China': 'APAC', 'Japan': 'APAC', 'Australia': 'APAC',
+        'Singapore': 'APAC', 'Hong Kong': 'APAC', 'South Korea': 'APAC', 'Taiwan': 'APAC',
+        'Malaysia': 'APAC', 'Thailand': 'APAC', 'Indonesia': 'APAC', 'Philippines': 'APAC',
+        'Vietnam': 'APAC', 'New Zealand': 'APAC',
+      };
+      const supplierCountry = body.supplierInfo.country || 'United States';
+      const region = countryToRegion[supplierCountry] || 'Americas';
+
       supplier = await prisma.rateCardSupplier.create({
         data: {
           tenantId,
           name: body.supplierInfo.name,
           legalName: body.supplierInfo.legalName || body.supplierInfo.name,
           tier: body.supplierInfo.tier || 'TIER_2',
-          country: body.supplierInfo.country || 'United States',
-          region: 'Americas', // TODO: Map from country
+          country: supplierCountry,
+          region,
         },
       });
     }

@@ -81,8 +81,9 @@ export async function GET(
 
     if (format === 'pdf') {
       const pdfBuffer = await generatePDFDocument(templateData);
+      const pdfArray = new Uint8Array(pdfBuffer);
       
-      return new NextResponse(pdfBuffer, {
+      return new NextResponse(pdfArray, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
@@ -103,8 +104,9 @@ export async function GET(
     } else {
       // Default to DOCX
       const docxBuffer = await generateWordDocument(templateData);
+      const docxArray = new Uint8Array(docxBuffer);
       
-      return new NextResponse(docxBuffer, {
+      return new NextResponse(docxArray, {
         status: 200,
         headers: {
           'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',

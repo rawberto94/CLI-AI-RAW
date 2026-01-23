@@ -547,5 +547,4 @@ export {
   extractTopics,
   calculateMemoryRelevance,
   calculateImportance,
-  formatMemoriesForPrompt,
 };

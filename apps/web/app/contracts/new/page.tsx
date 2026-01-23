@@ -68,6 +68,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 
 // ============ SCHEMA ============
@@ -361,7 +362,7 @@ export default function CreateContractPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify(payload),
       })

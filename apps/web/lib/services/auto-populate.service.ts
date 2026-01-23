@@ -9,6 +9,7 @@
  * - Human review queue for low-confidence fields
  */
 
+import { prisma } from '@/lib/prisma';
 import { SchemaAwareMetadataExtractor } from '@/lib/ai/metadata-extractor';
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import type { MetadataExtractionResult, ExtractionResult } from '@/lib/ai/metadata-extractor';
@@ -508,13 +509,53 @@ export class AutoPopulateService {
    * Send notification
    */
   private async sendNotification(
-    _type: 'complete' | 'review_required',
-    _contractId: string,
-    _tenantId: string,
-    _fieldCount: number
+    type: 'complete' | 'review_required',
+    contractId: string,
+    tenantId: string,
+    fieldCount: number,
+    userId?: string
   ): Promise<void> {
-    // TODO: Implement actual notification system
-    // This could integrate with email, Slack, in-app notifications, etc.
+    try {
+      // Create in-app notification - requires userId
+      if (userId) {
+        await prisma.notification.create({
+          data: {
+            tenantId,
+            userId,
+            type: type === 'complete' ? 'AUTO_POPULATE_COMPLETE' : 'AUTO_POPULATE_REVIEW',
+            title: type === 'complete' 
+              ? 'Auto-populate completed' 
+              : 'Review required for auto-populated fields',
+            message: type === 'complete'
+              ? `Successfully auto-populated ${fieldCount} fields for contract ${contractId}`
+              : `${fieldCount} fields require review before applying to contract ${contractId}`,
+            metadata: {
+              contractId,
+              fieldCount,
+              actionType: type,
+            },
+          },
+        });
+      }
+
+      // Optionally trigger webhook for external integrations
+      if (process.env.NOTIFICATION_WEBHOOK_URL) {
+        await fetch(process.env.NOTIFICATION_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event: `auto_populate.${type}`,
+            tenantId,
+            contractId,
+            fieldCount,
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(err => console.error('[Notification Webhook Error]', err));
+      }
+    } catch (error) {
+      console.error('[Auto-populate Notification Error]', error);
+      // Don't throw - notification failure shouldn't block the main operation
+    }
   }
 
   /**

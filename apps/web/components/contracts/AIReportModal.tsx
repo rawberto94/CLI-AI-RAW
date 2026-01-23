@@ -7,6 +7,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { getTenantId } from '@/lib/tenant';
 import {
   Dialog,
   DialogContent,
@@ -121,7 +122,7 @@ export function AIReportModal({ isOpen, onClose, contractIds, contractNames }: A
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           contractIds,

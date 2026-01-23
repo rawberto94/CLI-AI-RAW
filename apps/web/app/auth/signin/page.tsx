@@ -308,8 +308,8 @@ function SignInForm() {
   const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
   const registered = searchParams.get("registered") === "true";
   
-  const [email, setEmail] = useState("demo@example.com");
-  const [password, setPassword] = useState("demo123");
+  const [email, setEmail] = useState("admin@contigo.com");
+  const [password, setPassword] = useState("Admin123!");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -914,6 +914,21 @@ function SignInForm() {
           Don&apos;t have an account?{" "}
           <Link href="/auth/signup" className="text-purple-600 hover:text-purple-700 font-semibold transition-colors hover:underline underline-offset-2">
             Sign up
+          </Link>
+        </motion.div>
+
+        <motion.div 
+          className="mt-4 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.55 }}
+        >
+          <Link 
+            href="/" 
+            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-purple-600 transition-colors"
+          >
+            <ArrowRight className="w-3 h-3 rotate-180" />
+            Back to Landing Page
           </Link>
         </motion.div>
 

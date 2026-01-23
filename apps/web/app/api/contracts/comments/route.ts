@@ -1,36 +1,52 @@
 /**
  * Contract Comments API
- * CRUD operations for contract comments
+ * CRUD operations for contract comments - Database persisted
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
-interface Comment {
+// Response type that maps to ContractComment model
+interface CommentResponse {
   id: string;
   contractId: string;
   content: string;
   authorId: string;
-  authorName: string;
-  authorEmail: string;
+  authorName?: string;
+  authorEmail?: string;
   createdAt: string;
   updatedAt?: string;
   isPinned: boolean;
   isResolved: boolean;
-  parentId?: string;
-  reactions: { emoji: string; userIds: string[] }[];
-  pageReference?: number;
-  clauseReference?: string;
+  parentId?: string | null;
+  reactions: { emoji: string; userId: string; userName?: string }[];
+  mentions: string[];
+  resolvedBy?: string | null;
+  resolvedAt?: string | null;
+  replies?: CommentResponse[];
 }
 
-// In-memory storage for demo (would use database in production)
-const comments: Map<string, Comment[]> = new Map();
-
-// Helper to get or initialize contract comments
-function getContractComments(contractId: string): Comment[] {
-  if (!comments.has(contractId)) {
-    comments.set(contractId, []);
-  }
-  return comments.get(contractId)!;
+// Transform database comment to API response
+function transformComment(dbComment: any): CommentResponse {
+  return {
+    id: dbComment.id,
+    contractId: dbComment.contractId,
+    content: dbComment.content,
+    authorId: dbComment.userId,
+    authorName: dbComment.userName || undefined,
+    authorEmail: dbComment.userEmail || undefined,
+    createdAt: dbComment.createdAt.toISOString(),
+    updatedAt: dbComment.updatedAt?.toISOString(),
+    isPinned: dbComment.isPinned || false,
+    isResolved: dbComment.isResolved,
+    parentId: dbComment.parentId,
+    reactions: Array.isArray(dbComment.reactions) ? dbComment.reactions : [],
+    mentions: dbComment.mentions || [],
+    resolvedBy: dbComment.resolvedBy,
+    resolvedAt: dbComment.resolvedAt?.toISOString(),
+    replies: dbComment.replies?.map(transformComment) || [],
+  };
 }
 
 export async function GET(request: NextRequest) {
@@ -38,6 +54,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const filter = searchParams.get('filter') || 'all';
+    const tenantId = await getApiTenantId(request);
     
     if (!contractId) {
       return NextResponse.json(
@@ -46,28 +63,52 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    let contractComments = getContractComments(contractId);
+    // Build where clause
+    const where: any = {
+      contractId,
+      parentId: null, // Only fetch top-level comments, replies come via include
+    };
 
-    // Apply filters
-    if (filter === 'unresolved') {
-      contractComments = contractComments.filter(c => !c.isResolved);
-    } else if (filter === 'pinned') {
-      contractComments = contractComments.filter(c => c.isPinned);
+    if (tenantId) {
+      where.tenantId = tenantId;
     }
 
-    // Sort by pinned first, then by date
-    contractComments.sort((a, b) => {
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    if (filter === 'unresolved') {
+      where.isResolved = false;
+    }
+    // Note: isPinned is not a database field - filtering handled at UI level
+
+    // Fetch from database with replies
+    const dbComments = await prisma.contractComment.findMany({
+      where,
+      include: {
+        replies: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+      orderBy: [
+        { createdAt: 'desc' },
+      ],
+    });
+
+    const comments = dbComments.map(transformComment);
+
+    // Count unresolved
+    const unresolvedCount = await prisma.contractComment.count({
+      where: {
+        contractId,
+        ...(tenantId ? { tenantId } : {}),
+        isResolved: false,
+      },
     });
 
     return NextResponse.json({
-      comments: contractComments,
-      total: contractComments.length,
-      unresolved: contractComments.filter(c => !c.isResolved).length,
+      comments,
+      total: comments.length,
+      unresolved: unresolvedCount,
     });
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch comments:', error);
     return NextResponse.json(
       { error: 'Failed to fetch comments' },
       { status: 500 }
@@ -83,11 +124,12 @@ export async function POST(request: NextRequest) {
       content, 
       authorId, 
       authorName, 
-      authorEmail,
+      authorEmail: _authorEmail,
       parentId,
-      pageReference,
-      clauseReference,
+      mentions,
     } = body;
+
+    const tenantId = await getApiTenantId(request) || body.tenantId;
 
     if (!contractId || !content || !authorId) {
       return NextResponse.json(
@@ -96,27 +138,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const comment: Comment = {
-      id: `comment-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      contractId,
-      content,
-      authorId,
-      authorName: authorName || 'Unknown User',
-      authorEmail: authorEmail || '',
-      createdAt: new Date().toISOString(),
-      isPinned: false,
-      isResolved: false,
-      parentId,
-      reactions: [],
-      pageReference,
-      clauseReference,
-    };
+    // Verify parent exists if provided
+    if (parentId) {
+      const parent = await prisma.contractComment.findUnique({
+        where: { id: parentId },
+      });
+      if (!parent) {
+        return NextResponse.json(
+          { error: 'Parent comment not found' },
+          { status: 404 }
+        );
+      }
+    }
 
-    const contractComments = getContractComments(contractId);
-    contractComments.push(comment);
+    // Create comment in database
+    const dbComment = await prisma.contractComment.create({
+      data: {
+        contractId,
+        tenantId,
+        userId: authorId,
+        content,
+        parentId,
+        mentions: mentions || [],
+        reactions: [],
+        isResolved: false,
+      },
+      include: {
+        replies: true,
+      },
+    });
+
+    // Also create activity log for comment
+    await prisma.contractActivity.create({
+      data: {
+        contractId,
+        tenantId,
+        userId: authorId,
+        type: 'comment',
+        action: `${authorName || 'User'} added a comment`,
+        details: content.substring(0, 200),
+        metadata: {
+          commentId: dbComment.id,
+          isReply: !!parentId,
+        },
+      },
+    }).catch(err => console.error('Failed to create activity:', err));
+
+    const comment = transformComment(dbComment);
 
     return NextResponse.json({ comment }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Failed to create comment:', error);
     return NextResponse.json(
       { error: 'Failed to create comment' },
       { status: 500 }
@@ -127,36 +199,69 @@ export async function POST(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
-    const { commentId, contractId, content, isPinned, isResolved } = body;
+    const { commentId, contractId: _contractId, content, isPinned, isResolved, resolvedBy } = body;
+    const tenantId = await getApiTenantId(request);
 
-    if (!commentId || !contractId) {
+    if (!commentId) {
       return NextResponse.json(
-        { error: 'commentId and contractId are required' },
+        { error: 'commentId is required' },
         { status: 400 }
       );
     }
 
-    const contractComments = getContractComments(contractId);
-    const index = contractComments.findIndex(c => c.id === commentId);
+    // Find the comment
+    const existing = await prisma.contractComment.findUnique({
+      where: { id: commentId },
+    });
 
-    if (index === -1) {
+    if (!existing) {
       return NextResponse.json(
         { error: 'Comment not found' },
         { status: 404 }
       );
     }
 
-    const updatedComment: Comment = {
-      ...contractComments[index],
-      ...(content !== undefined && { content, updatedAt: new Date().toISOString() }),
-      ...(isPinned !== undefined && { isPinned }),
-      ...(isResolved !== undefined && { isResolved }),
-    } as Comment;
+    // Verify tenant access
+    if (tenantId && existing.tenantId !== tenantId) {
+      return NextResponse.json(
+        { error: 'Comment not found' },
+        { status: 404 }
+      );
+    }
 
-    contractComments[index] = updatedComment;
+    // Build update data
+    const updateData: any = {};
+    if (content !== undefined) {
+      updateData.content = content;
+    }
+    if (isPinned !== undefined) {
+      updateData.isPinned = isPinned;
+    }
+    if (isResolved !== undefined) {
+      updateData.isResolved = isResolved;
+      if (isResolved) {
+        updateData.resolvedBy = resolvedBy || null;
+        updateData.resolvedAt = new Date();
+      } else {
+        updateData.resolvedBy = null;
+        updateData.resolvedAt = null;
+      }
+    }
 
-    return NextResponse.json({ comment: updatedComment });
-  } catch {
+    // Update in database
+    const dbComment = await prisma.contractComment.update({
+      where: { id: commentId },
+      data: updateData,
+      include: {
+        replies: true,
+      },
+    });
+
+    const comment = transformComment(dbComment);
+
+    return NextResponse.json({ comment });
+  } catch (error) {
+    console.error('Failed to update comment:', error);
     return NextResponse.json(
       { error: 'Failed to update comment' },
       { status: 500 }
@@ -168,33 +273,43 @@ export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const commentId = searchParams.get('commentId');
-    const contractId = searchParams.get('contractId');
+    const tenantId = await getApiTenantId(request);
 
-    if (!commentId || !contractId) {
+    if (!commentId) {
       return NextResponse.json(
-        { error: 'commentId and contractId are required' },
+        { error: 'commentId is required' },
         { status: 400 }
       );
     }
 
-    const contractComments = getContractComments(contractId);
-    const index = contractComments.findIndex(c => c.id === commentId);
+    // Find the comment
+    const existing = await prisma.contractComment.findUnique({
+      where: { id: commentId },
+    });
 
-    if (index === -1) {
+    if (!existing) {
       return NextResponse.json(
         { error: 'Comment not found' },
         { status: 404 }
       );
     }
 
-    // Also remove any replies to this comment
-    const filtered = contractComments.filter(
-      c => c.id !== commentId && c.parentId !== commentId
-    );
-    comments.set(contractId, filtered);
+    // Verify tenant access
+    if (tenantId && existing.tenantId !== tenantId) {
+      return NextResponse.json(
+        { error: 'Comment not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete comment (cascade will handle replies due to schema)
+    await prisma.contractComment.delete({
+      where: { id: commentId },
+    });
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    console.error('Failed to delete comment:', error);
     return NextResponse.json(
       { error: 'Failed to delete comment' },
       { status: 500 }

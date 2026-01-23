@@ -8,14 +8,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { parseWordDocument } from '@/lib/templates/document-service';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -75,36 +74,38 @@ export async function POST(request: NextRequest) {
 
     // If autoCreate is true, create the template in the database
     if (autoCreate) {
+      // Prepare clauses for JSON storage
+      const clausesJson = result.template.clauses && Array.isArray(result.template.clauses)
+        ? result.template.clauses.map((clause, i) => ({
+            id: crypto.randomUUID(),
+            title: clause.title || `Clause ${i + 1}`,
+            content: clause.content || '',
+          }))
+        : [];
+
+      // Store additional fields in metadata
+      const metadataJson = {
+        language: result.template.language || 'en-US',
+        variables: result.template.variables || [],
+        tags: result.template.tags || [],
+        content: result.template.content || '',
+        importedAt: new Date().toISOString(),
+      };
+
       const template = await prisma.contractTemplate.create({
         data: {
           name: result.template.name || 'Imported Template',
           description: result.template.description || '',
           category: result.template.category || 'General',
-          content: result.template.content || '',
-          status: 'draft',
-          language: result.template.language || 'en-US',
-          variables: result.template.variables || [],
-          tags: result.template.tags || [],
+          clauses: clausesJson,
+          structure: {},
+          metadata: metadataJson,
           tenantId,
-          createdBy: session.user.name || session.user.email || 'Unknown',
-          version: '1.0.0',
+          createdBy: session.user.email || 'Unknown',
+          version: 1,
+          isActive: true,
         },
       });
-
-      // Create clauses if any
-      if (result.template.clauses && Array.isArray(result.template.clauses)) {
-        for (let i = 0; i < result.template.clauses.length; i++) {
-          const clause = result.template.clauses[i];
-          await prisma.templateClause.create({
-            data: {
-              templateId: template.id,
-              title: clause.title || `Clause ${i + 1}`,
-              content: clause.content,
-              order: i,
-            },
-          });
-        }
-      }
 
       return NextResponse.json({
         success: true,

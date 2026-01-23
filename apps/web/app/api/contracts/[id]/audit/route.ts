@@ -2,31 +2,17 @@
  * Contract Audit Log API
  * 
  * Tracks all actions performed on contracts for compliance and security
+ * Database persisted using AuditLog model
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { Prisma } from '@prisma/client';
 
 // ============================================================================
 // Types
 // ============================================================================
-
-interface AuditLogEntry {
-  id: string;
-  contractId: string;
-  tenantId: string;
-  userId: string;
-  userName?: string;
-  action: AuditAction;
-  category: AuditCategory;
-  details: Record<string, unknown>;
-  ipAddress?: string;
-  userAgent?: string;
-  timestamp: Date;
-  status: 'success' | 'failure';
-  errorMessage?: string;
-}
 
 type AuditAction = 
   | 'view'
@@ -56,11 +42,44 @@ type AuditCategory =
   | 'analysis'
   | 'security';
 
-// ============================================================================
-// In-Memory Store (for demo - use database in production)
-// ============================================================================
+// Response interface for API
+interface AuditLogResponse {
+  id: string;
+  contractId: string;
+  tenantId: string;
+  userId: string;
+  userName?: string;
+  action: string;
+  category: string;
+  details: Record<string, unknown>;
+  ipAddress?: string;
+  userAgent?: string;
+  timestamp: Date;
+  status: 'success' | 'failure';
+  errorMessage?: string;
+}
 
-const auditLogs: AuditLogEntry[] = [];
+// Transform database log to API response
+function transformAuditLog(dbLog: any, contractId: string): AuditLogResponse {
+  const metadata = dbLog.metadata as Record<string, any> | null;
+  const details = dbLog.details as Record<string, any> | null;
+  
+  return {
+    id: dbLog.id,
+    contractId,
+    tenantId: dbLog.tenantId,
+    userId: dbLog.userId || 'system',
+    userName: metadata?.userName,
+    action: dbLog.action,
+    category: metadata?.category || 'access',
+    details: details || {},
+    ipAddress: dbLog.ipAddress || undefined,
+    userAgent: dbLog.userAgent || undefined,
+    timestamp: dbLog.createdAt,
+    status: metadata?.status || 'success',
+    errorMessage: metadata?.errorMessage,
+  };
+}
 
 // ============================================================================
 // GET - Retrieve audit logs
@@ -74,6 +93,7 @@ export async function GET(
     const resolvedParams = await params;
     const contractId = resolvedParams.id;
     const { searchParams } = new URL(request.url);
+    const tenantId = await getApiTenantId(request);
     
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '50');
@@ -83,55 +103,53 @@ export async function GET(
     const endDate = searchParams.get('endDate');
     const userId = searchParams.get('userId');
 
-    // Filter logs
-    let logs = auditLogs.filter(log => log.contractId === contractId);
+    // Build where clause for database
+    const where: any = {
+      entityType: 'contract',
+      entityId: contractId,
+    };
+
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
+
+    if (action) {
+      where.action = action;
+    }
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (startDate) {
+      where.createdAt = { ...where.createdAt, gte: new Date(startDate) };
+    }
+
+    if (endDate) {
+      where.createdAt = { ...where.createdAt, lte: new Date(endDate) };
+    }
+
+    // If category filter, we need to filter after fetch (stored in metadata)
+    // First get all matching logs
+    const allLogs = await prisma.auditLog.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Transform and filter by category if needed
+    let logs = allLogs.map(log => transformAuditLog(log, contractId));
 
     if (category) {
       logs = logs.filter(log => log.category === category);
     }
-    if (action) {
-      logs = logs.filter(log => log.action === action);
-    }
-    if (userId) {
-      logs = logs.filter(log => log.userId === userId);
-    }
-    if (startDate) {
-      logs = logs.filter(log => new Date(log.timestamp) >= new Date(startDate));
-    }
-    if (endDate) {
-      logs = logs.filter(log => new Date(log.timestamp) <= new Date(endDate));
-    }
 
-    // Sort by timestamp (newest first)
-    logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    // Get total count
+    const totalCount = logs.length;
 
     // Paginate
-    const totalCount = logs.length;
     const paginatedLogs = logs.slice((page - 1) * limit, page * limit);
 
-    // Generate some sample logs if none exist
-    if (paginatedLogs.length === 0) {
-      const sampleLogs = generateSampleLogs(contractId);
-      return NextResponse.json({
-        success: true,
-        data: {
-          logs: sampleLogs,
-          pagination: {
-            page,
-            limit,
-            totalCount: sampleLogs.length,
-            totalPages: 1,
-          },
-          summary: {
-            totalActions: sampleLogs.length,
-            byCategory: summarizeByCategory(sampleLogs),
-            byAction: summarizeByAction(sampleLogs),
-            uniqueUsers: [...new Set(sampleLogs.map(l => l.userId))].length,
-          },
-        },
-      });
-    }
-
+    // If no logs exist, return empty result (no more sample data)
     return NextResponse.json({
       success: true,
       data: {
@@ -150,7 +168,8 @@ export async function GET(
         },
       },
     });
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch audit logs:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to fetch audit logs' },
       { status: 500 }
@@ -170,6 +189,14 @@ export async function POST(
     const resolvedParams = await params;
     const contractId = resolvedParams.id;
     const body = await request.json();
+    const tenantId = await getApiTenantId(request) || body.tenantId;
+    
+    if (!tenantId) {
+      return NextResponse.json(
+        { success: false, error: 'Tenant ID is required' },
+        { status: 400 }
+      );
+    }
     
     const {
       userId,
@@ -194,35 +221,36 @@ export async function POST(
                       'unknown';
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    const logEntry: AuditLogEntry = {
-      id: `audit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      contractId,
-      tenantId: getApiTenantId(request) || body.tenantId || 'unknown',
-      userId,
-      userName,
-      action,
-      category,
-      details: details || {},
-      ipAddress,
-      userAgent,
-      timestamp: new Date(),
-      status,
-      errorMessage,
-    };
+    // Create audit log in database
+    const dbLog = await prisma.auditLog.create({
+      data: {
+        tenantId,
+        userId,
+        action,
+        resource: `contract/${contractId}`,
+        resourceType: 'contract',
+        entityType: 'contract',
+        entityId: contractId,
+        details: details || {},
+        metadata: {
+          userName,
+          category,
+          status,
+          errorMessage,
+        },
+        ipAddress,
+        userAgent,
+      },
+    });
 
-    // Store log
-    auditLogs.push(logEntry);
-
-    // Keep only last 10000 entries in memory
-    if (auditLogs.length > 10000) {
-      auditLogs.splice(0, auditLogs.length - 10000);
-    }
+    const logEntry = transformAuditLog(dbLog, contractId);
 
     return NextResponse.json({
       success: true,
       data: logEntry,
     });
-  } catch {
+  } catch (error) {
+    console.error('Failed to create audit log:', error);
     return NextResponse.json(
       { success: false, error: 'Failed to create audit log' },
       { status: 500 }
@@ -234,129 +262,60 @@ export async function POST(
 // Helper Functions
 // ============================================================================
 
-function generateSampleLogs(contractId: string): AuditLogEntry[] {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-  
-  return [
-    {
-      id: 'audit-1',
-      contractId,
-      tenantId: 'default',
-      userId: 'user-1',
-      userName: 'Sarah Johnson',
-      action: 'view',
-      category: 'access',
-      details: { source: 'contract-detail-page' },
-      timestamp: new Date(now - 2 * 60 * 60 * 1000),
-      status: 'success',
-    },
-    {
-      id: 'audit-2',
-      contractId,
-      tenantId: 'default',
-      userId: 'user-2',
-      userName: 'Mike Chen',
-      action: 'update',
-      category: 'modification',
-      details: { 
-        fields: ['metadata.contractType', 'metadata.value'],
-        previousValues: { contractType: 'Unknown', value: null },
-        newValues: { contractType: 'Service Agreement', value: 250000 },
-      },
-      timestamp: new Date(now - 5 * 60 * 60 * 1000),
-      status: 'success',
-    },
-    {
-      id: 'audit-3',
-      contractId,
-      tenantId: 'default',
-      userId: 'user-1',
-      userName: 'Sarah Johnson',
-      action: 'share',
-      category: 'collaboration',
-      details: { 
-        sharedWith: ['john@example.com'],
-        permissions: ['view'],
-      },
-      timestamp: new Date(now - 1 * day),
-      status: 'success',
-    },
-    {
-      id: 'audit-4',
-      contractId,
-      tenantId: 'default',
-      userId: 'system',
-      userName: 'System',
-      action: 'extract_metadata',
-      category: 'analysis',
-      details: { 
-        fieldsExtracted: 12,
-        confidence: 0.92,
-        model: 'gpt-4o',
-      },
-      timestamp: new Date(now - 2 * day),
-      status: 'success',
-    },
-    {
-      id: 'audit-5',
-      contractId,
-      tenantId: 'default',
-      userId: 'system',
-      userName: 'System',
-      action: 'upload',
-      category: 'modification',
-      details: { 
-        filename: 'contract.pdf',
-        fileSize: 2457600,
-        mimeType: 'application/pdf',
-      },
-      timestamp: new Date(now - 3 * day),
-      status: 'success',
-    },
-    {
-      id: 'audit-6',
-      contractId,
-      tenantId: 'default',
-      userId: 'user-3',
-      userName: 'Emily Davis',
-      action: 'approve',
-      category: 'workflow',
-      details: { 
-        stage: 'legal-review',
-        approvalId: 'apr-123',
-      },
-      timestamp: new Date(now - 4 * day),
-      status: 'success',
-    },
-    {
-      id: 'audit-7',
-      contractId,
-      tenantId: 'default',
-      userId: 'user-1',
-      userName: 'Sarah Johnson',
-      action: 'download',
-      category: 'access',
-      details: { 
-        format: 'pdf',
-        purpose: 'review',
-      },
-      timestamp: new Date(now - 5 * day),
-      status: 'success',
-    },
-  ];
-}
-
-function summarizeByCategory(logs: AuditLogEntry[]): Record<string, number> {
+function summarizeByCategory(logs: AuditLogResponse[]): Record<string, number> {
   return logs.reduce((acc, log) => {
     acc[log.category] = (acc[log.category] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 }
 
-function summarizeByAction(logs: AuditLogEntry[]): Record<string, number> {
+function summarizeByAction(logs: AuditLogResponse[]): Record<string, number> {
   return logs.reduce((acc, log) => {
     acc[log.action] = (acc[log.action] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
+}
+
+// ============================================================================
+// Utility: Create audit log for contract actions (import elsewhere)
+// ============================================================================
+
+export async function createContractAuditLog(options: {
+  contractId: string;
+  tenantId: string;
+  userId: string;
+  userName?: string;
+  action: AuditAction;
+  category: AuditCategory;
+  details?: Record<string, unknown>;
+  status?: 'success' | 'failure';
+  errorMessage?: string;
+  ipAddress?: string;
+  userAgent?: string;
+}): Promise<void> {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        tenantId: options.tenantId,
+        userId: options.userId,
+        action: options.action,
+        resource: `contract/${options.contractId}`,
+        resourceType: 'contract',
+        entityType: 'contract',
+        entityId: options.contractId,
+        details: (options.details || {}) as Prisma.InputJsonValue,
+        metadata: {
+          userName: options.userName,
+          category: options.category,
+          status: options.status || 'success',
+          errorMessage: options.errorMessage,
+        } as Prisma.InputJsonValue,
+        ipAddress: options.ipAddress,
+        userAgent: options.userAgent,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to create contract audit log:', error);
+    // Don't throw - audit logging should not break the main flow
+  }
 }

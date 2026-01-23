@@ -7,8 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/auth';
+import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
   syncTemplateToCloud,
@@ -22,7 +21,7 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -56,9 +55,6 @@ export async function POST(
     // Fetch the template
     const template = await prisma.contractTemplate.findUnique({
       where: { id },
-      include: {
-        clauses: true,
-      },
     });
 
     if (!template) {
@@ -82,28 +78,37 @@ export async function POST(
       );
     }
 
+    // Parse metadata
+    const metadata = template.metadata as Record<string, unknown> || {};
+    
+    // Parse clauses from Json field
+    const clausesData = template.clauses as unknown;
+    const parsedClauses = Array.isArray(clausesData) 
+      ? clausesData.map((c: { id?: string; title?: string; content?: string }) => ({
+          id: c.id || crypto.randomUUID(),
+          title: c.title || undefined,
+          content: c.content || '',
+        }))
+      : [];
+
     // Convert to our template format
     const templateData: ContractTemplate = {
       id: template.id,
       name: template.name,
       description: template.description || '',
       category: template.category || 'General',
-      language: template.language || 'en-US',
-      variables: template.variables as string[] | undefined,
-      clauses: template.clauses?.map(c => ({
-        id: c.id,
-        title: c.title || undefined,
-        content: c.content,
-      })),
+      language: (metadata.language as string) || 'en-US',
+      variables: metadata.variables as string[] | undefined,
+      clauses: parsedClauses,
       createdBy: template.createdBy || 'System',
       createdAt: template.createdAt.toISOString(),
       lastModified: template.updatedAt?.toISOString(),
       updatedAt: template.updatedAt?.toISOString(),
-      status: template.status as 'draft' | 'active' | 'archived' | 'pending_approval',
+      status: template.isActive ? 'active' : 'archived',
       usageCount: template.usageCount || 0,
-      content: template.content || undefined,
-      tags: template.tags as string[] | undefined,
-      version: template.version || '1.0.0',
+      content: (metadata.content as string) || undefined,
+      tags: metadata.tags as string[] | undefined,
+      version: String(template.version || '1'),
     };
 
     // Sync to cloud
@@ -163,7 +168,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
+    const session = await getServerSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }

@@ -54,6 +54,7 @@ export interface VoiceInputOptions {
   continuous?: boolean;
   interimResults?: boolean;
   onResult?: (transcript: string, isFinal: boolean) => void;
+  onTranscriptChange?: (transcript: string) => void;
   onError?: (error: string) => void;
   onEnd?: () => void;
 }

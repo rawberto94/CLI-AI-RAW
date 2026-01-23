@@ -45,10 +45,13 @@ const nextConfig = {
     'cpu-features',
     'sharp',
     '@prisma/client',
+    '@repo/db',
     'pino',
     'pino-pretty',
     'bullmq',
     'ioredis',
+    'perf_hooks',
+    'crypto',
   ],
   
   // Optimized static generation

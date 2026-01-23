@@ -84,7 +84,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       );
     }
 
-    const tenantId = body.tenantId || 'default';
+    const tenantId = body.tenantId;
 
     // Handle batch generation
     if (Array.isArray(body.artifactType)) {

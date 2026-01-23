@@ -13,6 +13,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getTenantId } from '@/lib/tenant';
 import {
   PieChart,
   BarChart3,
@@ -250,7 +251,7 @@ export default function CategoryAnalyticsPage() {
       setError(null);
 
       const response = await fetch(`/api/taxonomy/analytics?period=${period}`, {
-        headers: { "x-tenant-id": "demo" },
+        headers: { "x-tenant-id": getTenantId() },
       });
 
       if (!response.ok) throw new Error("Failed to fetch analytics");
@@ -276,7 +277,7 @@ export default function CategoryAnalyticsPage() {
       // Get uncategorized contract IDs
       const contractsResponse = await fetch(
         "/api/contracts?category=null&limit=100",
-        { headers: { "x-tenant-id": "demo" } }
+        { headers: { "x-tenant-id": getTenantId() } }
       );
 
       if (!contractsResponse.ok) throw new Error("Failed to fetch contracts");
@@ -294,7 +295,7 @@ export default function CategoryAnalyticsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-tenant-id": "demo",
+          "x-tenant-id": getTenantId(),
         },
         body: JSON.stringify({
           contractIds,

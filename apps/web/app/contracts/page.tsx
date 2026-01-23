@@ -1172,7 +1172,7 @@ export default function ContractsPage() {
     const fetchCategories = async () => {
       try {
         const response = await fetch('/api/taxonomy', {
-          headers: { 'x-tenant-id': 'demo' }
+          headers: { 'x-tenant-id': getTenantId() }
         });
         if (response.ok) {
           const data = await response.json();
@@ -1210,7 +1210,7 @@ export default function ContractsPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo'
+          'x-tenant-id': getTenantId()
         },
         body: JSON.stringify({
           contractIds: Array.from(selectedContracts),
@@ -1323,7 +1323,7 @@ export default function ContractsPage() {
         headers: {
           'Content-Type': 'application/json',
           'x-data-mode': dataMode,
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           operation: action,
@@ -1545,7 +1545,7 @@ export default function ContractsPage() {
     try {
       toast.info('Preparing download...');
       const response = await fetch(`/api/contracts/${contractId}/export?format=${format}`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       
       if (!response.ok) throw new Error('Export failed');
@@ -1615,7 +1615,7 @@ export default function ContractsPage() {
       
       const response = await fetch(`/api/contracts/${contractId}`, {
         method: 'DELETE',
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
         signal: controller.signal,
       }).finally(() => clearTimeout(timeoutId));
       
@@ -1665,7 +1665,7 @@ export default function ContractsPage() {
       const deletePromises = Array.from(selectedContracts).map(id =>
         fetch(`/api/contracts/${id}`, {
           method: 'DELETE',
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         })
       );
       

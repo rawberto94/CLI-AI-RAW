@@ -70,7 +70,7 @@ export const RATE_LIMITS: Record<string, RateLimitConfig> = {
 const memoryStore = new Map<string, RateLimitUsage>();
 
 class AIRateLimitService {
-  private redis: Redis | null = null;
+  private redis: InstanceType<typeof Redis> | null = null;
   private useRedis = false;
 
   constructor() {

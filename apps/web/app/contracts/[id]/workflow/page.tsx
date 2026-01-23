@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { getTenantId } from '@/lib/tenant';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -116,7 +117,7 @@ export default function ContractWorkflowPage() {
     try {
       // Load contract details
       const contractRes = await fetch(`/api/contracts/${contractId}`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       if (contractRes.ok) {
         const contractData = await contractRes.json();
@@ -125,7 +126,7 @@ export default function ContractWorkflowPage() {
 
       // Try to load existing workflow for this contract
       const workflowRes = await fetch(`/api/contracts/${contractId}/workflow`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       });
       
       if (workflowRes.ok) {
@@ -216,7 +217,7 @@ export default function ContractWorkflowPage() {
         method: workflow?.id ? 'PUT' : 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify(workflowData),
       });

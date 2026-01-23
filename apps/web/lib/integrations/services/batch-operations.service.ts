@@ -224,6 +224,9 @@ async function createZipArchive(
   const output = createWriteStream(zipPath);
   const archive = archiver("zip", { zlib: { level: 6 } });
 
+  // Read directory files before creating the promise
+  const dirFiles = await fs.readdir(sourceDir);
+
   return new Promise((resolve, reject) => {
     output.on("close", () => resolve(zipPath));
     archive.on("error", reject);
@@ -231,7 +234,6 @@ async function createZipArchive(
     archive.pipe(output);
 
     // Add files
-    const dirFiles = await fs.readdir(sourceDir);
     for (const filename of dirFiles) {
       const filePath = path.join(sourceDir, filename);
       archive.file(filePath, { name: filename });

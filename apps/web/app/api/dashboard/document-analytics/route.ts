@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { prisma } from '@/lib/prisma';
 
 interface DateRange {
@@ -89,7 +90,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'demo';
+    const tenantId = getSessionTenantId(session);
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'year';
 

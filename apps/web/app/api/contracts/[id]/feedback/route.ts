@@ -10,6 +10,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from '@/lib/auth'
+import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
@@ -47,8 +49,16 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const tenantId = getSessionTenantId(session)
     
     const body: FeedbackRequest = await request.json()
     const { feedbackType, fields } = body
@@ -176,8 +186,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const tenantId = getSessionTenantId(session)
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'history'
 

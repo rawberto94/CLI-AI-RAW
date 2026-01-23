@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from '@repo/data-orchestration';
 
 export async function POST(request: NextRequest) {
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
 
     const legalReviewService = getLegalReviewService();
     const changes = await legalReviewService.generateRedlines(originalText, proposedText, {

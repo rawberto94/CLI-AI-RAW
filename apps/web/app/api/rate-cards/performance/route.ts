@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import { authOptions } from '@/lib/auth';
+
 import { prisma } from '@/lib/prisma';
 import { performanceOptimizationService } from 'data-orchestration/services';
 import { queryOptimizerService } from 'data-orchestration/services';

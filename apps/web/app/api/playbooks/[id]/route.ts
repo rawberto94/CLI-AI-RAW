@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from '@repo/data-orchestration';
 
 interface RouteParams {
@@ -24,7 +25,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
 
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.getPlaybook(id, tenantId);
@@ -61,7 +62,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     }
 
     const { id } = await params;
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const body = await request.json();
 
     const legalReviewService = getLegalReviewService();

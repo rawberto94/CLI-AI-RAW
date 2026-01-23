@@ -31,6 +31,7 @@ import {
   X,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getTenantId } from '@/lib/tenant';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -154,7 +155,7 @@ export default function ExternalDatabaseImportPage() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-tenant-id': 'demo',
+        'x-tenant-id': getTenantId(),
       },
       body: JSON.stringify({
         action,

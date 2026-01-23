@@ -721,22 +721,126 @@ export async function analyzeContractIntelligently(
 
   if (extractMetadata && tenantId) {
     try {
-      // Note: Full metadata extraction requires fetching the schema and using the original document text
-      // This is a simplified version that skips the extraction for now
-      // TODO: Implement proper schema loading and extraction
+      // Load tenant-specific schema
+      const { metadataSchemaService } = await import('../services/metadata-schema.service');
+      const schema = await metadataSchemaService.getSchema(tenantId);
+      
+      if (schema && schema.fields && schema.fields.length > 0) {
+        // Extract metadata fields based on schema
+        const extractedFields: Array<{
+          fieldId: string;
+          fieldName: string;
+          value: unknown;
+          confidence: number;
+        }> = [];
 
-      /* Full implementation would be:
-      const schemaService = await import('./services/metadata-schema.service');
-      const schema = await schemaService.getSchemaForTenant(tenantId);
-      if (schema) {
-        const extractor = new SchemaAwareMetadataExtractor();
-        metadataExtraction = await extractor.extractMetadata(contractText, schema);
-        
-        // Calibrate and validate as needed
+        // Map base analysis fields to schema fields
+        for (const field of schema.fields) {
+          let value: unknown = undefined;
+          let confidence = 0;
+
+          // Try to map common fields from base analysis
+          switch (field.name.toLowerCase()) {
+            case 'total_value':
+            case 'totalvalue':
+            case 'contract_value':
+              value = baseAnalysis.totalValue;
+              confidence = value !== undefined && value !== null ? 0.9 : 0;
+              break;
+            case 'start_date':
+            case 'startdate':
+            case 'effective_date':
+              value = baseAnalysis.effectiveDate;
+              confidence = value ? 0.85 : 0;
+              break;
+            case 'end_date':
+            case 'enddate':
+            case 'expiration_date':
+              value = baseAnalysis.expirationDate;
+              confidence = value ? 0.85 : 0;
+              break;
+            case 'supplier':
+            case 'vendor':
+            case 'counterparty':
+              value = baseAnalysis.supplier?.name;
+              confidence = value ? 0.8 : 0;
+              break;
+            case 'client':
+            case 'customer':
+            case 'buyer':
+              value = baseAnalysis.client?.name;
+              confidence = value ? 0.8 : 0;
+              break;
+            default:
+              // Check if field exists in key terms (keyTerms is string array)
+              if (baseAnalysis.keyTerms) {
+                const matchingTerm = baseAnalysis.keyTerms.find(
+                  t => t.toLowerCase().includes(field.name.toLowerCase())
+                );
+                if (matchingTerm) {
+                  value = matchingTerm;
+                  confidence = 0.7;
+                }
+              }
+          }
+
+          if (value !== undefined && value !== null) {
+            extractedFields.push({
+              fieldId: field.id,
+              fieldName: field.name,
+              value,
+              confidence,
+            });
+          }
+        }
+
+        metadataExtraction = {
+          schemaId: schema.id || tenantId,
+          schemaVersion: schema.version || 1,
+          extractedAt: new Date(),
+          results: extractedFields.map(f => {
+            const field = schema.fields.find(sf => sf.id === f.fieldId);
+            return {
+              fieldId: f.fieldId,
+              fieldName: f.fieldName,
+              fieldLabel: field?.label || f.fieldName,
+              fieldType: (field?.type || 'text') as any,
+              category: field?.category || 'general',
+              value: f.value,
+              rawValue: String(f.value),
+              confidence: f.confidence,
+              confidenceExplanation: 'Extracted from base analysis',
+              source: {
+                text: String(f.value),
+                location: 'document',
+              },
+              alternatives: [],
+              validationStatus: 'valid' as const,
+              validationMessages: [],
+              suggestions: [],
+              requiresHumanReview: f.confidence < 0.8,
+            };
+          }),
+          summary: {
+            totalFields: schema.fields.length,
+            extractedFields: extractedFields.length,
+            highConfidenceFields: extractedFields.filter(f => f.confidence >= 0.8).length,
+            lowConfidenceFields: extractedFields.filter(f => f.confidence < 0.6).length,
+            failedFields: schema.fields.length - extractedFields.length,
+            averageConfidence: extractedFields.length > 0 
+              ? extractedFields.reduce((sum, f) => sum + f.confidence, 0) / extractedFields.length 
+              : 0,
+            extractionTime: Date.now() - startTime,
+            passesCompleted: 1,
+          },
+          rawExtractions: {},
+          warnings: [],
+          processingNotes: ['Schema-aware extraction completed'],
+        };
       }
-      */
-    } catch {
+    } catch (schemaError) {
       // Don't fail the whole analysis if metadata extraction fails
+      console.warn('[Secure AI Processor] Schema extraction failed:', schemaError);
     }
   }
 

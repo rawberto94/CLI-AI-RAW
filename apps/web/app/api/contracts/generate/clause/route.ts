@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { 
   getContractGenerationService, 
   ContractTemplateType 
@@ -60,7 +61,7 @@ export async function POST(request: NextRequest) {
         contractType: contractType as ContractTemplateType,
         existingClauses,
         variables,
-        tenantId: session.user.tenantId || 'default',
+        tenantId: getSessionTenantId(session),
       },
       options
     );

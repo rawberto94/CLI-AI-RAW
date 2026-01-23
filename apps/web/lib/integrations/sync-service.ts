@@ -16,6 +16,7 @@ import {
   ConnectorCredentials,
 } from './connectors';
 import { uploadToStorage } from '@/lib/storage';
+import * as crypto from 'crypto';
 
 // File size limit for sync (may be used for validation in future)
 const _MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB default
@@ -642,18 +643,60 @@ class ContractSourceSyncService {
   }
 
   // ============================================
-  // Credential Encryption (placeholder - use proper encryption in production)
+  // Credential Encryption (AES-256-GCM)
   // ============================================
 
+  private getEncryptionKey(): Buffer {
+    // Get encryption key from environment (should be 32 bytes for AES-256)
+    const keyBase64 = process.env.CREDENTIAL_ENCRYPTION_KEY;
+    if (!keyBase64) {
+      // In production, require the key
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('CREDENTIAL_ENCRYPTION_KEY is required in production');
+      }
+      console.warn('[SyncService] CREDENTIAL_ENCRYPTION_KEY not set - using derived key from DATABASE_URL (DEV ONLY)');
+      // Fallback: derive key from DATABASE_URL hash (not recommended for production)
+      const fallbackKey = process.env.DATABASE_URL || 'default-fallback-key-for-dev';
+      return crypto.createHash('sha256').update(fallbackKey).digest();
+    }
+    return Buffer.from(keyBase64, 'base64');
+  }
+
   private async encryptCredentials(credentials: ConnectorCredentials): Promise<Record<string, unknown>> {
-    // In production, use proper encryption (e.g., AES-256-GCM with KMS)
-    // For now, return as-is (credentials should be encrypted at rest in DB)
-    return credentials as unknown as Record<string, unknown>;
+    const key = this.getEncryptionKey();
+    const iv = crypto.randomBytes(16); // 16 bytes IV for AES-GCM
+    const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+
+    const plaintext = JSON.stringify(credentials);
+    let encrypted = cipher.update(plaintext, 'utf8', 'base64');
+    encrypted += cipher.final('base64');
+    const authTag = cipher.getAuthTag();
+
+    return {
+      _encrypted: true,
+      _algorithm: 'aes-256-gcm',
+      iv: iv.toString('base64'),
+      authTag: authTag.toString('base64'),
+      data: encrypted,
+    };
   }
 
   private async decryptCredentials(encrypted: Record<string, unknown>): Promise<ConnectorCredentials> {
-    // In production, decrypt using the same key
-    return encrypted as unknown as ConnectorCredentials;
+    // Handle unencrypted credentials (legacy data)
+    if (!encrypted._encrypted) {
+      return encrypted as unknown as ConnectorCredentials;
+    }
+
+    const key = this.getEncryptionKey();
+    const iv = Buffer.from(encrypted.iv as string, 'base64');
+    const authTag = Buffer.from(encrypted.authTag as string, 'base64');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+
+    let decrypted = decipher.update(encrypted.data as string, 'base64', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return JSON.parse(decrypted) as ConnectorCredentials;
   }
 }
 

@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { 
   getContractGenerationService, 
   ContractTemplateType,
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
         maxLength: options?.maxLength,
         styleGuide: options?.styleGuide,
       },
-      tenantId: session.user.tenantId || 'default',
+      tenantId: getSessionTenantId(session),
       userId: session.user.id,
     });
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from '@/lib/auth';
 
 /**
  * POST /api/rate-cards/comparisons/[id]/share
@@ -8,8 +9,11 @@ import { prisma } from '@/lib/prisma';
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
+    // Get session for user info
+    const session = await getServerSession();
+    
     // Require tenant ID for data isolation
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = request.headers.get('x-tenant-id') || session?.user?.tenantId;
     if (!tenantId) {
       return NextResponse.json(
         { error: 'Tenant ID is required' },
@@ -43,8 +47,24 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       },
     });
 
-    // TODO: If shareWithUserIds is provided, create notifications or permissions
-    // This would require additional tables for user-specific sharing
+    // If shareWithUserIds is provided, create notifications for those users
+    const userIdsToShare = shareWithUserIds as string[] | undefined;
+    if (userIdsToShare && userIdsToShare.length > 0) {
+      await prisma.notification.createMany({
+        data: userIdsToShare.map(userId => ({
+          tenantId,
+          userId,
+          type: 'COMPARISON_SHARED',
+          title: 'Rate comparison shared with you',
+          message: `${session?.user?.name || session?.user?.email || 'A colleague'} shared a rate comparison with you`,
+          resourceType: 'RateComparison',
+          resourceId: params.id,
+          priority: 'NORMAL',
+          read: false,
+        })),
+        skipDuplicates: true,
+      });
+    }
 
     return NextResponse.json({ 
       comparison,

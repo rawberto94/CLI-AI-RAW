@@ -14,10 +14,18 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   try {
     const { id } = params;
     
-    // Check data mode from header
+    // Check data mode from header - mock only allowed in development
     const dataMode = request.headers.get('x-data-mode') || 'real';
     
-    // If mock mode, return mock data
+    // If mock mode requested in production, reject
+    if (dataMode === 'mock' && process.env.NODE_ENV === 'production') {
+      return NextResponse.json(
+        { error: 'Mock mode not available in production' },
+        { status: 400 }
+      );
+    }
+    
+    // If mock mode (dev only), return mock data
     if (dataMode === 'mock') {
       const mockRateCards = [
         {

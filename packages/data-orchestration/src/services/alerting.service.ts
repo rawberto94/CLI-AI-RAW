@@ -19,7 +19,9 @@ export interface Alert {
   threshold: AlertThreshold;
   currentValue: number;
   timestamp: Date;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: 'low' | 'medium' | 'high' | 'critical' | 'warning';
+  type: string;
+  metric: string;
   message: string;
   acknowledged: boolean;
 }
@@ -266,6 +268,8 @@ class AlertingService {
       currentValue,
       timestamp: new Date(),
       severity: threshold.severity,
+      type: threshold.metric,
+      metric: threshold.metric,
       message: `${threshold.description} (current: ${currentValue.toFixed(2)}, threshold: ${threshold.value})`,
       acknowledged: false,
     };
@@ -358,16 +362,79 @@ class AlertingService {
    * Send email notification
    */
   private async sendEmailNotification(alert: Alert): Promise<void> {
-    // In a real implementation, this would integrate with an email service
-    // For now, we'll just log it
-    monitoringService.logInfo('Alert email would be sent', {
+    // Log the alert details
+    monitoringService.logInfo('Sending alert email', {
       recipients: this.emailRecipients,
       alertId: alert.id,
       severity: alert.severity,
       message: alert.message,
     });
 
-    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
+    // Try to send via email service
+    try {
+      const emailHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2 style="color: ${alert.severity === 'critical' ? '#dc2626' : alert.severity === 'warning' ? '#f59e0b' : '#2563eb'};">
+            [${alert.severity.toUpperCase()}] ${alert.type} Alert
+          </h2>
+          <p><strong>Message:</strong> ${alert.message}</p>
+          <p><strong>Metric:</strong> ${alert.metric} = ${alert.currentValue}</p>
+          <p><strong>Threshold:</strong> ${alert.threshold}</p>
+          <p><strong>Time:</strong> ${alert.timestamp.toISOString()}</p>
+          <hr/>
+          <p style="color: #6b7280; font-size: 12px;">Alert ID: ${alert.id}</p>
+        </div>
+      `;
+
+      // Try Resend first
+      if (process.env.RESEND_API_KEY) {
+        const response = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: process.env.ALERT_FROM_EMAIL || 'alerts@contigo.ai',
+            to: this.emailRecipients,
+            subject: `[${alert.severity.toUpperCase()}] ${alert.type} Alert`,
+            html: emailHtml,
+          }),
+        });
+        if (response.ok) {
+          monitoringService.logInfo('Alert email sent via Resend', { alertId: alert.id });
+          return;
+        }
+      }
+
+      // Fallback to SendGrid
+      if (process.env.SENDGRID_API_KEY) {
+        const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SENDGRID_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            personalizations: [{ to: this.emailRecipients.map(email => ({ email })) }],
+            from: { email: process.env.ALERT_FROM_EMAIL || 'alerts@contigo.ai' },
+            subject: `[${alert.severity.toUpperCase()}] ${alert.type} Alert`,
+            content: [{ type: 'text/html', value: emailHtml }],
+          }),
+        });
+        if (response.ok) {
+          monitoringService.logInfo('Alert email sent via SendGrid', { alertId: alert.id });
+          return;
+        }
+      }
+
+      monitoringService.logInfo('No email service configured for alerts', { alertId: alert.id });
+    } catch (error) {
+      monitoringService.logError(error as Error, {
+        context: 'alert_email',
+        alertId: alert.id,
+      });
+    }
   }
 
   /**

@@ -2736,7 +2736,7 @@ if (isMainModule) {
 export function getCircuitBreakerMetrics() {
   return {
     mistral: mistralCircuitBreaker.getMetrics(),
-    openai: openaiCircuitBreaker.getMetrics(),
+    azure: azureCircuitBreaker.getMetrics(),
     storage: storageCircuitBreaker.getMetrics(),
   };
 }
@@ -2746,7 +2746,7 @@ export function getCircuitBreakerMetrics() {
  */
 export function resetCircuitBreakers() {
   mistralCircuitBreaker.reset();
-  openaiCircuitBreaker.reset();
+  azureCircuitBreaker.reset();
   storageCircuitBreaker.reset();
   logger.info('All circuit breakers reset');
 }

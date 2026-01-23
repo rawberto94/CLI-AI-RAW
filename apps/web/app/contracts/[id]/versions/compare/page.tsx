@@ -57,6 +57,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -289,7 +290,7 @@ export default function VersionComparePage() {
       try {
         setLoading(true)
         const response = await fetch(`/api/contracts/${contractId}/versions`, {
-          headers: { 'x-tenant-id': 'demo' }
+          headers: { 'x-tenant-id': getTenantId() }
         })
         
         if (!response.ok) throw new Error('Failed to load versions')

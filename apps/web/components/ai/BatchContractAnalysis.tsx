@@ -146,6 +146,54 @@ export function BatchContractAnalysis() {
     setSelectedIds(new Set());
   }, []);
 
+  // Poll batch status for RAG processing
+  const pollBatchStatus = useCallback(async (batchId: string) => {
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/rag/batch-process?batchId=${batchId}`);
+        const data = await response.json();
+
+        if (data.status) {
+          setBatchStatus({
+            batchId,
+            status: data.status,
+            total: data.total,
+            processed: data.processed,
+            failed: data.failed,
+            startTime: data.startTime,
+            endTime: data.endTime,
+          });
+
+          // Update results from batch results
+          if (data.results) {
+            setResults(prev => {
+              const next = new Map(prev);
+              data.results.forEach((r: { contractId: string; success: boolean; error?: string }) => {
+                next.set(r.contractId, {
+                  contractId: r.contractId,
+                  success: r.success,
+                  error: r.error,
+                });
+              });
+              return next;
+            });
+          }
+
+          if (data.status === 'running') {
+            setTimeout(poll, 2000);
+          } else {
+            setIsLoading(false);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to poll batch status:', error);
+        setIsLoading(false);
+      }
+    };
+
+    poll();
+  }, []);
+
   // Start batch analysis
   const startBatchAnalysis = useCallback(async () => {
     if (selectedIds.size === 0) return;
@@ -255,54 +303,6 @@ export function BatchContractAnalysis() {
       setIsLoading(false);
     }
   }, [selectedIds, analysisType, pollBatchStatus]);
-
-  // Poll batch status for RAG processing
-  const pollBatchStatus = useCallback(async (batchId: string) => {
-    const poll = async () => {
-      try {
-        const response = await fetch(`/api/rag/batch-process?batchId=${batchId}`);
-        const data = await response.json();
-
-        if (data.status) {
-          setBatchStatus({
-            batchId,
-            status: data.status,
-            total: data.total,
-            processed: data.processed,
-            failed: data.failed,
-            startTime: data.startTime,
-            endTime: data.endTime,
-          });
-
-          // Update results from batch results
-          if (data.results) {
-            setResults(prev => {
-              const next = new Map(prev);
-              data.results.forEach((r: { contractId: string; success: boolean; error?: string }) => {
-                next.set(r.contractId, {
-                  contractId: r.contractId,
-                  success: r.success,
-                  error: r.error,
-                });
-              });
-              return next;
-            });
-          }
-
-          if (data.status === 'running') {
-            setTimeout(poll, 2000);
-          } else {
-            setIsLoading(false);
-          }
-        }
-      } catch (error) {
-        console.error('Failed to poll batch status:', error);
-        setIsLoading(false);
-      }
-    };
-
-    poll();
-  }, []);
 
   // Toggle result expansion
   const toggleExpand = useCallback((id: string) => {

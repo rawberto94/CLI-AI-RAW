@@ -1,6 +1,10 @@
 // IMPORTANT:
 // Use the shared Prisma client from the monorepo db package so that
 // schema/models/types stay consistent across apps and workers.
+//
+// NOTE: This module should only be used in server-side code (API routes, 
+// server components, server actions). Do not import directly in client components.
+// For client-side code, use API routes or server actions instead.
 
 import getClient, { PrismaClient } from '@repo/db';
 

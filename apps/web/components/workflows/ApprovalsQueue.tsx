@@ -39,6 +39,7 @@ import {
   Shield,
 } from 'lucide-react';
 import Link from 'next/link';
+import { getTenantId } from '@/lib/tenant';
 import { useDataMode } from '@/contexts/DataModeContext';
 import { useApprovalFlow } from '@/hooks/use-collaboration';
 import { toast } from 'sonner';
@@ -1009,7 +1010,7 @@ export const ApprovalsQueue: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           action: 'approve',
@@ -1084,7 +1085,7 @@ export const ApprovalsQueue: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           action: 'reject',
@@ -1144,7 +1145,7 @@ export const ApprovalsQueue: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           action: 'escalate',
@@ -1196,7 +1197,7 @@ export const ApprovalsQueue: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           action: 'delegate',
@@ -1234,7 +1235,7 @@ export const ApprovalsQueue: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           action: 'approve',
@@ -1304,7 +1305,7 @@ export const ApprovalsQueue: React.FC = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-tenant-id': 'demo',
+            'x-tenant-id': getTenantId(),
           },
           body: JSON.stringify({
             action: 'reject',

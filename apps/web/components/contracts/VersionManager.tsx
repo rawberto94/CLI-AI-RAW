@@ -66,6 +66,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Progress } from '@/components/ui/progress'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -302,7 +303,7 @@ export function VersionManager({
     try {
       setIsLoading(true)
       const response = await fetch(`/api/contracts/${contractId}/versions`, {
-        headers: { 'x-tenant-id': 'demo' }
+        headers: { 'x-tenant-id': getTenantId() }
       })
       
       if (!response.ok) throw new Error('Failed to fetch versions')
@@ -338,7 +339,7 @@ export function VersionManager({
       
       const response = await fetch(`/api/contracts/${contractId}/versions`, {
         method: 'POST',
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
         body: formData
       })
       
@@ -377,7 +378,7 @@ export function VersionManager({
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo' 
+          'x-tenant-id': getTenantId() 
         },
         body: JSON.stringify({ summary: snapshotSummary })
       })
@@ -408,7 +409,7 @@ export function VersionManager({
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo' 
+          'x-tenant-id': getTenantId() 
         },
         body: JSON.stringify({ versionNumber: version.versionNumber })
       })

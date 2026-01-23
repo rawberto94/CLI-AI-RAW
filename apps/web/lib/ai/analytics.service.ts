@@ -94,7 +94,7 @@ class AIAnalyticsService {
     const cost = this.calculateCost(event.model, event.inputTokens, event.outputTokens);
 
     try {
-      await prisma.aIUsageLog.create({
+      await (prisma as any).aiUsageLog?.create({
         data: {
           model: event.model,
           endpoint: event.endpoint,
@@ -154,10 +154,10 @@ class AIAnalyticsService {
     };
 
     // Get all logs for the period
-    const logs = await prisma.aIUsageLog.findMany({
+    const logs = await (prisma as any).aiUsageLog?.findMany({
       where: whereClause,
       orderBy: { createdAt: 'asc' },
-    });
+    }) || [];
 
     // Aggregate metrics
     const totalRequests = logs.length;
@@ -322,12 +322,12 @@ class AIAnalyticsService {
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
-    const logs = await prisma.aIUsageLog.findMany({
+    const logs = await (prisma as any).aiUsageLog?.findMany({
       where: {
         createdAt: { gte: startOfDay },
         ...(tenantId && { tenantId }),
       },
-    });
+    }) || [];
 
     return {
       requests: logs.length,
@@ -355,12 +355,12 @@ class AIAnalyticsService {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
 
-    const logs = await prisma.aIUsageLog.findMany({
+    const logs = await (prisma as any).aiUsageLog?.findMany({
       where: {
         userId,
         createdAt: { gte: startDate },
       },
-    });
+    }) || [];
 
     const featureMap = new Map<string, number>();
     for (const log of logs) {

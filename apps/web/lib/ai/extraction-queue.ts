@@ -9,7 +9,7 @@
  * - Batch processing
  */
 
-import { SchemaAwareMetadataExtractor, type ExtractionResult } from "./metadata-extractor";
+import { SchemaAwareMetadataExtractor, type ExtractionResult, type MetadataExtractionResult } from "./metadata-extractor";
 import { ConfidenceCalibrationService } from "./confidence-calibration";
 
 // ============================================================================
@@ -28,7 +28,7 @@ export interface ExtractionJob {
   retryCount: number;
   maxRetries: number;
   error?: string;
-  result?: ExtractionResult;
+  result?: MetadataExtractionResult;
   options: ExtractionJobOptions;
 }
 
@@ -297,18 +297,56 @@ export class ExtractionQueueService {
     let success = false;
 
     try {
+      // Fetch contract text from database
+      const { prisma } = await import('@/lib/prisma');
+      
+      const contract = await prisma.contract.findUnique({
+        where: { id: job.contractId },
+        select: {
+          id: true,
+          rawText: true,
+          tenantId: true,
+          contractTitle: true,
+        },
+      });
+
+      if (!contract) {
+        throw new Error(`Contract not found: ${job.contractId}`);
+      }
+
+      if (!contract.rawText) {
+        throw new Error(`Contract ${job.contractId} has no text content`);
+      }
+
+      // Get tenant schema
+      const { metadataSchemaService } = await import('../services/metadata-schema.service');
+      const schema = await metadataSchemaService.getSchema(job.tenantId);
+
       // Create extractor and run extraction
-      // Note: This needs proper integration with the contract text retrieval
-      // For now, mark as needing implementation
-      const _extractor = new SchemaAwareMetadataExtractor();
-      
-      // TODO: Get contract text and schema properly
-      // For now, set a placeholder result
-      
-      job.status = "failed";
-      job.error = "Extraction queue processing requires contract text retrieval implementation";
+      const extractor = new SchemaAwareMetadataExtractor();
+      const result = await extractor.extractMetadata(
+        contract.rawText,
+        schema,
+        {
+          maxPasses: 2,
+          enableMultiPass: true,
+          confidenceThreshold: 0.5,
+          priorityFields: job.options.specificFields,
+        }
+      );
+
+      // Apply calibration to results
+      const calibratedResult = result;
+
+      job.result = calibratedResult;
+      job.status = "completed";
       job.completedAt = new Date();
-      success = false;
+      success = true;
+
+      // Notify if requested
+      if (job.options.notifyOnComplete) {
+        await this.notifyWebhook(job);
+      }
     } catch (error: unknown) {
       job.retryCount++;
       job.error = error instanceof Error ? error.message : "Unknown error";

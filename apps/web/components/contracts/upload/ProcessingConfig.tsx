@@ -42,7 +42,7 @@ import {
 // ============================================================================
 
 export interface ProcessingOptions {
-  aiModel: 'gpt-4o' | 'gpt-4o-mini' | 'claude-3-5-haiku-20241022' | 'auto';
+  aiModel: 'gpt-4o' | 'gpt-4o-mini' | 'claude-3-5-haiku-20241022' | 'azure-ch' | 'mistral' | 'auto';
   processingMode: 'standard' | 'thorough' | 'quick';
   concurrency: number;
   enabledArtifacts: string[];

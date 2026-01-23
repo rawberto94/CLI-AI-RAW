@@ -493,8 +493,8 @@ export async function PUT(
     });
 
     // Invalidate semantic cache so chatbot sees updated metadata
-    semanticCache.invalidate(tenantId, contractId).catch(() => {
-      // Non-blocking - ignore cache errors
+    semanticCache.invalidate(tenantId, contractId).catch((err) => {
+      console.error('[MetadataUpdate] Semantic cache invalidation error:', err);
     });
 
     await publishRealtimeEvent({

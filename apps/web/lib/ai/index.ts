@@ -94,7 +94,7 @@ export {
   waitForJob,
   type ExtractionJob,
   type ExtractionJobOptions,
-  type JobStatus,
+  type JobStatus as ExtractionJobStatus,
   type QueueStats,
   type BatchExtractionRequest,
   type BatchExtractionResult,
@@ -337,27 +337,30 @@ export {
 
 // AI Response Caching
 export { aiCache, withCache } from './cache.service';
-export type { CacheEntry, CacheConfig, CacheStats } from './cache.service';
+export type {
+  CacheEntry as AICacheEntry,
+  CacheConfig as AICacheConfig,
+  CacheStats as AICacheStats,
+} from './cache.service';
 
 // Prompt Templates Library
-export { promptTemplates, buildPrompt } from './prompt-templates';
+export { promptTemplates } from './prompt-templates';
 export type {
   PromptTemplate,
   TemplateCategory,
   TemplateVariable,
-  BuiltPrompt,
 } from './prompt-templates';
 
 // Scheduled Analysis Service
 export { scheduledAnalysis } from './scheduled-analysis.service';
 export type {
-  ScheduledJob,
-  JobRun,
-  JobRunResults,
+  ScheduledJob as ScheduledAnalysisJob,
+  JobRun as ScheduledJobRun,
+  JobRunResults as ScheduledJobRunResults,
   ScheduleType,
   CronSchedule,
   JobConfig,
-  JobStatus,
+  JobStatus as ScheduledJobStatus,
 } from './scheduled-analysis.service';
 
 // Offline Queue Service

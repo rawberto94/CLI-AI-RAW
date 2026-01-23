@@ -24,6 +24,11 @@ declare module 'jspdf' {
       styles?: Record<string, unknown>;
       columnStyles?: Record<string, unknown>;
       margin?: { top?: number; right?: number; bottom?: number; left?: number };
+      didParseCell?: (hookData: {
+        column: { index: number };
+        section: string;
+        cell: { raw: unknown; styles: Record<string, unknown> };
+      }) => void;
     }) => jsPDF;
     lastAutoTable: { finalY: number };
   }

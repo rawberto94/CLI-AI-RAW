@@ -138,11 +138,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           retryCount: job.retryCount,
           error: job.error,
           result: job.result ? {
-            // ExtractionResult is a single field, use it directly
-            fieldId: job.result.fieldId,
-            fieldName: job.result.fieldName,
-            confidence: job.result.confidence,
-            validationStatus: job.result.validationStatus,
+            // ExtractionResult uses metadata from extraction
+            fieldId: (job.result as unknown as Record<string, unknown>).fieldId ?? job.id,
+            fieldName: (job.result as unknown as Record<string, unknown>).fieldName ?? 'extracted',
+            confidence: (job.result as unknown as Record<string, unknown>).confidence ?? 0,
+            validationStatus: (job.result as unknown as Record<string, unknown>).validationStatus ?? 'pending',
           } : null,
         },
       });

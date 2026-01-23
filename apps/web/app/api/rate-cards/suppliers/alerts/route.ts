@@ -18,7 +18,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import { authOptions } from '@/lib/auth';
+
 import { supplierAlertService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {

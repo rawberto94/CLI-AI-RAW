@@ -9,6 +9,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from '@/lib/auth'
+import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
 
 interface FieldConfidence {
@@ -26,8 +28,16 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const { id: contractId } = await params
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const tenantId = getSessionTenantId(session)
 
     // Get contract with metadata
     const contract = await prisma.contract.findFirst({

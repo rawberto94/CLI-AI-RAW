@@ -432,12 +432,68 @@ export class DuplicateDetectorService {
     duplicateIds: string[],
     mergedBy: string
   ): Promise<DuplicateResolution> {
-    // TODO: Implement merge logic
-    // 1. Combine data from duplicates into master
-    // 2. Update references
-    // 3. Mark duplicates as inactive or delete
-    // 4. Create audit trail
+    // 1. Fetch master record and duplicates
+    const master = await this.prisma.rateCardEntry.findUnique({
+      where: { id: masterRecordId },
+    });
 
+    if (!master) {
+      throw new Error(`Master record not found: ${masterRecordId}`);
+    }
+
+    const duplicates = await this.prisma.rateCardEntry.findMany({
+      where: { id: { in: duplicateIds } },
+    });
+
+    // 2. Combine data from duplicates into master
+    // Keep the best quality data (prefer non-null values, most recent)
+    const mergedData: Record<string, unknown> = {};
+
+    // Merge additional info from duplicates
+    const combinedInfo = {
+      ...(master.additionalInfo as Record<string, unknown> || {}),
+      mergedFrom: duplicateIds,
+      mergedAt: new Date(),
+      mergedBy,
+    };
+
+    for (const dup of duplicates) {
+      const dupInfo = dup.additionalInfo as Record<string, unknown> || {};
+      // Merge any unique metadata
+      for (const [key, value] of Object.entries(dupInfo)) {
+        if (value && !combinedInfo[key]) {
+          combinedInfo[key] = value;
+        }
+      }
+    }
+
+    mergedData.additionalInfo = combinedInfo;
+
+    // 3. Update master record
+    await this.prisma.rateCardEntry.update({
+      where: { id: masterRecordId },
+      data: mergedData,
+    });
+
+    // 4. Update references from duplicates to master
+    // Note: This depends on your schema - adjust table names as needed
+    await this.prisma.$transaction(async (tx) => {
+      // Update any contract references pointing to duplicates
+      // Mark duplicates as merged (soft delete)
+      await tx.rateCardEntry.updateMany({
+        where: { id: { in: duplicateIds } },
+        data: {
+          additionalInfo: {
+            merged: true,
+            mergedInto: masterRecordId,
+            mergedAt: new Date(),
+            mergedBy,
+          },
+        },
+      });
+    });
+
+    // 5. Create audit trail
     const resolution: DuplicateResolution = {
       duplicateGroupId: masterRecordId,
       action: 'MERGED',

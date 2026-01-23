@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { 
   getAICopilotService,
   type CopilotContext,
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const userId = session.user.id || 'anonymous';
 
     const context: CopilotContext = {

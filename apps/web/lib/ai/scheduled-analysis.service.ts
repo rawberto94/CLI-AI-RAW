@@ -18,6 +18,7 @@ export interface ScheduledJob {
   lastRun?: Date;
   nextRun?: Date;
   createdBy: string;
+  tenantId: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,11 +46,14 @@ export interface JobConfig {
     status?: string[];
     type?: string[];
     tags?: string[];
+    categories?: string[];
+    statuses?: string[];
     olderThan?: number; // days
     notReviewedSince?: number; // days
   };
   analysis: {
     type: string;
+    types?: string[];
     depth?: 'quick' | 'standard' | 'comprehensive';
     focusAreas?: string[];
   };
@@ -134,7 +138,8 @@ class ScheduledAnalysisService {
     type: ScheduleType,
     schedule: CronSchedule,
     config: JobConfig,
-    userId: string
+    userId: string,
+    tenantId?: string
   ): Promise<ScheduledJob> {
     const job: ScheduledJob = {
       id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -145,6 +150,7 @@ class ScheduledAnalysisService {
       status: 'active',
       nextRun: this.calculateNextRun(schedule),
       createdBy: userId,
+      tenantId: tenantId || 'default',
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -401,13 +407,44 @@ class ScheduledAnalysisService {
    * Get contracts matching job criteria
    */
   private async getContractsForJob(job: ScheduledJob): Promise<Array<{ id: string; name?: string; content?: string }>> {
-    // In production, query database with filters
-    // For demo, return mock data
-    return [
-      { id: 'c1', name: 'Service Agreement 2024' },
-      { id: 'c2', name: 'NDA - Partner Corp' },
-      { id: 'c3', name: 'Employment Contract' },
-    ];
+    try {
+      // Query database for contracts matching job criteria
+      const { prisma } = await import('@/lib/prisma');
+      
+      const where: any = {
+        tenantId: job.tenantId,
+        status: { not: 'DELETED' },
+      };
+      
+      // Apply category filter if specified
+      if (job.config.filters?.categories?.length) {
+        where.category = { in: job.config.filters.categories };
+      }
+      
+      // Apply status filter if specified
+      if (job.config.filters?.statuses?.length || job.config.filters?.status?.length) {
+        where.status = { in: job.config.filters.statuses || job.config.filters.status };
+      }
+      
+      const contracts = await prisma.contract.findMany({
+        where,
+        select: {
+          id: true,
+          contractTitle: true,
+          rawText: true,
+        },
+        take: 100, // Limit batch size
+      });
+      
+      return contracts.map(c => ({
+        id: c.id,
+        name: c.contractTitle || undefined,
+        content: c.rawText || undefined,
+      }));
+    } catch (error) {
+      console.error('Failed to fetch contracts for scheduled job:', error);
+      return [];
+    }
   }
 
   /**
@@ -417,27 +454,61 @@ class ScheduledAnalysisService {
     contract: { id: string; name?: string; content?: string },
     analysisConfig: JobConfig['analysis']
   ): Promise<{ issues: Array<{ type: string; severity: 'low' | 'medium' | 'high' | 'critical'; message: string }> }> {
-    // In production, call AI analysis service
-    // For demo, return mock analysis
-    await new Promise((resolve) => setTimeout(resolve, 100));
-
-    // Simulate finding issues
     const issues: Array<{ type: string; severity: 'low' | 'medium' | 'high' | 'critical'; message: string }> = [];
     
-    if (Math.random() > 0.6) {
-      issues.push({
-        type: 'missing-clause',
-        severity: 'medium',
-        message: 'Force majeure clause not found',
+    try {
+      // Call AI analysis endpoint for real analysis
+      if (!contract.content) {
+        return { issues };
+      }
+      
+      const response = await fetch('/api/ai/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractId: contract.id,
+          content: contract.content.substring(0, 10000), // Limit content size
+          analysisTypes: analysisConfig?.types || [analysisConfig?.type] || ['risk', 'compliance'],
+        }),
       });
-    }
-    
-    if (Math.random() > 0.8) {
-      issues.push({
-        type: 'expiry-warning',
-        severity: 'high',
-        message: 'Contract expires within 30 days',
-      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.issues) {
+          return { issues: data.issues };
+        }
+      }
+      
+      // If AI analysis not available, do basic checks
+      const content = contract.content.toLowerCase();
+      
+      // Check for missing common clauses
+      if (!content.includes('force majeure') && !content.includes('act of god')) {
+        issues.push({
+          type: 'missing-clause',
+          severity: 'medium',
+          message: 'Force majeure clause not found',
+        });
+      }
+      
+      if (!content.includes('termination') && !content.includes('cancel')) {
+        issues.push({
+          type: 'missing-clause',
+          severity: 'medium',
+          message: 'Termination clause not found',
+        });
+      }
+      
+      if (!content.includes('confidential') && !content.includes('non-disclosure')) {
+        issues.push({
+          type: 'missing-clause',
+          severity: 'low',
+          message: 'Confidentiality clause not found',
+        });
+      }
+      
+    } catch (error) {
+      console.error('Contract analysis failed:', error);
     }
 
     return { issues };
@@ -608,6 +679,3 @@ class ScheduledAnalysisService {
 
 // Export singleton instance
 export const scheduledAnalysis = ScheduledAnalysisService.getInstance();
-
-// Export types for API routes
-export type { ScheduledJob, JobRun, JobRunResults };

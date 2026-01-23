@@ -116,15 +116,15 @@ type SortOption = 'name' | 'date' | 'usage' | 'status'
 type ViewMode = 'grid' | 'list'
 
 // Category colors for visual distinction
-const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string }> = {
-  'Technology': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '💻' },
-  'Services': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🛠️' },
-  'Legal': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '⚖️' },
-  'HR': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: '👥' },
-  'Procurement': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: '📦' },
-  'Renewal': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', icon: '🔄' },
-  'Finance': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '💰' },
-  'Default': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: '📄' },
+const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string; gradient?: string }> = {
+  'Technology': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '💻', gradient: 'from-blue-400 to-blue-200' },
+  'Services': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🛠️', gradient: 'from-purple-400 to-purple-200' },
+  'Legal': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '⚖️', gradient: 'from-red-400 to-red-200' },
+  'HR': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: '👥', gradient: 'from-green-400 to-green-200' },
+  'Procurement': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: '📦', gradient: 'from-orange-400 to-orange-200' },
+  'Renewal': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', icon: '🔄', gradient: 'from-cyan-400 to-cyan-200' },
+  'Finance': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '💰', gradient: 'from-emerald-400 to-emerald-200' },
+  'Default': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: '📄', gradient: 'from-gray-400 to-gray-200' },
 }
 
 // Calculate template health score (0-100)
@@ -348,6 +348,15 @@ export default function TemplatesPage() {
   const deleteTemplateMutation = useDeleteTemplate()
   const createTemplateMutation = useCreateTemplate()
   const crossModule = useCrossModuleInvalidation()
+
+  // Use templates from API - no fallback to mock data in production
+  const templates: ContractTemplate[] = useMemo(() => {
+    if (templatesData?.templates && (templatesData.templates as ContractTemplate[]).length > 0) {
+      return templatesData.templates as ContractTemplate[]
+    }
+    // Return empty array if no templates - let UI show empty state
+    return []
+  }, [templatesData])
   
   // Save recent search
   const saveRecentSearch = useCallback((query: string) => {
@@ -1132,15 +1141,6 @@ export default function TemplatesPage() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [bulkActionMode, clearSelection, selectAllTemplates, closePreviewSidebar, closeContextMenu, focusedTemplateIndex, templates, openPreviewSidebar])
-
-  // Use templates from API - no fallback to mock data in production
-  const templates: ContractTemplate[] = useMemo(() => {
-    if (templatesData?.templates && (templatesData.templates as ContractTemplate[]).length > 0) {
-      return templatesData.templates as ContractTemplate[]
-    }
-    // Return empty array if no templates - let UI show empty state
-    return []
-  }, [templatesData])
 
   // Get unique categories and statuses
   const categories = useMemo(() => Array.from(new Set(templates.map((t) => t.category))), [templates])
@@ -2243,7 +2243,7 @@ export default function TemplatesPage() {
                       >
                         <span className="text-lg">{icon}</span>
                         <span>{type}</span>
-                        <Sparkles className={`h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-r ${color} bg-clip-text text-purple-500`} />
+                        <Sparkles className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-purple-500" />
                       </Button>
                     ))}
                   </div>
@@ -2609,11 +2609,11 @@ export default function TemplatesPage() {
                               Generate Smart Tags
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => exportTemplateAsDocument(template.id, 'docx')}>
+                            <DropdownMenuItem onClick={() => exportTemplateAsDocument(template, 'docx')}>
                               <FileText className="h-4 w-4 mr-2" />
                               Export as Word
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => exportTemplateAsDocument(template.id, 'pdf')}>
+                            <DropdownMenuItem onClick={() => exportTemplateAsDocument(template, 'pdf')}>
                               <FileType className="h-4 w-4 mr-2" />
                               Export as PDF
                             </DropdownMenuItem>

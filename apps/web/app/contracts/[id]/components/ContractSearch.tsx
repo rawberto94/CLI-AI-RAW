@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import {
   Search,
   X,
@@ -94,7 +95,7 @@ export const ContractSearch = memo(function ContractSearch({
     try {
       const response = await fetch(`/api/contracts/${contractId}/search`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
         body: JSON.stringify({ query: searchQuery })
       })
       

@@ -41,15 +41,29 @@ export function EnhancedMetadataEditor({
 
   const loadTagSuggestions = async (query: string) => {
     try {
-      // TODO: Implement tag autocomplete API
-      // For now, just show some mock suggestions
+      // Call tag autocomplete API
+      const response = await fetch(
+        `/api/contracts/tags/suggest?q=${encodeURIComponent(query)}&tenantId=${tenantId}`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setTagSuggestions(data.suggestions || []);
+      } else {
+        // Fallback to smart suggestions based on query
+        setTagSuggestions([
+          `${query}-consulting`,
+          `${query}-services`,
+          `${query}-contract`,
+        ]);
+      }
+    } catch {
+      // Failed to load tag suggestions - show fallback
       setTagSuggestions([
         `${query}-consulting`,
         `${query}-services`,
         `${query}-contract`,
       ]);
-    } catch {
-      // Failed to load tag suggestions - silently handle
     }
   };
 

@@ -45,6 +45,7 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -187,7 +188,7 @@ export function QuickUploadModal({
       const response = await fetch('/api/contracts/upload', {
         method: 'POST',
         headers: {
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: formData,
       })

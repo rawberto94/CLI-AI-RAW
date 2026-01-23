@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
         success: true,
         data: {
           ...safeSource,
-          hasCredentials: !!credentials,
+          hasCredentials: !!_credentials,
           isOAuthConnected: !!accessToken,
         },
       });
@@ -127,7 +127,7 @@ export async function GET(request: NextRequest) {
     // Remove sensitive data
     const safeSources = sources.map(({ credentials: _creds, accessToken, refreshToken: _refreshToken, ...source }) => ({
       ...source,
-      hasCredentials: !!credentials,
+      hasCredentials: !!_creds,
       isOAuthConnected: !!accessToken,
     }));
 

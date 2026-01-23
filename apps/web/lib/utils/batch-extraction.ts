@@ -130,7 +130,8 @@ export class BatchExtractionProcessor {
         successful++;
         if (job.result) {
           // Use the confidence from the extraction result
-          const confidence = job.result.confidence;
+          const resultObj = job.result as unknown as Record<string, unknown>;
+          const confidence = typeof resultObj.confidence === 'number' ? resultObj.confidence : undefined;
           if (confidence !== undefined) {
             totalConfidence += confidence;
             confidenceCount++;

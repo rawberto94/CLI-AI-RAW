@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(_request: NextRequest) {
@@ -14,7 +15,7 @@ export async function GET(_request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'demo';
+    const tenantId = getSessionTenantId(session);
 
     // Get all contracts with their classification and signature status
     const contracts = await prisma.contract.findMany({

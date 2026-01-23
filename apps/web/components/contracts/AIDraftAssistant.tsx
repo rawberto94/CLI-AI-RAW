@@ -47,6 +47,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 
 // ============ TYPES ============
@@ -125,7 +126,7 @@ async function generateAIResponse(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-tenant-id': 'demo',
+        'x-tenant-id': getTenantId(),
       },
       body: JSON.stringify({
         prompt: userMessage,
@@ -330,7 +331,7 @@ export function AIDraftAssistant() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify(payload),
       })

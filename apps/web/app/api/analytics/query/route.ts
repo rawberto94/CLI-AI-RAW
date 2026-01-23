@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession();
     const body = await request.json();
     const { query, context } = body;
 
@@ -14,7 +17,7 @@ export async function POST(request: NextRequest) {
 
     const queryContext = {
       sessionId: context?.sessionId || `session-${Date.now()}`,
-      tenantId: context?.tenantId || 'default',
+      tenantId: context?.tenantId || (session ? getSessionTenantId(session) : 'default'),
       userId: context?.userId,
       previousQueries: context?.previousQueries || [],
       filters: context?.filters

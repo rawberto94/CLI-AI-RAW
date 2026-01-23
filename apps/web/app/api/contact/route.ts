@@ -50,13 +50,63 @@ export async function POST(request: NextRequest) {
     console.log(`Message: ${data.message}`);
     console.log('----------------------------');
 
-    // TODO: In production, integrate with:
-    // - Email service (SendGrid, Resend, Postmark)
-    // - CRM (HubSpot, Salesforce)
-    // - Notification (Slack webhook)
+    // Email integration
+    const emailHtml = `
+      <h2>New Contact Form Submission</h2>
+      <p><strong>Name:</strong> ${data.name}</p>
+      <p><strong>Email:</strong> ${data.email}</p>
+      <p><strong>Company:</strong> ${data.company || 'Not provided'}</p>
+      <p><strong>Reason:</strong> ${REASON_LABELS[data.reason] || data.reason}</p>
+      <p><strong>Message:</strong></p>
+      <p>${data.message}</p>
+    `;
 
-    // Simulate email sending delay
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Try to send email via Resend
+    if (process.env.RESEND_API_KEY && process.env.CONTACT_EMAIL) {
+      try {
+        await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            from: process.env.CONTACT_FROM_EMAIL || 'contact@contigo.ai',
+            to: [process.env.CONTACT_EMAIL],
+            reply_to: data.email,
+            subject: `[Contact] ${data.reason}: ${data.name}`,
+            html: emailHtml,
+          }),
+        });
+      } catch (emailError) {
+        console.error('Email send failed:', emailError);
+      }
+    }
+
+    // Slack notification
+    if (process.env.SLACK_WEBHOOK_URL) {
+      try {
+        await fetch(process.env.SLACK_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: `📧 New contact form submission`,
+            blocks: [
+              { type: 'header', text: { type: 'plain_text', text: '📧 New Contact Form' } },
+              { type: 'section', fields: [
+                { type: 'mrkdwn', text: `*Name:* ${data.name}` },
+                { type: 'mrkdwn', text: `*Email:* ${data.email}` },
+                { type: 'mrkdwn', text: `*Company:* ${data.company || 'N/A'}` },
+                { type: 'mrkdwn', text: `*Reason:* ${data.reason}` },
+              ]},
+              { type: 'section', text: { type: 'mrkdwn', text: `*Message:*\n${data.message}` } },
+            ],
+          }),
+        });
+      } catch (slackError) {
+        console.error('Slack notification failed:', slackError);
+      }
+    }
 
     return NextResponse.json({
       success: true,

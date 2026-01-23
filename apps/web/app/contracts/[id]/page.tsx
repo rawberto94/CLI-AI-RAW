@@ -33,6 +33,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 import { ComprehensiveAIAnalysis } from '@/components/artifacts/ComprehensiveAIAnalysis'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
@@ -426,7 +427,7 @@ export default function ContractDetailPage() {
   const loadNotes = useCallback(async () => {
     try {
       const response = await fetch(`/api/contracts/${params.id}/notes`, {
-        headers: { 'x-tenant-id': 'demo' }
+        headers: { 'x-tenant-id': getTenantId() }
       })
       
       if (!response.ok) return
@@ -468,7 +469,7 @@ export default function ContractDetailPage() {
   const loadExtractionConfidence = useCallback(async () => {
     try {
       const response = await fetch(`/api/contracts/${params.id}/extraction-confidence`, {
-        headers: { 'x-tenant-id': 'demo' }
+        headers: { 'x-tenant-id': getTenantId() }
       })
       if (!response.ok) return
       
@@ -490,7 +491,7 @@ export default function ContractDetailPage() {
     try {
       toast.info('Preparing download...')
       const response = await fetch(`/api/contracts/${params.id}/export?format=pdf`, {
-        headers: { 'x-tenant-id': 'demo' },
+        headers: { 'x-tenant-id': getTenantId() },
       })
       
       if (!response.ok) throw new Error('Export failed')
@@ -515,7 +516,7 @@ export default function ContractDetailPage() {
     try {
       const response = await fetch(`/api/contracts/${params.id}/extract`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
         body: JSON.stringify({ force: true, includeConfidence: true })
       })
       
@@ -538,7 +539,7 @@ export default function ContractDetailPage() {
     try {
       const response = await fetch(`/api/contracts/${params.id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
         body: JSON.stringify({ categoryId })
       })
       
@@ -559,7 +560,7 @@ export default function ContractDetailPage() {
     try {
       const response = await fetch('/api/contracts/categorize', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
         body: JSON.stringify({ contractIds: [params.id], force: true })
       })
       
@@ -1198,7 +1199,7 @@ export default function ContractDetailPage() {
                     onAddNote={async (content) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes`, {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
                         body: JSON.stringify({ content })
                       })
                       if (!response.ok) throw new Error('Failed to add note')
@@ -1207,7 +1208,7 @@ export default function ContractDetailPage() {
                     onEditNote={async (id, content) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes/${id}`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
                         body: JSON.stringify({ content })
                       })
                       if (!response.ok) throw new Error('Failed to edit note')
@@ -1216,7 +1217,7 @@ export default function ContractDetailPage() {
                     onDeleteNote={async (id) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes/${id}`, {
                         method: 'DELETE',
-                        headers: { 'x-tenant-id': 'demo' }
+                        headers: { 'x-tenant-id': getTenantId() }
                       })
                       if (!response.ok) throw new Error('Failed to delete note')
                       loadNotes() // Refresh notes after deleting
@@ -1224,7 +1225,7 @@ export default function ContractDetailPage() {
                     onPinNote={async (id, pinned) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes/${id}`, {
                         method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+                        headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
                         body: JSON.stringify({ isPinned: pinned })
                       })
                       if (!response.ok) throw new Error('Failed to update note')
@@ -1335,7 +1336,7 @@ export default function ContractDetailPage() {
         onSave={async (config) => {
           const response = await fetch(`/api/contracts/${params.id}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+            headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
             body: JSON.stringify({
               reminder_enabled: config.enabled,
               reminder_days_before_end: config.daysBeforeExpiry,
@@ -1357,7 +1358,7 @@ export default function ContractDetailPage() {
         onToggleFavorite={async () => {
           const response = await fetch(`/api/contracts/${params.id}/favorite`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+            headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
             body: JSON.stringify({ favorite: !isFavorite })
           })
           if (!response.ok) throw new Error('Failed to toggle favorite')
@@ -1370,7 +1371,7 @@ export default function ContractDetailPage() {
         onDelete={async () => {
           const response = await fetch(`/api/contracts/${params.id}`, {
             method: 'DELETE',
-            headers: { 'x-tenant-id': 'demo' }
+            headers: { 'x-tenant-id': getTenantId() }
           })
           if (!response.ok) throw new Error('Failed to delete contract')
           // Invalidate cache before navigating so list page shows fresh data
@@ -1381,7 +1382,7 @@ export default function ContractDetailPage() {
           const newStatus = contract?.status === 'archived' ? 'active' : 'archived'
           const response = await fetch(`/api/contracts/${params.id}`, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', 'x-tenant-id': 'demo' },
+            headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
             body: JSON.stringify({ status: newStatus })
           })
           if (!response.ok) throw new Error('Failed to archive contract')
@@ -1389,7 +1390,7 @@ export default function ContractDetailPage() {
         }}
         onExport={async (format) => {
           const response = await fetch(`/api/contracts/${params.id}/export?format=${format}`, {
-            headers: { 'x-tenant-id': 'demo' },
+            headers: { 'x-tenant-id': getTenantId() },
           })
           if (!response.ok) throw new Error('Export failed')
           const blob = await response.blob()

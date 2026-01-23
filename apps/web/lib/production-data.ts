@@ -232,10 +232,42 @@ export function logMockDataUsage(context: string, details?: Record<string, unkno
  * Log when production data source is unavailable
  */
 export function logDataSourceUnavailable(source: string, error: unknown): void {
-  // In production, this should be sent to monitoring
+  // In production, send to monitoring service
   if (isProduction()) {
-    // TODO: Send to monitoring service (e.g., Sentry, DataDog)
-    // monitoringService.captureError(error, { source });
+    // Try Sentry
+    if (process.env.SENTRY_DSN) {
+      try {
+        const Sentry = require('@sentry/nextjs');
+        Sentry.captureException(error, {
+          tags: { source, type: 'data_source_unavailable' },
+          extra: { source },
+        });
+      } catch {
+        // Sentry not available
+      }
+    }
+
+    // Try DataDog
+    if (process.env.DD_API_KEY) {
+      fetch('https://http-intake.logs.datadoghq.com/api/v2/logs', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'DD-API-KEY': process.env.DD_API_KEY,
+        },
+        body: JSON.stringify([{
+          ddsource: 'contigo',
+          ddtags: `source:${source},env:production`,
+          hostname: process.env.HOSTNAME || 'unknown',
+          message: `Data source unavailable: ${source}`,
+          status: 'error',
+          error: error instanceof Error ? error.message : String(error),
+        }]),
+      }).catch(() => {});
+    }
+
+    // Always log to console in production as fallback
+    console.error(`[PROD] Data source unavailable: ${source}`, error);
   }
 }
 

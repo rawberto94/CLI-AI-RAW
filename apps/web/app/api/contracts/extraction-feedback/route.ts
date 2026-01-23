@@ -6,6 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server'
+import { getServerSession } from '@/lib/auth'
+import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
 import type { Prisma } from '@prisma/client'
 
@@ -43,8 +45,16 @@ interface BatchFeedbackRequest {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const tenantId = getSessionTenantId(session)
     
     // Check if it's batch or single feedback
     if (Array.isArray(body.feedback)) {
@@ -181,7 +191,15 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string)
 
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
+    const tenantId = getSessionTenantId(session)
     const { searchParams } = new URL(request.url)
     const action = searchParams.get('action') || 'stats'
     const fieldName = searchParams.get('field')

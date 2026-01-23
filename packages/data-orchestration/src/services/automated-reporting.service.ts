@@ -73,10 +73,16 @@ export class AutomatedReportingService {
     // Get market trends
     const marketTrends = await this.getMarketTrends(tenantId, startDate, endDate);
 
+    // Calculate average competitiveness from percentile ranks
+    const cardsWithRank = rateCards.filter(rc => rc.percentileRank !== null && rc.percentileRank !== undefined);
+    const avgCompetitiveness = cardsWithRank.length > 0
+      ? cardsWithRank.reduce((sum, rc) => sum + (100 - (rc.percentileRank || 50)), 0) / cardsWithRank.length
+      : 50; // Default to neutral if no benchmark data
+
     return {
       period: `${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
       totalRateCards: rateCards.length,
-      avgCompetitiveness: 0, // TODO: Calculate from competitive intelligence
+      avgCompetitiveness: Math.round(avgCompetitiveness * 10) / 10,
       totalOpportunities: opportunities.length,
       potentialSavings,
       keyInsights,
@@ -441,11 +447,29 @@ export class AutomatedReportingService {
       const avgRate =
         cards.reduce((sum: number, c: any) => sum + Number(c.dailyRateUSD || 0), 0) / cards.length;
 
+      // Calculate trend by comparing older vs newer entries
+      const sortedByDate = cards.sort((a: any, b: any) => 
+        new Date(a.effectiveDate || a.createdAt).getTime() - new Date(b.effectiveDate || b.createdAt).getTime()
+      );
+      
+      let trend: 'increasing' | 'decreasing' | 'stable' = 'stable';
+      if (sortedByDate.length >= 2) {
+        const midpoint = Math.floor(sortedByDate.length / 2);
+        const olderAvg = sortedByDate.slice(0, midpoint).reduce((sum: number, c: any) => 
+          sum + Number(c.dailyRateUSD || 0), 0) / midpoint;
+        const newerAvg = sortedByDate.slice(midpoint).reduce((sum: number, c: any) => 
+          sum + Number(c.dailyRateUSD || 0), 0) / (sortedByDate.length - midpoint);
+        
+        const pctChange = olderAvg > 0 ? ((newerAvg - olderAvg) / olderAvg) * 100 : 0;
+        if (pctChange > 5) trend = 'increasing';
+        else if (pctChange < -5) trend = 'decreasing';
+      }
+
       return {
         role,
         avgRate,
         count: cards.length,
-        trend: 'stable', // TODO: Calculate actual trend
+        trend,
       };
     });
 

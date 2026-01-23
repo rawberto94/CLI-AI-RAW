@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
+import { getSessionTenantId } from '@/lib/tenant-server'
 
 // ============================================================================
 // GET - Get accuracy statistics
@@ -14,7 +16,12 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
-    const tenantId = request.headers.get('x-tenant-id') || 'demo'
+    const session = await getServerSession()
+    if (!session?.user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const tenantId = getSessionTenantId(session)
     const { searchParams } = new URL(request.url)
     const view = searchParams.get('view') || 'summary'
     const contractType = searchParams.get('contractType')

@@ -20,6 +20,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 import { formatCurrency, formatDate } from '@/lib/design-tokens';
 
@@ -178,7 +179,7 @@ export function SubmitForApprovalModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           contractId,

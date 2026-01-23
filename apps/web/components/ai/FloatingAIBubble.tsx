@@ -55,6 +55,7 @@ import {
   DollarSign,
   RefreshCw,
   Building2,
+  History,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
@@ -68,6 +69,12 @@ import { ExportChatDialog } from "@/components/ai/ExportChatDialog";
 import { InlineUsageIndicator } from "@/components/ai/AIUsageQuotaWidget";
 import { ChatHistorySearch } from "@/components/ai/ChatHistorySearch";
 import { OfflineStatusIndicator } from "@/components/ai/OfflineStatusIndicator";
+
+// Round 3 Enhancements
+import { AIFeedbackDialog } from "@/components/ai/AIFeedbackDialog";
+import { ConversationHistoryPanel } from "@/components/ai/ConversationHistoryPanel";
+import { AICostWidget, calculateCost } from "@/components/ai/AICostWidget";
+import { useVoiceInput } from "@/hooks/useVoiceInput";
 
 // Types
 interface ContractPreviewCard {
@@ -331,8 +338,7 @@ export function FloatingAIBubble() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasNewMessage, setHasNewMessage] = useState(false);
-  // TODO: Add conversation history panel
-  // const [showHistory, setShowHistory] = useState(false);
+  // Conversation history panel - implemented in Round 3
   
   // Enhanced features state
   const [isListening, setIsListening] = useState(false);
@@ -342,7 +348,7 @@ export function FloatingAIBubble() {
   const [showExamples, setShowExamples] = useState(false);
   const [conversationContext, setConversationContext] = useState<ConversationContext>({});
   const [isTyping, setIsTyping] = useState(false);
-  const [_streamingContent, _setStreamingContent] = useState<string>("");
+  const [_streamingContent, setStreamingContent] = useState<string>("");
   
   // Artifact context state - for real-time updates
   const [artifactVersion, setArtifactVersion] = useState(0);
@@ -351,6 +357,29 @@ export function FloatingAIBubble() {
   // Enhanced features - Round 2
   const [showSearchDialog, setShowSearchDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
+  
+  // Round 3 Enhancements - New State
+  const [showHistoryPanel, setShowHistoryPanel] = useState(false);
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackMessageId, setFeedbackMessageId] = useState<string | null>(null);
+  const [currentTokenUsage, setCurrentTokenUsage] = useState<{
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+    model: string;
+    cost: number;
+  } | null>(null);
+  const [useStreaming, setUseStreaming] = useState(true);
+  
+  // Voice input hook - enhanced version
+  const voiceInput = useVoiceInput({
+    onTranscriptChange: (transcript) => {
+      if (transcript && transcript.trim()) {
+        setInput(transcript);
+      }
+    },
+    continuous: false,
+  });
   
   // Offline queue integration
   const offlineQueue = useOfflineQueue();
@@ -582,18 +611,21 @@ export function FloatingAIBubble() {
     // Sound effects would be implemented here with Web Audio API
   }, [isSoundEnabled]);
 
-  // Toggle voice input
+  // Toggle voice input - using enhanced useVoiceInput hook
   const toggleVoiceInput = useCallback(() => {
-    if (!recognitionRef.current) return;
-
-    if (isListening) {
-      recognitionRef.current.stop();
+    if (voiceInput.isListening) {
+      voiceInput.stopListening();
       setIsListening(false);
     } else {
-      recognitionRef.current.start();
+      voiceInput.startListening();
       setIsListening(true);
     }
-  }, [isListening]);
+  }, [voiceInput]);
+
+  // Sync voice input listening state
+  useEffect(() => {
+    setIsListening(voiceInput.isListening);
+  }, [voiceInput.isListening]);
 
   const { copy } = useCopyToClipboard({ successMessage: 'Message copied!' });
 
@@ -670,7 +702,7 @@ export function FloatingAIBubble() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  // Send message handler with real-ish AI responses
+  // Send message handler with streaming support and model failover
   const handleSendMessage = useCallback(async (content?: string) => {
     const messageContent = content || input.trim();
     if (!messageContent || isLoading) return;
@@ -687,6 +719,7 @@ export function FloatingAIBubble() {
     setInput("");
     setIsLoading(true);
     setIsTyping(true);
+    setStreamingContent("");
     playSound("send");
 
     // Persist user message to database
@@ -707,106 +740,254 @@ export function FloatingAIBubble() {
     }, 300);
 
     try {
-      // Call real AI API with RAG integration
       const startTime = Date.now();
-      
-      // Detect page context for better RAG targeting
       const pageContext = getPageContext(pathname);
       
-      const response = await fetch('/api/ai/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: messageContent,
-          conversationHistory: messages.slice(-10).map(m => ({
-            role: m.role,
-            content: m.content,
-          })),
-          context: {
-            ...conversationContext,
-            contractId: currentContractId,
-            context: currentContractId ? 'contract-detail' : 'global',
-            pageContext,
-            currentPage: pathname,
-            artifactVersion, // Include artifact version to ensure fresh context
-            forceRefresh: artifactVersion > 0, // Signal to bypass cache if artifacts updated
-          },
-          useRAG: true, // Always use RAG for smart responses
-          useMock: false, // Use real OpenAI
-        }),
-      });
-
-      const data = await response.json();
-      const processingTime = Date.now() - startTime;
-
-      // Update context based on query
-      updateContext(messageContent);
-
-      // Check if it's an error response with recovery suggestions
-      const isErrorResponse = data.error === true && data.errorRecovery;
-
-      // Parse actions from API response
-      const actions: ActionButton[] = data.suggestedActions?.map((a: any) => ({
-        label: a.label,
-        action: a.action,
-        variant: a.action.includes('view') ? 'primary' : isErrorResponse ? 'secondary' : 'default',
-      })) || [];
-
-      // Parse RAG sources from API response
-      const ragSources: RAGSource[] = data.ragResults?.map((r: any) => ({
-        contractId: r.contractId,
-        contractName: r.contractName,
-        score: r.score,
-        snippet: r.text?.slice(0, 150),
-      })) || [];
-
-      // Parse contract previews from API response
-      const contractPreviews: ContractPreviewCard[] = data.contractPreviews?.map((c: any) => ({
-        id: c.id,
-        name: c.name,
-        supplier: c.supplier,
-        status: c.status,
-        value: c.value,
-        expirationDate: c.expirationDate,
-        daysUntilExpiry: c.daysUntilExpiry,
-        riskLevel: c.riskLevel,
-        type: c.type,
-      })) || [];
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.response || data.error || "I couldn't process that request.",
-        timestamp: new Date(),
-        suggestions: data.suggestions,
-        actions: actions.length > 0 ? actions : undefined,
-        contractPreviews: contractPreviews.length > 0 ? contractPreviews : undefined,
-        metadata: {
-          confidence: isErrorResponse ? 0 : (data.confidence || 0.95),
-          processingTime,
-          source: isErrorResponse ? "error-recovery" : (data.sources?.[0] || "ai"),
-          ragSources: ragSources.length > 0 ? ragSources : undefined,
-          usedRAG: data.usedRAG || ragSources.length > 0,
-          intent: data.intent?.type,
-          isError: isErrorResponse,
-        },
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      playSound("receive");
+      // Create a placeholder message for streaming
+      const assistantMessageId = (Date.now() + 1).toString();
       
-      // Persist assistant message to database
-      if (persistence.isAuthenticated && persistence.conversationId) {
-        persistence.addMessage({
-          role: 'assistant',
-          content: assistantMessage.content,
-          metadata: assistantMessage.metadata as Record<string, unknown>,
-        }).catch(() => {
-          // Continue even if persistence fails
+      if (useStreaming) {
+        // Use streaming endpoint for real-time response
+        const response = await fetch('/api/ai/chat/stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: messageContent,
+            conversationHistory: messages.slice(-10).map(m => ({
+              role: m.role,
+              content: m.content,
+            })),
+            context: {
+              ...conversationContext,
+              contractId: currentContractId,
+              context: currentContractId ? 'contract-detail' : 'global',
+              pageContext,
+              currentPage: pathname,
+              artifactVersion,
+              forceRefresh: artifactVersion > 0,
+            },
+            useRAG: true,
+          }),
         });
+
+        if (!response.ok) {
+          throw new Error(`Stream request failed: ${response.status}`);
+        }
+
+        // Add placeholder for streaming message
+        setMessages((prev) => [...prev, {
+          id: assistantMessageId,
+          role: "assistant" as const,
+          content: "",
+          timestamp: new Date(),
+          metadata: { source: "streaming", confidence: 0.95 },
+        }]);
+
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
+        let accumulatedContent = "";
+        let finalMetadata: Record<string, unknown> = {};
+
+        if (reader) {
+          setIsTyping(false); // Start showing streaming content
+          
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value);
+            const lines = chunk.split('\n');
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  
+                  if (data.type === 'content') {
+                    accumulatedContent += data.content;
+                    setStreamingContent(accumulatedContent);
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? { ...m, content: accumulatedContent }
+                          : m
+                      )
+                    );
+                  } else if (data.type === 'metadata') {
+                    finalMetadata = data.metadata || {};
+                    // Update token usage for cost widget
+                    if (data.metadata?.usage) {
+                      const usage = data.metadata.usage;
+                      setCurrentTokenUsage({
+                        promptTokens: usage.prompt_tokens || 0,
+                        completionTokens: usage.completion_tokens || 0,
+                        totalTokens: usage.total_tokens || 0,
+                        model: data.metadata.model || 'gpt-4o-mini',
+                        cost: calculateCost(
+                          data.metadata.model || 'gpt-4o-mini',
+                          usage.prompt_tokens || 0,
+                          usage.completion_tokens || 0
+                        ),
+                      });
+                    }
+                  } else if (data.type === 'done') {
+                    const processingTime = Date.now() - startTime;
+                    
+                    // Finalize the message with full metadata
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? {
+                              ...m,
+                              content: accumulatedContent,
+                              suggestions: data.suggestions,
+                              metadata: {
+                                confidence: finalMetadata.confidence as number || 0.95,
+                                processingTime,
+                                source: "ai-stream",
+                                usedRAG: finalMetadata.usedRAG as boolean || false,
+                                ragSources: finalMetadata.ragSources as RAGSource[],
+                              },
+                            }
+                          : m
+                      )
+                    );
+                  } else if (data.type === 'error') {
+                    throw new Error(data.message || 'Stream error');
+                  }
+                } catch {
+                  // Parse error, continue
+                }
+              }
+            }
+          }
+        }
+
+        setStreamingContent("");
+        playSound("receive");
+        
+        // Persist assistant message
+        if (persistence.isAuthenticated && persistence.conversationId) {
+          persistence.addMessage({
+            role: 'assistant',
+            content: accumulatedContent,
+            metadata: finalMetadata as Record<string, unknown>,
+          }).catch(() => {});
+        }
+        
+      } else {
+        // Fallback to non-streaming endpoint
+        const response = await fetch('/api/ai/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: messageContent,
+            conversationHistory: messages.slice(-10).map(m => ({
+              role: m.role,
+              content: m.content,
+            })),
+            context: {
+              ...conversationContext,
+              contractId: currentContractId,
+              context: currentContractId ? 'contract-detail' : 'global',
+              pageContext,
+              currentPage: pathname,
+              artifactVersion,
+              forceRefresh: artifactVersion > 0,
+            },
+            useRAG: true,
+            useMock: false,
+          }),
+        });
+
+        const data = await response.json();
+        const processingTime = Date.now() - startTime;
+
+        // Update context based on query
+        updateContext(messageContent);
+
+        // Check if it's an error response with recovery suggestions
+        const isErrorResponse = data.error === true && data.errorRecovery;
+
+        // Parse actions from API response
+        const actions: ActionButton[] = data.suggestedActions?.map((a: any) => ({
+          label: a.label,
+          action: a.action,
+          variant: a.action.includes('view') ? 'primary' : isErrorResponse ? 'secondary' : 'default',
+        })) || [];
+
+        // Parse RAG sources from API response
+        const ragSources: RAGSource[] = data.ragResults?.map((r: any) => ({
+          contractId: r.contractId,
+          contractName: r.contractName,
+          score: r.score,
+          snippet: r.text?.slice(0, 150),
+        })) || [];
+
+        // Parse contract previews from API response
+        const contractPreviews: ContractPreviewCard[] = data.contractPreviews?.map((c: any) => ({
+          id: c.id,
+          name: c.name,
+          supplier: c.supplier,
+          status: c.status,
+          value: c.value,
+          expirationDate: c.expirationDate,
+          daysUntilExpiry: c.daysUntilExpiry,
+          riskLevel: c.riskLevel,
+          type: c.type,
+        })) || [];
+
+        // Update token usage for cost widget
+        if (data.usage) {
+          setCurrentTokenUsage({
+            promptTokens: data.usage.prompt_tokens || 0,
+            completionTokens: data.usage.completion_tokens || 0,
+            totalTokens: data.usage.total_tokens || 0,
+            model: data.model || 'gpt-4o-mini',
+            cost: calculateCost(
+              data.model || 'gpt-4o-mini',
+              data.usage.prompt_tokens || 0,
+              data.usage.completion_tokens || 0
+            ),
+          });
+        }
+
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: data.response || data.error || "I couldn't process that request.",
+          timestamp: new Date(),
+          suggestions: data.suggestions,
+          actions: actions.length > 0 ? actions : undefined,
+          contractPreviews: contractPreviews.length > 0 ? contractPreviews : undefined,
+          metadata: {
+            confidence: isErrorResponse ? 0 : (data.confidence || 0.95),
+            processingTime,
+            source: isErrorResponse ? "error-recovery" : (data.sources?.[0] || "ai"),
+            ragSources: ragSources.length > 0 ? ragSources : undefined,
+            usedRAG: data.usedRAG || ragSources.length > 0,
+            intent: data.intent?.type,
+            isError: isErrorResponse,
+          },
+        };
+
+        setMessages((prev) => [...prev, assistantMessage]);
+        playSound("receive");
+        
+        // Persist assistant message to database
+        if (persistence.isAuthenticated && persistence.conversationId) {
+          persistence.addMessage({
+            role: 'assistant',
+            content: assistantMessage.content,
+            metadata: assistantMessage.metadata as Record<string, unknown>,
+          }).catch(() => {
+            // Continue even if persistence fails
+          });
+        }
       }
       
       if (!isOpen) setHasNewMessage(true);
+      updateContext(messageContent);
     } catch (_error) {
       // Check if we're offline and queue the request
       if (!offlineQueue.isOnline) {
@@ -1320,6 +1501,33 @@ export function FloatingAIBubble() {
                     </div>
                     
                     <div className="flex items-center gap-2">
+                      {/* Cost Widget - Real-time token usage */}
+                      <AICostWidget
+                        currentUsage={currentTokenUsage}
+                        compact
+                        onBudgetAlert={(percent) => {
+                          if (percent >= 95) {
+                            // Show warning in chat
+                            setMessages((prev) => [...prev, {
+                              id: `budget-warning-${Date.now()}`,
+                              role: "system" as const,
+                              content: "⚠️ You've used 95% of your daily AI budget.",
+                              timestamp: new Date(),
+                            }]);
+                          }
+                        }}
+                      />
+                      
+                      {/* History Panel Toggle */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-xl text-gray-500 hover:text-purple-600 hover:bg-purple-50"
+                        onClick={() => setShowHistoryPanel(!showHistoryPanel)}
+                      >
+                        <History className="w-5 h-5" />
+                      </Button>
+                      
                       {/* Settings dropdown */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -1332,6 +1540,10 @@ export function FloatingAIBubble() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="bg-white border-gray-200 text-gray-900 min-w-[200px] shadow-lg">
+                          <DropdownMenuItem onClick={() => setShowHistoryPanel(true)} className="hover:bg-gray-100 cursor-pointer py-3">
+                            <History className="w-4 h-4 mr-3" />
+                            Conversation history
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowSearchDialog(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Search className="w-4 h-4 mr-3" />
                             Search history
@@ -1339,6 +1551,10 @@ export function FloatingAIBubble() {
                           <DropdownMenuItem onClick={() => setIsSoundEnabled(!isSoundEnabled)} className="hover:bg-gray-100 cursor-pointer py-3">
                             {isSoundEnabled ? <Volume2 className="w-4 h-4 mr-3" /> : <VolumeX className="w-4 h-4 mr-3" />}
                             {isSoundEnabled ? "Mute sounds" : "Enable sounds"}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setUseStreaming(!useStreaming)} className="hover:bg-gray-100 cursor-pointer py-3">
+                            <Zap className="w-4 h-4 mr-3" />
+                            {useStreaming ? "Disable streaming" : "Enable streaming"}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => setShowShortcuts(true)} className="hover:bg-gray-100 cursor-pointer py-3">
                             <Keyboard className="w-4 h-4 mr-3" />
@@ -1378,6 +1594,45 @@ export function FloatingAIBubble() {
                       </Button>
                     </div>
                   </div>
+
+                  {/* Conversation History Panel - Round 3 Enhancement */}
+                  <AnimatePresence>
+                    {showHistoryPanel && (
+                      <ConversationHistoryPanel
+                        conversations={persistence.conversationList?.map(c => ({
+                          id: c.id,
+                          title: c.title,
+                          preview: c.messages?.[0]?.content?.slice(0, 100) || 'New conversation',
+                          messageCount: c.messages?.length || 0,
+                          createdAt: new Date(c.createdAt),
+                          updatedAt: new Date(c.updatedAt),
+                          context: c.context,
+                          contextType: c.contextType as 'global' | 'contract' | undefined,
+                          starred: false,
+                        })) || []}
+                        currentConversationId={persistence.conversationId || undefined}
+                        isLoading={persistence.isLoading}
+                        onSelectConversation={(id) => {
+                          if (persistence.switchConversation) {
+                            persistence.switchConversation(id);
+                          }
+                          setShowHistoryPanel(false);
+                        }}
+                        onDeleteConversation={(id) => {
+                          if (persistence.deleteConversation) {
+                            persistence.deleteConversation(id);
+                          }
+                        }}
+                        onNewConversation={() => {
+                          if (persistence.startNewConversation) {
+                            persistence.startNewConversation();
+                          }
+                          setShowHistoryPanel(false);
+                        }}
+                        onClose={() => setShowHistoryPanel(false)}
+                      />
+                    )}
+                  </AnimatePresence>
 
                   {/* Messages - Enhanced with better visual hierarchy */}
                   <div className="flex-1 overflow-hidden bg-gradient-to-b from-gray-50/30 to-gray-50/80">
@@ -1633,7 +1888,12 @@ export function FloatingAIBubble() {
                                         <motion.button
                                           whileHover={{ scale: 1.1 }}
                                           whileTap={{ scale: 0.9 }}
-                                          onClick={() => reactToMessage(message.id, "dislike")}
+                                          onClick={() => {
+                                            reactToMessage(message.id, "dislike");
+                                            // Open feedback dialog for detailed feedback
+                                            setFeedbackMessageId(message.id);
+                                            setShowFeedbackDialog(true);
+                                          }}
                                           className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
                                             message.reaction === "dislike"
                                               ? "bg-red-50 text-red-600 border-red-300 shadow-red-500/20"
@@ -1643,7 +1903,7 @@ export function FloatingAIBubble() {
                                           <ThumbsDown className="w-3.5 h-3.5" />
                                         </motion.button>
                                       </TooltipTrigger>
-                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Not helpful</TooltipContent>
+                                      <TooltipContent side="left" className="text-xs bg-gray-900 text-white border-gray-700">Not helpful - Give feedback</TooltipContent>
                                     </Tooltip>
                                   </motion.div>
                                 )}
@@ -2133,6 +2393,23 @@ export function FloatingAIBubble() {
           onOpenChange={setShowExportDialog}
           onExportComplete={(_format) => {
             // Export completed successfully
+          }}
+        />
+
+        {/* AI Feedback Dialog - Round 3 Enhancement */}
+        <AIFeedbackDialog
+          open={showFeedbackDialog}
+          onOpenChange={setShowFeedbackDialog}
+          messageId={feedbackMessageId || undefined}
+          messageContent={
+            feedbackMessageId 
+              ? messages.find(m => m.id === feedbackMessageId)?.content 
+              : undefined
+          }
+          conversationId={persistence.conversationId || undefined}
+          onFeedbackSubmitted={() => {
+            setShowFeedbackDialog(false);
+            setFeedbackMessageId(null);
           }}
         />
 

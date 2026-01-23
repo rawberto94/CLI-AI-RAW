@@ -16,6 +16,7 @@ import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { z } from "zod";
+import { Prisma } from "@prisma/client";
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     const includeShared = searchParams.get('includeShared') !== 'false';
     
     // Build where clause
-    const whereConditions = [{ tenantId }];
+    const whereConditions: { tenantId?: string; isShared?: boolean }[] = [{ tenantId }];
     if (includeShared) {
       whereConditions.push({ isShared: true });
     }
@@ -304,7 +305,7 @@ async function savePreset(
       tenantId,
       name,
       description,
-      categories: presetCategories as unknown as Record<string, unknown>,
+      categories: presetCategories as unknown as Prisma.InputJsonValue,
       categoryCount,
       isShared,
     },

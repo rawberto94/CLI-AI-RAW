@@ -17,6 +17,94 @@ interface ArtifactGenerationResult {
 }
 
 /**
+ * Extract text content from a file based on its type
+ */
+async function extractTextFromFile(
+  fileContent: Buffer,
+  fileName: string,
+  mimeType?: string
+): Promise<string> {
+  const ext = path.extname(fileName).toLowerCase();
+  const effectiveMime = mimeType || getMimeType(ext);
+
+  // PDF extraction using pdf-parse
+  if (ext === '.pdf' || effectiveMime === 'application/pdf') {
+    try {
+      // Dynamic import to avoid bundling issues
+      const pdfParse = (await import('pdf-parse')).default;
+      const data = await pdfParse(fileContent);
+      logger.info({ pages: data.numpages, chars: data.text.length }, 'PDF parsed successfully');
+      return data.text;
+    } catch (error) {
+      logger.warn({ error }, 'pdf-parse failed, trying alternative method');
+      // Fallback: Try extracting text patterns from raw PDF
+      const rawText = fileContent.toString('utf8');
+      const textMatches = rawText.match(/\(([^)]+)\)/g) || [];
+      if (textMatches.length > 50) {
+        return textMatches.map(m => m.slice(1, -1)).join(' ');
+      }
+      throw new Error('Failed to extract text from PDF');
+    }
+  }
+
+  // Word documents using mammoth
+  if (ext === '.docx' || effectiveMime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    try {
+      const mammoth = await import('mammoth');
+      const result = await mammoth.extractRawText({ buffer: fileContent });
+      logger.info({ chars: result.value.length }, 'DOCX parsed successfully');
+      return result.value;
+    } catch (error) {
+      logger.error({ error }, 'mammoth failed to parse DOCX');
+      throw new Error('Failed to extract text from DOCX');
+    }
+  }
+
+  // Plain text files
+  if (['.txt', '.md', '.csv', '.json', '.xml', '.html'].includes(ext)) {
+    return fileContent.toString('utf8');
+  }
+
+  // RTF files - basic extraction
+  if (ext === '.rtf') {
+    const text = fileContent.toString('utf8');
+    // Remove RTF control codes
+    return text
+      .replace(/\\[a-z]+\d*\s?/gi, '')
+      .replace(/[{}]/g, '')
+      .replace(/\\\\/g, '\\')
+      .trim();
+  }
+
+  // Unknown format - try as text
+  logger.warn({ ext, mimeType: effectiveMime }, 'Unknown file format, attempting text extraction');
+  const textContent = fileContent.toString('utf8');
+  // Check if it looks like text (has reasonable ratio of printable chars)
+  const printableRatio = textContent.replace(/[^\x20-\x7E\n\r\t]/g, '').length / textContent.length;
+  if (printableRatio > 0.8) {
+    return textContent;
+  }
+
+  throw new Error(`Unsupported file format: ${ext}`);
+}
+
+function getMimeType(ext: string): string {
+  const mimeTypes: Record<string, string> = {
+    '.pdf': 'application/pdf',
+    '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    '.doc': 'application/msword',
+    '.txt': 'text/plain',
+    '.md': 'text/markdown',
+    '.rtf': 'application/rtf',
+    '.html': 'text/html',
+    '.xml': 'application/xml',
+    '.json': 'application/json',
+    '.csv': 'text/csv',
+  };
+  return mimeTypes[ext] || 'application/octet-stream';
+}
+
+/**
  * Contract Processing Worker
  * Handles end-to-end contract processing pipeline
  */
@@ -58,8 +146,16 @@ export async function processContractJob(
 
     await job.updateProgress(30);
 
-    // 3. Extract text from PDF (placeholder - would use actual PDF parser)
-    const contractText = `Contract text extracted from ${originalName}`;
+    // 3. Extract text from file
+    let contractText: string;
+    try {
+      const mimeType = contract.mimeType || undefined;
+      contractText = await extractTextFromFile(fileContent, originalName, mimeType);
+      logger.info({ contractId, textLength: contractText.length }, 'Text extracted successfully');
+    } catch (error) {
+      logger.error({ error, contractId }, 'Text extraction failed');
+      throw new Error(`Failed to extract text from ${originalName}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
     await job.updateProgress(40);
 
     // 4. Queue artifact generation job

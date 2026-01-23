@@ -55,7 +55,7 @@ interface DiffSection {
   lines: DiffLine[];
   summary?: string;
   aiAnnotation?: {
-    significance: 'low' | 'medium' | 'high';
+    significance: 'low' | 'medium' | 'high' | string;
     explanation: string;
     recommendation?: string;
   };

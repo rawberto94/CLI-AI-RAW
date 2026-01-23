@@ -1,9 +1,11 @@
 /**
  * Activity Feed API
- * Track and retrieve system activity
+ * Track and retrieve system activity - Database persisted
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { getApiTenantId } from '@/lib/tenant-server';
 
 type ActivityType = 
   | 'contract_created'
@@ -20,16 +22,25 @@ type ActivityType =
   | 'user_login'
   | 'settings_changed'
   | 'import_completed'
-  | 'export_completed';
+  | 'export_completed'
+  | 'upload'
+  | 'edit'
+  | 'comment'
+  | 'approval'
+  | 'rejection'
+  | 'share'
+  | 'download'
+  | 'workflow'
+  | 'metadata';
 
-interface ActivityEvent {
+interface ActivityResponse {
   id: string;
-  type: ActivityType;
+  type: string;
   title: string;
   description?: string;
   userId: string;
-  userName: string;
-  userEmail: string;
+  userName?: string;
+  userEmail?: string;
   userAvatar?: string;
   metadata?: Record<string, any>;
   timestamp: string;
@@ -37,9 +48,24 @@ interface ActivityEvent {
   contractName?: string;
 }
 
-// In-memory storage for demo (would use database in production)
-const activities: ActivityEvent[] = [];
-const MAX_ACTIVITIES = 1000;
+// Transform database activity to API response
+function transformActivity(dbActivity: any): ActivityResponse {
+  const metadata = dbActivity.metadata as Record<string, any> | null;
+  return {
+    id: dbActivity.id,
+    type: dbActivity.type,
+    title: dbActivity.action,
+    description: dbActivity.details || undefined,
+    userId: dbActivity.userId,
+    userName: metadata?.userName,
+    userEmail: metadata?.userEmail,
+    userAvatar: metadata?.userAvatar,
+    metadata: metadata,
+    timestamp: dbActivity.timestamp.toISOString(),
+    contractId: dbActivity.contractId,
+    contractName: metadata?.contractName,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -50,55 +76,67 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category');
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
+    const tenantId = getApiTenantId(request);
 
-    let filteredActivities = [...activities];
+    // Build where clause
+    const where: any = {};
+
+    if (tenantId) {
+      where.tenantId = tenantId;
+    }
 
     // Filter by contract
     if (contractId) {
-      filteredActivities = filteredActivities.filter(a => a.contractId === contractId);
+      where.contractId = contractId;
     }
 
     // Filter by user
     if (userId) {
-      filteredActivities = filteredActivities.filter(a => a.userId === userId);
+      where.userId = userId;
     }
 
     // Filter by type
     if (type) {
-      filteredActivities = filteredActivities.filter(a => a.type === type);
+      where.type = type;
     }
 
     // Filter by category
     if (category) {
-      const categoryTypes: Record<string, ActivityType[]> = {
-        contracts: ['contract_created', 'contract_updated', 'contract_deleted', 'contract_viewed', 'contract_downloaded'],
-        approvals: ['contract_approved', 'contract_rejected'],
+      const categoryTypes: Record<string, string[]> = {
+        contracts: ['contract_created', 'contract_updated', 'contract_deleted', 'contract_viewed', 'contract_downloaded', 'upload', 'edit'],
+        approvals: ['contract_approved', 'contract_rejected', 'approval', 'rejection'],
         processing: ['processing_started', 'processing_completed', 'processing_failed'],
         system: ['user_login', 'settings_changed', 'import_completed', 'export_completed'],
+        collaboration: ['comment_added', 'comment', 'share'],
       };
       const types = categoryTypes[category];
       if (types) {
-        filteredActivities = filteredActivities.filter(a => types.includes(a.type));
+        where.type = { in: types };
       }
     }
 
-    // Sort by timestamp descending
-    filteredActivities.sort((a, b) => 
-      new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
+    // Get total count
+    const total = await prisma.contractActivity.count({ where });
 
-    // Paginate
-    const total = filteredActivities.length;
-    const paginatedActivities = filteredActivities.slice(offset, offset + limit);
+    // Fetch activities from database
+    const dbActivities = await prisma.contractActivity.findMany({
+      where,
+      orderBy: { timestamp: 'desc' },
+      skip: offset,
+      take: limit,
+    });
+
+    const activities = dbActivities.map(transformActivity);
 
     return NextResponse.json({
-      activities: paginatedActivities,
+      activities,
       total,
       limit,
       offset,
       hasMore: offset + limit < total,
     });
-  } catch {
+  } catch (error) {
+    console.error('Failed to fetch activities:', error);
     return NextResponse.json(
       { error: 'Failed to fetch activities' },
       { status: 500 }
@@ -122,6 +160,8 @@ export async function POST(request: NextRequest) {
       contractName,
     } = body;
 
+    const tenantId = getApiTenantId(request) || body.tenantId;
+
     if (!type || !title || !userId) {
       return NextResponse.json(
         { error: 'type, title, and userId are required' },
@@ -129,31 +169,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const activity: ActivityEvent = {
-      id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-      type,
-      title,
-      description,
-      userId,
-      userName: userName || 'Unknown User',
-      userEmail: userEmail || '',
-      userAvatar,
-      metadata,
-      timestamp: new Date().toISOString(),
-      contractId,
-      contractName,
-    };
+    // Create activity in database
+    const dbActivity = await prisma.contractActivity.create({
+      data: {
+        contractId: contractId || 'system',
+        tenantId,
+        userId,
+        type,
+        action: title,
+        details: description,
+        metadata: {
+          userName,
+          userEmail,
+          userAvatar,
+          contractName,
+          ...metadata,
+        },
+      },
+    });
 
-    // Add to beginning of array
-    activities.unshift(activity);
-
-    // Trim to max size
-    if (activities.length > MAX_ACTIVITIES) {
-      activities.length = MAX_ACTIVITIES;
-    }
+    const activity = transformActivity(dbActivity);
 
     return NextResponse.json({ activity }, { status: 201 });
-  } catch {
+  } catch (error) {
+    console.error('Failed to create activity:', error);
     return NextResponse.json(
       { error: 'Failed to create activity' },
       { status: 500 }
@@ -162,31 +201,43 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper function to log activity (can be imported and used elsewhere)
-export function logActivity(
+export async function logActivity(
   type: ActivityType,
   title: string,
   options: {
     description?: string;
     userId: string;
-    userName: string;
+    userName?: string;
     userEmail?: string;
     contractId?: string;
     contractName?: string;
+    tenantId?: string;
     metadata?: Record<string, any>;
   }
-): void {
-  const activity: ActivityEvent = {
-    id: `activity-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
-    type,
-    title,
-    timestamp: new Date().toISOString(),
-    ...options,
-    userEmail: options.userEmail || '',
-  };
-
-  activities.unshift(activity);
-
-  if (activities.length > MAX_ACTIVITIES) {
-    activities.length = MAX_ACTIVITIES;
+): Promise<void> {
+  try {
+    if (!options.tenantId) {
+      console.error('[logActivity] tenantId is required');
+      return;
+    }
+    await prisma.contractActivity.create({
+      data: {
+        contractId: options.contractId || 'system',
+        tenantId: options.tenantId,
+        userId: options.userId,
+        type,
+        action: title,
+        details: options.description,
+        metadata: {
+          userName: options.userName,
+          userEmail: options.userEmail,
+          contractName: options.contractName,
+          ...options.metadata,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('Failed to log activity:', error);
+    // Don't throw - activity logging should not break the main flow
   }
 }

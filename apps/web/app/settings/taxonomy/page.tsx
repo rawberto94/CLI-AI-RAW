@@ -1,4 +1,5 @@
 "use client";
+import { getTenantId } from '@/lib/tenant';
 
 /**
  * Taxonomy Management Page
@@ -865,7 +866,7 @@ export default function TaxonomyPage() {
   const fetchCustomPresets = useCallback(async () => {
     try {
       const response = await fetch("/api/taxonomy/custom-presets", {
-        headers: { "x-tenant-id": "demo" },
+        headers: { "x-tenant-id": getTenantId() },
       });
       if (response.ok) {
         const data = await response.json();
@@ -897,7 +898,7 @@ export default function TaxonomyPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-tenant-id": "demo",
+          "x-tenant-id": getTenantId(),
         },
         body: JSON.stringify({ presetId, clearExisting }),
       });
@@ -927,7 +928,7 @@ export default function TaxonomyPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-tenant-id": "demo",
+          "x-tenant-id": getTenantId(),
         },
         body: JSON.stringify({ name, description, isShared }),
       });
@@ -956,7 +957,7 @@ export default function TaxonomyPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-tenant-id": "demo",
+          "x-tenant-id": getTenantId(),
         },
         body: JSON.stringify({ presetId, clearExisting }),
       });
@@ -982,7 +983,7 @@ export default function TaxonomyPage() {
     try {
       const response = await fetch(`/api/taxonomy/custom-presets?id=${presetId}`, {
         method: "DELETE",
-        headers: { "x-tenant-id": "demo" },
+        headers: { "x-tenant-id": getTenantId() },
       });
 
       if (!response.ok) throw new Error("Failed to delete preset");
@@ -999,7 +1000,7 @@ export default function TaxonomyPage() {
     try {
       setIsLoading(true);
       const response = await fetch("/api/taxonomy?withContractCounts=true", {
-        headers: { "x-tenant-id": "demo" },
+        headers: { "x-tenant-id": getTenantId() },
       });
 
       if (!response.ok) throw new Error("Failed to fetch categories");
@@ -1056,7 +1057,7 @@ export default function TaxonomyPage() {
         method,
         headers: {
           "Content-Type": "application/json",
-          "x-tenant-id": "demo",
+          "x-tenant-id": getTenantId(),
         },
         body: JSON.stringify(data),
       });
@@ -1100,7 +1101,7 @@ export default function TaxonomyPage() {
 
       const response = await fetch(url, {
         method: "DELETE",
-        headers: { "x-tenant-id": "demo" },
+        headers: { "x-tenant-id": getTenantId() },
       });
 
       if (!response.ok) {

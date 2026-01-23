@@ -60,6 +60,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
@@ -152,7 +153,7 @@ export default function ContractRenewalPage() {
       setTemplatesLoading(true);
       try {
         const response = await fetch('/api/templates', {
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         });
         if (response.ok) {
           const data = await response.json();
@@ -201,7 +202,7 @@ export default function ContractRenewalPage() {
       
       try {
         const response = await fetch(`/api/contracts/${contractId}`, {
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         });
         
         if (!response.ok) {
@@ -321,7 +322,7 @@ export default function ContractRenewalPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           title: draft.title,
@@ -1242,7 +1243,7 @@ function ContentStep({
       setLibraryLoading(true);
       try {
         const response = await fetch('/api/clauses', {
-          headers: { 'x-tenant-id': 'demo' },
+          headers: { 'x-tenant-id': getTenantId() },
         });
         if (response.ok) {
           const data = await response.json();

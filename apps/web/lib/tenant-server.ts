@@ -50,11 +50,13 @@ export async function getTenantIdFromRequest(request: NextRequest): Promise<stri
     return queryTenantId;
   }
 
-  // Production safety check
-  if (process.env.NODE_ENV === "production" && process.env.REQUIRE_AUTH === "true") {
+  // Production safety check - ALWAYS enforce in production
+  if (process.env.NODE_ENV === "production") {
     throw new Error("Tenant ID required. Please authenticate.");
   }
 
+  // Development fallback only
+  console.warn("[SECURITY] Using demo tenant - not allowed in production");
   return "demo";
 }
 
@@ -173,12 +175,33 @@ export async function validateTenantAccess(requestedTenantId: string): Promise<b
   return context.isAuthenticated && context.tenantId === requestedTenantId;
 }
 
+/**
+ * Get tenant ID from session with production-safe fallback
+ * In production: throws if no tenant
+ * In development: logs warning and returns 'demo'
+ */
+export function getSessionTenantId(session: { user?: { tenantId?: string } } | null): string {
+  const tenantId = session?.user?.tenantId;
+  
+  if (tenantId) {
+    return tenantId;
+  }
+  
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("Tenant ID required. Please authenticate.");
+  }
+  
+  console.warn("[SECURITY] Using demo tenant - not allowed in production");
+  return "demo";
+}
+
 const tenantServer = {
   getTenantContext,
   getServerTenantId,
   getTenantIdFromRequest,
   requireTenantContext,
   validateTenantAccess,
+  getSessionTenantId,
 };
 export default tenantServer;
 

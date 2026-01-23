@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 
 /**
  * GET /api/contracts/summary
@@ -9,7 +10,7 @@ import { auth } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   try {
     const session = await auth();
-    const tenantId = request.headers.get('x-tenant-id') || session?.user?.tenantId || 'demo';
+    const tenantId = request.headers.get('x-tenant-id') || (session ? getSessionTenantId(session) : 'demo');
 
     // Get total contracts count
     const totalContracts = await prisma.contract.count({

@@ -486,8 +486,8 @@ export async function POST(
         supplierName: metadata.supplierName,
         totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
         currency: metadata.currency,
-      }).catch(() => {
-        // Silently handle metadata initialization errors
+      }).catch((err) => {
+        console.error('[ContractUpload] Metadata initialization error:', err);
       });
     } catch {
       // Silently handle import errors
@@ -526,8 +526,8 @@ export async function POST(
             });
           }
         })
-        .catch(() => {
-          // Don't fail upload if classification fails
+        .catch((err) => {
+          console.error('[ContractUpload] Classification error:', err);
         });
     } catch {
       // Silently handle taxonomy classifier import errors
@@ -572,7 +572,7 @@ export async function POST(
             queueId: artifactResult.jobId,
             status: "RUNNING",
           },
-        }).catch(() => { /* Silently handle update failure */ });
+        }).catch((err) => console.error('[ContractUpload] Processing job update error:', err));
       }
     } catch {
       // Continue anyway - job will still process via fallback

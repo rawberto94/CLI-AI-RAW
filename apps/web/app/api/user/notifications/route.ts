@@ -12,22 +12,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
+import { getSessionTenantId } from '@/lib/tenant-server'
 
 // ============ GET - Fetch notifications ============
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession()
     
-    // For demo mode, return mock data
+    // Require authentication
     if (!session?.user?.id) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          notifications: generateMockNotifications(),
-          unreadCount: 5,
-          total: 10
-        }
-      })
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
     }
     
     const userId = session.user.id
@@ -116,7 +113,7 @@ export async function POST(request: NextRequest) {
     }
     
     const userId = session.user.id
-    const tenantId = session.user.tenantId || 'default'
+    const tenantId = getSessionTenantId(session)
     
     // Create notification
     const notification = await prisma.notification.create({

@@ -36,6 +36,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { getTenantId } from '@/lib/tenant';
 import {
   RefreshCw,
   Calendar as CalendarIcon,
@@ -183,7 +184,7 @@ export function CreateRenewalModal({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-tenant-id': 'demo',
+          'x-tenant-id': getTenantId(),
         },
         body: JSON.stringify({
           title: title || undefined,

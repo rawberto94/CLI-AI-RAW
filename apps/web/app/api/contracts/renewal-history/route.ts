@@ -338,7 +338,7 @@ export async function POST(request: NextRequest) {
       SET renewal_status = 'COMPLETED', resolution = 'RENEWED', resolution_date = ${now},
           updated_at = ${now}
       WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-    `.catch(() => {}); // Ignore if no expiration record exists
+    `.catch((err) => console.error('[RenewalHistory] Expiration record update error:', err));
 
     return NextResponse.json({
       success: true,

@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { RateCardUploadZone } from '@/components/import/RateCardUploadZone';
 import { ColumnMappingInterface } from '@/components/import/ColumnMappingInterface';
 import { ValidationReview } from '@/components/import/ValidationReview';
-import { ImportService } from '@/lib/import/import-service';
-import type { ImportResult, ImportProgress } from '@/lib/import/import-service';
-import type { MatchResult } from '@/lib/import/fuzzy-matcher';
+import { ImportServiceClient as ImportService } from '@/lib/import/import-service.client';
+import type { ImportResult, ImportProgress } from '@/lib/import/import-service.client';
+import type { MatchResult as _MatchResult } from '@/lib/import/fuzzy-matcher';
 
 type WizardStep = 'upload' | 'mapping' | 'validation' | 'complete';
 
@@ -15,7 +15,7 @@ export default function ImportWizardPage() {
   const [currentStep, setCurrentStep] = useState<WizardStep>('upload');
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
-  const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [_progress, setProgress] = useState<ImportProgress | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileUpload = async (files: File[]) => {
@@ -55,11 +55,52 @@ export default function ImportWizardPage() {
     setIsProcessing(true);
 
     try {
-      // TODO: Save to database
-      // For now, just move to complete step
+      if (!importResult?.validationResult) {
+        throw new Error('No validation result to save');
+      }
+
+      // Transform validated rows to rate card entries
+      const entries = importResult.validationResult.validRows.map((row: Record<string, unknown>) => ({
+        roleTitle: String(row.roleTitle || row['Job Title'] || row['Role'] || ''),
+        level: row.level || row['Level'] || row['Grade'] || null,
+        rateType: String(row.rateType || row['Rate Type'] || 'HOURLY').toUpperCase(),
+        minRate: parseFloat(String(row.minRate || row['Min Rate'] || row['Rate'] || '0')),
+        maxRate: parseFloat(String(row.maxRate || row['Max Rate'] || row['Rate'] || '0')),
+        currency: String(row.currency || row['Currency'] || 'USD'),
+        region: row.region || row['Region'] || row['Location'] || null,
+        skillCategory: row.skillCategory || row['Category'] || row['Skill'] || null,
+        effectiveDate: row.effectiveDate || row['Effective Date'] || null,
+        expirationDate: row.expirationDate || row['Expiration Date'] || null,
+      }));
+
+      // Call the save API
+      const response = await fetch('/api/rate-cards/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          entries,
+          source: uploadedFile?.name || 'Import Wizard',
+          metadata: {
+            fileName: uploadedFile?.name,
+            importedAt: new Date().toISOString(),
+            totalRows: importResult.validationResult.validRows.length,
+            skippedRows: importResult.validationResult.invalidRows.length,
+          },
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Failed to save rate card entries');
+      }
+
+      const _result = await response.json();
+      // Import saved successfully
+      
       setCurrentStep('complete');
-    } catch {
-      alert('Failed to save import');
+    } catch (error) {
+      console.error('[RateCardWizard] Save error:', error);
+      alert('Failed to save import: ' + (error instanceof Error ? error.message : 'Unknown error'));
     } finally {
       setIsProcessing(false);
     }
@@ -144,7 +185,7 @@ export default function ImportWizardPage() {
               </div>
 
               <RateCardUploadZone
-                onUploadComplete={(jobIds) => {
+                onUploadComplete={(_jobIds) => {
                   // File uploaded, now process it
                 }}
                 maxFiles={1}

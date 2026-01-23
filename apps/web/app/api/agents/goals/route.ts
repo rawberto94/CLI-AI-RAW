@@ -7,6 +7,53 @@ import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { AgentGoalStatus } from '@prisma/client';
 
+/**
+ * Add a goal execution job to the queue (BullMQ or fallback)
+ */
+async function queueGoalExecution(goalId: string, tenantId: string): Promise<void> {
+  try {
+    // Dynamic import to avoid build errors if BullMQ not installed
+    const bullMQ = await import('bullmq').catch(() => null);
+    if (bullMQ && process.env.REDIS_URL) {
+      const { Queue } = bullMQ;
+      const queue = new Queue('agent-goals', {
+        connection: { url: process.env.REDIS_URL }
+      });
+      await queue.add('execute-goal', { goalId, tenantId }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: { age: 86400 * 7 }, // Keep 7 days
+        removeOnFail: { age: 86400 * 30 }, // Keep 30 days
+      });
+      await queue.close();
+      console.log(`[Agent Goals] Queued goal execution: ${goalId}`);
+      return;
+    }
+  } catch (error) {
+    console.error('[Agent Goals] BullMQ queueing failed:', error);
+    // Fall through to webhook/logging
+  }
+
+  // Fallback: Log for manual processing or trigger webhook
+  console.warn(`[Agent Goals] Manual execution needed for goal: ${goalId}`);
+
+  // In production, trigger a webhook or serverless function
+  if (process.env.AGENT_WEBHOOK_URL) {
+    try {
+      await fetch(process.env.AGENT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.AGENT_WEBHOOK_SECRET || ''}`
+        },
+        body: JSON.stringify({ event: 'goal.approved', goalId, tenantId }),
+      });
+    } catch (err) {
+      console.error('[Agent Goals] Webhook trigger failed:', err);
+    }
+  }
+}
+
 // GET - List goals awaiting approval
 export async function GET(request: NextRequest) {
   try {
@@ -128,8 +175,8 @@ export async function POST(request: NextRequest) {
           },
         });
         
-        // TODO: Trigger agent execution via queue
-        // await jobQueue.add('agent-execute-goal', { goalId });
+        // Trigger agent execution via queue
+        await queueGoalExecution(goalId, session.user.tenantId);
         break;
 
       case 'reject':

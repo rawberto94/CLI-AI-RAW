@@ -588,8 +588,8 @@ export async function PUT(
     });
 
     // Invalidate semantic cache for this contract (chatbot will see changes)
-    semanticCache.invalidate(tenantId, contractId).catch(() => {
-      // Non-blocking - ignore cache errors
+    semanticCache.invalidate(tenantId, contractId).catch((err) => {
+      console.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
 
     return NextResponse.json({
@@ -643,8 +643,8 @@ export async function DELETE(
     }
 
     // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
-    semanticCache.invalidate(tenantId, contractId).catch(() => {
-      // Non-blocking - ignore cache errors
+    semanticCache.invalidate(tenantId, contractId).catch((err) => {
+      console.error('[ContractDelete] Semantic cache invalidation error:', err);
     });
 
     // Legacy file cleanup (if exists)

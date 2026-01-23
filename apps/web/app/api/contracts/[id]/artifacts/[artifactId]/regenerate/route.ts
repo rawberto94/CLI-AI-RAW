@@ -79,8 +79,8 @@ export async function POST(
 
     // Regenerate artifact in background (non-blocking)
     regenerateArtifactAsync(contractId, artifactId, artifact.type, contract.rawText, tenantId)
-      .catch(() => {
-        // Error handled in regenerateArtifactAsync
+      .catch((err) => {
+        console.error('[ArtifactRegenerate] Background regeneration error:', err);
       });
 
     return NextResponse.json({

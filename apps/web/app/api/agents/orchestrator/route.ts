@@ -6,6 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
 
 // ============================================================================
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const { searchParams } = new URL(request.url);
     const resource = searchParams.get('resource') || 'status';
     
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const body = await request.json();
     const { action } = body;
     

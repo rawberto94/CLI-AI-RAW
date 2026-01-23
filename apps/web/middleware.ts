@@ -76,6 +76,11 @@ function checkRateLimit(identifier: string, maxRequests?: number): { allowed: bo
 
 // Paths that don't require authentication (only auth-related pages)
 const publicPaths = [
+  "/",              // Landing page
+  "/about",         // About page
+  "/pricing",       // Pricing page
+  "/features",      // Features page
+  "/contact",       // Contact page
   "/auth/signin",
   "/auth/signup", 
   "/auth/error",

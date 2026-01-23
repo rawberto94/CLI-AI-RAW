@@ -140,8 +140,7 @@ async function logWebhookDelivery(
   errorMessage?: string
 ): Promise<void> {
   try {
-    // Store in audit log or webhook deliveries table
-    // For now, just console log in development
+    // Log in development
     if (process.env.NODE_ENV === 'development') {
       console.log(`[Webhook] ${success ? '✓' : '✗'} ${event} to ${webhookId} (${statusCode})`);
       if (errorMessage) {
@@ -149,11 +148,20 @@ async function logWebhookDelivery(
       }
     }
 
-    // TODO: Store in WebhookDelivery table for audit trail
-    // await prisma.webhookDelivery.create({
-    //   data: { webhookId, deliveryId, event, success, statusCode, errorMessage }
-    // });
+    // Store in WebhookLog table for audit trail
+    // Only persist if we have a real webhook ID (not 'default' from env vars)
+    if (webhookId && webhookId !== 'default') {
+      await (prisma as any).webhookLog?.create({
+        data: {
+          webhookId,
+          event,
+          success,
+          statusCode,
+        },
+      });
+    }
   } catch (error) {
+    // Don't fail the webhook delivery if logging fails
     console.error('Failed to log webhook delivery:', error);
   }
 }
@@ -162,30 +170,47 @@ async function logWebhookDelivery(
  * Get webhooks configured for a tenant
  */
 async function getTenantWebhooks(tenantId: string): Promise<WebhookConfig[]> {
-  // TODO: Implement webhook configuration storage in Prisma
-  // For now, return from environment variable as demo
+  // Fetch webhook configurations from database (may not be available in all deployments)
+  const dbWebhooks = await (prisma as { webhookConfig?: { findMany: (args: unknown) => Promise<Array<{ id: string; url: string; secret: string | null; events: unknown; active: boolean }>> } }).webhookConfig?.findMany({
+    where: {
+      tenantId,
+      active: true,
+    },
+  }) || [];
+
+  // Map database records to WebhookConfig interface
+  const webhooks: WebhookConfig[] = dbWebhooks.map(wh => ({
+    id: wh.id,
+    url: wh.url,
+    secret: wh.secret || '',
+    events: wh.events as SyncEventType[],
+    enabled: wh.active,
+    retryCount: 0,
+  }));
+
+  // Also support environment variable for backward compatibility/demo
   const webhookUrl = process.env.SYNC_WEBHOOK_URL;
   const webhookSecret = process.env.SYNC_WEBHOOK_SECRET;
 
-  if (!webhookUrl) {
-    return [];
+  if (webhookUrl) {
+    webhooks.push({
+      id: 'default',
+      url: webhookUrl,
+      secret: webhookSecret || 'default-secret',
+      events: [
+        'sync.started',
+        'sync.completed',
+        'sync.failed',
+        'source.connected',
+        'source.disconnected',
+        'source.error',
+      ],
+      enabled: true,
+      retryCount: 0,
+    });
   }
 
-  return [{
-    id: 'default',
-    url: webhookUrl,
-    secret: webhookSecret || 'default-secret',
-    events: [
-      'sync.started',
-      'sync.completed',
-      'sync.failed',
-      'source.connected',
-      'source.disconnected',
-      'source.error',
-    ],
-    enabled: true,
-    retryCount: 0,
-  }];
+  return webhooks;
 }
 
 /**

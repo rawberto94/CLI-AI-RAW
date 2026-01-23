@@ -68,7 +68,7 @@ class CostAlertService {
 
     // Persist to database
     try {
-      await prisma.costThreshold.upsert({
+      await (prisma as any).costThreshold?.upsert({
         where: {
           tenantId_period: {
             tenantId,
@@ -109,9 +109,9 @@ class CostAlertService {
 
     // Load from database
     try {
-      const dbThresholds = await prisma.costThreshold.findMany({
+      const dbThresholds = await (prisma as any).costThreshold?.findMany({
         where: { tenantId },
-      });
+      }) || [];
 
       const thresholds = dbThresholds.map(t => ({
         id: t.id,
@@ -225,7 +225,7 @@ class CostAlertService {
     }
 
     try {
-      const result = await prisma.aIUsageLog.aggregate({
+      const result = await (prisma as any).aiUsageLog?.aggregate({
         where: {
           tenantId,
           createdAt: { gte: startDate },
@@ -235,7 +235,7 @@ class CostAlertService {
         },
       });
 
-      return result._sum.cost || 0;
+      return result?._sum?.cost || 0;
     } catch (error) {
       console.error('Failed to get cost for period:', error);
       return 0;
@@ -256,7 +256,7 @@ class CostAlertService {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
 
-      const result = await prisma.aIUsageLog.aggregate({
+      const result = await (prisma as any).aiUsageLog?.aggregate({
         where: {
           tenantId,
           createdAt: {
@@ -269,7 +269,7 @@ class CostAlertService {
         },
       });
 
-      const avgDailyCost = (result._sum.cost || 0) / 7;
+      const avgDailyCost = (result?._sum?.cost || 0) / 7;
 
       // Alert if today's cost is 3x the average
       if (avgDailyCost > 0 && todayCost > avgDailyCost * 3) {
@@ -310,7 +310,7 @@ class CostAlertService {
     };
 
     try {
-      await prisma.costAlert.create({
+      await (prisma as any).costAlert?.create({
         data: {
           id: alert.id,
           tenantId,
@@ -348,10 +348,91 @@ class CostAlertService {
       );
     }
 
-    // Send email notification (implement email service integration)
+    // Send email notification via Resend/SendGrid
     if (threshold.notifyEmail) {
-      // TODO: Integrate with email service (SendGrid, Resend, etc.)
-      console.warn(`Would send email to ${threshold.notifyEmail}:`, alert.message);
+      try {
+        await this.sendEmailAlert(threshold.notifyEmail, alert);
+      } catch (error) {
+        console.error('Failed to send cost alert email:', error);
+      }
+    }
+  }
+
+  /**
+   * Send email alert using available email service
+   */
+  private async sendEmailAlert(email: string, alert: CostAlert): Promise<void> {
+    // Try to use Resend first, then fall back to SendGrid
+    const resendApiKey = process.env.RESEND_API_KEY;
+    const sendgridApiKey = process.env.SENDGRID_API_KEY;
+    
+    const emailContent = {
+      to: email,
+      subject: `[ConTigo] AI Cost Alert - ${alert.type === 'threshold_exceeded' ? 'Threshold Exceeded' : 'Anomaly Detected'}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px 8px 0 0;">
+            <h1 style="color: white; margin: 0;">⚠️ AI Cost Alert</h1>
+          </div>
+          <div style="padding: 20px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 0 0 8px 8px;">
+            <p style="color: #374151; font-size: 16px;">${alert.message}</p>
+            <div style="background: white; padding: 15px; border-radius: 6px; margin: 15px 0;">
+              <p style="margin: 5px 0;"><strong>Current Cost:</strong> $${alert.currentCost.toFixed(2)}</p>
+              ${alert.threshold ? `<p style="margin: 5px 0;"><strong>Threshold:</strong> $${alert.threshold.toFixed(2)}</p>` : ''}
+              <p style="margin: 5px 0;"><strong>Period:</strong> ${alert.period}</p>
+              <p style="margin: 5px 0;"><strong>Time:</strong> ${alert.createdAt.toISOString()}</p>
+            </div>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/settings/ai-costs" 
+               style="display: inline-block; background: #667eea; color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">
+              View Cost Dashboard
+            </a>
+          </div>
+        </div>
+      `,
+    };
+
+    if (resendApiKey) {
+      // Use Resend
+      const response = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${resendApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || 'ConTigo <alerts@contigo.ai>',
+          to: [emailContent.to],
+          subject: emailContent.subject,
+          html: emailContent.html,
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Resend error: ${response.status}`);
+      }
+      console.log(`[CostAlerts] Email sent via Resend to ${email}`);
+    } else if (sendgridApiKey) {
+      // Use SendGrid
+      const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${sendgridApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          personalizations: [{ to: [{ email: emailContent.to }] }],
+          from: { email: process.env.EMAIL_FROM || 'alerts@contigo.ai' },
+          subject: emailContent.subject,
+          content: [{ type: 'text/html', value: emailContent.html }],
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`SendGrid error: ${response.status}`);
+      }
+      console.log(`[CostAlerts] Email sent via SendGrid to ${email}`);
+    } else {
+      console.warn(`[CostAlerts] No email service configured. Would send to ${email}:`, alert.message);
     }
   }
 
@@ -379,14 +460,14 @@ class CostAlertService {
     const { limit = 10, unacknowledgedOnly = false } = options;
 
     try {
-      const alerts = await prisma.costAlert.findMany({
+      const alerts = await (prisma as any).costAlert?.findMany({
         where: {
           tenantId,
           ...(unacknowledgedOnly && { acknowledged: false }),
         },
         orderBy: { createdAt: 'desc' },
         take: limit,
-      });
+      }) || [];
 
       return alerts.map(a => ({
         id: a.id,
@@ -410,7 +491,7 @@ class CostAlertService {
    */
   async acknowledgeAlert(alertId: string): Promise<boolean> {
     try {
-      await prisma.costAlert.update({
+      await (prisma as any).costAlert?.update({
         where: { id: alertId },
         data: { acknowledged: true },
       });

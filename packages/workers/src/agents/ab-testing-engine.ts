@@ -310,6 +310,9 @@ export class ABTestingEngine {
         GROUP BY variant_id, variant_name
       `;
 
+      // Calculate win rates from head-to-head comparisons
+      const winRates = await this.calculateWinRates(testName, results.map(r => String(r.variant_id)));
+
       return results.map((r: Record<string, unknown>) => ({
         variantId: String(r.variant_id),
         variantName: String(r.variant_name),
@@ -320,13 +323,78 @@ export class ABTestingEngine {
         avgCost: Number(r.avg_cost),
         avgTime: Number(r.avg_time),
         acceptanceRate: Number(r.acceptance_rate) || 0,
-        winRate: 0, // TODO: Calculate from head-to-head comparisons
+        winRate: winRates.get(String(r.variant_id)) || 0,
         confidence: this.calculateConfidence(Number(r.total_tests)),
       }));
     } catch (error) {
       logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Failed to get variant performances');
       return [];
     }
+  }
+
+  /**
+   * Calculate win rates from head-to-head quality score comparisons
+   * A variant "wins" if it has a higher quality score on the same artifact type
+   */
+  private async calculateWinRates(testName: string, variantIds: string[]): Promise<Map<string, number>> {
+    const winRates = new Map<string, number>();
+
+    if (variantIds.length < 2) {
+      return winRates;
+    }
+
+    try {
+      // Get aggregated quality scores per variant for head-to-head comparison
+      const variantScores = await prisma.$queryRaw<any[]>`
+        SELECT
+          variant_id,
+          AVG(quality_score) as avg_score,
+          COUNT(*) as sample_count
+        FROM ab_test_results
+        WHERE test_name = ${testName}
+          AND timestamp > NOW() - INTERVAL '30 days'
+        GROUP BY variant_id
+        HAVING COUNT(*) >= 5
+      `;
+
+      if (variantScores.length < 2) {
+        // Not enough data for head-to-head comparisons
+        variantIds.forEach(id => winRates.set(id, 0));
+        return winRates;
+      }
+
+      // Compare each variant against all others
+      const totalComparisons = variantScores.length - 1;
+      
+      for (const variant of variantScores) {
+        const variantId = String(variant.variant_id);
+        const variantScore = Number(variant.avg_score);
+        
+        let wins = 0;
+        for (const other of variantScores) {
+          if (String(other.variant_id) !== variantId) {
+            if (variantScore > Number(other.avg_score)) {
+              wins++;
+            }
+          }
+        }
+
+        // Win rate = wins / total possible comparisons
+        winRates.set(variantId, totalComparisons > 0 ? wins / totalComparisons : 0);
+      }
+
+      // Set 0 for any variant IDs that weren't in the query results
+      for (const id of variantIds) {
+        if (!winRates.has(id)) {
+          winRates.set(id, 0);
+        }
+      }
+    } catch (error) {
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Failed to calculate win rates');
+      variantIds.forEach(id => winRates.set(id, 0));
+    }
+
+    return winRates;
   }
 
   /**

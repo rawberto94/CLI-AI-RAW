@@ -11,10 +11,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getSessionTenantId } from '@/lib/tenant-server';
 // Services for enhanced orchestration (available when needed)
 // import { getWorkflowManagementService } from '@repo/data-orchestration';
 // import { getAutonomousOrchestrator } from '@repo/agents';
-import { prisma } from 'clients-db';
+import { prisma } from '@/lib/prisma';
 
 // ============================================================================
 // GET - Get orchestrator workflow status and metrics
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'status';
 
@@ -215,7 +216,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const tenantId = session.user.tenantId || 'default';
+    const tenantId = getSessionTenantId(session);
     const userId = session.user.id || 'unknown';
     const body = await request.json();
     const { action } = body;

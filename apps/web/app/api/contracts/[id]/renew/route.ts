@@ -288,8 +288,8 @@ export async function POST(
         expiryDate: newExpirationDate,
         value: renewalContract.totalValue ? Number(renewalContract.totalValue) : undefined,
         submittedForApproval: body.submitForApproval || false,
-      }).catch(() => {
-        // Don't fail the request if email fails
+      }).catch((err) => {
+        console.error('[ContractRenew] Email notification error:', err);
       });
     }
 

@@ -425,7 +425,53 @@ export class ArtifactChangePropagationService {
 
       this.retryQueue.delete(key);
 
-      // TODO: Send notification to administrators
+      // Send notification to administrators about permanent failure
+      await this.notifyAdministrators(event, existing.retryCount);
+    }
+  }
+
+  /**
+   * Notify administrators about propagation failure
+   */
+  private async notifyAdministrators(
+    event: ArtifactChangeEvent,
+    retryCount: number
+  ): Promise<void> {
+    try {
+      // Log the failure notification - DatabaseAdaptor doesn't have createNotification method
+      // The notification would typically be created via a dedicated notification service
+      logger.error({
+        tenantId: event.tenantId,
+        type: 'PROPAGATION_FAILURE',
+        title: 'Artifact propagation failed',
+        message: `Failed to propagate changes for artifact ${event.artifactId} after ${retryCount} retries`,
+        resourceType: 'Artifact',
+        resourceId: event.artifactId,
+        priority: 'HIGH',
+        metadata: {
+          artifactType: event.artifactType,
+          changeType: event.changeType,
+          retryCount,
+          failedAt: new Date().toISOString(),
+        },
+      }, 'Propagation failure notification');
+
+      // Optionally send to external monitoring
+      if (process.env.ALERT_WEBHOOK_URL) {
+        await fetch(process.env.ALERT_WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            severity: 'error',
+            title: 'Artifact Propagation Failure',
+            message: `Artifact ${event.artifactId} failed after ${retryCount} retries`,
+            source: 'artifact-change-propagation',
+            timestamp: new Date().toISOString(),
+          }),
+        }).catch(err => logger.error({ err }, 'Failed to send alert webhook'));
+      }
+    } catch (error) {
+      logger.error({ error }, 'Failed to notify administrators');
     }
   }
 
