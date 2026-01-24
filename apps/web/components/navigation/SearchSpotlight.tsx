@@ -24,7 +24,6 @@ import {
   Keyboard,
   HelpCircle,
   Moon,
-  Sun,
   Zap,
   Hash,
 } from 'lucide-react';
@@ -73,7 +72,7 @@ export function SearchSpotlight({
   isOpen, 
   onClose, 
   additionalItems = [],
-  recentSearches = [],
+  recentSearches: _recentSearches = [],
 }: SearchSpotlightProps) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);

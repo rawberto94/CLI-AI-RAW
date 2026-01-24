@@ -67,6 +67,7 @@ export class RoleStandardizationService {
       modelName: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       temperature: 0.1,
       openAIApiKey: process.env.OPENAI_API_KEY || '',
+      azureOpenAIApiKey: undefined,
     });
     this.cache = new Map();
   }
@@ -561,5 +562,25 @@ Return JSON format:
   }
 }
 
-// Export singleton instance
-export const roleStandardizationService = new RoleStandardizationService();
+// Lazy singleton - only created when first accessed
+let _roleStandardizationService: RoleStandardizationService | null = null;
+
+export function getRoleStandardizationService(): RoleStandardizationService {
+  if (!_roleStandardizationService) {
+    _roleStandardizationService = new RoleStandardizationService();
+  }
+  return _roleStandardizationService;
+}
+
+// Backward compatible export
+export const roleStandardizationService = {
+  get instance(): RoleStandardizationService {
+    return getRoleStandardizationService();
+  },
+  standardizeRole: (role: string, tenantId: string, context?: Parameters<RoleStandardizationService['standardizeRole']>[2]) => 
+    getRoleStandardizationService().standardizeRole(role, tenantId, context),
+  standardizeRoles: (roles: string[], tenantId: string) => 
+    getRoleStandardizationService().standardizeRoles(roles, tenantId),
+  clearCache: () => 
+    getRoleStandardizationService().clearCache(),
+};

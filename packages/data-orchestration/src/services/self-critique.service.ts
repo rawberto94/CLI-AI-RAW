@@ -168,9 +168,13 @@ export class SelfCritiqueService {
     const apiKey = process.env.OPENAI_API_KEY;
     
     this.llm = new ChatOpenAI({
-      apiKey: apiKey || '',
+      openAIApiKey: apiKey || '',
+      azureOpenAIApiKey: undefined,
       modelName: process.env.CRITIQUE_MODEL || 'gpt-4o-mini',
       temperature: 0.1, // Low temperature for consistent critique
+      configuration: {
+        baseURL: process.env.OPENAI_BASE_URL || undefined,
+      },
     });
 
     this.defaultConfig = {
@@ -546,5 +550,13 @@ export function getSelfCritiqueService(): SelfCritiqueService {
   return SelfCritiqueService.getInstance();
 }
 
-// Export singleton instance
-export const selfCritiqueService = getSelfCritiqueService();
+// Lazy singleton - only created when first accessed
+let _selfCritiqueService: SelfCritiqueService | null = null;
+export const selfCritiqueService = {
+  get instance(): SelfCritiqueService {
+    if (!_selfCritiqueService) {
+      _selfCritiqueService = getSelfCritiqueService();
+    }
+    return _selfCritiqueService;
+  }
+};

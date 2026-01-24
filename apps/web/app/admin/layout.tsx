@@ -14,6 +14,9 @@ import {
   Plug,
   ListTodo,
   ChevronLeft,
+  Brain,
+  FlaskConical,
+  Cpu,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -53,6 +56,21 @@ const adminNavItems = [
     title: 'Integrations',
     href: '/admin/integrations',
     icon: Plug,
+  },
+  {
+    title: 'AI Learning',
+    href: '/admin/ai-learning',
+    icon: Brain,
+  },
+  {
+    title: 'A/B Testing',
+    href: '/admin/ab-testing',
+    icon: FlaskConical,
+  },
+  {
+    title: 'Model Performance',
+    href: '/admin/model-performance',
+    icon: Cpu,
   },
   {
     title: 'Queue',

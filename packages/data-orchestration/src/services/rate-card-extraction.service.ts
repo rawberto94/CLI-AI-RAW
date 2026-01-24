@@ -104,6 +104,7 @@ export class RateCardExtractionService {
       modelName: this.model,
       temperature: 0.1,
       openAIApiKey: process.env.OPENAI_API_KEY || '',
+      azureOpenAIApiKey: undefined,
     });
   }
 
@@ -548,5 +549,23 @@ Return JSON format:
   }
 }
 
-// Export singleton instance
-export const rateCardExtractionService = new RateCardExtractionService();
+// Lazy singleton - only created when first accessed
+let _rateCardExtractionService: RateCardExtractionService | null = null;
+
+export function getRateCardExtractionService(): RateCardExtractionService {
+  if (!_rateCardExtractionService) {
+    _rateCardExtractionService = new RateCardExtractionService();
+  }
+  return _rateCardExtractionService;
+}
+
+// Backward compatible export
+export const rateCardExtractionService = {
+  get instance(): RateCardExtractionService {
+    return getRateCardExtractionService();
+  },
+  extractRateCard: (text: string, tenantId: string, options?: Parameters<RateCardExtractionService['extractRateCard']>[2]) => 
+    getRateCardExtractionService().extractRateCard(text, tenantId, options),
+  validateExtraction: (extraction: Parameters<RateCardExtractionService['validateExtraction']>[0]) => 
+    getRateCardExtractionService().validateExtraction(extraction),
+};

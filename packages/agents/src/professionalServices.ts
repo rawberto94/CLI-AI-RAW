@@ -53,7 +53,7 @@ export class ProfessionalServicesAnalyzer {
         }
       };
     } else {
-      this.llm = new ChatOpenAI({ apiKey: key, modelName: opts?.model || process.env['OPENAI_MODEL'] || 'gpt-4o-mini', temperature: 0.2 });
+      this.llm = new ChatOpenAI({ openAIApiKey: key, azureOpenAIApiKey: undefined, modelName: opts?.model || process.env['OPENAI_MODEL'] || 'gpt-4o-mini', temperature: 0.2 });
     }
   }
 

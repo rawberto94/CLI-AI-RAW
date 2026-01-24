@@ -7,6 +7,9 @@
  * @see https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  */
 
+// Use console.warn for informational messages to satisfy ESLint rules
+const logInfo = (message: string) => console.warn(`[INFO] ${message}`);
+
 export async function register() {
   // Only run validation on Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
@@ -18,12 +21,12 @@ export async function register() {
      */
     const gracefulShutdown = async (signal: string) => {
       if (isShuttingDown) {
-        console.log(`[Shutdown] Already shutting down, ignoring ${signal}`);
+        logInfo(`[Shutdown] Already shutting down, ignoring ${signal}`);
         return;
       }
       
       isShuttingDown = true;
-      console.log(`\n[Shutdown] Received ${signal}, starting graceful shutdown...`);
+      logInfo(`[Shutdown] Received ${signal}, starting graceful shutdown...`);
       
       const shutdownTimeout = setTimeout(() => {
         console.error('[Shutdown] Timeout exceeded, forcing exit');
@@ -37,18 +40,18 @@ export async function register() {
         // Close Prisma connections using direct @prisma/client to avoid bundling issues
         const { PrismaClient } = await import('@prisma/client');
         const prisma = new PrismaClient();
-        console.log('[Shutdown] Disconnecting database...');
+        logInfo('[Shutdown] Disconnecting database...');
         await prisma.$disconnect();
-        console.log('[Shutdown] Database disconnected');
+        logInfo('[Shutdown] Database disconnected');
         
         // Close Redis connections if available
         // Note: Redis shutdown is handled separately to avoid bundling issues
         if (process.env.REDIS_URL) {
-          console.log('[Shutdown] Redis will be closed by connection timeout');
+          logInfo('[Shutdown] Redis will be closed by connection timeout');
         }
         
         clearTimeout(shutdownTimeout);
-        console.log('[Shutdown] Graceful shutdown complete');
+        logInfo('[Shutdown] Graceful shutdown complete');
         if (typeof process !== 'undefined' && process.exit) {
           process.exit(0);
         }
@@ -114,7 +117,7 @@ export async function register() {
         process.exit(1);
       }
     } else {
-      console.log('✅ Environment validation passed');
+      logInfo('✅ Environment validation passed');
       
       if (result.warnings.length > 0) {
         console.warn('Warnings:');
@@ -128,12 +131,11 @@ export async function register() {
     const { getServiceStatus } = await import('./lib/env');
     const services = getServiceStatus();
     
-    console.log('\n📊 Service Status:');
-    console.log(`   Database: ${services.database ? '✅' : '❌'}`);
-    console.log(`   Redis: ${services.redis ? '✅' : '⚠️ (optional)'}`);
-    console.log(`   AI (OpenAI): ${services.openai ? '✅' : '⚠️ (optional)'}`);
-    console.log(`   Storage: ${services.storage ? '✅' : '⚠️ (optional)'}`);
-    console.log(`   Email: ${services.email ? '✅' : '⚠️ (optional)'}`);
-    console.log('');
+    logInfo('📊 Service Status:');
+    logInfo(`   Database: ${services.database ? '✅' : '❌'}`);
+    logInfo(`   Redis: ${services.redis ? '✅' : '⚠️ (optional)'}`);
+    logInfo(`   AI (OpenAI): ${services.openai ? '✅' : '⚠️ (optional)'}`);
+    logInfo(`   Storage: ${services.storage ? '✅' : '⚠️ (optional)'}`);
+    logInfo(`   Email: ${services.email ? '✅' : '⚠️ (optional)'}`);
   }
 }

@@ -594,6 +594,8 @@ Please provide your ${agent.role} perspective.`;
       modelName,
       temperature: agent.temperature,
       maxTokens: 4000,
+      openAIApiKey: process.env.OPENAI_API_KEY || '',
+      azureOpenAIApiKey: undefined,
     });
 
     this.llmCache.set(cacheKey, llm);

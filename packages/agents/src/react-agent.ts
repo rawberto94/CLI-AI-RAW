@@ -462,7 +462,8 @@ export class ReActAgent {
     }
 
     this.llm = new ChatOpenAI({
-      apiKey,
+      openAIApiKey: apiKey,
+      azureOpenAIApiKey: undefined,
       modelName: this.config.model,
       temperature: this.config.temperature,
     });

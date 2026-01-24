@@ -10,12 +10,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Play,
   PlayCircle,
   ChevronRight,
   ChevronLeft,
   CheckCircle2,
-  Circle,
   Upload,
   FileSearch,
   MessageSquare,
@@ -23,10 +21,8 @@ import {
   BarChart3,
   Settings,
   Sparkles,
-  X,
   Trophy,
   ArrowRight,
-  Gift,
   Zap,
   Home,
   FolderOpen,
@@ -39,7 +35,6 @@ import {
   Shield,
   Brain,
   Lightbulb,
-  Video,
   FileText,
   Star,
   Lock,
