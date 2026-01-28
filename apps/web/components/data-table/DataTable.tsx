@@ -228,7 +228,7 @@ export function DataTable<T>({
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search..."
-                  className="pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500"
+                  className="pl-9 pr-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500"
                 />
               </div>
             )}
@@ -238,7 +238,7 @@ export function DataTable<T>({
                 onClick={() => setShowFilters(!showFilters)}
                 className={`p-2 rounded-lg border transition-colors ${
                   showFilters 
-                    ? 'bg-blue-50 border-blue-200 text-blue-600 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-400'
+                    ? 'bg-violet-50 border-violet-200 text-violet-600 dark:bg-violet-950 dark:border-violet-800 dark:text-violet-400'
                     : 'border-gray-300 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
               >
@@ -275,7 +275,7 @@ export function DataTable<T>({
                         className="w-full px-3 py-2 flex items-center gap-2 hover:bg-gray-100 dark:hover:bg-gray-700 text-sm text-gray-700 dark:text-gray-300"
                       >
                         {columnVisibility[col.id] ? (
-                          <Eye className="w-4 h-4 text-blue-500" />
+                          <Eye className="w-4 h-4 text-violet-500" />
                         ) : (
                           <EyeOff className="w-4 h-4 text-gray-400" />
                         )}
@@ -312,7 +312,7 @@ export function DataTable<T>({
                     value={filters[col.id] || ''}
                     onChange={(e) => setFilters(prev => ({ ...prev, [col.id]: e.target.value }))}
                     placeholder={`Filter ${col.header}...`}
-                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 w-40"
+                    className="px-3 py-1.5 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-violet-500 w-40"
                   />
                 </div>
               ))}
@@ -330,9 +330,9 @@ export function DataTable<T>({
                 <th className="w-12 px-4 py-3">
                   <button onClick={toggleAllSelection}>
                     {isAllSelected ? (
-                      <CheckSquare className="w-5 h-5 text-blue-600" />
+                      <CheckSquare className="w-5 h-5 text-violet-600" />
                     ) : isSomeSelected ? (
-                      <MinusSquare className="w-5 h-5 text-blue-600" />
+                      <MinusSquare className="w-5 h-5 text-violet-600" />
                     ) : (
                       <Square className="w-5 h-5 text-gray-400" />
                     )}
@@ -421,7 +421,7 @@ export function DataTable<T>({
                     ${onRowClick ? 'cursor-pointer' : ''}
                     ${hoverable ? 'hover:bg-gray-50 dark:hover:bg-gray-800/50' : ''}
                     ${striped && index % 2 === 1 ? 'bg-gray-50/50 dark:bg-gray-800/30' : ''}
-                    ${isRowSelected(row) ? 'bg-blue-50 dark:bg-blue-950' : ''}
+                    ${isRowSelected(row) ? 'bg-violet-50 dark:bg-violet-950' : ''}
                     transition-colors
                   `}
                 >
@@ -429,7 +429,7 @@ export function DataTable<T>({
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <button onClick={() => toggleRowSelection(row)}>
                         {isRowSelected(row) ? (
-                          <CheckSquare className="w-5 h-5 text-blue-600" />
+                          <CheckSquare className="w-5 h-5 text-violet-600" />
                         ) : (
                           <Square className="w-5 h-5 text-gray-400" />
                         )}
@@ -629,7 +629,7 @@ export function ComparisonTable({
                 key={i}
                 className={`px-6 py-4 text-center ${
                   item.highlighted 
-                    ? 'bg-blue-50 dark:bg-blue-950 border-t-4 border-blue-500' 
+                    ? 'bg-violet-50 dark:bg-violet-950 border-t-4 border-violet-500' 
                     : ''
                 }`}
               >
@@ -637,7 +637,7 @@ export function ComparisonTable({
                   {item.name}
                 </span>
                 {item.highlighted && (
-                  <span className="block text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  <span className="block text-xs text-violet-600 dark:text-violet-400 mt-1">
                     Most Popular
                   </span>
                 )}
@@ -657,7 +657,7 @@ export function ComparisonTable({
                   <td
                     key={i}
                     className={`px-6 py-3 text-center ${
-                      item.highlighted ? 'bg-blue-50/50 dark:bg-blue-950/50' : ''
+                      item.highlighted ? 'bg-violet-50/50 dark:bg-violet-950/50' : ''
                     }`}
                   >
                     {typeof value === 'boolean' ? (

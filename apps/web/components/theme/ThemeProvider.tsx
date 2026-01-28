@@ -198,7 +198,7 @@ export function ThemeSelector({ className }: { className?: string }) {
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors',
                     theme === value
-                      ? 'bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400'
+                      ? 'bg-violet-50 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                   )}
                 >

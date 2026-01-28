@@ -13,7 +13,7 @@ export default function ContractGeneratorLoading() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 shadow-2xl shadow-violet-500/30 flex items-center justify-center"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-500 shadow-2xl shadow-violet-500/30 flex items-center justify-center"
           >
             <Wand2 className="w-10 h-10 text-white" />
           </motion.div>
@@ -31,7 +31,7 @@ export default function ContractGeneratorLoading() {
               <FileText className="h-4 w-4 text-purple-600" />
             </div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <Zap className="h-4 w-4 text-indigo-600" />
+              <Zap className="h-4 w-4 text-purple-600" />
             </div>
           </motion.div>
         </div>

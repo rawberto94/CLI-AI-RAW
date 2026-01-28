@@ -275,7 +275,7 @@ export function OrphanContractsBanner({
                         <FileText className="h-4 w-4 text-slate-400 flex-shrink-0" />
                         <Link 
                           href={`/contracts/${orphan.id}`}
-                          className="font-medium text-sm hover:text-blue-600 dark:hover:text-blue-400 truncate"
+                          className="font-medium text-sm hover:text-violet-600 dark:hover:text-violet-400 truncate"
                         >
                           {orphan.title}
                         </Link>

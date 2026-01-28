@@ -106,6 +106,14 @@ export function RateCardEditor({
       setEditingId(null);
       setEditingData({});
       
+      // Dispatch event to notify chatbot and other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, artifactId: artifact.id, type: 'rate-card', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('ratecards:refresh', { detail: { contractId } }));
+      }
+      
       if (onUpdate) onUpdate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save');
@@ -151,6 +159,14 @@ export function RateCardEditor({
         currency: 'USD',
       });
       
+      // Dispatch event to notify chatbot and other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, artifactId: artifact.id, type: 'rate-card', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('ratecards:refresh', { detail: { contractId } }));
+      }
+      
       if (onUpdate) onUpdate();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add rate');
@@ -179,6 +195,14 @@ export function RateCardEditor({
       // Update local state
       setRates(rates.filter(r => !selectedRates.has(r.id)));
       setSelectedRates(new Set());
+      
+      // Dispatch event to notify chatbot and other components
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, artifactId: artifact.id, type: 'rate-card', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('ratecards:refresh', { detail: { contractId } }));
+      }
       
       if (onUpdate) onUpdate();
     } catch (err) {
@@ -270,7 +294,7 @@ export function RateCardEditor({
           <TableBody>
             {/* Add New Rate Row */}
             {isAdding && (
-              <TableRow className="bg-blue-50">
+              <TableRow className="bg-violet-50">
                 <TableCell />
                 <TableCell>
                   <Input

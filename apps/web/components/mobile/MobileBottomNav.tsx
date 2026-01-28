@@ -67,10 +67,10 @@ interface QuickAction {
 }
 
 const quickActions: QuickAction[] = [
-  { label: 'Upload Contract', icon: Upload, href: '/upload', color: 'bg-blue-500' },
+  { label: 'Upload Contract', icon: Upload, href: '/upload', color: 'bg-violet-500' },
   { label: 'AI Assistant', icon: Sparkles, href: '/ai/chat', color: 'bg-purple-500' },
   { label: 'Smart Search', icon: Search, href: '/search', color: 'bg-amber-500' },
-  { label: 'Analytics', icon: BarChart3, href: '/analytics', color: 'bg-emerald-500' },
+  { label: 'Analytics', icon: BarChart3, href: '/analytics', color: 'bg-violet-500' },
 ];
 
 export function MobileBottomNav() {
@@ -149,7 +149,7 @@ export function MobileBottomNav() {
                 href={item.href}
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors",
-                  active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
+                  active ? "text-purple-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
                 )}
               >
                 <item.icon className={cn("h-5 w-5", active && "fill-current")} />
@@ -157,7 +157,7 @@ export function MobileBottomNav() {
                 {active && (
                   <motion.div
                     layoutId="bottomNavIndicator"
-                    className="absolute bottom-1 w-1 h-1 rounded-full bg-indigo-600 dark:bg-indigo-400"
+                    className="absolute bottom-1 w-1 h-1 rounded-full bg-purple-600 dark:bg-purple-400"
                   />
                 )}
               </Link>
@@ -174,7 +174,7 @@ export function MobileBottomNav() {
                 "relative -top-4 flex items-center justify-center w-14 h-14 rounded-full shadow-lg transition-colors",
                 showQuickActions
                   ? "bg-slate-900 dark:bg-white"
-                  : "bg-gradient-to-r from-indigo-500 to-purple-600"
+                  : "bg-gradient-to-r from-purple-500 to-purple-600"
               )}
             >
               <AnimatePresence mode="wait">
@@ -209,7 +209,7 @@ export function MobileBottomNav() {
                 href={item.href}
                 className={cn(
                   "flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors",
-                  active ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
+                  active ? "text-purple-600 dark:text-indigo-400" : "text-slate-500 dark:text-slate-400"
                 )}
               >
                 <item.icon className={cn("h-5 w-5", active && "fill-current")} />

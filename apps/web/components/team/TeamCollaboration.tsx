@@ -116,7 +116,7 @@ const roleConfig: Record<UserRole, {
   manager: { 
     label: 'Manager', 
     icon: Users, 
-    color: 'bg-blue-100 text-blue-700',
+    color: 'bg-violet-100 text-violet-700',
     description: 'Manage assigned contracts and team workflows',
   },
   member: { 
@@ -305,7 +305,7 @@ export const TeamCollaboration = memo(function TeamCollaboration({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Users className="h-6 w-6 text-blue-600" />
+            <Users className="h-6 w-6 text-violet-600" />
             Team
           </h2>
           <p className="text-slate-600 mt-1">
@@ -349,8 +349,8 @@ export const TeamCollaboration = memo(function TeamCollaboration({
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                <Activity className="h-5 w-5 text-blue-600" />
+              <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center">
+                <Activity className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">
@@ -406,7 +406,7 @@ export const TeamCollaboration = memo(function TeamCollaboration({
                   <div className="relative">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={member.avatar} />
-                      <AvatarFallback className="bg-blue-100 text-blue-700">
+                      <AvatarFallback className="bg-violet-100 text-violet-700">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
@@ -593,7 +593,7 @@ export const TeamCollaboration = memo(function TeamCollaboration({
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
                   <Avatar className="h-12 w-12">
-                    <AvatarFallback className="bg-blue-100 text-blue-700">
+                    <AvatarFallback className="bg-violet-100 text-violet-700">
                       {getInitials(selectedMember.name)}
                     </AvatarFallback>
                   </Avatar>
@@ -627,9 +627,9 @@ export const TeamCollaboration = memo(function TeamCollaboration({
                   </Select>
                 </div>
 
-                <div className="p-3 bg-blue-50 rounded-lg">
-                  <h4 className="font-medium text-sm text-blue-700 mb-1">Access Summary</h4>
-                  <p className="text-sm text-blue-600">
+                <div className="p-3 bg-violet-50 rounded-lg">
+                  <h4 className="font-medium text-sm text-violet-700 mb-1">Access Summary</h4>
+                  <p className="text-sm text-violet-600">
                     {selectedMember.contractsAccess} contracts accessible
                   </p>
                 </div>

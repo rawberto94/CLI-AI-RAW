@@ -113,7 +113,7 @@ export function RenewalAlertCard({ renewal, onTakeAction }: {
   const getUrgencyIcon = (days: number) => {
     if (days <= 30) return <AlertTriangle className="w-4 h-4 text-red-500" />
     if (days <= 60) return <Clock className="w-4 h-4 text-orange-500" />
-    return <Calendar className="w-4 h-4 text-blue-500" />
+    return <Calendar className="w-4 h-4 text-violet-500" />
   }
 
   return (
@@ -140,7 +140,7 @@ export function RenewalAlertCard({ renewal, onTakeAction }: {
             <div className="text-xs text-gray-500">Days Left</div>
           </div>
           <div>
-            <div className="text-lg font-bold text-blue-600">
+            <div className="text-lg font-bold text-violet-600">
               ${(renewal.value / 1000000).toFixed(1)}M
             </div>
             <div className="text-xs text-gray-500">Contract Value</div>
@@ -275,7 +275,7 @@ export function SupplierPerformanceCard({ supplier, onViewDetails }: {
             </div>
           </div>
           <div className="text-right">
-            <div className="text-lg font-bold text-blue-600">{supplier.score}</div>
+            <div className="text-lg font-bold text-violet-600">{supplier.score}</div>
             <div className="text-xs text-gray-500">Score</div>
           </div>
         </div>
@@ -359,7 +359,7 @@ export function QuerySuggestions({ onSelectQuery }: {
               <button
                 key={queryIndex}
                 onClick={() => onSelectQuery(query)}
-                className="text-left p-3 bg-gray-50 hover:bg-blue-50 rounded-md text-sm transition-colors border border-transparent hover:border-blue-200"
+                className="text-left p-3 bg-gray-50 hover:bg-violet-50 rounded-md text-sm transition-colors border border-transparent hover:border-violet-200"
               >
                 {query}
               </button>
@@ -397,7 +397,7 @@ export function ActionCenter({ actions, onTakeAction }: {
     switch (type) {
       case 'savings': return <DollarSign className="w-4 h-4 text-green-600" />
       case 'renewal': return <Clock className="w-4 h-4 text-orange-600" />
-      case 'compliance': return <CheckCircle className="w-4 h-4 text-blue-600" />
+      case 'compliance': return <CheckCircle className="w-4 h-4 text-violet-600" />
       case 'risk': return <AlertTriangle className="w-4 h-4 text-red-600" />
       default: return <Target className="w-4 h-4 text-gray-600" />
     }
@@ -479,7 +479,7 @@ export function SmartInsightsPanel({ insights }: {
 }) {
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'trend': return <TrendingUp className="w-4 h-4 text-blue-600" />
+      case 'trend': return <TrendingUp className="w-4 h-4 text-violet-600" />
       case 'anomaly': return <Zap className="w-4 h-4 text-orange-600" />
       case 'opportunity': return <Target className="w-4 h-4 text-green-600" />
       case 'risk': return <AlertTriangle className="w-4 h-4 text-red-600" />
@@ -492,10 +492,10 @@ export function SmartInsightsPanel({ insights }: {
       <h3 className="font-medium text-gray-900">AI Insights</h3>
       
       {insights.map((insight) => (
-        <Card key={insight.id} className="border-l-4 border-l-blue-500">
+        <Card key={insight.id} className="border-l-4 border-l-violet-500">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 rounded-full bg-blue-50">
+              <div className="p-2 rounded-full bg-violet-50">
                 {getInsightIcon(insight.type)}
               </div>
               
@@ -552,11 +552,11 @@ export function QuickStatsGrid({ stats }: {
         <div className="text-sm text-green-700">Savings Identified</div>
       </div>
       
-      <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="text-2xl font-bold text-blue-600">
+      <div className="text-center p-4 bg-violet-50 rounded-lg border border-violet-200">
+        <div className="text-2xl font-bold text-violet-600">
           {stats.avgNegotiationTime}
         </div>
-        <div className="text-sm text-blue-700">Avg Days to Close</div>
+        <div className="text-sm text-violet-700">Avg Days to Close</div>
       </div>
       
       <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
@@ -573,18 +573,18 @@ export function QuickStatsGrid({ stats }: {
         <div className="text-sm text-orange-700">Supplier Performance</div>
       </div>
       
-      <div className="text-center p-4 bg-teal-50 rounded-lg border border-teal-200">
-        <div className="text-2xl font-bold text-teal-600">
+      <div className="text-center p-4 bg-violet-50 rounded-lg border border-violet-200">
+        <div className="text-2xl font-bold text-violet-600">
           {stats.renewalSuccess}%
         </div>
-        <div className="text-sm text-teal-700">Renewal Success</div>
+        <div className="text-sm text-violet-700">Renewal Success</div>
       </div>
       
-      <div className="text-center p-4 bg-indigo-50 rounded-lg border border-indigo-200">
-        <div className="text-2xl font-bold text-indigo-600">
+      <div className="text-center p-4 bg-purple-50 rounded-lg border border-indigo-200">
+        <div className="text-2xl font-bold text-purple-600">
           {stats.queryAccuracy}%
         </div>
-        <div className="text-sm text-indigo-700">Query Accuracy</div>
+        <div className="text-sm text-purple-700">Query Accuracy</div>
       </div>
     </div>
   )

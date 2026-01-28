@@ -153,7 +153,7 @@ export function MetadataFieldSelector({
   const getCategoryColor = (categoryName: string) => {
     const category = schema?.categories.find(c => c.name === categoryName);
     const colors: Record<string, string> = {
-      blue: 'bg-blue-100 text-blue-800',
+      blue: 'bg-violet-100 text-violet-800',
       green: 'bg-green-100 text-green-800',
       purple: 'bg-purple-100 text-purple-800',
       red: 'bg-red-100 text-red-800',
@@ -237,7 +237,7 @@ export function MetadataFieldSelector({
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="text-blue-600 hover:text-blue-700 font-medium"
+                className="text-violet-600 hover:text-violet-700 font-medium"
               >
                 Done
               </button>
@@ -302,7 +302,7 @@ export function MetadataFieldSelector({
           <h3 className="font-medium text-gray-900">Metadata Fields</h3>
           <a
             href="/settings/metadata"
-            className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1"
+            className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
           >
             <Settings className="h-3 w-3" />
             Manage Schema
@@ -357,7 +357,7 @@ export function MetadataFieldSelector({
                     }}
                     className={cn(
                       "text-xs px-2 py-1 rounded",
-                      allSelected ? "bg-blue-100 text-blue-700" : "hover:bg-white/50"
+                      allSelected ? "bg-violet-100 text-violet-700" : "hover:bg-white/50"
                     )}
                   >
                     {allSelected ? 'Deselect All' : 'Select All'}
@@ -376,7 +376,7 @@ export function MetadataFieldSelector({
                           type="checkbox"
                           checked={selectedFields.includes(field.name)}
                           onChange={() => toggleField(field.name)}
-                          className="rounded border-gray-300 text-blue-600"
+                          className="rounded border-gray-300 text-violet-600"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -431,7 +431,7 @@ function renderFieldInput(
   value: any,
   onChange: (value: any) => void
 ) {
-  const baseClass = "w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500";
+  const baseClass = "w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-violet-500 focus:border-violet-500";
 
   switch (field.type) {
     case 'text':
@@ -554,7 +554,7 @@ function renderFieldInput(
                 className={cn(
                   "px-2 py-1 text-xs rounded-full border",
                   isSelected 
-                    ? "bg-blue-100 text-blue-700 border-blue-300" 
+                    ? "bg-violet-100 text-violet-700 border-violet-300" 
                     : "hover:bg-gray-100"
                 )}
               >

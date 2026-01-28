@@ -109,7 +109,7 @@ export function ContractFiltersPanel({
             <Filter className="w-5 h-5 text-gray-600" />
             <h3 className="font-semibold text-gray-900">Filters</h3>
             {activeFilterCount > 0 && (
-              <Badge className="bg-blue-100 text-blue-800">
+              <Badge className="bg-violet-100 text-violet-800">
                 {activeFilterCount} active
               </Badge>
             )}
@@ -167,7 +167,7 @@ export function ContractFiltersPanel({
                 onClick={() => toggleStatus(status)}
                 className={`cursor-pointer transition-all ${
                   filters.status?.includes(status)
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-violet-600 text-white hover:bg-violet-700'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -197,7 +197,7 @@ export function ContractFiltersPanel({
                 onClick={() => toggleContractType(type)}
                 className={`cursor-pointer transition-all ${
                   filters.contractType?.includes(type)
-                    ? 'bg-blue-600 text-white hover:bg-blue-700'
+                    ? 'bg-violet-600 text-white hover:bg-violet-700'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
@@ -221,7 +221,7 @@ export function ContractFiltersPanel({
                   onClick={() => toggleClient(client)}
                   className={`cursor-pointer transition-all ${
                     filters.clients?.includes(client)
-                      ? 'bg-blue-600 text-white hover:bg-blue-700'
+                      ? 'bg-violet-600 text-white hover:bg-violet-700'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >

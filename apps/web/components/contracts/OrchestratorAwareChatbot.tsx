@@ -104,7 +104,7 @@ export function OrchestratorAwareChatbot({
     >
       <Card className="flex flex-col h-[600px] overflow-hidden border-2 border-purple-200">
         {/* Header */}
-        <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4">
+        <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-600 text-white py-3 px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -230,7 +230,7 @@ export function OrchestratorAwareChatbot({
                           className={cn(
                             'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
                             message.role === 'user'
-                              ? 'bg-blue-500'
+                              ? 'bg-violet-500'
                               : 'bg-purple-500'
                           )}
                         >
@@ -246,7 +246,7 @@ export function OrchestratorAwareChatbot({
                           className={cn(
                             'flex-1 rounded-2xl px-4 py-2.5 text-sm max-w-[85%]',
                             message.role === 'user'
-                              ? 'bg-blue-500 text-white ml-auto'
+                              ? 'bg-violet-500 text-white ml-auto'
                               : 'bg-gray-100 text-gray-900'
                           )}
                         >

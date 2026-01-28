@@ -109,11 +109,11 @@ export function IntelligenceWidget({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl border border-purple-100 p-5"
+      className="bg-gradient-to-br from-purple-50 via-purple-50 to-purple-50 rounded-xl border border-purple-100 p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg">
+          <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-500 rounded-lg">
             <Zap className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -372,11 +372,11 @@ export function RenewalsWidget({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-xl border border-green-100 p-5"
+      className="bg-gradient-to-br from-violet-50 via-violet-50 to-violet-50 rounded-xl border border-green-100 p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg">
             <Calendar className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -551,7 +551,7 @@ interface QuickStatsRowProps {
 }
 
 const defaultStats: QuickStat[] = [
-  { label: 'Active Contracts', value: 24, change: { value: 3, direction: 'up' }, href: '/contracts', icon: FileText, color: 'text-blue-600' },
+  { label: 'Active Contracts', value: 24, change: { value: 3, direction: 'up' }, href: '/contracts', icon: FileText, color: 'text-violet-600' },
   { label: 'Intelligence Alerts', value: 6, href: '/intelligence', icon: Zap, color: 'text-purple-600' },
   { label: 'Pending Approvals', value: 4, change: { value: 2, direction: 'up' }, href: '/approvals', icon: CheckCircle2, color: 'text-amber-600' },
   { label: 'Upcoming Renewals', value: 5, href: '/renewals', icon: Calendar, color: 'text-green-600' },
@@ -582,7 +582,7 @@ export function QuickStatsRow({
         if (json.success && json.data) {
           const d = json.data;
           setStats([
-            { label: 'Active Contracts', value: d.contracts?.active ?? 24, change: d.contracts?.change ? { value: d.contracts.change, direction: 'up' } : undefined, href: '/contracts', icon: FileText, color: 'text-blue-600' },
+            { label: 'Active Contracts', value: d.contracts?.active ?? 24, change: d.contracts?.change ? { value: d.contracts.change, direction: 'up' } : undefined, href: '/contracts', icon: FileText, color: 'text-violet-600' },
             { label: 'Intelligence Alerts', value: d.intelligence?.alertCount ?? 6, href: '/intelligence', icon: Zap, color: 'text-purple-600' },
             { label: 'Pending Approvals', value: d.approvals?.pending ?? 4, change: d.approvals?.change ? { value: d.approvals.change, direction: 'up' } : undefined, href: '/approvals', icon: CheckCircle2, color: 'text-amber-600' },
             { label: 'Upcoming Renewals', value: d.renewals?.upcoming ?? 5, href: '/renewals', icon: Calendar, color: 'text-green-600' },

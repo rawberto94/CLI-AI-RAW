@@ -220,7 +220,7 @@ const DEFAULT_QUICK_FILTERS: Array<{
     id: "active",
     label: "Active",
     icon: <CheckCircle2 className="w-4 h-4" />,
-    color: "text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-100",
+    color: "text-violet-600 bg-violet-50 border-violet-200 hover:bg-violet-100",
     filters: { status: ["active"] },
   },
   {
@@ -297,7 +297,7 @@ const PAYMENT_TYPES = [
 ];
 
 const BILLING_FREQUENCIES = [
-  { value: 'one_off', label: 'One-Off', color: 'bg-blue-100 text-blue-700' },
+  { value: 'one_off', label: 'One-Off', color: 'bg-violet-100 text-violet-700' },
   { value: 'recurring', label: 'Recurring', color: 'bg-green-100 text-green-700' },
   { value: 'mixed', label: 'Mixed', color: 'bg-purple-100 text-purple-700' },
   { value: 'none', label: 'None', color: 'bg-slate-100 text-slate-700' },
@@ -305,14 +305,14 @@ const BILLING_FREQUENCIES = [
 
 // Document classification options for filtering
 const DOCUMENT_CLASSIFICATIONS = [
-  { value: 'contract', label: 'Contract', color: 'bg-blue-100 text-blue-700', icon: FileText },
+  { value: 'contract', label: 'Contract', color: 'bg-violet-100 text-violet-700', icon: FileText },
   { value: 'purchase_order', label: 'Purchase Order', color: 'bg-orange-100 text-orange-700', icon: FileText },
   { value: 'invoice', label: 'Invoice', color: 'bg-purple-100 text-purple-700', icon: FileText },
-  { value: 'quote', label: 'Quote', color: 'bg-cyan-100 text-cyan-700', icon: FileText },
-  { value: 'proposal', label: 'Proposal', color: 'bg-indigo-100 text-indigo-700', icon: FileText },
+  { value: 'quote', label: 'Quote', color: 'bg-purple-100 text-purple-700', icon: FileText },
+  { value: 'proposal', label: 'Proposal', color: 'bg-purple-100 text-purple-700', icon: FileText },
   { value: 'work_order', label: 'Work Order', color: 'bg-amber-100 text-amber-700', icon: FileText },
-  { value: 'amendment', label: 'Amendment', color: 'bg-teal-100 text-teal-700', icon: FileText },
-  { value: 'addendum', label: 'Addendum', color: 'bg-emerald-100 text-emerald-700', icon: FileText },
+  { value: 'amendment', label: 'Amendment', color: 'bg-violet-100 text-violet-700', icon: FileText },
+  { value: 'addendum', label: 'Addendum', color: 'bg-violet-100 text-violet-700', icon: FileText },
   { value: 'letter_of_intent', label: 'Letter of Intent', color: 'bg-pink-100 text-pink-700', icon: FileText },
   { value: 'memorandum', label: 'Memorandum', color: 'bg-rose-100 text-rose-700', icon: FileText },
   { value: 'unknown', label: 'Unknown', color: 'bg-slate-100 text-slate-700', icon: FileText },
@@ -498,13 +498,13 @@ const FilterChip = memo(function FilterChip({ label, onRemove }: FilterChipProps
     >
       <Badge
         variant="secondary"
-        className="gap-1 pl-2 pr-1 py-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+        className="gap-1 pl-2 pr-1 py-1 bg-violet-50 text-violet-700 border border-violet-200 hover:bg-violet-100"
       >
         {label}
         <Button
           variant="ghost"
           size="sm"
-          className="h-4 w-4 p-0 hover:bg-blue-200 rounded-full"
+          className="h-4 w-4 p-0 hover:bg-violet-200 rounded-full"
           onClick={onRemove}
         >
           <X className="w-3 h-3" />
@@ -1005,7 +1005,7 @@ export const SmartFilters = memo(function SmartFilters({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="bg-gradient-to-br from-slate-50 to-blue-50/30 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div className="bg-gradient-to-br from-slate-50 to-purple-50/30 rounded-xl border border-slate-200 shadow-sm overflow-hidden">
               {/* Filter Section Tabs */}
               <div className="flex border-b border-slate-200 bg-white/80 backdrop-blur-sm overflow-x-auto">
                 {[
@@ -1021,7 +1021,7 @@ export const SmartFilters = memo(function SmartFilters({
                     className={cn(
                       "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap",
                       activeFilterSection === section.id
-                        ? "border-blue-500 text-blue-700 bg-blue-50/50"
+                        ? "border-violet-500 text-violet-700 bg-violet-50/50"
                         : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50"
                     )}
                   >
@@ -1045,7 +1045,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {/* Status Filter */}
                       <div className="space-y-3">
                         <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <CheckCircle2 className="w-4 h-4 text-violet-600" />
                           Contract Status
                         </Label>
                         <div className="grid grid-cols-2 gap-2">
@@ -1055,8 +1055,8 @@ export const SmartFilters = memo(function SmartFilters({
                               const statusColors: Record<string, string> = {
                                 draft: 'bg-slate-100 text-slate-700 border-slate-200',
                                 pending: 'bg-amber-100 text-amber-700 border-amber-200',
-                                active: 'bg-emerald-100 text-emerald-700 border-emerald-200',
-                                processing: 'bg-blue-100 text-blue-700 border-blue-200',
+                                active: 'bg-violet-100 text-violet-700 border-violet-200',
+                                processing: 'bg-violet-100 text-violet-700 border-violet-200',
                                 completed: 'bg-green-100 text-green-700 border-green-200',
                                 expired: 'bg-red-100 text-red-700 border-red-200',
                                 renewal: 'bg-purple-100 text-purple-700 border-purple-200',
@@ -1100,7 +1100,7 @@ export const SmartFilters = memo(function SmartFilters({
                           {(["low", "medium", "high", "critical"] as RiskLevel[]).map((risk) => {
                             const isChecked = effectiveFilters.riskLevel?.includes(risk) ?? false;
                             const riskConfig: Record<RiskLevel, { color: string; bg: string }> = {
-                              low: { color: 'text-emerald-600', bg: 'bg-emerald-500' },
+                              low: { color: 'text-violet-600', bg: 'bg-violet-500' },
                               medium: { color: 'text-amber-600', bg: 'bg-amber-500' },
                               high: { color: 'text-orange-600', bg: 'bg-orange-500' },
                               critical: { color: 'text-red-600', bg: 'bg-red-500' },
@@ -1128,7 +1128,7 @@ export const SmartFilters = memo(function SmartFilters({
                                 <span className={cn("text-sm font-medium capitalize flex-1 text-left", isChecked ? riskConfig[risk].color : "text-slate-600")}>
                                   {risk}
                                 </span>
-                                {isChecked && <Check className="w-4 h-4 text-blue-600" />}
+                                {isChecked && <Check className="w-4 h-4 text-violet-600" />}
                               </button>
                             );
                           })}
@@ -1138,7 +1138,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {/* Signature Status */}
                       <div className="space-y-3">
                         <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                          <FileSignature className="w-4 h-4 text-indigo-600" />
+                          <FileSignature className="w-4 h-4 text-purple-600" />
                           Signature Status
                         </Label>
                         <Select
@@ -1179,7 +1179,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {/* Document Classification */}
                       <div className="space-y-3">
                         <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                          <FileText className="w-4 h-4 text-teal-600" />
+                          <FileText className="w-4 h-4 text-violet-600" />
                           Document Type
                         </Label>
                         <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
@@ -1244,7 +1244,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {/* Date Range */}
                       <div className="space-y-3">
                         <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-blue-600" />
+                          <Calendar className="w-4 h-4 text-violet-600" />
                           Contract Date Range
                         </Label>
                         <DateRangePicker
@@ -1350,7 +1350,7 @@ export const SmartFilters = memo(function SmartFilters({
                         {/* Payment Type */}
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <CreditCard className="w-4 h-4 text-indigo-600" />
+                            <CreditCard className="w-4 h-4 text-purple-600" />
                             Payment Type
                           </Label>
                           <div className="space-y-2">
@@ -1372,7 +1372,7 @@ export const SmartFilters = memo(function SmartFilters({
                                   className={cn(
                                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all text-sm",
                                     isChecked
-                                      ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                                      ? "bg-purple-50 border-indigo-300 text-purple-700"
                                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                                   )}
                                 >
@@ -1388,7 +1388,7 @@ export const SmartFilters = memo(function SmartFilters({
                         {/* Billing Frequency */}
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Repeat className="w-4 h-4 text-cyan-600" />
+                            <Repeat className="w-4 h-4 text-purple-600" />
                             Billing Frequency
                           </Label>
                           <div className="space-y-2">
@@ -1424,7 +1424,7 @@ export const SmartFilters = memo(function SmartFilters({
                         {/* Currency */}
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Banknote className="w-4 h-4 text-emerald-600" />
+                            <Banknote className="w-4 h-4 text-violet-600" />
                             Currency
                           </Label>
                           <div className="grid grid-cols-2 gap-2">
@@ -1445,7 +1445,7 @@ export const SmartFilters = memo(function SmartFilters({
                                   className={cn(
                                     "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
                                     isChecked
-                                      ? "bg-emerald-50 border-emerald-300 text-emerald-700"
+                                      ? "bg-violet-50 border-violet-300 text-violet-700"
                                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                                   )}
                                 >
@@ -1507,7 +1507,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {/* Jurisdiction */}
                       <div className="space-y-3">
                         <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-blue-600" />
+                          <Globe className="w-4 h-4 text-violet-600" />
                           Jurisdiction
                         </Label>
                         <div className="grid grid-cols-2 gap-2 max-h-60 overflow-y-auto pr-2">
@@ -1528,7 +1528,7 @@ export const SmartFilters = memo(function SmartFilters({
                                 className={cn(
                                   "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
                                   isChecked
-                                    ? "bg-blue-50 border-blue-300 text-blue-700"
+                                    ? "bg-violet-50 border-violet-300 text-violet-700"
                                     : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                                 )}
                               >
@@ -1593,7 +1593,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {availableCategories.length > 0 && (
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-indigo-600" />
+                            <Tag className="w-4 h-4 text-purple-600" />
                             Categories
                           </Label>
                           <div className="flex flex-wrap gap-2">
@@ -1614,7 +1614,7 @@ export const SmartFilters = memo(function SmartFilters({
                                   className={cn(
                                     "px-3 py-1.5 rounded-full border text-sm font-medium transition-all flex items-center gap-2",
                                     isChecked
-                                      ? "bg-indigo-100 border-indigo-300 text-indigo-700"
+                                      ? "bg-purple-100 border-indigo-300 text-purple-700"
                                       : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                                   )}
                                   style={cat.color && isChecked ? { backgroundColor: `${cat.color}20`, borderColor: cat.color, color: cat.color } : {}}
@@ -1632,7 +1632,7 @@ export const SmartFilters = memo(function SmartFilters({
                       {availableTags.length > 0 && (
                         <div className="space-y-3">
                           <Label className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-                            <Hash className="w-4 h-4 text-cyan-600" />
+                            <Hash className="w-4 h-4 text-purple-600" />
                             Tags
                           </Label>
                           <div className="flex flex-wrap gap-2">
@@ -1645,7 +1645,7 @@ export const SmartFilters = memo(function SmartFilters({
                                   className={cn(
                                     "cursor-pointer transition-all",
                                     isChecked
-                                      ? "bg-cyan-100 text-cyan-700 border-cyan-300 hover:bg-cyan-200"
+                                      ? "bg-purple-100 text-purple-700 border-cyan-300 hover:bg-purple-200"
                                       : "hover:bg-slate-100"
                                   )}
                                   onClick={() => {
@@ -1687,7 +1687,7 @@ export const SmartFilters = memo(function SmartFilters({
                             className={cn(
                               "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-sm",
                               effectiveFilters.isPinned
-                                ? "bg-blue-50 border-blue-300 text-blue-700"
+                                ? "bg-violet-50 border-violet-300 text-violet-700"
                                 : "bg-white border-slate-200 text-slate-600 hover:border-slate-300"
                             )}
                           >
@@ -1747,7 +1747,7 @@ export const SmartFilters = memo(function SmartFilters({
                   </Button>
                   <div className="flex gap-2">
                     {activeFilterCount > 0 && (
-                      <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                      <Badge variant="secondary" className="bg-violet-100 text-violet-700">
                         {activeFilterCount} filter{activeFilterCount !== 1 ? 's' : ''} active
                       </Badge>
                     )}

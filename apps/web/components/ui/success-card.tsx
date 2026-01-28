@@ -109,7 +109,7 @@ export function SuccessCard({
               
               {stats.validationsPassed !== undefined && (
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
+                  <div className="text-2xl font-bold text-violet-600">
                     <CountUp to={stats.validationsPassed} delay={0.9} separator="," />
                   </div>
                   <div className="text-sm text-gray-600">Validations Passed</div>

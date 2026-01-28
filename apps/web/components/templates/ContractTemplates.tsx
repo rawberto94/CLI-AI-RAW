@@ -318,7 +318,7 @@ export const ContractTemplates = memo(function ContractTemplates({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-blue-600" />
+              <FileText className="h-5 w-5 text-violet-600" />
               Contract Templates
             </CardTitle>
             <CardDescription>
@@ -466,7 +466,7 @@ export const ContractTemplates = memo(function ContractTemplates({
         {/* Templates List */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading templates...</span>
           </div>
         ) : (

@@ -25,8 +25,8 @@ export function CopyableId({ id }: { id: string }) {
           >
             {copied ? (
               <>
-                <Check className="h-3 w-3 text-emerald-500" />
-                <span className="text-emerald-600">Copied</span>
+                <Check className="h-3 w-3 text-violet-500" />
+                <span className="text-violet-600">Copied</span>
               </>
             ) : (
               <>

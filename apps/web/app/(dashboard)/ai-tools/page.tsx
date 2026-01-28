@@ -32,7 +32,7 @@ export default function AIToolsPage() {
     <div className="container mx-auto py-8 px-4">
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <Bot className="w-8 h-8 text-blue-600" />
+          <Bot className="w-8 h-8 text-violet-600" />
           <h1 className="text-3xl font-bold text-slate-900">AI Tools</h1>
         </div>
         <p className="text-slate-600">
@@ -189,7 +189,7 @@ function ABTestingInterface() {
             Compare AI model performance side-by-side
           </p>
         </div>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+        <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors">
           Create New Test
         </button>
       </div>
@@ -219,7 +219,7 @@ function ABTestingInterface() {
                 <button
                   onClick={() => runTest(test.id)}
                   disabled={isRunning === test.id}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors disabled:opacity-50"
+                  className="px-3 py-1 bg-violet-100 text-violet-700 rounded hover:bg-violet-200 transition-colors disabled:opacity-50"
                 >
                   {isRunning === test.id ? 'Running...' : 'Run Test'}
                 </button>
@@ -229,7 +229,7 @@ function ABTestingInterface() {
             {/* Win Rate Visualization */}
             <div className="mb-4">
               <div className="flex items-center gap-2 mb-2 text-sm">
-                <span className="text-blue-600">{test.modelA}: {test.winRate.a}%</span>
+                <span className="text-violet-600">{test.modelA}: {test.winRate.a}%</span>
                 <span className="text-slate-400">|</span>
                 <span className="text-green-600">{test.modelB}: {test.winRate.b}%</span>
                 <span className="text-slate-400">|</span>
@@ -237,7 +237,7 @@ function ABTestingInterface() {
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full flex overflow-hidden">
                 <div 
-                  className="bg-blue-500 h-full" 
+                  className="bg-violet-500 h-full" 
                   style={{ width: `${test.winRate.a}%` }} 
                 />
                 <div 
@@ -256,17 +256,17 @@ function ABTestingInterface() {
               <div className="mt-4 pt-4 border-t border-slate-200">
                 <h4 className="text-sm font-medium text-slate-700 mb-3">Latest Results</h4>
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg">
+                  <div className="p-4 bg-violet-50 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-blue-800">{test.modelA}</span>
-                      <span className="text-xs text-blue-600">{results.modelA.latency}ms</span>
+                      <span className="font-medium text-violet-800">{test.modelA}</span>
+                      <span className="text-xs text-violet-600">{results.modelA.latency}ms</span>
                     </div>
                     <p className="text-sm text-slate-700 line-clamp-4">
                       {results.modelA.content}
                     </p>
                     <button
                       onClick={() => recordRating(test.id, 'a')}
-                      className="mt-3 w-full py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors text-sm"
+                      className="mt-3 w-full py-2 bg-violet-600 text-white rounded hover:bg-violet-700 transition-colors text-sm"
                     >
                       Select as Winner
                     </button>

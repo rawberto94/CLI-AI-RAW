@@ -110,7 +110,7 @@ const priorityColors = {
 // Status colors
 const statusColors = {
   pending: 'bg-slate-100 text-slate-700 border-slate-200',
-  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
+  in_progress: 'bg-violet-100 text-violet-700 border-violet-200',
   completed: 'bg-green-100 text-green-700 border-green-200',
   overdue: 'bg-red-100 text-red-700 border-red-200',
   at_risk: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -487,16 +487,25 @@ export default function ObligationsDashboardPage() {
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
-            <TabsTrigger value="overview" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+          <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/30 dark:shadow-slate-900/30 p-1.5 rounded-xl">
+            <TabsTrigger 
+              value="overview" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-200"
+            >
               <BarChart3 className="w-4 h-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="obligations" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+            <TabsTrigger 
+              value="obligations" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-200"
+            >
               <FileText className="w-4 h-4" />
               All Obligations
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+            <TabsTrigger 
+              value="calendar" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 rounded-lg transition-all duration-200"
+            >
               <CalendarClock className="w-4 h-4" />
               Calendar
             </TabsTrigger>
@@ -508,15 +517,15 @@ export default function ObligationsDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Obligations */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-purple-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Total Obligations</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">{metrics?.total || 0}</p>
                       </div>
-                      <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
-                        <Target className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                      <div className="p-3 bg-gradient-to-br from-purple-400 to-violet-600 rounded-xl shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <Target className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm">
@@ -531,7 +540,7 @@ export default function ObligationsDashboardPage() {
 
               {/* Compliance Rate */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-green-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -540,8 +549,8 @@ export default function ObligationsDashboardPage() {
                           {((metrics?.complianceRate || 0) * 100).toFixed(1)}%
                         </p>
                       </div>
-                      <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-xl">
-                        <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      <div className="p-3 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <Shield className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4">
@@ -553,15 +562,15 @@ export default function ObligationsDashboardPage() {
 
               {/* Overdue */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-red-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Overdue</p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{metrics?.overdueCount || 0}</p>
                       </div>
-                      <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl">
-                        <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                      <div className="p-3 bg-gradient-to-br from-red-400 to-rose-600 rounded-xl shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <XCircle className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -574,7 +583,7 @@ export default function ObligationsDashboardPage() {
 
               {/* Completed This Week */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-violet-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -583,8 +592,8 @@ export default function ObligationsDashboardPage() {
                           {metrics?.trends?.completedThisWeek || 0}
                         </p>
                       </div>
-                      <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
-                        <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      <div className="p-3 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm">
@@ -690,7 +699,7 @@ export default function ObligationsDashboardPage() {
               <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
-                    <BarChart3 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                    <BarChart3 className="w-5 h-5 text-purple-500 dark:text-indigo-400" />
                     Status Breakdown
                   </CardTitle>
                 </CardHeader>
@@ -704,7 +713,7 @@ export default function ObligationsDashboardPage() {
                             status === 'completed' ? 'text-green-500' :
                             status === 'overdue' ? 'text-red-500' :
                             status === 'at_risk' ? 'text-amber-500' :
-                            status === 'in_progress' ? 'text-blue-500' :
+                            status === 'in_progress' ? 'text-violet-500' :
                             'text-slate-400 dark:text-slate-500'
                           }`} />
                           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{count}</p>

@@ -63,7 +63,7 @@ export function BaselineComparisonCard({ rateCardEntryId }: BaselineComparisonCa
       case 'BELOW_BASELINE':
         return <CheckCircle className="h-5 w-5 text-green-500" />;
       case 'AT_BASELINE':
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return <Info className="h-5 w-5 text-violet-500" />;
       case 'ABOVE_BASELINE':
         return <AlertTriangle className="h-5 w-5 text-red-500" />;
       default:

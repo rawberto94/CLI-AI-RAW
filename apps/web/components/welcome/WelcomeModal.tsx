@@ -44,15 +44,15 @@ const features = [
     icon: Shield,
     title: 'Risk Detection',
     description: 'AI-powered risk identification',
-    color: 'from-emerald-500 to-teal-500',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+    color: 'from-violet-500 to-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   {
     icon: MessageSquare,
     title: 'Smart Q&A',
     description: 'Ask questions in plain English',
-    color: 'from-blue-500 to-indigo-500',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   {
     icon: Zap,
@@ -85,7 +85,7 @@ function AnimatedBackground() {
         }}
       />
       <motion.div
-        className="absolute -bottom-20 -right-20 w-96 h-96 bg-gradient-to-br from-blue-500/30 to-indigo-500/20 rounded-full blur-3xl"
+        className="absolute -bottom-20 -right-20 w-96 h-96 bg-gradient-to-br from-violet-500/30 to-purple-500/20 rounded-full blur-3xl"
         animate={{
           x: [0, -30, 0],
           y: [0, 20, 0],
@@ -232,7 +232,7 @@ export function WelcomeModal() {
             className="relative w-full max-w-2xl overflow-hidden rounded-2xl shadow-2xl"
           >
             {/* Background gradient */}
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700" />
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-600 via-purple-600 to-purple-700" />
             <AnimatedBackground />
             
             {/* Content */}

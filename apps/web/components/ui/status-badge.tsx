@@ -111,7 +111,7 @@ const statusConfigs: Record<StatusType, StatusConfig> = {
   },
   processing: {
     label: 'Processing',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
     icon: Loader2,
     pulse: true,
   },
@@ -142,7 +142,7 @@ const statusConfigs: Record<StatusType, StatusConfig> = {
   },
   info: {
     label: 'Info',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
     icon: AlertCircle,
   },
   // Contract/Document statuses
@@ -168,7 +168,7 @@ const statusConfigs: Record<StatusType, StatusConfig> = {
   },
   signed: {
     label: 'Signed',
-    color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+    color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
     icon: CheckCircle2,
   },
   expired: {
@@ -184,12 +184,12 @@ const statusConfigs: Record<StatusType, StatusConfig> = {
   // Workflow statuses
   submitted: {
     label: 'Submitted',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
     icon: Send,
   },
   'in-progress': {
     label: 'In Progress',
-    color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
     icon: Play,
     pulse: true,
   },

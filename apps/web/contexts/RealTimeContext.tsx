@@ -10,6 +10,57 @@ import { useEventStream, StreamEvent } from '@/hooks/useEventStream';
 import { useToast } from '@/hooks/useToast';
 import { getTenantId } from '@/lib/tenant';
 
+// ============================================================================
+// Event Types - Strongly typed event system
+// ============================================================================
+
+export interface ContractEventData {
+  contractId: string;
+  status?: string;
+  progress?: number;
+  message?: string;
+}
+
+export interface NotificationEventData {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'error' | 'success';
+  read?: boolean;
+}
+
+export interface JobEventData {
+  jobId: string;
+  contractId?: string;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  progress?: number;
+  error?: string;
+}
+
+export interface RateCardEventData {
+  rateCardId: string;
+  action: 'created' | 'updated' | 'deleted' | 'imported';
+}
+
+export interface ArtifactEventData {
+  artifactId: string;
+  contractId: string;
+  type: string;
+  status: 'generated' | 'updated' | 'created';
+}
+
+// Union type for all event data
+export type RealTimeEventData = 
+  | ContractEventData 
+  | NotificationEventData 
+  | JobEventData 
+  | RateCardEventData 
+  | ArtifactEventData
+  | Record<string, unknown>;
+
+// Event handler type
+export type EventHandler<T = RealTimeEventData> = (data: T) => void;
+
 export interface RealTimeContextValue {
   isConnected: boolean;
   lastEvent: StreamEvent | null;
@@ -17,8 +68,8 @@ export interface RealTimeContextValue {
   reconnect: () => void;
   disconnect: () => void;
   connectionAttempts: number;
-  subscribe: (eventType: string, handler: (data: any) => void) => () => void;
-  broadcast: (eventType: string, data: any) => void;
+  subscribe: <T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => () => void;
+  broadcast: <T = RealTimeEventData>(eventType: string, data: T) => void;
 }
 
 const RealTimeContext = createContext<RealTimeContextValue | undefined>(undefined);
@@ -41,13 +92,13 @@ export function RealTimeProvider({
   const toast = useToast();
   const resolvedTenantId = tenantId ?? getTenantId();
   const [connectionAttempts, setConnectionAttempts] = useState(0);
-  const [subscribers, setSubscribers] = useState<Map<string, Set<(data: any) => void>>>(
+  const [subscribers, setSubscribers] = useState<Map<string, Set<EventHandler>>>(
     new Map()
   );
 
   // Bridge server-sent events into the app-wide real-time event bus
   // that React Query cache sync listens to.
-  const dispatchRealTimeEvent = useCallback((type: string, data: any) => {
+  const dispatchRealTimeEvent = useCallback((type: string, data: RealTimeEventData) => {
     if (typeof window === 'undefined') return;
     window.dispatchEvent(
       new CustomEvent('realtime-event', {
@@ -172,11 +223,11 @@ export function RealTimeProvider({
   } as any);
 
   // Subscribe to specific event types
-  const subscribe = useCallback((eventType: string, handler: (data: any) => void) => {
+  const subscribe = useCallback(<T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => {
     setSubscribers(prev => {
       const newSubscribers = new Map(prev);
       const handlers = newSubscribers.get(eventType) || new Set();
-      handlers.add(handler);
+      handlers.add(handler as EventHandler);
       newSubscribers.set(eventType, handlers);
       return newSubscribers;
     });
@@ -187,7 +238,7 @@ export function RealTimeProvider({
         const newSubscribers = new Map(prev);
         const handlers = newSubscribers.get(eventType);
         if (handlers) {
-          handlers.delete(handler);
+          handlers.delete(handler as EventHandler);
           if (handlers.size === 0) {
             newSubscribers.delete(eventType);
           } else {
@@ -200,7 +251,7 @@ export function RealTimeProvider({
   }, []);
 
   // Broadcast events locally (for client-side coordination)
-  const broadcast = useCallback((eventType: string, data: any) => {
+  const broadcast = useCallback(<T = RealTimeEventData>(eventType: string, data: T) => {
     const handlers = subscribers.get(eventType);
     if (handlers) {
       handlers.forEach(handler => {
@@ -245,7 +296,7 @@ export function useRealTime() {
 /**
  * Hook to subscribe to specific event types
  */
-export function useRealTimeEvent(eventType: string, handler: (data: any) => void) {
+export function useRealTimeEvent<T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) {
   const { subscribe } = useRealTime();
 
   useEffect(() => {
@@ -258,7 +309,7 @@ export function useRealTimeEvent(eventType: string, handler: (data: any) => void
  * Hook to subscribe to multiple event types
  */
 export function useRealTimeEvents(
-  eventHandlers: Record<string, (data: any) => void>
+  eventHandlers: Record<string, EventHandler>
 ) {
   const { subscribe } = useRealTime();
 

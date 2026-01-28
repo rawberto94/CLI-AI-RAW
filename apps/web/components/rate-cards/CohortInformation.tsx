@@ -71,7 +71,7 @@ function getSampleSizeQuality(sampleSize: number): {
   if (sampleSize >= 50) {
     return { quality: 'EXCELLENT', label: 'Excellent', color: 'text-green-600' };
   } else if (sampleSize >= 20) {
-    return { quality: 'GOOD', label: 'Good', color: 'text-blue-600' };
+    return { quality: 'GOOD', label: 'Good', color: 'text-violet-600' };
   } else if (sampleSize >= 10) {
     return { quality: 'FAIR', label: 'Fair', color: 'text-yellow-600' };
   } else {
@@ -186,8 +186,8 @@ function MetricCard({
     <div className="p-4 bg-white border border-gray-200 rounded-lg hover:shadow-sm transition-shadow">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-blue-50 rounded-lg">
-            <Icon className="w-4 h-4 text-blue-600" />
+          <div className="p-2 bg-violet-50 rounded-lg">
+            <Icon className="w-4 h-4 text-violet-600" />
           </div>
           <div className="text-sm text-gray-600">{label}</div>
         </div>
@@ -246,7 +246,7 @@ export function CohortInformation(props: CohortInformationProps = {}) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Users className="w-5 h-5 text-blue-600" />
+            <Users className="w-5 h-5 text-violet-600" />
             Cohort Information
           </CardTitle>
           <Badge className={confidenceInfo.color}>
@@ -338,7 +338,7 @@ export function CohortInformation(props: CohortInformationProps = {}) {
         {/* Cohort Criteria */}
         <div>
           <div className="text-sm font-medium text-gray-700 mb-3">Cohort Definition</div>
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
             <CohortCriteriaDisplay criteria={cohortDefinition} />
           </div>
           <div className="text-xs text-gray-500 mt-2">
@@ -363,14 +363,14 @@ export function CohortInformation(props: CohortInformationProps = {}) {
 
         {/* Recommendations for improving data quality */}
         {(sampleSize < 20 || competitorCount < 5) && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
             <div className="flex items-start gap-2">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <Info className="w-5 h-5 text-violet-600 flex-shrink-0 mt-0.5" />
               <div className="flex-1">
-                <div className="text-sm font-medium text-blue-900 mb-2">
+                <div className="text-sm font-medium text-violet-900 mb-2">
                   Improve Benchmark Accuracy
                 </div>
-                <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+                <ul className="text-sm text-violet-800 space-y-1 list-disc list-inside">
                   {sampleSize < 20 && (
                     <li>Add more rate card entries for this role and location</li>
                   )}

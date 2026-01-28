@@ -309,7 +309,7 @@ Component Stack: ${errorInfo?.componentStack || 'No component stack'}
           Need help?{' '}
           <a
             href="/support"
-            className="text-blue-600 hover:underline inline-flex items-center gap-1"
+            className="text-violet-600 hover:underline inline-flex items-center gap-1"
           >
             Contact Support
             <ExternalLink className="w-3 h-3" />

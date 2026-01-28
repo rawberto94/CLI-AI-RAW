@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
   FileText, 
   Shield, 
@@ -61,7 +60,7 @@ function ParticleField() {
       {[...Array(20)].map((_, i) => (
         <div
           key={i}
-          className="absolute w-1 h-1 bg-teal-500/30 rounded-full"
+          className="absolute w-1 h-1 bg-violet-500/30 rounded-full"
           style={{
             left: `${Math.random() * 100}%`,
             top: `${Math.random() * 100}%`,
@@ -88,8 +87,8 @@ function AnimatedGrid() {
         className="absolute inset-0 opacity-[0.02]"
         style={{
           backgroundImage: `
-            linear-gradient(rgba(20, 184, 166, 0.5) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(20, 184, 166, 0.5) 1px, transparent 1px)
+            linear-gradient(rgba(124, 58, 237, 0.5) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(124, 58, 237, 0.5) 1px, transparent 1px)
           `,
           backgroundSize: '60px 60px',
           animation: 'gridMove 20s linear infinite',
@@ -106,11 +105,11 @@ function AnimatedGrid() {
 }
 
 // Glowing Border Card
-function GlowCard({ children, className = '', glowColor = 'teal' }: { children: React.ReactNode; className?: string; glowColor?: string }) {
+function GlowCard({ children, className = '', glowColor = 'violet' }: { children: React.ReactNode; className?: string; glowColor?: string }) {
   const colors: Record<string, string> = {
-    teal: 'from-teal-500 to-emerald-500',
     violet: 'from-violet-500 to-purple-500',
-    blue: 'from-blue-500 to-cyan-500',
+    purple: 'from-purple-500 to-fuchsia-500',
+    blue: 'from-violet-500 to-purple-500',
     orange: 'from-orange-500 to-amber-500',
   };
   return (
@@ -172,8 +171,8 @@ function MorphingBlob({ className = '' }: { className?: string }) {
       <svg viewBox="0 0 200 200" className="w-full h-full">
         <defs>
           <linearGradient id="blobGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#14b8a6" stopOpacity="0.3" />
-            <stop offset="100%" stopColor="#6366f1" stopOpacity="0.3" />
+            <stop offset="0%" stopColor="#7C3AED" stopOpacity="0.3" />
+            <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.3" />
           </linearGradient>
         </defs>
         <path fill="url(#blobGradient)">
@@ -227,11 +226,11 @@ function FAQItem({ question, answer, isOpen, onClick }: { question: string; answ
     <div className="border-b border-gray-200 last:border-b-0">
       <button
         onClick={onClick}
-        className="w-full py-6 flex items-center justify-between text-left hover:text-teal-600 transition-colors group"
+        className="w-full py-6 flex items-center justify-between text-left hover:text-violet-600 transition-colors group"
       >
-        <span className="text-lg font-semibold text-gray-900 group-hover:text-teal-600 pr-8">{question}</span>
-        <div className={`w-8 h-8 rounded-full bg-gray-100 group-hover:bg-teal-100 flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-teal-100 rotate-180' : ''}`}>
-          <ChevronDown className={`w-5 h-5 text-gray-500 group-hover:text-teal-600 transition-all duration-300 ${isOpen ? 'text-teal-600' : ''}`} />
+        <span className="text-lg font-semibold text-gray-900 group-hover:text-violet-600 pr-8">{question}</span>
+        <div className={`w-8 h-8 rounded-full bg-gray-100 group-hover:bg-violet-100 flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-violet-100 rotate-180' : ''}`}>
+          <ChevronDown className={`w-5 h-5 text-gray-500 group-hover:text-violet-600 transition-all duration-300 ${isOpen ? 'text-violet-600' : ''}`} />
         </div>
       </button>
       <div className={`grid transition-all duration-300 ${isOpen ? 'grid-rows-[1fr] pb-6' : 'grid-rows-[0fr]'}`}>
@@ -302,17 +301,17 @@ function AIPipelineStep({ step, title, description, icon: Icon, isLast = false }
     <div className="relative flex gap-6">
       {/* Timeline */}
       <div className="flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center shadow-lg shadow-teal-500/30 z-10">
+        <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/30 z-10">
           <Icon className="w-7 h-7 text-white" />
         </div>
         {!isLast && (
-          <div className="w-0.5 h-full bg-gradient-to-b from-teal-400 to-teal-200 mt-4" />
+          <div className="w-0.5 h-full bg-gradient-to-b from-violet-400 to-violet-200 mt-4" />
         )}
       </div>
       
       {/* Content */}
       <div className="pb-12">
-        <div className="text-sm font-medium text-teal-600 mb-1">Step {step}</div>
+        <div className="text-sm font-medium text-violet-600 mb-1">Step {step}</div>
         <h4 className="text-xl font-bold text-gray-900 mb-2">{title}</h4>
         <p className="text-gray-600 leading-relaxed">{description}</p>
       </div>
@@ -374,17 +373,17 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           <X className="w-6 h-6" />
         </button>
         <nav className="mt-12 space-y-4">
-          <a href="#features" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">Features</a>
-          <a href="#ai-technology" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">AI Technology</a>
-          <a href="#architecture" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">Architecture</a>
-          <a href="#innovation" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">Innovation</a>
-          <a href="#security" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">Security</a>
-          <a href="#faq" onClick={onClose} className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100">FAQ</a>
+          <a href="#features" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Features</a>
+          <a href="#ai-technology" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">AI Technology</a>
+          <a href="#architecture" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Architecture</a>
+          <a href="#innovation" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Innovation</a>
+          <a href="#security" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Security</a>
+          <a href="#faq" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">FAQ</a>
           <div className="pt-6 space-y-3">
             <Link href="/auth/signin" className="block w-full text-center py-3 text-gray-700 border border-gray-200 rounded-xl font-medium">
               Sign In
             </Link>
-            <Link href="/auth/signin" className="block w-full text-center py-3 bg-teal-600 text-white rounded-xl font-medium">
+            <Link href="/auth/signin" className="block w-full text-center py-3 bg-violet-600 text-white rounded-xl font-medium">
               Get Started
             </Link>
           </div>
@@ -486,7 +485,7 @@ export default function LandingPage() {
             </Link>
             <Link 
               href="/auth/signin" 
-              className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-600 to-emerald-600 text-white text-sm font-semibold rounded-full hover:shadow-lg hover:shadow-teal-500/30 transition-all duration-300 hover:scale-105"
+              className="group flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-semibold rounded-full hover:shadow-lg hover:shadow-violet-500/30 transition-all duration-300 hover:scale-105"
             >
               <span>Get Started</span>
               <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
@@ -506,36 +505,42 @@ export default function LandingPage() {
       {/* Hero Section - Next-Gen */}
       <section className="pt-32 pb-20 px-6 relative overflow-hidden min-h-[90vh] flex items-center">
         {/* Animated Background */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-teal-50/30" />
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-white to-violet-50/30" />
         <AnimatedGrid />
         <MorphingBlob className="top-20 right-0 w-[600px] h-[600px] opacity-50" />
-        <GradientOrb className="top-40 left-20 w-[400px] h-[400px] bg-gradient-to-br from-teal-400 to-cyan-400" delay={0} />
-        <GradientOrb className="bottom-20 right-40 w-[300px] h-[300px] bg-gradient-to-br from-violet-400 to-purple-400" delay={2000} />
+        <GradientOrb className="top-40 left-20 w-[400px] h-[400px] bg-gradient-to-br from-violet-400 to-purple-400" delay={0} />
+        <GradientOrb className="bottom-20 right-40 w-[300px] h-[300px] bg-gradient-to-br from-fuchsia-400 to-pink-400" delay={2000} />
         <ParticleField />
         
         <div className="max-w-7xl mx-auto relative w-full">
           <div className="max-w-5xl mx-auto text-center">
             {/* Animated Badge */}
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/10 to-emerald-500/10 border border-teal-200/50 text-teal-700 px-5 py-2.5 rounded-full text-sm font-medium mb-8 backdrop-blur-sm animate-pulse">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/10 to-purple-500/10 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-medium mb-8 backdrop-blur-sm animate-pulse">
               <div className="relative">
                 <Sparkles className="w-4 h-4" />
-                <span className="absolute inset-0 animate-ping"><Sparkles className="w-4 h-4 text-teal-400" /></span>
+                <span className="absolute inset-0 animate-ping"><Sparkles className="w-4 h-4 text-violet-400" /></span>
               </div>
-              <span className="bg-gradient-to-r from-teal-700 to-emerald-600 bg-clip-text text-transparent font-semibold">AI-Powered Contract Intelligence</span>
-              <span className="px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full font-bold">NEW</span>
+              <span className="bg-gradient-to-r from-violet-700 to-purple-600 bg-clip-text text-transparent font-semibold">AI-Powered Contract Intelligence</span>
+              <span className="px-2 py-0.5 bg-violet-500 text-white text-xs rounded-full font-bold">NEW</span>
             </div>
 
             {/* Logo - Hero Size */}
-            <div className="flex justify-center mb-2 relative">
-              <div className="absolute inset-0 bg-gradient-to-r from-teal-400/30 via-emerald-400/30 to-cyan-400/30 blur-3xl scale-150" />
-              <Image 
-                src="/logo-transparent.png" 
-                alt="ConTigo" 
-                width={1600} 
-                height={427} 
-                className="h-80 md:h-[400px] lg:h-[500px] xl:h-[550px] w-auto relative z-10 drop-shadow-xl" 
-                priority 
-              />
+            <div className="flex justify-center mb-8 relative">
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-400/30 via-purple-400/30 to-fuchsia-400/30 blur-3xl scale-150" />
+              {/* New Contigo Logo - Stacked Bars */}
+              <div className="relative z-10 flex items-center gap-6">
+                <svg width="120" height="120" viewBox="0 0 48 48" fill="none" className="drop-shadow-2xl">
+                  <g transform="translate(4, 6)">
+                    <rect x="0" y="0" width="40" height="10" rx="5" fill="#7C3AED"/>
+                    <rect x="0" y="14" width="40" height="10" rx="5" fill="#8B5CF6"/>
+                    <rect x="0" y="28" width="40" height="10" rx="5" fill="#A78BFA"/>
+                  </g>
+                </svg>
+                <span className="text-7xl md:text-8xl lg:text-9xl font-bold tracking-tight">
+                  <span className="text-violet-600">con</span>
+                  <span className="text-gray-900">tigo</span>
+                </span>
+              </div>
             </div>
             
             {/* Main Headline with Gradient Animation */}
@@ -543,8 +548,8 @@ export default function LandingPage() {
               AI That Reads Your<br />
               Contracts{' '}
               <span className="relative">
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-emerald-500 to-cyan-500 bg-[length:200%_100%] animate-gradient">For You</span>
-                <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 blur-lg" />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-purple-500 to-fuchsia-500 bg-[length:200%_100%] animate-gradient">For You</span>
+                <span className="absolute -bottom-2 left-0 right-0 h-3 bg-gradient-to-r from-violet-500/20 to-purple-500/20 blur-lg" />
               </span>
             </h1>
             <style jsx>{`
@@ -570,11 +575,11 @@ export default function LandingPage() {
                   <ArrowRight className="w-4 h-4" />
                 </div>
               </ShimmerButton>
-              <a href="#ai-technology" className="group relative text-gray-700 px-8 py-4 rounded-full font-semibold border-2 border-gray-200 hover:border-teal-400 transition-all flex items-center gap-3 bg-white/80 backdrop-blur-sm hover:shadow-lg hover:shadow-teal-500/10">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center group-hover:from-teal-100 group-hover:to-emerald-100 transition-all">
-                  <Play className="w-4 h-4 ml-0.5 text-gray-600 group-hover:text-teal-600 transition-colors" />
+              <a href="#ai-technology" className="group relative text-gray-700 px-8 py-4 rounded-full font-semibold border-2 border-gray-200 hover:border-violet-400 transition-all flex items-center gap-3 bg-white/80 backdrop-blur-sm hover:shadow-lg hover:shadow-violet-500/10">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center group-hover:from-violet-100 group-hover:to-purple-100 transition-all">
+                  <Play className="w-4 h-4 ml-0.5 text-gray-600 group-hover:text-violet-600 transition-colors" />
                 </div>
-                <span className="group-hover:text-teal-700 transition-colors">See It In Action</span>
+                <span className="group-hover:text-violet-700 transition-colors">See It In Action</span>
               </a>
             </div>
 
@@ -582,11 +587,11 @@ export default function LandingPage() {
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
               {[
                 { icon: <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />, text: '99.9% Uptime', color: 'text-green-600' },
-                { icon: <Shield className="w-4 h-4" />, text: 'SOC 2 Ready', color: 'text-teal-600' },
-                { icon: <Lock className="w-4 h-4" />, text: '256-bit Encryption', color: 'text-teal-600' },
-                { icon: <CheckCircle2 className="w-4 h-4" />, text: 'GDPR Compliant', color: 'text-teal-600' },
+                { icon: <Shield className="w-4 h-4" />, text: 'SOC 2 Ready', color: 'text-violet-600' },
+                { icon: <Lock className="w-4 h-4" />, text: '256-bit Encryption', color: 'text-violet-600' },
+                { icon: <CheckCircle2 className="w-4 h-4" />, text: 'GDPR Compliant', color: 'text-violet-600' },
               ].map((badge, i) => (
-                <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-gray-100 hover:border-teal-200 hover:bg-white transition-all cursor-default group">
+                <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/60 backdrop-blur-sm border border-gray-100 hover:border-violet-200 hover:bg-white transition-all cursor-default group">
                   <span className={`${badge.color} group-hover:scale-110 transition-transform`}>{badge.icon}</span>
                   <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors font-medium">{badge.text}</span>
                 </div>
@@ -624,26 +629,26 @@ export default function LandingPage() {
         
         <div className="max-w-6xl mx-auto relative">
           <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 text-teal-400 px-5 py-2.5 rounded-full text-sm font-medium mb-6 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-400 px-5 py-2.5 rounded-full text-sm font-medium mb-6 backdrop-blur-sm">
               <Wand2 className="w-4 h-4" />
               How It Works
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
             </div>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">From Upload to <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400">Insights</span></h2>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 text-white">From Upload to <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-purple-400">Insights</span></h2>
             <p className="text-gray-400 text-lg max-w-2xl mx-auto">See how ConTigo transforms your contract management in seconds, not hours</p>
           </div>
           
           {/* 3D Step Cards */}
           <div className="grid md:grid-cols-3 gap-8 mb-20">
             {[
-              { step: '01', icon: FileText, title: 'Upload Your Contracts', desc: 'Drag & drop PDFs, Word docs, or scans. Our OCR handles any format—even handwritten notes.', stat: '20+ formats', gradient: 'from-blue-500 to-cyan-500' },
-              { step: '02', icon: Brain, title: 'AI Analyzes Everything', desc: 'In under 3 seconds, our AI extracts parties, dates, values, obligations, and flags risks.', stat: '<3 seconds', gradient: 'from-teal-500 to-emerald-500' },
+              { step: '01', icon: FileText, title: 'Upload Your Contracts', desc: 'Drag & drop PDFs, Word docs, or scans. Our OCR handles any format—even handwritten notes.', stat: '20+ formats', gradient: 'from-violet-500 to-purple-500' },
+              { step: '02', icon: Brain, title: 'AI Analyzes Everything', desc: 'In under 3 seconds, our AI extracts parties, dates, values, obligations, and flags risks.', stat: '<3 seconds', gradient: 'from-violet-500 to-purple-500' },
               { step: '03', icon: Sparkles, title: 'Get Actionable Insights', desc: 'Search in natural language, set renewal alerts, and let AI answer questions instantly.', stat: '99% accuracy', gradient: 'from-violet-500 to-purple-500' },
             ].map((item, i) => (
               <TiltCard key={i}>
                 <div className="relative group h-full">
                   {/* Step Number Background */}
-                  <div className="absolute -top-6 -left-4 text-[120px] font-black text-white/[0.03] group-hover:text-teal-500/10 transition-all duration-500 select-none">{item.step}</div>
+                  <div className="absolute -top-6 -left-4 text-[120px] font-black text-white/[0.03] group-hover:text-violet-500/10 transition-all duration-500 select-none">{item.step}</div>
                   
                   {/* Card */}
                   <div className="relative h-full">
@@ -674,7 +679,7 @@ export default function LandingPage() {
                   {i < 2 && (
                     <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-0.5">
                       <div className="w-full h-full bg-gradient-to-r from-white/20 to-transparent" />
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-teal-500 animate-pulse" />
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
                     </div>
                   )}
                 </div>
@@ -691,10 +696,10 @@ export default function LandingPage() {
               { value: <AnimatedCounter end={50} suffix="+" />, label: 'Clause Types', icon: FileText },
             ].map((stat, i) => (
               <div key={i} className="group relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
-                <div className="relative text-center p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/10 hover:border-teal-500/30 transition-all duration-300 group-hover:bg-white/[0.06]">
-                  <stat.icon className="w-5 h-5 text-teal-500 mx-auto mb-3 opacity-50 group-hover:opacity-100 transition-opacity" />
-                  <div className="text-4xl md:text-5xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400">
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
+                <div className="relative text-center p-6 rounded-2xl bg-white/[0.03] backdrop-blur-xl border border-white/10 hover:border-violet-500/30 transition-all duration-300 group-hover:bg-white/[0.06]">
+                  <stat.icon className="w-5 h-5 text-violet-500 mx-auto mb-3 opacity-50 group-hover:opacity-100 transition-opacity" />
+                  <div className="text-4xl md:text-5xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-purple-400">
                     {stat.value}
                   </div>
                   <div className="text-gray-500 text-sm font-medium group-hover:text-gray-300 transition-colors">{stat.label}</div>
@@ -708,19 +713,19 @@ export default function LandingPage() {
       {/* Features Section - Enhanced */}
       <section id="features" className="py-32 px-6 bg-gradient-to-b from-white via-gray-50/50 to-white relative overflow-hidden">
         {/* Background Decoration */}
-        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-teal-100/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-gradient-to-br from-violet-100/40 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-gradient-to-br from-violet-100/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-20">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 text-teal-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
               <Layers className="w-4 h-4" />
               What AI Extracts
-              <span className="px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full">AUTO</span>
+              <span className="px-2 py-0.5 bg-violet-500 text-white text-xs rounded-full">AUTO</span>
             </div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
               18+ Artifact Types,{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Automatically</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Automatically</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto font-light leading-relaxed">
               Every contract is analyzed and enriched with structured data you can search, filter, and act on.
@@ -728,11 +733,11 @@ export default function LandingPage() {
           </div>
           
           {/* AI Extraction Showcase - Interactive */}
-          <GlowCard className="mb-16" glowColor="teal">
+          <GlowCard className="mb-16" glowColor="violet">
             <div className="p-8 md:p-12">
               <div className="grid md:grid-cols-2 gap-12 items-center">
                 <div>
-                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">What our AI extracts from <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">every contract</span>:</h3>
+                  <h3 className="text-2xl md:text-3xl font-bold text-gray-900 mb-8">What our AI extracts from <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">every contract</span>:</h3>
                   <div className="grid grid-cols-2 gap-4">
                     {[
                       'Parties & Contacts',
@@ -749,10 +754,10 @@ export default function LandingPage() {
                       'Negotiation Points',
                     ].map((item, i) => (
                       <div key={i} className="flex items-center gap-3 text-sm group cursor-default">
-                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-110 group-hover:shadow-teal-500/30 transition-all">
+                        <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center flex-shrink-0 shadow-sm group-hover:scale-110 group-hover:shadow-violet-500/30 transition-all">
                           <Check className="w-3.5 h-3.5 text-white" />
                         </div>
-                        <span className="text-gray-700 group-hover:text-teal-700 transition-colors font-medium">{item}</span>
+                        <span className="text-gray-700 group-hover:text-violet-700 transition-colors font-medium">{item}</span>
                       </div>
                     ))}
                   </div>
@@ -760,7 +765,7 @@ export default function LandingPage() {
                 
                 {/* Code Preview with Typing Effect Style */}
                 <div className="relative group">
-                  <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-3xl opacity-20 blur-lg group-hover:opacity-40 transition-opacity" />
+                  <div className="absolute -inset-2 bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500 rounded-3xl opacity-20 blur-lg group-hover:opacity-40 transition-opacity" />
                   <div className="relative bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 rounded-2xl overflow-hidden shadow-2xl">
                     {/* Window Header */}
                     <div className="flex items-center gap-2 px-4 py-3 bg-gray-800/50 border-b border-gray-700/50">
@@ -774,13 +779,13 @@ export default function LandingPage() {
                     <div className="p-6">
                       <div className="text-sm font-mono leading-loose">
                         <div className="text-gray-500">{'{'}</div>
-                        <div className="pl-4"><span className="text-purple-400">&quot;parties&quot;</span><span className="text-gray-500">:</span> <span className="text-emerald-400">[&quot;Acme Corp&quot;, &quot;TechStart Inc&quot;]</span><span className="text-gray-500">,</span></div>
+                        <div className="pl-4"><span className="text-purple-400">&quot;parties&quot;</span><span className="text-gray-500">:</span> <span className="text-purple-400">[&quot;Acme Corp&quot;, &quot;TechStart Inc&quot;]</span><span className="text-gray-500">,</span></div>
                         <div className="pl-4"><span className="text-purple-400">&quot;contractValue&quot;</span><span className="text-gray-500">:</span> <span className="text-amber-400">&quot;$250,000&quot;</span><span className="text-gray-500">,</span></div>
-                        <div className="pl-4"><span className="text-purple-400">&quot;startDate&quot;</span><span className="text-gray-500">:</span> <span className="text-cyan-400">&quot;2024-01-15&quot;</span><span className="text-gray-500">,</span></div>
-                        <div className="pl-4"><span className="text-purple-400">&quot;endDate&quot;</span><span className="text-gray-500">:</span> <span className="text-cyan-400">&quot;2025-01-14&quot;</span><span className="text-gray-500">,</span></div>
-                        <div className="pl-4"><span className="text-purple-400">&quot;autoRenewal&quot;</span><span className="text-gray-500">:</span> <span className="text-teal-400">true</span><span className="text-gray-500">,</span></div>
+                        <div className="pl-4"><span className="text-purple-400">&quot;startDate&quot;</span><span className="text-gray-500">:</span> <span className="text-purple-400">&quot;2024-01-15&quot;</span><span className="text-gray-500">,</span></div>
+                        <div className="pl-4"><span className="text-purple-400">&quot;endDate&quot;</span><span className="text-gray-500">:</span> <span className="text-purple-400">&quot;2025-01-14&quot;</span><span className="text-gray-500">,</span></div>
+                        <div className="pl-4"><span className="text-purple-400">&quot;autoRenewal&quot;</span><span className="text-gray-500">:</span> <span className="text-violet-400">true</span><span className="text-gray-500">,</span></div>
                         <div className="pl-4"><span className="text-purple-400">&quot;riskScore&quot;</span><span className="text-gray-500">:</span> <span className="text-orange-400">72</span><span className="text-gray-500">,</span></div>
-                        <div className="pl-4"><span className="text-purple-400">&quot;obligations&quot;</span><span className="text-gray-500">:</span> <span className="text-teal-400">12</span><span className="text-gray-500">,</span></div>
+                        <div className="pl-4"><span className="text-purple-400">&quot;obligations&quot;</span><span className="text-gray-500">:</span> <span className="text-violet-400">12</span><span className="text-gray-500">,</span></div>
                         <div className="pl-4"><span className="text-purple-400">&quot;missingClauses&quot;</span><span className="text-gray-500">:</span> <span className="text-rose-400">[&quot;liability_cap&quot;]</span></div>
                         <div className="text-gray-500">{'}'}</div>
                       </div>
@@ -793,11 +798,11 @@ export default function LandingPage() {
           
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             <FeatureCard icon={FileText} title="AI-Powered Analysis" description="Extract key terms, identify risks, and get intelligent insights automatically." features={['Auto-extract dates & terms', 'Risk identification', 'Smart suggestions']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
-            <FeatureCard icon={Shield} title="Enterprise Security" description="Bank-grade encryption and comprehensive audit logging for peace of mind." features={['End-to-end encryption', 'Role-based access', 'Complete audit trails']} gradient="bg-gradient-to-br from-teal-500 to-emerald-600" />
+            <FeatureCard icon={Shield} title="Enterprise Security" description="Bank-grade encryption and comprehensive audit logging for peace of mind." features={['End-to-end encryption', 'Role-based access', 'Complete audit trails']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
             <FeatureCard icon={Zap} title="Workflow Automation" description="Automate approvals, notifications, and renewals to eliminate delays." features={['Automated approvals', 'Smart notifications', 'Renewal reminders']} gradient="bg-gradient-to-br from-amber-500 to-orange-600" />
-            <FeatureCard icon={Users} title="Team Collaboration" description="Real-time editing, comments, and version control for your team." features={['Real-time co-editing', 'In-line comments', 'Version history']} gradient="bg-gradient-to-br from-blue-500 to-indigo-600" />
+            <FeatureCard icon={Users} title="Team Collaboration" description="Real-time editing, comments, and version control for your team." features={['Real-time co-editing', 'In-line comments', 'Version history']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
             <FeatureCard icon={Search} title="Semantic Search" description="Find any contract, clause, or term instantly with AI-powered search." features={['Natural language queries', 'Cross-contract search', 'Similar clause finder']} gradient="bg-gradient-to-br from-rose-500 to-pink-600" />
-            <FeatureCard icon={BarChart3} title="Analytics & Reports" description="Get actionable insights with dashboards and custom reports." features={['Contract analytics', 'Custom dashboards', 'Export options']} gradient="bg-gradient-to-br from-cyan-500 to-teal-600" />
+            <FeatureCard icon={BarChart3} title="Analytics & Reports" description="Get actionable insights with dashboards and custom reports." features={['Contract analytics', 'Custom dashboards', 'Export options']} gradient="bg-gradient-to-br from-purple-500 to-violet-600" />
           </div>
         </div>
       </section>
@@ -805,7 +810,7 @@ export default function LandingPage() {
       {/* AI Technology Section - Enhanced */}
       <section id="ai-technology" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/40 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-teal-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-violet-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-20">
@@ -862,7 +867,7 @@ export default function LandingPage() {
 
             {/* Right: AI Capabilities Visual - Enhanced */}
             <div className="relative group">
-              <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-teal-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
               <div className="relative bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 rounded-3xl p-8 text-white sticky top-24 overflow-hidden">
                 {/* Animated Background Pattern */}
                 <div className="absolute inset-0 opacity-5">
@@ -888,14 +893,14 @@ export default function LandingPage() {
 
                   <div className="space-y-4 mb-8">
                     {[
-                      { label: 'Entity Extraction', value: 99.2, color: 'from-teal-500 to-emerald-400' },
+                      { label: 'Entity Extraction', value: 99.2, color: 'from-violet-500 to-purple-400' },
                       { label: 'Clause Classification', value: 98.7, color: 'from-violet-500 to-purple-400' },
                       { label: 'Risk Detection', value: 97.5, color: 'from-amber-500 to-orange-400' },
                     ].map((item, i) => (
                       <div key={i} className="bg-white/5 backdrop-blur rounded-xl p-4 border border-white/10 hover:bg-white/10 transition-colors">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-sm text-gray-300">{item.label}</span>
-                          <span className="text-sm font-bold text-teal-400">{item.value}%</span>
+                          <span className="text-sm font-bold text-violet-400">{item.value}%</span>
                         </div>
                         <div className="h-2 bg-gray-700/50 rounded-full overflow-hidden">
                           <div 
@@ -914,9 +919,9 @@ export default function LandingPage() {
                       { value: '<3s', label: 'Avg. Analysis', icon: Zap },
                       { value: '10M+', label: 'Docs Trained', icon: Database },
                     ].map((stat, i) => (
-                      <div key={i} className="bg-white/5 backdrop-blur rounded-xl p-4 text-center border border-white/10 hover:bg-white/10 hover:border-teal-500/30 transition-all group/stat">
-                        <stat.icon className="w-4 h-4 text-teal-500 mx-auto mb-2 opacity-50 group-hover/stat:opacity-100 transition-opacity" />
-                        <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-emerald-400 mb-1">{stat.value}</div>
+                      <div key={i} className="bg-white/5 backdrop-blur rounded-xl p-4 text-center border border-white/10 hover:bg-white/10 hover:border-violet-500/30 transition-all group/stat">
+                        <stat.icon className="w-4 h-4 text-violet-500 mx-auto mb-2 opacity-50 group-hover/stat:opacity-100 transition-opacity" />
+                        <div className="text-2xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-violet-400 to-purple-400 mb-1">{stat.value}</div>
                         <div className="text-xs text-gray-500">{stat.label}</div>
                       </div>
                     ))}
@@ -932,7 +937,7 @@ export default function LandingPage() {
       <section id="architecture" className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
+            <div className="inline-flex items-center gap-2 bg-violet-50 border border-violet-200 text-violet-700 px-4 py-2 rounded-full text-sm font-medium mb-6">
               <CircuitBoard className="w-4 h-4" />
               How It Works
             </div>
@@ -948,9 +953,9 @@ export default function LandingPage() {
           <div className="bg-white rounded-3xl border border-gray-200 p-8 mb-12">
             <div className="grid md:grid-cols-5 gap-6">
               {[
-                { step: 1, title: 'Upload', desc: 'Drop any document format', icon: Upload, color: 'bg-blue-500' },
+                { step: 1, title: 'Upload', desc: 'Drop any document format', icon: Upload, color: 'bg-violet-500' },
                 { step: 2, title: 'Extract', desc: 'Advanced OCR & parsing', icon: Scan, color: 'bg-violet-500' },
-                { step: 3, title: 'Analyze', desc: 'AI-powered insights', icon: Brain, color: 'bg-teal-500' },
+                { step: 3, title: 'Analyze', desc: 'AI-powered insights', icon: Brain, color: 'bg-violet-500' },
                 { step: 4, title: 'Validate', desc: 'Quality assurance', icon: ShieldCheck, color: 'bg-orange-500' },
                 { step: 5, title: 'Ready', desc: 'Actionable results', icon: CheckCircle, color: 'bg-green-500' },
               ].map((item, i) => (
@@ -991,7 +996,7 @@ export default function LandingPage() {
               },
             ].map((item, i) => (
               <div key={i} className="bg-white p-8 rounded-3xl border border-gray-200 hover:shadow-xl transition-all">
-                <div className="w-14 h-14 bg-gradient-to-br from-teal-500 to-emerald-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
+                <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl flex items-center justify-center mb-6 shadow-lg">
                   <item.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">{item.title}</h3>
@@ -999,7 +1004,7 @@ export default function LandingPage() {
                 <ul className="space-y-2">
                   {item.features.map((f, j) => (
                     <li key={j} className="flex items-center gap-2 text-sm text-gray-500">
-                      <Check className="w-4 h-4 text-teal-500" />
+                      <Check className="w-4 h-4 text-violet-500" />
                       {f}
                     </li>
                   ))}
@@ -1011,21 +1016,21 @@ export default function LandingPage() {
       </section>
 
       {/* AI Chatbot Demo Section - Enhanced */}
-      <section className="py-32 px-6 bg-gradient-to-b from-white via-teal-50/20 to-white relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-teal-200/40 to-transparent rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-emerald-200/30 to-transparent rounded-full blur-3xl" />
+      <section className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/20 to-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-gradient-to-br from-violet-200/40 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-gradient-to-tl from-purple-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-6xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 text-teal-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
                 <MessageSquare className="w-4 h-4" />
                 AI Chatbot
-                <span className="px-2 py-0.5 bg-teal-500 text-white text-xs rounded-full">SMART</span>
+                <span className="px-2 py-0.5 bg-violet-500 text-white text-xs rounded-full">SMART</span>
               </div>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
                 Ask Anything About{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Your Contracts</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Your Contracts</span>
               </h2>
               <p className="text-xl text-gray-600 mb-8 font-light leading-relaxed">
                 Our AI chatbot understands natural language. Ask questions, get instant answers with source citations, and take action—all through conversation.
@@ -1040,7 +1045,7 @@ export default function LandingPage() {
                     '"Find all NDAs with auto-renewal"',
                     '"Summarize the risk factors"',
                   ].map((q, i) => (
-                    <span key={i} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-full text-sm hover:border-teal-300 hover:bg-teal-50 transition-all cursor-pointer shadow-sm">
+                    <span key={i} className="px-4 py-2 bg-white border border-gray-200 text-gray-700 rounded-full text-sm hover:border-violet-300 hover:bg-violet-50 transition-all cursor-pointer shadow-sm">
                       {q}
                     </span>
                   ))}
@@ -1050,21 +1055,21 @@ export default function LandingPage() {
             
             {/* Chat Demo - Enhanced */}
             <div className="relative group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
+              <div className="absolute -inset-2 bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500 rounded-[2rem] opacity-30 blur-xl group-hover:opacity-50 transition-opacity duration-500" />
               <div className="relative bg-white rounded-3xl border border-gray-200 shadow-2xl overflow-hidden">
                 {/* Chat Header */}
-                <div className="bg-gradient-to-r from-teal-600 via-teal-500 to-emerald-600 p-5">
+                <div className="bg-gradient-to-r from-violet-600 via-violet-500 to-purple-600 p-5">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="relative">
                         <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
                           <Sparkles className="w-6 h-6 text-white" />
                         </div>
-                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 border-2 border-teal-600 rounded-full" />
+                        <span className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-green-400 border-2 border-violet-600 rounded-full" />
                       </div>
                       <div>
                         <div className="font-bold text-white text-lg">ConTigo AI</div>
-                        <div className="text-teal-100 text-sm flex items-center gap-1">
+                        <div className="text-violet-100 text-sm flex items-center gap-1">
                           <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
                           Online • Instant responses
                         </div>
@@ -1082,7 +1087,7 @@ export default function LandingPage() {
                 <div className="p-6 space-y-4 bg-gradient-to-b from-gray-50 to-white min-h-[320px]">
                   {/* User message */}
                   <div className="flex justify-end">
-                    <div className="bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-5 py-3 rounded-2xl rounded-br-md max-w-[80%] shadow-lg">
+                    <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white px-5 py-3 rounded-2xl rounded-br-md max-w-[80%] shadow-lg">
                       Show me all contracts expiring in the next 30 days
                     </div>
                   </div>
@@ -1090,7 +1095,7 @@ export default function LandingPage() {
                   {/* AI response */}
                   <div className="flex justify-start">
                     <div className="bg-white border border-gray-100 px-5 py-4 rounded-2xl rounded-bl-md max-w-[85%] shadow-lg">
-                      <p className="text-gray-800 mb-4">I found <span className="font-bold text-teal-600">3 contracts</span> expiring in the next 30 days:</p>
+                      <p className="text-gray-800 mb-4">I found <span className="font-bold text-violet-600">3 contracts</span> expiring in the next 30 days:</p>
                       <div className="space-y-2 text-sm">
                         {[
                           { name: 'Acme Corp - MSA', date: 'Jan 28', urgent: false },
@@ -1100,14 +1105,14 @@ export default function LandingPage() {
                           <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors cursor-pointer group/item">
                             <div className="flex items-center gap-2">
                               <FileText className="w-4 h-4 text-gray-400" />
-                              <span className="text-gray-700 group-hover/item:text-teal-700 transition-colors">{contract.name}</span>
+                              <span className="text-gray-700 group-hover/item:text-violet-700 transition-colors">{contract.name}</span>
                             </div>
                             <span className={`font-semibold ${contract.urgent ? 'text-red-600' : 'text-orange-600'}`}>{contract.date}</span>
                           </div>
                         ))}
                       </div>
                       <p className="text-gray-500 text-sm mt-4 flex items-center gap-2">
-                        <ArrowRight className="w-4 h-4 text-teal-500" />
+                        <ArrowRight className="w-4 h-4 text-violet-500" />
                         Would you like me to start the renewal process?
                       </p>
                     </div>
@@ -1120,10 +1125,10 @@ export default function LandingPage() {
                     <input 
                       type="text" 
                       placeholder="Ask about your contracts..." 
-                      className="flex-1 px-5 py-3.5 bg-gray-100 rounded-xl border-0 focus:ring-2 focus:ring-teal-500 outline-none text-gray-700 placeholder-gray-400"
+                      className="flex-1 px-5 py-3.5 bg-gray-100 rounded-xl border-0 focus:ring-2 focus:ring-violet-500 outline-none text-gray-700 placeholder-gray-400"
                       disabled
                     />
-                    <button className="w-12 h-12 bg-gradient-to-r from-teal-600 to-emerald-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-teal-500/30 hover:shadow-xl hover:shadow-teal-500/40 transition-all hover:scale-105">
+                    <button className="w-12 h-12 bg-gradient-to-r from-violet-600 to-purple-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all hover:scale-105">
                       <ArrowRight className="w-5 h-5" />
                     </button>
                   </div>
@@ -1137,7 +1142,7 @@ export default function LandingPage() {
       {/* Why We're Innovative Section - Enhanced */}
       <section id="innovation" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
         <div className="absolute bottom-0 left-0 w-[700px] h-[700px] bg-gradient-to-tr from-violet-200/40 to-transparent rounded-full blur-3xl" />
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-teal-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-violet-200/30 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-20">
@@ -1202,7 +1207,7 @@ export default function LandingPage() {
 
           {/* Comparison - Enhanced */}
           <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-teal-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
+            <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-violet-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
             <div className="relative bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-gray-100/50 overflow-hidden">
               {/* Background Pattern */}
               <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #6b7280 1px, transparent 0)', backgroundSize: '24px 24px' }} />
@@ -1261,18 +1266,18 @@ export default function LandingPage() {
                   
                   {/* ConTigo - Right Side */}
                   <div className="relative group/card">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-teal-500 to-emerald-500 rounded-2xl opacity-30 blur-sm group-hover/card:opacity-50 transition-opacity" />
-                    <div className="relative p-8 border-2 border-teal-300/50 rounded-2xl bg-gradient-to-br from-white to-teal-50/50 backdrop-blur-sm shadow-lg">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl opacity-30 blur-sm group-hover/card:opacity-50 transition-opacity" />
+                    <div className="relative p-8 border-2 border-violet-300/50 rounded-2xl bg-gradient-to-br from-white to-violet-50/50 backdrop-blur-sm shadow-lg">
                       <div className="flex items-center gap-3 mb-6">
                         <div className="relative">
-                          <div className="absolute inset-0 bg-teal-500 rounded-xl blur-lg opacity-40" />
-                          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center">
+                          <div className="absolute inset-0 bg-violet-500 rounded-xl blur-lg opacity-40" />
+                          <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
                             <Check className="w-6 h-6 text-white" />
                           </div>
                         </div>
                         <div>
                           <h4 className="text-xl font-bold text-gray-900">ConTigo</h4>
-                          <span className="text-xs text-teal-600 font-semibold uppercase tracking-wide flex items-center gap-1">
+                          <span className="text-xs text-violet-600 font-semibold uppercase tracking-wide flex items-center gap-1">
                             <Sparkles className="w-3 h-3" /> AI-Powered
                           </span>
                         </div>
@@ -1287,12 +1292,12 @@ export default function LandingPage() {
                           { text: 'Full API access included', detail: 'Integrate with any system seamlessly' },
                         ].map((item, i) => (
                           <li key={i} className="flex items-start gap-3 group/item">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-teal-500 to-emerald-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md group-hover/item:scale-110 transition-transform">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md group-hover/item:scale-110 transition-transform">
                               <Check className="w-3.5 h-3.5 text-white" />
                             </div>
                             <div>
                               <span className="text-gray-900 font-medium">{item.text}</span>
-                              <span className="text-teal-600 text-sm block font-medium">{item.detail}</span>
+                              <span className="text-violet-600 text-sm block font-medium">{item.detail}</span>
                             </div>
                           </li>
                         ))}
@@ -1308,7 +1313,7 @@ export default function LandingPage() {
           <div className="mt-12 text-center">
             <Link 
               href="/auth/signin" 
-              className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl hover:shadow-teal-500/25 transition-all group"
+              className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white px-8 py-4 rounded-full font-semibold hover:shadow-xl hover:shadow-violet-500/25 transition-all group"
             >
               Get Started Today
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -1322,22 +1327,22 @@ export default function LandingPage() {
       <section id="security" className="py-32 px-6 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 text-white relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-teal-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
-          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-emerald-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
+          <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-violet-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
           <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
         </div>
         
         <div className="max-w-7xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 text-teal-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
                 <ShieldCheck className="w-4 h-4" />
                 Enterprise Security
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               </div>
               <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-8 tracking-tight leading-tight text-white">
                 Your Data is{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400">Protected</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-purple-400">Protected</span>
               </h2>
               <p className="text-xl text-gray-300 mb-12 leading-relaxed font-light">
                 Security isn&apos;t an afterthought—it&apos;s built into every layer of ConTigo.
@@ -1345,12 +1350,12 @@ export default function LandingPage() {
               
               <div className="space-y-4">
                 {[
-                  { icon: Lock, title: 'AES-256 Encryption', desc: 'Military-grade encryption for all data at rest and in transit', color: 'from-teal-500 to-emerald-500' },
-                  { icon: Shield, title: 'SOC 2 Type II', desc: 'Rigorous security compliance and regular audits', color: 'from-blue-500 to-cyan-500' },
+                  { icon: Lock, title: 'AES-256 Encryption', desc: 'Military-grade encryption for all data at rest and in transit', color: 'from-violet-500 to-purple-500' },
+                  { icon: Shield, title: 'SOC 2 Type II', desc: 'Rigorous security compliance and regular audits', color: 'from-violet-500 to-purple-500' },
                   { icon: Users, title: 'Multi-Factor Auth', desc: 'MFA, SSO, and advanced access controls', color: 'from-violet-500 to-purple-500' },
                   { icon: FileCheck, title: 'Immutable Audit Logs', desc: 'Complete, tamper-proof activity tracking', color: 'from-amber-500 to-orange-500' },
                 ].map((item, i) => (
-                  <div key={i} className="group flex items-start gap-4 p-5 rounded-2xl bg-white/[0.03] backdrop-blur border border-white/10 hover:bg-white/[0.06] hover:border-teal-500/30 transition-all duration-300">
+                  <div key={i} className="group flex items-start gap-4 p-5 rounded-2xl bg-white/[0.03] backdrop-blur border border-white/10 hover:bg-white/[0.06] hover:border-violet-500/30 transition-all duration-300">
                     <div className="relative">
                       <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-xl blur-lg opacity-40 group-hover:opacity-60 transition-opacity`} />
                       <div className={`relative w-12 h-12 bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -1358,7 +1363,7 @@ export default function LandingPage() {
                       </div>
                     </div>
                     <div>
-                      <h4 className="font-bold text-lg mb-1 text-white group-hover:text-teal-300 transition-colors">{item.title}</h4>
+                      <h4 className="font-bold text-lg mb-1 text-white group-hover:text-violet-300 transition-colors">{item.title}</h4>
                       <p className="text-gray-400 group-hover:text-gray-300 transition-colors">{item.desc}</p>
                     </div>
                   </div>
@@ -1368,14 +1373,14 @@ export default function LandingPage() {
             
             {/* Security Dashboard Visual */}
             <div className="relative group">
-              <div className="absolute -inset-2 bg-gradient-to-r from-teal-500 via-emerald-500 to-cyan-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
+              <div className="absolute -inset-2 bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500 rounded-[2rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity duration-500" />
               <div className="relative bg-gradient-to-br from-gray-800/80 to-gray-900/80 backdrop-blur-xl p-8 rounded-3xl border border-white/10 shadow-2xl">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-3">
                     <div className="relative">
                       <div className="absolute inset-0 bg-green-500 rounded-xl blur-lg opacity-50" />
-                      <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-500 flex items-center justify-center">
+                      <div className="relative w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
                         <Shield className="w-6 h-6 text-white" />
                       </div>
                     </div>
@@ -1404,10 +1409,10 @@ export default function LandingPage() {
                   ].map((item, i) => (
                     <div key={i} className="flex items-center justify-between p-4 bg-white/[0.03] rounded-xl border border-white/5 hover:bg-white/[0.06] transition-colors">
                       <div className="flex items-center gap-3">
-                        <div className={`w-2.5 h-2.5 rounded-full ${item.color === 'green' ? 'bg-green-500' : 'bg-blue-500'} animate-pulse`} />
+                        <div className={`w-2.5 h-2.5 rounded-full ${item.color === 'green' ? 'bg-green-500' : 'bg-violet-500'} animate-pulse`} />
                         <span className="text-gray-300">{item.label}</span>
                       </div>
-                      <span className={`text-sm font-semibold ${item.color === 'green' ? 'text-green-400' : 'text-blue-400'}`}>{item.status}</span>
+                      <span className={`text-sm font-semibold ${item.color === 'green' ? 'text-green-400' : 'text-violet-400'}`}>{item.status}</span>
                     </div>
                   ))}
                 </div>
@@ -1415,15 +1420,15 @@ export default function LandingPage() {
                 {/* Bottom Stats */}
                 <div className="mt-6 pt-6 border-t border-white/10 grid grid-cols-3 gap-4 text-center">
                   <div>
-                    <div className="text-xl font-bold text-teal-400">99.99%</div>
+                    <div className="text-xl font-bold text-violet-400">99.99%</div>
                     <div className="text-xs text-gray-500">Uptime</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-teal-400">0</div>
+                    <div className="text-xl font-bold text-violet-400">0</div>
                     <div className="text-xs text-gray-500">Breaches</div>
                   </div>
                   <div>
-                    <div className="text-xl font-bold text-teal-400">24/7</div>
+                    <div className="text-xl font-bold text-violet-400">24/7</div>
                     <div className="text-xs text-gray-500">Monitoring</div>
                   </div>
                 </div>
@@ -1474,7 +1479,7 @@ export default function LandingPage() {
 
       {/* Support Section - Enhanced */}
       <section id="support" className="py-32 px-6 bg-gradient-to-b from-gray-50 via-rose-50/30 to-gray-50 relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-blue-200/30 rounded-full blur-3xl" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-purple-200/30 rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-16">
@@ -1495,8 +1500,8 @@ export default function LandingPage() {
           <div className="grid md:grid-cols-3 gap-8">
             {[
               { icon: BookOpen, title: 'Documentation', desc: 'Comprehensive guides and API docs', link: 'View Docs', gradient: 'from-violet-500 to-purple-600' },
-              { icon: HelpCircle, title: 'Help Center', desc: 'Tutorials and best practices', link: 'Visit Help Center', gradient: 'from-blue-500 to-indigo-600' },
-              { icon: MessageSquare, title: 'Contact Support', desc: 'Get help from our team', link: 'Contact Us', gradient: 'from-teal-500 to-emerald-600' },
+              { icon: HelpCircle, title: 'Help Center', desc: 'Tutorials and best practices', link: 'Visit Help Center', gradient: 'from-violet-500 to-purple-600' },
+              { icon: MessageSquare, title: 'Contact Support', desc: 'Get help from our team', link: 'Contact Us', gradient: 'from-violet-500 to-purple-600' },
             ].map((item, i) => (
               <div key={i} className="relative group">
                 <div className={`absolute -inset-1 bg-gradient-to-br ${item.gradient} rounded-[2rem] opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500`} />
@@ -1509,7 +1514,7 @@ export default function LandingPage() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors">{item.title}</h3>
                   <p className="text-gray-600 mb-8 text-lg leading-relaxed">{item.desc}</p>
-                  <a href="#" className="inline-flex items-center text-teal-600 font-semibold hover:text-teal-700 text-lg group/link">
+                  <a href="#" className="inline-flex items-center text-violet-600 font-semibold hover:text-violet-700 text-lg group/link">
                     {item.link}
                     <ArrowUpRight className="w-5 h-5 ml-2 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
                   </a>
@@ -1524,32 +1529,32 @@ export default function LandingPage() {
       <section className="py-32 px-6 bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 relative overflow-hidden">
         {/* Animated Background */}
         <div className="absolute inset-0">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-gradient-to-b from-teal-500/20 via-emerald-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1200px] h-[800px] bg-gradient-to-b from-violet-500/20 via-purple-500/10 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
           <div className="absolute bottom-0 right-0 w-[600px] h-[600px] bg-gradient-to-tl from-violet-500/15 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
           <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         </div>
         
         <div className="max-w-4xl mx-auto text-center relative">
-          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-teal-500/20 to-emerald-500/20 border border-teal-500/30 text-teal-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
+          <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-500/20 to-purple-500/20 border border-violet-500/30 text-violet-400 px-5 py-2.5 rounded-full text-sm font-semibold mb-8 backdrop-blur-sm">
             <Rocket className="w-4 h-4" />
             Get Started Today
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-white mb-8 tracking-tight leading-tight">
             Ready to Transform Your{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 via-emerald-400 to-cyan-400">Contract Management</span>?
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-purple-400 to-purple-400">Contract Management</span>?
           </h2>
           <p className="text-xl md:text-2xl text-gray-400 mb-12 max-w-2xl mx-auto font-light leading-relaxed">
             Join forward-thinking teams using ConTigo to streamline their workflows.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/auth/signin" className="group relative">
-              <div className="absolute -inset-1 bg-gradient-to-r from-teal-400 to-emerald-400 rounded-full opacity-60 blur-lg group-hover:opacity-80 transition-opacity" />
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-400 to-purple-400 rounded-full opacity-60 blur-lg group-hover:opacity-80 transition-opacity" />
               <div className="relative bg-white text-gray-900 px-10 py-5 rounded-full font-semibold hover:bg-gray-100 transition-all flex items-center gap-3 text-lg">
                 Get Started
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
-            <a href="mailto:sales@contigo.com" className="text-white px-10 py-5 rounded-full font-semibold border-2 border-white/20 hover:border-teal-500/50 hover:bg-teal-500/10 transition-all backdrop-blur-sm">
+            <a href="mailto:sales@contigo.com" className="text-white px-10 py-5 rounded-full font-semibold border-2 border-white/20 hover:border-violet-500/50 hover:bg-violet-500/10 transition-all backdrop-blur-sm">
               Contact Sales
             </a>
           </div>
@@ -1574,7 +1579,20 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto relative">
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
             <div className="lg:col-span-2">
-              <Image src="/logo-transparent.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
+              {/* Footer Logo */}
+              <div className="flex items-center gap-3 mb-6">
+                <svg width="40" height="40" viewBox="0 0 48 48" fill="none">
+                  <g transform="translate(8, 10)">
+                    <rect x="0" y="0" width="32" height="8" rx="4" fill="white"/>
+                    <rect x="0" y="12" width="32" height="8" rx="4" fill="rgba(255,255,255,0.7)"/>
+                    <rect x="0" y="24" width="32" height="8" rx="4" fill="rgba(255,255,255,0.5)"/>
+                  </g>
+                </svg>
+                <span className="text-2xl font-bold">
+                  <span className="text-violet-400">con</span>
+                  <span className="text-white">tigo</span>
+                </span>
+              </div>
               <p className="text-gray-500 leading-relaxed mb-6 max-w-sm">
                 Enterprise contract management platform built for modern teams. Secure, intelligent, and scalable.
               </p>
@@ -1584,7 +1602,7 @@ export default function LandingPage() {
                   { name: 'linkedin', icon: 'in' },
                   { name: 'github', icon: '◉' },
                 ].map((social) => (
-                  <a key={social.name} href="#" className="w-10 h-10 bg-gray-800/50 border border-gray-700/50 rounded-xl flex items-center justify-center hover:bg-teal-600 hover:border-teal-500 transition-all duration-300 group">
+                  <a key={social.name} href="#" className="w-10 h-10 bg-gray-800/50 border border-gray-700/50 rounded-xl flex items-center justify-center hover:bg-violet-600 hover:border-violet-500 transition-all duration-300 group">
                     <span className="sr-only">{social.name}</span>
                     <span className="text-gray-400 group-hover:text-white transition-colors font-bold text-sm">{social.icon}</span>
                   </a>
@@ -1602,7 +1620,7 @@ export default function LandingPage() {
                 <ul className="space-y-4">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link href={link.href} className="hover:text-teal-400 transition-colors duration-200">{link.label}</Link>
+                      <Link href={link.href} className="hover:text-violet-400 transition-colors duration-200">{link.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -1614,7 +1632,7 @@ export default function LandingPage() {
             <p className="text-gray-500 text-sm">© {new Date().getFullYear()} ConTigo. All rights reserved.</p>
             <div className="flex items-center gap-8 text-sm">
               {['Privacy', 'Terms', 'Cookies', 'GDPR'].map((item) => (
-                <a key={item} href="#" className="hover:text-teal-400 transition-colors duration-200">{item}</a>
+                <a key={item} href="#" className="hover:text-violet-400 transition-colors duration-200">{item}</a>
               ))}
             </div>
           </div>

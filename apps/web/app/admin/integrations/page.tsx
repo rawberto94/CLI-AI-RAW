@@ -57,7 +57,7 @@ const CONNECTION_TYPES = [
     id: 'postgresql',
     name: 'PostgreSQL',
     icon: Database,
-    color: 'bg-blue-500',
+    color: 'bg-violet-500',
     description: 'Connect to PostgreSQL databases',
     fields: ['host', 'port', 'database', 'username', 'password', 'ssl'],
   },
@@ -97,7 +97,7 @@ const CONNECTION_TYPES = [
     id: 'azure_blob',
     name: 'Azure Blob Storage',
     icon: Cloud,
-    color: 'bg-cyan-500',
+    color: 'bg-purple-500',
     description: 'Connect to Azure Blob Storage',
     fields: ['connectionString', 'container'],
   },
@@ -302,13 +302,13 @@ export default function DataConnectionsPage() {
   const selectedTypeConfig = CONNECTION_TYPES.find(t => t.id === selectedType);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                 <Database className="h-6 w-6 text-white" />
               </div>
               Data Connections
@@ -320,7 +320,7 @@ export default function DataConnectionsPage() {
           
           <Button
             onClick={() => setShowNewConnection(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Connection
@@ -328,13 +328,13 @@ export default function DataConnectionsPage() {
         </div>
         
         {/* Info Banner */}
-        <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-l-blue-500">
+        <Card className="border-0 shadow-sm bg-gradient-to-r from-violet-50 to-purple-50 border-l-4 border-l-violet-500">
           <CardContent className="py-4">
             <div className="flex items-start gap-3">
-              <HelpCircle className="h-5 w-5 text-blue-500 mt-0.5" />
+              <HelpCircle className="h-5 w-5 text-violet-500 mt-0.5" />
               <div>
-                <h3 className="font-semibold text-blue-900">How Data Connections Work</h3>
-                <p className="text-sm text-blue-700 mt-1">
+                <h3 className="font-semibold text-violet-900">How Data Connections Work</h3>
+                <p className="text-sm text-violet-700 mt-1">
                   Connect your existing databases or document stores. ConTigo can either <strong>import</strong> contracts 
                   (copy files to ConTigo) or <strong>reference</strong> them (extract data while keeping original files in your system).
                   Reference mode is ideal when you need to maintain files in their original location.
@@ -370,7 +370,7 @@ export default function DataConnectionsPage() {
                         <button
                           key={type.id}
                           onClick={() => setSelectedType(type.id)}
-                          className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-all"
+                          className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-gray-200 hover:border-violet-400 hover:bg-violet-50 transition-all"
                         >
                           <div className={cn("p-3 rounded-xl", type.color)}>
                             <Icon className="h-6 w-6 text-white" />
@@ -615,14 +615,14 @@ export default function DataConnectionsPage() {
                         className={cn(
                           "p-4 rounded-xl border-2 text-left transition-all",
                           syncMode === 'reference'
-                            ? "border-blue-500 bg-blue-50"
+                            ? "border-violet-500 bg-violet-50"
                             : "border-gray-200 hover:border-gray-300"
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "p-2 rounded-lg",
-                            syncMode === 'reference' ? "bg-blue-500" : "bg-gray-200"
+                            syncMode === 'reference' ? "bg-violet-500" : "bg-gray-200"
                           )}>
                             <Link2 className={cn("h-5 w-5", syncMode === 'reference' ? "text-white" : "text-gray-600")} />
                           </div>
@@ -634,7 +634,7 @@ export default function DataConnectionsPage() {
                           </div>
                         </div>
                         {syncMode === 'reference' && (
-                          <div className="mt-3 flex items-center gap-1.5 text-xs text-blue-600">
+                          <div className="mt-3 flex items-center gap-1.5 text-xs text-violet-600">
                             <Check className="h-3.5 w-3.5" />
                             Recommended
                           </div>
@@ -646,14 +646,14 @@ export default function DataConnectionsPage() {
                         className={cn(
                           "p-4 rounded-xl border-2 text-left transition-all",
                           syncMode === 'import'
-                            ? "border-blue-500 bg-blue-50"
+                            ? "border-violet-500 bg-violet-50"
                             : "border-gray-200 hover:border-gray-300"
                         )}
                       >
                         <div className="flex items-center gap-3">
                           <div className={cn(
                             "p-2 rounded-lg",
-                            syncMode === 'import' ? "bg-blue-500" : "bg-gray-200"
+                            syncMode === 'import' ? "bg-violet-500" : "bg-gray-200"
                           )}>
                             <Download className={cn("h-5 w-5", syncMode === 'import' ? "text-white" : "text-gray-600")} />
                           </div>
@@ -690,7 +690,7 @@ export default function DataConnectionsPage() {
                         onClick={() => setAutoSync(!autoSync)}
                         className={cn(
                           "w-12 h-6 rounded-full transition-colors relative",
-                          autoSync ? "bg-blue-600" : "bg-gray-300"
+                          autoSync ? "bg-violet-600" : "bg-gray-300"
                         )}
                       >
                         <div className={cn(
@@ -738,7 +738,7 @@ export default function DataConnectionsPage() {
                       <Button
                         onClick={saveConnection}
                         disabled={isSaving || !formData.name}
-                        className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                        className="bg-gradient-to-r from-violet-600 to-purple-600"
                       >
                         {isSaving ? (
                           <>
@@ -764,7 +764,7 @@ export default function DataConnectionsPage() {
         {isLoading && (
           <Card className="border-0 shadow-md">
             <CardContent className="py-12 text-center">
-              <Loader2 className="h-8 w-8 mx-auto text-blue-500 animate-spin" />
+              <Loader2 className="h-8 w-8 mx-auto text-violet-500 animate-spin" />
               <p className="text-gray-500 mt-3">Loading connections...</p>
             </CardContent>
           </Card>
@@ -786,7 +786,7 @@ export default function DataConnectionsPage() {
               </p>
               <Button
                 onClick={() => setShowNewConnection(true)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                className="bg-gradient-to-r from-violet-600 to-purple-600"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Your First Connection
@@ -821,7 +821,7 @@ export default function DataConnectionsPage() {
                               className={cn(
                                 "text-xs",
                                 connection.status === 'connected' && "bg-green-100 text-green-700",
-                                connection.status === 'syncing' && "bg-blue-100 text-blue-700",
+                                connection.status === 'syncing' && "bg-violet-100 text-violet-700",
                                 connection.status === 'error' && "bg-red-100 text-red-700",
                                 connection.status === 'disconnected' && "bg-gray-100 text-gray-700",
                               )}

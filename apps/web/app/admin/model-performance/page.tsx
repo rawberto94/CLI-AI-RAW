@@ -2,7 +2,6 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -23,13 +22,9 @@ import {
 } from '@/components/ui/select';
 import {
   Cpu,
-  TrendingUp,
-  TrendingDown,
   DollarSign,
-  Clock,
   Target,
   Zap,
-  BarChart3,
   RefreshCw,
   Download,
   ArrowUpRight,
@@ -266,8 +261,8 @@ export default function ModelPerformancePage() {
   const [models] = useState<ModelPerformance[]>(mockModels);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>('30d');
-  const [compareMode, setCompareMode] = useState(false);
-  const [comparedModels, setComparedModels] = useState<string[]>([]);
+  const [_compareMode, _setCompareMode] = useState(false);
+  const [_comparedModels, setComparedModels] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleRefresh = async () => {
@@ -281,7 +276,7 @@ export default function ModelPerformancePage() {
     toast.success('Performance report exported');
   };
 
-  const toggleModelComparison = (modelId: string) => {
+  const _toggleModelComparison = (modelId: string) => {
     setComparedModels(prev => {
       if (prev.includes(modelId)) {
         return prev.filter(id => id !== modelId);
@@ -517,11 +512,11 @@ export default function ModelPerformancePage() {
       )}
 
       {/* Recommendation Card */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+      <Card className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200 dark:border-violet-800">
         <CardContent className="py-4">
           <div className="flex items-start gap-4">
-            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center flex-shrink-0">
+              <Sparkles className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <h3 className="font-medium mb-1">Recommendation</h3>

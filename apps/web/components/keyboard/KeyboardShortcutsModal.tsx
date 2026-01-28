@@ -79,7 +79,7 @@ export function KeyboardShortcutsModal({
               className="bg-white rounded-xl shadow-2xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
             >
               {/* Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-6">
+              <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white p-6">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <Keyboard className="w-6 h-6" />

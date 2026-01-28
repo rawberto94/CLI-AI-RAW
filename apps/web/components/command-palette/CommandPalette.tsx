@@ -341,14 +341,14 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                                 className={cn(
                                   'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
                                   isSelected
-                                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-900 dark:text-blue-100'
+                                    ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-900 dark:text-violet-100'
                                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800'
                                 )}
                               >
                                 <div className={cn(
                                   'p-1.5 rounded-lg',
                                   isSelected
-                                    ? 'bg-blue-100 dark:bg-blue-800 text-blue-600 dark:text-blue-400'
+                                    ? 'bg-violet-100 dark:bg-violet-800 text-violet-600 dark:text-violet-400'
                                     : 'bg-gray-100 dark:bg-gray-800 text-gray-500'
                                 )}>
                                   <command.icon className="h-4 w-4" />
@@ -369,7 +369,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
                                   </kbd>
                                 )}
                                 {isSelected && (
-                                  <ArrowRight className="h-4 w-4 text-blue-500" />
+                                  <ArrowRight className="h-4 w-4 text-violet-500" />
                                 )}
                               </button>
                             );

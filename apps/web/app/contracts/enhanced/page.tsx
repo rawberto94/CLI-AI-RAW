@@ -599,7 +599,7 @@ export default function EnhancedContractsDemo() {
                 <RefreshCw className={cn("h-4 w-4 mr-1.5", isLoading && "animate-spin")} />
                 Refresh
               </Button>
-              <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white h-9">
+              <Button asChild size="sm" className="bg-violet-600 hover:bg-violet-700 text-white h-9">
                 <a href="/upload">
                   <Upload className="h-4 w-4 mr-1.5" />
                   Upload Contract

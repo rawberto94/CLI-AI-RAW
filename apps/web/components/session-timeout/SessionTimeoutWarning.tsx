@@ -322,7 +322,7 @@ export function SessionTimeoutModal({
                     Sign Out
                   </Button>
                   <Button
-                    className="flex-1 gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    className="flex-1 gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
                     onClick={onExtend}
                     disabled={isExtending}
                   >

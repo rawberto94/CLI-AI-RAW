@@ -142,9 +142,9 @@ const ColumnHeader = memo(({ column, sortState, onSort }: ColumnHeaderProps) => 
           <span className="flex-shrink-0">
             {isSorted ? (
               sortState.direction === 'asc' ? (
-                <ChevronUp className="h-4 w-4 text-indigo-600" />
+                <ChevronUp className="h-4 w-4 text-purple-600" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-indigo-600" />
+                <ChevronDown className="h-4 w-4 text-purple-600" />
               )
             ) : (
               <ArrowUpDown className="h-4 w-4 text-slate-400" />
@@ -211,7 +211,7 @@ function TableRowComponent<T>({
       className={cn(
         "group transition-colors",
         isSelected
-          ? "bg-indigo-50 dark:bg-indigo-900/20"
+          ? "bg-purple-50 dark:bg-purple-900/20"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
         onClick && "cursor-pointer"
       )}
@@ -228,7 +228,7 @@ function TableRowComponent<T>({
             className="flex items-center justify-center"
           >
             {isSelected ? (
-              <CheckSquare className="h-5 w-5 text-indigo-600" />
+              <CheckSquare className="h-5 w-5 text-purple-600" />
             ) : (
               <Square className="h-5 w-5 text-slate-400 hover:text-slate-600" />
             )}
@@ -401,7 +401,7 @@ const Pagination = memo(({
                 className={cn(
                   "w-8 h-8 text-sm rounded transition-colors",
                   currentPage === page
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-purple-600 text-white"
                     : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                 )}
               >
@@ -472,7 +472,7 @@ function ToolbarComponent<T>({
             placeholder="Search..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 pr-3 py-2 w-64 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="pl-9 pr-3 py-2 w-64 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
           {searchValue && (
             <button
@@ -493,7 +493,7 @@ function ToolbarComponent<T>({
               exit={{ opacity: 0, x: -10 }}
               className="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700"
             >
-              <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+              <span className="text-sm font-medium text-purple-600 dark:text-indigo-400">
                 {selectedCount} selected
               </span>
               {bulkActions?.map((action) => (
@@ -738,11 +738,11 @@ export function EnhancedDataTable<T>({
                   <th className="w-12 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <button onClick={toggleAll} className="flex items-center justify-center">
                       {isAllSelected ? (
-                        <CheckSquare className="h-5 w-5 text-indigo-600" />
+                        <CheckSquare className="h-5 w-5 text-purple-600" />
                       ) : isIndeterminate ? (
                         <div className="relative">
-                          <Square className="h-5 w-5 text-indigo-600" />
-                          <Minus className="absolute inset-0 h-5 w-5 text-indigo-600" />
+                          <Square className="h-5 w-5 text-purple-600" />
+                          <Minus className="absolute inset-0 h-5 w-5 text-purple-600" />
                         </div>
                       ) : (
                         <Square className="h-5 w-5 text-slate-400" />

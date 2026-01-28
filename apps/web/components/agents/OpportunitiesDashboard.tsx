@@ -72,7 +72,7 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'cost_savings': return 'text-green-600 bg-green-100';
-      case 'consolidation': return 'text-blue-600 bg-blue-100';
+      case 'consolidation': return 'text-violet-600 bg-violet-100';
       case 'renegotiation': return 'text-purple-600 bg-purple-100';
       case 'optimization': return 'text-orange-600 bg-orange-100';
       case 'risk_reduction': return 'text-red-600 bg-red-100';
@@ -120,9 +120,9 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
             <div className="text-xs text-gray-600 mb-1">High Value ($100K+)</div>
             <div className="text-xl font-bold text-green-600">{highValueCount}</div>
           </div>
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-3 bg-violet-50 rounded-lg">
             <div className="text-xs text-gray-600 mb-1">Quick Wins (Low Effort)</div>
-            <div className="text-xl font-bold text-blue-600">
+            <div className="text-xl font-bold text-violet-600">
               {opportunities.filter(o => o.effort === 'low').length}
             </div>
           </div>
@@ -156,7 +156,7 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="p-4 border rounded-lg hover:border-blue-300 transition-all hover:shadow-sm bg-white"
+                  className="p-4 border rounded-lg hover:border-violet-300 transition-all hover:shadow-sm bg-white"
                 >
                   <div className="flex items-start gap-3">
                     <div className={`p-2 rounded-lg ${getTypeColor(opp.type)}`}>

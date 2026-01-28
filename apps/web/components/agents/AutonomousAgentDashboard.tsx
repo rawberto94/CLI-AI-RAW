@@ -155,7 +155,7 @@ interface AgentNotification {
 const StatusBadge: React.FC<{ status: AgentGoal['status'] }> = ({ status }) => {
   const config: Record<AgentGoal['status'], { color: string; label: string }> = {
     pending: { color: 'bg-gray-100 text-gray-800', label: 'Pending' },
-    planning: { color: 'bg-blue-100 text-blue-800', label: 'Planning' },
+    planning: { color: 'bg-violet-100 text-violet-800', label: 'Planning' },
     executing: { color: 'bg-yellow-100 text-yellow-800', label: 'Executing' },
     awaiting_approval: { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Approval' },
     completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
@@ -177,7 +177,7 @@ const PriorityBadge: React.FC<{ priority: AgentGoal['priority'] }> = ({ priority
   const config: Record<AgentGoal['priority'], { color: string; icon: React.ReactNode }> = {
     critical: { color: 'bg-red-500 text-white', icon: <Zap className="h-3 w-3" /> },
     high: { color: 'bg-orange-500 text-white', icon: <AlertTriangle className="h-3 w-3" /> },
-    medium: { color: 'bg-blue-500 text-white', icon: <Target className="h-3 w-3" /> },
+    medium: { color: 'bg-violet-500 text-white', icon: <Target className="h-3 w-3" /> },
     low: { color: 'bg-gray-500 text-white', icon: <Clock className="h-3 w-3" /> },
     background: { color: 'bg-gray-300 text-gray-700 dark:text-slate-300', icon: <RefreshCw className="h-3 w-3" /> },
   };
@@ -197,7 +197,7 @@ const GoalTypeIcon: React.FC<{ type: string }> = ({ type }) => {
     contract_expiry_review: <Calendar className="h-5 w-5 text-orange-500" />,
     anomaly_investigation: <AlertTriangle className="h-5 w-5 text-red-500" />,
     savings_opportunity_scan: <DollarSign className="h-5 w-5 text-green-500" />,
-    compliance_audit: <Shield className="h-5 w-5 text-blue-500" />,
+    compliance_audit: <Shield className="h-5 w-5 text-violet-500" />,
   };
   
   return icons[type] || <FileText className="h-5 w-5 text-gray-500 dark:text-slate-400" />;
@@ -242,7 +242,7 @@ const GoalCard: React.FC<{
       exit={{ opacity: 0, y: -10 }}
       className={cn(
         "bg-white dark:bg-gray-800 rounded-lg border shadow-sm",
-        isActive && "ring-2 ring-blue-300 dark:ring-blue-700"
+        isActive && "ring-2 ring-violet-300 dark:ring-violet-700"
       )}
     >
       <div className="p-4">
@@ -334,7 +334,7 @@ const GoalCard: React.FC<{
                     className={cn(
                       "flex items-center gap-2 text-sm p-2 rounded",
                       step.status === 'completed' && "bg-green-50 dark:bg-green-900/20",
-                      step.status === 'in_progress' && "bg-blue-50 dark:bg-blue-900/20",
+                      step.status === 'in_progress' && "bg-violet-50 dark:bg-violet-900/20",
                       step.status === 'failed' && "bg-red-50 dark:bg-red-900/20"
                     )}
                   >
@@ -343,7 +343,7 @@ const GoalCard: React.FC<{
                     </span>
                     <span className="flex-1">{step.description}</span>
                     {step.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                    {step.status === 'in_progress' && <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />}
+                    {step.status === 'in_progress' && <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />}
                     {step.status === 'failed' && <XCircle className="h-4 w-4 text-red-500" />}
                   </div>
                 ))}
@@ -699,8 +699,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Target className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <Target className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Active Goals</p>

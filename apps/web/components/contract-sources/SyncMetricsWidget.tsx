@@ -116,7 +116,7 @@ export function SyncMetricsWidget({
     return (
       <Card className={className}>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
         </CardContent>
       </Card>
     );
@@ -143,8 +143,8 @@ export function SyncMetricsWidget({
         <CardContent className="pt-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <FolderSync className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900 rounded-lg">
+                <FolderSync className="w-5 h-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Contract Sources</p>
@@ -199,8 +199,8 @@ export function SyncMetricsWidget({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                <FolderSync className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900 rounded-lg">
+                <FolderSync className="w-5 h-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-slate-500">Sources</p>
@@ -289,7 +289,7 @@ export function SyncMetricsWidget({
                     ) : sync.status === "FAILED" ? (
                       <XCircle className="w-5 h-5 text-red-500" />
                     ) : (
-                      <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                      <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
                     )}
                     <div>
                       <p className="font-medium">{sync.sourceName}</p>

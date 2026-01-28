@@ -123,7 +123,7 @@ export function TooltipEnhanced({
               <button
                 onClick={prevStep}
                 disabled={currentStep === 0}
-                className="flex items-center gap-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed hover:text-blue-400 transition-colors"
+                className="flex items-center gap-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed hover:text-violet-400 transition-colors"
               >
                 <ChevronLeft className="h-3 w-3" />
                 Previous
@@ -131,7 +131,7 @@ export function TooltipEnhanced({
               <button
                 onClick={nextStep}
                 disabled={currentStep === steps.length - 1}
-                className="flex items-center gap-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed hover:text-blue-400 transition-colors"
+                className="flex items-center gap-1 text-xs disabled:opacity-30 disabled:cursor-not-allowed hover:text-violet-400 transition-colors"
               >
                 Next
                 <ChevronRight className="h-3 w-3" />

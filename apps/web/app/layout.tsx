@@ -44,11 +44,12 @@ export const metadata = {
   },
   icons: {
     icon: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
+      { url: "/icons/icon-512x512.svg", sizes: "512x512", type: "image/svg+xml" },
     ],
     apple: [
-      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
+      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
     ],
   },
 };
@@ -57,7 +58,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#4f46e5",
+  themeColor: "#7C3AED",
 };
 
 export default function RootLayout({
@@ -71,7 +72,7 @@ export default function RootLayout({
         {/* Skip to main content link for accessibility */}
         <a 
           href="#main-content" 
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
         >
           Skip to main content
         </a>

@@ -51,7 +51,7 @@ const emptyStateConfigs = {
     title: 'No contracts yet',
     description: 'Get started by uploading your first contract for AI-powered analysis.',
     actionLabel: 'Upload Contract',
-    gradient: 'from-blue-500 to-indigo-500'
+    gradient: 'from-violet-500 to-purple-500'
   },
   search: {
     icon: Search,
@@ -65,7 +65,7 @@ const emptyStateConfigs = {
     title: 'Upload your contracts',
     description: 'Drag and drop files here, or click to browse. We support PDF, DOCX, and more.',
     actionLabel: 'Browse Files',
-    gradient: 'from-emerald-500 to-teal-500'
+    gradient: 'from-violet-500 to-violet-500'
   },
   analytics: {
     icon: TrendingUp,
@@ -79,14 +79,14 @@ const emptyStateConfigs = {
     title: 'No rate cards found',
     description: 'Create rate cards to benchmark pricing across your contracts.',
     actionLabel: 'Create Rate Card',
-    gradient: 'from-cyan-500 to-blue-500'
+    gradient: 'from-purple-500 to-purple-500'
   },
   notifications: {
     icon: Inbox,
     title: 'All caught up!',
     description: 'You have no new notifications at this time.',
     actionLabel: 'View History',
-    gradient: 'from-green-500 to-emerald-500'
+    gradient: 'from-violet-500 to-violet-500'
   },
   error: {
     icon: AlertCircle,
@@ -114,7 +114,7 @@ const emptyStateConfigs = {
     title: 'Nothing here yet',
     description: 'This section is empty. Add items to get started.',
     actionLabel: 'Get Started',
-    gradient: 'from-blue-500 to-indigo-500'
+    gradient: 'from-violet-500 to-purple-500'
   }
 };
 

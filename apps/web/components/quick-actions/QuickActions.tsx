@@ -171,7 +171,7 @@ export function QuickActionsPanel({
           >
             {/* Header with search */}
             <div className="flex items-center gap-3 p-4 border-b border-slate-100">
-              <Zap className="w-5 h-5 text-indigo-600" />
+              <Zap className="w-5 h-5 text-purple-600" />
               <input
                 type="text"
                 value={query}
@@ -212,13 +212,13 @@ export function QuickActionsPanel({
                           onMouseEnter={() => setSelectedIndex(globalIndex)}
                           className={cn(
                             'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
-                            isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'
+                            isSelected ? 'bg-purple-50' : 'hover:bg-slate-50'
                           )}
                           whileTap={{ scale: 0.98 }}
                         >
                           <div className={cn(
                             'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
-                            isSelected ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+                            isSelected ? 'bg-purple-100 text-purple-600' : 'bg-slate-100 text-slate-500'
                           )}>
                             <action.icon className="w-5 h-5" />
                           </div>
@@ -251,7 +251,7 @@ export function QuickActionsPanel({
                           )}
 
                           {isSelected && (
-                            <ArrowRight className="w-4 h-4 text-indigo-500 flex-shrink-0" />
+                            <ArrowRight className="w-4 h-4 text-purple-500 flex-shrink-0" />
                           )}
                         </motion.button>
                       );
@@ -305,7 +305,7 @@ export function QuickActionsButton({ onClick, className }: QuickActionsButtonPro
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
     >
-      <Zap className="w-4 h-4 text-indigo-600" />
+      <Zap className="w-4 h-4 text-purple-600" />
       <span className="text-sm text-slate-700">Quick Actions</span>
       <kbd className="hidden sm:inline px-1.5 py-0.5 bg-white border border-slate-200 text-slate-400 text-xs rounded">
         ⌘K

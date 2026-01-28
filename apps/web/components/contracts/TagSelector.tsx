@@ -67,7 +67,7 @@ export function TagSelector({ onSelect, onClose, preSelected = [] }: TagSelector
                 type="checkbox"
                 checked={selected.includes(tag.id)}
                 onChange={() => toggleTag(tag.id)}
-                className="w-4 h-4 text-blue-600 rounded"
+                className="w-4 h-4 text-violet-600 rounded"
               />
               <Badge className={getTagColor(tag.color) + ' border'}>
                 {tag.name}

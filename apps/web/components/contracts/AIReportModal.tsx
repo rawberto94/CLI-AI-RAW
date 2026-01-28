@@ -89,7 +89,7 @@ interface AIReportModalProps {
 const findingTypeConfig = {
   risk: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-900/20' },
   opportunity: { icon: TrendingUp, color: 'text-green-600', bg: 'bg-green-50 dark:bg-green-900/20' },
-  compliance: { icon: Shield, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-900/20' },
+  compliance: { icon: Shield, color: 'text-violet-600', bg: 'bg-violet-50 dark:bg-violet-900/20' },
   'action-needed': { icon: Zap, color: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-900/20' },
 };
 
@@ -209,7 +209,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-white/95 backdrop-blur-xl border-slate-200/80 shadow-2xl rounded-2xl">
         <DialogHeader className="flex-shrink-0 pb-4 border-b border-slate-100">
           <DialogTitle className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl text-white shadow-sm">
+            <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl text-white shadow-sm">
               <Brain className="h-5 w-5" />
             </div>
             <div>
@@ -217,7 +217,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                 AI Contract Report
               </span>
               {report && (
-                <Badge variant="outline" className="ml-3 border-blue-200 text-blue-700 bg-blue-50">
+                <Badge variant="outline" className="ml-3 border-violet-200 text-violet-700 bg-violet-50">
                   {report.contractCount} contracts analyzed
                 </Badge>
               )}
@@ -231,8 +231,8 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             animate={{ opacity: 1, y: 0 }}
             className="flex flex-col items-center justify-center py-12 px-4"
           >
-            <div className="w-20 h-20 rounded-full bg-blue-50 flex items-center justify-center mb-6 border border-blue-100">
-              <Brain className="h-10 w-10 text-blue-600" />
+            <div className="w-20 h-20 rounded-full bg-violet-50 flex items-center justify-center mb-6 border border-violet-100">
+              <Brain className="h-10 w-10 text-violet-600" />
             </div>
             <h3 className="text-2xl font-semibold mb-2 text-slate-900">
               Generate AI Report
@@ -268,7 +268,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             <Button 
               onClick={generateReport} 
               size="lg" 
-              className="gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-6 py-3 text-base"
+              className="gap-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-6 py-3 text-base"
             >
               <Brain className="h-5 w-5" />
               Generate AI Report
@@ -283,8 +283,8 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
             className="flex flex-col items-center justify-center py-16"
           >
             <div className="relative">
-              <div className="w-16 h-16 rounded-full border-4 border-blue-100" />
-              <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-blue-600 border-t-transparent animate-spin" />
+              <div className="w-16 h-16 rounded-full border-4 border-violet-100" />
+              <div className="absolute inset-0 w-16 h-16 rounded-full border-4 border-violet-600 border-t-transparent animate-spin" />
             </div>
             <p className="mt-8 text-lg font-medium text-slate-700">
               Analyzing contracts...
@@ -333,7 +333,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                 <TabsContent value="summary" className="mt-0 space-y-4">
                   {/* Portfolio Stats */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-100/50 shadow-sm">
+                    <Card className="bg-gradient-to-br from-violet-50 to-violet-50 border-green-100/50 shadow-sm">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 bg-green-100 rounded-lg">
@@ -346,15 +346,15 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                         </p>
                       </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100/50 shadow-sm">
+                    <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-100/50 shadow-sm">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2">
-                          <div className="p-1.5 bg-blue-100 rounded-lg">
-                            <FileText className="h-4 w-4 text-blue-600" />
+                          <div className="p-1.5 bg-violet-100 rounded-lg">
+                            <FileText className="h-4 w-4 text-violet-600" />
                           </div>
-                          <span className="text-xs font-medium text-blue-700">Contracts</span>
+                          <span className="text-xs font-medium text-violet-700">Contracts</span>
                         </div>
-                        <p className="text-xl font-bold mt-2 text-blue-900">{report.contractCount}</p>
+                        <p className="text-xl font-bold mt-2 text-violet-900">{report.contractCount}</p>
                       </CardContent>
                     </Card>
                     <Card className="bg-gradient-to-br from-orange-50 to-amber-50 border-orange-100/50 shadow-sm">
@@ -368,7 +368,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                         <p className="text-xl font-bold mt-2 text-orange-900">{report.keyFindings.length}</p>
                       </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-100/50 shadow-sm">
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-50 border-purple-100/50 shadow-sm">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2">
                           <div className="p-1.5 bg-purple-100 rounded-lg">
@@ -385,8 +385,8 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                   <Card className="bg-white border-slate-200 shadow-sm overflow-hidden">
                     <CardHeader className="pb-2 bg-slate-50 border-b border-slate-100">
                       <CardTitle className="text-sm flex items-center gap-2">
-                        <div className="p-1.5 bg-blue-100 rounded-lg">
-                          <Brain className="h-4 w-4 text-blue-600" />
+                        <div className="p-1.5 bg-violet-100 rounded-lg">
+                          <Brain className="h-4 w-4 text-violet-600" />
                         </div>
                         <span className="font-semibold text-slate-800">Executive Summary</span>
                       </CardTitle>
@@ -526,7 +526,7 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                           <div className="flex items-start justify-between">
                             <div className="flex-1">
                               <h4 className="font-semibold text-sm flex items-center gap-2">
-                                <FileText className="h-4 w-4 text-blue-600" />
+                                <FileText className="h-4 w-4 text-violet-600" />
                                 {highlight.contractName}
                               </h4>
                               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">

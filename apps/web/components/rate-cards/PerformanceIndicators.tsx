@@ -88,7 +88,7 @@ export function PerformanceIndicators() {
       value: formatPercentage(metrics.percentNegotiated),
       icon: Handshake,
       description: 'Successfully negotiated',
-      color: 'text-blue-600',
+      color: 'text-violet-600',
     },
     {
       title: 'Avg Savings Per Rate',

@@ -67,7 +67,7 @@ function GradientOrbs() {
   return (
     <>
       <motion.div 
-        className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-cyan-400/30 via-teal-500/20 to-emerald-400/30 rounded-full blur-3xl"
+        className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-purple-400/30 via-violet-500/20 to-violet-400/30 rounded-full blur-3xl"
         animate={{ 
           scale: [1, 1.2, 1],
           rotate: [0, 90, 0],
@@ -95,7 +95,7 @@ function GradientOrbs() {
         transition={{ duration: 20, repeat: Infinity, ease: "easeInOut", delay: 3 }}
       />
       <motion.div 
-        className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] bg-gradient-to-tl from-sky-400/15 via-blue-500/20 to-indigo-400/15 rounded-full blur-3xl"
+        className="absolute bottom-1/4 right-1/4 w-[250px] h-[250px] bg-gradient-to-tl from-sky-400/15 via-purple-500/20 to-purple-400/15 rounded-full blur-3xl"
         animate={{ 
           scale: [1.2, 1, 1.2],
           opacity: [0.2, 0.35, 0.2],
@@ -413,7 +413,7 @@ function SignInForm() {
           </svg>
           {/* Animated scan line */}
           <motion.div
-            className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+            className="absolute left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-purple-400 to-transparent"
             initial={{ top: "0%" }}
             animate={{ top: "100%" }}
             transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
@@ -484,7 +484,7 @@ function SignInForm() {
             transition={{ duration: 0.6, delay: 0.4 }}
           >
             {[
-              { icon: CalendarCheck2, title: "Smart Renewals", desc: "Auto-track deadlines", color: "from-cyan-400 to-teal-400" },
+              { icon: CalendarCheck2, title: "Smart Renewals", desc: "Auto-track deadlines", color: "from-purple-400 to-violet-400" },
               { icon: ShieldCheck, title: "Risk Analysis", desc: "AI-powered insights", color: "from-amber-400 to-orange-400" },
               { icon: Sparkles, title: "AI Assistant", desc: "Ask anything", color: "from-pink-400 to-rose-400" }
             ].map((feature, idx) => (
@@ -525,8 +525,8 @@ function SignInForm() {
         >
           <span>© 2025 ConTigo. All rights reserved.</span>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            <span className="text-xs text-emerald-300">SOC 2 Certified</span>
+            <CheckCircle2 className="w-4 h-4 text-violet-400" />
+            <span className="text-xs text-violet-300">SOC 2 Certified</span>
           </div>
         </motion.div>
       </div>
@@ -535,7 +535,7 @@ function SignInForm() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-purple-50/30 relative overflow-hidden">
         {/* Animated gradient mesh background */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-cyan-100/30 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-purple-100/30 via-transparent to-transparent" />
         
         {/* Futuristic hexagon pattern */}
         <div className="absolute inset-0 opacity-[0.03]">
@@ -560,7 +560,7 @@ function SignInForm() {
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
         <motion.div 
-          className="absolute bottom-20 left-20 w-40 h-40 rounded-full bg-gradient-to-tr from-cyan-200/30 to-teal-200/30 blur-2xl"
+          className="absolute bottom-20 left-20 w-40 h-40 rounded-full bg-gradient-to-tr from-purple-200/30 to-violet-200/30 blur-2xl"
           animate={{ 
             scale: [1.2, 1, 1.2],
             opacity: [0.3, 0.5, 0.3],
@@ -578,7 +578,7 @@ function SignInForm() {
           <Hexagon className="w-8 h-8" />
         </motion.div>
         <motion.div
-          className="absolute bottom-1/3 right-10 text-cyan-200/30"
+          className="absolute bottom-1/3 right-10 text-purple-200/30"
           animate={{ y: [0, 10, 0], rotate: [0, -5, 0] }}
           transition={{ duration: 7, repeat: Infinity, ease: "easeInOut", delay: 1 }}
         >

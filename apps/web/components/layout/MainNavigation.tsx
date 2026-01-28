@@ -97,6 +97,12 @@ const navigationItems: NavigationItem[] = [
         href: '/ai/chat',
         icon: Sparkles,
         description: 'Ask anything'
+      },
+      {
+        name: 'AI Activity',
+        href: '/ai/activity',
+        icon: Activity,
+        description: 'Agent activity monitor'
       }
     ]
   },
@@ -208,7 +214,27 @@ const navigationItems: NavigationItem[] = [
     name: 'Workflows',
     href: '/workflows',
     icon: GitBranch,
-    description: 'Workflow automation'
+    description: 'Workflow automation',
+    children: [
+      {
+        name: 'All Workflows',
+        href: '/workflows',
+        icon: GitBranch,
+        description: 'Manage workflows'
+      },
+      {
+        name: 'Analytics',
+        href: '/workflows/analytics',
+        icon: BarChart3,
+        description: 'Performance metrics'
+      },
+      {
+        name: 'SLA Compliance',
+        href: '/workflows/sla',
+        icon: Target,
+        description: 'SLA monitoring'
+      }
+    ]
   }
 ]
 
@@ -243,7 +269,7 @@ function MainNavigation() {
         className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 py-3 flex items-center justify-between shadow-sm"
       >
         <div className="flex items-center gap-2.5">
-          <div className="p-1.5 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg shadow-md shadow-blue-500/20">
+          <div className="p-1.5 bg-gradient-to-br from-violet-600 to-purple-600 rounded-lg shadow-md shadow-violet-500/20">
             <FileText className="h-5 w-5 text-white" />
           </div>
           <span className="font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">Contract Intelligence</span>
@@ -282,8 +308,8 @@ function MainNavigation() {
       >
         {/* Decorative gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 -right-10 w-32 h-32 bg-gradient-to-br from-purple-400/15 to-pink-500/15 rounded-full blur-3xl" />
+          <div className="absolute -top-20 -left-20 w-40 h-40 bg-gradient-to-br from-violet-400/20 to-purple-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 -right-10 w-32 h-32 bg-gradient-to-br from-purple-400/15 to-fuchsia-500/15 rounded-full blur-3xl" />
         </div>
 
         {/* Logo */}
@@ -291,13 +317,20 @@ function MainNavigation() {
           <div className="flex items-center gap-2.5">
             <motion.div 
               whileHover={{ scale: 1.05, rotate: 2 }}
-              className="p-2 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 rounded-xl shadow-lg shadow-blue-500/25"
+              className="p-2 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/25"
             >
-              <FileText className="h-5 w-5 text-white" />
+              {/* Contigo Stacked Bars Icon */}
+              <svg width="20" height="20" viewBox="0 0 48 48" fill="none" className="text-white">
+                <g transform="translate(8, 10)">
+                  <rect x="0" y="0" width="32" height="8" rx="4" fill="currentColor"/>
+                  <rect x="0" y="12" width="32" height="8" rx="4" fill="currentColor" fillOpacity="0.8"/>
+                  <rect x="0" y="24" width="32" height="8" rx="4" fill="currentColor" fillOpacity="0.6"/>
+                </g>
+              </svg>
             </motion.div>
-            <div className="flex flex-col">
-              <span className="font-bold text-sm bg-gradient-to-r from-slate-900 via-slate-800 to-slate-700 bg-clip-text text-transparent">Contract</span>
-              <span className="text-[10px] font-medium text-slate-500 -mt-0.5 tracking-wide">Intelligence</span>
+            <div className="flex items-center">
+              <span className="font-bold text-base text-violet-600">con</span>
+              <span className="font-bold text-base text-gray-900">tigo</span>
             </div>
           </div>
           <ApprovalNotificationBell />
@@ -326,7 +359,7 @@ function MainNavigation() {
                       className={cn(
                         'group w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                         (isItemActive || hasActiveChild)
-                          ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-sm border border-blue-200/50'
+                          ? 'bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-purple-500/10 text-violet-700 shadow-sm border border-violet-200/50'
                           : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                       )}
                     >
@@ -334,7 +367,7 @@ function MainNavigation() {
                         <div className={cn(
                           'p-1.5 rounded-lg transition-all duration-200',
                           (isItemActive || hasActiveChild)
-                            ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                            ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/30'
                             : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
                         )}>
                           <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -343,7 +376,7 @@ function MainNavigation() {
                       </div>
                       <div className="flex items-center gap-2">
                         {item.badge && (
-                          <Badge className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-sm">
+                          <Badge className="text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-violet-500 to-violet-500 text-white border-0 shadow-sm">
                             <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                             {item.badge}
                           </Badge>
@@ -365,7 +398,7 @@ function MainNavigation() {
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
                           transition={{ duration: 0.2 }}
-                          className="ml-4 mt-1.5 space-y-1 border-l-2 border-gradient-to-b from-blue-200 to-indigo-200 pl-3 overflow-hidden"
+                          className="ml-4 mt-1.5 space-y-1 border-l-2 border-gradient-to-b from-violet-200 to-purple-200 pl-3 overflow-hidden"
                         >
                           {item.children.map((child, childIndex) => (
                             <motion.div
@@ -380,7 +413,7 @@ function MainNavigation() {
                                 className={cn(
                                   'group flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all duration-200',
                                   isActive(child.href)
-                                    ? 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 font-medium border border-blue-100/50'
+                                    ? 'bg-gradient-to-r from-violet-50 to-purple-50 text-violet-700 font-medium border border-violet-100/50'
                                     : child.isPremium
                                     ? 'text-purple-600 hover:bg-purple-50 hover:text-purple-700'
                                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
@@ -388,7 +421,7 @@ function MainNavigation() {
                               >
                                 <child.icon className={cn(
                                   'h-3.5 w-3.5 flex-shrink-0 transition-colors',
-                                  isActive(child.href) ? 'text-blue-600' : child.isPremium ? 'text-purple-500' : 'text-slate-400 group-hover:text-slate-600'
+                                  isActive(child.href) ? 'text-violet-600' : child.isPremium ? 'text-purple-500' : 'text-slate-400 group-hover:text-slate-600'
                                 )} />
                                 <span>{child.name}</span>
                                 {child.isPremium && (
@@ -416,7 +449,7 @@ function MainNavigation() {
                     className={cn(
                       'group flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isItemActive
-                        ? 'bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-purple-500/10 text-blue-700 shadow-sm border border-blue-200/50'
+                        ? 'bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-purple-500/10 text-violet-700 shadow-sm border border-violet-200/50'
                         : item.isPremium
                         ? 'text-purple-700 hover:bg-purple-50 hover:text-purple-900 border border-purple-100/50'
                         : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
@@ -425,7 +458,7 @@ function MainNavigation() {
                     <div className={cn(
                       'p-1.5 rounded-lg transition-all duration-200',
                       isItemActive
-                        ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-500/30'
+                        ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/30'
                         : item.isPremium
                         ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/30'
                         : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
@@ -434,7 +467,7 @@ function MainNavigation() {
                     </div>
                     <span>{item.name}</span>
                     {item.badge && (
-                      <Badge className="ml-auto text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 shadow-sm">
+                      <Badge className="ml-auto text-[10px] px-1.5 py-0.5 bg-gradient-to-r from-violet-500 to-violet-500 text-white border-0 shadow-sm">
                         <Sparkles className="h-2.5 w-2.5 mr-0.5" />
                         {item.badge}
                       </Badge>

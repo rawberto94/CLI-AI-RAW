@@ -95,7 +95,7 @@ export const ContractHeader = memo(function ContractHeader({
             <Separator orientation="vertical" className="h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative group shrink-0">
-                <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 transition-transform group-hover:scale-105">
+                <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-purple-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 transition-transform group-hover:scale-105">
                   <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow-sm" />
                 </div>
               </div>

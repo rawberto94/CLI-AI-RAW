@@ -138,7 +138,7 @@ function InsightCard({ insight, onAction }: InsightCardProps) {
   const colorMap = {
     critical: 'bg-red-100 text-red-700 border-red-200',
     warning: 'bg-amber-100 text-amber-700 border-amber-200',
-    info: 'bg-blue-100 text-blue-700 border-blue-200',
+    info: 'bg-violet-100 text-violet-700 border-violet-200',
     success: 'bg-green-100 text-green-700 border-green-200',
   };
 
@@ -419,7 +419,7 @@ export function ContractAnalyticsCards({
           value={stats.newThisMonth}
           subtitle="Recently added"
           icon={<Activity className="h-5 w-5" />}
-          color="bg-blue-100 text-blue-700"
+          color="bg-violet-100 text-violet-700"
           onClick={() => onNavigateToFilter?.({ createdWithin: 30 })}
         />
       </div>

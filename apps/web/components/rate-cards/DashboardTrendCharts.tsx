@@ -86,7 +86,7 @@ export function DashboardTrendCharts() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      IDENTIFIED: 'bg-blue-100 text-blue-800',
+      IDENTIFIED: 'bg-violet-100 text-violet-800',
       UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
       APPROVED: 'bg-purple-100 text-purple-800',
       IN_PROGRESS: 'bg-orange-100 text-orange-800',

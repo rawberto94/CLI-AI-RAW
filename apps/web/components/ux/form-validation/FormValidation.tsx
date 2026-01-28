@@ -73,7 +73,7 @@ export const ValidationStatus = memo(function ValidationStatus({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5 }}
           >
-            <Loader2 className={`${iconClass} text-blue-500 animate-spin`} />
+            <Loader2 className={`${iconClass} text-violet-500 animate-spin`} />
           </motion.div>
         )}
         {state === 'valid' && (
@@ -133,7 +133,7 @@ export const InlineFeedback = memo(function InlineFeedback({
       case 'success':
         return <CheckCircle2 className="w-4 h-4 text-green-500 flex-shrink-0" />;
       case 'info':
-        return <Info className="w-4 h-4 text-blue-500 flex-shrink-0" />;
+        return <Info className="w-4 h-4 text-violet-500 flex-shrink-0" />;
       default:
         return null;
     }
@@ -148,7 +148,7 @@ export const InlineFeedback = memo(function InlineFeedback({
       case 'success':
         return 'text-green-600 dark:text-green-400';
       case 'info':
-        return 'text-blue-600 dark:text-blue-400';
+        return 'text-violet-600 dark:text-violet-400';
       default:
         return '';
     }
@@ -319,7 +319,7 @@ export const ValidatedInput = forwardRef<HTMLInputElement, ValidatedInputProps>(
         case 'warning':
           return 'border-yellow-500 focus:ring-yellow-500';
         default:
-          return 'border-gray-300 dark:border-gray-600 focus:ring-blue-500';
+          return 'border-gray-300 dark:border-gray-600 focus:ring-violet-500';
       }
     };
 
@@ -393,7 +393,7 @@ export const PasswordStrength = memo(function PasswordStrength({
 
     if (score <= 2) return { score, label: 'Weak', color: 'bg-red-500' };
     if (score <= 4) return { score, label: 'Fair', color: 'bg-yellow-500' };
-    if (score <= 5) return { score, label: 'Good', color: 'bg-blue-500' };
+    if (score <= 5) return { score, label: 'Good', color: 'bg-violet-500' };
     return { score, label: 'Strong', color: 'bg-green-500' };
   };
 
@@ -412,8 +412,8 @@ export const PasswordStrength = memo(function PasswordStrength({
               ? 'text-red-500'
               : color === 'bg-yellow-500'
               ? 'text-yellow-500'
-              : color === 'bg-blue-500'
-              ? 'text-blue-500'
+              : color === 'bg-violet-500'
+              ? 'text-violet-500'
               : 'text-green-500'
           }`}
         >
@@ -537,7 +537,7 @@ export const ValidatedTextarea = forwardRef<HTMLTextAreaElement, ValidatedTextar
               ${
                 isOverLimit
                   ? 'border-red-500 focus:ring-red-500'
-                  : 'border-gray-300 dark:border-gray-600 focus:ring-blue-500'
+                  : 'border-gray-300 dark:border-gray-600 focus:ring-violet-500'
               }
               ${className}
             `}
@@ -579,7 +579,7 @@ export const SubmitFeedback = memo(function SubmitFeedback({
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
-          className={`flex items-center gap-2 text-blue-600 dark:text-blue-400 ${className}`}
+          className={`flex items-center gap-2 text-violet-600 dark:text-violet-400 ${className}`}
         >
           <Loader2 className="w-5 h-5 animate-spin" />
           <span>Submitting...</span>

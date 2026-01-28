@@ -116,7 +116,7 @@ const EXPIRATION_OPTIONS = [
   { value: 'expired', label: 'Expired', color: 'text-red-600' },
   { value: 'expiring-7', label: 'Expiring in 7 days', color: 'text-orange-600' },
   { value: 'expiring-30', label: 'Expiring in 30 days', color: 'text-yellow-600' },
-  { value: 'expiring-90', label: 'Expiring in 90 days', color: 'text-blue-600' },
+  { value: 'expiring-90', label: 'Expiring in 90 days', color: 'text-violet-600' },
 ];
 
 // ============================================================================

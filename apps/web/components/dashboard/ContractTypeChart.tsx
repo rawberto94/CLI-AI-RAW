@@ -20,13 +20,13 @@ interface ContractTypeChartProps {
 }
 
 const COLORS = [
-  { fill: '#3b82f6', gradient: 'from-blue-500 to-blue-600' },
+  { fill: '#3b82f6', gradient: 'from-violet-500 to-purple-600' },
   { fill: '#8b5cf6', gradient: 'from-violet-500 to-purple-600' },
   { fill: '#ec4899', gradient: 'from-pink-500 to-rose-600' },
   { fill: '#f59e0b', gradient: 'from-amber-500 to-orange-600' },
-  { fill: '#10b981', gradient: 'from-emerald-500 to-green-600' },
-  { fill: '#6366f1', gradient: 'from-indigo-500 to-indigo-600' },
-  { fill: '#14b8a6', gradient: 'from-teal-500 to-cyan-600' }
+  { fill: '#10b981', gradient: 'from-violet-500 to-purple-600' },
+  { fill: '#6366f1', gradient: 'from-purple-500 to-purple-600' },
+  { fill: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' }
 ];
 
 const listVariants = {

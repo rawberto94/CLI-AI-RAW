@@ -69,8 +69,8 @@ export function Pagination({
     <div className="flex items-center justify-between px-2 py-4">
       {/* Page info */}
       {showPageInfo && (
-        <div className="text-sm text-muted-foreground">
-          Showing {startItem} to {endItem} of {totalItems} results
+        <div className="text-sm text-slate-500 dark:text-slate-400">
+          Showing <span className="font-medium text-slate-700 dark:text-slate-300">{startItem}</span> to <span className="font-medium text-slate-700 dark:text-slate-300">{endItem}</span> of <span className="font-medium text-slate-700 dark:text-slate-300">{totalItems}</span> results
         </div>
       )}
 
@@ -170,11 +170,11 @@ export function Pagination({
       {/* Page size selector */}
       {showPageSizeSelector && onPageSizeChange && (
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-muted-foreground">Rows per page:</span>
+          <span className="text-sm text-slate-500 dark:text-slate-400">Rows per page:</span>
           <select
             value={pageSize}
             onChange={(e) => onPageSizeChange(Number(e.target.value))}
-            className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+            className="h-8 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 text-sm focus:ring-2 focus:ring-violet-500/50 focus:border-violet-400 transition-all"
           >
             {pageSizeOptions.map((size) => (
               <option key={size} value={size}>
@@ -210,8 +210,8 @@ export function SimplePagination({
       >
         Previous
       </Button>
-      <span className="text-sm text-muted-foreground">
-        Page {currentPage} of {totalPages}
+      <span className="text-sm text-slate-600 dark:text-slate-400">
+        Page <span className="font-semibold text-violet-600 dark:text-violet-400">{currentPage}</span> of <span className="font-semibold text-slate-700 dark:text-slate-300">{totalPages}</span>
       </span>
       <Button
         variant="outline"

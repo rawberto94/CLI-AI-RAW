@@ -237,11 +237,11 @@ export function BulkExtractionDashboard({
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-muted-foreground">With Metadata</p>
-                  <p className="text-2xl font-bold text-emerald-600">
+                  <p className="text-2xl font-bold text-violet-600">
                     {stats.statistics.contractsWithMetadata}
                   </p>
                 </div>
-                <CheckCircle2 className="h-8 w-8 text-emerald-200" />
+                <CheckCircle2 className="h-8 w-8 text-violet-200" />
               </div>
             </CardContent>
           </Card>
@@ -267,7 +267,7 @@ export function BulkExtractionDashboard({
                   <p className="text-sm text-muted-foreground">Coverage</p>
                   <p className="text-2xl font-bold">{stats.statistics.coveragePercentage}%</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-blue-200" />
+                <TrendingUp className="h-8 w-8 text-violet-200" />
               </div>
               <Progress 
                 value={stats.statistics.coveragePercentage} 
@@ -290,7 +290,7 @@ export function BulkExtractionDashboard({
           <CardContent>
             <div className="grid grid-cols-4 gap-4 text-center">
               <div>
-                <p className="text-lg font-semibold text-blue-600">{stats.queue.waiting}</p>
+                <p className="text-lg font-semibold text-violet-600">{stats.queue.waiting}</p>
                 <p className="text-xs text-muted-foreground">Waiting</p>
               </div>
               <div>
@@ -298,7 +298,7 @@ export function BulkExtractionDashboard({
                 <p className="text-xs text-muted-foreground">Active</p>
               </div>
               <div>
-                <p className="text-lg font-semibold text-emerald-600">{stats.queue.completed}</p>
+                <p className="text-lg font-semibold text-violet-600">{stats.queue.completed}</p>
                 <p className="text-xs text-muted-foreground">Completed</p>
               </div>
               <div>
@@ -427,7 +427,7 @@ export function BulkExtractionDashboard({
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="p-3 rounded-lg bg-emerald-50 text-emerald-700 text-sm flex items-center gap-2"
+                className="p-3 rounded-lg bg-violet-50 text-violet-700 text-sm flex items-center gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 {lastResult.message}

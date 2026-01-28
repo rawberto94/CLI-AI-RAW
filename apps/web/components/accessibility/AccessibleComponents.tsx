@@ -16,7 +16,7 @@ import { X, ChevronDown, Check } from 'lucide-react';
 
 export function SkipLinks() {
   return (
-    <div className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:p-4 focus:bg-blue-600 focus:text-white">
+    <div className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-50 focus:p-4 focus:bg-violet-600 focus:text-white">
       <a href="#main-content" className="focus:outline-none focus:ring-2 focus:ring-white">
         Skip to main content
       </a>
@@ -107,7 +107,7 @@ export function AccessibleModal({
           </h2>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500"
             aria-label="Close dialog"
           >
             <X className="w-5 h-5" />
@@ -152,7 +152,7 @@ export function AccessibleButton({
   ...props
 }: AccessibleButtonProps) {
   const variants = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
+    primary: 'bg-violet-600 text-white hover:bg-violet-700 focus:ring-violet-500',
     secondary: 'bg-gray-200 text-gray-900 hover:bg-gray-300 focus:ring-gray-500',
     danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
   };
@@ -295,7 +295,7 @@ export function AccessibleAccordion({ items }: { items: AccordionItemProps[] }) 
                 onClick={() => toggle(item.id)}
                 aria-expanded={isOpen}
                 aria-controls={panelId}
-                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset"
+                className="w-full flex items-center justify-between p-4 text-left hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-inset"
               >
                 <span className="font-medium">{item.title}</span>
                 <ChevronDown
@@ -379,9 +379,9 @@ export function AccessibleTabs({ tabs }: { tabs: TabProps[] }) {
               onKeyDown={(e) => handleKeyDown(e, index)}
               className={`
                 px-4 py-2 font-medium transition-colors
-                focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset
+                focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-inset
                 ${isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
+                  ? 'border-b-2 border-violet-600 text-violet-600'
                   : 'text-gray-600 hover:text-gray-900'
                 }
               `}
@@ -443,7 +443,7 @@ export function AccessibleCheckbox({
           onChange={(e) => onChange(e.target.checked)}
           disabled={disabled}
           aria-describedby={descriptionId}
-          className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50"
+          className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 disabled:opacity-50"
         />
       </div>
       <div className="flex-1">

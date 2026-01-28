@@ -68,7 +68,7 @@ export function FilterBar({
                     onClick={() => onChange({ ...value, supplier: (value as any).supplier === s ? undefined : s })}
                     className={cn(
                       "px-2 py-1 text-xs rounded-full border",
-                      (value as any).supplier === s ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
+                      (value as any).supplier === s ? "bg-purple-600 text-white border-purple-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
                     )}
                   >
                     {s}
@@ -87,7 +87,7 @@ export function FilterBar({
                     onClick={() => onChange({ ...value, type: (value as any).type === t ? undefined : t })}
                     className={cn(
                       "px-2 py-1 text-xs rounded-full border",
-                      (value as any).type === t ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
+                      (value as any).type === t ? "bg-purple-600 text-white border-purple-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
                     )}
                   >
                     {t}
@@ -106,7 +106,7 @@ export function FilterBar({
                     onClick={() => onChange({ ...value, status: (value as any).status === st ? undefined : st })}
                     className={cn(
                       "px-2 py-1 text-xs rounded-full border",
-                      (value as any).status === st ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
+                      (value as any).status === st ? "bg-purple-600 text-white border-purple-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
                     )}
                   >
                     {st}
@@ -125,7 +125,7 @@ export function FilterBar({
                     onClick={() => onChange({ ...value, category: (value as any).category === cat ? undefined : cat })}
                     className={cn(
                       "px-2 py-1 text-xs rounded-full border",
-                      (value as any).category === cat ? "bg-indigo-600 text-white border-indigo-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
+                      (value as any).category === cat ? "bg-purple-600 text-white border-purple-600" : "bg-white dark:bg-gray-800 text-gray-800 dark:text-gray-100 border-gray-300 dark:border-gray-600 hover:bg-gray-50"
                     )}
                   >
                     {cat}
@@ -148,19 +148,19 @@ export function FilterBar({
             </button>
           )}
           {toArray(value.client).length > 0 && (
-            <span className="px-2 py-1 text-xs rounded bg-indigo-50 text-indigo-700">Client: {toArray(value.client).join(", ")}</span>
+            <span className="px-2 py-1 text-xs rounded bg-purple-50 text-purple-700">Client: {toArray(value.client).join(", ")}</span>
           )}
           {toArray(value.supplier).length > 0 && (
-            <span className="px-2 py-1 text-xs rounded bg-indigo-50 text-indigo-700">Supplier: {toArray(value.supplier).join(", ")}</span>
+            <span className="px-2 py-1 text-xs rounded bg-purple-50 text-purple-700">Supplier: {toArray(value.supplier).join(", ")}</span>
           )}
           {toArray(value.type).length > 0 && (
-            <span className="px-2 py-1 text-xs rounded bg-indigo-50 text-indigo-700">Type: {toArray(value.type).join(", ")}</span>
+            <span className="px-2 py-1 text-xs rounded bg-purple-50 text-purple-700">Type: {toArray(value.type).join(", ")}</span>
           )}
           {toArray(value.status).length > 0 && (
-            <span className="px-2 py-1 text-xs rounded bg-indigo-50 text-indigo-700">Status: {toArray(value.status).join(", ")}</span>
+            <span className="px-2 py-1 text-xs rounded bg-purple-50 text-purple-700">Status: {toArray(value.status).join(", ")}</span>
           )}
           {toArray(value.category).length > 0 && (
-            <span className="px-2 py-1 text-xs rounded bg-indigo-50 text-indigo-700">Category: {toArray(value.category).join(", ")}</span>
+            <span className="px-2 py-1 text-xs rounded bg-purple-50 text-purple-700">Category: {toArray(value.category).join(", ")}</span>
           )}
         </div>
       )}

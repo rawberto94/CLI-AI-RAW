@@ -63,7 +63,7 @@ export function HighlightTextCustom({
   text, 
   query, 
   className = '',
-  highlightClassName = 'bg-indigo-100 text-indigo-900 font-semibold px-0.5 rounded'
+  highlightClassName = 'bg-purple-100 text-indigo-900 font-semibold px-0.5 rounded'
 }: HighlightTextProps & { highlightClassName?: string }) {
   if (!query || !text) {
     return <span className={className}>{text}</span>;

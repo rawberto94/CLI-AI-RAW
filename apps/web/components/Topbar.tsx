@@ -54,9 +54,9 @@ export function Topbar() {
   }, []);
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6 sticky top-0 z-20 dark:bg-slate-900/80 dark:border-slate-800">
+    <header className="flex h-14 items-center gap-4 border-b border-slate-200/60 bg-white/90 backdrop-blur-xl px-6 sticky top-0 z-20 dark:bg-slate-900/90 dark:border-slate-800/60 shadow-sm shadow-slate-100/50 dark:shadow-none">
       <div className="flex-1">
-        <h1 className="text-lg font-semibold md:text-xl bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+        <h1 className="text-lg font-bold md:text-xl bg-gradient-to-r from-violet-600 via-purple-600 to-violet-500 dark:from-violet-400 dark:via-purple-400 dark:to-violet-300 bg-clip-text text-transparent">
           ConTigo
         </h1>
       </div>
@@ -94,7 +94,7 @@ export function Topbar() {
                   variant="ghost"
                   size="sm"
                   onClick={openAIAssistant}
-                  className="h-8 px-2 text-slate-500 hover:text-purple-600 dark:text-slate-400 dark:hover:text-purple-400"
+                  className="h-8 px-2 text-slate-500 hover:text-violet-600 hover:bg-violet-50 dark:text-slate-400 dark:hover:text-violet-400 dark:hover:bg-violet-950/50 transition-all"
                 >
                   <Sparkles className="h-4 w-4" />
                 </Button>
@@ -132,14 +132,14 @@ export function Topbar() {
         
         <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
           <DropdownMenuTrigger asChild>
-            <button className="flex items-center gap-2 p-1 rounded-lg hover:bg-slate-100 transition-colors">
-              <Avatar className="h-8 w-8">
+            <button className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200 group">
+              <Avatar className="h-8 w-8 ring-0">
                 <AvatarImage src={session?.user?.image || undefined} alt={session?.user?.name || 'User'} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-indigo-500 text-white text-xs font-medium">
+                <AvatarFallback className="bg-gradient-to-br from-violet-500 to-purple-600 text-white text-xs font-medium">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
-              <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block" />
+              <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block transition-transform duration-200 group-hover:text-slate-600 dark:group-hover:text-slate-300" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56">

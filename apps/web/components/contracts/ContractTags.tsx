@@ -155,7 +155,7 @@ export function ContractTags({
             <Badge 
               key={profile} 
               variant="outline" 
-              className="text-xs border-blue-300 text-blue-700"
+              className="text-xs border-violet-300 text-violet-700"
             >
               {TAG_LABELS[profile as keyof typeof TAG_LABELS] || profile}
             </Badge>

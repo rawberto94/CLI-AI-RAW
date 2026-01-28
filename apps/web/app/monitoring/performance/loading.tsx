@@ -65,7 +65,7 @@ export default function PerformanceMonitoringLoading() {
             <motion.div
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 shadow-2xl flex items-center justify-center"
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-2xl flex items-center justify-center"
             >
               <Activity className="w-10 h-10 text-white" />
             </motion.div>
@@ -84,7 +84,7 @@ export default function PerformanceMonitoringLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
             Loading Performance Monitoring
           </h2>
           <p className="mt-2 text-gray-500 flex items-center gap-1">

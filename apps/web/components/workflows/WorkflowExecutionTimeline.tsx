@@ -85,7 +85,7 @@ export function WorkflowExecutionTimeline({
       case 'REJECTED':
         return <XCircle className="w-5 h-5 text-red-600" />;
       case 'IN_PROGRESS':
-        return <Play className="w-5 h-5 text-blue-600 animate-pulse" />;
+        return <Play className="w-5 h-5 text-violet-600 animate-pulse" />;
       case 'PENDING':
         return <Clock className="w-5 h-5 text-amber-600" />;
       case 'WAITING':
@@ -102,7 +102,7 @@ export function WorkflowExecutionTimeline({
       COMPLETED: 'bg-green-100 text-green-700 border-green-200',
       FAILED: 'bg-red-100 text-red-700 border-red-200',
       REJECTED: 'bg-red-100 text-red-700 border-red-200',
-      IN_PROGRESS: 'bg-blue-100 text-blue-700 border-blue-200',
+      IN_PROGRESS: 'bg-violet-100 text-violet-700 border-violet-200',
       PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
       WAITING: 'bg-slate-100 text-slate-600 border-slate-200',
       SKIPPED: 'bg-slate-100 text-slate-600 border-slate-200',
@@ -119,7 +119,7 @@ export function WorkflowExecutionTimeline({
     const variants = {
       COMPLETED: 'bg-green-500',
       FAILED: 'bg-red-500',
-      IN_PROGRESS: 'bg-blue-500',
+      IN_PROGRESS: 'bg-violet-500',
       PENDING: 'bg-amber-500',
       CANCELLED: 'bg-slate-500',
     };
@@ -205,7 +205,7 @@ export function WorkflowExecutionTimeline({
             </div>
             <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-600 transition-all duration-500 shadow-sm"
+                className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 shadow-sm"
                 style={{ width: `${progress}%` }}
                 role="progressbar"
                 aria-valuenow={Math.round(progress)}
@@ -245,7 +245,7 @@ export function WorkflowExecutionTimeline({
                     step.status === 'COMPLETED' && 'bg-green-500 shadow-lg shadow-green-200 dark:shadow-green-900/50',
                     step.status === 'FAILED' && 'bg-red-500 shadow-lg shadow-red-200 dark:shadow-red-900/50',
                     step.status === 'REJECTED' && 'bg-red-500 shadow-lg shadow-red-200 dark:shadow-red-900/50',
-                    step.status === 'IN_PROGRESS' && 'bg-blue-500 shadow-lg shadow-blue-200 dark:shadow-blue-900/50 animate-pulse',
+                    step.status === 'IN_PROGRESS' && 'bg-violet-500 shadow-lg shadow-violet-200 dark:shadow-violet-900/50 animate-pulse',
                     step.status === 'PENDING' && 'bg-amber-500 shadow-lg shadow-amber-200 dark:shadow-amber-900/50',
                     (step.status === 'WAITING' || step.status === 'SKIPPED') && 'bg-slate-300 dark:bg-slate-600',
                     isCurrentStep && 'ring-4 ring-indigo-200'
@@ -274,7 +274,7 @@ export function WorkflowExecutionTimeline({
                             <span className="font-semibold text-slate-900 dark:text-slate-100">{step.stepName}</span>
                             {getStatusBadge(step.status)}
                             {isCurrentStep && (
-                              <Badge className="bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-700 text-xs">
+                              <Badge className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-indigo-300 border-indigo-200 dark:border-purple-700 text-xs">
                                 Current
                               </Badge>
                             )}
@@ -409,7 +409,7 @@ export function WorkflowExecutionTimeline({
 
       {/* Execution Footer */}
       {execution.completedAt && (
-        <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+        <Card className="bg-gradient-to-r from-violet-50 to-violet-50 border-green-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <CheckCircle className="w-6 h-6 text-green-600" />

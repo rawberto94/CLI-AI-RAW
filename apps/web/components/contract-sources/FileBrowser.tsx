@@ -159,7 +159,7 @@ export function FileBrowser({
   // Get file icon
   const getFileIcon = (file: RemoteFile) => {
     if (file.isFolder) {
-      return <Folder className="w-5 h-5 text-blue-500" />;
+      return <Folder className="w-5 h-5 text-violet-500" />;
     }
     if (file.mimeType?.startsWith("image/")) {
       return <Image className="w-5 h-5 text-green-500" />;
@@ -245,7 +245,7 @@ export function FileBrowser({
         <ScrollArea className="flex-1 min-h-[300px] border rounded-lg">
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
             </div>
           ) : error ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -280,7 +280,7 @@ export function FileBrowser({
                     key={file.id}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer transition-colors",
-                      isSelected && "bg-blue-50 dark:bg-blue-900/20"
+                      isSelected && "bg-violet-50 dark:bg-violet-900/20"
                     )}
                     onClick={() => handleSelect(file)}
                     onDoubleClick={() => file.isFolder && navigateToFolder(file)}
@@ -302,7 +302,7 @@ export function FileBrowser({
                       </div>
                     </div>
                     {isSelected && isSelectable && (
-                      <Check className="w-5 h-5 text-blue-600" />
+                      <Check className="w-5 h-5 text-violet-600" />
                     )}
                     {file.isFolder && (
                       <ChevronRight className="w-4 h-4 text-slate-400" />

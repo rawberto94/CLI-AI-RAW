@@ -102,7 +102,7 @@ export default function EnhancedUIShowcase() {
                 <p className="text-sm text-muted-foreground mb-2">
                   For overlay actions: Hero CTAs, Floating buttons (best on colored background)
                 </p>
-                <div className="bg-gradient-to-r from-blue-500 to-purple-600 p-8 rounded-lg">
+                <div className="bg-gradient-to-r from-violet-500 to-purple-600 p-8 rounded-lg">
                   <div className="flex flex-wrap gap-3">
                     <Button variant="glass">
                       <Shield className="h-4 w-4" />

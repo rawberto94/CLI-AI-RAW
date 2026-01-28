@@ -203,7 +203,7 @@ const SourceReference = memo(({
     onClick={() => onClick?.(source)}
     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-left"
   >
-    <FileText className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+    <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
     <div className="min-w-0 flex-1">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
         {source.contractName}
@@ -321,7 +321,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-indigo-600 dark:text-indigo-400 hover:underline"
+        className="text-purple-600 dark:text-indigo-400 hover:underline"
       >
         {text}
       </a>
@@ -331,7 +331,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
     if (line.trim().startsWith('• ') || line.trim().startsWith('- ')) {
       processed = (
         <span className="flex items-start gap-2">
-          <span className="text-indigo-500 mt-1">•</span>
+          <span className="text-purple-500 mt-1">•</span>
           <span>{line.trim().slice(2)}</span>
         </span>
       );
@@ -342,7 +342,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
     if (numberedMatch) {
       processed = (
         <span className="flex items-start gap-2">
-          <span className="text-indigo-500 font-medium min-w-[1.5rem]">{numberedMatch[1]}.</span>
+          <span className="text-purple-500 font-medium min-w-[1.5rem]">{numberedMatch[1]}.</span>
           <span>{numberedMatch[2]}</span>
         </span>
       );
@@ -457,7 +457,7 @@ export const MessageBubble = memo(({
         <div className={cn(
           "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
           isUser
-            ? "bg-gradient-to-br from-blue-500 to-indigo-600"
+            ? "bg-gradient-to-br from-violet-500 to-purple-600"
             : "bg-gradient-to-br from-purple-500 to-pink-500"
         )}>
           {isUser ? (
@@ -478,7 +478,7 @@ export const MessageBubble = memo(({
           className={cn(
             "rounded-2xl px-4 py-3 relative",
             isUser
-              ? "bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-tr-sm"
+              ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-tr-sm"
               : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm rounded-tl-sm",
             isError && "border-red-300 dark:border-red-800 bg-red-50 dark:bg-red-950/30",
             isStreaming && "animate-pulse"
@@ -512,7 +512,7 @@ export const MessageBubble = memo(({
             <div className="mt-2 flex items-center gap-1 text-xs text-slate-400">
               <div className="w-16 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-emerald-500 rounded-full"
+                  className="h-full bg-violet-500 rounded-full"
                   style={{ width: `${message.metadata.confidence * 100}%` }}
                 />
               </div>
@@ -528,7 +528,7 @@ export const MessageBubble = memo(({
               <button
                 key={idx}
                 onClick={() => onSuggestionClick?.(suggestion)}
-                className="text-xs px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors"
+                className="text-xs px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-indigo-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
               >
                 {suggestion}
               </button>
@@ -598,7 +598,7 @@ export const MessageBubble = memo(({
             <Clock className="h-3 w-3 text-slate-400 animate-pulse" />
           )}
           {message.status === 'sent' && (
-            <Check className="h-3 w-3 text-emerald-500" />
+            <Check className="h-3 w-3 text-violet-500" />
           )}
           {message.status === 'error' && (
             <button
@@ -623,7 +623,7 @@ export const MessageBubble = memo(({
                       onClick={handleCopy}
                     >
                       {copied ? (
-                        <Check className="h-3 w-3 text-emerald-500" />
+                        <Check className="h-3 w-3 text-violet-500" />
                       ) : (
                         <Copy className="h-3 w-3" />
                       )}
@@ -641,7 +641,7 @@ export const MessageBubble = memo(({
                       size="sm"
                       className={cn(
                         "h-6 w-6 p-0",
-                        message.feedback === 'positive' && "text-emerald-500"
+                        message.feedback === 'positive' && "text-violet-500"
                       )}
                       onClick={() => onFeedback?.(message.id, 'positive')}
                     >

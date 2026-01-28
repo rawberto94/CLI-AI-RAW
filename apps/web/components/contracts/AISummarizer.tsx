@@ -115,8 +115,8 @@ export function QuickSummarizeButton({ onClick, isLoading }: QuickSummarizeButto
         disabled={isLoading}
         className={cn(
           "h-14 w-14 rounded-full shadow-2xl",
-          "bg-gradient-to-br from-purple-600 via-indigo-600 to-blue-600",
-          "hover:from-purple-700 hover:via-indigo-700 hover:to-blue-700",
+          "bg-gradient-to-br from-purple-600 via-purple-600 to-purple-600",
+          "hover:from-purple-700 hover:via-purple-700 hover:to-purple-700",
           "text-white border-0"
         )}
       >
@@ -160,8 +160,8 @@ function SummarySection({
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   const colorClasses: Record<string, string> = {
-    blue: 'from-blue-500 to-indigo-600',
-    green: 'from-green-500 to-emerald-600',
+    blue: 'from-violet-500 to-purple-600',
+    green: 'from-violet-500 to-violet-600',
     amber: 'from-amber-500 to-orange-600',
     red: 'from-red-500 to-rose-600',
     purple: 'from-purple-500 to-pink-600',
@@ -310,7 +310,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
     <Dialog open={isOpen} onOpenChange={() => onClose?.()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-white p-0">
         {/* Header */}
-        <DialogHeader className="bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 px-6 py-5 text-white flex-shrink-0">
+        <DialogHeader className="bg-gradient-to-r from-purple-600 via-purple-600 to-purple-600 px-6 py-5 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -421,7 +421,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
                       {summary.financials.totalValue && (
                         <div>
                           <p className="text-xs text-slate-500 uppercase font-medium">Total Value</p>
-                          <p className="text-lg font-bold text-emerald-600">
+                          <p className="text-lg font-bold text-violet-600">
                             {formatCurrency(summary.financials.totalValue, summary.financials.currency)}
                           </p>
                         </div>
@@ -543,7 +543,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
                     className={cn(
                       "p-4 rounded-xl border-l-4",
                       rec.type === 'warning' ? 'bg-amber-50 border-amber-500' :
-                      rec.type === 'action' ? 'bg-blue-50 border-blue-500' :
+                      rec.type === 'action' ? 'bg-violet-50 border-violet-500' :
                       'bg-green-50 border-green-500'
                     )}
                   >
@@ -551,11 +551,11 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
                       <div className={cn(
                         "p-2 rounded-lg",
                         rec.type === 'warning' ? 'bg-amber-100' :
-                        rec.type === 'action' ? 'bg-blue-100' :
+                        rec.type === 'action' ? 'bg-violet-100' :
                         'bg-green-100'
                       )}>
                         {rec.type === 'warning' ? <AlertTriangle className="w-4 h-4 text-amber-600" /> :
-                         rec.type === 'action' ? <Target className="w-4 h-4 text-blue-600" /> :
+                         rec.type === 'action' ? <Target className="w-4 h-4 text-violet-600" /> :
                          <TrendingUp className="w-4 h-4 text-green-600" />}
                       </div>
                       <div className="flex-1">

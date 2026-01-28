@@ -359,12 +359,12 @@ const StepTypeIcon = memo(function StepTypeIcon({ type }: { type: AgentStep['typ
 
 const StepTypeBadge = memo(function StepTypeBadge({ type }: { type: AgentStep['type'] }) {
   const styleMap: Record<AgentStep['type'], string> = {
-    thought: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    thought: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
     action: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     observation: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
     tool_call: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
     critique: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    decision: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+    decision: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   };
 
   return (
@@ -476,7 +476,7 @@ const TraceCard = memo(function TraceCard({
   onSelect: () => void;
 }) {
   const statusConfig = {
-    running: { color: 'text-blue-600', bg: 'bg-blue-100', icon: Activity },
+    running: { color: 'text-violet-600', bg: 'bg-violet-100', icon: Activity },
     completed: { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle2 },
     failed: { color: 'text-red-600', bg: 'bg-red-100', icon: XCircle },
     paused: { color: 'text-yellow-600', bg: 'bg-yellow-100', icon: Pause },
@@ -1039,8 +1039,8 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <Lightbulb className="h-5 w-5 text-blue-600 mb-2" />
+                  <div className="p-4 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                    <Lightbulb className="h-5 w-5 text-violet-600 mb-2" />
                     <h5 className="font-medium">Efficiency Improving</h5>
                     <p className="text-sm text-muted-foreground mt-1">
                       Average task completion time decreased by 15% this week

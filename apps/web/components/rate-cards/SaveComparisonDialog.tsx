@@ -187,7 +187,7 @@ export function SaveComparisonDialog({
               />
             </div>
 
-            <div className="p-3 bg-blue-50 rounded-lg">
+            <div className="p-3 bg-violet-50 rounded-lg">
               <p className="text-sm text-muted-foreground">
                 Comparing <span className="font-semibold">{rateCardIds.length}</span> rate cards
               </p>

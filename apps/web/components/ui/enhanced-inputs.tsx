@@ -91,21 +91,21 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
         error
           ? 'border-red-500 focus:ring-red-500'
           : success
-          ? 'border-emerald-500 focus:ring-emerald-500'
-          : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500'
+          ? 'border-violet-500 focus:ring-violet-500'
+          : 'border-slate-200 dark:border-slate-700 focus:border-violet-500 focus:ring-violet-500'
       ),
       filled: cn(
         'border-0 rounded-xl bg-slate-100 dark:bg-slate-800',
         'focus:bg-white dark:focus:bg-slate-900 focus:ring-2',
-        error ? 'ring-red-500' : success ? 'ring-emerald-500' : 'focus:ring-blue-500'
+        error ? 'ring-red-500' : success ? 'ring-violet-500' : 'focus:ring-violet-500'
       ),
       flushed: cn(
         'border-0 border-b-2 rounded-none bg-transparent px-0',
         error
           ? 'border-red-500'
           : success
-          ? 'border-emerald-500'
-          : 'border-slate-200 dark:border-slate-700 focus:border-blue-500'
+          ? 'border-violet-500'
+          : 'border-slate-200 dark:border-slate-700 focus:border-violet-500'
       ),
     };
 
@@ -213,7 +213,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
               )}
 
               {!loading && !isPassword && success && !error && (
-                <CheckCircle2 className={cn(iconSizes[size], 'text-emerald-500')} />
+                <CheckCircle2 className={cn(iconSizes[size], 'text-violet-500')} />
               )}
 
               {!loading && !isPassword && !error && !success && rightIcon && (
@@ -250,7 +250,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
               initial={{ opacity: 0, y: -10, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
               exit={{ opacity: 0, y: -10, height: 0 }}
-              className="mt-1.5 text-sm text-emerald-600 dark:text-emerald-400 flex items-center gap-1"
+              className="mt-1.5 text-sm text-violet-600 dark:text-violet-400 flex items-center gap-1"
             >
               <CheckCircle2 className="w-3.5 h-3.5 flex-shrink-0" />
               {success}
@@ -345,8 +345,8 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             error
               ? 'border-red-500 focus:ring-red-500'
               : success
-              ? 'border-emerald-500 focus:ring-emerald-500'
-              : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500',
+              ? 'border-violet-500 focus:ring-violet-500'
+              : 'border-slate-200 dark:border-slate-700 focus:border-violet-500 focus:ring-violet-500',
             inputSizes[size],
             className
           )}
@@ -359,7 +359,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
             isFloating
               ? 'top-2 text-xs font-medium'
               : 'top-1/2 -translate-y-1/2 text-sm',
-            isFocused && 'text-blue-600 dark:text-blue-400'
+            isFocused && 'text-violet-600 dark:text-violet-400'
           )}
         >
           {label}
@@ -369,7 +369,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
         {/* Status icons */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
           {error && <AlertCircle className="w-5 h-5 text-red-500" />}
-          {success && !error && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+          {success && !error && <CheckCircle2 className="w-5 h-5 text-violet-500" />}
         </div>
 
         {/* Error message */}
@@ -471,8 +471,8 @@ export const EnhancedTextarea = forwardRef<HTMLTextAreaElement, EnhancedTextarea
               error
                 ? 'border-red-500 focus:ring-red-500'
                 : success
-                ? 'border-emerald-500 focus:ring-emerald-500'
-                : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500',
+                ? 'border-violet-500 focus:ring-violet-500'
+                : 'border-slate-200 dark:border-slate-700 focus:border-violet-500 focus:ring-violet-500',
               autoResize && 'resize-none overflow-hidden',
               className
             )}
@@ -483,7 +483,7 @@ export const EnhancedTextarea = forwardRef<HTMLTextAreaElement, EnhancedTextarea
           {(error || success) && (
             <div className="absolute right-3 top-3">
               {error && <AlertCircle className="w-5 h-5 text-red-500" />}
-              {success && !error && <CheckCircle2 className="w-5 h-5 text-emerald-500" />}
+              {success && !error && <CheckCircle2 className="w-5 h-5 text-violet-500" />}
             </div>
           )}
         </div>
@@ -506,7 +506,7 @@ export const EnhancedTextarea = forwardRef<HTMLTextAreaElement, EnhancedTextarea
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-sm text-emerald-600 dark:text-emerald-400"
+                className="text-sm text-violet-600 dark:text-violet-400"
               >
                 {success}
               </motion.p>
@@ -564,7 +564,7 @@ export const EnhancedCheckbox = forwardRef<HTMLInputElement, EnhancedCheckboxPro
           className={cn(
             'flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200',
             checked
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+              ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
             disabled && 'opacity-50 cursor-not-allowed',
             className
@@ -584,7 +584,7 @@ export const EnhancedCheckbox = forwardRef<HTMLInputElement, EnhancedCheckboxPro
               'flex-shrink-0 flex items-center justify-center rounded-md border-2 transition-all',
               sizeConfig.box,
               checked
-                ? 'bg-blue-500 border-blue-500 text-white'
+                ? 'bg-violet-500 border-violet-500 text-white'
                 : 'border-slate-300 dark:border-slate-600'
             )}
           >
@@ -637,8 +637,8 @@ export const EnhancedCheckbox = forwardRef<HTMLInputElement, EnhancedCheckboxPro
             'flex-shrink-0 flex items-center justify-center rounded-md border-2 transition-all mt-0.5',
             sizeConfig.box,
             checked
-              ? 'bg-blue-500 border-blue-500 text-white'
-              : 'border-slate-300 dark:border-slate-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2'
+              ? 'bg-violet-500 border-violet-500 text-white'
+              : 'border-slate-300 dark:border-slate-600 peer-focus-visible:ring-2 peer-focus-visible:ring-violet-500 peer-focus-visible:ring-offset-2'
           )}
         >
           <AnimatePresence>
@@ -693,7 +693,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
           className={cn(
             'flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-200',
             checked
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+              ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
             disabled && 'opacity-50 cursor-not-allowed',
             className
@@ -712,7 +712,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
             className={cn(
               'flex-shrink-0 flex items-center justify-center rounded-full border-2 transition-all',
               sizeConfig.box,
-              checked ? 'border-blue-500' : 'border-slate-300 dark:border-slate-600'
+              checked ? 'border-violet-500' : 'border-slate-300 dark:border-slate-600'
             )}
           >
             <AnimatePresence>
@@ -721,7 +721,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="w-2.5 h-2.5 rounded-full bg-blue-500"
+                  className="w-2.5 h-2.5 rounded-full bg-violet-500"
                 />
               )}
             </AnimatePresence>
@@ -763,8 +763,8 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
             'flex-shrink-0 flex items-center justify-center rounded-full border-2 transition-all mt-0.5',
             sizeConfig.box,
             checked
-              ? 'border-blue-500'
-              : 'border-slate-300 dark:border-slate-600 peer-focus-visible:ring-2 peer-focus-visible:ring-blue-500 peer-focus-visible:ring-offset-2'
+              ? 'border-violet-500'
+              : 'border-slate-300 dark:border-slate-600 peer-focus-visible:ring-2 peer-focus-visible:ring-violet-500 peer-focus-visible:ring-offset-2'
           )}
         >
           <AnimatePresence>
@@ -773,7 +773,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="w-2.5 h-2.5 rounded-full bg-blue-500"
+                className="w-2.5 h-2.5 rounded-full bg-violet-500"
               />
             )}
           </AnimatePresence>
@@ -885,7 +885,7 @@ export function PinInput({
             onPaste={handlePaste}
             className={cn(
               'text-center font-bold rounded-xl border transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500',
               'disabled:opacity-50 disabled:cursor-not-allowed',
               'text-slate-900 dark:text-white bg-white dark:bg-slate-900',
               error

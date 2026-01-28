@@ -109,7 +109,7 @@ const CHART_COLORS = {
 function GrowthIndicator({ value }: { value: number }) {
   if (value > 0) {
     return (
-      <span className="flex items-center text-emerald-600 text-sm font-medium">
+      <span className="flex items-center text-violet-600 text-sm font-medium">
         <ArrowUpRight className="h-4 w-4" />
         {value.toFixed(1)}%
       </span>
@@ -253,7 +253,7 @@ export function DocumentAnalyticsCharts() {
           subtitle={`${data.summary.contractPercentage.toFixed(0)}% of total`}
           growth={data.summary.contractGrowthRate}
           icon={FileText}
-          color="from-emerald-50 to-green-50 dark:from-emerald-900/30 dark:to-green-900/30"
+          color="from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30"
         />
         <StatCard
           title="Non-Contracts"
@@ -267,7 +267,7 @@ export function DocumentAnalyticsCharts() {
           value={data.summary.signedCount}
           subtitle={`${data.summary.signedPercentage.toFixed(0)}% signed`}
           icon={PenLine}
-          color="from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30"
+          color="from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30"
         />
       </div>
 
@@ -465,7 +465,7 @@ export function DocumentAnalyticsCharts() {
                       initial={{ width: 0 }}
                       animate={{ width: `${item.percentage}%` }}
                       transition={{ duration: 0.5, delay: index * 0.1 }}
-                      className={`h-full rounded-full ${isContract ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                      className={`h-full rounded-full ${isContract ? 'bg-violet-500' : 'bg-amber-500'}`}
                     />
                   </div>
                 </div>

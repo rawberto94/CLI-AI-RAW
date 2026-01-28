@@ -95,9 +95,9 @@ const TOAST_STYLES: Record<ToastType, {
 }> = {
   success: {
     icon: CheckCircle2,
-    iconClass: 'text-emerald-500',
-    bgClass: 'bg-emerald-50',
-    borderClass: 'border-emerald-200',
+    iconClass: 'text-violet-500',
+    bgClass: 'bg-violet-50',
+    borderClass: 'border-violet-200',
   },
   error: {
     icon: XCircle,
@@ -113,15 +113,15 @@ const TOAST_STYLES: Record<ToastType, {
   },
   info: {
     icon: Info,
-    iconClass: 'text-blue-500',
-    bgClass: 'bg-blue-50',
-    borderClass: 'border-blue-200',
+    iconClass: 'text-violet-500',
+    bgClass: 'bg-violet-50',
+    borderClass: 'border-violet-200',
   },
   loading: {
     icon: Loader2,
-    iconClass: 'text-indigo-500 animate-spin',
-    bgClass: 'bg-indigo-50',
-    borderClass: 'border-indigo-200',
+    iconClass: 'text-violet-500 animate-spin',
+    bgClass: 'bg-violet-50',
+    borderClass: 'border-violet-200',
   },
 };
 
@@ -170,7 +170,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
               'transition-colors',
               toast.action.variant === 'outline'
                 ? 'text-slate-600 hover:text-slate-900'
-                : 'text-indigo-600 hover:text-indigo-700'
+                : 'text-purple-600 hover:text-purple-700'
             )}
           >
             {toast.action.label}

@@ -88,7 +88,7 @@ const roleConfig: Record<string, { color: string; label: string; permissions: st
     permissions: ['contracts:*', 'users:*', 'settings:*', 'api:*', 'audit:read']
   },
   manager: { 
-    color: 'bg-blue-100 text-blue-700', 
+    color: 'bg-violet-100 text-violet-700', 
     label: 'Manager',
     permissions: ['contracts:*', 'users:read', 'settings:read', 'api:read']
   },
@@ -285,7 +285,7 @@ export const UserManagement = memo(function UserManagement({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+              <Users className="h-5 w-5 text-violet-600" />
               User Management
             </CardTitle>
             <CardDescription>
@@ -468,7 +468,7 @@ export const UserManagement = memo(function UserManagement({
         {/* Users Table */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading users...</span>
           </div>
         ) : (

@@ -166,9 +166,9 @@ function NavItem({
       case 'warning':
         return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
       case 'success':
-        return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400';
+        return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
       default:
-        return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400';
     }
   };
 
@@ -180,20 +180,20 @@ function NavItem({
           aria-expanded={isExpanded}
           aria-controls={`nav-children-${item.name.replace(/\s+/g, '-').toLowerCase()}`}
           className={cn(
-            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+            'w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
             (itemActive || hasActiveChild)
-              ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+              ? 'bg-violet-50/80 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
               : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
           )}
         >
           <div className="flex items-center gap-2.5">
             <item.icon className={cn(
               'h-4 w-4',
-              (itemActive || hasActiveChild) ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'
+              (itemActive || hasActiveChild) ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-slate-500'
             )} />
             <span className="font-medium">{item.name}</span>
             {item.isNew && (
-              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
+              <span className="px-1.5 py-0.5 text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-400 rounded-full">
                 NEW
               </span>
             )}
@@ -224,9 +224,9 @@ function NavItem({
                     onClick={onMobileClose}
                     aria-current={isActive(child.href) ? 'page' : undefined}
                     className={cn(
-                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+                      'flex items-center gap-2 px-2.5 py-1.5 rounded-md text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-violet-500/50',
                       isActive(child.href)
-                        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 font-medium'
+                        ? 'bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 font-medium'
                         : 'text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-700 dark:hover:text-slate-200'
                     )}
                   >
@@ -251,14 +251,14 @@ function NavItem({
           onMobileClose();
         }}
         className={cn(
-          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+          'w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
           'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
         )}
       >
         <item.icon className="h-4 w-4 text-gray-400 dark:text-slate-500" />
         <span className="font-medium">{item.name}</span>
         {item.isNew && (
-          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
+          <span className="px-1.5 py-0.5 text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-400 rounded-full">
             NEW
           </span>
         )}
@@ -272,19 +272,19 @@ function NavItem({
       onClick={onMobileClose}
       aria-current={itemActive ? 'page' : undefined}
       className={cn(
-        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-blue-500/50',
+        'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all focus:outline-none focus:ring-2 focus:ring-violet-500/50',
         itemActive
-          ? 'bg-blue-50/80 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+          ? 'bg-violet-50/80 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
           : 'text-gray-600 dark:text-slate-300 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-slate-100'
       )}
     >
       <item.icon className={cn(
         'h-4 w-4',
-        itemActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-slate-500'
+        itemActive ? 'text-violet-600 dark:text-violet-400' : 'text-gray-400 dark:text-slate-500'
       )} />
       <span className="font-medium">{item.name}</span>
       {item.isNew && (
-        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400 rounded-full">
+        <span className="px-1.5 py-0.5 text-[9px] font-bold bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-400 rounded-full">
           NEW
         </span>
       )}
@@ -436,7 +436,7 @@ function EnhancedNavigation() {
             <form onSubmit={handleSearch}>
               <div className={cn(
                 'relative transition-all duration-200 rounded-lg',
-                searchFocused && 'ring-2 ring-blue-500/30'
+                searchFocused && 'ring-2 ring-violet-500/30'
               )}>
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                 <input
@@ -450,7 +450,7 @@ function EnhancedNavigation() {
                   onFocus={() => setSearchFocused(true)}
                   onBlur={() => setSearchFocused(false)}
                   aria-label="Search"
-                  className="w-full h-9 pl-9 pr-10 bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200/60 dark:border-slate-600/60 rounded-lg text-sm placeholder:text-gray-400 dark:placeholder:text-slate-500 text-gray-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-blue-400 dark:focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                  className="w-full h-9 pl-9 pr-10 bg-gray-50/80 dark:bg-slate-800/80 border border-gray-200/60 dark:border-slate-600/60 rounded-lg text-sm placeholder:text-gray-400 dark:placeholder:text-slate-500 text-gray-900 dark:text-slate-100 focus:outline-none focus:bg-white dark:focus:bg-slate-800 focus:border-violet-400 dark:focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 transition-all"
                 />
                 <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 hidden sm:flex items-center px-1.5 py-0.5 text-[10px] text-gray-400 dark:text-slate-500 bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded font-mono">
                   /
@@ -513,7 +513,7 @@ function EnhancedNavigation() {
                 onClick={() => setShowUserMenu(!showUserMenu)}
                 className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors"
               >
-                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
+                <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
                   {session?.user?.image ? (
                     /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={session.user.image} alt={`${session.user.name || 'User'}'s profile photo`} className="w-full h-full object-cover" />

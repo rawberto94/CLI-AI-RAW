@@ -286,7 +286,7 @@ export const RiskAssessmentPanel = memo(function RiskAssessmentPanel({
     return (
       <Card className={className}>
         <CardContent className="flex items-center justify-center py-12">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+          <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
           <span>Analyzing risk factors...</span>
         </CardContent>
       </Card>
@@ -359,7 +359,7 @@ export const RiskAssessmentPanel = memo(function RiskAssessmentPanel({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-blue-600" />
+              <Shield className="h-5 w-5 text-violet-600" />
               Risk Assessment
             </CardTitle>
             <CardDescription>
@@ -428,9 +428,9 @@ export const RiskAssessmentPanel = memo(function RiskAssessmentPanel({
             <h3 className="font-medium text-sm text-slate-500">Key Recommendations</h3>
             <div className="grid grid-cols-2 gap-2">
               {assessment.recommendations.map((rec, i) => (
-                <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-blue-50 border border-blue-100">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-                  <span className="text-sm text-blue-800">{rec}</span>
+                <div key={i} className="flex items-start gap-2 p-3 rounded-lg bg-violet-50 border border-violet-100">
+                  <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0 mt-0.5" />
+                  <span className="text-sm text-violet-800">{rec}</span>
                 </div>
               ))}
             </div>
@@ -519,9 +519,9 @@ export const RiskAssessmentPanel = memo(function RiskAssessmentPanel({
                               </div>
                             )}
                             {factor.recommendation && (
-                              <div className="p-3 rounded bg-blue-50 border border-blue-100">
-                                <p className="text-xs font-medium text-blue-800 mb-1">Recommendation</p>
-                                <p className="text-sm text-blue-700">{factor.recommendation}</p>
+                              <div className="p-3 rounded bg-violet-50 border border-violet-100">
+                                <p className="text-xs font-medium text-violet-800 mb-1">Recommendation</p>
+                                <p className="text-sm text-violet-700">{factor.recommendation}</p>
                               </div>
                             )}
                           </div>

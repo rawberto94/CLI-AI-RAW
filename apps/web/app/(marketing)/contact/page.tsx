@@ -61,7 +61,7 @@ export default function ContactPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="group flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 transition-all group-hover:shadow-indigo-500/40">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/25 transition-all group-hover:shadow-purple-500/40">
                 <FileText className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
@@ -92,7 +92,7 @@ export default function ContactPage() {
               </Link>
               <Link
                 href="/auth/signin"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-105"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-105"
               >
                 Get Started
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -105,13 +105,13 @@ export default function ContactPage() {
       {/* Hero */}
       <section className="relative pt-32 pb-16 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
           <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
         </div>
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 mb-8">
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <span className="text-sm font-medium text-indigo-300">Get in Touch</span>
             </div>
@@ -119,7 +119,7 @@ export default function ContactPage() {
             <h1 className="text-4xl lg:text-6xl font-bold">
               <span className="text-white">We&apos;d Love to</span>
               <br />
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-purple-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Hear From You
               </span>
             </h1>
@@ -142,7 +142,7 @@ export default function ContactPage() {
                   title: 'Email Us',
                   description: 'Our team typically responds within 24 hours.',
                   action: 'hello@contigo.io',
-                  gradient: 'from-indigo-500 to-indigo-600',
+                  gradient: 'from-purple-500 to-purple-600',
                 },
                 {
                   icon: MessageSquare,
@@ -196,7 +196,7 @@ export default function ContactPage() {
               <div className="bg-white/5 border border-white/5 rounded-2xl p-8">
                 {isSubmitted ? (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
                       <CheckCircle className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">Message Sent!</h3>
@@ -226,7 +226,7 @@ export default function ContactPage() {
                           required
                           value={formState.name}
                           onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           placeholder="John Doe"
                         />
                       </div>
@@ -240,7 +240,7 @@ export default function ContactPage() {
                           required
                           value={formState.email}
                           onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           placeholder="john@company.com"
                         />
                       </div>
@@ -256,7 +256,7 @@ export default function ContactPage() {
                           type="text"
                           value={formState.company}
                           onChange={(e) => setFormState({ ...formState, company: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                           placeholder="Acme Inc."
                         />
                       </div>
@@ -268,7 +268,7 @@ export default function ContactPage() {
                           id="reason"
                           value={formState.reason}
                           onChange={(e) => setFormState({ ...formState, reason: e.target.value })}
-                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                          className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                         >
                           <option value="" className="bg-slate-900">Select a reason</option>
                           {contactReasons.map((reason) => (
@@ -290,7 +290,7 @@ export default function ContactPage() {
                         rows={5}
                         value={formState.message}
                         onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
                         placeholder="How can we help you?"
                       />
                     </div>
@@ -298,7 +298,7 @@ export default function ContactPage() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="group w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="group w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
                         <>
@@ -325,7 +325,7 @@ export default function ContactPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
                 <FileText className="h-4 w-4 text-white" />
               </div>
               <span className="font-bold text-white">ConTigo</span>

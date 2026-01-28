@@ -203,14 +203,14 @@ const typeIcons = {
   success: <CheckCircle className="w-5 h-5 text-green-500" />,
   error: <XCircle className="w-5 h-5 text-red-500" />,
   warning: <AlertTriangle className="w-5 h-5 text-amber-500" />,
-  info: <Info className="w-5 h-5 text-blue-500" />,
+  info: <Info className="w-5 h-5 text-violet-500" />,
 };
 
 const typeStyles = {
   success: 'border-l-green-500',
   error: 'border-l-red-500',
   warning: 'border-l-amber-500',
-  info: 'border-l-blue-500',
+  info: 'border-l-violet-500',
 };
 
 function NotificationToast({ notification, onDismiss, index, fromTop }: NotificationToastProps) {
@@ -243,7 +243,7 @@ function NotificationToast({ notification, onDismiss, index, fromTop }: Notifica
           {notification.action && (
             <button
               onClick={notification.action.onClick}
-              className="mt-2 text-sm font-medium text-blue-500 hover:text-blue-600"
+              className="mt-2 text-sm font-medium text-violet-500 hover:text-violet-600"
             >
               {notification.action.label}
             </button>
@@ -272,7 +272,7 @@ function NotificationToast({ notification, onDismiss, index, fromTop }: Notifica
             notification.type === 'success' && 'bg-green-500',
             notification.type === 'error' && 'bg-red-500',
             notification.type === 'warning' && 'bg-amber-500',
-            notification.type === 'info' && 'bg-blue-500'
+            notification.type === 'info' && 'bg-violet-500'
           )}
         />
       )}
@@ -378,7 +378,7 @@ export function NotificationCenter({
                   {unreadCount > 0 && (
                     <button
                       onClick={onMarkAllAsRead}
-                      className="text-xs text-blue-500 hover:text-blue-600"
+                      className="text-xs text-violet-500 hover:text-violet-600"
                     >
                       Mark all read
                     </button>
@@ -413,7 +413,7 @@ export function NotificationCenter({
                         exit={{ opacity: 0, height: 0 }}
                         className={cn(
                           'relative px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group',
-                          !notification.read && 'bg-blue-50/50 dark:bg-blue-900/10'
+                          !notification.read && 'bg-violet-50/50 dark:bg-violet-900/10'
                         )}
                         onClick={() => onMarkAsRead(notification.id)}
                       >
@@ -421,7 +421,7 @@ export function NotificationCenter({
                           {/* Icon/Avatar */}
                           <div className={cn(
                             'flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center',
-                            notification.type === 'message' && 'bg-blue-100 text-blue-500 dark:bg-blue-900/30',
+                            notification.type === 'message' && 'bg-violet-100 text-violet-500 dark:bg-violet-900/30',
                             notification.type === 'alert' && 'bg-amber-100 text-amber-500 dark:bg-amber-900/30',
                             notification.type === 'update' && 'bg-purple-100 text-purple-500 dark:bg-purple-900/30',
                             notification.type === 'mention' && 'bg-green-100 text-green-500 dark:bg-green-900/30',
@@ -454,7 +454,7 @@ export function NotificationCenter({
 
                           {/* Unread indicator */}
                           {!notification.read && (
-                            <div className="flex-shrink-0 w-2 h-2 bg-blue-500 rounded-full mt-2" />
+                            <div className="flex-shrink-0 w-2 h-2 bg-violet-500 rounded-full mt-2" />
                           )}
                         </div>
 
@@ -477,7 +477,7 @@ export function NotificationCenter({
               {/* Footer */}
               {notifications.length > 0 && (
                 <div className="px-4 py-3 border-t border-slate-200 dark:border-slate-700">
-                  <button className="w-full text-center text-sm text-blue-500 hover:text-blue-600 font-medium">
+                  <button className="w-full text-center text-sm text-violet-500 hover:text-violet-600 font-medium">
                     View all notifications
                   </button>
                 </div>
@@ -512,7 +512,7 @@ const inlineAlertStyles = {
   success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/20 dark:border-green-800 dark:text-green-200',
   error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/20 dark:border-red-800 dark:text-red-200',
   warning: 'bg-amber-50 border-amber-200 text-amber-800 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-200',
-  info: 'bg-blue-50 border-blue-200 text-blue-800 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-200',
+  info: 'bg-violet-50 border-violet-200 text-violet-800 dark:bg-violet-900/20 dark:border-violet-800 dark:text-violet-200',
 };
 
 export function InlineAlert({

@@ -35,8 +35,8 @@ const mainFeatures = [
       'Batch upload capability',
       'Automatic categorization',
     ],
-    gradient: 'from-indigo-500 to-indigo-600',
-    bgGradient: 'from-indigo-500/20 to-indigo-600/10',
+    gradient: 'from-purple-500 to-purple-600',
+    bgGradient: 'from-purple-500/20 to-purple-600/10',
   },
   {
     icon: Brain,
@@ -74,8 +74,8 @@ const mainFeatures = [
       'Calendar integration',
       'Escalation workflows',
     ],
-    gradient: 'from-cyan-500 to-cyan-600',
-    bgGradient: 'from-cyan-500/20 to-cyan-600/10',
+    gradient: 'from-purple-500 to-purple-600',
+    bgGradient: 'from-purple-500/20 to-purple-600/10',
   },
 ];
 
@@ -84,7 +84,7 @@ const additionalFeatures = [
     icon: Search,
     title: 'Intelligent Search',
     description: 'Find any clause across thousands of contracts instantly with semantic search.',
-    gradient: 'from-emerald-500 to-emerald-600',
+    gradient: 'from-violet-500 to-violet-600',
   },
   {
     icon: BarChart3,
@@ -108,7 +108,7 @@ const additionalFeatures = [
     icon: Users,
     title: 'Team Collaboration',
     description: 'Share insights, assign tasks, and collaborate on contract reviews.',
-    gradient: 'from-blue-500 to-blue-600',
+    gradient: 'from-violet-500 to-purple-600',
   },
   {
     icon: Lock,
@@ -149,7 +149,7 @@ export default function FeaturesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="group flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 transition-all group-hover:shadow-indigo-500/40">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/25 transition-all group-hover:shadow-purple-500/40">
                 <FileText className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
@@ -180,7 +180,7 @@ export default function FeaturesPage() {
               </Link>
               <Link
                 href="/auth/signin"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-105"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-105"
               >
                 Get Started
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -193,13 +193,13 @@ export default function FeaturesPage() {
       {/* Hero */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
           <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
         </div>
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 mb-8">
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <span className="text-sm font-medium text-indigo-300">Enterprise-Grade Features</span>
             </div>
@@ -207,7 +207,7 @@ export default function FeaturesPage() {
             <h1 className="text-4xl lg:text-6xl font-bold">
               <span className="text-white">Powerful Features for</span>
               <br />
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-purple-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Modern Teams
               </span>
             </h1>
@@ -242,7 +242,7 @@ export default function FeaturesPage() {
                   <ul className="space-y-3">
                     {feature.details.map((detail) => (
                       <li key={detail} className="flex items-center gap-3">
-                        <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                        <CheckCircle className="w-5 h-5 text-violet-400 flex-shrink-0" />
                         <span className="text-slate-300">{detail}</span>
                       </li>
                     ))}
@@ -289,12 +289,12 @@ export default function FeaturesPage() {
       {/* Security Section */}
       <section className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-emerald-500/10 to-cyan-500/10 p-12 overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/20 rounded-full blur-3xl" />
+          <div className="relative rounded-3xl border border-white/10 bg-gradient-to-br from-violet-500/10 to-purple-500/10 p-12 overflow-hidden">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/20 rounded-full blur-3xl" />
             
             <div className="relative">
               <div className="flex items-center gap-3 mb-6">
-                <div className="h-12 w-12 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-xl flex items-center justify-center">
+                <div className="h-12 w-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
                   <Shield className="h-6 w-6 text-white" />
                 </div>
                 <h2 className="text-3xl font-bold text-white">Enterprise Security</h2>
@@ -306,7 +306,7 @@ export default function FeaturesPage() {
               <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 {securityFeatures.map((feature) => (
                   <div key={feature.title} className="bg-white/5 rounded-xl p-5 border border-white/5">
-                    <feature.icon className="h-8 w-8 text-emerald-400 mb-3" />
+                    <feature.icon className="h-8 w-8 text-violet-400 mb-3" />
                     <h3 className="text-white font-semibold mb-2">{feature.title}</h3>
                     <p className="text-sm text-slate-400">{feature.description}</p>
                   </div>
@@ -329,7 +329,7 @@ export default function FeaturesPage() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/signin"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-indigo-500/30 transition-all hover:shadow-indigo-500/50 hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-2xl shadow-purple-500/30 transition-all hover:shadow-purple-500/50 hover:scale-105"
             >
               Get Started
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -349,7 +349,7 @@ export default function FeaturesPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
                 <FileText className="h-4 w-4 text-white" />
               </div>
               <span className="font-bold text-white">ConTigo</span>

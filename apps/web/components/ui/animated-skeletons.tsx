@@ -104,7 +104,7 @@ export function StatsCardSkeleton({ index = 0 }: { index?: number }) {
 
 export function DashboardSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="space-y-2">
@@ -135,7 +135,7 @@ export function DashboardSkeleton() {
 
 export function ContractDetailSkeleton() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Back Button & Title */}
         <div className="flex items-center gap-4">

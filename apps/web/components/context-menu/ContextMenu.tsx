@@ -148,7 +148,7 @@ function ContextMenuPopup({ items, position, onClose }: ContextMenuPopupProps) {
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.1 }}
       style={{ left: position.x, top: position.y }}
-      className="fixed z-[200] min-w-[200px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2 overflow-hidden"
+      className="fixed z-[200] min-w-[200px] bg-white dark:bg-slate-900 rounded-xl shadow-2xl shadow-violet-500/10 border border-slate-200 dark:border-slate-700 py-2 overflow-hidden backdrop-blur-lg"
       onClick={(e) => e.stopPropagation()}
     >
       {items.map((item, index) => (
@@ -201,10 +201,10 @@ function ContextMenuItemComponent({ item, onClose }: ContextMenuItemComponentPro
         className={`
           w-full px-3 py-2 flex items-center gap-3 text-sm
           ${item.disabled 
-            ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed' 
+            ? 'text-slate-400 dark:text-slate-600 cursor-not-allowed' 
             : item.danger 
             ? 'text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950'
-            : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            : 'text-slate-700 dark:text-slate-300 hover:bg-violet-50 dark:hover:bg-violet-950/50 hover:text-violet-700 dark:hover:text-violet-300'
           }
           transition-colors
         `}
@@ -214,12 +214,12 @@ function ContextMenuItemComponent({ item, onClose }: ContextMenuItemComponentPro
         )}
         <span className="flex-1 text-left">{item.label}</span>
         {item.shortcut && (
-          <span className="text-xs text-gray-400 dark:text-gray-600 font-mono">
+          <span className="text-xs text-slate-400 dark:text-slate-500 font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded">
             {item.shortcut}
           </span>
         )}
         {item.submenu && (
-          <ChevronRight className="w-4 h-4 text-gray-400" />
+          <ChevronRight className="w-4 h-4 text-slate-400" />
         )}
       </button>
 
@@ -230,7 +230,7 @@ function ContextMenuItemComponent({ item, onClose }: ContextMenuItemComponentPro
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
-            className="absolute left-full top-0 ml-1 min-w-[180px] bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 py-2"
+            className="absolute left-full top-0 ml-1 min-w-[180px] bg-white dark:bg-slate-900 rounded-xl shadow-2xl shadow-violet-500/10 border border-slate-200 dark:border-slate-700 py-2 backdrop-blur-lg"
           >
             {item.submenu.map(subItem => (
               <ContextMenuItemComponent

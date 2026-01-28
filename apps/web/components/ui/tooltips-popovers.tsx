@@ -709,7 +709,7 @@ export function SelectMenu({
               disabled && 'opacity-50 cursor-not-allowed',
               error
                 ? 'border-red-500 focus:ring-red-500'
-                : 'border-slate-200 dark:border-slate-700 focus:border-blue-500 focus:ring-blue-500',
+                : 'border-slate-200 dark:border-slate-700 focus:border-violet-500 focus:ring-violet-500',
               'bg-white dark:bg-slate-900'
             )}
           >
@@ -748,7 +748,7 @@ export function SelectMenu({
                 option.disabled
                   ? 'text-slate-400 cursor-not-allowed'
                   : option.value === value
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400'
+                  ? 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-400'
                   : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800'
               )}
             >
@@ -759,7 +759,7 @@ export function SelectMenu({
                   <div className="text-xs text-slate-500 dark:text-slate-400">{option.description}</div>
                 )}
               </div>
-              {option.value === value && <Check className="w-4 h-4 text-blue-500" />}
+              {option.value === value && <Check className="w-4 h-4 text-violet-500" />}
             </button>
           ))}
         </div>

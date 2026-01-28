@@ -103,7 +103,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Bell className="h-5 w-5 text-blue-500" />
+            <Bell className="h-5 w-5 text-violet-500" />
             Contract Reminder
           </DialogTitle>
           <DialogDescription>
@@ -237,7 +237,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors",
                       config.notificationChannels.includes('email')
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        ? "border-violet-500 bg-violet-50 text-violet-700"
                         : "border-slate-200 hover:border-slate-300"
                     )}
                   >
@@ -250,7 +250,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors",
                       config.notificationChannels.includes('in-app')
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        ? "border-violet-500 bg-violet-50 text-violet-700"
                         : "border-slate-200 hover:border-slate-300"
                     )}
                   >
@@ -263,7 +263,7 @@ export const ContractReminderDialog = memo(function ContractReminderDialog({
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-colors",
                       config.notificationChannels.includes('slack')
-                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                        ? "border-violet-500 bg-violet-50 text-violet-700"
                         : "border-slate-200 hover:border-slate-300"
                     )}
                   >

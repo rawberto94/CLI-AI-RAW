@@ -50,7 +50,7 @@ export function ButtonLoadingExample() {
           loading={loading}
           loadingText="Saving..."
           onClick={handleClick}
-          className="bg-blue-600 text-white"
+          className="bg-violet-600 text-white"
         >
           Save Changes
         </LoadingButton>
@@ -106,7 +106,7 @@ export function PageLoadingExample() {
     <div>
       <button
         onClick={loadData}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg"
+        className="px-4 py-2 bg-violet-600 text-white rounded-lg"
       >
         Load Data
       </button>

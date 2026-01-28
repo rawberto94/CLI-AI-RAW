@@ -470,7 +470,7 @@ function DefaultLoadingSpinner() {
   return (
     <div className="flex items-center justify-center py-8">
       <motion.div
-        className="w-8 h-8 border-3 border-blue-500 border-t-transparent rounded-full"
+        className="w-8 h-8 border-3 border-violet-500 border-t-transparent rounded-full"
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
       />

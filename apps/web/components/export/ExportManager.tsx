@@ -205,13 +205,13 @@ export const ExportManager = memo(function ExportManager({
                   className={cn(
                     'p-4 rounded-xl border-2 text-left transition-all',
                     config.format === format.value
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-violet-500 bg-violet-50'
                       : 'border-slate-200 hover:border-slate-300'
                   )}
                 >
                   <Icon className={cn(
                     'h-6 w-6 mb-2',
-                    config.format === format.value ? 'text-blue-600' : 'text-slate-400'
+                    config.format === format.value ? 'text-violet-600' : 'text-slate-400'
                   )} />
                   <p className="font-medium text-sm">{format.label}</p>
                   <p className="text-xs text-slate-500 mt-0.5">{format.description}</p>
@@ -330,7 +330,7 @@ export const ExportManager = memo(function ExportManager({
             {exporting ? (
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
                   <span className="font-medium">Exporting contracts...</span>
                 </div>
                 <Progress value={progress} className="h-2" />

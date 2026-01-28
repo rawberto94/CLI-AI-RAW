@@ -90,13 +90,13 @@ interface ImportResult {
 }
 
 const DATABASE_CONFIGS: Record<DatabaseType, { name: string; icon: string; defaultPort: number; color: string }> = {
-  postgresql: { name: 'PostgreSQL', icon: '🐘', defaultPort: 5432, color: 'from-blue-500 to-indigo-600' },
+  postgresql: { name: 'PostgreSQL', icon: '🐘', defaultPort: 5432, color: 'from-violet-500 to-purple-600' },
   mysql: { name: 'MySQL', icon: '🐬', defaultPort: 3306, color: 'from-orange-500 to-amber-600' },
   mssql: { name: 'SQL Server', icon: '🔷', defaultPort: 1433, color: 'from-red-500 to-rose-600' },
   oracle: { name: 'Oracle', icon: '🔴', defaultPort: 1521, color: 'from-red-600 to-orange-600' },
-  mongodb: { name: 'MongoDB', icon: '🍃', defaultPort: 27017, color: 'from-green-500 to-emerald-600' },
-  snowflake: { name: 'Snowflake', icon: '❄️', defaultPort: 443, color: 'from-cyan-500 to-blue-600' },
-  bigquery: { name: 'BigQuery', icon: '📊', defaultPort: 443, color: 'from-blue-600 to-indigo-700' },
+  mongodb: { name: 'MongoDB', icon: '🍃', defaultPort: 27017, color: 'from-violet-500 to-violet-600' },
+  snowflake: { name: 'Snowflake', icon: '❄️', defaultPort: 443, color: 'from-purple-500 to-purple-600' },
+  bigquery: { name: 'BigQuery', icon: '📊', defaultPort: 443, color: 'from-violet-600 to-purple-700' },
 };
 
 const MAPPING_FIELDS = [
@@ -272,9 +272,9 @@ export default function ExternalDatabaseImportPage() {
   const currentStepIndex = steps.findIndex(s => s.key === step);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-600 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-600 to-purple-600 shadow-2xl">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" />
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         
@@ -293,7 +293,7 @@ export default function ExternalDatabaseImportPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">External Database Import</h1>
-                <p className="text-blue-100 mt-1">Connect to client databases and import contracts</p>
+                <p className="text-violet-100 mt-1">Connect to client databases and import contracts</p>
               </div>
             </div>
             
@@ -316,7 +316,7 @@ export default function ExternalDatabaseImportPage() {
                 <div className={`
                   w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium
                   ${index < currentStepIndex ? 'bg-green-500 text-white' : 
-                    index === currentStepIndex ? 'bg-blue-600 text-white' : 
+                    index === currentStepIndex ? 'bg-violet-600 text-white' : 
                     'bg-slate-200 text-slate-500'}
                 `}>
                   {index < currentStepIndex ? (
@@ -376,7 +376,7 @@ export default function ExternalDatabaseImportPage() {
                           className={`
                             p-4 rounded-xl border-2 transition-all text-center
                             ${config.type === type 
-                              ? 'border-blue-500 bg-blue-50' 
+                              ? 'border-violet-500 bg-violet-50' 
                               : 'border-slate-200 hover:border-slate-300'}
                           `}
                         >
@@ -466,7 +466,7 @@ export default function ExternalDatabaseImportPage() {
                     <Button
                       onClick={testConnection}
                       disabled={!config.host || !config.database || !config.username || connectionStatus === 'testing'}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                      className="bg-gradient-to-r from-violet-600 to-purple-600"
                     >
                       {connectionStatus === 'testing' ? (
                         <>
@@ -529,7 +529,7 @@ export default function ExternalDatabaseImportPage() {
                           onClick={() => setSelectedTable(table)}
                           className={`
                             w-full p-4 text-left flex items-center justify-between hover:bg-slate-50
-                            ${selectedTable === table ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''}
+                            ${selectedTable === table ? 'bg-violet-50 border-l-4 border-l-violet-500' : ''}
                           `}
                         >
                           <div className="flex items-center gap-3">
@@ -537,7 +537,7 @@ export default function ExternalDatabaseImportPage() {
                             <span className="font-medium">{table}</span>
                           </div>
                           {selectedTable === table && (
-                            <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                            <CheckCircle2 className="w-5 h-5 text-violet-500" />
                           )}
                         </button>
                       ))
@@ -553,7 +553,7 @@ export default function ExternalDatabaseImportPage() {
                     <Button
                       onClick={loadPreview}
                       disabled={!selectedTable || isLoading}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                      className="bg-gradient-to-r from-violet-600 to-purple-600"
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -660,7 +660,7 @@ export default function ExternalDatabaseImportPage() {
                     <Button
                       onClick={() => setStep('preview')}
                       disabled={!mapping.fileNameColumn}
-                      className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                      className="bg-gradient-to-r from-violet-600 to-purple-600"
                     >
                       <ArrowRight className="w-4 h-4 mr-2" />
                       Preview Import
@@ -781,7 +781,7 @@ export default function ExternalDatabaseImportPage() {
                     <Button
                       onClick={runImport}
                       disabled={isLoading}
-                      className="bg-gradient-to-r from-green-600 to-emerald-600"
+                      className="bg-gradient-to-r from-violet-600 to-violet-600"
                     >
                       {isLoading ? (
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -844,9 +844,9 @@ export default function ExternalDatabaseImportPage() {
                       <div className="text-2xl font-bold text-red-600">{importResult.failed}</div>
                       <div className="text-sm text-red-700">Failed</div>
                     </div>
-                    <div className="p-4 bg-blue-50 rounded-lg text-center">
-                      <div className="text-2xl font-bold text-blue-600">{importResult.totalRecords}</div>
-                      <div className="text-sm text-blue-700">Total</div>
+                    <div className="p-4 bg-violet-50 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-violet-600">{importResult.totalRecords}</div>
+                      <div className="text-sm text-violet-700">Total</div>
                     </div>
                   </div>
 
@@ -871,7 +871,7 @@ export default function ExternalDatabaseImportPage() {
                   {/* Actions */}
                   <div className="flex justify-center gap-3 pt-4">
                     <Link href="/contracts">
-                      <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
+                      <Button className="bg-gradient-to-r from-violet-600 to-purple-600">
                         <FileText className="w-4 h-4 mr-2" />
                         View Contracts
                       </Button>

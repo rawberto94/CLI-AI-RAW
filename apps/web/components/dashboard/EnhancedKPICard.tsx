@@ -55,10 +55,10 @@ export interface EnhancedKPICardProps {
 const variantStyles = {
   default: {
     border: 'border-gray-200 dark:border-gray-800',
-    iconBg: 'bg-blue-50 dark:bg-blue-950',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    sparkline: '#3B82F6',
-    hoverBg: 'group-hover:bg-blue-50 dark:group-hover:bg-blue-950/50',
+    iconBg: 'bg-violet-50 dark:bg-violet-950',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    sparkline: '#7C3AED',
+    hoverBg: 'group-hover:bg-violet-50 dark:group-hover:bg-violet-950/50',
   },
   success: {
     border: 'border-green-200 dark:border-green-800',
@@ -282,7 +282,7 @@ export function EnhancedKPICard({
  */
 export function MiniSparkline({
   data,
-  color = '#3B82F6',
+  color = '#7C3AED',
   height = 24,
   className,
 }: {

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -198,12 +198,12 @@ function AccuracyBadge({ accuracy }: { accuracy: number }) {
 // =============================================================================
 
 export default function AILearningPage() {
-  const [stats, setStats] = useState<LearningStats>(mockStats);
-  const [fieldAccuracies, setFieldAccuracies] = useState<FieldAccuracy[]>(mockFieldAccuracies);
+  const [stats, _setStats] = useState<LearningStats>(mockStats);
+  const [fieldAccuracies, _setFieldAccuracies] = useState<FieldAccuracy[]>(mockFieldAccuracies);
   const [patterns, setPatterns] = useState<LearningPattern[]>(mockPatterns);
-  const [recentCorrections, setRecentCorrections] = useState<CorrectionRecord[]>(mockRecentCorrections);
+  const [recentCorrections, _setRecentCorrections] = useState<CorrectionRecord[]>(mockRecentCorrections);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedContractType, setSelectedContractType] = useState<string>('all');
+  const [_selectedContractType, _setSelectedContractType] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>('30d');
 
   const handleRefresh = async () => {
@@ -579,12 +579,12 @@ export default function AILearningPage() {
       </Tabs>
 
       {/* Learning Cycle Info */}
-      <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 border-blue-200 dark:border-blue-800">
+      <Card className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200 dark:border-violet-800">
         <CardContent className="py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                <Brain className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
+                <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
                 <p className="font-medium">Continuous Learning Active</p>

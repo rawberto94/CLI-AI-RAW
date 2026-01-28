@@ -136,7 +136,7 @@ export default function MetadataSettingsPage() {
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors
                       ${isActive 
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                        ? 'bg-violet-50 text-violet-700 border border-violet-200' 
                         : section.active
                           ? 'hover:bg-gray-100 text-gray-700'
                           : 'opacity-50 cursor-not-allowed text-gray-400'

@@ -260,11 +260,11 @@ function FeedbackItem({ feedback, onDismiss }: FeedbackItemProps) {
         };
       case 'info':
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          icon: 'text-blue-600',
-          title: 'text-blue-900',
-          message: 'text-blue-700',
+          bg: 'bg-violet-50',
+          border: 'border-violet-200',
+          icon: 'text-violet-600',
+          title: 'text-violet-900',
+          message: 'text-violet-700',
         };
       case 'progress':
         return {

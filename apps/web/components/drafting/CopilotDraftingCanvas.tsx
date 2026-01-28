@@ -418,7 +418,7 @@ export function CopilotDraftingCanvas({
   const getSuggestionIcon = (type: CopilotSuggestion['type']) => {
     switch (type) {
       case 'risk_warning': return <AlertTriangle className="h-4 w-4 text-red-500" />;
-      case 'compliance': return <Shield className="h-4 w-4 text-blue-500" />;
+      case 'compliance': return <Shield className="h-4 w-4 text-violet-500" />;
       case 'clause_improvement': return <Sparkles className="h-4 w-4 text-purple-500" />;
       case 'auto_complete': return <Zap className="h-4 w-4 text-yellow-500" />;
       case 'negotiation': return <Scale className="h-4 w-4 text-green-500" />;
@@ -536,7 +536,7 @@ export function CopilotDraftingCanvas({
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
               >
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 Save
@@ -602,7 +602,7 @@ export function CopilotDraftingCanvas({
 
               <button
                 onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-500 text-white rounded-lg hover:from-purple-600 hover:to-purple-600 transition-colors text-sm"
               >
                 <Wand2 className="h-4 w-4" />
                 AI Assist
@@ -626,7 +626,7 @@ export function CopilotDraftingCanvas({
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-6 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/50 dark:to-blue-950/50 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
+                  <div className="bg-gradient-to-r from-purple-50 to-purple-50 dark:from-purple-950/50 dark:to-purple-950/50 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                         <Brain className="h-5 w-5 text-purple-500 dark:text-purple-400" />
@@ -683,7 +683,7 @@ export function CopilotDraftingCanvas({
             <div className="relative">
               <div
                 className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 p-8 min-h-[800px] ${
-                  isEditing ? 'focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent' : ''
+                  isEditing ? 'focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-transparent' : ''
                 }`}
               >
                 {isEditing ? (
@@ -737,14 +737,14 @@ export function CopilotDraftingCanvas({
                           key={completion.id}
                           onClick={() => applyCompletion(completion)}
                           aria-label={`Apply completion: ${completion.text.slice(0, 50)}...`}
-                          className={`w-full px-4 py-3 text-left hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-colors border-b border-gray-100 dark:border-slate-700 last:border-0 ${
-                            index === selectedCompletionIndex ? 'bg-blue-50 dark:bg-blue-900/30' : ''
+                          className={`w-full px-4 py-3 text-left hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors border-b border-gray-100 dark:border-slate-700 last:border-0 ${
+                            index === selectedCompletionIndex ? 'bg-violet-50 dark:bg-violet-900/30' : ''
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             <div className={`mt-1 px-1.5 py-0.5 rounded text-xs ${
                               completion.source === 'library' ? 'bg-purple-100 text-purple-700' :
-                              completion.source === 'historical' ? 'bg-blue-100 text-blue-700' :
+                              completion.source === 'historical' ? 'bg-violet-100 text-violet-700' :
                               'bg-gray-100 text-gray-700'
                             }`}>
                               {completion.source}
@@ -876,7 +876,7 @@ export function CopilotDraftingCanvas({
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                                   suggestion.source.type === 'playbook' ? 'bg-green-100 text-green-700' :
                                   suggestion.source.type === 'clause_library' ? 'bg-purple-100 text-purple-700' :
-                                  suggestion.source.type === 'historical' ? 'bg-blue-100 text-blue-700' :
+                                  suggestion.source.type === 'historical' ? 'bg-violet-100 text-violet-700' :
                                   'bg-gray-100 text-gray-700'
                                 }`}>
                                   {suggestion.source.type}

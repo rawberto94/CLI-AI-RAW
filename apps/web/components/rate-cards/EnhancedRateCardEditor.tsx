@@ -368,7 +368,7 @@ function RateCardDisplay({ rateCard }: { rateCard: RateCardData }) {
         <div className="text-sm text-muted-foreground">Status</div>
         <div className="flex gap-2">
           {rateCard.isBaseline && (
-            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">Baseline</span>
+            <span className="px-2 py-1 bg-violet-100 text-violet-800 text-xs rounded">Baseline</span>
           )}
           {rateCard.isNegotiated && (
             <span className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded">Negotiated</span>

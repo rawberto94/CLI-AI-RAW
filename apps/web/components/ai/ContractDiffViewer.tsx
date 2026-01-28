@@ -248,7 +248,7 @@ export function ContractDiffViewer({
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-2" />
           <p className="text-slate-500">Computing differences...</p>
         </div>
       </div>
@@ -437,7 +437,7 @@ function DiffSectionComponent({
               ? 'bg-red-100 text-red-700'
               : section.aiAnnotation.significance === 'medium'
               ? 'bg-amber-100 text-amber-700'
-              : 'bg-blue-100 text-blue-700'
+              : 'bg-violet-100 text-violet-700'
           }`}>
             <Sparkles className="w-3 h-3" />
             {section.aiAnnotation.significance}

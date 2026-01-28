@@ -87,7 +87,7 @@ export function BulkActionBar({
               <MotionDiv
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                className="h-full bg-gradient-to-r from-purple-500 to-purple-500"
                 transition={{ duration: 0.3 }}
               />
             </div>
@@ -96,7 +96,7 @@ export function BulkActionBar({
           <div className="px-4 py-3 flex items-center gap-4">
             {/* Selection info */}
             <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-indigo-200/50">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-200/50">
                 {selectedCount}
               </div>
               <div>
@@ -107,7 +107,7 @@ export function BulkActionBar({
                   {selectedCount < totalCount ? (
                     <button
                       onClick={onSelectAll}
-                      className="text-indigo-600 hover:text-indigo-800 font-medium"
+                      className="text-purple-600 hover:text-indigo-800 font-medium"
                       disabled={isProcessing}
                     >
                       Select all {totalCount}
@@ -126,7 +126,7 @@ export function BulkActionBar({
                 role="status"
                 aria-live="polite"
               >
-                <Loader2 className="w-5 h-5 animate-spin text-indigo-600" aria-hidden="true" />
+                <Loader2 className="w-5 h-5 animate-spin text-purple-600" aria-hidden="true" />
                 <span>
                   {processingAction || 'Processing'} ({processedCount}/{selectedCount})...
                 </span>
@@ -136,7 +136,7 @@ export function BulkActionBar({
                 {/* Approve All */}
                 <button
                   onClick={onApprove}
-                  className="px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200/50 transition-all font-semibold text-sm flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                  className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200/50 transition-all font-semibold text-sm flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
                   aria-label={`Approve all ${selectedCount} selected items`}
                 >
                   <CheckCheck className="w-4 h-4" aria-hidden="true" />
@@ -238,7 +238,7 @@ export function BulkActionConfirmDialog({
       icon: CheckCircle2,
       iconColor: 'text-green-600',
       iconBg: 'bg-green-100',
-      buttonColor: 'bg-gradient-to-r from-green-500 to-emerald-600',
+      buttonColor: 'bg-gradient-to-r from-violet-500 to-violet-600',
       buttonText: 'Approve All',
     },
     reject: {
@@ -254,9 +254,9 @@ export function BulkActionConfirmDialog({
       title: 'Delegate Selected',
       description: `You are about to delegate ${count} approval${count > 1 ? 's' : ''} to another team member.`,
       icon: UserPlus,
-      iconColor: 'text-blue-600',
-      iconBg: 'bg-blue-100',
-      buttonColor: 'bg-gradient-to-r from-blue-500 to-indigo-600',
+      iconColor: 'text-violet-600',
+      iconBg: 'bg-violet-100',
+      buttonColor: 'bg-gradient-to-r from-violet-500 to-purple-600',
       buttonText: 'Delegate',
     },
     escalate: {

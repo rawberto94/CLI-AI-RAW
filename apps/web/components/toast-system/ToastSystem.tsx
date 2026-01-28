@@ -323,12 +323,12 @@ function ToastItem({ toast, isPaused, onDismiss, position }: ToastItemProps) {
       bg: 'bg-yellow-50 dark:bg-yellow-950 border-yellow-200 dark:border-yellow-800',
     },
     info: {
-      icon: <Info className="w-5 h-5 text-blue-500" />,
-      bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
+      icon: <Info className="w-5 h-5 text-violet-500" />,
+      bg: 'bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800',
     },
     loading: {
-      icon: <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />,
-      bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
+      icon: <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />,
+      bg: 'bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800',
     },
     default: {
       icon: null,
@@ -381,7 +381,7 @@ function ToastItem({ toast, isPaused, onDismiss, position }: ToastItemProps) {
                     toast.action!.onClick();
                     onDismiss(toast.id);
                   }}
-                  className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline"
+                  className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:underline"
                 >
                   {toast.action.label}
                 </button>

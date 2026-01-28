@@ -79,7 +79,7 @@ interface FavoriteContractsWidgetProps {
 const getStatusConfig = (status: FavoriteContract['status']) => {
   switch (status) {
     case 'active':
-      return { color: 'text-emerald-500', bg: 'bg-emerald-50', label: 'Active', icon: CheckCircle2 }
+      return { color: 'text-violet-500', bg: 'bg-violet-50', label: 'Active', icon: CheckCircle2 }
     case 'pending':
       return { color: 'text-amber-500', bg: 'bg-amber-50', label: 'Pending', icon: Clock }
     case 'expiring':
@@ -158,7 +158,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
           <Link 
             href={`/contracts/${contract.id}`}
             className={cn(
-              "font-medium text-slate-900 hover:text-indigo-600 truncate",
+              "font-medium text-slate-900 hover:text-purple-600 truncate",
               isCompact ? "text-xs" : "text-sm"
             )}
           >
@@ -245,7 +245,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
         href={`/contracts/${contract.id}`}
         className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <ExternalLink className="h-4 w-4 text-slate-400 hover:text-indigo-500" />
+        <ExternalLink className="h-4 w-4 text-slate-400 hover:text-purple-500" />
       </Link>
     </motion.div>
   )

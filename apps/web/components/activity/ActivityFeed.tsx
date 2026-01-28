@@ -82,13 +82,13 @@ const activityConfig: Record<ActivityType, {
   label: string;
 }> = {
   contract_created: { icon: FileText, color: 'text-green-600', bg: 'bg-green-100', label: 'Created' },
-  contract_updated: { icon: Edit, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Updated' },
+  contract_updated: { icon: Edit, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Updated' },
   contract_deleted: { icon: Trash2, color: 'text-red-600', bg: 'bg-red-100', label: 'Deleted' },
   contract_viewed: { icon: Eye, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Viewed' },
   contract_downloaded: { icon: Download, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Downloaded' },
   contract_approved: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Approved' },
   contract_rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rejected' },
-  comment_added: { icon: MessageSquare, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Comment' },
+  comment_added: { icon: MessageSquare, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Comment' },
   processing_started: { icon: Clock, color: 'text-yellow-600', bg: 'bg-yellow-100', label: 'Processing' },
   processing_completed: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Completed' },
   processing_failed: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-100', label: 'Failed' },
@@ -311,7 +311,7 @@ export const ActivityFeed = memo(function ActivityFeed({
       {showFilters && (
         <div className="flex items-center justify-between">
           <h3 className="font-semibold flex items-center gap-2">
-            <Activity className="h-5 w-5 text-blue-600" />
+            <Activity className="h-5 w-5 text-violet-600" />
             Activity Feed
             {isLive && (
               <Badge variant="outline" className="text-green-600 border-green-300">
@@ -376,7 +376,7 @@ export const ActivityFeed = memo(function ActivityFeed({
               className={cn(
                 'flex items-start gap-3 transition-all',
                 compact ? 'py-2' : 'py-3',
-                isNew && 'bg-blue-50 -mx-2 px-2 rounded-lg'
+                isNew && 'bg-violet-50 -mx-2 px-2 rounded-lg'
               )}
             >
               {!compact && (
@@ -407,7 +407,7 @@ export const ActivityFeed = memo(function ActivityFeed({
                       <span className="text-slate-600">{activity.title.toLowerCase()}</span>
                     </p>
                     {activity.contractName && (
-                      <p className="text-sm text-blue-600 hover:underline cursor-pointer truncate">
+                      <p className="text-sm text-violet-600 hover:underline cursor-pointer truncate">
                         {activity.contractName}
                       </p>
                     )}

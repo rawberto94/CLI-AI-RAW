@@ -204,7 +204,7 @@ const statusConfig = {
 
 const priorityColors = {
   low: 'bg-slate-100 text-slate-700',
-  medium: 'bg-blue-100 text-blue-700',
+  medium: 'bg-violet-100 text-violet-700',
   high: 'bg-orange-100 text-orange-700',
   urgent: 'bg-red-100 text-red-700',
 };
@@ -297,7 +297,7 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold flex items-center gap-2">
-              <Users className="h-6 w-6 text-blue-600" />
+              <Users className="h-6 w-6 text-violet-600" />
               Approval Workflows
             </h2>
             <p className="text-slate-600 mt-1">
@@ -358,13 +358,13 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
                     'h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0',
                     request.status === 'approved' ? 'bg-green-100' :
                     request.status === 'rejected' ? 'bg-red-100' :
-                    request.status === 'expired' ? 'bg-slate-100' : 'bg-blue-100'
+                    request.status === 'expired' ? 'bg-slate-100' : 'bg-violet-100'
                   )}>
                     <FileText className={cn(
                       'h-5 w-5',
                       request.status === 'approved' ? 'text-green-600' :
                       request.status === 'rejected' ? 'text-red-600' :
-                      request.status === 'expired' ? 'text-slate-500' : 'text-blue-600'
+                      request.status === 'expired' ? 'text-slate-500' : 'text-violet-600'
                     )} />
                   </div>
 
@@ -421,7 +421,7 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
                                   approver.status === 'approved' && 'border-green-500 bg-green-50',
                                   approver.status === 'rejected' && 'border-red-500 bg-red-50',
                                   approver.status === 'changes_requested' && 'border-orange-500 bg-orange-50',
-                                  approver.status === 'pending' && isActive && 'border-blue-500 bg-blue-50 animate-pulse',
+                                  approver.status === 'pending' && isActive && 'border-violet-500 bg-violet-50 animate-pulse',
                                   approver.status === 'pending' && !isActive && 'border-slate-200 bg-slate-50',
                                 )}
                                 title={`${approver.name} - ${approver.role}`}
@@ -498,8 +498,8 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
                 </div>
 
                 {selectedRequest.notes && (
-                  <div className="p-3 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-blue-700">{selectedRequest.notes}</p>
+                  <div className="p-3 bg-violet-50 rounded-lg">
+                    <p className="text-sm text-violet-700">{selectedRequest.notes}</p>
                   </div>
                 )}
 

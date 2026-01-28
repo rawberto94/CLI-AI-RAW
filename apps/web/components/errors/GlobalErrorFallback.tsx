@@ -81,11 +81,11 @@ export function GlobalErrorFallback({ error, reset }: GlobalErrorFallbackProps) 
             </div>
           )}
 
-          <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-            <h4 className="text-sm font-semibold text-blue-900 mb-2">
+          <div className="bg-violet-50 border border-violet-200 rounded-md p-4">
+            <h4 className="text-sm font-semibold text-violet-900 mb-2">
               What can you do?
             </h4>
-            <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+            <ul className="text-sm text-violet-800 space-y-1 list-disc list-inside">
               <li>Try refreshing the page</li>
               <li>Go back to the home page</li>
               <li>Clear your browser cache and cookies</li>

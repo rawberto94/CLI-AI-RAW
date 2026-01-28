@@ -280,7 +280,7 @@ export function ConversationHistoryPanel({
                               {conv.contextType === "contract" && (
                                 <Badge
                                   variant="secondary"
-                                  className="text-[10px] h-4 px-1.5 bg-blue-50 text-blue-600"
+                                  className="text-[10px] h-4 px-1.5 bg-violet-50 text-violet-600"
                                 >
                                   <FileText className="w-2.5 h-2.5 mr-0.5" />
                                   Contract

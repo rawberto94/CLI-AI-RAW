@@ -39,7 +39,7 @@ export function ComplianceIssuesList({ issues, isLoading, onResolve }: Complianc
       case 'medium':
         return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'low':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-violet-100 text-violet-800 border-violet-200';
     }
   };
 

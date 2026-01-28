@@ -188,7 +188,7 @@ export function EnhancedUploadZone({
         className={cn(
           'relative border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200',
           isDragging 
-            ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-400' 
+            ? 'bg-violet-50 dark:bg-violet-900/20 border-violet-400' 
             : 'bg-gray-50 dark:bg-gray-800/50 hover:bg-gray-100 dark:hover:bg-gray-800'
         )}
       >
@@ -213,11 +213,11 @@ export function EnhancedUploadZone({
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ duration: 1, repeat: Infinity }}
-                className="p-4 bg-blue-500 rounded-2xl mb-4"
+                className="p-4 bg-violet-500 rounded-2xl mb-4"
               >
                 <CloudUpload className="h-8 w-8 text-white" />
               </motion.div>
-              <p className="text-lg font-medium text-blue-700 dark:text-blue-300">
+              <p className="text-lg font-medium text-violet-700 dark:text-violet-300">
                 Drop files to upload
               </p>
             </motion.div>
@@ -228,7 +228,7 @@ export function EnhancedUploadZone({
               animate={{ opacity: 1 }}
               className="flex flex-col items-center"
             >
-              <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl mb-4 shadow-lg shadow-blue-500/20">
+              <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-500 rounded-2xl mb-4 shadow-lg shadow-violet-500/20">
                 <Upload className="h-8 w-8 text-white" />
               </div>
               <p className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">
@@ -248,7 +248,7 @@ export function EnhancedUploadZone({
 
         {/* AI Badge */}
         <div className="absolute top-3 right-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full text-white text-xs font-medium">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-purple-500 to-purple-500 rounded-full text-white text-xs font-medium">
             <Sparkles className="h-3 w-3" />
             AI-Powered Analysis
           </div>
@@ -304,7 +304,7 @@ export function EnhancedUploadZone({
             <Button
               onClick={handleUpload}
               disabled={pendingCount === 0 || isUploading}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               {isUploading ? (
                 <>
@@ -358,11 +358,11 @@ function FileItem({
         file.status === 'error' ? 'bg-red-100 dark:bg-red-900/50' :
         file.status === 'completed' ? 'bg-green-100 dark:bg-green-900/50' :
         file.status === 'processing' ? 'bg-purple-100 dark:bg-purple-900/50' :
-        file.status === 'uploading' ? 'bg-blue-100 dark:bg-blue-900/50' :
+        file.status === 'uploading' ? 'bg-violet-100 dark:bg-violet-900/50' :
         'bg-gray-100 dark:bg-gray-800'
       )}>
         {file.status === 'uploading' && (
-          <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+          <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
         )}
         {file.status === 'processing' && (
           <Sparkles className="h-5 w-5 text-purple-600 animate-pulse" />

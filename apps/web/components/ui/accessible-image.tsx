@@ -264,12 +264,12 @@ export const AvatarImage = memo(function AvatarImage({
   // Generate consistent color from name
   const colorIndex = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) % 6;
   const colors = [
-    'bg-blue-500',
+    'bg-violet-500',
     'bg-green-500',
     'bg-purple-500',
     'bg-amber-500',
     'bg-rose-500',
-    'bg-cyan-500',
+    'bg-purple-500',
   ];
   
   if (!src || hasError) {

@@ -263,12 +263,12 @@ export function AICostWidget({
         {/* Token breakdown */}
         <div className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 rounded-lg bg-blue-50">
-              <div className="flex items-center gap-1.5 text-blue-600 text-xs font-medium mb-1">
+            <div className="p-3 rounded-lg bg-violet-50">
+              <div className="flex items-center gap-1.5 text-violet-600 text-xs font-medium mb-1">
                 <TrendingUp className="w-3.5 h-3.5" />
                 Input Tokens
               </div>
-              <p className="text-lg font-bold text-blue-900">
+              <p className="text-lg font-bold text-violet-900">
                 {formatTokens(sessionStats.totalPromptTokens)}
               </p>
             </div>

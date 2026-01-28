@@ -2,10 +2,8 @@
 
 import React, { memo } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import {
   Keyboard,
-  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,6 +25,7 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['1'], description: 'Switch to Summary tab', category: 'navigation' },
   { keys: ['2'], description: 'Switch to Details tab', category: 'navigation' },
   { keys: ['3'], description: 'Switch to Activity tab', category: 'navigation' },
+  { keys: ['4', 'A'], description: 'Switch to AI tab', category: 'navigation' },
   { keys: ['P'], description: 'Toggle PDF viewer', category: 'navigation' },
   { keys: ['Esc'], description: 'Close dialogs / Exit edit mode', category: 'navigation' },
   // Actions

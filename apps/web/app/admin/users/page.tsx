@@ -85,7 +85,7 @@ interface Invitation {
 const ROLES = [
   { value: 'owner', label: 'Owner', color: 'bg-purple-100 text-purple-800' },
   { value: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800' },
-  { value: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-800' },
+  { value: 'manager', label: 'Manager', color: 'bg-violet-100 text-violet-800' },
   { value: 'member', label: 'Member', color: 'bg-green-100 text-green-800' },
   { value: 'viewer', label: 'Viewer', color: 'bg-gray-100 text-gray-800' },
 ];
@@ -358,10 +358,10 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-600">Admins</CardTitle>
+            <CardTitle className="text-sm font-medium text-violet-600">Admins</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-2xl font-bold text-violet-600">
               {users.filter(u => u.role === 'admin' || u.role === 'owner').length}
             </p>
           </CardContent>

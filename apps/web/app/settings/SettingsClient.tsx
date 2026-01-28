@@ -305,7 +305,7 @@ export default function SettingsClient() {
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-lg shadow-lg shadow-blue-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <User className="w-5 h-5 text-white" />
                     </div>
                     User Profile
@@ -321,7 +321,7 @@ export default function SettingsClient() {
                         id="fullName"
                         type="text"
                         defaultValue={settingsData.user.name}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                       />
                     </div>
                     <div>
@@ -332,7 +332,7 @@ export default function SettingsClient() {
                         id="emailAddress"
                         type="email"
                         defaultValue={settingsData.user.email}
-                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                       />
                     </div>
                   </div>
@@ -362,7 +362,7 @@ export default function SettingsClient() {
               <Card className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg shadow-lg shadow-green-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg shadow-lg shadow-green-500/25">
                       <Globe className="w-5 h-5 text-white" />
                     </div>
                     System Preferences
@@ -374,7 +374,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Timezone
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="UTC-8">UTC-8 (Pacific)</option>
                         <option value="UTC-5">UTC-5 (Eastern)</option>
                         <option value="UTC+0">UTC+0 (GMT)</option>
@@ -385,7 +385,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Language
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="en-US">English (US)</option>
                         <option value="en-GB">English (UK)</option>
                         <option value="es-ES">Spanish</option>
@@ -399,7 +399,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
                         Date Format
                       </label>
-                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="MM/DD/YYYY">MM/DD/YYYY</option>
                         <option value="DD/MM/YYYY">DD/MM/YYYY</option>
                         <option value="YYYY-MM-DD">YYYY-MM-DD</option>
@@ -409,7 +409,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Currency
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="USD">USD ($)</option>
                         <option value="EUR">EUR (€)</option>
                         <option value="GBP">GBP (£)</option>
@@ -514,7 +514,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Session Timeout
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="1">1 hour</option>
                         <option value="4">4 hours</option>
                         <option value="8">8 hours</option>
@@ -525,7 +525,7 @@ export default function SettingsClient() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Password Policy
                       </label>
-                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                      <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                         <option value="basic">Basic</option>
                         <option value="strong">Strong</option>
                         <option value="enterprise">Enterprise</option>
@@ -552,19 +552,19 @@ export default function SettingsClient() {
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-lg shadow-lg shadow-blue-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <Key className="w-5 h-5 text-white" />
                     </div>
                     API Access
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between p-4 bg-violet-50 rounded-lg border border-violet-200">
                     <div>
-                      <h4 className="font-medium text-blue-800">
+                      <h4 className="font-medium text-violet-800">
                         Active API Tokens
                       </h4>
-                      <p className="text-sm text-blue-600">
+                      <p className="text-sm text-violet-600">
                         {settingsData.security.apiTokens} tokens currently
                         active
                       </p>
@@ -619,7 +619,7 @@ export default function SettingsClient() {
               <CardContent className="space-y-6">
                 <div>
                   <h4 className="font-medium text-gray-900 mb-4 flex items-center gap-2">
-                    <Mail className="w-5 h-5 text-blue-600" />
+                    <Mail className="w-5 h-5 text-violet-600" />
                     Email Notifications
                   </h4>
                   <div className="space-y-3">
@@ -732,7 +732,7 @@ export default function SettingsClient() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Retention Period
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                           <option value="1">1 year</option>
                           <option value="3">3 years</option>
                           <option value="7">7 years</option>
@@ -743,7 +743,7 @@ export default function SettingsClient() {
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           Backup Frequency
                         </label>
-                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+                        <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent">
                           <option value="hourly">Hourly</option>
                           <option value="daily">Daily</option>
                           <option value="weekly">Weekly</option>
@@ -761,7 +761,7 @@ export default function SettingsClient() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-green-500 to-teal-500 rounded-lg shadow-lg shadow-green-500/25">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg shadow-lg shadow-green-500/25">
                     <Globe className="w-5 h-5 text-white" />
                   </div>
                   Third-Party Integrations
@@ -784,16 +784,16 @@ export default function SettingsClient() {
                             }`}
                           >
                             {key === "sharepoint" && (
-                              <FileText className="w-5 h-5 text-blue-600" />
+                              <FileText className="w-5 h-5 text-violet-600" />
                             )}
                             {key === "salesforce" && (
-                              <BarChart3 className="w-5 h-5 text-blue-600" />
+                              <BarChart3 className="w-5 h-5 text-violet-600" />
                             )}
                             {key === "slack" && (
                               <Bell className="w-5 h-5 text-purple-600" />
                             )}
                             {key === "teams" && (
-                              <Users className="w-5 h-5 text-blue-600" />
+                              <Users className="w-5 h-5 text-violet-600" />
                             )}
                             {key === "webhook" && (
                               <Globe className="w-5 h-5 text-green-600" />

@@ -199,7 +199,7 @@ export function DashboardChatbot() {
                   <div
                     className={`max-w-[85%] rounded-lg p-3 ${
                       message.role === 'user'
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-violet-600 text-white'
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
                     }`}
                   >
@@ -232,7 +232,7 @@ export function DashboardChatbot() {
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3">
-                  <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                  <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
                 </div>
               </div>
             )}
@@ -252,7 +252,7 @@ export function DashboardChatbot() {
                 className="h-auto py-2 flex items-center gap-2 justify-start text-left"
                 onClick={() => handleQuickAction(action.query)}
               >
-                <action.icon className="h-4 w-4 text-blue-600 flex-shrink-0" />
+                <action.icon className="h-4 w-4 text-violet-600 flex-shrink-0" />
                 <span className="text-xs truncate">{action.label}</span>
               </Button>
             ))}
@@ -281,7 +281,7 @@ export function DashboardChatbot() {
             type="submit"
             size="sm"
             disabled={!input.trim() || isLoading}
-            className="bg-blue-600 hover:bg-blue-700 px-4"
+            className="bg-violet-600 hover:bg-violet-700 px-4"
           >
             <Send className="h-4 w-4" />
           </Button>

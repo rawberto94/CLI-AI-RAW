@@ -236,7 +236,7 @@ const getStatusColor = (status: PortalContract['status']) => {
     case 'pending-review':
       return 'bg-yellow-100 text-yellow-700';
     case 'in-negotiation':
-      return 'bg-blue-100 text-blue-700';
+      return 'bg-violet-100 text-violet-700';
     case 'pending-signature':
       return 'bg-purple-100 text-purple-700';
     case 'active':
@@ -307,7 +307,7 @@ export function SupplierPortal() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Shield className="h-8 w-8 text-blue-600" />
+                <Shield className="h-8 w-8 text-violet-600" />
                 <div>
                   <h1 className="font-bold text-gray-900">Supplier Portal</h1>
                   <p className="text-xs text-gray-500">Powered by ClientCo</p>
@@ -326,7 +326,7 @@ export function SupplierPortal() {
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                <div className="h-8 w-8 bg-violet-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                   JS
                 </div>
                 <div className="text-sm">
@@ -355,7 +355,7 @@ export function SupplierPortal() {
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex items-center gap-2 py-4 border-b-2 text-sm font-medium transition-colors ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-violet-600 text-violet-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -377,16 +377,16 @@ export function SupplierPortal() {
         {activeTab === 'overview' && (
           <div className="space-y-8">
             {/* Welcome Banner */}
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl p-6 text-white">
+            <div className="bg-gradient-to-r from-violet-600 to-purple-700 rounded-xl p-6 text-white">
               <div className="flex items-start justify-between">
                 <div>
                   <h2 className="text-2xl font-bold mb-2">Welcome back, John!</h2>
-                  <p className="text-blue-100">
+                  <p className="text-violet-100">
                     You have {pendingActions} pending actions and {unreadMessages} unread messages.
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-blue-200 text-sm">Relationship since</p>
+                  <p className="text-violet-200 text-sm">Relationship since</p>
                   <p className="text-xl font-semibold">{supplierInfo.relationship}</p>
                 </div>
               </div>
@@ -396,8 +396,8 @@ export function SupplierPortal() {
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <FileText className="h-6 w-6 text-blue-600" />
+                  <div className="p-3 bg-violet-100 rounded-lg">
+                    <FileText className="h-6 w-6 text-violet-600" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">{supplierInfo.activeContracts}</p>
@@ -471,7 +471,7 @@ export function SupplierPortal() {
                             <p className="text-sm text-gray-500">Due</p>
                             <p className="font-medium text-gray-900">{task.dueDate}</p>
                           </div>
-                          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                          <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                             Take Action
                           </button>
                         </div>
@@ -489,7 +489,7 @@ export function SupplierPortal() {
                   <h3 className="font-semibold text-gray-900">Active Contracts</h3>
                   <button
                     onClick={() => setActiveTab('contracts')}
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-violet-600 hover:text-violet-700"
                   >
                     View all
                   </button>
@@ -522,7 +522,7 @@ export function SupplierPortal() {
                   <h3 className="font-semibold text-gray-900">Recent Messages</h3>
                   <button
                     onClick={() => setActiveTab('messages')}
-                    className="text-sm text-blue-600 hover:text-blue-700"
+                    className="text-sm text-violet-600 hover:text-violet-700"
                   >
                     View all
                   </button>
@@ -531,11 +531,11 @@ export function SupplierPortal() {
                   {mockMessages.slice(0, 3).map((message) => (
                     <div
                       key={message.id}
-                      className={`px-6 py-4 hover:bg-gray-50 ${!message.read && message.fromRole === 'buyer' ? 'bg-blue-50' : ''}`}
+                      className={`px-6 py-4 hover:bg-gray-50 ${!message.read && message.fromRole === 'buyer' ? 'bg-violet-50' : ''}`}
                     >
                       <div className="flex items-start gap-3">
                         <div className={`h-8 w-8 rounded-full flex items-center justify-center text-white text-sm font-medium ${
-                          message.fromRole === 'buyer' ? 'bg-blue-500' : 'bg-gray-400'
+                          message.fromRole === 'buyer' ? 'bg-violet-500' : 'bg-gray-400'
                         }`}>
                           {message.from.split(' ').map(n => n[0]).join('').slice(0, 2)}
                         </div>
@@ -565,7 +565,7 @@ export function SupplierPortal() {
                   <input
                     type="text"
                     placeholder="Search contracts..."
-                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                   />
                 </div>
                 <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 text-sm">
@@ -650,7 +650,7 @@ export function SupplierPortal() {
               <h2 className="text-xl font-bold text-gray-900">Documents</h2>
               <button
                 onClick={() => setShowUploadModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
               >
                 <Upload className="h-4 w-4" />
                 Upload Document
@@ -711,7 +711,7 @@ export function SupplierPortal() {
                             <Download className="h-4 w-4" />
                           </button>
                           {doc.status === 'requires-update' && (
-                            <button className="p-2 text-blue-600 hover:text-blue-700 rounded-lg hover:bg-blue-50">
+                            <button className="p-2 text-violet-600 hover:text-violet-700 rounded-lg hover:bg-violet-50">
                               <Upload className="h-4 w-4" />
                             </button>
                           )}
@@ -734,11 +734,11 @@ export function SupplierPortal() {
                 {mockMessages.map((message) => (
                   <div
                     key={message.id}
-                    className={`p-6 ${!message.read && message.fromRole === 'buyer' ? 'bg-blue-50' : ''}`}
+                    className={`p-6 ${!message.read && message.fromRole === 'buyer' ? 'bg-violet-50' : ''}`}
                   >
                     <div className="flex items-start gap-4">
                       <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-medium ${
-                        message.fromRole === 'buyer' ? 'bg-blue-500' : 'bg-gray-400'
+                        message.fromRole === 'buyer' ? 'bg-violet-500' : 'bg-gray-400'
                       }`}>
                         {message.from.split(' ').map(n => n[0]).join('').slice(0, 2)}
                       </div>
@@ -747,7 +747,7 @@ export function SupplierPortal() {
                           <span className="font-medium text-gray-900">{message.from}</span>
                           <span className="text-sm text-gray-400">{message.timestamp}</span>
                           {!message.read && message.fromRole === 'buyer' && (
-                            <span className="px-2 py-0.5 bg-blue-100 text-blue-600 text-xs rounded-full">New</span>
+                            <span className="px-2 py-0.5 bg-violet-100 text-violet-600 text-xs rounded-full">New</span>
                           )}
                         </div>
                         <p className="mt-2 text-gray-700">{message.content}</p>
@@ -760,7 +760,7 @@ export function SupplierPortal() {
                               >
                                 <Paperclip className="h-4 w-4 text-gray-400" />
                                 <span className="text-gray-700">{attachment}</span>
-                                <button className="text-blue-600 hover:text-blue-700">
+                                <button className="text-violet-600 hover:text-violet-700">
                                   <Download className="h-4 w-4" />
                                 </button>
                               </div>
@@ -782,14 +782,14 @@ export function SupplierPortal() {
                       onChange={(e) => setNewMessage(e.target.value)}
                       placeholder="Type your message..."
                       rows={3}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
                     />
                   </div>
                   <div className="flex flex-col gap-2">
                     <button className="p-2 border border-gray-200 rounded-lg hover:bg-gray-100 text-gray-500">
                       <Paperclip className="h-5 w-5" />
                     </button>
-                    <button className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                    <button className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
                       <Send className="h-5 w-5" />
                     </button>
                   </div>
@@ -827,14 +827,14 @@ export function SupplierPortal() {
                       </div>
                       <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
                         task.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        task.status === 'in-progress' ? 'bg-blue-100 text-blue-700' :
+                        task.status === 'in-progress' ? 'bg-violet-100 text-violet-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
                         {task.status}
                       </span>
                     </div>
                   </div>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                  <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     {task.type === 'signature' ? 'Sign Now' :
                      task.type === 'document' ? 'Upload' :
                      task.type === 'review' ? 'Review' : 'Complete'}
@@ -878,7 +878,7 @@ export function SupplierPortal() {
                 <p className="text-gray-600 mb-2">Drag and drop files here, or click to browse</p>
                 <p className="text-sm text-gray-400">PDF, DOC, DOCX, XLS, XLSX up to 25MB</p>
                 <input type="file" className="hidden" />
-                <button className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                <button className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                   Select Files
                 </button>
               </div>
@@ -890,7 +890,7 @@ export function SupplierPortal() {
                 >
                   Cancel
                 </button>
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                <button className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                   Upload
                 </button>
               </div>

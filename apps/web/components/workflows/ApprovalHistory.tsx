@@ -94,15 +94,15 @@ const actionConfig = {
   },
   delegated: {
     icon: UserPlus,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
-    borderColor: 'border-blue-200',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
+    borderColor: 'border-violet-200',
     label: 'Delegated',
   },
   created: {
     icon: FileText,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-100',
+    color: 'text-purple-600',
+    bgColor: 'bg-purple-100',
     borderColor: 'border-indigo-200',
     label: 'Submitted',
   },
@@ -116,7 +116,7 @@ const actionConfig = {
 };
 
 const typeConfig = {
-  contract: { label: 'Contract', color: 'bg-blue-100 text-blue-700' },
+  contract: { label: 'Contract', color: 'bg-violet-100 text-violet-700' },
   amendment: { label: 'Amendment', color: 'bg-purple-100 text-purple-700' },
   renewal: { label: 'Renewal', color: 'bg-green-100 text-green-700' },
   termination: { label: 'Termination', color: 'bg-red-100 text-red-700' },
@@ -246,7 +246,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
       <div 
         className={cn(
           'p-4 rounded-xl border bg-white/80 backdrop-blur-sm transition-all hover:shadow-md',
-          'focus-within:ring-2 focus-within:ring-indigo-500/30',
+          'focus-within:ring-2 focus-within:ring-purple-500/30',
           config.borderColor
         )}
         tabIndex={0}
@@ -275,7 +275,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
             {showContract && (
               <Link
                 href={`/contracts/${entry.contractId}`}
-                className="text-sm font-medium text-slate-900 hover:text-indigo-600 transition-colors"
+                className="text-sm font-medium text-slate-900 hover:text-purple-600 transition-colors"
               >
                 {entry.contractName}
               </Link>
@@ -287,7 +287,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
               {formatRelativeTime(entry.timestamp)}
             </div>
             {entry.metadata?.value && (
-              <div className="text-sm font-semibold text-emerald-600 flex items-center gap-1 justify-end mt-1">
+              <div className="text-sm font-semibold text-violet-600 flex items-center gap-1 justify-end mt-1">
                 <DollarSign className="w-3 h-3" />
                 {entry.metadata.value.toLocaleString()}
               </div>
@@ -297,7 +297,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
 
         {/* Actor info */}
         <div className="flex items-center gap-2 mt-3">
-          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
             {entry.actor.name.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
@@ -333,7 +333,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
             onKeyDown={handleKeyDown}
             aria-expanded={isExpanded}
             aria-controls={`details-${entry.id}`}
-            className="mt-2 text-xs text-indigo-600 hover:text-indigo-800 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded px-1"
+            className="mt-2 text-xs text-purple-600 hover:text-indigo-800 flex items-center gap-1 focus:outline-none focus:ring-2 focus:ring-purple-500/50 rounded px-1"
           >
             {isExpanded ? 'Hide details' : 'Show details'}
             <ChevronDown className={cn('w-3 h-3 transition-transform', isExpanded && 'rotate-180')} aria-hidden="true" />
@@ -482,7 +482,7 @@ export function ApprovalHistory({
         <>
           {/* Stats Summary */}
           <div className="grid grid-cols-4 gap-4 mb-6">
-            <div className="p-4 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl border border-green-200">
+            <div className="p-4 bg-gradient-to-br from-violet-50 to-violet-50 rounded-xl border border-green-200">
               <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
               <div className="text-xs text-green-600 font-medium">Approved</div>
             </div>
@@ -494,9 +494,9 @@ export function ApprovalHistory({
               <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
               <div className="text-xs text-amber-600 font-medium">Escalated</div>
             </div>
-            <div className="p-4 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl border border-indigo-200">
-              <div className="text-2xl font-bold text-indigo-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
-              <div className="text-xs text-indigo-600 font-medium">Total Value</div>
+            <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-50 rounded-xl border border-indigo-200">
+              <div className="text-2xl font-bold text-purple-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
+              <div className="text-xs text-purple-600 font-medium">Total Value</div>
             </div>
           </div>
 
@@ -510,7 +510,7 @@ export function ApprovalHistory({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search history..."
                 aria-label="Search approval history"
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
+                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-indigo-300"
               />
             </div>
 
@@ -523,9 +523,9 @@ export function ApprovalHistory({
                   aria-label={`Filter by ${f === 'all' ? 'all actions' : f}`}
                   className={cn(
                     'px-3 py-1.5 rounded-lg text-sm font-medium transition-all capitalize',
-                    'focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:ring-offset-1',
+                    'focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:ring-offset-1',
                     filter === f
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md'
+                      ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-md'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   )}
                 >
@@ -538,7 +538,7 @@ export function ApprovalHistory({
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value as any)}
               aria-label="Filter by date range"
-              className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300"
+              className="px-3 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/30 focus:border-indigo-300"
             >
               <option value="all">All time</option>
               <option value="7d">Last 7 days</option>
@@ -547,7 +547,7 @@ export function ApprovalHistory({
             </select>
 
             <button 
-              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500/50"
               aria-label="Download history as CSV"
               title="Download history"
             >
@@ -572,7 +572,7 @@ export function ApprovalHistory({
           {(searchQuery || filter !== 'all') && (
             <button
               onClick={() => { setSearchQuery(''); setFilter('all'); setDateRange('all'); }}
-              className="text-sm text-indigo-600 hover:text-indigo-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/50 rounded px-2 py-1"
+              className="text-sm text-purple-600 hover:text-indigo-800 font-medium focus:outline-none focus:ring-2 focus:ring-purple-500/50 rounded px-2 py-1"
             >
               Clear all filters
             </button>
@@ -658,7 +658,7 @@ export function CompactApprovalHistory({
       {history.length >= limit && (
         <Link
           href={contractId ? `/contracts/${contractId}/history` : '/workflows?tab=history'}
-          className="block text-center text-sm text-indigo-600 hover:text-indigo-800 py-2 font-medium"
+          className="block text-center text-sm text-purple-600 hover:text-indigo-800 py-2 font-medium"
         >
           View all history →
         </Link>

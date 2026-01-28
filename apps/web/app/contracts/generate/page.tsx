@@ -681,7 +681,7 @@ export default function GenerateContractPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6">
       <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -720,7 +720,7 @@ export default function GenerateContractPage() {
                   <div
                     key={template.id}
                     onClick={() => selectTemplate(template)}
-                    className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer"
+                    className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border-2 border-violet-200 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-xl font-bold text-gray-900">{template.name}</h3>
@@ -853,7 +853,7 @@ export default function GenerateContractPage() {
                 <Button
                   onClick={generateContract}
                   disabled={generating}
-                  className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                  className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white"
                 >
                   {generating ? (
                     <>
@@ -877,7 +877,7 @@ export default function GenerateContractPage() {
           <Card className="shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl">
                   <Check className="h-7 w-7 text-white" />
                 </div>
                 <div>
@@ -907,7 +907,7 @@ export default function GenerateContractPage() {
                   </Button>
                   <Button
                     onClick={() => router.push('/contracts')}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white"
                   >
                     Save to Contracts
                   </Button>

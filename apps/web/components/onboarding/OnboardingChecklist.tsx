@@ -232,8 +232,8 @@ export function OnboardingChecklist() {
                 You&apos;ve mastered the basics of ConTigo. You&apos;re now ready to unlock the full power of AI-driven contract management.
               </p>
 
-              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20 rounded-xl p-4 mb-6">
-                <div className="flex items-center gap-2 justify-center text-indigo-600 dark:text-indigo-400 mb-2">
+              <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 rounded-xl p-4 mb-6">
+                <div className="flex items-center gap-2 justify-center text-violet-600 dark:text-violet-400 mb-2">
                   <Gift className="h-5 w-5" />
                   <span className="font-medium">Rewards Unlocked</span>
                 </div>
@@ -254,7 +254,7 @@ export function OnboardingChecklist() {
                   setShowCelebration(false);
                   dismiss();
                 }}
-                className="w-full px-6 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-600 hover:to-purple-700 transition-all"
+                className="w-full px-6 py-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl font-medium hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg shadow-violet-500/25"
               >
                 Start Exploring
               </button>
@@ -273,11 +273,11 @@ export function OnboardingChecklist() {
           <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             {/* Header */}
             <div 
-              className="flex items-center justify-between p-4 cursor-pointer bg-gradient-to-r from-indigo-50 to-purple-50 dark:from-indigo-900/20 dark:to-purple-900/20"
+              className="flex items-center justify-between p-4 cursor-pointer bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20"
               onClick={() => setIsExpanded(!isExpanded)}
             >
               <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600">
+                <div className="p-2 rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 shadow-lg shadow-violet-500/25">
                   <Sparkles className="h-4 w-4 text-white" />
                 </div>
                 <div>
@@ -312,7 +312,7 @@ export function OnboardingChecklist() {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
-                className="h-full bg-gradient-to-r from-indigo-500 to-purple-600"
+                className="h-full bg-gradient-to-r from-purple-500 to-purple-600"
               />
             </div>
 
@@ -338,15 +338,15 @@ export function OnboardingChecklist() {
                           className={cn(
                             "flex items-start gap-3 p-3 rounded-lg transition-all",
                             isStepComplete
-                              ? "bg-emerald-50 dark:bg-emerald-900/20"
+                              ? "bg-violet-50 dark:bg-violet-900/20"
                               : isNextStep
-                              ? "bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/30"
+                              ? "bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30"
                               : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                           )}
                         >
                           <div className={cn(
                             "flex-shrink-0 mt-0.5",
-                            isStepComplete ? "text-emerald-500" : "text-slate-300 dark:text-slate-600"
+                            isStepComplete ? "text-violet-500" : "text-slate-300 dark:text-slate-600"
                           )}>
                             {isStepComplete ? (
                               <CheckCircle2 className="h-5 w-5" />
@@ -359,13 +359,13 @@ export function OnboardingChecklist() {
                               <step.icon className={cn(
                                 "h-4 w-4 flex-shrink-0",
                                 isStepComplete 
-                                  ? "text-emerald-600 dark:text-emerald-400" 
+                                  ? "text-violet-600 dark:text-violet-400" 
                                   : "text-slate-400"
                               )} />
                               <span className={cn(
                                 "text-sm font-medium",
                                 isStepComplete 
-                                  ? "text-emerald-700 dark:text-emerald-300 line-through" 
+                                  ? "text-violet-700 dark:text-violet-300 line-through" 
                                   : "text-slate-700 dark:text-slate-300"
                               )}>
                                 {step.title}
@@ -375,14 +375,14 @@ export function OnboardingChecklist() {
                               {step.description}
                             </p>
                             {step.reward && !isStepComplete && (
-                              <div className="flex items-center gap-1 mt-1 text-[10px] text-indigo-600 dark:text-indigo-400">
+                              <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 dark:text-indigo-400">
                                 <Zap className="h-3 w-3" />
                                 {step.reward}
                               </div>
                             )}
                           </div>
                           {isNextStep && (
-                            <ArrowRight className="h-4 w-4 text-indigo-500 flex-shrink-0" />
+                            <ArrowRight className="h-4 w-4 text-purple-500 flex-shrink-0" />
                           )}
                         </Link>
                       );

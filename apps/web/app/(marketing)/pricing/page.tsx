@@ -2,7 +2,6 @@
 
 import { useState, Fragment } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   Check,
   X,
@@ -39,7 +38,30 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="fixed right-0 top-0 h-full w-80 bg-white shadow-2xl p-6">
         <div className="flex items-center justify-between mb-8">
-          <Image src="/logo.png" alt="ConTigo" width={120} height={32} className="h-8 w-auto" />
+          <div className="flex items-center gap-2">
+            <svg width="40" height="40" viewBox="0 0 48 48" className="flex-shrink-0">
+              <defs>
+                <linearGradient id="mobileBarGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#7C3AED" />
+                  <stop offset="100%" stopColor="#8B5CF6" />
+                </linearGradient>
+                <linearGradient id="mobileBarGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#8B5CF6" />
+                  <stop offset="100%" stopColor="#A78BFA" />
+                </linearGradient>
+                <linearGradient id="mobileBarGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stopColor="#A78BFA" />
+                  <stop offset="100%" stopColor="#C4B5FD" />
+                </linearGradient>
+              </defs>
+              <g transform="translate(8, 10)">
+                <rect x="0" y="0" width="32" height="8" rx="4" fill="url(#mobileBarGrad1)" />
+                <rect x="0" y="12" width="32" height="8" rx="4" fill="url(#mobileBarGrad2)" />
+                <rect x="0" y="24" width="32" height="8" rx="4" fill="url(#mobileBarGrad3)" />
+              </g>
+            </svg>
+            <span className="text-xl font-bold"><span className="text-violet-600">con</span><span className="text-slate-800">tigo</span></span>
+          </div>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
             <X className="w-6 h-6" />
           </button>
@@ -49,7 +71,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
             <Link 
               key={item} 
               href={item === 'Pricing' ? '/pricing' : `/#${item.toLowerCase()}`}
-              className="block py-3 text-gray-700 hover:text-teal-600 font-medium border-b border-gray-100"
+              className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100"
               onClick={onClose}
             >
               {item}
@@ -59,7 +81,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
             <Link href="/auth/signin" className="block w-full text-center py-3 text-gray-700 border border-gray-200 rounded-xl font-medium">
               Sign In
             </Link>
-            <Link href="/auth/signin" className="block w-full text-center py-3 bg-teal-600 text-white rounded-xl font-medium">
+            <Link href="/auth/signin" className="block w-full text-center py-3 bg-violet-600 text-white rounded-xl font-medium">
               Get Started
             </Link>
           </div>
@@ -75,11 +97,11 @@ function FAQItem({ question, answer, isOpen, onClick }: { question: string; answ
     <div className="border-b border-gray-200 last:border-b-0">
       <button
         onClick={onClick}
-        className="w-full py-6 flex items-center justify-between text-left hover:text-teal-600 transition-colors group"
+        className="w-full py-6 flex items-center justify-between text-left hover:text-violet-600 transition-colors group"
       >
-        <span className="text-lg font-semibold text-gray-900 group-hover:text-teal-600 pr-8">{question}</span>
-        <div className={`w-8 h-8 rounded-full bg-gray-100 group-hover:bg-teal-100 flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-teal-100 rotate-180' : ''}`}>
-          <ChevronDown className={`w-5 h-5 text-gray-500 group-hover:text-teal-600 transition-all duration-300 ${isOpen ? 'text-teal-600' : ''}`} />
+        <span className="text-lg font-semibold text-gray-900 group-hover:text-violet-600 pr-8">{question}</span>
+        <div className={`w-8 h-8 rounded-full bg-gray-100 group-hover:bg-violet-100 flex items-center justify-center transition-all duration-300 ${isOpen ? 'bg-violet-100 rotate-180' : ''}`}>
+          <ChevronDown className={`w-5 h-5 text-gray-500 group-hover:text-violet-600 transition-all duration-300 ${isOpen ? 'text-violet-600' : ''}`} />
         </div>
       </button>
       <div className={`grid transition-all duration-300 ${isOpen ? 'grid-rows-[1fr] pb-6' : 'grid-rows-[0fr]'}`}>
@@ -99,7 +121,7 @@ const plans = [
     name: 'Starter',
     description: 'Essential contract management for small teams getting organized',
     icon: Rocket,
-    gradient: 'from-blue-500 to-cyan-500',
+    gradient: 'from-violet-500 to-purple-500',
     idealFor: 'Small teams (1-10 users)',
     features: [
       'Up to 10 users',
@@ -120,7 +142,7 @@ const plans = [
     name: 'Professional',
     description: 'Advanced intelligence & workflows for growing procurement teams',
     icon: Briefcase,
-    gradient: 'from-teal-500 to-emerald-500',
+    gradient: 'from-violet-500 to-violet-500',
     idealFor: 'Growing teams (10-50 users)',
     popular: true,
     features: [
@@ -146,7 +168,7 @@ const plans = [
     name: 'Enterprise',
     description: 'Full platform with advanced security, compliance & customization',
     icon: Building,
-    gradient: 'from-purple-500 to-indigo-500',
+    gradient: 'from-purple-500 to-purple-500',
     idealFor: 'Large organizations (50+ users)',
     features: [
       'Unlimited users & contracts',
@@ -389,24 +411,45 @@ export default function PricingPage() {
       <nav className="fixed top-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-b border-gray-100">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link href="/">
-              <Image src="/logo-transparent.png" alt="ConTigo" width={140} height={48} className="h-10 w-auto" priority />
+            <Link href="/" className="flex items-center gap-2">
+              <svg width="44" height="44" viewBox="0 0 48 48" className="flex-shrink-0">
+                <defs>
+                  <linearGradient id="navBarGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#7C3AED" />
+                    <stop offset="100%" stopColor="#8B5CF6" />
+                  </linearGradient>
+                  <linearGradient id="navBarGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#8B5CF6" />
+                    <stop offset="100%" stopColor="#A78BFA" />
+                  </linearGradient>
+                  <linearGradient id="navBarGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#A78BFA" />
+                    <stop offset="100%" stopColor="#C4B5FD" />
+                  </linearGradient>
+                </defs>
+                <g transform="translate(8, 10)">
+                  <rect x="0" y="0" width="32" height="8" rx="4" fill="url(#navBarGrad1)" />
+                  <rect x="0" y="12" width="32" height="8" rx="4" fill="url(#navBarGrad2)" />
+                  <rect x="0" y="24" width="32" height="8" rx="4" fill="url(#navBarGrad3)" />
+                </g>
+              </svg>
+              <span className="text-2xl font-bold"><span className="text-violet-600">con</span><span className="text-slate-800">tigo</span></span>
             </Link>
             
             <div className="hidden lg:flex items-center gap-8">
-              <Link href="/#features" className="text-gray-600 hover:text-teal-600 transition-colors font-medium">Features</Link>
-              <Link href="/#ai-technology" className="text-gray-600 hover:text-teal-600 transition-colors font-medium">AI Technology</Link>
-              <Link href="/pricing" className="text-teal-600 font-semibold">Pricing</Link>
-              <Link href="/#support" className="text-gray-600 hover:text-teal-600 transition-colors font-medium">Support</Link>
+              <Link href="/#features" className="text-gray-600 hover:text-violet-600 transition-colors font-medium">Features</Link>
+              <Link href="/#ai-technology" className="text-gray-600 hover:text-violet-600 transition-colors font-medium">AI Technology</Link>
+              <Link href="/pricing" className="text-violet-600 font-semibold">Pricing</Link>
+              <Link href="/#support" className="text-gray-600 hover:text-violet-600 transition-colors font-medium">Support</Link>
             </div>
 
             <div className="hidden lg:flex items-center gap-4">
-              <Link href="/auth/signin" className="text-gray-700 hover:text-teal-600 transition-colors font-medium">
+              <Link href="/auth/signin" className="text-gray-700 hover:text-violet-600 transition-colors font-medium">
                 Sign In
               </Link>
               <button 
                 onClick={scrollToForm}
-                className="bg-teal-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-teal-700 transition-all hover:shadow-lg hover:shadow-teal-600/25 flex items-center gap-2"
+                className="bg-violet-600 text-white px-6 py-2.5 rounded-full font-medium hover:bg-violet-700 transition-all hover:shadow-lg hover:shadow-violet-600/25 flex items-center gap-2"
               >
                 Get a Quote
                 <ArrowRight className="w-4 h-4" />
@@ -425,18 +468,18 @@ export default function PricingPage() {
 
       {/* Hero Section */}
       <section className="pt-32 pb-16 px-6 bg-gradient-to-b from-gray-50 via-white to-white relative overflow-hidden">
-        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-teal-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
+        <div className="absolute top-20 left-1/4 w-[600px] h-[600px] bg-violet-200/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
         <div className="absolute top-40 right-1/4 w-[500px] h-[500px] bg-violet-200/15 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s', animationDelay: '2s' }} />
         <div className="max-w-5xl mx-auto text-center relative">
-          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-8 shadow-sm">
-            <Globe className="w-4 h-4 text-teal-600" />
-            <span className="text-sm font-semibold text-teal-700">Swiss-Based • Swiss Data Residency • Tailored Pricing</span>
+          <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-50 to-violet-50 border border-violet-200/50 rounded-full mb-8 shadow-sm">
+            <Globe className="w-4 h-4 text-violet-600" />
+            <span className="text-sm font-semibold text-violet-700">Swiss-Based • Swiss Data Residency • Tailored Pricing</span>
             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           </div>
           
           <h1 className="text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-gray-900 mb-8 tracking-tight leading-tight">
             Flexible Plans for{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 via-emerald-500 to-cyan-500">Every Organization</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-violet-500 to-purple-500">Every Organization</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-600 max-w-2xl mx-auto mb-12 font-light leading-relaxed">
             We offer customized pricing based on your specific needs. 
@@ -445,7 +488,7 @@ export default function PricingPage() {
 
           <button
             onClick={scrollToForm}
-            className="group inline-flex items-center gap-3 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-10 py-5 rounded-full font-semibold hover:shadow-xl hover:shadow-teal-500/25 transition-all text-lg"
+            className="group inline-flex items-center gap-3 bg-gradient-to-r from-violet-600 to-violet-600 text-white px-10 py-5 rounded-full font-semibold hover:shadow-xl hover:shadow-violet-500/25 transition-all text-lg"
           >
             Request a Quote
             <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -471,14 +514,14 @@ export default function PricingPage() {
                 key={plan.name}
                 className={`relative rounded-3xl p-8 bg-white border-2 transition-all duration-500 hover:shadow-2xl hover:-translate-y-1 ${
                   plan.popular 
-                    ? 'border-teal-500 ring-4 ring-teal-500/20 scale-[1.02] shadow-lg shadow-teal-500/10' 
-                    : 'border-gray-100 hover:border-teal-200'
+                    ? 'border-violet-500 ring-4 ring-violet-500/20 scale-[1.02] shadow-lg shadow-violet-500/10' 
+                    : 'border-gray-100 hover:border-violet-200'
                 }`}
               >
                 {/* Popular Badge */}
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                    <div className="bg-gradient-to-r from-teal-500 to-emerald-500 text-white px-5 py-2 rounded-full text-sm font-semibold shadow-lg shadow-teal-500/30 flex items-center gap-2">
+                    <div className="bg-gradient-to-r from-violet-500 to-violet-500 text-white px-5 py-2 rounded-full text-sm font-semibold shadow-lg shadow-violet-500/30 flex items-center gap-2">
                       <Star className="w-4 h-4" />
                       Most Popular
                     </div>
@@ -510,7 +553,7 @@ export default function PricingPage() {
                   onClick={scrollToForm}
                   className={`group w-full py-4 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 mb-8 ${
                     plan.popular
-                      ? 'bg-gradient-to-r from-teal-600 to-emerald-600 text-white hover:shadow-lg hover:shadow-teal-500/25'
+                      ? 'bg-gradient-to-r from-violet-600 to-violet-600 text-white hover:shadow-lg hover:shadow-violet-500/25'
                       : 'bg-gray-100 text-gray-900 hover:bg-gray-200'
                   }`}
                 >
@@ -536,12 +579,12 @@ export default function PricingPage() {
 
       {/* Trust Badges */}
       <section className="py-20 px-6 bg-gradient-to-b from-gray-50 to-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #8B5CF6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
         <div className="max-w-5xl mx-auto relative">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { icon: Shield, label: 'Swiss Data Residency', sublabel: 'All data stored in Switzerland', gradient: 'from-teal-500 to-emerald-500' },
-              { icon: Lock, label: 'Bank-Grade Security', sublabel: 'AES-256 encryption', gradient: 'from-blue-500 to-cyan-500' },
+              { icon: Shield, label: 'Swiss Data Residency', sublabel: 'All data stored in Switzerland', gradient: 'from-violet-500 to-violet-500' },
+              { icon: Lock, label: 'Bank-Grade Security', sublabel: 'AES-256 encryption', gradient: 'from-violet-500 to-purple-500' },
               { icon: Award, label: 'SOC 2 Type II', sublabel: 'Certified compliant', gradient: 'from-violet-500 to-purple-500' },
               { icon: Globe, label: 'GDPR & nDSG', sublabel: 'Fully compliant', gradient: 'from-orange-500 to-amber-500' },
             ].map((item, i) => (
@@ -561,21 +604,21 @@ export default function PricingPage() {
       </section>
 
       {/* Contact Form Section */}
-      <section id="contact-form" className="py-32 px-6 bg-gradient-to-b from-white via-teal-50/30 to-white relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-teal-200/30 to-transparent rounded-full blur-3xl" />
+      <section id="contact-form" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-violet-200/30 to-transparent rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-violet-200/20 to-transparent rounded-full blur-3xl" />
         <div className="max-w-5xl mx-auto relative">
           <div className="grid lg:grid-cols-2 gap-16">
             {/* Left Column - Info */}
             <div>
-              <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-6 shadow-sm">
-                <Mail className="w-4 h-4 text-teal-600" />
-                <span className="text-sm font-semibold text-teal-700">Get in Touch</span>
+              <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-50 to-violet-50 border border-violet-200/50 rounded-full mb-6 shadow-sm">
+                <Mail className="w-4 h-4 text-violet-600" />
+                <span className="text-sm font-semibold text-violet-700">Get in Touch</span>
                 <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
               </div>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-6 leading-tight">
                 Request Your{' '}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Custom Quote</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-600">Custom Quote</span>
               </h2>
               <p className="text-xl text-gray-600 mb-10 leading-relaxed">
                 Tell us about your organization and we&apos;ll create a personalized pricing plan that fits your needs.
@@ -583,8 +626,8 @@ export default function PricingPage() {
 
               <div className="space-y-5">
                 {[
-                  { icon: Clock, title: 'Quick Response', desc: 'We\'ll get back to you within 24 hours', gradient: 'from-teal-500 to-emerald-500' },
-                  { icon: Users, title: 'Dedicated Support', desc: 'Personal account manager from day one', gradient: 'from-blue-500 to-cyan-500' },
+                  { icon: Clock, title: 'Quick Response', desc: 'We\'ll get back to you within 24 hours', gradient: 'from-violet-500 to-violet-500' },
+                  { icon: Users, title: 'Dedicated Support', desc: 'Personal account manager from day one', gradient: 'from-violet-500 to-purple-500' },
                   { icon: Zap, title: 'Personalized Demo', desc: 'See the platform tailored to your needs', gradient: 'from-violet-500 to-purple-500' },
                   { icon: Shield, title: 'Flexible Terms', desc: 'Plans customized for your business', gradient: 'from-orange-500 to-amber-500' },
                 ].map((item, i) => (
@@ -608,14 +651,14 @@ export default function PricingPage() {
                 <div className="flex flex-col sm:flex-row gap-4">
                   <a
                     href="tel:+41445551234"
-                    className="inline-flex items-center gap-2 text-teal-600 font-semibold hover:text-teal-700"
+                    className="inline-flex items-center gap-2 text-violet-600 font-semibold hover:text-violet-700"
                   >
                     <Phone className="w-4 h-4" />
                     +41 44 555 12 34
                   </a>
                   <a
                     href="mailto:sales@contigo.ch"
-                    className="inline-flex items-center gap-2 text-teal-600 font-semibold hover:text-teal-700"
+                    className="inline-flex items-center gap-2 text-violet-600 font-semibold hover:text-violet-700"
                   >
                     <Mail className="w-4 h-4" />
                     sales@contigo.ch
@@ -626,12 +669,12 @@ export default function PricingPage() {
 
             {/* Right Column - Form */}
             <div className="relative">
-              <div className="absolute -inset-2 bg-gradient-to-br from-teal-500/20 via-emerald-500/10 to-violet-500/20 rounded-[2rem] blur-xl" />
+              <div className="absolute -inset-2 bg-gradient-to-br from-violet-500/20 via-violet-500/10 to-violet-500/20 rounded-[2rem] blur-xl" />
               <div className="relative bg-white/90 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-100/50">
               {isSubmitted ? (
                 <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-teal-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <CheckCircle2 className="w-10 h-10 text-teal-600" />
+                  <div className="w-20 h-20 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <CheckCircle2 className="w-10 h-10 text-violet-600" />
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-3">Thank You!</h3>
                   <p className="text-gray-600 mb-6">
@@ -639,7 +682,7 @@ export default function PricingPage() {
                   </p>
                   <button
                     onClick={() => setIsSubmitted(false)}
-                    className="text-teal-600 font-semibold hover:text-teal-700"
+                    className="text-violet-600 font-semibold hover:text-violet-700"
                   >
                     Submit another request
                   </button>
@@ -654,7 +697,7 @@ export default function PricingPage() {
                         required
                         value={formState.firstName}
                         onChange={(e) => setFormState({ ...formState, firstName: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
                         placeholder="John"
                       />
                     </div>
@@ -665,7 +708,7 @@ export default function PricingPage() {
                         required
                         value={formState.lastName}
                         onChange={(e) => setFormState({ ...formState, lastName: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
                         placeholder="Doe"
                       />
                     </div>
@@ -678,7 +721,7 @@ export default function PricingPage() {
                       required
                       value={formState.email}
                       onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
                       placeholder="john@company.ch"
                     />
                   </div>
@@ -691,7 +734,7 @@ export default function PricingPage() {
                         required
                         value={formState.company}
                         onChange={(e) => setFormState({ ...formState, company: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
                         placeholder="Company AG"
                       />
                     </div>
@@ -701,7 +744,7 @@ export default function PricingPage() {
                         type="tel"
                         value={formState.phone}
                         onChange={(e) => setFormState({ ...formState, phone: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all"
                         placeholder="+41 44 555 12 34"
                       />
                     </div>
@@ -714,7 +757,7 @@ export default function PricingPage() {
                         required
                         value={formState.teamSize}
                         onChange={(e) => setFormState({ ...formState, teamSize: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all bg-white"
                       >
                         <option value="">Select size</option>
                         <option value="1-10">1-10 users</option>
@@ -728,7 +771,7 @@ export default function PricingPage() {
                       <select
                         value={formState.plan}
                         onChange={(e) => setFormState({ ...formState, plan: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all bg-white"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all bg-white"
                       >
                         <option value="">Select plan</option>
                         <option value="starter">Starter</option>
@@ -745,7 +788,7 @@ export default function PricingPage() {
                       value={formState.message}
                       onChange={(e) => setFormState({ ...formState, message: e.target.value })}
                       rows={4}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 outline-none transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-violet-500 focus:ring-2 focus:ring-violet-500/20 outline-none transition-all resize-none"
                       placeholder="How many contracts do you manage? Any specific requirements or integrations needed?"
                     />
                   </div>
@@ -753,9 +796,9 @@ export default function PricingPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full relative group overflow-hidden bg-gradient-to-r from-teal-600 to-emerald-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl hover:shadow-teal-500/25 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full relative group overflow-hidden bg-gradient-to-r from-violet-600 to-violet-600 text-white py-4 rounded-xl font-bold shadow-lg hover:shadow-xl hover:shadow-violet-500/25 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-teal-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <span className="absolute inset-0 bg-gradient-to-r from-violet-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                     <span className="relative flex items-center gap-2">
                     {isSubmitting ? (
                       <>
@@ -773,9 +816,9 @@ export default function PricingPage() {
 
                   <p className="text-xs text-gray-500 text-center">
                     By submitting this form, you agree to our{' '}
-                    <Link href="/privacy" className="text-teal-600 hover:underline">Privacy Policy</Link>
+                    <Link href="/privacy" className="text-violet-600 hover:underline">Privacy Policy</Link>
                     {' '}and{' '}
-                    <Link href="/terms" className="text-teal-600 hover:underline">Terms of Service</Link>.
+                    <Link href="/terms" className="text-violet-600 hover:underline">Terms of Service</Link>.
                   </p>
                 </form>
               )}
@@ -787,8 +830,8 @@ export default function PricingPage() {
 
       {/* Feature Comparison Table */}
       <section className="py-32 px-6 bg-gradient-to-b from-gray-50 via-white to-gray-50 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '48px 48px' }} />
-        <div className="absolute top-40 left-0 w-[800px] h-[800px] bg-gradient-to-r from-teal-100/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #8B5CF6 1px, transparent 0)', backgroundSize: '48px 48px' }} />
+        <div className="absolute top-40 left-0 w-[800px] h-[800px] bg-gradient-to-r from-violet-100/30 to-transparent rounded-full blur-3xl" />
         <div className="max-w-6xl mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-gray-100 to-gray-50 border border-gray-200/50 rounded-full mb-6 shadow-sm">
@@ -797,7 +840,7 @@ export default function PricingPage() {
             </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900">Feature</span>{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Comparison</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-600">Comparison</span>
             </h2>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto">
               Compare what&apos;s included in each plan
@@ -811,10 +854,10 @@ export default function PricingPage() {
                 <tr className="bg-gray-50">
                   <th className="text-left py-6 px-8 font-semibold text-gray-900 w-1/4">Features</th>
                   <th className="text-center py-6 px-6 font-semibold text-gray-900">Starter</th>
-                  <th className="text-center py-6 px-6 font-semibold text-gray-900 bg-teal-50">
+                  <th className="text-center py-6 px-6 font-semibold text-gray-900 bg-violet-50">
                     <span className="inline-flex items-center gap-2">
                       Professional
-                      <span className="px-2 py-0.5 bg-teal-100 text-teal-700 text-xs rounded-full">Popular</span>
+                      <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full">Popular</span>
                     </span>
                   </th>
                   <th className="text-center py-6 px-6 font-semibold text-gray-900">Enterprise</th>
@@ -834,7 +877,7 @@ export default function PricingPage() {
                         <td className="py-4 px-6 text-center">
                           {typeof feature.starter === 'boolean' ? (
                             feature.starter ? (
-                              <Check className="w-5 h-5 text-teal-600 mx-auto" />
+                              <Check className="w-5 h-5 text-violet-600 mx-auto" />
                             ) : (
                               <X className="w-5 h-5 text-gray-300 mx-auto" />
                             )
@@ -842,10 +885,10 @@ export default function PricingPage() {
                             <span className="text-gray-600">{feature.starter}</span>
                           )}
                         </td>
-                        <td className="py-4 px-6 text-center bg-teal-50/50">
+                        <td className="py-4 px-6 text-center bg-violet-50/50">
                           {typeof feature.professional === 'boolean' ? (
                             feature.professional ? (
-                              <Check className="w-5 h-5 text-teal-600 mx-auto" />
+                              <Check className="w-5 h-5 text-violet-600 mx-auto" />
                             ) : (
                               <X className="w-5 h-5 text-gray-300 mx-auto" />
                             )
@@ -856,7 +899,7 @@ export default function PricingPage() {
                         <td className="py-4 px-6 text-center">
                           {typeof feature.enterprise === 'boolean' ? (
                             feature.enterprise ? (
-                              <Check className="w-5 h-5 text-teal-600 mx-auto" />
+                              <Check className="w-5 h-5 text-violet-600 mx-auto" />
                             ) : (
                               <X className="w-5 h-5 text-gray-300 mx-auto" />
                             )
@@ -878,7 +921,7 @@ export default function PricingPage() {
               <details key={catIndex} className="bg-white/80 backdrop-blur-sm rounded-2xl border border-gray-200/50 overflow-hidden group shadow-lg">
                 <summary className="p-6 font-bold text-gray-900 cursor-pointer flex items-center justify-between hover:bg-gray-50/50">
                   {category.name}
-                  <ChevronRight className="w-5 h-5 text-teal-600 group-open:rotate-90 transition-transform" />
+                  <ChevronRight className="w-5 h-5 text-violet-600 group-open:rotate-90 transition-transform" />
                 </summary>
                 <div className="px-6 pb-6">
                   {category.features.map((feature, featIndex) => (
@@ -888,7 +931,7 @@ export default function PricingPage() {
                         <div className="text-center">
                           <div className="text-xs text-gray-500 mb-1">Starter</div>
                           {typeof feature.starter === 'boolean' ? (
-                            feature.starter ? <Check className="w-4 h-4 text-teal-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                            feature.starter ? <Check className="w-4 h-4 text-violet-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
                           ) : (
                             <span className="text-gray-700">{feature.starter}</span>
                           )}
@@ -896,7 +939,7 @@ export default function PricingPage() {
                         <div className="text-center">
                           <div className="text-xs text-gray-500 mb-1">Pro</div>
                           {typeof feature.professional === 'boolean' ? (
-                            feature.professional ? <Check className="w-4 h-4 text-teal-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                            feature.professional ? <Check className="w-4 h-4 text-violet-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
                           ) : (
                             <span className="text-gray-900 font-medium">{feature.professional}</span>
                           )}
@@ -904,7 +947,7 @@ export default function PricingPage() {
                         <div className="text-center">
                           <div className="text-xs text-gray-500 mb-1">Enterprise</div>
                           {typeof feature.enterprise === 'boolean' ? (
-                            feature.enterprise ? <Check className="w-4 h-4 text-teal-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
+                            feature.enterprise ? <Check className="w-4 h-4 text-violet-600 mx-auto" /> : <X className="w-4 h-4 text-gray-300 mx-auto" />
                           ) : (
                             <span className="text-gray-700">{feature.enterprise}</span>
                           )}
@@ -920,7 +963,7 @@ export default function PricingPage() {
           <div className="text-center mt-12">
             <button
               onClick={scrollToForm}
-              className="group inline-flex items-center gap-2 bg-gradient-to-r from-teal-600 to-emerald-600 text-white px-8 py-4 rounded-full font-bold hover:shadow-xl hover:shadow-teal-500/25 hover:-translate-y-0.5 transition-all"
+              className="group inline-flex items-center gap-2 bg-gradient-to-r from-violet-600 to-violet-600 text-white px-8 py-4 rounded-full font-bold hover:shadow-xl hover:shadow-violet-500/25 hover:-translate-y-0.5 transition-all"
             >
               Get Your Custom Quote
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -931,17 +974,17 @@ export default function PricingPage() {
 
       {/* Pricing FAQ */}
       <section className="py-32 px-6 bg-gradient-to-b from-white via-gray-50 to-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-teal-100/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #8B5CF6 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-bl from-violet-100/30 to-transparent rounded-full blur-3xl" />
         <div className="max-w-4xl mx-auto relative">
           <div className="text-center mb-16">
-            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-teal-50 to-emerald-50 border border-teal-200/50 rounded-full mb-6 shadow-sm">
-              <HelpCircle className="w-4 h-4 text-teal-600" />
-              <span className="text-sm font-semibold text-teal-700">Frequently Asked Questions</span>
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-50 to-violet-50 border border-violet-200/50 rounded-full mb-6 shadow-sm">
+              <HelpCircle className="w-4 h-4 text-violet-600" />
+              <span className="text-sm font-semibold text-violet-700">Frequently Asked Questions</span>
             </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
               Common{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-600 to-emerald-600">Questions</span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-violet-600">Questions</span>
             </h2>
             <p className="text-xl text-gray-600">
               Everything you need to know about our pricing
@@ -949,7 +992,7 @@ export default function PricingPage() {
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-1 bg-gradient-to-br from-teal-500/10 via-transparent to-emerald-500/10 rounded-[2rem] blur-xl" />
+            <div className="absolute -inset-1 bg-gradient-to-br from-violet-500/10 via-transparent to-violet-500/10 rounded-[2rem] blur-xl" />
             <div className="relative bg-white/80 backdrop-blur-sm rounded-3xl p-8 shadow-xl border border-gray-100/50">
             {pricingFAQs.map((faq, index) => (
               <FAQItem
@@ -967,7 +1010,7 @@ export default function PricingPage() {
             <p className="text-gray-600 mb-4">Have more questions?</p>
             <a
               href="mailto:sales@contigo.ch"
-              className="inline-flex items-center gap-2 text-teal-600 font-bold hover:text-teal-700 group"
+              className="inline-flex items-center gap-2 text-violet-600 font-bold hover:text-violet-700 group"
             >
               <Mail className="w-4 h-4" />
               Contact our sales team
@@ -978,22 +1021,22 @@ export default function PricingPage() {
       </section>
 
       {/* Final CTA */}
-      <section className="py-32 px-6 bg-gradient-to-br from-teal-600 via-emerald-600 to-cyan-600 relative overflow-hidden">
+      <section className="py-32 px-6 bg-gradient-to-br from-violet-600 via-violet-600 to-purple-600 relative overflow-hidden">
         <div className="absolute inset-0">
           <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-white/10 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
-          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-cyan-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
+          <div className="absolute bottom-0 right-1/4 w-[400px] h-[400px] bg-purple-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDuration: '6s' }} />
         </div>
         <div className="max-w-4xl mx-auto text-center relative">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
             Ready to Transform Your<br />Contract Management?
           </h2>
-          <p className="text-xl text-teal-100 mb-10 max-w-2xl mx-auto">
+          <p className="text-xl text-violet-100 mb-10 max-w-2xl mx-auto">
             Join hundreds of Swiss companies using ConTigo. Get your personalized quote today.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <button
               onClick={scrollToForm}
-              className="group bg-white text-teal-700 px-10 py-5 rounded-full font-bold hover:bg-gray-50 transition-all hover:shadow-2xl hover:shadow-black/20 flex items-center gap-3 text-lg hover:-translate-y-1"
+              className="group bg-white text-violet-700 px-10 py-5 rounded-full font-bold hover:bg-gray-50 transition-all hover:shadow-2xl hover:shadow-black/20 flex items-center gap-3 text-lg hover:-translate-y-1"
             >
               Request a Quote
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -1006,7 +1049,7 @@ export default function PricingPage() {
               Call Us
             </a>
           </div>
-          <p className="text-teal-200 mt-8 text-sm">
+          <p className="text-violet-200 mt-8 text-sm">
             Personalized demo available • Swiss data residency • Enterprise-grade security
           </p>
         </div>
@@ -1014,11 +1057,20 @@ export default function PricingPage() {
 
       {/* Footer */}
       <footer className="bg-gray-950 text-gray-400 py-20 px-6 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-[0.03]\" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #14b8a6 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        <div className="absolute inset-0 opacity-[0.03]\" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #8B5CF6 1px, transparent 0)', backgroundSize: '24px 24px' }} />
         <div className="max-w-7xl mx-auto relative">
           <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-12 mb-16">
             <div className="lg:col-span-2">
-              <Image src="/logo-transparent.png" alt="ConTigo" width={180} height={48} className="h-12 w-auto mb-6 brightness-0 invert" />
+              <div className="flex items-center gap-2 mb-6">
+                <svg width="48" height="48" viewBox="0 0 48 48" className="flex-shrink-0">
+                  <g transform="translate(8, 10)">
+                    <rect x="0" y="0" width="32" height="8" rx="4" fill="white" />
+                    <rect x="0" y="12" width="32" height="8" rx="4" fill="white" fillOpacity="0.7" />
+                    <rect x="0" y="24" width="32" height="8" rx="4" fill="white" fillOpacity="0.5" />
+                  </g>
+                </svg>
+                <span className="text-2xl font-bold"><span className="text-violet-400">con</span><span className="text-white">tigo</span></span>
+              </div>
               <p className="text-gray-500 leading-relaxed mb-6 max-w-sm">
                 Swiss-based enterprise contract management platform. Secure, intelligent, and built for compliance.
               </p>
@@ -1056,7 +1108,7 @@ export default function PricingPage() {
                 <ul className="space-y-4">
                   {col.links.map((link) => (
                     <li key={link.label}>
-                      <Link href={link.href} className="hover:text-teal-400 transition-colors">{link.label}</Link>
+                      <Link href={link.href} className="hover:text-violet-400 transition-colors">{link.label}</Link>
                     </li>
                   ))}
                 </ul>
@@ -1067,10 +1119,10 @@ export default function PricingPage() {
           <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <p className="text-gray-500 text-sm">© {new Date().getFullYear()} ConTigo AG. All rights reserved. Made in Switzerland 🇨🇭</p>
             <div className="flex items-center gap-8 text-sm">
-              <Link href="/privacy" className="hover:text-teal-400 transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-teal-400 transition-colors">Terms</Link>
-              <Link href="/cookies" className="hover:text-teal-400 transition-colors">Cookies</Link>
-              <Link href="/gdpr" className="hover:text-teal-400 transition-colors">GDPR</Link>
+              <Link href="/privacy" className="hover:text-violet-400 transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-violet-400 transition-colors">Terms</Link>
+              <Link href="/cookies" className="hover:text-violet-400 transition-colors">Cookies</Link>
+              <Link href="/gdpr" className="hover:text-violet-400 transition-colors">GDPR</Link>
             </div>
           </div>
         </div>

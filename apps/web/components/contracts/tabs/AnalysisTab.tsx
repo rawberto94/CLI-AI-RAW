@@ -75,7 +75,7 @@ function InsightCard({ insight }: { insight: AIInsight }) {
     switch (insight.type) {
       case 'risk': return <AlertTriangle className="w-5 h-5 text-red-600" />
       case 'opportunity': return <TrendingUp className="w-5 h-5 text-green-600" />
-      case 'compliance': return <Shield className="w-5 h-5 text-blue-600" />
+      case 'compliance': return <Shield className="w-5 h-5 text-violet-600" />
       default: return <CheckCircle className="w-5 h-5 text-gray-600" />
     }
   }

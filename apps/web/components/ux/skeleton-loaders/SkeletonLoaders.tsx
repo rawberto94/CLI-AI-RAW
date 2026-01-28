@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo, ReactNode } from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 
 // ============================================================================
@@ -156,7 +156,8 @@ export const TableRowSkeleton = memo(function TableRowSkeleton({
   showActions = false,
   className = '',
 }: TableRowSkeletonProps) {
-  const totalColumns = columns + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0);
+  // Total columns calculation (kept for potential colspan/accessibility use)
+  const _totalColumns = columns + (showCheckbox ? 1 : 0) + (showActions ? 1 : 0);
 
   return (
     <>

@@ -80,6 +80,16 @@ export function ArtifactEditor({
       setSuccess(true);
       setIsEditing(false);
       
+      // Dispatch event to notify chatbot and other components about the update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, artifactId: artifact.id, type: 'artifact', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('artifacts:refresh', { 
+          detail: { contractId } 
+        }));
+      }
+      
       if (onSave) {
         onSave(result.artifact);
       }

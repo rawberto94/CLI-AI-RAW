@@ -168,7 +168,7 @@ export function AnomalyDetectionDashboard() {
       case 'medium':
         return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'low':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-violet-100 text-violet-800 border-violet-200';
     }
   };
 
@@ -177,7 +177,7 @@ export function AnomalyDetectionDashboard() {
       case 'price_spike':
         return <TrendingUp className="h-5 w-5 text-red-600" />;
       case 'price_drop':
-        return <TrendingDown className="h-5 w-5 text-blue-600" />;
+        return <TrendingDown className="h-5 w-5 text-violet-600" />;
       case 'outlier':
         return <Target className="h-5 w-5 text-amber-600" />;
       case 'unusual_pattern':
@@ -255,7 +255,7 @@ export function AnomalyDetectionDashboard() {
             <CardTitle className="text-sm font-medium">Low</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">{stats?.low || 0}</div>
+            <div className="text-2xl font-bold text-violet-600">{stats?.low || 0}</div>
           </CardContent>
         </Card>
 

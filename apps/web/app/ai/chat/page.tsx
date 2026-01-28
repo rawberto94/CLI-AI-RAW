@@ -129,7 +129,7 @@ const QUICK_ACTIONS = [
     icon: FileText,
     label: "Analyze Contract",
     query: "Analyze my most recent contract and summarize key terms",
-    color: "text-blue-500",
+    color: "text-violet-500",
   },
   {
     icon: TrendingUp,
@@ -159,7 +159,7 @@ const QUICK_ACTIONS = [
     icon: Clock,
     label: "Obligation Tracking",
     query: "What are my upcoming contractual obligations?",
-    color: "text-cyan-500",
+    color: "text-purple-500",
   },
 ];
 
@@ -861,7 +861,7 @@ function AIChatPageContent() {
           {contractId && (
             <div className="p-4 border-t">
               <div className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4 text-blue-500" />
+                <FileText className="h-4 w-4 text-violet-500" />
                 <span className="text-muted-foreground">Context:</span>
                 <Badge variant="secondary" className="truncate">
                   Contract {contractId}
@@ -896,7 +896,7 @@ function AIChatPageContent() {
                     className={cn(
                       "max-w-[80%] rounded-xl p-4",
                       message.role === "user"
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                        ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
                         : "bg-white dark:bg-slate-800 border shadow-sm"
                     )}
                   >
@@ -990,7 +990,7 @@ function AIChatPageContent() {
                   </div>
 
                   {message.role === "user" && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                       <User className="h-4 w-4 text-white" />
                     </div>
                   )}

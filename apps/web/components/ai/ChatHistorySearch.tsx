@@ -237,7 +237,7 @@ export function ChatHistorySearch({
               <Button variant="outline" size="icon" className="relative">
                 <Filter className="w-4 h-4" />
                 {activeFiltersCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 text-white text-[10px] rounded-full flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-violet-500 text-white text-[10px] rounded-full flex items-center justify-center">
                     {activeFiltersCount}
                   </span>
                 )}
@@ -434,8 +434,8 @@ function SearchResultCard({
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
-        <div className={`p-1.5 rounded-md ${isUser ? 'bg-blue-100' : 'bg-purple-100'}`}>
-          <Icon className={`w-4 h-4 ${isUser ? 'text-blue-600' : 'text-purple-600'}`} />
+        <div className={`p-1.5 rounded-md ${isUser ? 'bg-violet-100' : 'bg-purple-100'}`}>
+          <Icon className={`w-4 h-4 ${isUser ? 'text-violet-600' : 'text-purple-600'}`} />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -465,7 +465,7 @@ function SearchResultCard({
 
           {/* Actions */}
           <div className="flex items-center justify-between mt-2">
-            <span className={`text-xs ${isUser ? 'text-blue-600' : 'text-purple-600'}`}>
+            <span className={`text-xs ${isUser ? 'text-violet-600' : 'text-purple-600'}`}>
               {isUser ? 'You' : 'AI Assistant'}
             </span>
             <button
@@ -473,7 +473,7 @@ function SearchResultCard({
                 e.stopPropagation();
                 onOpenConversation?.();
               }}
-              className="flex items-center gap-1 text-xs text-slate-500 hover:text-blue-600"
+              className="flex items-center gap-1 text-xs text-slate-500 hover:text-violet-600"
             >
               Open conversation
               <ExternalLink className="w-3 h-3" />

@@ -287,13 +287,13 @@ export function NetworkStatusBanner({
       submessage: 'Some features may be delayed',
     },
     reconnecting: {
-      bg: 'bg-blue-500',
+      bg: 'bg-violet-500',
       icon: RefreshCw,
       message: 'Reconnecting...',
       submessage: 'Restoring your connection',
     },
     online: {
-      bg: 'bg-emerald-500',
+      bg: 'bg-violet-500',
       icon: Wifi,
       message: 'Back online',
       submessage: pendingActions > 0 
@@ -349,10 +349,10 @@ export function NetworkIndicator({ showLabel = true, className }: NetworkIndicat
   const { status, effectiveType, pendingActions } = useNetwork();
 
   const indicatorConfig = {
-    online: { color: 'bg-emerald-500', label: 'Online' },
+    online: { color: 'bg-violet-500', label: 'Online' },
     offline: { color: 'bg-red-500', label: 'Offline' },
     slow: { color: 'bg-amber-500', label: 'Slow' },
-    reconnecting: { color: 'bg-blue-500 animate-pulse', label: 'Connecting...' },
+    reconnecting: { color: 'bg-violet-500 animate-pulse', label: 'Connecting...' },
   };
 
   const config = indicatorConfig[status];

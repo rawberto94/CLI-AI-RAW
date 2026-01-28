@@ -288,7 +288,7 @@ export function ContractReminders({
   const getTypeColor = (type: Reminder['type']) => {
     switch (type) {
       case 'expiration': return 'text-red-600 bg-red-50';
-      case 'renewal': return 'text-blue-600 bg-blue-50';
+      case 'renewal': return 'text-violet-600 bg-violet-50';
       case 'review': return 'text-purple-600 bg-purple-50';
       default: return 'text-slate-600 bg-slate-50';
     }
@@ -313,7 +313,7 @@ export function ContractReminders({
     return (
       <Card>
         <CardContent className="flex items-center justify-center py-8">
-          <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+          <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
         </CardContent>
       </Card>
     );
@@ -324,7 +324,7 @@ export function ContractReminders({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <BellRing className="h-5 w-5 text-blue-600" />
+          <BellRing className="h-5 w-5 text-violet-600" />
           <h3 className="font-semibold">Reminders & Alerts</h3>
           {upcomingReminders.length > 0 && (
             <Badge variant="secondary" className="bg-amber-100 text-amber-700">
@@ -515,7 +515,7 @@ export function ContractReminders({
               </div>
 
               {formData.recurringEnabled && (
-                <div className="space-y-2 pl-4 border-l-2 border-blue-200">
+                <div className="space-y-2 pl-4 border-l-2 border-violet-200">
                   <Label>Repeat</Label>
                   <Select
                     value={formData.recurringFrequency}

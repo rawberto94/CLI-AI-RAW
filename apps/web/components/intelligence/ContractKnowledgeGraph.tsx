@@ -174,13 +174,13 @@ const getNodeColor = (type: GraphNode['type'], status?: GraphNode['status']) => 
   if (status === 'warning') return { bg: 'bg-amber-500', border: 'border-amber-600', text: 'text-white' };
   
   switch (type) {
-    case 'contract': return { bg: 'bg-blue-500', border: 'border-blue-600', text: 'text-white' };
+    case 'contract': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
     case 'supplier': return { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white' };
     case 'clause': return { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white' };
     case 'risk': return { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white' };
     case 'obligation': return { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white' };
     case 'category': return { bg: 'bg-slate-500', border: 'border-slate-600', text: 'text-white' };
-    case 'department': return { bg: 'bg-cyan-500', border: 'border-cyan-600', text: 'text-white' };
+    case 'department': return { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white' };
     default: return { bg: 'bg-slate-400', border: 'border-slate-500', text: 'text-white' };
   }
 };
@@ -405,7 +405,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-900">Quick Actions</h4>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={onViewDetails} className="px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
+            <button onClick={onViewDetails} className="px-3 py-2 text-xs font-medium bg-violet-50 text-violet-700 rounded hover:bg-violet-100 transition-colors">
               View Details
             </button>
             <button onClick={onExplorePath} className="px-3 py-2 text-xs font-medium bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors">
@@ -547,7 +547,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-blue-500" />
+              <Share2 className="w-5 h-5 text-violet-500" />
               Contract Knowledge Graph
             </h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -558,7 +558,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors ${
-                showFilters ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                showFilters ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Filter className="w-4 h-4" />
@@ -587,7 +587,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         {/* Stats Bar */}
         <div className="flex items-center gap-6 mt-4">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full bg-violet-500" />
             <span className="text-sm text-slate-600">{stats.contracts} Contracts</span>
           </div>
           <div className="flex items-center gap-2">
@@ -623,7 +623,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search nodes..."
-                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
 
@@ -726,7 +726,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                       x={(sourcePos.x + targetPos.x) / 2}
                       y={(sourcePos.y + targetPos.y) / 2 - 8}
                       textAnchor="middle"
-                      className="fill-blue-600 text-xs font-medium"
+                      className="fill-violet-600 text-xs font-medium"
                     >
                       {edge.label}
                     </text>
@@ -771,8 +771,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
               >
                 <div
                   className={`w-full h-full rounded-full ${colors.bg} ${colors.border} border-2 flex items-center justify-center shadow-lg transition-all ${
-                    isSelected ? 'ring-4 ring-blue-300 ring-opacity-50' : ''
-                  } ${isRelated ? 'ring-2 ring-blue-200' : ''}`}
+                    isSelected ? 'ring-4 ring-violet-300 ring-opacity-50' : ''
+                  } ${isRelated ? 'ring-2 ring-violet-200' : ''}`}
                 >
                   <Icon className={`${colors.text}`} style={{ width: sizes.icon, height: sizes.icon }} />
                 </div>
@@ -824,7 +824,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         </div>
 
         {/* Help Overlay */}
-        <div className="absolute top-4 left-4 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+        <div className="absolute top-4 left-4 bg-violet-50 text-violet-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
           <Info className="w-4 h-4" />
           <span>Click nodes to explore • Hover to see connections</span>
         </div>

@@ -128,8 +128,8 @@ const PREDICTION_TYPE_CONFIG: Record<PredictionType, {
   },
   cost: { 
     icon: DollarSign, 
-    color: 'text-blue-600', 
-    bgColor: 'bg-blue-100', 
+    color: 'text-violet-600', 
+    bgColor: 'bg-violet-100', 
     label: 'Cost',
     description: 'Projected cost trajectory'
   },
@@ -149,8 +149,8 @@ const PREDICTION_TYPE_CONFIG: Record<PredictionType, {
   },
   compliance: { 
     icon: Shield, 
-    color: 'text-indigo-600', 
-    bgColor: 'bg-indigo-100', 
+    color: 'text-purple-600', 
+    bgColor: 'bg-purple-100', 
     label: 'Compliance',
     description: 'Regulatory compliance forecast'
   },
@@ -282,7 +282,7 @@ function StatCard({
   format?: 'number' | 'percent' | 'currency';
 }) {
   const colorClasses = {
-    blue: 'text-blue-600 bg-blue-50',
+    blue: 'text-violet-600 bg-violet-50',
     green: 'text-green-600 bg-green-50',
     amber: 'text-amber-600 bg-amber-50',
     red: 'text-red-600 bg-red-50',

@@ -45,7 +45,7 @@ const coreActions: QuickAction[] = [
     icon: <Upload className="h-5 w-5" />,
     href: '/upload',
     shortcut: 'U',
-    color: 'bg-blue-500 hover:bg-blue-600',
+    color: 'bg-violet-500 hover:bg-violet-600',
     category: 'core',
   },
   {
@@ -72,7 +72,7 @@ const coreActions: QuickAction[] = [
     icon: <Sparkles className="h-5 w-5" />,
     href: '/generate',
     shortcut: 'G',
-    color: 'bg-indigo-500 hover:bg-indigo-600',
+    color: 'bg-purple-500 hover:bg-purple-600',
     category: 'core',
   },
 ];
@@ -94,7 +94,7 @@ const intelligenceActions: QuickAction[] = [
     icon: <Activity className="h-5 w-5" />,
     href: '/intelligence/health',
     shortcut: 'H',
-    color: 'bg-emerald-500 hover:bg-emerald-600',
+    color: 'bg-violet-500 hover:bg-violet-600',
     category: 'intelligence',
   },
   {
@@ -103,7 +103,7 @@ const intelligenceActions: QuickAction[] = [
     icon: <TrendingUp className="h-5 w-5" />,
     href: '/forecast',
     shortcut: 'F',
-    color: 'bg-cyan-500 hover:bg-cyan-600',
+    color: 'bg-purple-500 hover:bg-purple-600',
     category: 'intelligence',
   },
   {
@@ -145,7 +145,7 @@ const workflowActions: QuickAction[] = [
     icon: <Edit3 className="h-5 w-5" />,
     href: '/drafting',
     shortcut: 'D',
-    color: 'bg-teal-500 hover:bg-teal-600',
+    color: 'bg-violet-500 hover:bg-violet-600',
     category: 'workflow',
   },
   {
@@ -163,7 +163,7 @@ const workflowActions: QuickAction[] = [
     icon: <Target className="h-5 w-5" />,
     href: '/obligations',
     shortcut: 'O',
-    color: 'bg-indigo-500 hover:bg-indigo-600',
+    color: 'bg-purple-500 hover:bg-purple-600',
     category: 'workflow',
   },
   {
@@ -366,7 +366,7 @@ export function QuickActionsFAB() {
             'transition-all duration-300',
             isOpen
               ? 'bg-gray-800 hover:bg-gray-900'
-              : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+              : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700'
           )}
         >
           <motion.div

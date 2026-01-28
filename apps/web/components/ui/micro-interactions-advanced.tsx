@@ -491,7 +491,7 @@ export const FloatingLabelInput = memo(forwardRef<HTMLInputElement, FloatingLabe
           ref={ref}
           className={cn(
             'w-full px-4 pt-6 pb-2 text-sm bg-white dark:bg-gray-900 border rounded-lg transition-colors',
-            'focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
+            'focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500',
             error ? 'border-red-500' : 'border-gray-300 dark:border-gray-700'
           )}
           onFocus={() => setIsFocused(true)}
@@ -508,7 +508,7 @@ export const FloatingLabelInput = memo(forwardRef<HTMLInputElement, FloatingLabe
         <motion.label
           className={cn(
             'absolute left-4 pointer-events-none origin-left',
-            error ? 'text-red-500' : isFloating ? 'text-blue-600' : 'text-gray-500'
+            error ? 'text-red-500' : isFloating ? 'text-violet-600' : 'text-gray-500'
           )}
           initial={false}
           animate={{

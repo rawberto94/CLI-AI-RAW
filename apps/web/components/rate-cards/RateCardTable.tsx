@@ -232,7 +232,7 @@ export function RateCardTable({
                 {showClientColumn && (
                   <TableCell>
                     {item.clientName ? (
-                      <span className="font-medium text-blue-600">
+                      <span className="font-medium text-violet-600">
                         {item.clientName}
                       </span>
                     ) : (

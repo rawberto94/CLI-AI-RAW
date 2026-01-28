@@ -237,7 +237,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <UserPlus className="w-5 h-5 text-blue-500" />
+            <UserPlus className="w-5 h-5 text-violet-500" />
             Delegation Rules
           </DialogTitle>
           <DialogDescription>
@@ -265,7 +265,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                     value={newRule.name || ''}
                     onChange={(e) => setNewRule(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., Vacation Coverage"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
                 </div>
 
@@ -323,17 +323,17 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                           className={cn(
                             "p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-2",
                             newRule.triggerType === option.value
-                              ? "border-blue-500 bg-blue-50"
+                              ? "border-violet-500 bg-violet-50"
                               : "border-slate-200 hover:border-slate-300"
                           )}
                         >
                           <Icon className={cn(
                             "w-5 h-5",
-                            newRule.triggerType === option.value ? "text-blue-500" : "text-slate-400"
+                            newRule.triggerType === option.value ? "text-violet-500" : "text-slate-400"
                           )} />
                           <span className={cn(
                             "text-sm font-medium",
-                            newRule.triggerType === option.value ? "text-blue-700" : "text-slate-600"
+                            newRule.triggerType === option.value ? "text-violet-700" : "text-slate-600"
                           )}>
                             {option.label}
                           </span>
@@ -354,7 +354,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                         type="date"
                         value={newRule.startDate || ''}
                         onChange={(e) => setNewRule(prev => ({ ...prev, startDate: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                     <div>
@@ -365,7 +365,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                         type="date"
                         value={newRule.endDate || ''}
                         onChange={(e) => setNewRule(prev => ({ ...prev, endDate: e.target.value }))}
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                     </div>
                   </div>
@@ -393,7 +393,7 @@ export function DelegationRulesModal({ isOpen, onClose }: DelegationRulesModalPr
                           className={cn(
                             "px-3 py-1.5 rounded-full text-sm font-medium transition-all",
                             isSelected
-                              ? "bg-blue-100 text-blue-700 border-2 border-blue-500"
+                              ? "bg-violet-100 text-violet-700 border-2 border-violet-500"
                               : "bg-slate-100 text-slate-600 border-2 border-transparent hover:bg-slate-200"
                           )}
                         >

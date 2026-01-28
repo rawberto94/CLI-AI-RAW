@@ -127,7 +127,7 @@ export function AIInsightsPanel({ rateCardId, className = '' }: AIInsightsPanelP
         {/* Summary */}
         <div>
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="h-4 w-4 text-blue-500" />
+            <TrendingUp className="h-4 w-4 text-violet-500" />
             <h4 className="font-semibold text-sm">Market Position</h4>
           </div>
           <Badge variant="outline" className="mb-2">
@@ -149,7 +149,7 @@ export function AIInsightsPanel({ rateCardId, className = '' }: AIInsightsPanelP
             <ul className="space-y-2">
               {insights.keyFindings.map((finding, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
-                  <span className="text-blue-500 mt-0.5">•</span>
+                  <span className="text-violet-500 mt-0.5">•</span>
                   <span className="text-gray-700">{finding}</span>
                 </li>
               ))}

@@ -109,8 +109,8 @@ export function DropZone({
       }}
       className={`
         relative border-2 border-dashed rounded-xl p-8 cursor-pointer
-        transition-colors bg-gray-50 dark:bg-gray-900
-        ${isDragging ? 'border-blue-500 bg-blue-50 dark:bg-blue-950' : 'border-gray-300 dark:border-gray-700 hover:border-gray-400 dark:hover:border-gray-600'}
+        transition-all duration-200 bg-slate-50 dark:bg-slate-900
+        ${isDragging ? 'border-violet-500 bg-violet-50 dark:bg-violet-950/50 shadow-lg shadow-violet-500/10' : 'border-slate-300 dark:border-slate-700 hover:border-violet-400 dark:hover:border-violet-600 hover:bg-violet-50/50 dark:hover:bg-violet-950/30'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
         ${className}
       `}
@@ -131,15 +131,15 @@ export function DropZone({
             animate={{ y: isDragging ? -5 : 0 }}
             className="mb-4"
           >
-            <Upload className={`w-12 h-12 ${isDragging ? 'text-blue-500' : 'text-gray-400'}`} />
+            <Upload className={`w-12 h-12 ${isDragging ? 'text-violet-500' : 'text-gray-400'}`} />
           </motion.div>
-          <p className="text-gray-700 dark:text-gray-300 font-medium mb-1">
+          <p className="text-slate-700 dark:text-slate-300 font-medium mb-1">
             {isDragging ? 'Drop files here' : 'Drag & drop files here'}
           </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-violet-600 dark:text-violet-400 font-medium">
             or click to browse
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-2">
             Max {formatFileSize(maxSize)} per file
           </p>
         </div>
@@ -190,7 +190,7 @@ function FilePreviewCard({ file, onRemove, onRetry }: FilePreviewCardProps) {
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.8 }}
-      className="relative group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden"
+      className="relative group bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-lg hover:shadow-violet-500/10 transition-all"
     >
       <div className="aspect-square relative">
         {isImage && file.preview ? (
@@ -329,7 +329,7 @@ function FileListItem({ file, onRemove, onRetry }: FilePreviewCardProps) {
         {file.status === 'uploading' && file.progress !== undefined && (
           <div className="mt-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-blue-600"
+              className="h-full bg-violet-600"
               initial={{ width: 0 }}
               animate={{ width: `${file.progress}%` }}
             />
@@ -343,7 +343,7 @@ function FileListItem({ file, onRemove, onRetry }: FilePreviewCardProps) {
       
       <div className="flex items-center gap-2 shrink-0">
         {file.status === 'uploading' && (
-          <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+          <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
         )}
         {file.status === 'success' && (
           <CheckCircle className="w-5 h-5 text-green-500" />
@@ -385,7 +385,7 @@ export function UploadProgress({ files, totalProgress, className = '' }: UploadP
     <div className={`bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Upload className="w-5 h-5 text-blue-600" />
+          <Upload className="w-5 h-5 text-violet-600" />
           <span className="font-medium text-gray-900 dark:text-white">
             Uploading {files.length} file{files.length > 1 ? 's' : ''}
           </span>
@@ -397,7 +397,7 @@ export function UploadProgress({ files, totalProgress, className = '' }: UploadP
       
       <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden mb-3">
         <motion.div
-          className="h-full bg-blue-600"
+          className="h-full bg-violet-600"
           initial={{ width: 0 }}
           animate={{ width: `${totalProgress}%` }}
         />

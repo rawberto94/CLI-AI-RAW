@@ -150,12 +150,12 @@ interface MetricCardProps {
 
 function MetricCard({ title, value, subtitle, icon, trend, color = 'blue', className }: MetricCardProps) {
   const colorClasses: Record<string, string> = {
-    blue: 'bg-blue-50 text-blue-600',
+    blue: 'bg-violet-50 text-violet-600',
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600',
     purple: 'bg-purple-50 text-purple-600',
-    cyan: 'bg-cyan-50 text-cyan-600',
+    cyan: 'bg-purple-50 text-purple-600',
   };
 
   return (
@@ -223,14 +223,14 @@ interface AlertCardProps {
 
 function AlertCard({ alert, onDismiss }: AlertCardProps) {
   const severityColors = {
-    low: 'border-blue-200 bg-blue-50',
+    low: 'border-violet-200 bg-violet-50',
     medium: 'border-amber-200 bg-amber-50',
     high: 'border-orange-200 bg-orange-50',
     critical: 'border-red-200 bg-red-50',
   };
 
   const severityIcons = {
-    low: <Activity className="h-4 w-4 text-blue-600" />,
+    low: <Activity className="h-4 w-4 text-violet-600" />,
     medium: <AlertTriangle className="h-4 w-4 text-amber-600" />,
     high: <AlertTriangle className="h-4 w-4 text-orange-600" />,
     critical: <XCircle className="h-4 w-4 text-red-600" />,
@@ -377,7 +377,7 @@ export function RealTimeDashboard({
   if (loading && !metrics) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <RefreshCw className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
   }

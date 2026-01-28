@@ -73,7 +73,7 @@ const statusIcons: Record<string, any> = {
 
 // Status color mapping
 const statusColors: Record<string, string> = {
-  uploaded: "text-blue-600 bg-blue-50",
+  uploaded: "text-violet-600 bg-violet-50",
   processing: "text-yellow-600 bg-yellow-50",
   completed: "text-green-600 bg-green-50",
   failed: "text-red-600 bg-red-50",
@@ -142,7 +142,7 @@ export function ContractCard({
         "relative bg-white rounded-lg border border-gray-200 overflow-hidden transition-all duration-200",
         "hover:shadow-lg hover:-translate-y-1",
         "touch-manipulation", // Better touch interactions on mobile
-        selected && "ring-2 ring-blue-500 border-blue-500"
+        selected && "ring-2 ring-violet-500 border-violet-500"
       )}
     >
       {/* Selection Checkbox */}
@@ -152,7 +152,7 @@ export function ContractCard({
             type="checkbox"
             checked={selected}
             onChange={handleSelect}
-            className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer"
+            className="w-4 h-4 text-violet-600 bg-white border-gray-300 rounded focus:ring-violet-500 focus:ring-2 cursor-pointer"
             aria-label={`Select ${contract.originalName}`}
           />
         </div>
@@ -239,8 +239,8 @@ export function ContractCard({
       <div className="p-4 sm:p-6">
         {/* Header */}
         <div className="flex items-start gap-3 sm:gap-4 mb-4">
-          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
+          <div className="flex-shrink-0 w-10 h-10 sm:w-12 sm:h-12 bg-violet-50 rounded-lg flex items-center justify-center">
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600" />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -284,7 +284,7 @@ export function ContractCard({
                   <Clock className="w-4 h-4 text-amber-600" />
                 )}
                 {contract.approvalStatus.status === 'in_progress' && (
-                  <Send className="w-4 h-4 text-blue-600" />
+                  <Send className="w-4 h-4 text-violet-600" />
                 )}
                 {contract.approvalStatus.status === 'approved' && (
                   <CheckCircle2 className="w-4 h-4 text-green-600" />
@@ -295,7 +295,7 @@ export function ContractCard({
                 <span className={cn(
                   "text-xs font-semibold uppercase tracking-wide",
                   contract.approvalStatus.status === 'pending' && "text-amber-700",
-                  contract.approvalStatus.status === 'in_progress' && "text-blue-700",
+                  contract.approvalStatus.status === 'in_progress' && "text-violet-700",
                   contract.approvalStatus.status === 'approved' && "text-green-700",
                   contract.approvalStatus.status === 'rejected' && "text-red-700"
                 )}>
@@ -419,7 +419,7 @@ export function ContractCard({
                     </div>
                     <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-blue-500 rounded-full transition-all duration-300"
+                        className="h-full bg-violet-500 rounded-full transition-all duration-300"
                         style={{ width: `${contract.complianceScore}%` }}
                       />
                     </div>
@@ -511,7 +511,7 @@ export function ContractCard({
       {contract.status === "processing" && (
         <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-100 overflow-hidden">
           <MotionDiv
-            className="h-full bg-blue-500"
+            className="h-full bg-violet-500"
             initial={{ x: "-100%" }}
             animate={{ x: "100%" }}
             transition={{

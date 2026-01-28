@@ -24,7 +24,13 @@ const MAX_CONSECUTIVE_ERRORS = 5;
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   const contractId = params.id;
-  const tenantId = await getApiTenantId(request);
+  
+  // EventSource can't send headers, so we also check query param for tenant ID
+  const { searchParams } = new URL(request.url);
+  const queryTenantId = searchParams.get('tenantId');
+  
+  // Use query param tenant ID if provided, otherwise fall back to header/session
+  const tenantId = queryTenantId || await getApiTenantId(request);
 
   // Check initial contract status - if already completed, we can send data immediately
   let contract: { id: string; status: string } | null = null;

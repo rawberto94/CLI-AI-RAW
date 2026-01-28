@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -15,14 +14,12 @@ import {
   AlertTriangle,
   Loader2,
   Clock,
-  Zap,
   RefreshCw,
   Eye,
   X,
   ChevronDown,
   ChevronUp,
   Copy,
-  ExternalLink,
   Timer,
   Layers,
   Shield,
@@ -30,13 +27,54 @@ import {
   FileCheck,
   TrendingUp,
   AlertCircle,
-  Users,
   Calendar,
   FileEdit,
   Phone
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+
+// ============================================================================
+// API Status Types (from /api/contracts/[id]/status)
+// ============================================================================
+
+interface ContractStatusResponse {
+  contractId: string;
+  status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  currentStep: 'upload' | 'queued' | 'ocr' | 'artifacts' | 'storage' | 'complete';
+  currentStepName: string;
+  progress: number;
+  stageProgress: number;
+  timing: {
+    elapsedMs: number;
+    elapsedFormatted: string;
+    estimatedRemainingMs: number;
+    estimatedRemainingFormatted: string;
+    processingDurationMs: number;
+    processingDurationFormatted: string;
+  };
+  artifactsGenerated: number;
+  totalArtifacts: number;
+  artifactTypes: string[];
+  hasOverview: boolean;
+  hasFinancial: boolean;
+  hasRisk: boolean;
+  hasCompliance: boolean;
+  hasClauses: boolean;
+  processingJob: {
+    id: string;
+    status: string;
+    queueId: string | null;
+    priority: number;
+    retryCount: number;
+    maxRetries: number;
+    error: string | null;
+  } | null;
+  error: string | null;
+}
 
 // ============================================================================
 // Types
@@ -52,6 +90,7 @@ export interface ProcessingStage {
   endTime?: number;
   progress?: number;
   error?: string;
+  apiStep?: string; // Maps to API currentStep
 }
 
 export interface ArtifactProgress {
@@ -76,6 +115,20 @@ export interface UploadProgressProps {
   onViewContract?: (contractId: string) => void;
   tenantId?: string;
 }
+
+// ============================================================================
+// Constants
+// ============================================================================
+
+// Map UI stages to API steps
+const API_STEP_TO_STAGE: Record<string, string> = {
+  'upload': 'upload',
+  'queued': 'text-extraction',
+  'ocr': 'text-extraction',
+  'artifacts': 'artifact-generation',
+  'storage': 'indexing',
+  'complete': 'indexing',
+};
 
 // ============================================================================
 // Constants
@@ -148,14 +201,6 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function estimateProcessingTime(fileSize: number): number {
-  // Base time: 5 seconds
-  // Additional time based on file size: ~1s per 100KB
-  const baseTime = 5000;
-  const sizeTime = Math.ceil(fileSize / 102400) * 1000;
-  return baseTime + sizeTime;
-}
-
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -172,7 +217,7 @@ function StageIndicator({ stage, isActive, isLast }: StageIndicatorProps) {
       case 'completed':
         return 'bg-green-500 text-white border-green-500';
       case 'in-progress':
-        return 'bg-blue-500 text-white border-blue-500';
+        return 'bg-violet-500 text-white border-violet-500';
       case 'error':
         return 'bg-red-500 text-white border-red-500';
       default:
@@ -182,7 +227,7 @@ function StageIndicator({ stage, isActive, isLast }: StageIndicatorProps) {
 
   const getLineColor = () => {
     if (stage.status === 'completed') return 'bg-green-500';
-    if (stage.status === 'in-progress') return 'bg-blue-200';
+    if (stage.status === 'in-progress') return 'bg-violet-200';
     return 'bg-gray-200';
   };
 
@@ -224,7 +269,7 @@ function ArtifactChip({ artifact, artifactInfo }: ArtifactChipProps) {
       case 'completed':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'generating':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-violet-50 text-violet-700 border-violet-200';
       case 'error':
         return 'bg-red-50 text-red-700 border-red-200';
       default:
@@ -260,7 +305,7 @@ function ArtifactChip({ artifact, artifactInfo }: ArtifactChipProps) {
 // ============================================================================
 
 export function EnhancedUploadProgress({
-  fileId,
+  fileId: _fileId,
   fileName,
   fileSize,
   contractId,
@@ -270,7 +315,7 @@ export function EnhancedUploadProgress({
   existingContractId,
   onRetry,
   onRemove,
-  onViewContract,
+  onViewContract: _onViewContract,
   tenantId = 'demo',
 }: UploadProgressProps) {
   const router = useRouter();
@@ -296,61 +341,114 @@ export function EnhancedUploadProgress({
     }
   }, [status, startTime]);
 
-  // Simulate stage progression based on status
+  // Real-time status polling from API
+  const pollStatusRef = useRef<NodeJS.Timeout | null>(null);
+  const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
+  const [lastPollError, setLastPollError] = useState<string | null>(null);
+
+  // Poll the contract status API for real progress
   useEffect(() => {
+    // Only poll when we have a contractId and are processing
+    if (!contractId || (status !== 'processing' && status !== 'uploading')) {
+      return;
+    }
+
+    const pollStatus = async () => {
+      try {
+        const response = await fetch(`/api/contracts/${contractId}/status`, {
+          headers: {
+            'x-tenant-id': tenantId,
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            setLastPollError('Contract not found');
+            return;
+          }
+          throw new Error(`Status check failed: ${response.status}`);
+        }
+
+        const data: ContractStatusResponse = await response.json();
+        setApiStatus(data);
+        setLastPollError(null);
+
+        // Update stages based on real API status
+        const currentApiStep = data.currentStep;
+        const currentUiStage = API_STEP_TO_STAGE[currentApiStep] || 'upload';
+        const stageIndex = PROCESSING_STAGES.findIndex(s => s.id === currentUiStage);
+
+        setStages(prev => prev.map((s, i) => {
+          if (i < stageIndex) {
+            // Stages before current are completed
+            return { ...s, status: 'completed' as const, endTime: s.endTime || Date.now() };
+          } else if (i === stageIndex) {
+            // Current stage is in-progress
+            return { 
+              ...s, 
+              status: data.status === 'FAILED' ? 'error' as const : 'in-progress' as const, 
+              startTime: s.startTime || Date.now(),
+              progress: data.stageProgress,
+              error: data.error || undefined,
+            };
+          } else {
+            // Future stages are pending
+            return { ...s, status: 'pending' as const };
+          }
+        }));
+
+        // Update artifacts based on real artifact types generated
+        const generatedTypes = new Set(data.artifactTypes.map(t => t.toUpperCase()));
+        setArtifacts(prev => prev.map((a, index) => {
+          const isGenerated = generatedTypes.has(a.type);
+          const isGenerating = currentApiStep === 'artifacts' && 
+            !isGenerated && 
+            index <= data.artifactsGenerated;
+          
+          if (isGenerated) {
+            return { ...a, status: 'completed' as const, endTime: a.endTime || Date.now() };
+          } else if (isGenerating) {
+            return { ...a, status: 'generating' as const, startTime: a.startTime || Date.now() };
+          } else {
+            return { ...a, status: 'pending' as const };
+          }
+        }));
+
+        // Stop polling if complete or failed
+        if (data.status === 'COMPLETED' || data.status === 'FAILED') {
+          if (pollStatusRef.current) {
+            clearInterval(pollStatusRef.current);
+            pollStatusRef.current = null;
+          }
+        }
+      } catch (err) {
+        console.error('Error polling contract status:', err);
+        setLastPollError(err instanceof Error ? err.message : 'Unknown error');
+      }
+    };
+
+    // Initial poll
+    pollStatus();
+
+    // Poll every 1.5 seconds
+    pollStatusRef.current = setInterval(pollStatus, 1500);
+
+    return () => {
+      if (pollStatusRef.current) {
+        clearInterval(pollStatusRef.current);
+        pollStatusRef.current = null;
+      }
+    };
+  }, [contractId, status, tenantId]);
+
+  // Update stages based on simple status changes (fallback when no contractId yet)
+  useEffect(() => {
+    if (contractId) return; // Skip if we have contractId - API polling handles it
+
     if (status === 'uploading') {
       setStages(prev => prev.map((s, i) => 
         i === 0 ? { ...s, status: 'in-progress', startTime: Date.now() } : s
       ));
-    } else if (status === 'processing') {
-      // Mark upload as complete, start text extraction
-      setStages(prev => prev.map((s, i) => {
-        if (i === 0) return { ...s, status: 'completed', endTime: Date.now() };
-        if (i === 1) return { ...s, status: 'in-progress', startTime: Date.now() };
-        return s;
-      }));
-      
-      // Simulate stage progression
-      const progressStages = async () => {
-        await new Promise(r => setTimeout(r, 1500));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 1) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 2) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
-        
-        await new Promise(r => setTimeout(r, 2000));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 2) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 3) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
-        
-        // Start artifact generation simulation
-        for (let j = 0; j < ARTIFACT_TYPES.length; j++) {
-          setArtifacts(prev => prev.map((a, i) => 
-            i === j ? { ...a, status: 'generating', startTime: Date.now() } : a
-          ));
-          await new Promise(r => setTimeout(r, 800));
-          setArtifacts(prev => prev.map((a, i) => 
-            i === j ? { ...a, status: 'completed', endTime: Date.now() } : a
-          ));
-        }
-        
-        setStages(prev => prev.map((s, i) => {
-          if (i === 3) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 4) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
-        
-        await new Promise(r => setTimeout(r, 1000));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 4) return { ...s, status: 'completed', endTime: Date.now() };
-          return s;
-        }));
-      };
-      
-      progressStages();
     } else if (status === 'completed') {
       setStages(prev => prev.map(s => ({ ...s, status: 'completed' as const })));
       setArtifacts(prev => prev.map(a => ({ ...a, status: 'completed' as const })));
@@ -358,29 +456,55 @@ export function EnhancedUploadProgress({
       setStages(prev => {
         const currentStage = prev.findIndex(s => s.status === 'in-progress');
         return prev.map((s, i) => 
-          i === currentStage ? { ...s, status: 'error' as const, error } : s
+          i === currentStage || (currentStage === -1 && i === 0) 
+            ? { ...s, status: 'error' as const, error } 
+            : s
         );
       });
     }
-  }, [status, error]);
+  }, [status, error, contractId]);
 
-  // Calculate overall progress
+  // Calculate overall progress - prefer real API data when available
   const overallProgress = useMemo(() => {
+    // Use real API progress if available
+    if (apiStatus?.progress !== undefined) {
+      return apiStatus.progress;
+    }
+
+    // Fallback to local calculation
     const stageWeight = 60; // 60% for stages
     const artifactWeight = 40; // 40% for artifacts
     
     const completedStages = stages.filter(s => s.status === 'completed').length;
-    const stageProgress = (completedStages / stages.length) * stageWeight;
+    const inProgressStages = stages.filter(s => s.status === 'in-progress').length;
+    const stageProgress = ((completedStages + (inProgressStages * 0.5)) / stages.length) * stageWeight;
     
     const completedArtifacts = artifacts.filter(a => a.status === 'completed').length;
-    const artifactProgress = (completedArtifacts / artifacts.length) * artifactWeight;
+    const generatingArtifacts = artifacts.filter(a => a.status === 'generating').length;
+    const artifactProgress = ((completedArtifacts + (generatingArtifacts * 0.5)) / artifacts.length) * artifactWeight;
     
     return Math.round(stageProgress + artifactProgress);
-  }, [stages, artifacts]);
+  }, [stages, artifacts, apiStatus]);
 
-  const estimatedTime = useMemo(() => estimateProcessingTime(fileSize), [fileSize]);
+  // Get real timing from API if available
+  const displayElapsedTime = useMemo(() => {
+    if (apiStatus?.timing?.elapsedMs !== undefined) {
+      return apiStatus.timing.elapsedMs;
+    }
+    return elapsedTime;
+  }, [apiStatus, elapsedTime]);
+
+  const estimatedTimeRemaining = useMemo(() => {
+    if (apiStatus?.timing?.estimatedRemainingFormatted) {
+      return apiStatus.timing.estimatedRemainingFormatted;
+    }
+    return null;
+  }, [apiStatus]);
+
   const currentStage = stages.find(s => s.status === 'in-progress');
   const completedArtifacts = artifacts.filter(a => a.status === 'completed').length;
+  const totalArtifactsCount = apiStatus?.totalArtifacts || artifacts.length;
+  const artifactsGeneratedCount = apiStatus?.artifactsGenerated ?? completedArtifacts;
 
   // Handle duplicate contract
   if (isDuplicate && existingContractId) {
@@ -447,14 +571,14 @@ export function EnhancedUploadProgress({
               'p-2.5 rounded-lg',
               status === 'completed' ? 'bg-green-100' :
               status === 'error' ? 'bg-red-100' :
-              'bg-blue-100'
+              'bg-violet-100'
             )}>
               {status === 'completed' ? (
                 <CheckCircle2 className="h-5 w-5 text-green-600" />
               ) : status === 'error' ? (
                 <AlertTriangle className="h-5 w-5 text-red-600" />
               ) : (
-                <FileText className="h-5 w-5 text-blue-600" />
+                <FileText className="h-5 w-5 text-violet-600" />
               )}
             </div>
             <div>
@@ -469,10 +593,18 @@ export function EnhancedUploadProgress({
           
           <div className="flex items-center gap-2">
             {(status === 'uploading' || status === 'processing') && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <Timer className="h-3 w-3 mr-1" />
-                {formatDuration(elapsedTime)}
-              </Badge>
+              <>
+                <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
+                  <Timer className="h-3 w-3 mr-1" />
+                  {formatDuration(displayElapsedTime)}
+                </Badge>
+                {estimatedTimeRemaining && (
+                  <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200">
+                    <Clock className="h-3 w-3 mr-1" />
+                    ~{estimatedTimeRemaining}
+                  </Badge>
+                )}
+              </>
             )}
             
             {status === 'completed' && contractId && (
@@ -558,7 +690,7 @@ export function EnhancedUploadProgress({
               {status === 'processing' && (
                 <div>
                   <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                    AI Artifacts ({completedArtifacts}/{artifacts.length})
+                    AI Artifacts ({artifactsGeneratedCount}/{totalArtifactsCount})
                   </h5>
                   <div className="flex flex-wrap gap-2">
                     {artifacts.map(artifact => {
@@ -577,13 +709,21 @@ export function EnhancedUploadProgress({
               )}
               
               {/* Error Details */}
-              {status === 'error' && error && (
+              {status === 'error' && (error || apiStatus?.error || lastPollError) && (
                 <div className="mt-4 p-3 bg-red-100 rounded-lg">
                   <div className="flex items-start gap-2">
                     <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-red-800">Processing Failed</p>
-                      <p className="text-xs text-red-600 mt-1">{error}</p>
+                      <p className="text-xs text-red-600 mt-1">
+                        {error || apiStatus?.error || lastPollError}
+                      </p>
+                      {apiStatus?.processingJob?.retryCount !== undefined && 
+                       apiStatus.processingJob.retryCount > 0 && (
+                        <p className="text-xs text-red-500 mt-1">
+                          Retry attempt {apiStatus.processingJob.retryCount} of {apiStatus.processingJob.maxRetries}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -597,7 +737,9 @@ export function EnhancedUploadProgress({
                     <div>
                       <p className="text-sm font-medium text-green-800">Processing Complete</p>
                       <p className="text-xs text-green-600 mt-0.5">
-                        10 AI artifacts generated in {formatDuration(elapsedTime)}
+                        {artifactsGeneratedCount} AI artifacts generated in {
+                          apiStatus?.timing?.processingDurationFormatted || formatDuration(displayElapsedTime)
+                        }
                       </p>
                     </div>
                   </div>

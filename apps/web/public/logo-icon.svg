@@ -1,0 +1,11 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Three Stacked Bars Icon - Square format -->
+  <g transform="translate(8, 10)">
+    <!-- Top Bar -->
+    <rect x="0" y="0" width="32" height="8" rx="4" fill="#7C3AED"/>
+    <!-- Middle Bar -->
+    <rect x="0" y="12" width="32" height="8" rx="4" fill="#8B5CF6"/>
+    <!-- Bottom Bar -->
+    <rect x="0" y="24" width="32" height="8" rx="4" fill="#A78BFA"/>
+  </g>
+</svg>

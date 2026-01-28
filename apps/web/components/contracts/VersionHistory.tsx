@@ -169,13 +169,13 @@ const statusConfig: Record<string, { color: string; label: string }> = {
   draft: { color: 'bg-slate-100 text-slate-700', label: 'Draft' },
   review: { color: 'bg-yellow-100 text-yellow-700', label: 'In Review' },
   approved: { color: 'bg-green-100 text-green-700', label: 'Approved' },
-  current: { color: 'bg-blue-100 text-blue-700', label: 'Current' },
+  current: { color: 'bg-violet-100 text-violet-700', label: 'Current' },
   archived: { color: 'bg-slate-100 text-slate-500', label: 'Archived' },
 };
 
 const changeTypeConfig: Record<string, { color: string; icon: string }> = {
   add: { color: 'text-green-600', icon: '+' },
-  modify: { color: 'text-blue-600', icon: '~' },
+  modify: { color: 'text-violet-600', icon: '~' },
   remove: { color: 'text-red-600', icon: '-' },
 };
 
@@ -283,12 +283,12 @@ export const VersionHistory = memo(function VersionHistory({
                 key={version.id}
                 className={cn(
                   'flex items-center gap-3 p-2 rounded-lg',
-                  i === 0 ? 'bg-blue-50' : 'hover:bg-slate-50'
+                  i === 0 ? 'bg-violet-50' : 'hover:bg-slate-50'
                 )}
               >
                 <GitBranch className={cn(
                   'h-4 w-4',
-                  i === 0 ? 'text-blue-600' : 'text-slate-400'
+                  i === 0 ? 'text-violet-600' : 'text-slate-400'
                 )} />
                 <div className="flex-1">
                   <span className="text-sm font-medium">v{version.version}</span>
@@ -373,15 +373,15 @@ export const VersionHistory = memo(function VersionHistory({
                     >
                       <div className={cn(
                         'relative pl-12 pr-4',
-                        compareMode && isSelected && 'bg-blue-50 -mx-4 px-16 py-2 rounded-lg'
+                        compareMode && isSelected && 'bg-violet-50 -mx-4 px-16 py-2 rounded-lg'
                       )}>
                         {/* Timeline dot */}
                         <div className={cn(
                           'absolute left-3 w-4 h-4 rounded-full border-2 bg-white',
-                          isCurrent ? 'border-blue-500' : 'border-slate-300'
+                          isCurrent ? 'border-violet-500' : 'border-slate-300'
                         )}>
                           {isCurrent && (
-                            <div className="absolute inset-1 rounded-full bg-blue-500" />
+                            <div className="absolute inset-1 rounded-full bg-violet-500" />
                           )}
                         </div>
 
@@ -443,7 +443,7 @@ export const VersionHistory = memo(function VersionHistory({
                                     className={cn(
                                       'text-xs px-2 py-0.5 rounded',
                                       change.type === 'add' && 'bg-green-50 text-green-700',
-                                      change.type === 'modify' && 'bg-blue-50 text-blue-700',
+                                      change.type === 'modify' && 'bg-violet-50 text-violet-700',
                                       change.type === 'remove' && 'bg-red-50 text-red-700'
                                     )}
                                   >
@@ -472,13 +472,13 @@ export const VersionHistory = memo(function VersionHistory({
                                     className={cn(
                                       'flex items-start gap-2 p-2 rounded text-sm',
                                       change.type === 'add' && 'bg-green-50',
-                                      change.type === 'modify' && 'bg-blue-50',
+                                      change.type === 'modify' && 'bg-violet-50',
                                       change.type === 'remove' && 'bg-red-50'
                                     )}
                                   >
                                     <span className={cn(
                                       'font-mono font-bold',
-                                      changeTypeConfig[change.type]?.color ?? 'text-blue-600'
+                                      changeTypeConfig[change.type]?.color ?? 'text-violet-600'
                                     )}>
                                       {changeTypeConfig[change.type]?.icon ?? '~'}
                                     </span>

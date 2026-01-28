@@ -73,7 +73,7 @@ const getStatusIcon = (status: IntegrationStatus) => {
 const getStatusColor = (status: IntegrationStatus) => {
   switch (status) {
     case 'connected': return 'text-green-500';
-    case 'syncing': return 'text-blue-500';
+    case 'syncing': return 'text-violet-500';
     case 'error': return 'text-red-500';
     case 'warning': return 'text-yellow-500';
     case 'disconnected': return 'text-muted-foreground';
@@ -83,7 +83,7 @@ const getStatusColor = (status: IntegrationStatus) => {
 const getStatusBg = (status: IntegrationStatus) => {
   switch (status) {
     case 'connected': return 'bg-green-500/10';
-    case 'syncing': return 'bg-blue-500/10';
+    case 'syncing': return 'bg-violet-500/10';
     case 'error': return 'bg-red-500/10';
     case 'warning': return 'bg-yellow-500/10';
     case 'disconnected': return 'bg-muted';

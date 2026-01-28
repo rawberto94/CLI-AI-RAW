@@ -328,7 +328,7 @@ export function AutosaveIndicator({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400"
+            className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400"
           >
             <RefreshCw className="w-4 h-4 animate-spin" />
             <span>Saving...</span>
@@ -341,7 +341,7 @@ export function AutosaveIndicator({
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400"
+            className="flex items-center gap-1.5 text-violet-600 dark:text-violet-400"
           >
             <Check className="w-4 h-4" />
             <span>Saved</span>

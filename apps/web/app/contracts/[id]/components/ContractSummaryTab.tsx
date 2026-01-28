@@ -68,7 +68,7 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
 }: { summary: string; keyTerms?: string[] }) {
   return (
     <Card className="border-slate-200 overflow-hidden">
-      <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-indigo-50 border-b border-slate-100">
+      <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-purple-50 border-b border-slate-100">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-purple-500" />
           Executive Summary
@@ -103,7 +103,7 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
       <Card className="border-slate-200">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <Users className="h-4 w-4 text-blue-500" />
+            <Users className="h-4 w-4 text-violet-500" />
             Contract Parties
           </CardTitle>
         </CardHeader>
@@ -118,7 +118,7 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
     <Card className="border-slate-200">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Users className="h-4 w-4 text-blue-500" />
+          <Users className="h-4 w-4 text-violet-500" />
           Contract Parties
         </CardTitle>
       </CardHeader>
@@ -133,15 +133,15 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
                 key={i}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border",
-                  isClient ? "bg-blue-50 border-blue-100" : "bg-purple-50 border-purple-100"
+                  isClient ? "bg-violet-50 border-violet-100" : "bg-purple-50 border-purple-100"
                 )}
               >
                 <div className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-                  isClient ? "bg-blue-100" : "bg-purple-100"
+                  isClient ? "bg-violet-100" : "bg-purple-100"
                 )}>
                   {isClient ? (
-                    <Building className="h-4 w-4 text-blue-600" />
+                    <Building className="h-4 w-4 text-violet-600" />
                   ) : (
                     <Users className="h-4 w-4 text-purple-600" />
                   )}
@@ -151,7 +151,7 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
                   <div className="flex items-center gap-2">
                     <p className={cn(
                       "text-xs font-medium",
-                      isClient ? "text-blue-600" : "text-purple-600"
+                      isClient ? "text-violet-600" : "text-purple-600"
                     )}>
                       {party.role || 'Party'}
                     </p>
@@ -185,37 +185,37 @@ const KeyDatesCard = memo(function KeyDatesCard({
     <Card className="border-slate-200">
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-emerald-500" />
+          <Calendar className="h-4 w-4 text-violet-500" />
           Key Dates
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-2">
           {signatureDate && (
-            <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-100">
+            <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-100">
               <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-blue-600" />
+                <FileText className="h-4 w-4 text-violet-600" />
                 <span className="text-sm font-medium text-slate-700">Signed</span>
               </div>
-              <span className="text-sm font-semibold text-blue-700">
+              <span className="text-sm font-semibold text-violet-700">
                 {formatDate(signatureDate)}
               </span>
             </div>
           )}
           
-          <div className="flex items-center justify-between p-3 bg-emerald-50 rounded-lg border border-emerald-100">
+          <div className="flex items-center justify-between p-3 bg-violet-50 rounded-lg border border-violet-100">
             <div className="flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 text-violet-600" />
               <span className="text-sm font-medium text-slate-700">Start Date</span>
             </div>
-            <span className="text-sm font-semibold text-emerald-700">
+            <span className="text-sm font-semibold text-violet-700">
               {startDate ? formatDate(startDate) : '—'}
             </span>
           </div>
           
           <div className={cn(
             "flex items-center justify-between p-3 rounded-lg border",
-            isEvergreen ? "bg-blue-50 border-blue-100" :
+            isEvergreen ? "bg-violet-50 border-violet-100" :
             isExpired ? "bg-red-50 border-red-100" :
             isExpiringSoon ? "bg-amber-50 border-amber-200" : 
             "bg-slate-50 border-slate-100"
@@ -231,7 +231,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
               <div>
                 <span className={cn(
                   "text-sm font-medium",
-                  isEvergreen ? "text-blue-700" :
+                  isEvergreen ? "text-violet-700" :
                   isExpired ? "text-red-700" :
                   isExpiringSoon ? "text-amber-700" : "text-slate-600"
                 )}>
@@ -249,7 +249,7 @@ const KeyDatesCard = memo(function KeyDatesCard({
             </div>
             <span className={cn(
               "text-sm font-semibold",
-              isEvergreen ? "text-blue-700" :
+              isEvergreen ? "text-violet-700" :
               isExpired ? "text-red-700" :
               isExpiringSoon ? "text-amber-700" : "text-slate-700"
             )}>
@@ -286,14 +286,14 @@ const RisksCard = memo(function RisksCard({
           <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
             <AlertTriangle className={cn(
               "h-4 w-4",
-              riskLevel === 'low' ? 'text-emerald-500' : 
+              riskLevel === 'low' ? 'text-violet-500' : 
               riskLevel === 'medium' ? 'text-amber-500' : 'text-red-500'
             )} />
             Key Risks
           </CardTitle>
           <span className={cn(
             "text-xs font-medium px-2 py-0.5 rounded-full",
-            riskLevel === 'low' ? 'bg-emerald-100 text-emerald-700' : 
+            riskLevel === 'low' ? 'bg-violet-100 text-violet-700' : 
             riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
           )}>
             {risks.length} identified
@@ -306,7 +306,7 @@ const RisksCard = memo(function RisksCard({
             <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-lg">
               <div className={cn(
                 "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
-                risk.level?.toLowerCase() === 'low' ? 'bg-emerald-500' : 
+                risk.level?.toLowerCase() === 'low' ? 'bg-violet-500' : 
                 risk.level?.toLowerCase() === 'medium' ? 'bg-amber-500' : 'bg-red-500'
               )} />
               <div className="min-w-0">

@@ -172,10 +172,10 @@ export function MobileApprovalActions({
                     aria-label="Delegate to a team member"
                     className={cn(
                       "w-full py-4 px-4 rounded-xl font-semibold transition-all active:scale-[0.98]",
-                      "bg-blue-50 text-blue-700 hover:bg-blue-100 active:bg-blue-200",
+                      "bg-violet-50 text-violet-700 hover:bg-violet-100 active:bg-violet-200",
                       "flex items-center justify-center gap-3 text-base",
                       "touch-manipulation select-none",
-                      "focus:outline-none focus:ring-2 focus:ring-blue-500",
+                      "focus:outline-none focus:ring-2 focus:ring-violet-500",
                       isProcessing && "opacity-50 cursor-not-allowed"
                     )}
                   >

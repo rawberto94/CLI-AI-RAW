@@ -45,9 +45,9 @@ export function FinancialTabContent({
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="p-4 bg-violet-50 rounded-lg">
               <div className="text-sm text-gray-600">Payment Terms</div>
-              <div className="text-xl font-bold text-blue-700 mt-1">
+              <div className="text-xl font-bold text-violet-700 mt-1">
                 {financial.paymentTerms || "Net 30"}
               </div>
             </div>
@@ -120,17 +120,17 @@ export function FinancialTabContent({
             </div>
 
             {financial.insights && (
-              <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="mt-4 p-4 bg-violet-50 rounded-lg border border-violet-200">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <AlertCircle className="w-5 h-5 text-violet-600 mt-0.5" />
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-1">
+                    <h4 className="font-semibold text-violet-900 mb-1">
                       AI Insight
                     </h4>
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-violet-800">
                       {financial.insights.recommendation}
                     </p>
-                    <div className="mt-2 text-sm text-blue-700">
+                    <div className="mt-2 text-sm text-violet-700">
                       <strong>Potential Savings:</strong>{" "}
                       {financial.insights.totalAnnualSavings}
                     </div>
@@ -190,7 +190,7 @@ export function FinancialTabContent({
                       ? "border-red-500 bg-red-50"
                       : risk.severity === "medium"
                       ? "border-yellow-500 bg-yellow-50"
-                      : "border-blue-500 bg-blue-50"
+                      : "border-violet-500 bg-violet-50"
                   )}
                 >
                   <div className="flex items-start justify-between mb-2">
@@ -204,7 +204,7 @@ export function FinancialTabContent({
                           ? "bg-red-200 text-red-800"
                           : risk.severity === "medium"
                           ? "bg-yellow-200 text-yellow-800"
-                          : "bg-blue-200 text-blue-800"
+                          : "bg-violet-200 text-violet-800"
                       )}
                     >
                       {risk.severity}

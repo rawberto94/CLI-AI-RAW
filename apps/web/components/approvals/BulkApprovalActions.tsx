@@ -110,7 +110,7 @@ export function BulkApprovalActions({
         <div className="bg-white border-2 border-slate-200 rounded-xl shadow-2xl p-4 min-w-[400px]">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
                 <Checkbox checked disabled className="pointer-events-none" />
               </div>
               <div>
@@ -187,7 +187,7 @@ export function BulkApprovalActions({
                   key={contract.id}
                   className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 text-sm"
                 >
-                  <CheckCircle className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                  <CheckCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
                   <span className="truncate">{contract.title}</span>
                 </div>
               ))}

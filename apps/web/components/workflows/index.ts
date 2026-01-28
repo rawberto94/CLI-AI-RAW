@@ -64,3 +64,8 @@ export {
   ApprovalAnalyticsDashboard,
   ApprovalMetricsWidget
 } from './ApprovalAnalyticsDashboard';
+
+// New workflow components
+export { WorkflowAnalyticsDashboard } from './WorkflowAnalyticsDashboard';
+export { SLAComplianceVisualization } from './SLAComplianceVisualization';
+export { WorkflowTemplatePreview } from './WorkflowTemplatePreview';

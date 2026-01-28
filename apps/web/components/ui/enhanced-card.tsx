@@ -57,8 +57,8 @@ export function MetricCard({
   title,
   value, 
   subtitle, 
-  iconColor = 'text-blue-600', 
-  bgColor = 'bg-blue-50',
+  iconColor = 'text-violet-600', 
+  bgColor = 'bg-violet-50',
   color,
   size,
   alert 

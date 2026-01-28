@@ -319,7 +319,7 @@ export const ContractComments = memo(function ContractComments({
       <div className="flex gap-3">
         <Avatar className={cn('flex-shrink-0', isReply ? 'h-7 w-7' : 'h-9 w-9')}>
           <AvatarImage src={comment.author.avatar} />
-          <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+          <AvatarFallback className="text-xs bg-violet-100 text-violet-700">
             {getInitials(comment.author.name)}
           </AvatarFallback>
         </Avatar>
@@ -400,7 +400,7 @@ export const ContractComments = memo(function ContractComments({
 
           {/* Attachment */}
           {comment.attachmentName && (
-            <div className="flex items-center gap-2 mt-2 p-2 bg-slate-50 rounded text-sm text-blue-600 hover:bg-slate-100 cursor-pointer">
+            <div className="flex items-center gap-2 mt-2 p-2 bg-slate-50 rounded text-sm text-violet-600 hover:bg-slate-100 cursor-pointer">
               <Paperclip className="h-4 w-4" />
               {comment.attachmentName}
             </div>
@@ -415,7 +415,7 @@ export const ContractComments = memo(function ContractComments({
                   className={cn(
                     'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs border transition-colors',
                     reaction.users.includes(currentUser.id)
-                      ? 'bg-blue-50 border-blue-200'
+                      ? 'bg-violet-50 border-violet-200'
                       : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                   )}
                   onClick={() => addReaction(comment.id, reaction.emoji)}
@@ -573,7 +573,7 @@ export const ContractComments = memo(function ContractComments({
       {/* Header */}
       <div className="flex items-center justify-between">
         <h3 className="font-semibold flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-blue-600" />
+          <MessageSquare className="h-5 w-5 text-violet-600" />
           Comments
           {comments.length > 0 && (
             <Badge variant="secondary">{comments.length}</Badge>
@@ -609,7 +609,7 @@ export const ContractComments = memo(function ContractComments({
       {/* New Comment Input */}
       <div className="flex gap-3">
         <Avatar className="h-9 w-9 flex-shrink-0">
-          <AvatarFallback className="text-xs bg-blue-100 text-blue-700">
+          <AvatarFallback className="text-xs bg-violet-100 text-violet-700">
             {getInitials(currentUser.name)}
           </AvatarFallback>
         </Avatar>

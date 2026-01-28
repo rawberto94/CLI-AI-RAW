@@ -228,7 +228,7 @@ export const ContractSearch = memo(function ContractSearch({
                             onClick={() => handleResultClick(result)}
                             className={cn(
                               "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",
-                              idx === currentIndex && "bg-blue-50"
+                              idx === currentIndex && "bg-violet-50"
                             )}
                           >
                             <div className="flex items-start gap-3">

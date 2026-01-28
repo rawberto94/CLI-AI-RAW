@@ -180,7 +180,7 @@ export default function EnhancedContractDetailPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200'
-      case 'PROCESSING': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'PROCESSING': return 'bg-violet-100 text-violet-800 border-violet-200'
       case 'FAILED': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
@@ -189,17 +189,17 @@ export default function EnhancedContractDetailPage() {
   const getRiskColor = (score: number) => {
     if (score >= 80) return 'text-red-600'
     if (score >= 60) return 'text-yellow-600'
-    if (score >= 40) return 'text-blue-600'
+    if (score >= 40) return 'text-violet-600'
     return 'text-green-600'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <Brain className="w-6 h-6 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <Brain className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Loading Contract Analysis
@@ -212,7 +212,7 @@ export default function EnhancedContractDetailPage() {
 
   if (error || !contract) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50 flex items-center justify-center">
         <Card className="max-w-md shadow-xl">
           <CardContent className="p-8 text-center">
             <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
@@ -239,7 +239,7 @@ export default function EnhancedContractDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Enhanced Header */}
@@ -255,7 +255,7 @@ export default function EnhancedContractDetailPage() {
             </nav>
             
             <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl shadow-lg">
                 <FileText className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -296,13 +296,13 @@ export default function EnhancedContractDetailPage() {
 
         {/* Processing Status */}
         {contract.status === 'PROCESSING' && contract.processing && (
-          <Card className="shadow-xl border-0 border-l-4 border-l-blue-500">
+          <Card className="shadow-xl border-0 border-l-4 border-l-violet-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                    <Activity className="w-4 h-4 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+                    <Activity className="w-4 h-4 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -314,7 +314,7 @@ export default function EnhancedContractDetailPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-bold text-violet-600">
                     {contract.processing.progress}%
                   </div>
                   <div className="text-sm text-gray-600">Complete</div>
@@ -346,7 +346,7 @@ export default function EnhancedContractDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
                 <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
                 <div className="text-3xl font-bold text-green-900 mb-1">
@@ -359,14 +359,14 @@ export default function EnhancedContractDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
-                <Target className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-blue-900 mb-1">
+                <Target className="w-8 h-8 text-violet-600 mx-auto mb-3" />
+                <div className="text-3xl font-bold text-violet-900 mb-1">
                   {contract.intelligence.patterns}
                 </div>
-                <div className="text-sm text-blue-700">Patterns Detected</div>
-                <div className="text-xs text-blue-600 mt-1">
+                <div className="text-sm text-violet-700">Patterns Detected</div>
+                <div className="text-xs text-violet-600 mt-1">
                   AI-identified patterns
                 </div>
               </CardContent>
@@ -403,11 +403,11 @@ export default function EnhancedContractDetailPage() {
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${
                         rec.priority === 'high' ? 'bg-red-100' :
-                        rec.priority === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
+                        rec.priority === 'medium' ? 'bg-yellow-100' : 'bg-violet-100'
                       }`}>
                         {rec.type === 'risk' ? <Shield className="w-5 h-5 text-red-600" /> :
                          rec.type === 'cost' ? <DollarSign className="w-5 h-5 text-green-600" /> :
-                         <Target className="w-5 h-5 text-blue-600" />}
+                         <Target className="w-5 h-5 text-violet-600" />}
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-1">{rec.title}</h4>
@@ -462,10 +462,10 @@ export default function EnhancedContractDetailPage() {
                   {/* Contract Summary Stats */}
                   {contract.summary && (
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <FileText className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                        <div className="text-2xl font-bold text-blue-900">{contract.summary.totalClauses}</div>
-                        <div className="text-sm text-blue-700">Clauses</div>
+                      <div className="text-center p-4 bg-violet-50 rounded-lg">
+                        <FileText className="w-6 h-6 text-violet-600 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-violet-900">{contract.summary.totalClauses}</div>
+                        <div className="text-sm text-violet-700">Clauses</div>
                       </div>
                       <div className="text-center p-4 bg-red-50 rounded-lg">
                         <Shield className="w-6 h-6 text-red-600 mx-auto mb-2" />
@@ -515,7 +515,7 @@ export default function EnhancedContractDetailPage() {
                             <div className="space-y-1">
                               {contract.metadata.parties.map((party: string, idx: number) => (
                                 <div key={idx} className="flex items-center gap-2">
-                                  <Users className="w-4 h-4 text-blue-500" />
+                                  <Users className="w-4 h-4 text-violet-500" />
                                   <span className="text-gray-900">{party}</span>
                                 </div>
                               ))}

@@ -182,11 +182,11 @@ export function VersionHistoryPanel({
                   )}
                 </div>
                 {selectedVersion.reason && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                    <span className="font-medium text-blue-900">
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mt-2">
+                    <span className="font-medium text-violet-900">
                       {selectedVersion.reason.includes('AI Improvement') ? 'Improvement Request:' : 'Reason:'}
                     </span>
-                    <p className="text-blue-800 mt-1">{selectedVersion.reason}</p>
+                    <p className="text-violet-800 mt-1">{selectedVersion.reason}</p>
                   </div>
                 )}
                 {selectedVersion.previousConfidence !== undefined && selectedVersion.newConfidence !== undefined && (
@@ -305,7 +305,7 @@ export function VersionHistoryPanel({
                           Edited by {version.editedBy}
                         </div>
                         {version.reason && (
-                          <div className="text-sm bg-blue-50 text-blue-800 mt-2 p-2 rounded border border-blue-200">
+                          <div className="text-sm bg-violet-50 text-violet-800 mt-2 p-2 rounded border border-violet-200">
                             {version.reason.includes('AI Improvement') ? '🤖' : '📝'} {version.reason}
                           </div>
                         )}

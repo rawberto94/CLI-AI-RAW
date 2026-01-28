@@ -108,7 +108,7 @@ export function NotificationCenter({
       case 'warning': return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
       case 'ai': return <Sparkles className="h-4 w-4 text-purple-500" />;
-      default: return <Info className="h-4 w-4 text-blue-500" />;
+      default: return <Info className="h-4 w-4 text-violet-500" />;
     }
   };
 
@@ -211,7 +211,7 @@ export function NotificationCenter({
                 onClick={() => setFilter(value as typeof filter)}
                 className={cn(
                   'text-xs whitespace-nowrap',
-                  filter === value && 'bg-blue-600 hover:bg-blue-700'
+                  filter === value && 'bg-violet-600 hover:bg-violet-700'
                 )}
               >
                 {label}
@@ -353,7 +353,7 @@ function NotificationItem({
       onMouseLeave={() => setShowActions(false)}
       className={cn(
         'relative px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
-        !notification.read && 'bg-blue-50/50 dark:bg-blue-900/20'
+        !notification.read && 'bg-violet-50/50 dark:bg-violet-900/20'
       )}
     >
       <div className="flex gap-3">
@@ -374,7 +374,7 @@ function NotificationItem({
               {notification.title}
             </p>
             {!notification.read && (
-              <span className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+              <span className="h-2 w-2 rounded-full bg-violet-500 flex-shrink-0 mt-1.5" />
             )}
           </div>
           <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">
@@ -388,7 +388,7 @@ function NotificationItem({
             {notification.actionUrl && (
               <a
                 href={notification.actionUrl}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700 font-medium"
               >
                 {notification.actionLabel || 'View'}
                 <ChevronRight className="h-3 w-3" />
@@ -410,7 +410,7 @@ function NotificationItem({
             {!notification.read && (
               <button
                 onClick={() => onMarkAsRead(notification.id)}
-                className="p-1.5 text-gray-400 hover:text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/50 rounded transition-colors"
+                className="p-1.5 text-gray-400 hover:text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/50 rounded transition-colors"
                 title="Mark as read"
               >
                 <Check className="h-4 w-4" />

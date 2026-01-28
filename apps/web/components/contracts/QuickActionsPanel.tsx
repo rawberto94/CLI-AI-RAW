@@ -120,7 +120,7 @@ function QuickActionButton({
                 <Icon className={cn("w-5 h-5", action.color)} />
               )}
               {action.isNew && (
-                <span className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full animate-pulse" />
+                <span className="absolute -top-1 -right-1 w-2 h-2 bg-violet-500 rounded-full animate-pulse" />
               )}
               {action.isPremium && (
                 <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-amber-500" />
@@ -167,7 +167,7 @@ function QuickActionButton({
             </Badge>
           )}
           {action.isNew && (
-            <Badge className="bg-blue-500 text-white text-xs h-5">New</Badge>
+            <Badge className="bg-violet-500 text-white text-xs h-5">New</Badge>
           )}
           {action.isPremium && (
             <Sparkles className="w-3 h-3 text-amber-500" />
@@ -208,8 +208,8 @@ export function QuickActionsPanel({
       label: 'AI Analysis',
       description: 'Get AI-powered insights',
       icon: Brain,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50 hover:bg-purple-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => { if (onAnalyze) onAnalyze(); else toast.info('AI analysis started'); },
       isPremium: true,
     },
@@ -218,8 +218,8 @@ export function QuickActionsPanel({
       label: 'Share Contract',
       description: 'Share with team or external parties',
       icon: Share2,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 hover:bg-blue-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => { if (onShare) onShare(); },
     },
     {
@@ -227,8 +227,8 @@ export function QuickActionsPanel({
       label: 'Download',
       description: 'Export as PDF, DOCX, or JSON',
       icon: Download,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50 hover:bg-emerald-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => { if (onDownload) onDownload(); else toast.info('Download started'); },
     },
   ];
@@ -246,8 +246,8 @@ export function QuickActionsPanel({
       id: 'compare',
       label: 'Compare Versions',
       icon: GitCompare,
-      color: 'text-indigo-600',
-      bgColor: 'bg-indigo-50 hover:bg-indigo-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => onCompare?.(),
     },
     {
@@ -283,8 +283,8 @@ export function QuickActionsPanel({
       id: 'email',
       label: 'Email',
       icon: Mail,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50 hover:bg-blue-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => {
         const subject = encodeURIComponent(`Contract: ${contractTitle}`);
         window.open(`mailto:?subject=${subject}`);
@@ -316,7 +316,7 @@ export function QuickActionsPanel({
       <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-white">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
               <Zap className="w-4 h-4 text-white" />
             </div>
             Quick Actions
@@ -437,7 +437,7 @@ export function AIInsightsCard({
     risk: { icon: AlertTriangle, color: 'text-red-600', bg: 'bg-red-50' },
     opportunity: { icon: Sparkles, color: 'text-green-600', bg: 'bg-green-50' },
     action: { icon: Zap, color: 'text-amber-600', bg: 'bg-amber-50' },
-    info: { icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+    info: { icon: FileText, color: 'text-violet-600', bg: 'bg-violet-50' },
   };
 
   // Default insights for demo
@@ -471,10 +471,10 @@ export function AIInsightsCard({
 
   return (
     <Card className={cn("shadow-sm border-slate-200/50 overflow-hidden", className)}>
-      <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-indigo-50">
+      <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-purple-50">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
               <Brain className="w-4 h-4 text-white" />
             </div>
             AI Insights

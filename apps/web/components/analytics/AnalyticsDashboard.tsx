@@ -60,7 +60,7 @@ const MetricCard = memo(function MetricCard({
   color = 'blue',
 }: MetricCardProps) {
   const colorClasses: Record<string, { bg: string; text: string }> = {
-    blue: { bg: 'bg-blue-100', text: 'text-blue-600' },
+    blue: { bg: 'bg-violet-100', text: 'text-violet-600' },
     green: { bg: 'bg-green-100', text: 'text-green-600' },
     yellow: { bg: 'bg-yellow-100', text: 'text-yellow-600' },
     red: { bg: 'bg-red-100', text: 'text-red-600' },
@@ -183,7 +183,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
+            <BarChart3 className="h-6 w-6 text-violet-600" />
             Analytics Dashboard
           </h2>
           <p className="text-slate-600 mt-1">
@@ -268,7 +268,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
               {timeSeriesData.map((data, i) => (
                 <div key={i} className="flex-1 flex flex-col items-center gap-2">
                   <div
-                    className="w-full bg-blue-500 rounded-t transition-all hover:bg-blue-600"
+                    className="w-full bg-violet-500 rounded-t transition-all hover:bg-violet-600"
                     style={{ height: `${(data.contracts / maxBar) * 100}%` }}
                   />
                   <span className="text-xs text-slate-500">{data.period}</span>
@@ -374,7 +374,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
             <div className="mt-6 p-4 bg-slate-50 rounded-lg">
               <p className="text-sm font-medium text-slate-700">Risk Score</p>
               <div className="flex items-center gap-2 mt-2">
-                <div className="flex-1 h-3 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full">
+                <div className="flex-1 h-3 bg-gradient-to-r from-violet-500 via-yellow-500 to-red-500 rounded-full">
                   <div 
                     className="h-5 w-5 bg-white border-2 border-slate-300 rounded-full shadow -mt-1"
                     style={{ marginLeft: 'calc(25% - 10px)' }}
@@ -408,7 +408,7 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
                     'h-10 w-10 rounded-full flex items-center justify-center',
                     deadline.daysRemaining <= 7 ? 'bg-red-100 text-red-600' :
                     deadline.daysRemaining <= 14 ? 'bg-yellow-100 text-yellow-600' :
-                    'bg-blue-100 text-blue-600'
+                    'bg-violet-100 text-violet-600'
                   )}>
                     <Clock className="h-5 w-5" />
                   </div>

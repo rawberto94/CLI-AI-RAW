@@ -58,16 +58,16 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
     defaultTitle: 'No Parties Identified',
     defaultDescription: 'Contract parties will appear here once AI analysis is complete, or you can add them manually.',
     illustration: '👥',
-    color: 'text-blue-500',
-    bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30',
+    color: 'text-violet-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
   },
   'no-dates': {
     icon: Calendar,
     defaultTitle: 'No Dates Found',
     defaultDescription: 'Key contract dates like effective date, expiration, and renewal will appear here.',
     illustration: '📅',
-    color: 'text-emerald-500',
-    bgGradient: 'from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30',
+    color: 'text-violet-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
   },
   'no-value': {
     icon: DollarSign,
@@ -106,8 +106,8 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
     defaultTitle: 'No Recent Activity',
     defaultDescription: 'Activity like edits, views, and comments will be tracked here.',
     illustration: '📊',
-    color: 'text-cyan-500',
-    bgGradient: 'from-cyan-50 to-sky-50 dark:from-cyan-950/30 dark:to-sky-950/30',
+    color: 'text-purple-500',
+    bgGradient: 'from-purple-50 to-sky-50 dark:from-purple-950/30 dark:to-sky-950/30',
   },
   'no-reminders': {
     icon: Clock,
@@ -122,8 +122,8 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
     defaultTitle: 'Processing Contract',
     defaultDescription: 'AI is analyzing your contract. This may take a few moments.',
     illustration: '⚙️',
-    color: 'text-blue-500',
-    bgGradient: 'from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30',
+    color: 'text-violet-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
   },
   'error': {
     icon: AlertTriangle,
@@ -236,7 +236,7 @@ export const EnhancedEmptyState = memo(function EnhancedEmptyState({
           >
             <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.3 }}

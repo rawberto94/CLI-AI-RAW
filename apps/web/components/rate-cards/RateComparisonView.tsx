@@ -287,7 +287,7 @@ export function RateComparisonView({
                 </tr>
 
                 {/* Daily Rate */}
-                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 bg-blue-50 dark:bg-blue-950/20">
+                <tr className="border-b dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-800/50 bg-violet-50 dark:bg-violet-950/20">
                   <td className="p-3 font-medium text-sm">Daily Rate</td>
                   {rateCards.map(rc => (
                     <td key={rc.id} className="p-3">

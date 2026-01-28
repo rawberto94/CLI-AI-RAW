@@ -80,13 +80,13 @@ interface ContractTimelineProps {
 const getStatusColor = (status: ContractPeriod['status']) => {
   switch (status) {
     case 'active':
-      return 'bg-gradient-to-r from-green-500 to-emerald-500';
+      return 'bg-gradient-to-r from-violet-500 to-violet-500';
     case 'expiring':
       return 'bg-gradient-to-r from-amber-500 to-orange-500';
     case 'expired':
       return 'bg-gradient-to-r from-red-500 to-rose-500';
     case 'pending':
-      return 'bg-gradient-to-r from-blue-500 to-indigo-500';
+      return 'bg-gradient-to-r from-violet-500 to-purple-500';
     case 'draft':
       return 'bg-gradient-to-r from-slate-400 to-slate-500';
     default:
@@ -228,7 +228,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
     <TooltipProvider>
       <Card className={cn("overflow-hidden shadow-xl border-0 bg-white/90 backdrop-blur-sm", className)}>
         {/* Header */}
-        <CardHeader className="bg-gradient-to-r from-slate-900 to-blue-900 text-white">
+        <CardHeader className="bg-gradient-to-r from-slate-900 to-purple-900 text-white">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -236,7 +236,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
               </div>
               <div>
                 <CardTitle className="text-xl font-bold text-white">Contract Timeline</CardTitle>
-                <p className="text-blue-200 text-sm mt-0.5">
+                <p className="text-violet-200 text-sm mt-0.5">
                   {format(timelineRange.start, 'MMM d, yyyy')} - {format(timelineRange.end, 'MMM d, yyyy')}
                 </p>
               </div>
@@ -347,8 +347,8 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
                 className="absolute top-0 h-full z-10"
                 style={{ left: `${todayPosition}%` }}
               >
-                <div className="w-0.5 h-full bg-blue-600" />
-                <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-blue-600 text-white text-[9px] font-bold rounded">
+                <div className="w-0.5 h-full bg-violet-600" />
+                <div className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-violet-600 text-white text-[9px] font-bold rounded">
                   TODAY
                 </div>
               </div>
@@ -380,7 +380,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
                     {/* Contract Label */}
                     <div className="absolute left-0 top-0 h-full w-48 flex items-center px-4 bg-white z-10 border-r border-slate-100">
                       <div className="truncate">
-                        <p className="font-medium text-slate-900 text-sm truncate group-hover:text-blue-600 transition-colors cursor-pointer">
+                        <p className="font-medium text-slate-900 text-sm truncate group-hover:text-violet-600 transition-colors cursor-pointer">
                           {contract.title}
                         </p>
                         <p className="text-xs text-slate-500 truncate">
@@ -464,7 +464,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
                       {/* Today line in track */}
                       {todayPosition !== null && (
                         <div
-                          className="absolute top-0 h-full w-px bg-blue-600/30"
+                          className="absolute top-0 h-full w-px bg-violet-600/30"
                           style={{ left: `${todayPosition}%` }}
                         />
                       )}
@@ -478,7 +478,7 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
           {/* Legend */}
           <div className="flex items-center justify-center gap-6 py-4 border-t border-slate-200 bg-slate-50">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-3 rounded bg-gradient-to-r from-green-500 to-emerald-500" />
+              <div className="w-4 h-3 rounded bg-gradient-to-r from-violet-500 to-violet-500" />
               <span className="text-xs text-slate-600">Active</span>
             </div>
             <div className="flex items-center gap-2">
@@ -490,12 +490,12 @@ export function ContractTimeline({ contracts, onContractClick, className }: Cont
               <span className="text-xs text-slate-600">Expired</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-3 rounded bg-gradient-to-r from-blue-500 to-indigo-500" />
+              <div className="w-4 h-3 rounded bg-gradient-to-r from-violet-500 to-purple-500" />
               <span className="text-xs text-slate-600">Pending</span>
             </div>
             <div className="h-4 w-px bg-slate-300" />
             <div className="flex items-center gap-2">
-              <div className="w-4 h-0.5 bg-blue-600" />
+              <div className="w-4 h-0.5 bg-violet-600" />
               <span className="text-xs text-slate-600">Today</span>
             </div>
           </div>

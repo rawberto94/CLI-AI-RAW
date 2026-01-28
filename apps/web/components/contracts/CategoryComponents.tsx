@@ -217,7 +217,7 @@ export function CategorySelector({
           className="w-full pl-10 pr-4 py-3 bg-slate-100 dark:bg-slate-800 
                    border border-slate-200 dark:border-slate-700 rounded-xl
                    text-sm placeholder:text-slate-400
-                   focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                   focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent
                    transition-all duration-200"
         />
         {searchQuery && (
@@ -232,7 +232,7 @@ export function CategorySelector({
 
       {/* Selected Category Preview */}
       {selectedCategory && (
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl">
+        <div className="mb-4 p-3 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div 
@@ -264,7 +264,7 @@ export function CategorySelector({
       <div className="max-h-[320px] overflow-y-auto space-y-1 pr-1 custom-scrollbar">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-500 mb-3" />
+            <Loader2 className="w-8 h-8 animate-spin text-violet-500 mb-3" />
             <p className="text-sm text-slate-500">Loading categories...</p>
           </div>
         ) : categories.length === 0 ? (
@@ -273,7 +273,7 @@ export function CategorySelector({
             <p className="font-medium text-slate-600">No categories defined</p>
             <p className="text-sm text-center px-4 mt-1">
               Set up your taxonomy in{" "}
-              <a href="/settings/taxonomy" className="text-blue-500 hover:underline">
+              <a href="/settings/taxonomy" className="text-violet-500 hover:underline">
                 Settings → Taxonomy
               </a>
             </p>
@@ -339,7 +339,7 @@ function CategoryItem({
         w-full flex items-center gap-3 p-3 rounded-xl text-left
         transition-all duration-200 group
         ${isSelected 
-          ? "bg-blue-100 dark:bg-blue-900/30 border-2 border-blue-500" 
+          ? "bg-violet-100 dark:bg-violet-900/30 border-2 border-violet-500" 
           : "bg-slate-50 dark:bg-slate-800/50 border-2 border-transparent hover:bg-slate-100 dark:hover:bg-slate-800 hover:border-slate-200 dark:hover:border-slate-700"
         }
       `}
@@ -358,7 +358,7 @@ function CategoryItem({
         {ICON_EMOJI[category.icon] || "📁"}
       </div>
       <div className="flex-1 min-w-0">
-        <div className={`font-medium truncate ${isSelected ? "text-blue-700 dark:text-blue-300" : "text-slate-900 dark:text-white"}`}>
+        <div className={`font-medium truncate ${isSelected ? "text-violet-700 dark:text-violet-300" : "text-slate-900 dark:text-white"}`}>
           {category.name}
         </div>
         {(showPath || category.description) && (
@@ -369,7 +369,7 @@ function CategoryItem({
       </div>
       {isSelected && (
         <div className="shrink-0">
-          <Check className="w-5 h-5 text-blue-500" />
+          <Check className="w-5 h-5 text-violet-500" />
         </div>
       )}
     </button>
@@ -646,7 +646,7 @@ export function CategorySuggestions({
                     px-2 py-0.5 rounded text-xs
                     ${suggestion.method === "ai"
                       ? "bg-purple-500/20 text-purple-400"
-                      : "bg-blue-500/20 text-blue-400"
+                      : "bg-violet-500/20 text-violet-400"
                     }
                   `}
                 >
@@ -655,7 +655,7 @@ export function CategorySuggestions({
 
                 {/* Select indicator */}
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <Check className="w-4 h-4 text-blue-400" />
+                  <Check className="w-4 h-4 text-violet-400" />
                 </div>
               </div>
             </motion.button>

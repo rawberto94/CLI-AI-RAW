@@ -35,7 +35,7 @@ export function AnimatedButton({
   const baseClasses = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all focus:outline-none focus:ring-2 focus:ring-offset-2';
   
   const variantClasses = {
-    primary: 'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500 disabled:bg-blue-300',
+    primary: 'bg-violet-600 text-white hover:bg-violet-700 focus:ring-violet-500 disabled:bg-violet-300',
     secondary: 'bg-gray-600 text-white hover:bg-gray-700 focus:ring-gray-500 disabled:bg-gray-300',
     outline: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-gray-500 disabled:border-gray-200 disabled:text-gray-400',
     ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500 disabled:text-gray-400',
@@ -135,8 +135,8 @@ export function IconButton({
         ${sizeClasses[size]}
         inline-flex items-center justify-center rounded-lg
         ${variant === 'ghost' ? 'hover:bg-gray-100' : ''}
-        ${variant === 'primary' ? 'bg-blue-600 text-white hover:bg-blue-700' : ''}
-        transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
+        ${variant === 'primary' ? 'bg-violet-600 text-white hover:bg-violet-700' : ''}
+        transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500
       `}
       {...props}
     >

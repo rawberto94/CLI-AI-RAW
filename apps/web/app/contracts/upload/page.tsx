@@ -106,7 +106,7 @@ function getFileIcon(fileName: string) {
   switch (ext) {
     case 'pdf': return { icon: FileText, color: 'text-red-500', bg: 'bg-red-100' }
     case 'doc':
-    case 'docx': return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-100' }
+    case 'docx': return { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-100' }
     case 'html': return { icon: FileImage, color: 'text-orange-500', bg: 'bg-orange-100' }
     default: return { icon: File, color: 'text-gray-500', bg: 'bg-gray-100' }
   }
@@ -157,6 +157,7 @@ export default function UploadPage() {
       'text/plain': ['.txt'],
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg'],
+      'image/svg+xml': ['.svg'],
     },
     multiple: true,
     maxSize: 50 * 1024 * 1024, // 50MB
@@ -324,9 +325,9 @@ export default function UploadPage() {
   }, [isUploading, processingCount])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-900 dark:via-blue-950/30 dark:to-indigo-950/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/40 dark:from-slate-900 dark:via-purple-950/30 dark:to-purple-950/40">
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-900 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-purple-700 dark:from-violet-800 dark:via-purple-800 dark:to-purple-900 shadow-2xl">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" aria-hidden="true" />
         
         {/* Animated background elements */}
@@ -364,7 +365,7 @@ export default function UploadPage() {
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
                   Upload Contracts
                 </h1>
-                <p className="text-blue-100 text-lg">
+                <p className="text-violet-100 text-lg">
                   AI-powered contract analysis in seconds
                 </p>
               </div>
@@ -471,8 +472,8 @@ export default function UploadPage() {
                     className={cn(
                       'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden motion-reduce:transition-none',
                       isDragActive
-                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 scale-[1.02]'
-                        : 'border-gray-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30 dark:hover:from-slate-800 dark:hover:to-blue-900/20',
+                        ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 scale-[1.02]'
+                        : 'border-gray-300 dark:border-slate-600 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50/30 dark:hover:from-slate-800 dark:hover:to-purple-900/20',
                       isUploading && 'opacity-50 cursor-not-allowed'
                     )}
                   >
@@ -486,7 +487,7 @@ export default function UploadPage() {
                       className={cn(
                         'mx-auto mb-6 p-6 rounded-full w-fit motion-reduce:animate-none',
                         isDragActive 
-                          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl'
+                          ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-xl'
                           : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600'
                       )}
                       animate={isDragActive ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
@@ -501,7 +502,7 @@ export default function UploadPage() {
                     
                     {isDragActive ? (
                       <>
-                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
+                        <p className="text-2xl font-bold text-violet-600 dark:text-violet-400 mb-2">
                           Drop your contracts here!
                         </p>
                         <p className="text-gray-600 dark:text-gray-300">
@@ -553,14 +554,14 @@ export default function UploadPage() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-700 hover:shadow-lg transition-all motion-reduce:transition-none">
+                <Card className="bg-gradient-to-br from-violet-50 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 border-violet-200 dark:border-violet-700 hover:shadow-lg transition-all motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-blue-200 dark:bg-blue-800 rounded-lg">
-                      <Activity className={cn("h-5 w-5 text-blue-600 dark:text-blue-400", processingCount > 0 && "motion-safe:animate-pulse")} aria-hidden="true" />
+                    <div className="p-2 bg-violet-200 dark:bg-violet-800 rounded-lg">
+                      <Activity className={cn("h-5 w-5 text-violet-600 dark:text-violet-400", processingCount > 0 && "motion-safe:animate-pulse")} aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{processingCount}</p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Processing</p>
+                      <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">{processingCount}</p>
+                      <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Processing</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -577,7 +578,7 @@ export default function UploadPage() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
+                <Card className="bg-gradient-to-br from-violet-50 to-violet-50 dark:from-violet-900/30 dark:to-violet-900/30 border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
                       <Award className="h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
@@ -607,8 +608,8 @@ export default function UploadPage() {
             {!hasFiles && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { icon: Zap, gradient: 'from-blue-500 to-indigo-600', title: 'Lightning Fast', desc: 'AI extraction in seconds' },
-                  { icon: Shield, gradient: 'from-green-500 to-emerald-600', title: 'Secure Storage', desc: 'Bank-grade encryption' },
+                  { icon: Zap, gradient: 'from-violet-500 to-purple-600', title: 'Lightning Fast', desc: 'AI extraction in seconds' },
+                  { icon: Shield, gradient: 'from-violet-500 to-violet-600', title: 'Secure Storage', desc: 'Bank-grade encryption' },
                   { icon: Brain, gradient: 'from-purple-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
                   { icon: BarChart3, gradient: 'from-orange-500 to-red-600', title: 'Smart Reports', desc: '10 artifact types' },
                 ].map(feature => (
@@ -651,7 +652,7 @@ export default function UploadPage() {
                       )}
                       
                       {pendingCount > 0 && !isUploading && (
-                        <Button onClick={handleUploadAll} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <Button onClick={handleUploadAll} className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600">
                           <Play className="h-4 w-4" aria-hidden="true" />
                           Start All ({pendingCount})
                         </Button>
@@ -708,7 +709,7 @@ export default function UploadPage() {
                             onRetry={() => retryFile(file.id)}
                             onRemove={() => removeFile(file.id)}
                             onViewContract={viewContract}
-                            tenantId="demo"
+                            tenantId={getTenantId()}
                           />
                           
                           {/* Realtime artifact viewer for processing files */}
@@ -716,7 +717,7 @@ export default function UploadPage() {
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-xl border border-purple-200 dark:border-purple-700"
+                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-purple-50 dark:from-purple-900/30 dark:to-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700"
                             >
                               <div className="flex items-center gap-2 mb-3">
                                 <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
@@ -724,6 +725,7 @@ export default function UploadPage() {
                               </div>
                               <RealtimeArtifactViewer
                                 contractId={file.contractId}
+                                tenantId={getTenantId()}
                                 onComplete={() => {
                                   setFiles(prev => prev.map(f =>
                                     f.id === file.id
@@ -792,7 +794,7 @@ export default function UploadPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-violet-500 via-violet-500 to-violet-600 text-white">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="flex items-center gap-4">
@@ -890,7 +892,7 @@ export default function UploadPage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-md transition-all motion-reduce:transition-none"
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-violet-50 dark:from-violet-900/30 dark:to-violet-900/30 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-md transition-all motion-reduce:transition-none"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
@@ -954,8 +956,8 @@ export default function UploadPage() {
                     
                     {/* Quick Start Guide */}
                     <div className="max-w-2xl mx-auto">
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-100 dark:border-blue-700 text-left">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                      <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 rounded-xl border border-violet-100 dark:border-violet-700 text-left">
+                        <h4 className="font-medium text-violet-900 dark:text-violet-200 mb-3 flex items-center gap-2">
                           <Info className="h-4 w-4" aria-hidden="true" />
                           How it works
                         </h4>
@@ -967,7 +969,7 @@ export default function UploadPage() {
                             { step: '4', label: 'Use', desc: 'Track & manage' },
                           ].map(item => (
                             <div key={item.step} className="flex items-start gap-2">
-                              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0" aria-hidden="true">
+                              <div className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0" aria-hidden="true">
                                 {item.step}
                               </div>
                               <div>

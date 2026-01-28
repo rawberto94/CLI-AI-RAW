@@ -199,7 +199,7 @@ function StepCard({
         <div className="absolute left-8 top-full w-0.5 h-6 bg-slate-200 z-0" />
       )}
 
-      <Card className={cn('relative z-10', isExpanded && 'border-blue-300 shadow-md')}>
+      <Card className={cn('relative z-10', isExpanded && 'border-violet-300 shadow-md')}>
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             {/* Drag Handle */}
@@ -208,7 +208,7 @@ function StepCard({
             </div>
 
             {/* Step Number */}
-            <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-sm font-semibold">
+            <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-600 flex items-center justify-center text-sm font-semibold">
               {index + 1}
             </div>
 
@@ -226,7 +226,7 @@ function StepCard({
                     'text-xs',
                     step.approvalType === 'all' && 'bg-purple-100 text-purple-700',
                     step.approvalType === 'any' && 'bg-green-100 text-green-700',
-                    step.approvalType === 'majority' && 'bg-blue-100 text-blue-700'
+                    step.approvalType === 'majority' && 'bg-violet-100 text-violet-700'
                   )}
                 >
                   {step.approvalType === 'all' ? 'All must approve' : 
@@ -541,14 +541,14 @@ function StepEditorModal({
                   className={cn(
                     'flex items-center gap-2 p-2 rounded-lg text-left transition-colors',
                     approvers.includes(item.id)
-                      ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                      ? 'bg-violet-100 text-violet-700 border border-violet-300'
                       : 'bg-white hover:bg-slate-100 border border-slate-200'
                   )}
                 >
                   <div className={cn(
                     'w-5 h-5 rounded border flex items-center justify-center',
                     approvers.includes(item.id)
-                      ? 'bg-blue-500 border-blue-500 text-white'
+                      ? 'bg-violet-500 border-violet-500 text-white'
                       : 'border-slate-300'
                   )}>
                     {approvers.includes(item.id) && <Check className="w-3 h-3" />}
@@ -752,7 +752,7 @@ export function ApprovalWorkflowBuilder({
       <div className="p-4 bg-slate-50 border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <GitBranch className="w-5 h-5 text-blue-500" />
+            <GitBranch className="w-5 h-5 text-violet-500" />
             <h3 className="font-semibold text-slate-900">
               {template ? 'Edit Approval Workflow' : 'Create Approval Workflow'}
             </h3>

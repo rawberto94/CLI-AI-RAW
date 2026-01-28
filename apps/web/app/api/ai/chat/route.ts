@@ -1007,6 +1007,69 @@ function detectIntent(query: string): DetectedIntent {
   }
 
   // ============================================
+  // CONTRACT-SPECIFIC DEEP ANALYSIS PATTERNS
+  // When user wants to ask specific questions about a named contract
+  // ============================================
+
+  // Pattern: "in the [contract name] contract, what are the..." or "about [contract], tell me..."
+  // This enables contextual Q&A for a specific contract from the chatbot
+  const contractDeepAnalysisPattern = /(?:in\s+(?:the\s+)?|about\s+(?:the\s+)?|for\s+(?:the\s+)?|regarding\s+(?:the\s+)?)?["\']?(.+?)["\']?\s+(?:contract|agreement|msa|sow|nda),?\s*(?:what|how|when|where|who|is|are|does|can|tell\s+me|explain|analyze|find|show)\s+(.+?)(?:\?|$)/i;
+  match = query.match(contractDeepAnalysisPattern);
+  if (match && match[1] && match[2]) {
+    const targetContract = match[1].trim();
+    const question = match[2].trim();
+    return {
+      type: 'search',
+      action: 'deep_analysis',
+      entities: { 
+        contractName: targetContract,
+        searchQuery: question,
+        analysisAspects: {
+          terms: true,
+          risk: true,
+          value: true,
+        }
+      },
+      confidence: 0.92,
+    };
+  }
+
+  // Pattern: "what are the termination clauses in [contract]" - specific clause questions
+  const contractClausePattern = /(?:what\s+(?:are|is)\s+(?:the\s+)?|show\s+(?:me\s+)?(?:the\s+)?|find\s+(?:the\s+)?|extract\s+(?:the\s+)?)?(termination|payment|liability|indemnity|confidentiality|renewal|warranty|sla|force\s+majeure|ip|intellectual\s+property)\s*(?:clause|terms?|provisions?|section)?\s+(?:in|from|of)\s+(?:the\s+)?["\']?(.+?)["\']?(?:\s+contract|\s+agreement)?(?:\?|$)/i;
+  match = query.match(contractClausePattern);
+  if (match && match[2]) {
+    const clauseType = match[1]?.trim().toLowerCase() || 'general';
+    const targetContract = match[2].trim();
+    return {
+      type: 'search',
+      action: 'clause_search',
+      entities: { 
+        contractName: targetContract,
+        clauseTerm: clauseType,
+        searchQuery: `${clauseType} clause terms provisions`,
+      },
+      confidence: 0.95,
+    };
+  }
+
+  // Pattern: "analyze [contract] for risks" or "[contract] risk assessment"
+  const contractRiskPattern = /(?:analyze|assess|check|review)\s+(?:the\s+)?["\']?(.+?)["\']?\s+(?:contract\s+)?(?:for\s+)?(?:risks?|risk\s+assessment|issues?|concerns?)|["\']?(.+?)["\']?\s+(?:contract\s+)?risk\s+(?:assessment|analysis|review)/i;
+  match = query.match(contractRiskPattern);
+  if (match && (match[1] || match[2])) {
+    const targetContract = (match[1] || match[2]).trim();
+    return {
+      type: 'analytics',
+      action: 'risk_assessment',
+      entities: { 
+        contractName: targetContract,
+        searchQuery: 'risks liabilities obligations penalties termination breach',
+        analysisAspects: { risk: true }
+      },
+      confidence: 0.93,
+    };
+  }
+
+  // ============================================
   // BI-DIRECTIONAL UPDATE PATTERNS (write-back to database)
   // ============================================
 
@@ -1153,6 +1216,59 @@ function detectIntent(query: string): DetectedIntent {
   }
 
   // ============================================
+  // SMART INTENT CLASSIFICATION FOR AMBIGUOUS QUERIES
+  // Analyzes query structure to better understand user intent
+  // ============================================
+  
+  // Detect question type from structure
+  const questionWords = {
+    what: 'information',
+    who: 'entity',
+    when: 'time',
+    where: 'location',
+    why: 'reason',
+    how: 'process',
+    which: 'selection',
+    can: 'capability',
+    should: 'recommendation',
+    is: 'confirmation',
+    are: 'confirmation',
+    do: 'action',
+    does: 'confirmation',
+    will: 'prediction',
+    would: 'hypothetical',
+  };
+  
+  const firstWord = lowerQuery.split(/\s+/)[0];
+  const questionType = questionWords[firstWord as keyof typeof questionWords] || 'general';
+  
+  // Detect if query is about contracts even without explicit keywords
+  const implicitContractTerms = [
+    'agreement', 'deal', 'vendor', 'client', 'party', 'parties',
+    'obligation', 'term', 'condition', 'clause', 'provision',
+    'expire', 'renew', 'sign', 'execute', 'negotiate',
+    'price', 'cost', 'fee', 'rate', 'payment', 'invoice',
+    'deadline', 'milestone', 'deliverable', 'scope',
+    'liability', 'indemnity', 'warranty', 'guarantee',
+    'terminate', 'cancel', 'breach', 'default',
+    'confidential', 'proprietary', 'intellectual property', 'ip',
+  ];
+  
+  const hasImplicitContractContext = implicitContractTerms.some(term => lowerQuery.includes(term));
+  
+  // Detect sentiment/urgency
+  const urgencyIndicators = ['urgent', 'asap', 'immediately', 'critical', 'important', 'priority', 'deadline', 'overdue'];
+  const hasUrgency = urgencyIndicators.some(term => lowerQuery.includes(term));
+  
+  // Detect if user is asking for a recommendation
+  const recommendationPatterns = /(?:should\s+(?:i|we)|recommend|suggest|advice|best\s+(?:way|approach|practice)|what\s+(?:should|would\s+you))/i;
+  const isAskingRecommendation = recommendationPatterns.test(lowerQuery);
+  
+  // Detect clarification requests
+  const clarificationPatterns = /(?:what\s+do\s+you\s+mean|can\s+you\s+explain|i\s+don'?t\s+understand|clarify|elaborate|more\s+(?:details?|info)|tell\s+me\s+more)/i;
+  const isClarificationRequest = clarificationPatterns.test(lowerQuery);
+
+  // ============================================
   // GENERAL CONVERSATIONAL / CATCH-ALL HANDLER
   // For any message that doesn't match specific patterns
   // ============================================
@@ -1195,15 +1311,20 @@ function detectIntent(query: string): DetectedIntent {
     };
   }
 
-  // Default: treat as general query - will be handled by OpenAI with RAG context
+  // Enhanced general query with smart context
   // The AI model will understand and respond appropriately
   return {
     type: 'question',
     action: 'general',
     entities: {
       searchQuery: extractedTerms.length > 2 ? extractedTerms : query,
+      questionType,
+      hasImplicitContractContext,
+      hasUrgency,
+      isAskingRecommendation,
+      isClarificationRequest,
     },
-    confidence: 0.7,
+    confidence: hasImplicitContractContext ? 0.8 : 0.7,
   };
 }
 
@@ -6343,8 +6464,11 @@ function selectResponse(query: string, context: Record<string, any>) {
  
 async function getOpenAIResponse(message: string, conversationHistory: Array<{ role?: string; content?: string }>, context: Record<string, any>) {
   try {
-    // Check if the query needs RAG search
-    const needsRAG = shouldUseRAG(message);
+    // Extract intent entities for smart RAG triggering
+    const intentEntities = context?.intent?.entities;
+    
+    // Check if the query needs RAG search (enhanced with intent classification)
+    const needsRAG = shouldUseRAG(message, intentEntities);
     let ragContext = '';
     let ragSources: string[] = [];
     let contractContext = '';
@@ -6360,10 +6484,13 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
 
     if (needsRAG) {
       try {
+        // ENHANCED: Increase search depth for implicit contract queries or recommendation requests
+        const searchDepth = intentEntities?.hasImplicitContractContext || intentEntities?.isAskingRecommendation ? 10 : 7;
+        
         // Use advanced RAG to find relevant contract content
         const searchResults = await hybridSearch(message, {
           mode: 'hybrid',
-          k: 7,
+          k: searchDepth,
           rerank: true,
           expandQuery: true,
           filters: context?.tenantId ? { tenantId: context.tenantId } : {},
@@ -6451,6 +6578,13 @@ ${ragContext || 'No semantic search results available.'}
 ${contractContext || 'No specific contract selected.'}
 
 **DETECTED INTENT:** ${context?.intent ? JSON.stringify(context.intent) : 'general inquiry'}
+
+**🧠 SMART CONTEXT DETECTION:**
+${intentEntities?.questionType ? `- Question Type: ${intentEntities.questionType} (user wants ${intentEntities.questionType === 'time' ? 'timeline/date information' : intentEntities.questionType === 'reason' ? 'explanations/justifications' : intentEntities.questionType === 'quantity' ? 'counts/amounts' : intentEntities.questionType === 'entity' ? 'names/parties' : 'general information'})` : ''}
+${intentEntities?.hasImplicitContractContext ? '- DETECTED implicit contract/business context in query - treating as contract-related' : ''}
+${intentEntities?.hasUrgency ? '- URGENCY DETECTED - prioritize immediate/critical items' : ''}
+${intentEntities?.isAskingRecommendation ? '- User wants RECOMMENDATIONS - provide actionable suggestions' : ''}
+${intentEntities?.isClarificationRequest ? '- User seems to be following up or clarifying - consider conversation history' : ''}
 
 **📝 RESPONSE GUIDELINES:**
 1. **Be conversational and helpful** - respond naturally to ANY question or statement
@@ -6621,7 +6755,8 @@ function generateSmartFollowUpSuggestions(query: string, intent: { type?: string
 }
 
 // Determine if the query should use RAG search
-function shouldUseRAG(query: string): boolean {
+// Enhanced with smart intent classification for better context detection
+function shouldUseRAG(query: string, intentEntities?: Record<string, any>): boolean {
   const lowerQuery = query.toLowerCase();
   
   // Skip RAG for simple greetings/farewells
@@ -6631,6 +6766,22 @@ function shouldUseRAG(query: string): boolean {
   ];
   if (skipPatterns.some(p => p.test(query.trim()))) {
     return false;
+  }
+  
+  // ENHANCED: If intent classification detected implicit contract context, always use RAG
+  if (intentEntities?.hasImplicitContractContext) {
+    return true;
+  }
+  
+  // ENHANCED: If user is asking for recommendations related to contracts, use RAG
+  if (intentEntities?.isAskingRecommendation && 
+      (intentEntities?.questionType === 'information' || intentEntities?.questionType === 'entity')) {
+    return true;
+  }
+  
+  // ENHANCED: If query has urgency and relates to business context, use RAG
+  if (intentEntities?.hasUrgency) {
+    return true;
   }
   
   // Keywords that indicate contract search is needed
@@ -6882,6 +7033,43 @@ export async function POST(request: NextRequest) {
             additionalContext += `- [${child.contractTitle}](/contracts/${child.id}) (${child.contractType})\n`;
           });
         }
+
+        // ============================================
+        // CONTRACT-SPECIFIC RAG SEARCH
+        // When viewing a specific contract, use RAG to find relevant sections
+        // This enables deep Q&A about the contract's content
+        // ============================================
+        const isContractSpecificQuestion = /\b(what|where|how|when|which|who|is there|are there|does|do|can|will|should|tell me|explain|describe|analyze|summarize|find|search|show|identify|list|extract)\b/i.test(message);
+        
+        if (isContractSpecificQuestion) {
+          try {
+            // Search within THIS contract only using RAG
+            const contractSpecificResults = await hybridSearch(resolvedMessage, {
+              mode: 'hybrid',
+              k: 6,
+              rerank: true,
+              expandQuery: true,
+              filters: { 
+                tenantId,
+                contractIds: [contractId], // Scope to this contract only
+              },
+            });
+
+            if (contractSpecificResults.length > 0) {
+              additionalContext += `\n\n**📑 RELEVANT CONTRACT SECTIONS (from RAG search):**\n`;
+              contractSpecificResults.forEach((result, i) => {
+                const sectionLabel = result.metadata?.heading || result.metadata?.section || `Section ${i + 1}`;
+                const relevanceIcon = result.score >= 0.85 ? '🎯' : result.score >= 0.7 ? '✅' : '📄';
+                additionalContext += `\n**${relevanceIcon} ${sectionLabel}** (${Math.round(result.score * 100)}% relevant):\n`;
+                additionalContext += `> ${result.text.slice(0, 500).replace(/\n/g, ' ')}${result.text.length > 500 ? '...' : ''}\n`;
+              });
+              
+              additionalContext += `\n*Use these contract sections to provide a precise, cited answer to the user's question. Quote specific text when relevant.*\n`;
+            }
+          } catch {
+            // Continue without contract-specific RAG if it fails
+          }
+        }
       }
     }
 
@@ -6901,6 +7089,93 @@ export async function POST(request: NextRequest) {
             additionalContext += `${i + 1}. [${c.title}](/contracts/${c.id}) - ${c.supplier || 'Unknown'}, $${c.value.toLocaleString()}, ${c.status}\n`;
           });
         }
+      }
+    }
+
+    // ============================================
+    // CONTRACT-SPECIFIC DEEP ANALYSIS (from chatbot without contractId)
+    // When user mentions a contract by name and wants to ask questions about it
+    // ============================================
+    if (!contractId && intent.entities.contractName && (
+      intent.action === 'deep_analysis' || 
+      intent.action === 'clause_search' || 
+      intent.action === 'risk_assessment'
+    )) {
+      // First, find the contract by name
+      const matchingContracts = await prisma.contract.findMany({
+        where: {
+          tenantId,
+          OR: [
+            { contractTitle: { contains: intent.entities.contractName, mode: 'insensitive' } },
+            { name: { contains: intent.entities.contractName, mode: 'insensitive' } },
+            { supplierName: { contains: intent.entities.contractName, mode: 'insensitive' } },
+          ],
+        },
+        select: {
+          id: true,
+          contractTitle: true,
+          name: true,
+          supplierName: true,
+          status: true,
+          totalValue: true,
+          expirationDate: true,
+          contractType: true,
+        },
+        take: 3,
+      });
+
+      if (matchingContracts.length > 0) {
+        // Use the first matching contract (or the best match)
+        const targetContract = matchingContracts[0];
+        const contractTitle = targetContract.contractTitle || targetContract.name || 'Contract';
+        
+        // Add contract preview card
+        contractPreviews = matchingContracts.map(formatContractForPreview);
+        
+        additionalContext += `\n\n**📄 Analyzing: [${contractTitle}](/contracts/${targetContract.id})**\n`;
+        additionalContext += `- Supplier: ${targetContract.supplierName || 'Not specified'}\n`;
+        additionalContext += `- Value: $${Number(targetContract.totalValue || 0).toLocaleString()}\n`;
+        additionalContext += `- Status: ${targetContract.status}\n`;
+        
+        // Now perform RAG search scoped to this contract
+        const searchQuery = intent.entities.searchQuery || intent.entities.clauseTerm || message;
+        try {
+          const contractRagResults = await hybridSearch(searchQuery, {
+            mode: 'hybrid',
+            k: 8,
+            rerank: true,
+            expandQuery: true,
+            filters: { 
+              tenantId,
+              contractIds: [targetContract.id], // Scope to this specific contract
+            },
+          });
+
+          if (contractRagResults.length > 0) {
+            additionalContext += `\n\n**📑 RELEVANT SECTIONS FROM ${contractTitle.toUpperCase()}:**\n`;
+            contractRagResults.forEach((result, i) => {
+              const sectionLabel = result.metadata?.heading || result.metadata?.section || `Section ${i + 1}`;
+              const relevanceIcon = result.score >= 0.85 ? '🎯' : result.score >= 0.7 ? '✅' : '📄';
+              additionalContext += `\n**${relevanceIcon} ${sectionLabel}** (${Math.round(result.score * 100)}% match):\n`;
+              additionalContext += `> ${result.text.slice(0, 600).replace(/\n/g, ' ')}${result.text.length > 600 ? '...' : ''}\n`;
+            });
+            
+            additionalContext += `\n*Based on the contract sections above, provide a detailed answer with citations. Quote specific text when answering.*\n`;
+          } else {
+            additionalContext += `\n\n⚠️ No specific sections found matching your query. The contract may not contain detailed text for RAG analysis.\n`;
+          }
+        } catch {
+          // Continue without RAG results if search fails
+        }
+        
+        if (matchingContracts.length > 1) {
+          additionalContext += `\n\n*Note: Found ${matchingContracts.length} contracts matching "${intent.entities.contractName}". Analyzing the first match. Other matches:*\n`;
+          matchingContracts.slice(1).forEach((c, i) => {
+            additionalContext += `- [${c.contractTitle || c.name}](/contracts/${c.id})\n`;
+          });
+        }
+      } else {
+        additionalContext += `\n\n⚠️ Could not find a contract matching "${intent.entities.contractName}". Please check the contract name and try again, or [browse all contracts](/contracts).\n`;
       }
     }
     
@@ -7937,8 +8212,23 @@ export async function POST(request: NextRequest) {
       response.referenceResolutions = referenceResolutions;
     }
 
-    // Generate proactive suggestions based on conversation context
-    const suggestions = await conversationMemoryService.generateSuggestions(conversationId, tenantId);
+    // ENHANCED: Generate clarification prompts for low-confidence or ambiguous queries
+    if (intent.confidence < 0.6 || intent.entities.isClarificationRequest) {
+      const clarification = await conversationMemoryService.generateClarificationPrompts(
+        message,
+        intent.confidence,
+        intent.entities
+      );
+      
+      if (clarification.needsClarification) {
+        response.clarificationNeeded = true;
+        response.clarificationPrompts = clarification.prompts;
+        response.clarificationType = clarification.clarificationType;
+      }
+    }
+
+    // ENHANCED: Generate proactive suggestions based on conversation context and intent classification
+    const suggestions = await conversationMemoryService.generateSuggestions(conversationId, tenantId, intent.entities);
     if (suggestions.length > 0) {
       response.suggestions = suggestions;
     }

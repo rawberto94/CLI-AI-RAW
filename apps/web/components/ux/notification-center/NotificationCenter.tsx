@@ -256,7 +256,7 @@ const typeIcons: Record<NotificationType, React.ElementType> = {
 };
 
 const typeColors: Record<NotificationType, string> = {
-  info: 'text-blue-600 bg-blue-100 dark:bg-blue-900/30',
+  info: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30',
   success: 'text-green-600 bg-green-100 dark:bg-green-900/30',
   warning: 'text-amber-600 bg-amber-100 dark:bg-amber-900/30',
   error: 'text-red-600 bg-red-100 dark:bg-red-900/30',
@@ -273,7 +273,7 @@ const categoryIcons: Record<NotificationCategory, React.ElementType> = {
 
 const priorityColors: Record<NotificationPriority, string> = {
   low: 'border-l-slate-300',
-  medium: 'border-l-blue-400',
+  medium: 'border-l-violet-400',
   high: 'border-l-amber-400',
   urgent: 'border-l-red-500',
 };
@@ -312,7 +312,7 @@ const NotificationItem = memo(({
         priorityColors[notification.priority],
         notification.read
           ? "bg-white dark:bg-slate-900"
-          : "bg-indigo-50/50 dark:bg-indigo-900/10"
+          : "bg-purple-50/50 dark:bg-purple-900/10"
       )}
       onMouseEnter={() => setShowActions(true)}
       onMouseLeave={() => setShowActions(false)}
@@ -351,7 +351,7 @@ const NotificationItem = memo(({
                 {formatRelativeTime(new Date(notification.timestamp))}
               </span>
               {!notification.read && (
-                <div className="w-2 h-2 rounded-full bg-indigo-600" />
+                <div className="w-2 h-2 rounded-full bg-purple-600" />
               )}
             </div>
           </div>
@@ -373,7 +373,7 @@ const NotificationItem = memo(({
             {notification.actionUrl && (
               <a
                 href={notification.actionUrl}
-                className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700"
               >
                 {notification.actionLabel || 'View'}
                 <ChevronRight className="h-3 w-3" />
@@ -487,7 +487,7 @@ const SettingsPanel = memo(({ settings, onUpdate, onClose }: SettingsPanelProps)
             onClick={() => onUpdate({ soundEnabled: !settings.soundEnabled })}
             className={cn(
               "w-10 h-6 rounded-full transition-colors relative",
-              settings.soundEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+              settings.soundEnabled ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
             )}
           >
             <span className={cn(
@@ -516,7 +516,7 @@ const SettingsPanel = memo(({ settings, onUpdate, onClose }: SettingsPanelProps)
             }}
             className={cn(
               "w-10 h-6 rounded-full transition-colors relative",
-              settings.desktopEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+              settings.desktopEnabled ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
             )}
           >
             <span className={cn(
@@ -547,7 +547,7 @@ const SettingsPanel = memo(({ settings, onUpdate, onClose }: SettingsPanelProps)
                   })}
                   className={cn(
                     "w-10 h-6 rounded-full transition-colors relative",
-                    settings.categories[category] ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+                    settings.categories[category] ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
                   )}
                 >
                   <span className={cn(
@@ -642,10 +642,10 @@ export const NotificationCenter = memo(({
         <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <Bell className="h-5 w-5 text-indigo-600" />
+              <Bell className="h-5 w-5 text-purple-600" />
               <h2 className="font-semibold text-slate-800 dark:text-slate-200">Notifications</h2>
               {unreadCount > 0 && (
-                <span className="px-2 py-0.5 text-xs font-medium text-white bg-indigo-600 rounded-full">
+                <span className="px-2 py-0.5 text-xs font-medium text-white bg-purple-600 rounded-full">
                   {unreadCount}
                 </span>
               )}
@@ -697,7 +697,7 @@ export const NotificationCenter = memo(({
                 className={cn(
                   "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors capitalize",
                   tab === t
-                    ? "bg-indigo-100 dark:bg-indigo-900/50 text-indigo-700 dark:text-indigo-300"
+                    ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-indigo-300"
                     : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                 )}
               >

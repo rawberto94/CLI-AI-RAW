@@ -48,8 +48,8 @@ const STATE_STYLES: Record<InputState, {
   text: string;
 }> = {
   default: {
-    border: 'border-slate-200 dark:border-slate-600 focus:border-indigo-400 dark:focus:border-indigo-500',
-    ring: 'focus:ring-indigo-500/20',
+    border: 'border-slate-200 dark:border-slate-600 focus:border-indigo-400 dark:focus:border-purple-500',
+    ring: 'focus:ring-purple-500/20',
     icon: 'text-slate-400 dark:text-slate-500',
     text: 'text-slate-600 dark:text-slate-400',
   },
@@ -60,10 +60,10 @@ const STATE_STYLES: Record<InputState, {
     text: 'text-red-600 dark:text-red-400',
   },
   success: {
-    border: 'border-emerald-300 dark:border-emerald-700 focus:border-emerald-400 dark:focus:border-emerald-500',
-    ring: 'focus:ring-emerald-500/20',
-    icon: 'text-emerald-500 dark:text-emerald-400',
-    text: 'text-emerald-600 dark:text-emerald-400',
+    border: 'border-violet-300 dark:border-violet-700 focus:border-violet-400 dark:focus:border-violet-500',
+    ring: 'focus:ring-violet-500/20',
+    icon: 'text-violet-500 dark:text-violet-400',
+    text: 'text-violet-600 dark:text-violet-400',
   },
   warning: {
     border: 'border-amber-300 dark:border-amber-700 focus:border-amber-400 dark:focus:border-amber-500',
@@ -174,7 +174,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(({
         {/* Status icon */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
           {state === 'error' && <AlertCircle className="w-5 h-5 text-red-500" />}
-          {state === 'success' && <Check className="w-5 h-5 text-emerald-500" />}
+          {state === 'success' && <Check className="w-5 h-5 text-violet-500" />}
           {state === 'warning' && <AlertCircle className="w-5 h-5 text-amber-500" />}
           {state === 'default' && RightIcon && <RightIcon className="w-5 h-5 text-slate-400" />}
         </div>
@@ -226,7 +226,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(({
   };
 
   const strengthLabels = ['Very Weak', 'Weak', 'Fair', 'Strong', 'Very Strong'];
-  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-emerald-500'];
+  const strengthColors = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-violet-500'];
 
   return (
     <div className="space-y-2">
@@ -512,9 +512,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
             className={cn(
               'w-5 h-5 rounded border-2 appearance-none cursor-pointer',
               'transition-all duration-200',
-              'checked:bg-indigo-600 checked:border-indigo-600',
+              'checked:bg-purple-600 checked:border-purple-600',
               error ? 'border-red-300 dark:border-red-700' : 'border-slate-300 dark:border-slate-600',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500/30'
+              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500/30'
             )}
             {...props}
           />

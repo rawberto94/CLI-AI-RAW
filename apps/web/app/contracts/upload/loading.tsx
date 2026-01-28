@@ -13,7 +13,7 @@ export default function ContractUploadLoading() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 shadow-2xl shadow-indigo-500/30 flex items-center justify-center"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 via-purple-500 to-purple-600 shadow-2xl shadow-purple-500/30 flex items-center justify-center"
           >
             <Upload className="w-10 h-10 text-white" />
           </motion.div>
@@ -25,13 +25,13 @@ export default function ContractUploadLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <FileUp className="h-4 w-4 text-indigo-600" />
+              <FileUp className="h-4 w-4 text-purple-600" />
             </div>
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-lg">
               <CloudUpload className="h-4 w-4 text-purple-600" />
             </div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <CheckCircle className="h-4 w-4 text-indigo-600" />
+              <CheckCircle className="h-4 w-4 text-purple-600" />
             </div>
           </motion.div>
         </div>
@@ -43,7 +43,7 @@ export default function ContractUploadLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-transparent">
             Loading Contract Upload
           </h2>
           <p className="text-sm text-muted-foreground mt-1">Preparing upload interface...</p>
@@ -55,7 +55,7 @@ export default function ContractUploadLoading() {
                 key={i}
                 animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-                className="w-2 h-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500"
+                className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-500"
               />
             ))}
           </div>

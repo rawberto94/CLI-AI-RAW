@@ -271,11 +271,11 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                     index === selectedCommandIndex
-                      ? "bg-indigo-50 dark:bg-indigo-900/30"
+                      ? "bg-purple-50 dark:bg-purple-900/30"
                       : "hover:bg-slate-50 dark:hover:bg-slate-800"
                   )}
                 >
-                  <command.icon className="h-4 w-4 text-indigo-500" />
+                  <command.icon className="h-4 w-4 text-purple-500" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       {command.label}
@@ -316,7 +316,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       {/* Contract context indicator */}
       {contractContext && (
         <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
-          <FileText className="h-4 w-4 text-indigo-500" />
+          <FileText className="h-4 w-4 text-purple-500" />
           <span>Context: <span className="font-medium text-slate-700 dark:text-slate-300">{contractContext.name}</span></span>
         </div>
       )}
@@ -348,7 +348,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                 <X className="h-3 w-3 text-slate-500" />
               </button>
               {attachment.uploading && (
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-purple-500" />
               )}
             </div>
           ))}
@@ -359,7 +359,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       <div className={cn(
         "flex items-end gap-2 p-3 rounded-xl border transition-all",
         isFocused
-          ? "border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 shadow-lg shadow-indigo-500/10"
+          ? "border-indigo-300 dark:border-purple-700 bg-white dark:bg-slate-900 shadow-lg shadow-purple-500/10"
           : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50",
         isRecording && "border-red-300 dark:border-red-700 shadow-red-500/10"
       )}>
@@ -459,7 +459,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
           className={cn(
             "h-8 gap-1.5 flex-shrink-0 transition-all",
             (value.trim() || attachments.length > 0) && !isLoading
-              ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+              ? "bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
               : ""
           )}
           onClick={handleSend}

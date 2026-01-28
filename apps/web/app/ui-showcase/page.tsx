@@ -606,7 +606,7 @@ function NavigationSection() {
           </button>
           <button
             onClick={() => setCurrentStep(Math.min(steps.length - 1, currentStep + 1))}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg"
+            className="px-4 py-2 bg-violet-500 text-white rounded-lg"
           >
             Next
           </button>
@@ -673,7 +673,7 @@ function TooltipsSection() {
           description="Save your changes to the cloud"
           shortcut="⌘S"
         >
-          <button className="px-4 py-2 bg-blue-500 text-white rounded-lg">
+          <button className="px-4 py-2 bg-violet-500 text-white rounded-lg">
             Rich Tooltip
           </button>
         </RichTooltip>
@@ -791,7 +791,7 @@ function ModalsSection() {
       <div className="flex flex-wrap items-center gap-4">
         <button
           onClick={modal.open}
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600"
         >
           Open Modal
         </button>
@@ -832,7 +832,7 @@ function ModalsSection() {
           </button>
           <button
             onClick={modal.close}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+            className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600"
           >
             Confirm
           </button>
@@ -849,7 +849,7 @@ function ModalsSection() {
             <button onClick={drawer.close} className="px-4 py-2 text-slate-600">
               Cancel
             </button>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg">
+            <button className="px-4 py-2 bg-violet-500 text-white rounded-lg">
               Save Changes
             </button>
           </div>
@@ -985,7 +985,7 @@ function AlertsSection() {
 
       <div className="space-y-4">
         <InlineAlert type="info" title="Pro Tip">
-          You can use keyboard shortcuts to navigate faster. Press <kbd className="px-1 py-0.5 bg-blue-100 rounded text-xs">?</kbd> to see all shortcuts.
+          You can use keyboard shortcuts to navigate faster. Press <kbd className="px-1 py-0.5 bg-violet-100 rounded text-xs">?</kbd> to see all shortcuts.
         </InlineAlert>
 
         <InlineAlert type="success" title="Upload Complete" dismissible>
@@ -1017,7 +1017,7 @@ export default function UIShowcase() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                <Sparkles className="w-6 h-6 text-blue-500" />
+                <Sparkles className="w-6 h-6 text-violet-500" />
                 UI Component Showcase
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">

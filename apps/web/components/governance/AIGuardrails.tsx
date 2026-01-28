@@ -299,7 +299,7 @@ const getSeverityColor = (severity: string) => {
     case 'medium':
       return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     case 'low':
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+      return 'bg-violet-100 text-violet-700 border-violet-200';
     default:
       return 'bg-gray-100 text-gray-700 border-gray-200';
   }
@@ -314,7 +314,7 @@ const getCategoryColor = (category: string) => {
     case 'commercial':
       return 'bg-green-100 text-green-700';
     case 'legal':
-      return 'bg-blue-100 text-blue-700';
+      return 'bg-violet-100 text-violet-700';
     case 'operational':
       return 'bg-gray-100 text-gray-700';
     default:
@@ -510,7 +510,7 @@ export function AIGuardrails() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-500 rounded-xl">
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -579,8 +579,8 @@ export function AIGuardrails() {
             className="bg-white rounded-xl p-5 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Brain className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <Brain className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">94%</p>
@@ -788,12 +788,12 @@ export function AIGuardrails() {
                       <div className={`p-2 rounded-lg ${
                         flag.type === 'ai-generated' ? 'bg-purple-100' :
                         flag.type === 'deviation' ? 'bg-red-100' :
-                        flag.type === 'compliance' ? 'bg-blue-100' :
+                        flag.type === 'compliance' ? 'bg-violet-100' :
                         'bg-yellow-100'
                       }`}>
                         {flag.type === 'ai-generated' ? <Brain className="h-5 w-5 text-purple-600" /> :
                          flag.type === 'deviation' ? <AlertTriangle className="h-5 w-5 text-red-600" /> :
-                         flag.type === 'compliance' ? <Shield className="h-5 w-5 text-blue-600" /> :
+                         flag.type === 'compliance' ? <Shield className="h-5 w-5 text-violet-600" /> :
                          <Target className="h-5 w-5 text-yellow-600" />}
                       </div>
                       <div className="flex-1">
@@ -817,12 +817,12 @@ export function AIGuardrails() {
                           {flag.clause && <span>Clause: {flag.clause}</span>}
                           <span>Detected: {flag.detectedAt}</span>
                         </div>
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100">
                           <div className="flex items-start gap-2">
-                            <Zap className="h-4 w-4 text-blue-600 mt-0.5" />
+                            <Zap className="h-4 w-4 text-violet-600 mt-0.5" />
                             <div>
-                              <p className="text-xs font-medium text-blue-700">AI Recommendation</p>
-                              <p className="text-sm text-blue-600 mt-0.5">{flag.recommendation}</p>
+                              <p className="text-xs font-medium text-violet-700">AI Recommendation</p>
+                              <p className="text-sm text-violet-600 mt-0.5">{flag.recommendation}</p>
                             </div>
                           </div>
                         </div>
@@ -927,12 +927,12 @@ export function AIGuardrails() {
                   </button>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <Info className="h-5 w-5 text-violet-600 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Threshold Rules</p>
-                      <p className="text-sm text-blue-700 mt-0.5">
+                      <p className="text-sm font-medium text-violet-900">Threshold Rules</p>
+                      <p className="text-sm text-violet-700 mt-0.5">
                         Thresholds automatically trigger actions when contract attributes exceed defined limits.
                         Actions include blocking, warnings, notifications, and escalations.
                       </p>
@@ -954,12 +954,12 @@ export function AIGuardrails() {
                             threshold.action === 'block' ? 'bg-red-100' :
                             threshold.action === 'warn' ? 'bg-yellow-100' :
                             threshold.action === 'escalate' ? 'bg-orange-100' :
-                            'bg-blue-100'
+                            'bg-violet-100'
                           }`}>
                             {threshold.action === 'block' ? <Ban className="h-5 w-5 text-red-600" /> :
                              threshold.action === 'warn' ? <AlertTriangle className="h-5 w-5 text-yellow-600" /> :
                              threshold.action === 'escalate' ? <TrendingUp className="h-5 w-5 text-orange-600" /> :
-                             <Bell className="h-5 w-5 text-blue-600" />}
+                             <Bell className="h-5 w-5 text-violet-600" />}
                           </div>
                           <div>
                             <h4 className="font-medium text-gray-900">{threshold.name}</h4>
@@ -978,7 +978,7 @@ export function AIGuardrails() {
                             threshold.action === 'block' ? 'bg-red-100 text-red-700' :
                             threshold.action === 'warn' ? 'bg-yellow-100 text-yellow-700' :
                             threshold.action === 'escalate' ? 'bg-orange-100 text-orange-700' :
-                            'bg-blue-100 text-blue-700'
+                            'bg-violet-100 text-violet-700'
                           }`}>
                             {threshold.action}
                           </span>

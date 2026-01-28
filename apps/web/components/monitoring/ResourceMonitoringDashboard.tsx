@@ -182,7 +182,7 @@ export default function ResourceMonitoringDashboard() {
           </button>
           <button
             onClick={fetchMetrics}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700"
           >
             Refresh Now
           </button>
@@ -191,26 +191,26 @@ export default function ResourceMonitoringDashboard() {
 
       {/* Summary Cards */}
       {summary && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-blue-900 mb-3">
+        <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-violet-900 mb-3">
             Last Hour Summary
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <p className="text-sm text-blue-700 font-medium">Memory</p>
-              <p className="text-xs text-blue-600">
+              <p className="text-sm text-violet-700 font-medium">Memory</p>
+              <p className="text-xs text-violet-600">
                 Avg: {summary.summary.memory.avg} | Min: {summary.summary.memory.min} | Max: {summary.summary.memory.max}
               </p>
             </div>
             <div>
-              <p className="text-sm text-blue-700 font-medium">CPU</p>
-              <p className="text-xs text-blue-600">
+              <p className="text-sm text-violet-700 font-medium">CPU</p>
+              <p className="text-xs text-violet-600">
                 Avg: {summary.summary.cpu.avg} | Min: {summary.summary.cpu.min} | Max: {summary.summary.cpu.max}
               </p>
             </div>
             <div>
-              <p className="text-sm text-blue-700 font-medium">Connections</p>
-              <p className="text-xs text-blue-600">
+              <p className="text-sm text-violet-700 font-medium">Connections</p>
+              <p className="text-xs text-violet-600">
                 Avg: {summary.summary.connections.avg} | Min: {summary.summary.connections.min} | Max: {summary.summary.connections.max}
               </p>
             </div>
@@ -307,7 +307,7 @@ export default function ResourceMonitoringDashboard() {
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="text-2xl font-bold text-blue-600">{metrics.connections.total}</p>
+                <p className="text-2xl font-bold text-violet-600">{metrics.connections.total}</p>
                 <p className="text-xs text-gray-600 dark:text-slate-400">Total</p>
               </div>
               <div>

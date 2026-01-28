@@ -182,7 +182,7 @@ export function SearchAutocomplete({
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full pl-12 pr-10 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-12 pr-10 py-3 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
         />
         {isLoading && (
           <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
@@ -266,7 +266,7 @@ export function SearchAutocomplete({
                   {onClearRecent && (
                     <button
                       onClick={onClearRecent}
-                      className="text-xs text-blue-600 hover:underline"
+                      className="text-xs text-violet-600 hover:underline"
                     >
                       Clear
                     </button>
@@ -335,7 +335,7 @@ function SearchResultItem({ result, highlighted, onClick }: SearchResultItemProp
       className={`
         w-full px-4 py-2.5 flex items-center gap-3 text-left transition-colors
         ${highlighted 
-          ? 'bg-blue-50 dark:bg-blue-950' 
+          ? 'bg-violet-50 dark:bg-violet-950' 
           : 'hover:bg-gray-100 dark:hover:bg-gray-800'
         }
       `}

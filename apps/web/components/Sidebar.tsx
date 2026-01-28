@@ -87,7 +87,7 @@ const navigationGroups: NavGroup[] = [
     label: 'Overview',
     icon: LayoutDashboard,
     defaultOpen: true,
-    gradient: 'from-blue-500 to-indigo-500',
+    gradient: 'from-violet-500 to-purple-500',
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
       { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts", tourId: "contracts" },
@@ -133,7 +133,7 @@ const navigationGroups: NavGroup[] = [
   //   label: 'Management',
   //   icon: Calendar,
   //   defaultOpen: false,
-  //   gradient: 'from-emerald-500 to-teal-500',
+  //   gradient: 'from-violet-500 to-violet-500',
   //   items: [
   //     { href: "/renewals", label: "Renewals", icon: Clock, description: "Track contract renewals" },
   //     { href: "/approvals", label: "Approvals", icon: Shield, description: "Pending approvals queue" },
@@ -247,7 +247,7 @@ const NavItemComponent = memo(function NavItemComponent({
           className={cn(
             "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200",
             active
-              ? `bg-gradient-to-r ${gradient || 'from-blue-50 to-indigo-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50`
+              ? `bg-gradient-to-r ${gradient || 'from-violet-50 to-purple-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50`
               : "text-slate-600 hover:bg-slate-100/60 hover:text-slate-900"
           )}
         >
@@ -275,7 +275,7 @@ const NavItemComponent = memo(function NavItemComponent({
                 "h-5 px-1.5 text-[10px] font-bold rounded-full",
                 item.badgeVariant === 'destructive'
                   ? "bg-gradient-to-r from-rose-100 to-red-100 text-rose-700"
-                  : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
+                  : "bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700"
               )}
             >
               {item.badge}
@@ -416,7 +416,7 @@ function MobileSidebar({
                 </button>
                 
                 <Link href="/tour#learn" onClick={onClose}>
-                  <div className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
+                  <div className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all">
                     <GraduationCap className="h-4 w-4" />
                     <span className="font-medium">Learning Center</span>
                   </div>
@@ -500,7 +500,7 @@ export function Sidebar() {
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
                   <Link
                     href="/upload"
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
                   >
                     <Upload className="h-3.5 w-3.5" />
                     Upload
@@ -537,7 +537,7 @@ export function Sidebar() {
               className="overflow-hidden"
             >
               <div className="p-3 border-b border-slate-200/60">
-                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100 shadow-sm">
+                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-purple-50 rounded-xl p-4 border border-purple-100 shadow-sm">
                   <motion.button 
                     type="button"
                     onClick={dismissTutorial}
@@ -636,7 +636,7 @@ export function Sidebar() {
             <Link href="/tour#learn">
               <motion.div
                 whileHover={{ x: 2 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
               >
                 <GraduationCap className="h-4 w-4" />
                 <span className="font-medium">Learning Center</span>
@@ -648,7 +648,7 @@ export function Sidebar() {
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'))}
               whileHover={{ x: 2 }}
-              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
             >
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -670,7 +670,7 @@ export function Sidebar() {
           
           <div className="flex items-center justify-between px-2 pt-2 border-t border-slate-200/60">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
               <span className="text-[10px] text-slate-400 font-medium">System Online</span>
             </div>
             <div className="flex items-center gap-1">

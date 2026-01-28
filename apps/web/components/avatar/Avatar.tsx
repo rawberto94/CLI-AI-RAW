@@ -50,7 +50,7 @@ const sizeClasses: Record<AvatarSize, string> = {
 };
 
 const statusColors: Record<AvatarStatus, string> = {
-  online: 'bg-emerald-500',
+  online: 'bg-violet-500',
   offline: 'bg-slate-400',
   busy: 'bg-red-500',
   away: 'bg-amber-500',
@@ -84,12 +84,12 @@ function getColorFromName(name: string): string {
     'bg-fuchsia-500',
     'bg-purple-500',
     'bg-violet-500',
-    'bg-indigo-500',
-    'bg-blue-500',
+    'bg-purple-500',
+    'bg-violet-500',
     'bg-sky-500',
-    'bg-cyan-500',
-    'bg-teal-500',
-    'bg-emerald-500',
+    'bg-purple-500',
+    'bg-violet-500',
+    'bg-violet-500',
     'bg-green-500',
     'bg-lime-500',
     'bg-yellow-500',

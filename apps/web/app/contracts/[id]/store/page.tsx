@@ -89,7 +89,7 @@ function WorkflowSteps({ currentStep }: { currentStep: 'approve' | 'sign' | 'sto
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center",
                   isComplete && "bg-green-500 text-white",
-                  isActive && !isComplete && "bg-blue-500 text-white",
+                  isActive && !isComplete && "bg-violet-500 text-white",
                   !isActive && !isComplete && "bg-slate-200 text-slate-400"
                 )}
               >
@@ -102,7 +102,7 @@ function WorkflowSteps({ currentStep }: { currentStep: 'approve' | 'sign' | 'sto
               <span className={cn(
                 "text-sm font-medium hidden sm:inline",
                 isComplete && "text-green-600",
-                isActive && !isComplete && "text-blue-600",
+                isActive && !isComplete && "text-violet-600",
                 !isActive && !isComplete && "text-slate-400"
               )}>
                 {step.label}
@@ -266,7 +266,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-violet-500 animate-spin" />
       </div>
     );
   }
@@ -336,7 +336,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                   {copied ? 'Copied!' : 'Copy Link'}
                 </Button>
                 <Link href="/contracts">
-                  <Button className="bg-blue-600 hover:bg-blue-700 gap-2">
+                  <Button className="bg-violet-600 hover:bg-violet-700 gap-2">
                     <FileText className="w-4 h-4" />
                     View All Contracts
                   </Button>
@@ -412,7 +412,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Folder className="w-5 h-5 text-blue-500" />
+                  <Folder className="w-5 h-5 text-violet-500" />
                   Storage Location
                 </CardTitle>
                 <CardDescription>
@@ -427,14 +427,14 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                     className={cn(
                       "flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all",
                       storageLocation === loc.id
-                        ? "border-blue-500 bg-blue-50"
+                        ? "border-violet-500 bg-violet-50"
                         : "border-slate-200 hover:border-slate-300"
                     )}
                   >
                     <div className={cn(
                       "w-10 h-10 rounded-full flex items-center justify-center",
                       storageLocation === loc.id
-                        ? "bg-blue-100 text-blue-600"
+                        ? "bg-violet-100 text-violet-600"
                         : "bg-slate-100 text-slate-500"
                     )}>
                       {loc.icon}
@@ -446,7 +446,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                     <div className={cn(
                       "w-5 h-5 rounded-full border-2",
                       storageLocation === loc.id
-                        ? "border-blue-500 bg-blue-500"
+                        ? "border-violet-500 bg-violet-500"
                         : "border-slate-300"
                     )}>
                       {storageLocation === loc.id && (
@@ -473,7 +473,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Tag className="w-5 h-5 text-blue-500" />
+                  <Tag className="w-5 h-5 text-violet-500" />
                   Tags & Options
                 </CardTitle>
               </CardHeader>
@@ -487,7 +487,7 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
                         variant={addTags.includes(tag) ? 'default' : 'outline'}
                         className={cn(
                           "cursor-pointer transition-all",
-                          addTags.includes(tag) && "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          addTags.includes(tag) && "bg-violet-100 text-violet-700 hover:bg-violet-200"
                         )}
                         onClick={() => {
                           setAddTags(prev =>

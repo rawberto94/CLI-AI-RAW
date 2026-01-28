@@ -145,7 +145,7 @@ export function HorizontalStepper({
                   ${sizeClasses[size].icon} rounded-full flex items-center justify-center
                   font-semibold transition-all
                   ${status === 'complete' ? 'bg-green-500 text-white' : ''}
-                  ${status === 'current' ? 'bg-blue-600 text-white ring-4 ring-blue-100 dark:ring-blue-900' : ''}
+                  ${status === 'current' ? 'bg-gradient-to-br from-violet-600 to-purple-600 text-white ring-4 ring-violet-100 dark:ring-violet-900 shadow-lg shadow-violet-500/30' : ''}
                   ${status === 'upcoming' ? 'bg-gray-200 dark:bg-gray-700 text-gray-500' : ''}
                   ${status === 'error' ? 'bg-red-500 text-white' : ''}
                   ${status === 'locked' ? 'bg-gray-200 dark:bg-gray-700 text-gray-400' : ''}
@@ -163,7 +163,7 @@ export function HorizontalStepper({
                 <div className="mt-2 text-center">
                   <p className={`font-medium ${sizeClasses[size].text} ${
                     status === 'current' 
-                      ? 'text-blue-600 dark:text-blue-400' 
+                      ? 'text-violet-600 dark:text-violet-400' 
                       : status === 'complete'
                       ? 'text-green-600 dark:text-green-400'
                       : 'text-gray-500 dark:text-gray-400'
@@ -187,7 +187,7 @@ export function HorizontalStepper({
               <div className="flex-1 mx-4 h-1 relative">
                 <div className="absolute inset-0 bg-gray-200 dark:bg-gray-700 rounded-full" />
                 <motion.div
-                  className="absolute inset-y-0 left-0 bg-blue-600 rounded-full"
+                  className="absolute inset-y-0 left-0 bg-violet-600 rounded-full"
                   initial={{ width: '0%' }}
                   animate={{ 
                     width: completedSteps.includes(index) || index < currentStep ? '100%' : '0%' 
@@ -251,7 +251,7 @@ export function VerticalStepper({
                     w-10 h-10 rounded-full flex items-center justify-center z-10
                     font-semibold transition-all
                     ${status === 'complete' ? 'bg-green-500 text-white' : ''}
-                    ${status === 'current' ? 'bg-blue-600 text-white' : ''}
+                    ${status === 'current' ? 'bg-violet-600 text-white' : ''}
                     ${status === 'upcoming' ? 'bg-gray-200 dark:bg-gray-700 text-gray-500' : ''}
                     ${status === 'error' ? 'bg-red-500 text-white' : ''}
                     ${isClickable ? 'cursor-pointer hover:scale-105' : 'cursor-default'}
@@ -267,7 +267,7 @@ export function VerticalStepper({
                 {index < steps.length - 1 && (
                   <div className="w-0.5 flex-1 bg-gray-200 dark:bg-gray-700 my-2">
                     <motion.div
-                      className="w-full bg-blue-600"
+                      className="w-full bg-violet-600"
                       initial={{ height: '0%' }}
                       animate={{ 
                         height: completedSteps.includes(index) ? '100%' : '0%' 
@@ -283,7 +283,7 @@ export function VerticalStepper({
                 <div className="flex items-center gap-2">
                   <h3 className={`font-semibold ${
                     status === 'current' 
-                      ? 'text-blue-600 dark:text-blue-400' 
+                      ? 'text-violet-600 dark:text-violet-400' 
                       : 'text-gray-900 dark:text-white'
                   }`}>
                     {step.label}
@@ -345,7 +345,7 @@ export function ProgressSteps({
             key={index}
             className={`h-1 flex-1 rounded-full ${
               index <= current 
-                ? 'bg-blue-600' 
+                ? 'bg-violet-600' 
                 : 'bg-gray-200 dark:bg-gray-700'
             }`}
             initial={{ scaleX: 0 }}
@@ -360,7 +360,7 @@ export function ProgressSteps({
   if (variant === 'numbers') {
     return (
       <div className={`flex items-center justify-center gap-2 ${className}`}>
-        <span className="text-2xl font-bold text-blue-600">{current + 1}</span>
+        <span className="text-2xl font-bold text-violet-600">{current + 1}</span>
         <span className="text-gray-400">/</span>
         <span className="text-lg text-gray-500">{total}</span>
       </div>
@@ -377,9 +377,9 @@ export function ProgressSteps({
           className={`
             transition-all
             ${index === current 
-              ? 'w-8 h-2 bg-blue-600 rounded-full' 
+              ? 'w-8 h-2 bg-violet-600 rounded-full' 
               : index < current 
-              ? 'w-2 h-2 bg-blue-400 rounded-full hover:bg-blue-500'
+              ? 'w-2 h-2 bg-violet-400 rounded-full hover:bg-violet-500'
               : 'w-2 h-2 bg-gray-300 dark:bg-gray-600 rounded-full'
             }
             ${onStepClick ? 'cursor-pointer' : 'cursor-default'}
@@ -424,9 +424,9 @@ export function BreadcrumbStepper({
               className={`
                 flex items-center gap-2 text-sm whitespace-nowrap
                 ${isCurrent 
-                  ? 'text-blue-600 dark:text-blue-400 font-semibold' 
+                  ? 'text-violet-600 dark:text-violet-400 font-semibold' 
                   : isPast 
-                  ? 'text-gray-600 dark:text-gray-400 hover:text-blue-600 cursor-pointer'
+                  ? 'text-gray-600 dark:text-gray-400 hover:text-violet-600 cursor-pointer'
                   : 'text-gray-400'
                 }
               `}
@@ -495,8 +495,8 @@ export function StepNavigation({
         className={`
           px-6 py-2.5 rounded-lg font-medium transition-colors flex items-center gap-2
           ${!canProceed || isLoading
-            ? 'bg-blue-400 text-white cursor-not-allowed'
-            : 'bg-blue-600 hover:bg-blue-700 text-white'
+            ? 'bg-violet-400 text-white cursor-not-allowed'
+            : 'bg-violet-600 hover:bg-violet-700 text-white'
           }
         `}
       >

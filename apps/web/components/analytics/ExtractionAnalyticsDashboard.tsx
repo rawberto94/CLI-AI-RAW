@@ -164,7 +164,7 @@ export function ExtractionAnalyticsDashboard({
   if (loading) {
     return (
       <div className={`flex items-center justify-center p-12 ${className}`}>
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+        <RefreshCw className="h-8 w-8 animate-spin text-violet-500" />
       </div>
     );
   }
@@ -246,7 +246,7 @@ export function ExtractionAnalyticsDashboard({
                 <p className="text-sm text-muted-foreground">Total Extractions</p>
                 <p className="text-3xl font-bold">{analytics.totalExtractions}</p>
               </div>
-              <Activity className="h-8 w-8 text-blue-500" />
+              <Activity className="h-8 w-8 text-violet-500" />
             </div>
           </CardContent>
         </Card>
@@ -312,7 +312,7 @@ export function ExtractionAnalyticsDashboard({
             <ul className="space-y-2">
               {recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <TrendingUp className="h-4 w-4 mt-1 text-blue-500 flex-shrink-0" />
+                  <TrendingUp className="h-4 w-4 mt-1 text-violet-500 flex-shrink-0" />
                   <span className="text-sm">{rec}</span>
                 </li>
               ))}

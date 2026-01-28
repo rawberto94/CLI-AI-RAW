@@ -44,7 +44,7 @@ function MetricCard({ title, value, change, icon, trend }: MetricCardProps) {
               </div>
             )}
           </div>
-          <div className="p-3 bg-blue-50 rounded-lg">
+          <div className="p-3 bg-violet-50 rounded-lg">
             {icon}
           </div>
         </div>
@@ -124,7 +124,7 @@ export function AnalyticsHub() {
       </div>
 
       {/* Data Mode Indicator */}
-      <div className="flex items-center gap-2 text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+      <div className="flex items-center gap-2 text-sm text-gray-600 bg-violet-50 p-3 rounded-lg">
         <Sparkles className="h-4 w-4" />
         <span>
           Showing <strong>{dataMode}</strong> data
@@ -139,7 +139,7 @@ export function AnalyticsHub() {
           value={metrics.totalContracts.toLocaleString()}
           change="+12% from last month"
           trend="up"
-          icon={<FileText className="h-6 w-6 text-blue-600" />}
+          icon={<FileText className="h-6 w-6 text-violet-600" />}
         />
         <MetricCard
           title="Total Value"
@@ -174,7 +174,7 @@ export function AnalyticsHub() {
           value={metrics.artifactsProcessed.toLocaleString()}
           change="+234 this week"
           trend="up"
-          icon={<BarChart3 className="h-6 w-6 text-indigo-600" />}
+          icon={<BarChart3 className="h-6 w-6 text-purple-600" />}
         />
       </div>
 

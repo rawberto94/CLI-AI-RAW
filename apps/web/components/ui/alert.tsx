@@ -3,19 +3,19 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border p-4 [&>svg~*]:pl-7 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground",
+  "relative w-full rounded-xl border p-4 [&>svg~*]:pl-8 [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground shadow-sm",
   {
     variants: {
       variant: {
-        default: "bg-background text-foreground",
+        default: "bg-white border-slate-200 text-slate-900 dark:bg-slate-800 dark:border-slate-700 dark:text-slate-100",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "border-rose-200 bg-rose-50 text-rose-900 dark:bg-rose-950/50 dark:text-rose-100 dark:border-rose-800/50 [&>svg]:text-rose-600 dark:[&>svg]:text-rose-400",
         success:
-          "border-green-500/50 bg-green-50 text-green-900 dark:bg-green-950 dark:text-green-100 dark:border-green-500/30 [&>svg]:text-green-600 dark:[&>svg]:text-green-400",
+          "border-emerald-200 bg-emerald-50 text-emerald-900 dark:bg-emerald-950/50 dark:text-emerald-100 dark:border-emerald-800/50 [&>svg]:text-emerald-600 dark:[&>svg]:text-emerald-400",
         warning:
-          "border-amber-500/50 bg-amber-50 text-amber-900 dark:bg-amber-950 dark:text-amber-100 dark:border-amber-500/30 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400",
+          "border-amber-200 bg-amber-50 text-amber-900 dark:bg-amber-950/50 dark:text-amber-100 dark:border-amber-800/50 [&>svg]:text-amber-600 dark:[&>svg]:text-amber-400",
         info:
-          "border-blue-500/50 bg-blue-50 text-blue-900 dark:bg-blue-950 dark:text-blue-100 dark:border-blue-500/30 [&>svg]:text-blue-600 dark:[&>svg]:text-blue-400",
+          "border-violet-200 bg-violet-50 text-violet-900 dark:bg-violet-950/50 dark:text-violet-100 dark:border-violet-800/50 [&>svg]:text-violet-600 dark:[&>svg]:text-violet-400",
       },
     },
     defaultVariants: {

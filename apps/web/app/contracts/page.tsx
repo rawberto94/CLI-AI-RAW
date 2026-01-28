@@ -67,6 +67,7 @@ import {
   LayoutList,
   Building2,
   ChevronRight,
+  ChevronDown,
   ArrowUp,
   ArrowDown,
   Sparkles,
@@ -193,13 +194,13 @@ const DocumentTypeBadge = memo(function DocumentTypeBadge({ classification, show
     },
     quote: {
       label: 'Quote',
-      bgClass: 'bg-cyan-50',
-      textClass: 'text-cyan-700',
+      bgClass: 'bg-purple-50',
+      textClass: 'text-purple-700',
     },
     proposal: {
       label: 'Proposal',
-      bgClass: 'bg-indigo-50',
-      textClass: 'text-indigo-700',
+      bgClass: 'bg-purple-50',
+      textClass: 'text-purple-700',
     },
     work_order: {
       label: 'Work Order',
@@ -218,13 +219,13 @@ const DocumentTypeBadge = memo(function DocumentTypeBadge({ classification, show
     },
     amendment: {
       label: 'Amendment',
-      bgClass: 'bg-teal-50',
-      textClass: 'text-teal-700',
+      bgClass: 'bg-violet-50',
+      textClass: 'text-violet-700',
     },
     addendum: {
       label: 'Addendum',
-      bgClass: 'bg-emerald-50',
-      textClass: 'text-emerald-700',
+      bgClass: 'bg-violet-50',
+      textClass: 'text-violet-700',
     },
     unknown: {
       label: 'Unknown',
@@ -304,24 +305,24 @@ const AnimatedCounter = memo(function AnimatedCounter({
 const ContractRowSkeleton = memo(function ContractRowSkeleton({ index }: { index: number }) {
   return (
     <div 
-      className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-3.5 items-center border-b border-slate-100/80"
+      className="grid grid-cols-[44px_1fr_140px_140px_140px_120px_130px_110px_50px] gap-4 px-5 py-4 items-center border-b border-slate-100/80 bg-white"
       style={{ animationDelay: `${index * 50}ms` }}
     >
-      <div className="h-4 w-4 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-4 w-4 bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded motion-safe:animate-pulse" />
       <div className="flex items-center gap-3">
-        <div className="h-8 w-8 bg-slate-200 dark:bg-slate-700 rounded-lg motion-safe:animate-pulse" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+        <div className="h-9 w-9 bg-gradient-to-br from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-xl motion-safe:animate-pulse shadow-sm" />
+        <div className="flex-1 space-y-2.5">
+          <div className="h-4 w-3/4 bg-gradient-to-r from-slate-200 to-slate-100 dark:from-slate-700 dark:to-slate-600 rounded-md motion-safe:animate-pulse" />
           <div className="h-3 w-1/4 bg-slate-100 dark:bg-slate-800 rounded motion-safe:animate-pulse" />
         </div>
       </div>
-      <div className="h-5 w-20 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-6 w-20 bg-gradient-to-r from-slate-200 to-slate-100 rounded-md motion-safe:animate-pulse" />
       <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
       <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
       <div className="h-4 w-16 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
       <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
-      <div className="h-5 w-16 bg-slate-200 dark:bg-slate-700 rounded-full motion-safe:animate-pulse" />
-      <div className="h-6 w-6 bg-slate-200 dark:bg-slate-700 rounded motion-safe:animate-pulse" />
+      <div className="h-6 w-16 bg-gradient-to-r from-slate-200 to-slate-100 rounded-full motion-safe:animate-pulse shadow-sm" />
+      <div className="h-7 w-7 bg-slate-100 dark:bg-slate-700 rounded-lg motion-safe:animate-pulse" />
     </div>
   );
 });
@@ -349,37 +350,45 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
       exit={{ opacity: 0, y: -10 }}
       className="mb-4"
     >
-      <Card className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 border-blue-200 shadow-sm hover:shadow-md transition-shadow">
-        <CardContent className="py-4 px-5">
-          <div className="flex items-center gap-3 mb-4">
+      <Card className="bg-gradient-to-r from-violet-50 via-purple-50/80 to-purple-50 border-violet-200/60 shadow-lg shadow-violet-500/10 hover:shadow-xl hover:shadow-violet-500/15 transition-all duration-300 overflow-hidden relative">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-400/10 rounded-full blur-2xl" />
+          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-400/10 rounded-full blur-2xl" />
+        </div>
+        <CardContent className="py-5 px-6 relative">
+          <div className="flex items-center gap-4 mb-5">
             <motion.div 
-              className="relative"
+              className="relative w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30"
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Activity className="h-5 w-5 text-blue-600" />
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-blue-500 shadow-lg"></span>
+              <Activity className="h-6 w-6 text-white" />
+              <span className="absolute -top-1 -right-1 flex h-4 w-4">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-4 w-4 bg-violet-500 shadow-lg border-2 border-white"></span>
               </span>
             </motion.div>
-            <span className="font-medium text-blue-800 text-sm">
-              Processing {processingContracts.length} contract{processingContracts.length > 1 ? 's' : ''}
-            </span>
+            <div>
+              <span className="font-semibold text-violet-900 text-base">
+                Processing {processingContracts.length} contract{processingContracts.length > 1 ? 's' : ''}
+              </span>
+              <p className="text-xs text-violet-600/80 mt-0.5">AI is analyzing your documents...</p>
+            </div>
           </div>
           <div className="space-y-2">
             {processingContracts.slice(0, 3).map((contract) => (
               <div key={contract.id} className="flex items-center gap-3 text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-slate-700 truncate font-medium">{contract.title}</p>
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-violet-600">
                     {contract.processing?.currentStage || 'Initializing...'}
                   </p>
                 </div>
                 <div className="w-24">
-                  <div className="h-1.5 bg-blue-100 rounded-full overflow-hidden shadow-inner">
+                  <div className="h-1.5 bg-violet-100 rounded-full overflow-hidden shadow-inner">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-blue-600 relative"
+                      className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-600 relative"
                       initial={{ width: 0 }}
                       animate={{ width: `${contract.processing?.progress || 0}%` }}
                       transition={{ duration: 0.5, ease: "easeInOut" }}
@@ -387,14 +396,14 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1.5s_infinite]" />
                     </motion.div>
                   </div>
-                  <p className="text-[10px] text-blue-600 text-right mt-0.5">
+                  <p className="text-[10px] text-violet-600 text-right mt-0.5">
                     {contract.processing?.progress || 0}%
                   </p>
                 </div>
               </div>
             ))}
             {processingContracts.length > 3 && (
-              <p className="text-xs text-blue-600 text-center">
+              <p className="text-xs text-violet-600 text-center">
                 +{processingContracts.length - 3} more processing
               </p>
             )}
@@ -457,12 +466,12 @@ const CompactContractRow = memo(function CompactContractRow({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, delay: index * 0.015 }}
-      whileHover={{ scale: 1.002, boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
+      whileHover={{ scale: 1.003, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
       className={cn(
-        "flex items-center gap-2 px-4 py-3 cursor-pointer transition-all duration-200 group border-b border-slate-100",
+        "flex items-center gap-2 px-4 py-3.5 cursor-pointer transition-all duration-200 group border-b border-slate-100/80 relative",
         isSelected 
-          ? "bg-gradient-to-r from-blue-50/80 to-indigo-50/60 hover:from-blue-50 hover:to-indigo-50 shadow-sm" 
-          : "hover:bg-gradient-to-r hover:from-slate-50/90 hover:to-slate-50/50"
+          ? "bg-gradient-to-r from-violet-50/90 via-purple-50/70 to-purple-50/90 shadow-sm ring-1 ring-violet-200/50" 
+          : "hover:bg-gradient-to-r hover:from-slate-50 hover:via-white hover:to-slate-50/80 bg-white"
       )}
       onClick={onView}
       role="link"
@@ -470,6 +479,16 @@ const CompactContractRow = memo(function CompactContractRow({
       aria-label={`View contract ${contract.title || 'Untitled Contract'}`}
       onKeyDown={handleRowKeyDown}
     >
+      {/* Selection indicator line */}
+      {isSelected && (
+        <motion.div
+          layoutId={`selected-indicator-${contract.id}`}
+          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 to-purple-500 rounded-r-full"
+          initial={{ scaleY: 0 }}
+          animate={{ scaleY: 1 }}
+          transition={{ duration: 0.2 }}
+        />
+      )}
       {/* Checkbox */}
       <div
         className="w-10 flex-shrink-0 flex items-center justify-center"
@@ -480,7 +499,7 @@ const CompactContractRow = memo(function CompactContractRow({
           checked={isSelected}
           onCheckedChange={onSelect}
           aria-label={`Select ${contract.title}`}
-          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-blue-600 data-[state=checked]:border-blue-600"
+          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
         />
       </div>
 
@@ -496,19 +515,19 @@ const CompactContractRow = memo(function CompactContractRow({
       >
         <div className="flex items-center gap-2.5">
           <motion.div 
-            className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-blue-50 group-hover:to-indigo-50 transition-all duration-200 shadow-sm group-hover:shadow"
+            className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-violet-50 group-hover:to-purple-50 transition-all duration-200 shadow-sm group-hover:shadow"
             whileHover={{ rotate: 5, scale: 1.1 }}
             transition={{ type: "spring", stiffness: 400, damping: 10 }}
           >
-            <FileText className="h-4 w-4 text-slate-400 group-hover:text-blue-500 transition-colors" />
+            <FileText className="h-4 w-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
           </motion.div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-medium text-slate-700 truncate group-hover:text-blue-600 transition-colors text-sm" title={contract.title}>
+              <p className="font-medium text-slate-700 truncate group-hover:text-violet-600 transition-colors text-sm" title={contract.title}>
                 <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
               </p>
               {isNew && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-600 flex-shrink-0">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-600 flex-shrink-0">
                   New
                 </span>
               )}
@@ -694,12 +713,14 @@ const ContractCard = memo(function ContractCard({
   return (
     <Card 
       className={cn(
-        "group cursor-pointer transition-all duration-300 bg-white/80 backdrop-blur-sm border-white/50 shadow-lg shadow-slate-200/50 hover:shadow-xl hover:shadow-slate-300/50",
-        isSelected && "ring-2 ring-blue-500 border-blue-300 shadow-blue-200/50",
-        isNew && "border-blue-200/50 shadow-blue-100/30"
+        "group cursor-pointer transition-all duration-300 bg-white/90 backdrop-blur-sm border-white/60 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:shadow-slate-300/60 rounded-xl overflow-hidden",
+        isSelected && "ring-2 ring-violet-500 border-violet-300 shadow-violet-200/50",
+        isNew && "border-violet-200/50 shadow-violet-100/30"
       )}
       onClick={onView}
     >
+      {/* Top gradient bar */}
+      <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500" />
       <CardContent className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -708,22 +729,20 @@ const ContractCard = memo(function ContractCard({
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelect}
-                className="mt-0.5"
+                className="mt-0.5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
               />
             </div>
-            <div className="relative p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-sm">
+            <div className="relative p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
               <FileText className="h-5 w-5 text-white" />
+              {isNew && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-violet-500 rounded-full border-2 border-white animate-pulse" />
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                <h3 className="font-semibold text-slate-900 truncate group-hover:text-violet-600 transition-colors">
                   <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
                 </h3>
-                {isNew && (
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 flex-shrink-0 border-blue-200 text-blue-600 bg-blue-50">
-                    New
-                  </Badge>
-                )}
               </div>
               <div className="flex items-center gap-2 mt-0.5">
                 <p className="text-xs text-slate-500">
@@ -751,25 +770,25 @@ const ContractCard = memo(function ContractCard({
         {/* Key Details */}
         <div className="space-y-3 mb-4">
           {contract.parties?.client && (
-            <div className="flex items-center gap-2.5 text-sm">
-              <div className="p-1.5 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-lg border border-cyan-100/50">
-                <Building2 className="h-3.5 w-3.5 text-cyan-600" />
+            <div className="flex items-center gap-3 text-sm p-2.5 bg-slate-50/80 rounded-lg border border-slate-100">
+              <div className="p-2 bg-gradient-to-br from-purple-50 to-purple-50 rounded-lg border border-cyan-100/50 shadow-sm">
+                <Building2 className="h-4 w-4 text-purple-600" />
               </div>
               <span className="text-slate-700 truncate font-medium">{contract.parties.client}</span>
             </div>
           )}
           
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2.5">
-              <div className="p-1.5 bg-gradient-to-br from-emerald-50 to-green-50 rounded-lg border border-emerald-100/50">
-                <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
+            <div className="flex items-center gap-3 p-2.5 bg-violet-50/80 rounded-lg border border-violet-100/50">
+              <div className="p-2 bg-gradient-to-br from-violet-50 to-purple-50 rounded-lg border border-violet-100/50 shadow-sm">
+                <DollarSign className="h-4 w-4 text-violet-600" />
               </div>
-              <span className={contract.value ? "font-bold text-slate-900" : "text-slate-400 italic"}>
+              <span className={contract.value ? "font-bold text-violet-800" : "text-slate-400 italic"}>
                 {formatCurrency(contract.value)}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-2.5 py-1 bg-slate-50 rounded-lg">
-              <Calendar className="h-3.5 w-3.5 text-slate-400" />
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
+              <Calendar className="h-4 w-4 text-slate-400" />
               <span className={cn(
                 "text-sm font-medium",
                 isExpired ? "text-red-600" : 
@@ -785,7 +804,7 @@ const ContractCard = memo(function ContractCard({
         <div className="flex items-center justify-between mb-4">
           {getRiskBadge(contract.riskScore)}
           {contract.status === 'processing' && contract.processing && (
-            <div className="flex items-center gap-2 text-xs text-blue-600">
+            <div className="flex items-center gap-2 text-xs text-violet-600">
               <Loader2 className="h-3 w-3 animate-spin" />
               {contract.processing.progress}%
             </div>
@@ -794,32 +813,32 @@ const ContractCard = memo(function ContractCard({
 
         {/* Quick Actions */}
         <div 
-          className="flex items-center justify-between pt-3 border-t border-slate-100"
+          className="flex items-center justify-between pt-4 border-t border-slate-100"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 hover:text-blue-600 transition-colors" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-all hover:shadow-sm" 
                   onClick={onView}
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>View</TooltipContent>
+              <TooltipContent>View Details</TooltipContent>
             </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-8 w-8 p-0 rounded-lg hover:bg-blue-50 transition-colors" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-purple-50 transition-all hover:shadow-sm" 
                   onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')}
                 >
-                  <Brain className="h-4 w-4 text-blue-600" />
+                  <Brain className="h-4 w-4 text-purple-600" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>AI Analysis</TooltipContent>
@@ -829,7 +848,7 @@ const ContractCard = memo(function ContractCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-8 w-8 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 transition-colors" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 transition-all hover:shadow-sm" 
                   onClick={onShare}
                 >
                   <Share2 className="h-4 w-4" />
@@ -942,7 +961,7 @@ const EXPIRATION_FILTERS = [
   { value: 'expired', label: 'Expired', icon: TimerOff, color: 'text-red-600' },
   { value: 'expiring-7', label: 'Expiring in 7 days', icon: AlertTriangle, color: 'text-amber-600' },
   { value: 'expiring-30', label: 'Expiring in 30 days', icon: CalendarClock, color: 'text-yellow-600' },
-  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-blue-600' },
+  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-violet-600' },
   { value: 'no-expiry', label: 'No Expiration', icon: CircleDot, color: 'text-slate-500' },
 ];
 
@@ -956,13 +975,13 @@ const SIGNATURE_FILTERS = [
 
 // Document type filter options
 const DOCUMENT_TYPE_FILTERS = [
-  { value: 'contract', label: 'Contract', icon: FileText, color: 'text-blue-600' },
+  { value: 'contract', label: 'Contract', icon: FileText, color: 'text-violet-600' },
   { value: 'purchase_order', label: 'Purchase Order', icon: FileText, color: 'text-orange-600' },
   { value: 'invoice', label: 'Invoice', icon: FileText, color: 'text-purple-600' },
-  { value: 'quote', label: 'Quote', icon: FileText, color: 'text-cyan-600' },
-  { value: 'proposal', label: 'Proposal', icon: FileText, color: 'text-indigo-600' },
-  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-teal-600' },
-  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-emerald-600' },
+  { value: 'quote', label: 'Quote', icon: FileText, color: 'text-purple-600' },
+  { value: 'proposal', label: 'Proposal', icon: FileText, color: 'text-purple-600' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-violet-600' },
+  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-violet-600' },
 ];
 
 // Pagination options
@@ -990,7 +1009,7 @@ const QUICK_PRESETS: Array<{
   { id: 'recent-high-risk', label: 'Recent High Risk', icon: Shield, color: 'text-orange-600',
     filters: { createdDays: 30, risk: 'high' } },
   // Pending Approval - Hidden for now, will be enabled in future
-  // { id: 'pending-approval', label: 'Pending Approval', icon: Clock, color: 'text-blue-600',
+  // { id: 'pending-approval', label: 'Pending Approval', icon: Clock, color: 'text-violet-600',
   //   filters: { approval: 'pending' } },
 ];
 
@@ -1141,7 +1160,7 @@ export default function ContractsPage() {
     onNewContract: (count) => {
       setNewContractsCount(prev => prev + count);
       toast.success(`${count} new contract${count > 1 ? 's' : ''} added`, {
-        icon: <Sparkles className="h-4 w-4 text-emerald-500" />,
+        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
         action: {
           label: 'View',
           onClick: () => {
@@ -2242,8 +2261,8 @@ export default function ContractsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      completed: { label: "Active", color: "bg-gradient-to-r from-green-100 to-emerald-100 text-green-700", icon: CheckCircle },
-      processing: { label: "Processing", color: "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700", icon: Loader2 },
+      completed: { label: "Active", color: "bg-gradient-to-r from-violet-100 to-violet-100 text-green-700", icon: CheckCircle },
+      processing: { label: "Processing", color: "bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700", icon: Loader2 },
       failed: { label: "Failed", color: "bg-gradient-to-r from-red-100 to-rose-100 text-red-700", icon: AlertTriangle },
       pending: { label: "Pending", color: "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700", icon: Clock },
     };
@@ -2269,7 +2288,7 @@ export default function ContractsPage() {
 
     if (riskScore < 30) {
       return (
-        <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+        <Badge className="bg-gradient-to-r from-violet-100 to-violet-100 text-green-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
           <Shield className="h-3.5 w-3.5" />
           Low Risk
         </Badge>
@@ -2372,7 +2391,7 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               className="fixed bottom-6 right-6 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-3 border border-slate-200"
             >
-              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
               <span className="text-sm text-slate-600">Loading contracts...</span>
             </motion.div>
           </div>
@@ -2443,23 +2462,31 @@ export default function ContractsPage() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
             >
-              <Card className="bg-slate-800 border-slate-700">
-                <CardContent className="py-3 px-4">
+              <Card className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700/50 shadow-xl shadow-slate-900/20 overflow-hidden">
+                {/* Top highlight line */}
+                <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500" />
+                <CardContent className="py-3.5 px-5">
                   <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div className="flex items-center gap-3">
-                      <Badge className="bg-white text-slate-800 font-semibold px-2.5 py-1">
-                        {selectedContracts.size}
-                      </Badge>
-                      <span className="font-medium text-white text-sm">
-                        contract{selectedContracts.size !== 1 ? 's' : ''} selected
-                      </span>
+                    <div className="flex items-center gap-4">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="flex items-center gap-2"
+                      >
+                        <Badge className="bg-gradient-to-r from-violet-500 to-purple-500 text-white font-bold px-3 py-1.5 text-sm shadow-lg shadow-violet-500/30">
+                          {selectedContracts.size}
+                        </Badge>
+                        <span className="font-medium text-white text-sm">
+                          contract{selectedContracts.size !== 1 ? 's' : ''} selected
+                        </span>
+                      </motion.div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-400 hover:text-white hover:bg-slate-700 h-7"
+                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 h-8 rounded-lg"
                         onClick={() => setSelectedContracts(new Set())}
                       >
-                        <X className="h-3.5 w-3.5 mr-1" />
+                        <X className="h-3.5 w-3.5 mr-1.5" />
                         Clear
                       </Button>
                     </div>
@@ -2500,7 +2527,7 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white border-0 h-8"
+                            className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-8"
                             onClick={() => setAiReportModalOpen(true)}
                             disabled={isProcessingBulk}
                           >
@@ -2515,7 +2542,7 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-indigo-600 hover:bg-indigo-700 text-white border-0 h-8"
+                            className="bg-purple-600 hover:bg-purple-700 text-white border-0 h-8"
                             onClick={handleBulkCategorize}
                             disabled={isProcessingBulk || isBulkCategorizing}
                           >
@@ -2531,7 +2558,7 @@ export default function ContractsPage() {
                           <TooltipTrigger asChild>
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white border-0 h-8"
+                              className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-8"
                               onClick={() => {
                                 const ids = Array.from(selectedContracts);
                                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
@@ -2641,7 +2668,7 @@ export default function ContractsPage() {
             contracts={contracts} 
             onContractComplete={(id) => {
               toast.success('Contract processing completed!', {
-                icon: <CheckCircle className="h-4 w-4 text-emerald-500" />,
+                icon: <CheckCircle className="h-4 w-4 text-violet-500" />,
               });
               refetch();
             }}
@@ -2705,7 +2732,7 @@ export default function ContractsPage() {
               className={cn(
                 "transition-all duration-200 h-8 text-xs font-medium",
                 showVisualBuilder 
-                  ? "bg-blue-600 hover:bg-blue-700 text-white border-blue-600" 
+                  ? "bg-violet-600 hover:bg-violet-700 text-white border-violet-600" 
                   : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
               )}
             >
@@ -2722,7 +2749,7 @@ export default function ContractsPage() {
               className={cn(
                 "transition-all duration-200 h-8 text-xs font-medium",
                 showAdvancedFilters 
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-600" 
+                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
                   : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
               )}
             >
@@ -2734,7 +2761,7 @@ export default function ContractsPage() {
                 filterState.isExpiring !== null) && (
                 <Badge className={cn(
                   "ml-1.5",
-                  showAdvancedFilters ? "bg-white text-indigo-600" : "bg-indigo-600 text-white"
+                  showAdvancedFilters ? "bg-white text-purple-600" : "bg-purple-600 text-white"
                 )} variant="secondary">
                   {filterState.statuses.length + filterState.documentRoles.length + 
                    filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
@@ -2745,36 +2772,40 @@ export default function ContractsPage() {
         </div>
 
         {/* View Mode Toggle, Sort & Results Count */}
-        <div className="flex items-center justify-between flex-wrap gap-3">
+        <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-3">
-            <span className="text-sm text-slate-600 font-medium">
-              <span className="font-bold text-slate-900 tabular-nums text-base">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-xl border border-slate-200/60">
+              <span className="text-2xl font-bold text-slate-900 tabular-nums">
                 <AnimatedCounter value={contractsData?.total ?? 0} />
               </span>
-              {' '}<span className="text-slate-500">contracts</span>
+              <span className="text-sm text-slate-500 font-medium">contracts</span>
               {hasActiveFilters && (
-                <span className="text-slate-400 ml-1">(filtered)</span>
+                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-violet-100 text-violet-700 border-0 font-semibold">
+                  filtered
+                </Badge>
               )}
-            </span>
+            </div>
           </div>
 
           {/* Right side controls */}
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-3">
             {/* Sort */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button 
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow-md bg-white"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <motion.div
-                    animate={{ rotate: sortDirection === 'asc' ? 0 : 180 }}
-                    transition={{ duration: 0.3, ease: "easeInOut" }}
-                  >
-                    <ArrowUp className="h-3.5 w-3.5 text-slate-500" />
-                  </motion.div>
-                  <span className="text-slate-600 font-medium">
+                  <div className="p-1 rounded-md bg-slate-100">
+                    <motion.div
+                      animate={{ rotate: sortDirection === 'asc' ? 0 : 180 }}
+                      transition={{ duration: 0.3, ease: "easeInOut" }}
+                    >
+                      <ArrowUp className="h-3 w-3 text-slate-600" />
+                    </motion.div>
+                  </div>
+                  <span className="text-slate-700 font-semibold">
                     {{
                       createdAt: 'Date',
                       title: 'Name',
@@ -2782,9 +2813,10 @@ export default function ContractsPage() {
                       expirationDate: 'Expires',
                     }[sortField as string] || 'Sort'}
                   </span>
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </motion.button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuContent align="end" className="w-44 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200 p-1">
                 {[
                   { field: 'createdAt' as SortField, label: 'Date Created' },
                   { field: 'title' as SortField, label: 'Name' },
@@ -2801,10 +2833,15 @@ export default function ContractsPage() {
                         setSortDirection('desc');
                       }
                     }}
-                    className={cn("text-sm", sortField === option.field && "bg-slate-100")}
+                    className={cn(
+                      "text-sm rounded-lg cursor-pointer transition-colors",
+                      sortField === option.field && "bg-gradient-to-r from-slate-100 to-slate-50 font-medium"
+                    )}
                   >
                     {sortField === option.field && (
-                      sortDirection === 'asc' ? <ArrowUp className="h-3.5 w-3.5 mr-2 text-blue-600" /> : <ArrowDown className="h-3.5 w-3.5 mr-2 text-blue-600" />
+                      sortDirection === 'asc' 
+                        ? <ArrowUp className="h-3.5 w-3.5 mr-2 text-violet-600" /> 
+                        : <ArrowDown className="h-3.5 w-3.5 mr-2 text-violet-600" />
                     )}
                     {option.label}
                   </DropdownMenuItem>
@@ -2813,7 +2850,7 @@ export default function ContractsPage() {
             </DropdownMenu>
 
             {/* View Mode */}
-            <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-lg overflow-hidden shadow-sm bg-white">
+            <div data-tour="view-modes" className="flex items-center border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
               {[
                 { mode: 'compact' as const, icon: LayoutList, label: 'List' },
                 { mode: 'cards' as const, icon: LayoutGrid, label: 'Cards' },
@@ -2825,24 +2862,24 @@ export default function ContractsPage() {
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
                       className={cn(
-                        "h-8 w-10 flex items-center justify-center transition-all duration-200 relative",
+                        "h-9 w-11 flex items-center justify-center transition-all duration-300 relative",
                         idx > 0 && "border-l border-slate-200",
                         viewMode === view.mode 
-                          ? "bg-gradient-to-r from-slate-900 to-slate-800 text-white shadow-lg" 
+                          ? "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20" 
                           : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                       )}
                     >
                       {viewMode === view.mode && (
                         <motion.div
                           layoutId="activeView"
-                          className="absolute inset-0 bg-gradient-to-r from-slate-900 to-slate-800"
+                          className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"
                           transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                         />
                       )}
                       <view.icon className="h-4 w-4 relative z-10" />
                     </motion.button>
                   </TooltipTrigger>
-                  <TooltipContent>{view.label} view</TooltipContent>
+                  <TooltipContent className="bg-slate-900 text-white border-0">{view.label} view</TooltipContent>
                 </Tooltip>
               ))}
             </div>
@@ -2851,20 +2888,22 @@ export default function ContractsPage() {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <motion.button 
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-600 shadow-sm hover:shadow font-medium"
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-700 shadow-sm hover:shadow-md font-semibold bg-white"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <Download className="h-3.5 w-3.5" />
+                  <div className="p-1 rounded-md bg-slate-100">
+                    <Download className="h-3 w-3 text-slate-600" />
+                  </div>
                   <span className="hidden sm:inline">Export</span>
                 </motion.button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => handleExportFiltered('csv')} className="text-sm">
-                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> CSV
+              <DropdownMenuContent align="end" className="w-44 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200 p-1">
+                <DropdownMenuItem onClick={() => handleExportFiltered('csv')} className="text-sm rounded-lg cursor-pointer">
+                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> Export as CSV
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExportFiltered('json')} className="text-sm">
-                  <FileDown className="h-4 w-4 mr-2 text-blue-600" /> JSON
+                <DropdownMenuItem onClick={() => handleExportFiltered('json')} className="text-sm rounded-lg cursor-pointer">
+                  <FileDown className="h-4 w-4 mr-2 text-violet-600" /> Export as JSON
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -2903,7 +2942,7 @@ export default function ContractsPage() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-blue-100 text-blue-700 rounded-md"
+                    className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-100 text-violet-700 rounded-md"
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
                     <span className="text-xs font-semibold">{selectedContracts.size} selected</span>
@@ -2996,29 +3035,51 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-lg">
+              <Card className="overflow-hidden bg-white border-slate-200/80 shadow-lg shadow-slate-200/50 rounded-xl hover:shadow-xl transition-shadow duration-300">
                 {/* Table Header */}
-                <div className="flex items-center gap-2 px-4 py-3 bg-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                <div className="flex items-center gap-2 px-4 py-3.5 bg-gradient-to-r from-slate-50 via-slate-100/50 to-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10 shadow-sm">
                   <div className="w-10 flex-shrink-0 flex items-center justify-center">
-                    <Checkbox
-                      checked={allVisibleSelected && paginatedContracts.length > 0}
-                      onCheckedChange={() => {
-                        const visibleIds = paginatedContracts.map(c => c.id);
-                        setSelectedContracts(prev => {
-                          if (allVisibleSelected) return new Set();
-                          return new Set(visibleIds);
-                        });
-                      }}
-                      aria-label="Select all on this page"
-                      className="border-slate-300 h-4 w-4"
-                    />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div>
+                          <Checkbox
+                            checked={allVisibleSelected && paginatedContracts.length > 0}
+                            onCheckedChange={() => {
+                              const visibleIds = paginatedContracts.map(c => c.id);
+                              setSelectedContracts(prev => {
+                                if (allVisibleSelected) return new Set();
+                                return new Set(visibleIds);
+                              });
+                            }}
+                            aria-label="Select all on this page"
+                            className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                          />
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>Select all on this page</TooltipContent>
+                    </Tooltip>
                   </div>
-                  <div className="flex-1 min-w-[200px]">Contract</div>
-                  <div className="hidden lg:block w-[100px]">Category</div>
+                  <div className="flex-1 min-w-[200px] flex items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-slate-400" />
+                    Contract
+                  </div>
+                  <div className="hidden lg:block w-[100px] flex items-center gap-1.5">
+                    <Tag className="h-3.5 w-3.5 text-slate-400" />
+                    Category
+                  </div>
                   <div className="hidden lg:block w-[80px]">Type</div>
-                  <div className="hidden md:block w-[120px]">Party</div>
-                  <div className="hidden lg:block w-[90px] text-right">Value</div>
-                  <div className="hidden md:block w-[90px]">Expires</div>
+                  <div className="hidden md:block w-[120px] flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-slate-400" />
+                    Party
+                  </div>
+                  <div className="hidden lg:block w-[90px] text-right flex items-center justify-end gap-1.5">
+                    <DollarSign className="h-3.5 w-3.5 text-slate-400" />
+                    Value
+                  </div>
+                  <div className="hidden md:block w-[90px] flex items-center gap-1.5">
+                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
+                    Expires
+                  </div>
                   <div className="hidden lg:block w-[70px]">Signed</div>
                   <div className="w-[90px]">Status</div>
                   <div className="w-10 flex-shrink-0"></div>
@@ -3050,7 +3111,7 @@ export default function ContractsPage() {
             /* ============ ENHANCED CARD VIEW ============ */
             <motion.div 
               key="card-list"
-              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" 
+              className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6" 
               data-testid="contracts-list"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -3062,10 +3123,11 @@ export default function ContractsPage() {
                 return (
                 <motion.div
                   key={contract.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileHover={{ y: -4 }}
+                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  transition={{ duration: 0.3, delay: index * 0.04 }}
+                  whileHover={{ y: -6, scale: 1.01 }}
+                  className="transform-gpu"
                 >
                   <EnhancedContractCard
                     contract={contract}
@@ -3113,31 +3175,32 @@ export default function ContractsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-white border-slate-200 shadow-sm">
-              <CardContent className="py-3 px-4">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+            <Card className="bg-white/90 backdrop-blur-sm border-slate-200/80 shadow-lg shadow-slate-200/40 rounded-xl">
+              <CardContent className="py-4 px-5">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                   {/* Page Size Selector */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-500">Show</span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-slate-500 font-medium">Show</span>
                     <select
                       value={pageSize}
                       onChange={(e) => {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-2.5 py-1.5 text-sm border border-slate-200 rounded-md bg-white text-slate-900 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 cursor-pointer hover:border-slate-300"
+                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 cursor-pointer hover:border-slate-300 transition-colors shadow-sm"
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
-                        <option key={size} value={size}>{size}</option>
+                        <option key={size} value={size}>{size} per page</option>
                       ))}
                     </select>
                   </div>
                   
                   {/* Page Info */}
-                  <div className="text-sm text-slate-600">
-                    <span className="font-medium">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
-                    <span className="text-slate-400"> of </span>
-                    <span className="font-medium">{contractsData?.total ?? 0}</span>
+                  <div className="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
+                    <span className="font-semibold text-slate-800">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
+                    <span className="text-slate-400 mx-1"> of </span>
+                    <span className="font-semibold text-slate-800">{contractsData?.total ?? 0}</span>
+                    <span className="text-slate-400"> contracts</span>
                   </div>
                   
                   {/* Page Navigation */}
@@ -3179,7 +3242,7 @@ export default function ContractsPage() {
                             className={cn(
                               "min-w-[32px] h-8 text-sm font-medium rounded-md transition-colors",
                               currentPage === pageNum
-                                ? 'bg-blue-600 text-white'
+                                ? 'bg-violet-600 text-white'
                                 : 'border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700'
                             )}
                           >

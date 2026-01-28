@@ -120,7 +120,7 @@ const getSeverityColor = (severity: 'low' | 'medium' | 'high') => {
   switch (severity) {
     case 'high': return 'text-red-600 bg-red-100 dark:text-red-400 dark:bg-red-900/30'
     case 'medium': return 'text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30'
-    case 'low': return 'text-blue-600 bg-blue-100 dark:text-blue-400 dark:bg-blue-900/30'
+    case 'low': return 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/30'
   }
 }
 
@@ -447,7 +447,7 @@ export function ContractFamilyHealth({
             {suggestedParents.slice(0, 2).map((parent) => (
               <div 
                 key={parent.id}
-                className="flex items-center justify-between p-2 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800"
+                className="flex items-center justify-between p-2 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800"
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{parent.title}</p>
@@ -589,7 +589,7 @@ function FamilyHealthDetails({ data, contractId, onLinkSuggestion }: FamilyHealt
             {suggestedParents.map((parent) => (
               <div 
                 key={parent.id}
-                className="flex items-center justify-between p-3 rounded-lg border bg-blue-50/50 dark:bg-blue-900/10"
+                className="flex items-center justify-between p-3 rounded-lg border bg-violet-50/50 dark:bg-violet-900/10"
               >
                 <div className="flex-1">
                   <p className="text-sm font-medium">{parent.title}</p>

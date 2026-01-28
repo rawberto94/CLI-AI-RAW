@@ -36,6 +36,7 @@ import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 import { ComprehensiveAIAnalysis } from '@/components/artifacts/ComprehensiveAIAnalysis'
+import { ContractAIAnalyst } from '@/components/contracts/ContractAIAnalyst'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { useWebSocket } from '@/contexts/websocket-context'
 import { useCrossModuleInvalidation } from '@/hooks/use-queries'
@@ -293,7 +294,7 @@ export default function ContractDetailPage() {
           case '1': setTab('overview'); break
           case '2': setTab('details'); break
           case '3': setTab('activity'); break
-          case '4': setTab('ai'); break
+          case '4': case 'a': case 'A': setTab('ai'); break
           case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
           case 'e': case 'E': if (!isEditing) setIsEditing(true); break
           case 'f': case 'F': setIsFavorite(prev => !prev); break
@@ -645,7 +646,7 @@ export default function ContractDetailPage() {
                 <p className="text-sm text-slate-600 mb-6 max-w-[280px] mx-auto">{error}</p>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                   {!isNotFound && (
-                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-600">
+                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-purple-500 to-purple-600">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Retry
                     </Button>
@@ -668,7 +669,7 @@ export default function ContractDetailPage() {
   // ============ LOADING STATE ============
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4 mb-6 sm:mb-8">
             <div className="h-8 w-20 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
@@ -693,7 +694,7 @@ export default function ContractDetailPage() {
 
   // ============ MAIN RENDER ============
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 print-container">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 print-container">
       {/* Skip to main content link for accessibility */}
       <SkipToContent targetId="main-content" />
       
@@ -763,9 +764,9 @@ export default function ContractDetailPage() {
             {/* Resize Handle */}
             <div
               className={cn(
-                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-blue-500 transition-colors flex-shrink-0",
+                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-violet-500 transition-colors flex-shrink-0",
                 "flex items-center justify-center group",
-                isResizingPanel && "bg-blue-500"
+                isResizingPanel && "bg-violet-500"
               )}
               role="separator"
               tabIndex={0}
@@ -808,13 +809,13 @@ export default function ContractDetailPage() {
                   exit={{ opacity: 0, y: -10 }}
                   className="mb-4 sm:mb-6"
                 >
-                  <Card className="border-blue-200 bg-blue-50/50">
+                  <Card className="border-violet-200 bg-violet-50/50">
                     <CardContent className="py-3 sm:py-4">
                       <div className="flex items-center gap-3">
-                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 animate-spin" />
+                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600 animate-spin" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-blue-900 text-sm sm:text-base">Processing Contract</p>
-                          <p className="text-xs sm:text-sm text-blue-700 truncate">
+                          <p className="font-medium text-violet-900 text-sm sm:text-base">Processing Contract</p>
+                          <p className="text-xs sm:text-sm text-violet-700 truncate">
                             {contract?.processing?.currentStage || 'Generating artifacts...'} ({contract?.processing?.progress || 0}%)
                           </p>
                         </div>
@@ -972,6 +973,25 @@ export default function ContractDetailPage() {
                 
                 <div className="flex-1" />
                 
+                {/* Ask AI Quick Button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTab('ai')}
+                        aria-label="Ask AI about this contract"
+                        className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1.5" />
+                        <span className="text-xs font-medium hidden sm:inline">Ask AI</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ask AI about this contract (press A)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
                 {/* Copy link */}
                 <TooltipProvider>
                   <Tooltip>
@@ -996,20 +1016,20 @@ export default function ContractDetailPage() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <Tabs value={activeTab} onValueChange={setTab} className="space-y-4 sm:space-y-6">
                 <div className="sticky top-0 z-20 bg-gradient-to-b from-slate-50 via-slate-50/95 to-transparent pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                  <TabsList className="w-full bg-white rounded-lg border border-slate-200 p-1 h-auto grid grid-cols-2 sm:flex gap-1 shadow-sm">
-                    <TabsTrigger value="overview" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                  <TabsList className="w-full bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-1.5 h-auto grid grid-cols-2 sm:flex gap-1.5 shadow-lg shadow-slate-200/50">
+                    <TabsTrigger value="overview" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Summary
                     </TabsTrigger>
-                    <TabsTrigger value="details" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="details" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Details
                     </TabsTrigger>
-                    <TabsTrigger value="ai" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="ai" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/20 rounded-lg justify-center transition-all duration-200 hover:bg-violet-50">
                       <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       AI
                     </TabsTrigger>
-                    <TabsTrigger value="activity" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="activity" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <History className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Activity
                     </TabsTrigger>
@@ -1056,6 +1076,31 @@ export default function ContractDetailPage() {
 
                 {/* AI Tab */}
                 <TabsContent value="ai" className="space-y-4 sm:space-y-6">
+                  {/* Interactive AI Analyst - Always show this */}
+                  <ContractAIAnalyst
+                    contract={{
+                      id: params.id as string,
+                      name: contract?.filename || contract?.document_title || 'Contract',
+                      supplierName: contract?.supplierName || metadata.external_parties?.[0]?.legalName,
+                      contractType: contract?.category?.name || contract?.contractType || undefined,
+                      totalValue: typeof contract?.totalValue === 'number' ? contract.totalValue : undefined,
+                      startDate: metadata.start_date || undefined,
+                      endDate: metadata.end_date || undefined,
+                      status: contract?.status,
+                      extractedText: contract?.rawText || undefined,
+                      metadata: {
+                        jurisdiction: metadata.jurisdiction,
+                        language: metadata.contract_language,
+                        noticePeriod: metadata.notice_period,
+                        parties: metadata.external_parties,
+                        paymentType: metadata.payment_type,
+                        currency: metadata.currency,
+                      },
+                    }}
+                    defaultExpanded={!contract?.extractedData}
+                    className="mb-6"
+                  />
+
                   {contract?.extractedData ? (
                     <ComprehensiveAIAnalysis
                       artifacts={contract.extractedData}
@@ -1236,7 +1281,7 @@ export default function ContractDetailPage() {
                   <Card className="border-slate-200">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-blue-500" />
+                        <Activity className="h-4 w-4 text-violet-500" />
                         Recent Activity
                       </CardTitle>
                     </CardHeader>

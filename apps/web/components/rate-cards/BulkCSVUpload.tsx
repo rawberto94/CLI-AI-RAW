@@ -293,9 +293,9 @@ export function BulkCSVUpload({ onSuccess, tenantId = 'demo' }: BulkCSVUploadPro
             <div className="space-y-4">
               {/* Summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <p className="text-xs text-blue-600 font-medium">Total Rows</p>
-                  <p className="text-2xl font-bold text-blue-900">{result.summary.total}</p>
+                <div className="bg-violet-50 p-4 rounded-lg">
+                  <p className="text-xs text-violet-600 font-medium">Total Rows</p>
+                  <p className="text-2xl font-bold text-violet-900">{result.summary.total}</p>
                 </div>
                 <div className="bg-green-50 p-4 rounded-lg">
                   <p className="text-xs text-green-600 font-medium">Valid</p>

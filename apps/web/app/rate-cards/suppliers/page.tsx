@@ -11,12 +11,12 @@ export const metadata: Metadata = {
 
 export default function SuppliersPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-emerald-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-violet-50/20">
       <div className="container mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
         
         <div className="flex items-center gap-4">
-          <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg shadow-green-500/25">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-green-500/25">
             <Users className="w-7 h-7 text-white" />
           </div>
           <div>

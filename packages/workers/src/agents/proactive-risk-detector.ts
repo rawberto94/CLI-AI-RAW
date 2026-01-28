@@ -1,5 +1,6 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
+import { WorkflowAutoStartService, getWorkflowAutoStartService } from '@contigo/data-orchestration/services/workflow-auto-start.service';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();
@@ -88,6 +89,16 @@ export class ProactiveRiskDetector {
 
     // Store risks in database
     await this.storeRisks(contractId, tenantId, risks);
+
+    // ENHANCED: Trigger workflow escalation if needed
+    if (escalationNeeded) {
+      await this.triggerRiskEscalationWorkflow(contractId, tenantId, {
+        overallRiskScore,
+        criticalCount,
+        highCount,
+        risks: risks.filter(r => r.severity === RiskSeverity.CRITICAL || r.severity === RiskSeverity.HIGH),
+      });
+    }
 
     logger.info({
       contractId,
@@ -484,6 +495,111 @@ export class ProactiveRiskDetector {
     };
 
     return impacts[clause] || 'May create legal or financial risk';
+  }
+
+  /**
+   * ENHANCED: Trigger risk escalation workflow for high-risk contracts
+   * Integrates with WorkflowAutoStartService for automated workflow creation
+   */
+  private async triggerRiskEscalationWorkflow(
+    contractId: string,
+    tenantId: string,
+    riskSummary: {
+      overallRiskScore: number;
+      criticalCount: number;
+      highCount: number;
+      risks: DetectedRisk[];
+    }
+  ): Promise<void> {
+    try {
+      logger.info({ contractId, riskScore: riskSummary.overallRiskScore }, '🚨 Triggering risk escalation workflow');
+
+      const workflowAutoStartService = getWorkflowAutoStartService();
+
+      // Get contract details for workflow creation
+      const contract = await prisma.contract.findUnique({
+        where: { id: contractId },
+        select: {
+          name: true,
+          type: true,
+          totalValue: true,
+          counterparty: true,
+        },
+      });
+
+      if (!contract) {
+        logger.warn({ contractId }, 'Contract not found for escalation workflow');
+        return;
+      }
+
+      // Trigger the workflow using auto-start service with high-risk context
+      const triggeredWorkflows = await workflowAutoStartService.evaluateAndTrigger({
+        contractId,
+        tenantId,
+        contractType: 'risk_escalation', // Force risk escalation template
+        totalValue: contract.totalValue || 0,
+        metadata: {
+          counterparty: contract.counterparty || 'Unknown',
+          riskScore: riskSummary.overallRiskScore,
+          criticalRisks: riskSummary.criticalCount,
+          highRisks: riskSummary.highCount,
+          triggerSource: 'ProactiveRiskDetector',
+          riskDetails: riskSummary.risks.map(r => ({
+            type: r.type,
+            severity: r.severity,
+            title: r.title,
+            impact: r.impact,
+          })),
+        },
+      });
+
+      if (triggeredWorkflows.length > 0) {
+        logger.info({
+          contractId,
+          workflowIds: triggeredWorkflows.map(w => w.workflowId),
+        }, '✅ Risk escalation workflow triggered successfully');
+
+        // Store workflow trigger event
+        await prisma.activity.create({
+          data: {
+            type: 'workflow_triggered' as any,
+            description: `Risk escalation workflow triggered - Score: ${riskSummary.overallRiskScore}, Critical: ${riskSummary.criticalCount}, High: ${riskSummary.highCount}`,
+            contractId,
+            tenantId,
+            metadata: {
+              triggeredBy: 'ProactiveRiskDetector',
+              workflowIds: triggeredWorkflows.map(w => w.workflowId),
+              riskSummary,
+            },
+          },
+        });
+      } else {
+        // Fallback: Create a manual notification if auto-start doesn't trigger
+        logger.info({ contractId }, 'No auto-start rule matched, creating manual escalation notification');
+
+        await prisma.notification.create({
+          data: {
+            tenantId,
+            type: 'risk_escalation' as any,
+            title: 'High-Risk Contract Requires Attention',
+            message: `Contract "${contract.name}" has a risk score of ${riskSummary.overallRiskScore}/100 with ${riskSummary.criticalCount} critical risks. Immediate review recommended.`,
+            priority: 'critical' as any,
+            metadata: {
+              contractId,
+              riskScore: riskSummary.overallRiskScore,
+              criticalCount: riskSummary.criticalCount,
+              risks: riskSummary.risks.slice(0, 5), // Top 5 risks
+            },
+          },
+        });
+      }
+    } catch (error) {
+      logger.error({ 
+        error: error instanceof Error ? error.message : String(error),
+        contractId,
+      }, 'Failed to trigger risk escalation workflow');
+      // Don't rethrow - this is a best-effort notification
+    }
   }
 
   /**

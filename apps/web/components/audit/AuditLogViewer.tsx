@@ -58,7 +58,7 @@ interface AuditLogViewerProps {
 }
 
 const categoryConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-  user: { icon: User, color: 'text-blue-600 bg-blue-100', label: 'User' },
+  user: { icon: User, color: 'text-violet-600 bg-violet-100', label: 'User' },
   contract: { icon: FileText, color: 'text-green-600 bg-green-100', label: 'Contract' },
   system: { icon: Settings, color: 'text-slate-600 bg-slate-100', label: 'System' },
   security: { icon: Shield, color: 'text-red-600 bg-red-100', label: 'Security' },
@@ -168,7 +168,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-blue-600" />
+              <ClipboardList className="h-5 w-5 text-violet-600" />
               Audit Log
             </CardTitle>
             <CardDescription>
@@ -275,8 +275,8 @@ export const AuditLogViewer = memo(function AuditLogViewer({
             </p>
             <p className="text-xs text-slate-500">Failed</p>
           </div>
-          <div className="px-3 py-2.5 rounded-lg bg-blue-50 text-center">
-            <p className="text-2xl font-bold text-blue-600">
+          <div className="px-3 py-2.5 rounded-lg bg-violet-50 text-center">
+            <p className="text-2xl font-bold text-violet-600">
               {new Set(logs.map(l => l.actor.id)).size}
             </p>
             <p className="text-xs text-slate-500">Unique Actors</p>
@@ -286,7 +286,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
         {/* Log Entries */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-5 w-5 animate-spin text-violet-600 mr-2" />
             <span>Loading audit logs...</span>
           </div>
         ) : filteredLogs.length === 0 ? (
@@ -309,7 +309,7 @@ export const AuditLogViewer = memo(function AuditLogViewer({
                     <Collapsible key={log.id} open={isExpanded} onOpenChange={() => toggleExpand(log.id)}>
                       <div className={cn(
                         'border rounded-lg transition-colors',
-                        isExpanded ? 'border-blue-200' : 'hover:bg-slate-50'
+                        isExpanded ? 'border-violet-200' : 'hover:bg-slate-50'
                       )}>
                         <CollapsibleTrigger className="w-full px-3 py-3.5 flex items-center gap-3 text-left">
                           <div className={cn('p-2 rounded-lg', catConfig!.color)}>

@@ -24,7 +24,7 @@ export default function BenchmarkCompareLoading() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-2xl"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-2xl"
           >
             <Scale className="w-10 h-10 text-white" />
           </motion.div>
@@ -47,14 +47,14 @@ export default function BenchmarkCompareLoading() {
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: delay * 0.15, duration: 0.3 }}
-                  className="absolute w-8 h-8 rounded-lg bg-white shadow-lg flex items-center justify-center border border-blue-100"
+                  className="absolute w-8 h-8 rounded-lg bg-white shadow-lg flex items-center justify-center border border-violet-100"
                   style={{
                     left: '50%',
                     top: '50%',
                     transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-cyan-600" />
+                  <Icon className="w-4 h-4 text-purple-600" />
                 </motion.div>
               );
             })}
@@ -68,7 +68,7 @@ export default function BenchmarkCompareLoading() {
           transition={{ delay: 0.3 }}
           className="mt-12 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Benchmark Comparison
           </h2>
           <p className="mt-2 text-sm text-slate-500 flex items-center gap-1">

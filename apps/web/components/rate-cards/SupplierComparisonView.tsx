@@ -113,7 +113,7 @@ export function SupplierComparisonView({
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
     );
   }
@@ -549,14 +549,14 @@ export function SupplierComparisonView({
               .map((supplier) => (
                 <div
                   key={supplier.supplierId}
-                  className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg"
+                  className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg"
                 >
-                  <Star className="h-5 w-5 text-blue-600 mt-0.5" />
+                  <Star className="h-5 w-5 text-violet-600 mt-0.5" />
                   <div>
-                    <p className="font-medium text-blue-900">
+                    <p className="font-medium text-violet-900">
                       Most Competitive: {supplier.supplierName}
                     </p>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-violet-700">
                       Highest competitiveness score of{' '}
                       {supplier.competitivenessScore.toFixed(0)}% with strong
                       market positioning

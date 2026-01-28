@@ -83,7 +83,7 @@ export default function SupplierAnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-green-50/30 to-violet-50/20">
       <div className="container mx-auto py-8 space-y-6">
         <Breadcrumbs />
         {/* Header */}
@@ -94,7 +94,7 @@ export default function SupplierAnalyticsPage() {
         >
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-green-500 to-teal-600 rounded-xl shadow-lg shadow-green-500/25">
+              <div className="p-2.5 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-green-500/25">
                 <Users className="w-7 h-7 text-white" />
               </div>
               Supplier Analytics
@@ -216,19 +216,22 @@ export default function SupplierAnalyticsPage() {
         <>
           {/* Performance Overview */}
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="group relative overflow-hidden bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl hover:shadow-violet-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
                 <CardTitle className="text-sm font-medium">Delivery Score</CardTitle>
-                <Clock className="h-4 w-4 text-muted-foreground" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Clock className="h-4 w-4" />
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="text-2xl font-bold">{data.performance.deliveryScore}%</div>
                 <div className="flex items-center mt-2">
-                  <div className={`h-2 bg-muted rounded-full flex-1 overflow-hidden`}>
+                  <div className={`h-2 bg-slate-100 rounded-full flex-1 overflow-hidden`}>
                     <div 
                       className={`h-full ${
-                        data.performance.deliveryScore >= 80 ? 'bg-green-500' :
-                        data.performance.deliveryScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                        data.performance.deliveryScore >= 80 ? 'bg-gradient-to-r from-violet-400 to-violet-500' :
+                        data.performance.deliveryScore >= 60 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-gradient-to-r from-red-400 to-rose-500'
                       }`}
                       style={{ width: `${data.performance.deliveryScore}%` }}
                     />
@@ -237,19 +240,22 @@ export default function SupplierAnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="group relative overflow-hidden bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl hover:shadow-amber-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
                 <CardTitle className="text-sm font-medium">Quality Score</CardTitle>
-                <Star className="h-4 w-4 text-muted-foreground" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Star className="h-4 w-4" />
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="text-2xl font-bold">{data.performance.qualityScore}%</div>
                 <div className="flex items-center mt-2">
-                  <div className={`h-2 bg-muted rounded-full flex-1 overflow-hidden`}>
+                  <div className={`h-2 bg-slate-100 rounded-full flex-1 overflow-hidden`}>
                     <div 
                       className={`h-full ${
-                        data.performance.qualityScore >= 80 ? 'bg-green-500' :
-                        data.performance.qualityScore >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                        data.performance.qualityScore >= 80 ? 'bg-gradient-to-r from-violet-400 to-violet-500' :
+                        data.performance.qualityScore >= 60 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-gradient-to-r from-red-400 to-rose-500'
                       }`}
                       style={{ width: `${data.performance.qualityScore}%` }}
                     />
@@ -258,19 +264,22 @@ export default function SupplierAnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="group relative overflow-hidden bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl hover:shadow-green-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
                 <CardTitle className="text-sm font-medium">Cost Efficiency</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <DollarSign className="h-4 w-4" />
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="text-2xl font-bold">{data.performance.costEfficiency}%</div>
                 <div className="flex items-center mt-2">
-                  <div className={`h-2 bg-muted rounded-full flex-1 overflow-hidden`}>
+                  <div className={`h-2 bg-slate-100 rounded-full flex-1 overflow-hidden`}>
                     <div 
                       className={`h-full ${
-                        data.performance.costEfficiency >= 80 ? 'bg-green-500' :
-                        data.performance.costEfficiency >= 60 ? 'bg-yellow-500' : 'bg-red-500'
+                        data.performance.costEfficiency >= 80 ? 'bg-gradient-to-r from-violet-400 to-violet-500' :
+                        data.performance.costEfficiency >= 60 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-gradient-to-r from-red-400 to-rose-500'
                       }`}
                       style={{ width: `${data.performance.costEfficiency}%` }}
                     />
@@ -279,19 +288,22 @@ export default function SupplierAnalyticsPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <Card className="group relative overflow-hidden bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl hover:shadow-rose-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
                 <CardTitle className="text-sm font-medium">Risk Score</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-rose-400 to-red-600 text-white shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <AlertCircle className="h-4 w-4" />
+                </div>
               </CardHeader>
-              <CardContent>
+              <CardContent className="relative">
                 <div className="text-2xl font-bold">{data.performance.riskScore}%</div>
                 <div className="flex items-center mt-2">
-                  <div className={`h-2 bg-muted rounded-full flex-1 overflow-hidden`}>
+                  <div className={`h-2 bg-slate-100 rounded-full flex-1 overflow-hidden`}>
                     <div 
                       className={`h-full ${
-                        data.performance.riskScore <= 20 ? 'bg-green-500' :
-                        data.performance.riskScore <= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                        data.performance.riskScore <= 20 ? 'bg-gradient-to-r from-violet-400 to-violet-500' :
+                        data.performance.riskScore <= 50 ? 'bg-gradient-to-r from-yellow-400 to-amber-500' : 'bg-gradient-to-r from-red-400 to-rose-500'
                       }`}
                       style={{ width: `${data.performance.riskScore}%` }}
                     />

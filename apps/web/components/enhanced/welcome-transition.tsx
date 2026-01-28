@@ -45,7 +45,7 @@ const CyberGrid = React.memo(function CyberGrid() {
 
       {/* Animated scan line */}
       <motion.div
-        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent"
+        className="absolute left-0 right-0 h-px bg-gradient-to-r from-transparent via-purple-400 to-transparent"
         initial={{ top: "0%" }}
         animate={{ top: "100%" }}
         transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
@@ -58,9 +58,9 @@ const CyberGrid = React.memo(function CyberGrid() {
 const GlowingOrbs = React.memo(function GlowingOrbs() {
   const orbs = useMemo(() => [
     { size: 300, color: "from-violet-600/30 to-purple-600/30", delay: 0, duration: 8, x: "20%", y: "20%" },
-    { size: 250, color: "from-cyan-500/30 to-blue-500/30", delay: 1, duration: 10, x: "70%", y: "30%" },
+    { size: 250, color: "from-purple-500/30 to-purple-500/30", delay: 1, duration: 10, x: "70%", y: "30%" },
     { size: 200, color: "from-fuchsia-500/30 to-pink-500/30", delay: 2, duration: 12, x: "40%", y: "70%" },
-    { size: 180, color: "from-emerald-500/20 to-teal-500/20", delay: 0.5, duration: 9, x: "80%", y: "80%" },
+    { size: 180, color: "from-violet-500/20 to-violet-500/20", delay: 0.5, duration: 9, x: "80%", y: "80%" },
   ], []);
 
   return (
@@ -212,8 +212,8 @@ const logoVariants: Variants = {
 };
 
 const features = [
-  { icon: Shield, label: "Secure Access", color: "from-green-400 to-emerald-500" },
-  { icon: BarChart3, label: "Analytics Ready", color: "from-blue-400 to-cyan-500" },
+  { icon: Shield, label: "Secure Access", color: "from-violet-400 to-violet-500" },
+  { icon: BarChart3, label: "Analytics Ready", color: "from-violet-400 to-purple-500" },
   { icon: Cpu, label: "AI Powered", color: "from-purple-400 to-violet-500" },
   { icon: Globe, label: "Cloud Connected", color: "from-orange-400 to-red-500" },
 ];
@@ -312,7 +312,7 @@ export function WelcomeTransition({
           
           {/* Success checkmark overlay */}
           <motion.div
-            className="absolute -right-2 -bottom-2 w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg"
+            className="absolute -right-2 -bottom-2 w-10 h-10 rounded-full bg-gradient-to-br from-violet-400 to-violet-500 flex items-center justify-center shadow-lg"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: "spring", delay: 0.8, damping: 15 }}
@@ -437,7 +437,7 @@ export function WelcomeTransition({
       </motion.div>
       
       <motion.div
-        className="absolute bottom-8 right-8 text-cyan-400/20"
+        className="absolute bottom-8 right-8 text-purple-400/20"
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1, rotate: -360 }}
         transition={{ duration: 2, delay: 0.7 }}

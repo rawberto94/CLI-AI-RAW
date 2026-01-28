@@ -138,7 +138,7 @@ export function OverviewTab({
           {onEdit && (
             <button
               onClick={onEdit}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors flex items-center gap-2"
             >
               <Edit className="w-4 h-4" />
               Edit
@@ -173,8 +173,8 @@ export function OverviewTab({
           label="Duration"
           value={`${Math.ceil((contract.endDate.getTime() - contract.startDate.getTime()) / (1000 * 60 * 60 * 24))} days`}
           subtitle={`${formatDate(contract.startDate)} - ${formatDate(contract.endDate)}`}
-          iconColor="text-blue-600"
-          bgColor="bg-blue-50"
+          iconColor="text-violet-600"
+          bgColor="bg-violet-50"
         />
 
         {/* Days Until Expiry */}

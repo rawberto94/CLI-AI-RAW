@@ -3,6 +3,35 @@ import { prisma } from '@/lib/prisma'
 import { getApiTenantId } from '@/lib/tenant-server'
 import { getServerSession } from '@/lib/auth'
 
+// Helper to transform Prisma template to UI-expected format
+function transformTemplate(template: Record<string, unknown>) {
+  const metadata = (template.metadata || {}) as Record<string, unknown>
+  const clauses = template.clauses as Array<Record<string, unknown>> || []
+  const variables = (metadata.variables || []) as Array<Record<string, unknown>>
+  
+  return {
+    ...template,
+    // Map status from metadata or derive from isActive
+    status: metadata.status || (template.isActive ? 'active' : 'draft'),
+    // Map tags from metadata
+    tags: metadata.tags || [],
+    // Map content from metadata
+    content: metadata.content || '',
+    // Map language from metadata  
+    language: metadata.language || 'en-US',
+    // Calculate variables count
+    variables: variables.length,
+    // Calculate clauses count (if array) or keep as-is
+    clauses: Array.isArray(clauses) ? clauses.length : (clauses || 0),
+    // Add lastModified alias
+    lastModified: template.updatedAt,
+    // Approval status (from metadata or default)
+    approvalStatus: metadata.approvalStatus || 'none',
+    // Created by user name (if available)
+    createdBy: template.createdBy || 'System',
+  }
+}
+
 // GET /api/templates - List all templates
 export async function GET(request: NextRequest) {
   try {
@@ -47,9 +76,12 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.contractTemplate.count({ where })
 
+    // Transform templates to match UI expectations
+    const transformedTemplates = templates.map(t => transformTemplate(t as unknown as Record<string, unknown>))
+
     return NextResponse.json({
       success: true,
-      templates,
+      templates: transformedTemplates,
       total,
       limit,
       offset,
@@ -73,14 +105,18 @@ export async function POST(request: NextRequest) {
       name,
       description,
       category,
-      clauses,
+      clauses = [],
       structure,
       metadata = {},
+      status,
+      content,
+      tags,
+      isActive,
     } = body
 
-    if (!name || !clauses) {
+    if (!name) {
       return NextResponse.json(
-        { success: false, error: 'Name and clauses are required' },
+        { success: false, error: 'Name is required' },
         { status: 400 }
       )
     }
@@ -89,18 +125,24 @@ export async function POST(request: NextRequest) {
       data: {
         tenantId,
         name,
-        description,
+        description: description || '',
         category: category || 'GENERAL',
         clauses: clauses || [],
         structure: structure || {},
-        metadata,
+        metadata: {
+          ...(metadata || {}),
+          status: status || 'draft',
+          content: content || '',
+          tags: tags || [],
+        },
+        isActive: isActive ?? (status === 'active'),
         createdBy: session?.user?.id || 'system',
       },
     })
 
     return NextResponse.json({
       success: true,
-      template,
+      template: transformTemplate(template as unknown as Record<string, unknown>),
     })
   } catch {
     return NextResponse.json(

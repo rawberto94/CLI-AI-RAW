@@ -67,7 +67,7 @@ export const UndoToast = memo(function UndoToast({ action, onDismiss }: UndoToas
             {/* Progress bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-700 rounded-b-lg overflow-hidden">
               <motion.div
-                className="h-full bg-blue-500"
+                className="h-full bg-violet-500"
                 initial={{ width: '100%' }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.05 }}

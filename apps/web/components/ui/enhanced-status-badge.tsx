@@ -67,20 +67,20 @@ const statusConfigs: Record<string, StatusConfig> = {
   processing: {
     label: 'Processing',
     icon: Loader2,
-    bgColor: 'bg-blue-50 dark:bg-blue-950/30',
-    textColor: 'text-blue-700 dark:text-blue-400',
-    borderColor: 'border-blue-200 dark:border-blue-800',
-    dotColor: 'bg-blue-500',
+    bgColor: 'bg-violet-50 dark:bg-violet-950/30',
+    textColor: 'text-violet-700 dark:text-violet-400',
+    borderColor: 'border-violet-200 dark:border-violet-800',
+    dotColor: 'bg-violet-500',
     description: 'Document is being analyzed by AI',
     animated: true,
   },
   completed: {
     label: 'Completed',
     icon: CheckCircle,
-    bgColor: 'bg-emerald-50 dark:bg-emerald-950/30',
-    textColor: 'text-emerald-700 dark:text-emerald-400',
-    borderColor: 'border-emerald-200 dark:border-emerald-800',
-    dotColor: 'bg-emerald-500',
+    bgColor: 'bg-violet-50 dark:bg-violet-950/30',
+    textColor: 'text-violet-700 dark:text-violet-400',
+    borderColor: 'border-violet-200 dark:border-violet-800',
+    dotColor: 'bg-violet-500',
     description: 'Processing completed successfully',
   },
   pending: {
@@ -328,7 +328,7 @@ export function ProcessingStatus({
     >
       <div className="flex items-center justify-between text-sm">
         <div className="flex items-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+          <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
           <span className="font-medium">{stage}</span>
         </div>
         <span className="text-muted-foreground">{progress}%</span>
@@ -336,7 +336,7 @@ export function ProcessingStatus({
       
       <div className="h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full"
+          className="h-full bg-gradient-to-r from-violet-500 to-purple-600 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.5 }}

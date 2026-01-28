@@ -19,7 +19,7 @@ const values = [
     icon: Target,
     title: 'Customer First',
     description: 'Every feature we build starts with a customer need. Your success is our success.',
-    gradient: 'from-indigo-500 to-indigo-600',
+    gradient: 'from-purple-500 to-purple-600',
   },
   {
     icon: Lightbulb,
@@ -37,7 +37,7 @@ const values = [
     icon: Users,
     title: 'Collaboration',
     description: 'Great products come from diverse teams working together towards a common goal.',
-    gradient: 'from-cyan-500 to-cyan-600',
+    gradient: 'from-purple-500 to-purple-600',
   },
 ];
 
@@ -63,7 +63,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="group flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25 transition-all group-hover:shadow-indigo-500/40">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/25 transition-all group-hover:shadow-purple-500/40">
                 <FileText className="h-5 w-5 text-white" />
               </div>
               <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
@@ -94,7 +94,7 @@ export default function AboutPage() {
               </Link>
               <Link
                 href="/auth/signin"
-                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-105"
+                className="group relative inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-purple-500/40 hover:scale-105"
               >
                 Get Started
                 <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
@@ -107,13 +107,13 @@ export default function AboutPage() {
       {/* Hero */}
       <section className="relative pt-32 pb-20 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
           <div className="absolute top-1/3 -right-1/4 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
         </div>
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-4 py-1.5 mb-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-4 py-1.5 mb-8">
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <span className="text-sm font-medium text-indigo-300">Our Story</span>
             </div>
@@ -121,7 +121,7 @@ export default function AboutPage() {
             <h1 className="text-4xl lg:text-6xl font-bold">
               <span className="text-white">Transforming How the</span>
               <br />
-              <span className="bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-purple-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 World Manages Contracts
               </span>
             </h1>
@@ -139,7 +139,7 @@ export default function AboutPage() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             {stats.map((stat) => (
               <div key={stat.label} className="text-center">
-                <div className="text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+                <div className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-purple-400 bg-clip-text text-transparent">
                   {stat.value}
                 </div>
                 <div className="mt-2 text-slate-400">{stat.label}</div>
@@ -166,7 +166,7 @@ export default function AboutPage() {
               </p>
             </div>
             <div className="relative">
-              <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-3xl p-8 border border-white/5">
+              <div className="bg-gradient-to-br from-purple-500/20 to-purple-500/20 rounded-3xl p-8 border border-white/5">
                 <div className="grid grid-cols-2 gap-4">
                   {[
                     { icon: Globe, label: 'Global Scale' },
@@ -225,7 +225,7 @@ export default function AboutPage() {
           
           <div className="relative">
             {/* Timeline line */}
-            <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-indigo-500 to-purple-500" />
+            <div className="absolute left-4 md:left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-purple-500 to-purple-500" />
             
             <div className="space-y-12">
               {milestones.map((milestone, index) => (
@@ -236,7 +236,7 @@ export default function AboutPage() {
                   }`}
                 >
                   {/* Dot */}
-                  <div className="absolute left-4 md:left-1/2 w-3 h-3 bg-indigo-500 rounded-full -translate-x-1/2 ring-4 ring-slate-900" />
+                  <div className="absolute left-4 md:left-1/2 w-3 h-3 bg-purple-500 rounded-full -translate-x-1/2 ring-4 ring-slate-900" />
                   
                   <div className={`flex-1 ml-12 md:ml-0 ${index % 2 === 0 ? 'md:pr-16 md:text-right' : 'md:pl-16'}`}>
                     <div className="bg-white/5 border border-white/5 rounded-xl p-6">
@@ -256,7 +256,7 @@ export default function AboutPage() {
 
       {/* CTA */}
       <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-purple-600" />
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-purple-600" />
         <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Join Our Journey
@@ -267,7 +267,7 @@ export default function AboutPage() {
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/signin"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-indigo-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-purple-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
             >
               Get Started
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -287,7 +287,7 @@ export default function AboutPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
                 <FileText className="h-4 w-4 text-white" />
               </div>
               <span className="font-bold text-white">ConTigo</span>

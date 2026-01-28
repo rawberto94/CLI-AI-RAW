@@ -110,9 +110,9 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 shadow-xl">
+      <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-violet-600 shadow-xl">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -135,7 +135,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
                   <h1 className="text-lg font-bold text-white flex items-center gap-2">
                     Version History
                   </h1>
-                  <div className="flex items-center gap-3 mt-0.5 text-sm text-cyan-100">
+                  <div className="flex items-center gap-3 mt-0.5 text-sm text-purple-100">
                     <span className="flex items-center gap-1">
                       <FileText className="w-3 h-3" />
                       Contract Document

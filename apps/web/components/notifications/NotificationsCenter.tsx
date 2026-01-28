@@ -173,7 +173,7 @@ const typeIcons: Record<NotificationType, React.ElementType> = {
 };
 
 const typeColors: Record<NotificationType, string> = {
-  info: 'text-blue-500 bg-blue-50',
+  info: 'text-violet-500 bg-violet-50',
   success: 'text-green-500 bg-green-50',
   warning: 'text-yellow-500 bg-yellow-50',
   error: 'text-red-500 bg-red-50',
@@ -328,7 +328,7 @@ export const NotificationsCenter = memo(function NotificationsCenter({
                     key={notification.id}
                     className={cn(
                       'p-4 border-b last:border-b-0 hover:bg-slate-50 transition-colors cursor-pointer',
-                      !notification.read && 'bg-blue-50/30'
+                      !notification.read && 'bg-violet-50/30'
                     )}
                     onClick={() => {
                       markAsRead(notification.id);
@@ -381,14 +381,14 @@ export const NotificationsCenter = memo(function NotificationsCenter({
                           <Button
                             variant="link"
                             size="sm"
-                            className="h-auto p-0 mt-2 text-blue-600"
+                            className="h-auto p-0 mt-2 text-violet-600"
                           >
                             {notification.actionLabel} →
                           </Button>
                         )}
                       </div>
                       {!notification.read && (
-                        <div className="h-2 w-2 rounded-full bg-blue-500 flex-shrink-0 mt-1" />
+                        <div className="h-2 w-2 rounded-full bg-violet-500 flex-shrink-0 mt-1" />
                       )}
                     </div>
                   </div>

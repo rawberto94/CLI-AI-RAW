@@ -172,17 +172,17 @@ export const ContractLifecycleTimeline = memo(function ContractLifecycleTimeline
     switch (status) {
       case 'completed':
         return {
-          bg: 'bg-emerald-500',
-          border: 'border-emerald-500',
-          text: 'text-emerald-600',
-          line: 'bg-emerald-500',
+          bg: 'bg-violet-500',
+          border: 'border-violet-500',
+          text: 'text-violet-600',
+          line: 'bg-violet-500',
         };
       case 'current':
         return {
-          bg: 'bg-blue-500',
-          border: 'border-blue-500',
-          text: 'text-blue-600',
-          line: 'bg-blue-200',
+          bg: 'bg-violet-500',
+          border: 'border-violet-500',
+          text: 'text-violet-600',
+          line: 'bg-violet-200',
         };
       case 'warning':
         return {
@@ -218,7 +218,7 @@ export const ContractLifecycleTimeline = memo(function ContractLifecycleTimeline
           
           {/* Progress Line */}
           <motion.div
-            className="absolute left-0 top-1/2 h-0.5 bg-gradient-to-r from-emerald-500 via-blue-500 to-blue-400 -translate-y-1/2"
+            className="absolute left-0 top-1/2 h-0.5 bg-gradient-to-r from-violet-500 via-purple-500 to-purple-400 -translate-y-1/2"
             initial={{ width: 0 }}
             animate={{ 
               width: `${(stages.filter(s => s.status === 'completed' || s.status === 'current').length / stages.length) * 100}%` 
@@ -247,7 +247,7 @@ export const ContractLifecycleTimeline = memo(function ContractLifecycleTimeline
                       className={cn(
                         "w-10 h-10 rounded-full flex items-center justify-center border-2 bg-white dark:bg-slate-900 transition-all",
                         colors.border,
-                        isCurrent && "ring-4 ring-blue-100 dark:ring-blue-900/50"
+                        isCurrent && "ring-4 ring-violet-100 dark:ring-violet-900/50"
                       )}
                       animate={isCurrent ? { scale: [1, 1.05, 1] } : {}}
                       transition={{ repeat: Infinity, duration: 2 }}

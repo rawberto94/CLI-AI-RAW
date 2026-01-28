@@ -150,7 +150,7 @@ const FIELD_TYPES = [
 ];
 
 const CATEGORY_COLORS = [
-  { value: 'blue', label: 'Blue', class: 'bg-blue-100 text-blue-800 border-blue-300' },
+  { value: 'blue', label: 'Blue', class: 'bg-violet-100 text-violet-800 border-violet-300' },
   { value: 'green', label: 'Green', class: 'bg-green-100 text-green-800 border-green-300' },
   { value: 'purple', label: 'Purple', class: 'bg-purple-100 text-purple-800 border-purple-300' },
   { value: 'red', label: 'Red', class: 'bg-red-100 text-red-800 border-red-300' },
@@ -469,7 +469,7 @@ export function MetadataSchemaEditor({
         <p className="text-gray-600">Failed to load metadata schema</p>
         <button
           onClick={loadSchema}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
         >
           Try Again
         </button>
@@ -561,7 +561,7 @@ export function MetadataSchemaEditor({
             placeholder="Search fields..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-violet-500"
           />
         </div>
         <button
@@ -573,7 +573,7 @@ export function MetadataSchemaEditor({
         </button>
         <button
           onClick={() => setIsAddingField(true)}
-          className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1.5"
+          className="px-3 py-2 text-sm rounded-lg bg-violet-600 text-white hover:bg-violet-700 flex items-center gap-1.5"
         >
           <Plus className="h-4 w-4" />
           Add Field
@@ -753,7 +753,7 @@ function FieldRow({
             {field.showInList && (
               <>
                 <span>•</span>
-                <span className="text-blue-500">List</span>
+                <span className="text-violet-500">List</span>
               </>
             )}
             {field.filterable && (
@@ -1133,7 +1133,7 @@ function FieldEditorModal({
           <button
             onClick={() => onSave(formData)}
             disabled={saving || !formData.name || !formData.label}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {field ? 'Update Field' : 'Add Field'}
@@ -1215,7 +1215,7 @@ function CategoryEditorModal({
                   className={cn(
                     "px-3 py-1.5 rounded-lg border-2 text-sm",
                     color.class,
-                    formData.color === color.value ? "ring-2 ring-offset-2 ring-blue-500" : ""
+                    formData.color === color.value ? "ring-2 ring-offset-2 ring-violet-500" : ""
                   )}
                 >
                   {color.label}
@@ -1248,7 +1248,7 @@ function CategoryEditorModal({
           <button
             onClick={() => onSave(formData)}
             disabled={saving || !formData.name || !formData.label}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {category ? 'Update' : 'Add Category'}

@@ -32,8 +32,8 @@ export function EnhancedDataModeToggle() {
       label: 'Mock Data',
       description: 'Sample test data',
       icon: TestTube,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50',
       active: isMockData
     },
     {

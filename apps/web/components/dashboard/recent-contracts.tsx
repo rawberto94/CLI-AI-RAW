@@ -38,7 +38,7 @@ const StatusIcon = ({ status }: { status: Contract["status"] }) => {
     case "FAILED":
       return <XCircle className="w-5 h-5 text-red-500" />
     case "PROCESSING":
-      return <Hourglass className="w-5 h-5 text-blue-500 animate-spin" />
+      return <Hourglass className="w-5 h-5 text-violet-500 animate-spin" />
     default:
       return <FileClock className="w-5 h-5 text-gray-500" />
   }

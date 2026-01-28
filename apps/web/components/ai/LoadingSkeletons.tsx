@@ -18,7 +18,7 @@ export function Skeleton({
   return (
     <div
       className={cn(
-        'animate-pulse rounded-md bg-slate-200',
+        'animate-pulse rounded-md bg-slate-200 dark:bg-slate-700',
         className
       )}
       {...props}
@@ -45,7 +45,7 @@ export function AnalyticsDashboardSkeleton() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="p-4 border border-slate-200 rounded-lg">
+          <div key={i} className="p-4 border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
             <div className="flex items-center justify-between mb-3">
               <Skeleton className="h-4 w-24" />
               <Skeleton className="h-8 w-8 rounded-full" />
@@ -59,13 +59,13 @@ export function AnalyticsDashboardSkeleton() {
       {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Usage Chart */}
-        <div className="p-4 border border-slate-200 rounded-lg">
+        <div className="p-4 border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
           <Skeleton className="h-5 w-32 mb-4" />
           <Skeleton className="h-64 w-full rounded-lg" />
         </div>
         
         {/* Model Distribution */}
-        <div className="p-4 border border-slate-200 rounded-lg">
+        <div className="p-4 border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
           <Skeleton className="h-5 w-40 mb-4" />
           <div className="flex items-center justify-center h-64">
             <Skeleton className="h-48 w-48 rounded-full" />
@@ -74,8 +74,8 @@ export function AnalyticsDashboardSkeleton() {
       </div>
 
       {/* Table */}
-      <div className="border border-slate-200 rounded-lg">
-        <div className="p-4 border-b border-slate-200">
+      <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
+        <div className="p-4 border-b border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700">
           <Skeleton className="h-5 w-36" />
         </div>
         <div className="p-4 space-y-3">
@@ -105,7 +105,7 @@ export function ChatMessageSkeleton({ isUser = false }: { isUser?: boolean }) {
         <Skeleton className={cn('h-4 w-20', isUser ? 'self-end' : '')} />
         <div className={cn(
           'rounded-lg p-3 space-y-2',
-          isUser ? 'bg-blue-100' : 'bg-slate-100'
+          isUser ? 'bg-violet-100' : 'bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800'
         )}>
           <Skeleton className="h-4 w-64" />
           <Skeleton className="h-4 w-48" />
@@ -130,8 +130,8 @@ export function ChatHistorySkeleton({ count = 3 }: { count?: number }) {
 // Suggestions Panel Skeleton
 export function SuggestionsSkeleton({ count = 4 }: { count?: number }) {
   return (
-    <div className="border border-slate-200 rounded-lg">
-      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+    <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
+      <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-5 rounded" />
           <Skeleton className="h-5 w-32" />
@@ -140,7 +140,7 @@ export function SuggestionsSkeleton({ count = 4 }: { count?: number }) {
       </div>
       <div className="p-3 space-y-3">
         {Array.from({ length: count }).map((_, i) => (
-          <div key={i} className="p-3 bg-slate-50 rounded-lg">
+          <div key={i} className="p-3 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 rounded-lg">
             <div className="flex items-start gap-3">
               <Skeleton className="h-8 w-8 rounded-md flex-shrink-0" />
               <div className="flex-1 space-y-2">
@@ -165,8 +165,8 @@ export function SuggestionsSkeleton({ count = 4 }: { count?: number }) {
 // Usage Quota Skeleton
 export function UsageQuotaSkeleton() {
   return (
-    <div className="border border-slate-200 rounded-lg">
-      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+    <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
+      <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Skeleton className="h-5 w-16 rounded" />
           <Skeleton className="h-5 w-24" />
@@ -187,7 +187,7 @@ export function UsageQuotaSkeleton() {
           </div>
         ))}
       </div>
-      <div className="px-4 py-3 bg-slate-50 border-t border-slate-100 rounded-b-lg">
+      <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 rounded-b-lg">
         <div className="flex items-center justify-between">
           <Skeleton className="h-3 w-24" />
           <Skeleton className="h-3 w-20" />
@@ -202,7 +202,7 @@ export function SearchResultsSkeleton({ count = 5 }: { count?: number }) {
   return (
     <div className="space-y-2 p-2">
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className="p-3 border border-slate-200 rounded-lg">
+        <div key={i} className="p-3 border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
           <div className="flex items-start gap-3">
             <Skeleton className="h-8 w-8 rounded-md flex-shrink-0" />
             <div className="flex-1 space-y-2">
@@ -227,9 +227,9 @@ export function SearchResultsSkeleton({ count = 5 }: { count?: number }) {
 // Contract Diff Skeleton
 export function ContractDiffSkeleton() {
   return (
-    <div className="border border-slate-200 rounded-lg">
+    <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-slate-100">
+      <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-4">
           <Skeleton className="h-5 w-5 rounded" />
           <div>
@@ -245,7 +245,7 @@ export function ContractDiffSkeleton() {
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-slate-50 border-b border-slate-100">
+      <div className="flex items-center justify-between px-4 py-2 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center gap-2">
           <Skeleton className="h-8 w-32 rounded" />
           <Skeleton className="h-8 w-24 rounded" />
@@ -286,9 +286,9 @@ export function ContractDiffSkeleton() {
 // Batch Analysis Skeleton
 export function BatchAnalysisSkeleton() {
   return (
-    <div className="border border-slate-200 rounded-lg">
+    <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg">
       {/* Header */}
-      <div className="p-4 border-b border-slate-100">
+      <div className="p-4 border-b border-slate-100 dark:border-slate-800">
         <div className="flex items-center justify-between mb-4">
           <Skeleton className="h-6 w-48" />
           <Skeleton className="h-9 w-32 rounded" />
@@ -312,7 +312,7 @@ export function BatchAnalysisSkeleton() {
       </div>
 
       {/* Footer */}
-      <div className="p-4 bg-slate-50 border-t border-slate-100 rounded-b-lg">
+      <div className="p-4 bg-slate-50 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 border-t border-slate-100 dark:border-slate-800 rounded-b-lg">
         <div className="flex items-center justify-between">
           <Skeleton className="h-4 w-36" />
           <Skeleton className="h-9 w-28 rounded" />
@@ -325,7 +325,7 @@ export function BatchAnalysisSkeleton() {
 // Prompt Template Skeleton
 export function PromptTemplateSkeleton() {
   return (
-    <div className="border border-slate-200 rounded-lg p-4">
+    <div className="border border-slate-200 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 dark:border-slate-700 rounded-lg p-4">
       <div className="flex items-start gap-4">
         <Skeleton className="h-10 w-10 rounded-lg flex-shrink-0" />
         <div className="flex-1">
@@ -367,7 +367,7 @@ export function TypingIndicator() {
       <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
         <div className="text-purple-600 text-xs font-bold">AI</div>
       </div>
-      <div className="bg-slate-100 rounded-lg px-4 py-3">
+      <div className="bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 rounded-lg px-4 py-3">
         <LoadingDots />
       </div>
     </div>

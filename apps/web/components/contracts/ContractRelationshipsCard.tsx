@@ -151,7 +151,7 @@ const getStatusColor = (status: string) => {
     case 'expired':
       return 'bg-red-500/10 text-red-700 border-red-200'
     default:
-      return 'bg-blue-500/10 text-blue-700 border-blue-200'
+      return 'bg-violet-500/10 text-violet-700 border-violet-200'
   }
 }
 
@@ -201,7 +201,7 @@ function ContractLinkCard({
         "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
         direction === 'parent' 
           ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white" 
-          : "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+          : "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
       )}>
         {direction === 'parent' ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
       </div>
@@ -211,7 +211,7 @@ function ContractLinkCard({
         <div className="flex items-center gap-2 mb-1">
           <Link 
             href={`/contracts/${contract.id}`}
-            className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors truncate"
+            className="font-semibold text-sm text-slate-900 hover:text-violet-600 transition-colors truncate"
           >
             {contract.title}
           </Link>
@@ -285,7 +285,7 @@ function AISuggestionCard({ suggestion, onLink, isLinking }: AISuggestionCardPro
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative p-4 rounded-xl border-2 border-dashed border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 hover:border-blue-400 transition-all group"
+      className="relative p-4 rounded-xl border-2 border-dashed border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50 hover:border-violet-400 transition-all group"
     >
       <div className="absolute -top-2 -right-2">
         <Badge className="bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs px-2 py-0.5 shadow-sm">
@@ -302,7 +302,7 @@ function AISuggestionCard({ suggestion, onLink, isLinking }: AISuggestionCardPro
         <div className="flex-1 min-w-0">
           <Link 
             href={`/contracts/${suggestion.id}`}
-            className="font-semibold text-sm text-slate-900 hover:text-blue-600 transition-colors block truncate"
+            className="font-semibold text-sm text-slate-900 hover:text-violet-600 transition-colors block truncate"
           >
             {suggestion.title}
           </Link>
@@ -425,7 +425,7 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink, suggestedPar
       <DialogContent className="sm:max-w-[650px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-lg">
-            <LinkIcon className="h-5 w-5 text-blue-600" />
+            <LinkIcon className="h-5 w-5 text-violet-600" />
             Link to Parent Contract
           </DialogTitle>
           <DialogDescription>
@@ -468,7 +468,7 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink, suggestedPar
                 <button
                   key={suggestion.id}
                   onClick={() => handleSelectSuggestion(suggestion)}
-                  className="w-full text-left p-3 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 transition-colors"
+                  className="w-full text-left p-3 rounded-lg border border-violet-200 bg-violet-50 hover:bg-violet-100 transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div>
@@ -524,10 +524,10 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink, suggestedPar
           {/* Selected parent */}
           {selectedParent && (
             <div className="space-y-4">
-              <div className="p-4 rounded-xl border-2 border-blue-200 bg-blue-50">
+              <div className="p-4 rounded-xl border-2 border-violet-200 bg-violet-50">
                 <div className="flex items-center justify-between">
                   <div>
-                    <Label className="text-xs text-blue-600 uppercase tracking-wider">Selected Parent</Label>
+                    <Label className="text-xs text-violet-600 uppercase tracking-wider">Selected Parent</Label>
                     <div className="font-semibold text-slate-900 mt-1">{selectedParent.title}</div>
                     <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                       {selectedParent.type && <Badge variant="outline" className="text-xs">{selectedParent.type}</Badge>}
@@ -582,7 +582,7 @@ function LinkParentDialog({ contractId, open, onOpenChange, onLink, suggestedPar
           <Button 
             onClick={handleLink} 
             disabled={!selectedParent || isLinking}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
           >
             {isLinking && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
             Link Contract
@@ -789,7 +789,7 @@ export function ContractRelationshipsCard({
               <CollapsibleTrigger asChild>
                 <button className="w-full flex items-center justify-between text-xs uppercase tracking-wider text-slate-500 hover:text-slate-700 transition-colors py-1">
                   <span className="flex items-center gap-1.5">
-                    <ArrowDown className="h-3.5 w-3.5 text-blue-500" />
+                    <ArrowDown className="h-3.5 w-3.5 text-violet-500" />
                     Child Contracts ({childContracts.length})
                   </span>
                   {childContracts.length > 3 && (
@@ -831,7 +831,7 @@ export function ContractRelationshipsCard({
                     "flex items-start gap-2 p-2.5 rounded-lg text-xs",
                     issue.severity === 'high' && 'bg-red-50 text-red-700 border border-red-200',
                     issue.severity === 'medium' && 'bg-amber-50 text-amber-700 border border-amber-200',
-                    issue.severity === 'low' && 'bg-blue-50 text-blue-700 border border-blue-200'
+                    issue.severity === 'low' && 'bg-violet-50 text-violet-700 border border-violet-200'
                   )}
                 >
                   <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />

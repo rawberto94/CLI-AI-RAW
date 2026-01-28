@@ -147,7 +147,7 @@ export function FloatingHelpButton({
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/tour" className="gap-2 cursor-pointer">
-              <GraduationCap className="w-4 h-4 text-blue-500" />
+              <GraduationCap className="w-4 h-4 text-violet-500" />
               <span>Learning Center</span>
             </Link>
           </DropdownMenuItem>

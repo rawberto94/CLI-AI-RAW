@@ -231,7 +231,7 @@ export function MetadataExtractionStatus({
             Loading...
           </Badge>
         ) : status?.hasMetadata ? (
-          <Badge variant="default" className="bg-emerald-500">
+          <Badge variant="default" className="bg-violet-500">
             <Sparkles className="h-3 w-3 mr-1" />
             {status.populatedFields} fields
           </Badge>
@@ -328,7 +328,7 @@ export function MetadataExtractionStatus({
             {/* Summary */}
             <div className="flex items-center justify-between text-sm">
               <div className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                <CheckCircle2 className="h-4 w-4 text-violet-500" />
                 <span className="text-muted-foreground">
                   {status.populatedFields} of {status.fields} fields populated
                 </span>
@@ -379,7 +379,7 @@ export function MetadataExtractionStatus({
                             className={cn(
                               'flex items-center gap-1.5 p-1.5 rounded text-xs',
                               field.hasValue
-                                ? 'bg-emerald-50 text-emerald-700'
+                                ? 'bg-violet-50 text-violet-700'
                                 : 'bg-slate-50 text-slate-400'
                             )}
                           >

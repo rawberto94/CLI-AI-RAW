@@ -130,7 +130,7 @@ const categoryIcons: Record<Obligation['category'], React.ReactNode> = {
 
 const categoryColors: Record<Obligation['category'], string> = {
   payment: 'text-green-600 bg-green-100',
-  delivery: 'text-blue-600 bg-blue-100',
+  delivery: 'text-violet-600 bg-violet-100',
   reporting: 'text-purple-600 bg-purple-100',
   compliance: 'text-amber-600 bg-amber-100',
   renewal: 'text-rose-600 bg-rose-100',
@@ -139,14 +139,14 @@ const categoryColors: Record<Obligation['category'], string> = {
 
 const priorityStyles: Record<Obligation['priority'], { bg: string; text: string; border: string }> = {
   low: { bg: 'bg-slate-100', text: 'text-slate-700', border: 'border-slate-300' },
-  medium: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-300' },
+  medium: { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
   high: { bg: 'bg-amber-100', text: 'text-amber-700', border: 'border-amber-300' },
   critical: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-300' },
 };
 
 const statusStyles: Record<Obligation['status'], { bg: string; text: string; icon: React.ReactNode }> = {
   pending: { bg: 'bg-slate-100', text: 'text-slate-700', icon: <Clock className="w-4 h-4" /> },
-  'in-progress': { bg: 'bg-blue-100', text: 'text-blue-700', icon: <Timer className="w-4 h-4" /> },
+  'in-progress': { bg: 'bg-violet-100', text: 'text-violet-700', icon: <Timer className="w-4 h-4" /> },
   completed: { bg: 'bg-green-100', text: 'text-green-700', icon: <CheckCircle2 className="w-4 h-4" /> },
   overdue: { bg: 'bg-red-100', text: 'text-red-700', icon: <AlertCircle className="w-4 h-4" /> },
 };
@@ -183,7 +183,7 @@ function ObligationCard({
     overdue: 'border-l-red-500 bg-red-50/50',
     critical: 'border-l-orange-500 bg-orange-50/50',
     warning: 'border-l-amber-500 bg-amber-50/50',
-    upcoming: 'border-l-blue-500 bg-blue-50/30',
+    upcoming: 'border-l-violet-500 bg-violet-50/30',
     future: 'border-l-slate-300 bg-white',
   };
 
@@ -245,7 +245,7 @@ function ObligationCard({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
                     {obligation.assignee.name.charAt(0).toUpperCase()}
                   </div>
                 </TooltipTrigger>
@@ -522,8 +522,8 @@ export function ObligationTracker({
           title="In Progress"
           value={stats.inProgress}
           total={stats.total}
-          icon={<Timer className="w-4 h-4 text-blue-600" />}
-          color="bg-blue-600"
+          icon={<Timer className="w-4 h-4 text-violet-600" />}
+          color="bg-violet-600"
         />
         <StatsCard
           title="Due Soon"
@@ -735,7 +735,7 @@ export function ObligationWidget({
                     urgency === 'overdue' && 'border-red-300 text-red-700 bg-red-50',
                     urgency === 'critical' && 'border-orange-300 text-orange-700 bg-orange-50',
                     urgency === 'warning' && 'border-amber-300 text-amber-700 bg-amber-50',
-                    urgency === 'upcoming' && 'border-blue-300 text-blue-700 bg-blue-50',
+                    urgency === 'upcoming' && 'border-violet-300 text-violet-700 bg-violet-50',
                     urgency === 'future' && 'border-slate-300 text-slate-700'
                   )}
                 >

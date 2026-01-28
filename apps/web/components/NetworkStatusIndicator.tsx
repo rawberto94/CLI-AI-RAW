@@ -39,7 +39,7 @@ export function NetworkStatusIndicator() {
         return {
           icon: RefreshCw,
           message: `Reconnecting... (attempt ${reconnectAttempts})`,
-          color: "bg-blue-500",
+          color: "bg-violet-500",
           textColor: "text-white",
         };
       default:

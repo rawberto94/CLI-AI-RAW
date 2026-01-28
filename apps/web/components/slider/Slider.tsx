@@ -47,19 +47,19 @@ interface RangeSliderProps {
 // ============================================================================
 
 const colorClasses = {
-  indigo: 'bg-indigo-600',
-  emerald: 'bg-emerald-600',
+  indigo: 'bg-purple-600',
+  emerald: 'bg-violet-600',
   amber: 'bg-amber-500',
   red: 'bg-red-600',
-  blue: 'bg-blue-600',
+  blue: 'bg-violet-600',
 };
 
 const thumbColorClasses = {
-  indigo: 'border-indigo-600 focus:ring-indigo-500',
-  emerald: 'border-emerald-600 focus:ring-emerald-500',
+  indigo: 'border-purple-600 focus:ring-purple-500',
+  emerald: 'border-violet-600 focus:ring-violet-500',
   amber: 'border-amber-500 focus:ring-amber-500',
   red: 'border-red-600 focus:ring-red-500',
-  blue: 'border-blue-600 focus:ring-blue-500',
+  blue: 'border-violet-600 focus:ring-violet-500',
 };
 
 const sizeClasses = {

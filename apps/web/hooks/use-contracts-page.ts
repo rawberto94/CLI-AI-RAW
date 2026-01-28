@@ -13,10 +13,6 @@ import {
   type FilterState,
   type FilterActions,
   type FilterStats,
-  type QuickPreset,
-  QUICK_PRESETS,
-  RISK_LEVELS,
-  VALUE_RANGES,
 } from './use-contract-filters';
 import { 
   useContractSorting, 
@@ -24,30 +20,23 @@ import {
   type SortDirection,
   type SortState,
   type SortActions,
-  SORT_OPTIONS,
 } from './use-contract-sorting';
 import { 
   usePagination,
   type PaginationState,
   type PaginationActions,
   type PaginationInfo,
-  PAGE_SIZE_OPTIONS,
 } from './use-pagination';
 import { 
   useContractSelection,
-  type SelectionState,
-  type SelectionActions,
 } from './use-contract-selection';
 import { 
   useBulkOperations, 
   type BulkOperationType,
-  type BulkOperationState,
-  type BulkOperationActions,
   type BulkOperationResult,
 } from './use-bulk-operations';
 import { 
   useContractsKeyboardShortcuts, 
-  type KeyboardShortcutHandlers,
 } from './use-contracts-keyboard-shortcuts';
 import type { Contract } from './use-queries';
 

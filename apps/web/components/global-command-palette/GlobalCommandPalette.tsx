@@ -332,7 +332,7 @@ function GlobalCommandPaletteModal({
               {/* Search Input */}
               <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                 {isLoading ? (
-                  <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                  <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
                 ) : (
                   <Search className="w-5 h-5 text-gray-400" />
                 )}
@@ -446,7 +446,7 @@ function CommandItemRow({ item, isSelected, index, onClick, onMouseEnter }: Comm
         w-full flex items-center gap-3 px-4 py-2.5
         text-left transition-colors
         ${isSelected
-          ? 'bg-blue-50 dark:bg-blue-950 text-blue-900 dark:text-blue-100'
+          ? 'bg-violet-50 dark:bg-violet-950 text-violet-900 dark:text-violet-100'
           : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800'
         }
       `}
@@ -455,7 +455,7 @@ function CommandItemRow({ item, isSelected, index, onClick, onMouseEnter }: Comm
       <div className={`
         flex-shrink-0 p-1.5 rounded-lg
         ${isSelected
-          ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+          ? 'bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-400'
           : 'bg-gray-100 dark:bg-gray-700 text-gray-500'
         }
       `}>
@@ -479,7 +479,7 @@ function CommandItemRow({ item, isSelected, index, onClick, onMouseEnter }: Comm
               className={`
                 px-1.5 py-0.5 text-xs rounded border
                 ${isSelected
-                  ? 'bg-blue-100 dark:bg-blue-800 border-blue-200 dark:border-blue-700'
+                  ? 'bg-violet-100 dark:bg-violet-800 border-violet-200 dark:border-violet-700'
                   : 'bg-gray-100 dark:bg-gray-700 border-gray-200 dark:border-gray-600'
                 }
               `}

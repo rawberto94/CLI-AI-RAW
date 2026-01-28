@@ -36,7 +36,7 @@ export default function GenerateLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <FileText className="h-4 w-4 text-blue-500" />
+              <FileText className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
         </div>

@@ -93,14 +93,14 @@ function QueueStats({ files, isUploading }: QueueStatsProps) {
         <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
         <div className="text-xs text-slate-500">Total Files</div>
       </div>
-      <div className="bg-blue-50 rounded-lg p-3 text-center">
-        <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-1">
+      <div className="bg-violet-50 rounded-lg p-3 text-center">
+        <div className="text-2xl font-bold text-violet-600 flex items-center justify-center gap-1">
           {stats.active}
           {isUploading && stats.active > 0 && (
             <Loader2 className="h-4 w-4 animate-spin" />
           )}
         </div>
-        <div className="text-xs text-blue-600">Processing</div>
+        <div className="text-xs text-violet-600">Processing</div>
       </div>
       <div className="bg-amber-50 rounded-lg p-3 text-center">
         <div className="text-2xl font-bold text-amber-600">{stats.pending}</div>
@@ -195,9 +195,9 @@ export function UploadQueue({
             <div className={cn(
               'p-2.5 rounded-xl shadow-lg',
               isComplete && !hasErrors
-                ? 'bg-gradient-to-br from-green-500 to-emerald-600'
+                ? 'bg-gradient-to-br from-violet-500 to-violet-600'
                 : isUploading
-                ? 'bg-gradient-to-br from-blue-500 to-indigo-600'
+                ? 'bg-gradient-to-br from-violet-500 to-purple-600'
                 : 'bg-gradient-to-br from-slate-500 to-slate-600'
             )}>
               {isComplete && !hasErrors ? (
@@ -386,8 +386,8 @@ export function UploadQueue({
               
               {/* Processing Info */}
               {isUploading && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-2 text-blue-700">
+                <div className="mt-4 p-3 bg-violet-50 rounded-lg">
+                  <div className="flex items-center gap-2 text-violet-700">
                     <Brain className="h-4 w-4" />
                     <span className="text-sm">
                       Processing {concurrency} file{concurrency !== 1 ? 's' : ''} in parallel with AI analysis

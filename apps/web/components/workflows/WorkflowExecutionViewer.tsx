@@ -92,7 +92,7 @@ export function WorkflowExecutionViewer({
       case 'REJECTED':
         return { color: 'bg-red-100 text-red-700 border-red-300', icon: XCircle }
       case 'IN_PROGRESS':
-        return { color: 'bg-blue-100 text-blue-700 border-blue-300', icon: RefreshCw }
+        return { color: 'bg-violet-100 text-violet-700 border-violet-300', icon: RefreshCw }
       case 'PENDING':
         return { color: 'bg-yellow-100 text-yellow-700 border-yellow-300', icon: Clock }
       case 'CANCELLED':
@@ -107,7 +107,7 @@ export function WorkflowExecutionViewer({
       case 'COMPLETED':
         return { color: 'bg-green-500', icon: CheckCircle2, label: 'Completed' }
       case 'IN_PROGRESS':
-        return { color: 'bg-blue-500 animate-pulse', icon: RefreshCw, label: 'In Progress' }
+        return { color: 'bg-violet-500 animate-pulse', icon: RefreshCw, label: 'In Progress' }
       case 'PENDING':
         return { color: 'bg-gray-300', icon: Clock, label: 'Pending' }
       case 'SKIPPED':
@@ -121,7 +121,7 @@ export function WorkflowExecutionViewer({
     return (
       <Card className="shadow-xl border-0">
         <CardContent className="p-12 flex items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+          <RefreshCw className="h-8 w-8 animate-spin text-violet-600" />
         </CardContent>
       </Card>
     )
@@ -192,7 +192,7 @@ export function WorkflowExecutionViewer({
                 <div key={stepExec.id} className="relative">
                   <div className={cn(
                     'flex items-start gap-4 p-5 rounded-xl border-2 transition-all',
-                    isActive && 'border-blue-300 bg-blue-50 shadow-lg',
+                    isActive && 'border-violet-300 bg-violet-50 shadow-lg',
                     stepExec.status === 'COMPLETED' && 'border-green-200 bg-green-50',
                     stepExec.status === 'PENDING' && 'border-gray-200 bg-gray-50'
                   )}>
@@ -287,10 +287,10 @@ export function WorkflowExecutionViewer({
 
       {/* Action Panel */}
       {canTakeAction && (
-        <Card className="shadow-xl border-0 border-t-4 border-t-blue-500">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+        <Card className="shadow-xl border-0 border-t-4 border-t-violet-500">
+          <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-6 w-6 text-blue-600" />
+              <AlertCircle className="h-6 w-6 text-violet-600" />
               Action Required
             </CardTitle>
           </CardHeader>
@@ -316,7 +316,7 @@ export function WorkflowExecutionViewer({
               <Button
                 onClick={() => handleAction('approve')}
                 disabled={actionLoading}
-                className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                className="flex-1 bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700"
               >
                 {actionLoading && selectedAction === 'approve' ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

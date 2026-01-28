@@ -146,7 +146,7 @@ function AIAccuracyDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <RefreshCw className="h-8 w-8 animate-spin text-indigo-500" />
+        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
       </div>
     );
   }
@@ -169,8 +169,8 @@ function AIAccuracyDashboard() {
         <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-indigo-100 rounded-xl">
-                <BarChart3 className="h-6 w-6 text-indigo-600" />
+              <div className="p-3 bg-purple-100 rounded-xl">
+                <BarChart3 className="h-6 w-6 text-purple-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Overall Accuracy</p>
@@ -185,8 +185,8 @@ function AIAccuracyDashboard() {
         <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-emerald-100 rounded-xl">
-                <Check className="h-6 w-6 text-emerald-600" />
+              <div className="p-3 bg-violet-100 rounded-xl">
+                <Check className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500">Correct Extractions</p>
@@ -235,7 +235,7 @@ function AIAccuracyDashboard() {
       <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-indigo-500" />
+            <Zap className="h-5 w-5 text-purple-500" />
             Field Accuracy
           </CardTitle>
           <CardDescription>
@@ -264,8 +264,8 @@ function AIAccuracyDashboard() {
                         <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div 
                             className={`h-full rounded-full ${
-                              field.accuracy >= 90 ? 'bg-emerald-500' :
-                              field.accuracy >= 70 ? 'bg-blue-500' :
+                              field.accuracy >= 90 ? 'bg-violet-500' :
+                              field.accuracy >= 70 ? 'bg-violet-500' :
                               field.accuracy >= 50 ? 'bg-amber-500' : 'bg-red-500'
                             }`}
                             style={{ width: `${field.accuracy}%` }}
@@ -277,9 +277,9 @@ function AIAccuracyDashboard() {
                     <TableCell>{field.sampleSize} samples</TableCell>
                     <TableCell>
                       {field.accuracy >= 90 ? (
-                        <Badge className="bg-emerald-100 text-emerald-700">Excellent</Badge>
+                        <Badge className="bg-violet-100 text-violet-700">Excellent</Badge>
                       ) : field.accuracy >= 70 ? (
-                        <Badge className="bg-blue-100 text-blue-700">Good</Badge>
+                        <Badge className="bg-violet-100 text-violet-700">Good</Badge>
                       ) : field.accuracy >= 50 ? (
                         <Badge className="bg-amber-100 text-amber-700">Needs Improvement</Badge>
                       ) : (
@@ -298,10 +298,10 @@ function AIAccuracyDashboard() {
 
       {/* Recommendations */}
       {data.recommendations.length > 0 && (
-        <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200 shadow-lg">
+        <Card className="bg-gradient-to-r from-purple-50 to-purple-50 border-indigo-200 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-indigo-600" />
+              <AlertCircle className="h-5 w-5 text-purple-600" />
               AI Recommendations
             </CardTitle>
           </CardHeader>
@@ -309,7 +309,7 @@ function AIAccuracyDashboard() {
             <ul className="space-y-2">
               {data.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-indigo-500 mt-1">•</span>
+                  <span className="text-purple-500 mt-1">•</span>
                   <span className="text-gray-700">{rec}</span>
                 </li>
               ))}
@@ -517,7 +517,7 @@ export default function TenantAdminPage() {
         >
           <div className="flex items-center gap-4">
             <motion.div 
-              className="p-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 text-white shadow-xl shadow-purple-500/30"
+              className="p-4 rounded-2xl bg-gradient-to-br from-purple-600 via-purple-600 to-violet-600 text-white shadow-xl shadow-purple-500/30"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
@@ -565,8 +565,8 @@ export default function TenantAdminPage() {
           className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8"
         >
           {[
-            { label: 'Team Members', value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-blue-500 to-cyan-500' },
-            { label: 'Contracts', value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-emerald-500 to-teal-500' },
+            { label: 'Team Members', value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-violet-500 to-purple-500' },
+            { label: 'Contracts', value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-violet-500 to-violet-500' },
             { label: 'Storage Used', value: formatBytes(tenantInfo?.usage?.storageUsed || 0), icon: BarChart3, gradient: 'from-amber-500 to-orange-500' },
             { label: 'Plan', value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-purple-500 to-pink-500', capitalize: true },
           ].map((stat, i) => {
@@ -605,11 +605,11 @@ export default function TenantAdminPage() {
         >
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="mb-6 bg-white/80 backdrop-blur-sm p-1 shadow-sm">
-              <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Users className="h-4 w-4" />
                 Team
               </TabsTrigger>
-              <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Mail className="h-4 w-4" />
                 Invitations
                 {invitations.filter(i => i.status === "PENDING").length > 0 && (
@@ -618,11 +618,11 @@ export default function TenantAdminPage() {
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Building2 className="h-4 w-4" />
                 Organization
               </TabsTrigger>
-              <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Zap className="h-4 w-4" />
                 AI Accuracy
               </TabsTrigger>
@@ -912,16 +912,16 @@ export default function TenantAdminPage() {
                 <CardDescription>Your current plan and usage</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-indigo-50 to-purple-50 rounded-lg border border-indigo-100">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg border border-indigo-100">
                   <div>
                     <p className="font-medium text-lg capitalize text-indigo-900">
                       {tenantInfo?.subscription?.plan?.toLowerCase() || "Free"} Plan
                     </p>
-                    <p className="text-sm text-indigo-600">
+                    <p className="text-sm text-purple-600">
                       {tenantInfo?.usage?.contractsProcessed || 0} contracts processed
                     </p>
                   </div>
-                  <Button className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-600 hover:to-purple-600">
+                  <Button className="bg-gradient-to-r from-purple-500 to-purple-500 text-white hover:from-purple-600 hover:to-purple-600">
                     Upgrade Plan
                   </Button>
                 </div>

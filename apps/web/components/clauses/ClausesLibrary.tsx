@@ -1,17 +1,17 @@
 /**
  * Clauses Library
  * Standard contract clause management and insertion
+ * Uses real database data via /api/clauses
  */
 
 'use client';
 
-import { memo, useState, useMemo } from 'react';
+import { memo, useState, useMemo, useEffect, useCallback } from 'react';
 import {
   Library,
   Search,
   Plus,
   Star,
-  StarOff,
   Copy,
   Edit,
   Trash2,
@@ -21,11 +21,9 @@ import {
   Scale,
   Clock,
   Loader2,
-  Check,
   Filter,
   Tag,
   MoreHorizontal,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -58,7 +56,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -96,110 +93,36 @@ interface Clause {
   notes?: string;
 }
 
-// Demo clauses
-const demoClauses: Clause[] = [
-  {
-    id: 'cl-1',
-    name: 'Standard Confidentiality',
-    content: `The Receiving Party agrees to hold in confidence and not disclose to any third party any Confidential Information of the Disclosing Party, except as approved in writing by the Disclosing Party. The Receiving Party agrees to use the Confidential Information solely for the purposes of evaluating and engaging in discussions concerning a potential business relationship between the parties.`,
-    category: 'confidentiality',
-    riskLevel: 'low',
-    tags: ['standard', 'nda'],
-    isFavorite: true,
-    usageCount: 156,
-    lastUsed: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: [],
-  },
-  {
-    id: 'cl-2',
-    name: 'Limitation of Liability',
-    content: `IN NO EVENT SHALL EITHER PARTY BE LIABLE TO THE OTHER FOR ANY INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL OR EXEMPLARY DAMAGES ARISING OUT OF OR RELATED TO THIS AGREEMENT, INCLUDING BUT NOT LIMITED TO LOSS OF REVENUE OR ANTICIPATED PROFITS OR LOST BUSINESS OR LOST SALES. THE TOTAL LIABILITY OF {{COMPANY_NAME}} UNDER THIS AGREEMENT SHALL NOT EXCEED {{LIABILITY_CAP}}.`,
-    category: 'liability',
-    riskLevel: 'medium',
-    tags: ['cap', 'limitation'],
-    isFavorite: true,
-    usageCount: 89,
-    lastUsed: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 15 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: ['{{COMPANY_NAME}}', '{{LIABILITY_CAP}}'],
-  },
-  {
-    id: 'cl-3',
-    name: 'Termination for Convenience',
-    content: `Either party may terminate this Agreement at any time, with or without cause, by providing {{NOTICE_PERIOD}} days prior written notice to the other party. Upon termination, the Receiving Party shall return or destroy all Confidential Information in its possession.`,
-    category: 'termination',
-    riskLevel: 'medium',
-    tags: ['flexible', 'exit'],
-    isFavorite: false,
-    usageCount: 45,
-    lastUsed: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: ['{{NOTICE_PERIOD}}'],
-  },
-  {
-    id: 'cl-4',
-    name: 'Force Majeure',
-    content: `Neither party shall be liable for any failure or delay in performing their obligations where such failure or delay results from Force Majeure Events, including but not limited to acts of God, war, terrorism, civil commotion, epidemic or pandemic, government action, natural disaster, or any similar cause beyond the reasonable control of such party.`,
-    category: 'force_majeure',
-    riskLevel: 'low',
-    tags: ['standard', 'protection'],
-    isFavorite: true,
-    usageCount: 78,
-    lastUsed: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: [],
-  },
-  {
-    id: 'cl-5',
-    name: 'Intellectual Property Assignment',
-    content: `Contractor hereby irrevocably assigns to Company all right, title, and interest in and to any and all Work Product, including all Intellectual Property Rights therein. "Work Product" means all inventions, discoveries, works of authorship, and other materials conceived or created by Contractor, solely or jointly with others, during the term of this Agreement.`,
-    category: 'intellectual_property',
-    riskLevel: 'high',
-    tags: ['ip', 'assignment', 'contractor'],
-    isFavorite: false,
-    usageCount: 34,
-    lastUsed: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: [],
-  },
-  {
-    id: 'cl-6',
-    name: 'Indemnification - Mutual',
-    content: `Each party (the "Indemnifying Party") shall indemnify, defend, and hold harmless the other party and its officers, directors, employees, and agents from and against any claims, damages, losses, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to: (a) the Indemnifying Party's breach of this Agreement; or (b) the Indemnifying Party's gross negligence or willful misconduct.`,
-    category: 'indemnification',
-    riskLevel: 'medium',
-    tags: ['mutual', 'balanced'],
-    isFavorite: true,
-    usageCount: 67,
-    lastUsed: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(Date.now() - 250 * 24 * 60 * 60 * 1000),
-    updatedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000),
-    createdBy: 'Legal Team',
-    variables: [],
-  },
-];
+// Transform API response to component format
+function transformClause(apiClause: Record<string, unknown>): Clause {
+  return {
+    id: apiClause.id as string,
+    name: (apiClause.title as string) || (apiClause.name as string) || '',
+    content: apiClause.content as string || '',
+    category: (apiClause.category as ClauseCategory) || 'general',
+    riskLevel: (apiClause.riskLevel as RiskLevel) || 'low',
+    tags: (apiClause.tags as string[]) || [],
+    isFavorite: (apiClause.isFavorite as boolean) || false,
+    usageCount: (apiClause.usageCount as number) || 0,
+    lastUsed: apiClause.lastUsed ? new Date(apiClause.lastUsed as string) : null,
+    createdAt: apiClause.createdAt ? new Date(apiClause.createdAt as string) : new Date(),
+    updatedAt: apiClause.updatedAt ? new Date(apiClause.updatedAt as string) : new Date(),
+    createdBy: (apiClause.createdBy as string) || 'Legal Team',
+    variables: (apiClause.variables as string[]) || [],
+    notes: apiClause.notes as string || undefined,
+  };
+}
 
 const categoryConfig: Record<ClauseCategory, { label: string; icon: React.ElementType; color: string }> = {
   general: { label: 'General', icon: FileText, color: 'bg-slate-100 text-slate-700' },
   liability: { label: 'Liability', icon: AlertTriangle, color: 'bg-orange-100 text-orange-700' },
-  confidentiality: { label: 'Confidentiality', icon: Shield, color: 'bg-blue-100 text-blue-700' },
+  confidentiality: { label: 'Confidentiality', icon: Shield, color: 'bg-violet-100 text-violet-700' },
   termination: { label: 'Termination', icon: Clock, color: 'bg-red-100 text-red-700' },
   payment: { label: 'Payment', icon: FileText, color: 'bg-green-100 text-green-700' },
   intellectual_property: { label: 'IP', icon: FileText, color: 'bg-purple-100 text-purple-700' },
   indemnification: { label: 'Indemnification', icon: Shield, color: 'bg-yellow-100 text-yellow-700' },
-  force_majeure: { label: 'Force Majeure', icon: AlertTriangle, color: 'bg-cyan-100 text-cyan-700' },
-  dispute_resolution: { label: 'Disputes', icon: Scale, color: 'bg-indigo-100 text-indigo-700' },
+  force_majeure: { label: 'Force Majeure', icon: AlertTriangle, color: 'bg-purple-100 text-purple-700' },
+  dispute_resolution: { label: 'Disputes', icon: Scale, color: 'bg-purple-100 text-purple-700' },
   compliance: { label: 'Compliance', icon: Shield, color: 'bg-pink-100 text-pink-700' },
 };
 
@@ -218,7 +141,8 @@ export const ClausesLibrary = memo(function ClausesLibrary({
   onInsertClause,
   className,
 }: ClausesLibraryProps) {
-  const [clauses, setClauses] = useState<Clause[]>(demoClauses);
+  const [clauses, setClauses] = useState<Clause[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<ClauseCategory | 'all'>('all');
   const [riskFilter, setRiskFilter] = useState<RiskLevel | 'all'>('all');
@@ -237,9 +161,37 @@ export const ClausesLibrary = memo(function ClausesLibrary({
     notes: '',
   });
 
+  // Fetch clauses from API
+  const fetchClauses = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (categoryFilter !== 'all') params.set('category', categoryFilter);
+      if (riskFilter !== 'all') params.set('riskLevel', riskFilter);
+      if (search) params.set('search', search);
+      
+      const response = await fetch(`/api/clauses?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch clauses');
+      
+      const data = await response.json();
+      const transformed = (data.clauses || []).map(transformClause);
+      setClauses(transformed);
+    } catch (error) {
+      console.error('Failed to fetch clauses:', error);
+      toast.error('Failed to load clauses library');
+    } finally {
+      setLoading(false);
+    }
+  }, [categoryFilter, riskFilter, search]);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchClauses();
+  }, [fetchClauses]);
+
   const filteredClauses = useMemo(() => {
     return clauses.filter(clause => {
-      // Search filter
+      // Search filter (already handled by API but keep for local favorites filter)
       if (search) {
         const searchLower = search.toLowerCase();
         if (
@@ -270,19 +222,32 @@ export const ClausesLibrary = memo(function ClausesLibrary({
     });
   }, [clauses, search, categoryFilter, riskFilter, showFavoritesOnly]);
 
-  const toggleFavorite = (id: string) => {
+  const toggleFavorite = async (id: string) => {
+    const clause = clauses.find(c => c.id === id);
+    if (!clause) return;
+    
+    // Optimistic update
     setClauses(prev =>
       prev.map(c =>
         c.id === id ? { ...c, isFavorite: !c.isFavorite } : c
       )
     );
+    
+    // Note: Would need /api/clauses/[id] PATCH endpoint for full persistence
   };
 
   const copyClause = async (clause: Clause) => {
     setCopying(clause.id);
     await navigator.clipboard.writeText(clause.content);
     
-    // Update usage count
+    // Update usage count via API
+    try {
+      await fetch(`/api/clauses/${clause.id}/copy`, { method: 'POST' });
+    } catch {
+      // Silent fail - copy still works
+    }
+    
+    // Update local state
     setClauses(prev =>
       prev.map(c =>
         c.id === clause.id
@@ -297,49 +262,83 @@ export const ClausesLibrary = memo(function ClausesLibrary({
     }, 500);
   };
 
-  const deleteClause = (id: string) => {
-    setClauses(prev => prev.filter(c => c.id !== id));
-    toast.success('Clause deleted');
+  const deleteClause = async (id: string) => {
+    try {
+      const response = await fetch(`/api/clauses/${id}`, { method: 'DELETE' });
+      if (!response.ok) throw new Error('Failed to delete');
+      
+      setClauses(prev => prev.filter(c => c.id !== id));
+      toast.success('Clause deleted');
+    } catch {
+      toast.error('Failed to delete clause');
+    }
   };
 
-  const createClause = () => {
+  const createClause = async () => {
     if (!newClause.name || !newClause.content) {
       toast.error('Name and content are required');
       return;
     }
 
-    // Extract variables from content
-    const variables = newClause.content.match(/\{\{[\w_]+\}\}/g) || [];
-
-    const clause: Clause = {
-      id: `cl-${Date.now()}`,
-      name: newClause.name,
-      content: newClause.content,
-      category: newClause.category,
-      riskLevel: newClause.riskLevel,
-      tags: newClause.tags.split(',').map(t => t.trim()).filter(Boolean),
-      isFavorite: false,
-      usageCount: 0,
-      lastUsed: null,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      createdBy: 'Current User',
-      variables,
-      notes: newClause.notes,
-    };
-
-    setClauses(prev => [clause, ...prev]);
-    setShowNewClauseDialog(false);
-    setNewClause({
-      name: '',
-      content: '',
-      category: 'general',
-      riskLevel: 'low',
-      tags: '',
-      notes: '',
-    });
-    toast.success('Clause created');
+    try {
+      const response = await fetch('/api/clauses', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newClause.name,
+          content: newClause.content,
+          category: newClause.category,
+          riskLevel: newClause.riskLevel.toUpperCase(),
+          tags: newClause.tags.split(',').map(t => t.trim()).filter(Boolean),
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Failed to create clause');
+      
+      const data = await response.json();
+      const created = transformClause(data.clause);
+      
+      setClauses(prev => [created, ...prev]);
+      setShowNewClauseDialog(false);
+      setNewClause({
+        name: '',
+        content: '',
+        category: 'general',
+        riskLevel: 'low',
+        tags: '',
+        notes: '',
+      });
+      toast.success('Clause created');
+    } catch {
+      toast.error('Failed to create clause');
+    }
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className={cn('space-y-6', className)}>
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
+          <div className="h-10 w-32 bg-slate-200 rounded animate-pulse" />
+        </div>
+        <div className="grid gap-4">
+          {[1, 2, 3].map(i => (
+            <Card key={i} className="p-4">
+              <div className="flex gap-4">
+                <div className="h-16 w-16 bg-slate-200 rounded animate-pulse" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-5 w-2/3 bg-slate-200 rounded animate-pulse" />
+                  <div className="h-4 w-full bg-slate-100 rounded animate-pulse" />
+                  <div className="h-4 w-1/3 bg-slate-100 rounded animate-pulse" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-6', className)}>
@@ -347,7 +346,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Library className="h-6 w-6 text-blue-600" />
+            <Library className="h-6 w-6 text-violet-600" />
             Clauses Library
           </h2>
           <p className="text-slate-600 mt-1">
@@ -452,6 +451,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
                         e.stopPropagation();
                         toggleFavorite(clause.id);
                       }}
+                      aria-label={clause.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
                     >
                       <Star
                         className={cn(
@@ -462,7 +462,7 @@ export const ClausesLibrary = memo(function ClausesLibrary({
                     </Button>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Clause actions">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>

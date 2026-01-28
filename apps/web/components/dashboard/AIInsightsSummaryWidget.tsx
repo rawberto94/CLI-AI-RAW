@@ -110,8 +110,8 @@ const CATEGORY_CONFIG = {
   },
   compliance: { 
     icon: Shield, 
-    color: 'text-blue-600', 
-    bg: 'bg-blue-50',
+    color: 'text-violet-600', 
+    bg: 'bg-violet-50',
     label: 'Compliance'
   },
   optimization: { 
@@ -122,8 +122,8 @@ const CATEGORY_CONFIG = {
   },
   trend: { 
     icon: TrendingUp, 
-    color: 'text-indigo-600', 
-    bg: 'bg-indigo-50',
+    color: 'text-purple-600', 
+    bg: 'bg-purple-50',
     label: 'Trend'
   },
   alert: { 
@@ -389,7 +389,7 @@ export function AIInsightsSummaryWidget({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+            <div className="p-1.5 bg-gradient-to-br from-purple-500 to-purple-500 rounded-lg">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             AI Insights
@@ -424,7 +424,7 @@ export function AIInsightsSummaryWidget({
               <PerformanceRing 
                 value={metrics.extractionAccuracy} 
                 label="Extraction"
-                color="text-emerald-500"
+                color="text-violet-500"
               />
               <PerformanceRing 
                 value={metrics.riskDetectionRate} 
@@ -434,7 +434,7 @@ export function AIInsightsSummaryWidget({
               <PerformanceRing 
                 value={metrics.avgConfidence} 
                 label="Confidence"
-                color="text-indigo-500"
+                color="text-purple-500"
               />
             </div>
             

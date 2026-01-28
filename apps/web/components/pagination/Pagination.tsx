@@ -247,7 +247,7 @@ export function Pagination({
               'flex items-center justify-center rounded-lg font-medium transition-colors',
               sizeClasses[size],
               isActive
-                ? 'bg-indigo-600 text-white'
+                ? 'bg-purple-600 text-white'
                 : 'text-slate-700 hover:bg-slate-100'
             )}
             aria-label={`Page ${page}`}

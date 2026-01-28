@@ -158,7 +158,7 @@ export function SupplierPerformanceDashboard() {
 
   const getScoreColor = (score: number) => {
     if (score >= 90) return 'text-green-600';
-    if (score >= 75) return 'text-blue-600';
+    if (score >= 75) return 'text-violet-600';
     if (score >= 60) return 'text-amber-600';
     return 'text-red-600';
   };
@@ -440,7 +440,7 @@ export function SupplierPerformanceDashboard() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-600 h-2 rounded-full"
+                          className="bg-violet-600 h-2 rounded-full"
                           style={{ width: `${selectedSupplierData.qualityScore}%` }}
                         />
                       </div>

@@ -131,8 +131,8 @@ function ConfirmationDialog({
   
   const typeConfig = {
     confirm: {
-      icon: <HelpCircle className="w-6 h-6 text-blue-500" />,
-      bgColor: 'bg-blue-100 dark:bg-blue-900',
+      icon: <HelpCircle className="w-6 h-6 text-violet-500" />,
+      bgColor: 'bg-violet-100 dark:bg-violet-900',
     },
     delete: {
       icon: <Trash2 className="w-6 h-6 text-red-500" />,
@@ -143,8 +143,8 @@ function ConfirmationDialog({
       bgColor: 'bg-yellow-100 dark:bg-yellow-900',
     },
     info: {
-      icon: <Info className="w-6 h-6 text-blue-500" />,
-      bgColor: 'bg-blue-100 dark:bg-blue-900',
+      icon: <Info className="w-6 h-6 text-violet-500" />,
+      bgColor: 'bg-violet-100 dark:bg-violet-900',
     },
     success: {
       icon: <CheckCircle className="w-6 h-6 text-green-500" />,
@@ -155,7 +155,7 @@ function ConfirmationDialog({
   const config = typeConfig[options?.type || 'confirm'];
 
   const confirmButtonVariants = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white',
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
   };
@@ -231,7 +231,7 @@ function ConfirmationDialog({
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   placeholder={options.inputConfirmation.value}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 />
                 <p className="mt-1 text-xs text-gray-500">
                   Type <span className="font-mono font-bold">{options.inputConfirmation.value}</span> to confirm
@@ -432,7 +432,7 @@ export function QuickConfirmButton({
   const variantClasses = {
     danger: 'bg-red-600 hover:bg-red-700 text-white',
     warning: 'bg-yellow-500 hover:bg-yellow-600 text-white',
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white',
   };
 
   return (
@@ -557,7 +557,7 @@ export function useUnsavedChangesWarning({
                   setShowWarning(false);
                   onContinue?.();
                 }}
-                className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium"
+                className="w-full px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium"
               >
                 Save Changes
               </button>

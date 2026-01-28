@@ -63,7 +63,7 @@ const ChatHeader = memo(({
   onClearChat,
   title = 'AI Assistant',
 }: ChatHeaderProps) => (
-  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-indigo-600 to-purple-600">
+  <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-gradient-to-r from-purple-600 to-purple-600">
     <div className="flex items-center gap-3">
       <div className="p-2 bg-white/20 rounded-lg">
         <Bot className="h-5 w-5 text-white" />
@@ -157,7 +157,7 @@ const SettingsPanel = memo(({
           onClick={() => onUpdateSettings({ soundEnabled: !settings.soundEnabled })}
           className={cn(
             "w-11 h-6 rounded-full transition-colors relative",
-            settings.soundEnabled ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+            settings.soundEnabled ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
           )}
         >
           <span className={cn(
@@ -200,7 +200,7 @@ const SettingsPanel = memo(({
           onClick={() => onUpdateSettings({ showSuggestions: !settings.showSuggestions })}
           className={cn(
             "w-11 h-6 rounded-full transition-colors relative",
-            settings.showSuggestions ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+            settings.showSuggestions ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
           )}
         >
           <span className={cn(
@@ -223,7 +223,7 @@ const SettingsPanel = memo(({
           onClick={() => onUpdateSettings({ compactMode: !settings.compactMode })}
           className={cn(
             "w-11 h-6 rounded-full transition-colors relative",
-            settings.compactMode ? "bg-indigo-600" : "bg-slate-300 dark:bg-slate-600"
+            settings.compactMode ? "bg-purple-600" : "bg-slate-300 dark:bg-slate-600"
           )}
         >
           <span className={cn(
@@ -244,7 +244,7 @@ const WelcomeScreen = memo(({ onSuggestionClick }: { onSuggestionClick: (text: s
     <motion.div
       initial={{ scale: 0.8, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
-      className="p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl mb-6"
+      className="p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl mb-6"
     >
       <Bot className="h-12 w-12 text-white" />
     </motion.div>
@@ -385,7 +385,7 @@ const ChatContent = memo(({
         {/* Typing indicator */}
         {isLoading && !streamingMessage && (
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg shrink-0">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg shrink-0">
               <Bot className="h-5 w-5 text-white" />
             </div>
             <div className="bg-white dark:bg-slate-800 rounded-2xl rounded-tl-md px-4 py-3 shadow-sm">

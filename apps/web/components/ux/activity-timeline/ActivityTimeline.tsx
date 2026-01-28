@@ -100,8 +100,8 @@ const activityTypeConfig: Record<
 > = {
   created: {
     icon: FileText,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Created',
   },
   updated: {
@@ -148,8 +148,8 @@ const activityTypeConfig: Record<
   },
   commented: {
     icon: MessageSquare,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Commented',
   },
   assigned: {
@@ -172,14 +172,14 @@ const activityTypeConfig: Record<
   },
   linked: {
     icon: Link,
-    color: 'text-cyan-500',
-    bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
     label: 'Linked',
   },
   sent: {
     icon: Send,
-    color: 'text-blue-500',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Sent',
   },
   received: {
@@ -190,14 +190,14 @@ const activityTypeConfig: Record<
   },
   synced: {
     icon: RefreshCw,
-    color: 'text-teal-500',
-    bgColor: 'bg-teal-100 dark:bg-teal-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Synced',
   },
   status_changed: {
     icon: ArrowRight,
-    color: 'text-indigo-500',
-    bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
+    color: 'text-purple-500',
+    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
     label: 'Status Changed',
   },
   reminder: {
@@ -332,7 +332,7 @@ const ActivityItemComponent = memo(function ActivityItemComponent({
             <p
               className={`font-medium text-zinc-900 dark:text-white ${
                 compact ? 'text-sm' : ''
-              } ${onActivityClick ? 'cursor-pointer hover:text-blue-600 dark:hover:text-blue-400' : ''}`}
+              } ${onActivityClick ? 'cursor-pointer hover:text-violet-600 dark:hover:text-violet-400' : ''}`}
               onClick={() => onActivityClick?.(activity)}
             >
               {activity.title}
@@ -357,7 +357,7 @@ const ActivityItemComponent = memo(function ActivityItemComponent({
                         className="w-4 h-4 rounded-full"
                       />
                     ) : (
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-[10px] font-medium">
+                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-violet-500 to-violet-500 flex items-center justify-center text-white text-[10px] font-medium">
                         {activity.user.name.charAt(0).toUpperCase()}
                       </div>
                     )}
@@ -650,7 +650,7 @@ export const ActivityList = memo(function ActivityList({
         {onViewAll && activities.length > maxItems && (
           <button
             onClick={onViewAll}
-            className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+            className="text-sm text-violet-600 dark:text-violet-400 hover:underline"
           >
             View all
           </button>

@@ -323,9 +323,9 @@ export function ForecastChart({
               <Line
                 type="monotone"
                 dataKey="rate"
-                stroke="#2563eb"
+                stroke="#7c3aed"
                 strokeWidth={3}
-                dot={{ fill: '#2563eb', r: 5 }}
+                dot={{ fill: '#7c3aed', r: 5 }}
                 activeDot={{ r: 7 }}
                 name="Predicted Rate"
               />
@@ -355,14 +355,14 @@ export function ForecastChart({
         )}
 
         {/* Trend Analysis */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
               {getTrendIcon(forecast.trendDirection)}
             </div>
             <div className="flex-1">
-              <div className="font-medium text-blue-900 mb-1">Trend Analysis</div>
-              <div className="text-sm text-blue-800">
+              <div className="font-medium text-violet-900 mb-1">Trend Analysis</div>
+              <div className="text-sm text-violet-800">
                 {forecast.trendDirection === 'increasing' && (
                   <>
                     This rate is showing an <strong>upward trend</strong> with a coefficient of {forecast.trendCoefficient.toFixed(3)}. 

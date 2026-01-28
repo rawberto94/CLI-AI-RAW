@@ -123,14 +123,14 @@ export function ScenarioModeling({
               className={cn(
                 'flex-shrink-0 px-4 py-3 rounded-xl border-2 transition-all text-left min-w-[160px]',
                 isSelected
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-violet-500 bg-violet-50'
                   : 'border-slate-200 bg-white hover:border-slate-300'
               )}
             >
-              <p className={cn('font-medium text-sm', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+              <p className={cn('font-medium text-sm', isSelected ? 'text-violet-700' : 'text-slate-700')}>
                 {scenario.name}
               </p>
-              <p className="text-lg font-bold text-emerald-600">
+              <p className="text-lg font-bold text-violet-600">
                 ${(savings.totalSavingsPerYear / 1000).toFixed(0)}K/yr
               </p>
             </button>
@@ -178,7 +178,7 @@ export function ScenarioModeling({
               <Button
                 size="sm"
                 onClick={() => onScenarioSelect?.(selectedScenario)}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600"
+                className="bg-gradient-to-r from-violet-600 to-purple-600"
               >
                 <Sparkles className="h-4 w-4 mr-1" />
                 Apply Scenario
@@ -194,7 +194,7 @@ export function ScenarioModeling({
                   <Percent className="h-4 w-4 text-slate-400" />
                   Discount Rate
                 </label>
-                <span className="text-lg font-bold text-blue-600">{selectedScenario.discountPercent}%</span>
+                <span className="text-lg font-bold text-violet-600">{selectedScenario.discountPercent}%</span>
               </div>
               <Slider
                 value={[selectedScenario.discountPercent]}
@@ -248,13 +248,13 @@ export function ScenarioModeling({
                 const savings = calculateSavings(selectedScenario);
                 return (
                   <>
-                    <div className="p-3 rounded-lg bg-blue-50">
-                      <p className="text-xs text-blue-600 mb-1">New Rate</p>
-                      <p className="text-xl font-bold text-blue-700">${savings.newRate.toFixed(0)}</p>
+                    <div className="p-3 rounded-lg bg-violet-50">
+                      <p className="text-xs text-violet-600 mb-1">New Rate</p>
+                      <p className="text-xl font-bold text-violet-700">${savings.newRate.toFixed(0)}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-emerald-50">
-                      <p className="text-xs text-emerald-600 mb-1">Annual Savings</p>
-                      <p className="text-xl font-bold text-emerald-700">${(savings.totalSavingsPerYear / 1000).toFixed(0)}K</p>
+                    <div className="p-3 rounded-lg bg-violet-50">
+                      <p className="text-xs text-violet-600 mb-1">Annual Savings</p>
+                      <p className="text-xl font-bold text-violet-700">${(savings.totalSavingsPerYear / 1000).toFixed(0)}K</p>
                     </div>
                     <div className="p-3 rounded-lg bg-purple-50">
                       <p className="text-xs text-purple-600 mb-1">Total Savings</p>

@@ -76,14 +76,14 @@ function BreadcrumbLink({ item, isLast, variant, index }: BreadcrumbLinkProps) {
       transition={{ delay: index * 0.05 }}
       className={cn(
         'inline-flex items-center gap-1.5 text-sm font-medium transition-colors',
-        variant === 'pills' && 'px-3 py-1.5 rounded-lg',
+        variant === 'pills' && 'px-3 py-1.5 rounded-xl',
         isLast
           ? variant === 'pills'
-            ? 'bg-indigo-100 text-indigo-700'
-            : 'text-slate-900'
+            ? 'bg-violet-100 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300'
+            : 'text-slate-900 dark:text-slate-100 font-semibold'
           : variant === 'pills'
-          ? 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-800'
-          : 'text-slate-500 hover:text-slate-700'
+          ? 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-violet-50 dark:hover:bg-violet-950/30 hover:text-violet-700 dark:hover:text-violet-300'
+          : 'text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400'
       )}
     >
       {Icon && <Icon className="w-4 h-4" />}
@@ -96,7 +96,7 @@ function BreadcrumbLink({ item, isLast, variant, index }: BreadcrumbLinkProps) {
   }
 
   return (
-    <Link href={item.href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded">
+    <Link href={item.href} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 rounded-lg">
       {content}
     </Link>
   );

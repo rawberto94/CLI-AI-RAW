@@ -14,7 +14,7 @@ export function DataModeBanner() {
     <div
       className={cn(
         'fixed top-16 lg:top-0 left-0 right-0 lg:left-64 z-40 px-4 py-2 text-sm font-medium text-center',
-        dataMode === 'mock' ? 'bg-blue-100 text-blue-900' : 'bg-purple-100 text-purple-900'
+        dataMode === 'mock' ? 'bg-violet-100 text-violet-900' : 'bg-purple-100 text-purple-900'
       )}
     >
       <div className="flex items-center justify-center gap-2">

@@ -128,7 +128,7 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
   const getStatusColor = (status: PresenceData['status']) => {
     switch (status) {
       case 'viewing':
-        return 'bg-blue-500';
+        return 'bg-violet-500';
       case 'editing':
         return 'bg-green-500';
       case 'idle':
@@ -139,13 +139,13 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
   const getActivityIcon = (type: ActivityEvent['type']) => {
     switch (type) {
       case 'edit':
-        return <Edit3 className="h-4 w-4 text-blue-600" />;
+        return <Edit3 className="h-4 w-4 text-violet-600" />;
       case 'comment':
         return <MessageSquare className="h-4 w-4 text-purple-600" />;
       case 'approve':
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'sign':
-        return <FileSignature className="h-4 w-4 text-indigo-600" />;
+        return <FileSignature className="h-4 w-4 text-purple-600" />;
       case 'view':
         return <Eye className="h-4 w-4 text-gray-600" />;
     }
@@ -158,7 +158,7 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+              <Users className="h-5 w-5 text-violet-600" />
               Active Users
             </div>
             <div className="flex items-center gap-2">

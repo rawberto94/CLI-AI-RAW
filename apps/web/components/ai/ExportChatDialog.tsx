@@ -185,7 +185,7 @@ export function ExportChatDialog({
                   onClick={() => setOptions((o) => ({ ...o, format: value as ExportOptions['format'] }))}
                   className={`flex flex-col items-center gap-1 p-3 rounded-lg border transition-colors ${
                     options.format === value
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      ? 'border-violet-500 bg-violet-50 text-violet-700'
                       : 'border-slate-200 hover:border-slate-300'
                   }`}
                 >

@@ -397,7 +397,7 @@ export default function ContractRenewalPage() {
   const progress = ((currentStep + 1) / STEPS.length) * 100;
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -521,7 +521,7 @@ export default function ContractRenewalPage() {
             <Button 
               onClick={handleCreateRenewal} 
               disabled={saving}
-              className="bg-gradient-to-r from-green-500 to-emerald-600"
+              className="bg-gradient-to-r from-violet-500 to-violet-600"
             >
               {saving ? (
                 <>
@@ -913,8 +913,8 @@ function TermsStep({
               </div>
             </div>
             
-            <div className="p-3 bg-blue-50 rounded-lg text-sm">
-              <p className="text-blue-700">
+            <div className="p-3 bg-violet-50 rounded-lg text-sm">
+              <p className="text-violet-700">
                 <strong>Duration:</strong> {differenceInDays(draft.expirationDate, draft.effectiveDate)} days
               </p>
             </div>
@@ -1584,7 +1584,7 @@ function ContentStep({
                             <AlertCircle className="h-4 w-4 text-amber-600" />
                           )}
                           {suggestion.type === 'update' && (
-                            <Edit3 className="h-4 w-4 text-blue-600" />
+                            <Edit3 className="h-4 w-4 text-violet-600" />
                           )}
                           {suggestion.type === 'add' && (
                             <Plus className="h-4 w-4 text-green-600" />
@@ -1624,7 +1624,7 @@ function ContentStep({
           <Card className="lg:col-span-4">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-blue-600" />
+                <BookOpen className="h-4 w-4 text-violet-600" />
                 Clause Library
               </CardTitle>
               <div className="space-y-2 mt-2">
@@ -2116,7 +2116,7 @@ function ConfirmStep({
                 "w-full sm:w-auto",
                 submitForApproval 
                   ? "bg-gradient-to-r from-amber-500 to-orange-500"
-                  : "bg-gradient-to-r from-green-500 to-emerald-600"
+                  : "bg-gradient-to-r from-violet-500 to-violet-600"
               )}
             >
               {saving ? (

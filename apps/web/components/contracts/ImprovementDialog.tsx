@@ -120,7 +120,7 @@ export function ImprovementDialog({
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-600" />
+            <Sparkles className="h-5 w-5 text-violet-600" />
             Improve Artifact
           </DialogTitle>
           <DialogDescription>
@@ -160,7 +160,7 @@ export function ImprovementDialog({
                 <button
                   key={index}
                   onClick={() => handleUseTemplate(template)}
-                  className="text-left text-sm p-3 bg-blue-50 hover:bg-blue-100 rounded-lg border border-blue-200 transition-colors group"
+                  className="text-left text-sm p-3 bg-violet-50 hover:bg-violet-100 rounded-lg border border-violet-200 transition-colors group"
                   disabled={isStreaming}
                 >
                   <div className="flex items-start justify-between gap-2">
@@ -202,7 +202,7 @@ export function ImprovementDialog({
           )}
 
           {/* Tips Section */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg p-4 border border-purple-200">
+          <div className="bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg p-4 border border-purple-200">
             <div className="flex items-start gap-3">
               <ListChecks className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">

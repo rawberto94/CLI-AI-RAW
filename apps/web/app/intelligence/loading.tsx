@@ -15,7 +15,7 @@ export default function IntelligenceLoading() {
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-2xl shadow-violet-500/30"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-500 flex items-center justify-center shadow-2xl shadow-violet-500/30"
           >
             <Brain className="w-10 h-10 text-white" />
           </motion.div>

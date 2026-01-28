@@ -233,7 +233,7 @@ function SessionWarningModal() {
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+            className="w-full px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors"
           >
             Log In Again
           </button>
@@ -288,7 +288,7 @@ function SessionWarningModal() {
               </button>
               <button
                 onClick={() => extendSession()}
-                className="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 Stay Logged In
@@ -439,9 +439,9 @@ export function AutoSaveIndicator({
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
           >
-            <RefreshCw className="w-4 h-4 text-blue-500" />
+            <RefreshCw className="w-4 h-4 text-violet-500" />
           </motion.div>
-          <span className="text-blue-600 dark:text-blue-400">Saving...</span>
+          <span className="text-violet-600 dark:text-violet-400">Saving...</span>
         </>
       )}
 

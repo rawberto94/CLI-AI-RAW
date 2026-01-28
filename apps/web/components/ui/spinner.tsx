@@ -36,7 +36,7 @@ export function Spinner({
   };
 
   const colorClasses = {
-    blue: 'text-blue-600',
+    blue: 'text-violet-600',
     green: 'text-green-600',
     orange: 'text-orange-600',
     red: 'text-red-600',

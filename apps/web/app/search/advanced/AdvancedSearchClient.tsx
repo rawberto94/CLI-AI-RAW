@@ -181,7 +181,7 @@ export default function AdvancedSearchClient() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Search className="w-5 h-5 text-blue-600" />
+                <Search className="w-5 h-5 text-violet-600" />
                 Basic Search
               </CardTitle>
             </CardHeader>
@@ -201,7 +201,7 @@ export default function AdvancedSearchClient() {
                       keywords: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 />
               </div>
 
@@ -219,7 +219,7 @@ export default function AdvancedSearchClient() {
                         contractType: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   >
                     <option value="">All Types</option>
                     {advancedSearchData.contractTypes.map((type) => (
@@ -242,7 +242,7 @@ export default function AdvancedSearchClient() {
                         status: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   >
                     <option value="">All Statuses</option>
                     <option value="active">Active</option>
@@ -277,7 +277,7 @@ export default function AdvancedSearchClient() {
                         client: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   >
                     <option value="">All Clients</option>
                     {advancedSearchData.clients.map((client) => (
@@ -300,7 +300,7 @@ export default function AdvancedSearchClient() {
                         supplier: e.target.value,
                       }))
                     }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   >
                     <option value="">All Suppliers</option>
                     {advancedSearchData.suppliers.map((supplier) => (
@@ -339,7 +339,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Minimum contract value"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                   <input
                     type="number"
@@ -352,7 +352,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Maximum contract value"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -383,7 +383,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Upload date from"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                   <input
                     type="date"
@@ -395,7 +395,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Upload date to"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -415,7 +415,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Expiry date from"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                   <input
                     type="date"
@@ -427,7 +427,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Expiry date to"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -461,7 +461,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Minimum risk score"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                   <input
                     type="number"
@@ -476,7 +476,7 @@ export default function AdvancedSearchClient() {
                       }))
                     }
                     aria-label="Maximum risk score"
-                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
               </div>
@@ -498,7 +498,7 @@ export default function AdvancedSearchClient() {
                       complianceMin: e.target.value,
                     }))
                   }
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 />
               </div>
             </CardContent>
@@ -522,7 +522,7 @@ export default function AdvancedSearchClient() {
                     <button
                       key={tag}
                       onClick={() => addTag(tag)}
-                      className="px-3 py-1 text-sm border border-gray-300 rounded-full hover:bg-blue-50 hover:border-blue-300 transition-colors"
+                      className="px-3 py-1 text-sm border border-gray-300 rounded-full hover:bg-violet-50 hover:border-violet-300 transition-colors"
                     >
                       {tag}
                     </button>
@@ -578,7 +578,7 @@ export default function AdvancedSearchClient() {
                         }));
                       }}
                       aria-label={`Custom field ${index + 1} name`}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     />
                   </div>
                   <div className="col-span-3">
@@ -596,7 +596,7 @@ export default function AdvancedSearchClient() {
                         }));
                       }}
                       aria-label={`Custom field ${index + 1} operator`}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     >
                       <option value="">Operator</option>
                       <option value="equals">Equals</option>
@@ -622,7 +622,7 @@ export default function AdvancedSearchClient() {
                         }));
                       }}
                       aria-label={`Custom field ${index + 1} value`}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                     />
                   </div>
                   <div className="col-span-1">
@@ -692,7 +692,7 @@ export default function AdvancedSearchClient() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Save className="w-5 h-5 text-blue-600" />
+                <Save className="w-5 h-5 text-violet-600" />
                 Saved Searches
               </CardTitle>
             </CardHeader>
@@ -722,19 +722,19 @@ export default function AdvancedSearchClient() {
             <CardContent>
               <div className="space-y-3 text-sm text-gray-600">
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 mt-0.5 text-violet-600 flex-shrink-0" />
                   <span>Use quotes for exact phrase matching</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 mt-0.5 text-violet-600 flex-shrink-0" />
                   <span>Combine multiple filters for precise results</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 mt-0.5 text-violet-600 flex-shrink-0" />
                   <span>Save frequently used searches for quick access</span>
                 </div>
                 <div className="flex items-start gap-2">
-                  <ArrowRight className="w-4 h-4 mt-0.5 text-blue-600 flex-shrink-0" />
+                  <ArrowRight className="w-4 h-4 mt-0.5 text-violet-600 flex-shrink-0" />
                   <span>Use date ranges to find contracts by timeline</span>
                 </div>
               </div>

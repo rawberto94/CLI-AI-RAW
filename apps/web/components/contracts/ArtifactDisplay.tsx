@@ -83,7 +83,7 @@ export function ArtifactDisplay({ artifacts, onRegenerate }: ArtifactDisplayProp
           <Card key={artifact.type} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-2">
-                <div className="p-3 bg-blue-50 rounded-full">
+                <div className="p-3 bg-violet-50 rounded-full">
                   {artifactIcons[artifact.type]}
                 </div>
                 <div className="font-semibold text-sm">{artifactLabels[artifact.type]}</div>
@@ -183,12 +183,12 @@ export function ArtifactDisplay({ artifacts, onRegenerate }: ArtifactDisplayProp
                         className={`flex items-start gap-2 p-3 rounded-lg ${
                           issue.severity === 'critical' ? 'bg-red-50 border border-red-200' :
                           issue.severity === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-                          'bg-blue-50 border border-blue-200'
+                          'bg-violet-50 border border-violet-200'
                         }`}
                       >
                         {issue.severity === 'critical' && <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />}
                         {issue.severity === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />}
-                        {issue.severity === 'info' && <Info className="h-4 w-4 text-blue-600 mt-0.5" />}
+                        {issue.severity === 'info' && <Info className="h-4 w-4 text-violet-600 mt-0.5" />}
                         <div className="flex-1">
                           <div className="font-medium text-sm">{issue.field}</div>
                           <div className="text-sm text-gray-600">{issue.message}</div>

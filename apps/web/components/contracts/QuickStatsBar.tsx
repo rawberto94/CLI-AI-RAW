@@ -41,18 +41,18 @@ interface QuickStatsBarProps {
 
 const colorConfig = {
   blue: {
-    bg: 'bg-blue-50 dark:bg-blue-950/30',
-    border: 'border-blue-200 dark:border-blue-800',
-    icon: 'text-blue-600 dark:text-blue-400',
-    text: 'text-blue-900 dark:text-blue-100',
-    highlight: 'ring-blue-500/20',
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200 dark:border-violet-800',
+    icon: 'text-violet-600 dark:text-violet-400',
+    text: 'text-violet-900 dark:text-violet-100',
+    highlight: 'ring-violet-500/20',
   },
   green: {
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    icon: 'text-emerald-600 dark:text-emerald-400',
-    text: 'text-emerald-900 dark:text-emerald-100',
-    highlight: 'ring-emerald-500/20',
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200 dark:border-violet-800',
+    icon: 'text-violet-600 dark:text-violet-400',
+    text: 'text-violet-900 dark:text-violet-100',
+    highlight: 'ring-violet-500/20',
   },
   amber: {
     bg: 'bg-amber-50 dark:bg-amber-950/30',
@@ -150,7 +150,7 @@ const QuickStatItem = memo(function QuickStatItem({
               <div
                 className={cn(
                   'flex items-center gap-0.5 ml-1',
-                  stat.trend === 'up' && 'text-emerald-600',
+                  stat.trend === 'up' && 'text-violet-600',
                   stat.trend === 'down' && 'text-red-600',
                   stat.trend === 'neutral' && 'text-slate-500'
                 )}

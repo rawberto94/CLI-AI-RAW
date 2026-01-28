@@ -99,7 +99,7 @@ export function AnimatedTable<T extends Record<string, any>>({
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => handleSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
             />
           </div>
         </motion.div>
@@ -115,7 +115,7 @@ export function AnimatedTable<T extends Record<string, any>>({
                 <th className="w-12 px-4 py-3">
                   <input
                     type="checkbox"
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                   />
                 </th>
               )}
@@ -186,7 +186,7 @@ export function AnimatedTable<T extends Record<string, any>>({
                       onClick={() => onRowSelect?.(row)}
                       className={`
                         transition-colors
-                        ${isSelected ? 'bg-blue-50' : isHovered ? 'bg-gray-50' : ''}
+                        ${isSelected ? 'bg-violet-50' : isHovered ? 'bg-gray-50' : ''}
                         ${onRowSelect ? 'cursor-pointer' : ''}
                       `}
                     >
@@ -196,7 +196,7 @@ export function AnimatedTable<T extends Record<string, any>>({
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => onRowSelect?.(row)}
-                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                            className="rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                           />
                         </td>
                       )}

@@ -426,7 +426,7 @@ function EditableFieldComponent({
     <div className={cn(
       "group relative p-4 rounded-lg border transition-all",
       isEditing 
-        ? "border-indigo-300 bg-indigo-50/30 ring-2 ring-indigo-100" 
+        ? "border-indigo-300 bg-purple-50/30 ring-2 ring-indigo-100" 
         : "border-slate-200 hover:border-slate-300 bg-white",
       field.locked && "opacity-60"
     )}>
@@ -479,7 +479,7 @@ function EditableFieldComponent({
                   variant="default"
                   size="sm"
                   onClick={handleSave}
-                  className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700"
+                  className="h-7 px-2 bg-violet-600 hover:bg-violet-700"
                 >
                   <Check className="h-3.5 w-3.5" />
                 </Button>
@@ -564,7 +564,7 @@ function EditableFieldComponent({
             <div
               className={cn(
                 "h-full rounded-full transition-all",
-                field.confidence >= 90 ? "bg-emerald-500" :
+                field.confidence >= 90 ? "bg-violet-500" :
                 field.confidence >= 70 ? "bg-amber-500" :
                 "bg-rose-500"
               )}
@@ -917,7 +917,7 @@ export function SmartEditableArtifact({
             </span>
             {stats.avgConfidence > 0 && (
               <span className="flex items-center gap-1">
-                <Brain className="h-3.5 w-3.5 text-indigo-500" />
+                <Brain className="h-3.5 w-3.5 text-purple-500" />
                 {stats.avgConfidence}% avg confidence
               </span>
             )}
@@ -944,7 +944,7 @@ export function SmartEditableArtifact({
             onClick={() => setBookmarked(!bookmarked)}
           >
             {bookmarked ? (
-              <BookmarkCheck className="h-4 w-4 text-indigo-600" />
+              <BookmarkCheck className="h-4 w-4 text-purple-600" />
             ) : (
               <Bookmark className="h-4 w-4 text-slate-400" />
             )}
@@ -995,7 +995,7 @@ export function SmartEditableArtifact({
             <Button
               onClick={() => setShowSaveDialog(true)}
               disabled={!hasChanges || isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isSaving ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1012,8 +1012,8 @@ export function SmartEditableArtifact({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-100">
-              <Target className="h-4 w-4 text-blue-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Target className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Total Fields</p>
@@ -1034,8 +1034,8 @@ export function SmartEditableArtifact({
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-emerald-100">
-              <Edit3 className="h-4 w-4 text-emerald-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Edit3 className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Editable</p>
@@ -1045,8 +1045,8 @@ export function SmartEditableArtifact({
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <Brain className="h-4 w-4 text-indigo-600" />
+            <div className="p-2 rounded-lg bg-purple-100">
+              <Brain className="h-4 w-4 text-purple-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Confidence</p>
@@ -1109,7 +1109,7 @@ export function SmartEditableArtifact({
             <Button 
               onClick={handleSaveAll} 
               disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isSaving ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1216,7 +1216,7 @@ export function convertToEditableSections(
       description: 'Payment and pricing information',
       fields: financialFields,
       icon: TrendingUp,
-      color: 'emerald'
+      color: 'violet'
     })
   }
 

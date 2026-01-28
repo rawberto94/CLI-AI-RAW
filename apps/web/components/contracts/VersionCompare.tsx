@@ -375,7 +375,7 @@ export function VersionCompare({
       {/* Header */}
       <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200">
         <div className="flex items-center gap-3">
-          <GitCompare className="w-5 h-5 text-blue-500" />
+          <GitCompare className="w-5 h-5 text-violet-500" />
           <h3 className="font-semibold text-slate-900">Version Comparison</h3>
           <Badge variant="secondary" className="gap-1">
             <span className="text-green-600">+{stats.added}</span>
@@ -393,7 +393,7 @@ export function VersionCompare({
               onClick={() => setViewMode('split')}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-                viewMode === 'split' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
+                viewMode === 'split' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:bg-slate-100'
               )}
             >
               Split
@@ -402,7 +402,7 @@ export function VersionCompare({
               onClick={() => setViewMode('unified')}
               className={cn(
                 'px-3 py-1.5 text-xs font-medium rounded transition-colors',
-                viewMode === 'unified' ? 'bg-blue-100 text-blue-700' : 'text-slate-600 hover:bg-slate-100'
+                viewMode === 'unified' ? 'bg-violet-100 text-violet-700' : 'text-slate-600 hover:bg-slate-100'
               )}
             >
               Unified

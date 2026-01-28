@@ -152,12 +152,12 @@ function getStatusConfig(status?: EnhancedContract["status"]) {
   const configs: Record<string, { color: string; icon: typeof FileText; label: string }> = {
     draft: { color: "bg-slate-100 text-slate-700", icon: FileText, label: "Draft" },
     pending: { color: "bg-amber-50 text-amber-700", icon: Clock, label: "Pending Review" },
-    active: { color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2, label: "Active" },
+    active: { color: "bg-violet-50 text-violet-700", icon: CheckCircle2, label: "Active" },
     expired: { color: "bg-red-50 text-red-700", icon: AlertTriangle, label: "Expired" },
     terminated: { color: "bg-gray-100 text-gray-700", icon: X, label: "Terminated" },
-    renewal: { color: "bg-blue-50 text-blue-700", icon: RefreshCw, label: "Up for Renewal" },
-    processing: { color: "bg-blue-50 text-blue-700", icon: RefreshCw, label: "Processing" },
-    completed: { color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2, label: "Completed" },
+    renewal: { color: "bg-violet-50 text-violet-700", icon: RefreshCw, label: "Up for Renewal" },
+    processing: { color: "bg-violet-50 text-violet-700", icon: RefreshCw, label: "Processing" },
+    completed: { color: "bg-violet-50 text-violet-700", icon: CheckCircle2, label: "Completed" },
     failed: { color: "bg-red-50 text-red-700", icon: AlertTriangle, label: "Failed" },
   };
   return status && configs[status] ? configs[status] : configs.draft;
@@ -165,7 +165,7 @@ function getStatusConfig(status?: EnhancedContract["status"]) {
 
 function getRiskBadge(riskLevel?: "low" | "medium" | "high" | "critical") {
   const configs = {
-    low: { color: "bg-emerald-100 text-emerald-700", label: "Low Risk" },
+    low: { color: "bg-violet-100 text-violet-700", label: "Low Risk" },
     medium: { color: "bg-amber-100 text-amber-700", label: "Medium Risk" },
     high: { color: "bg-red-100 text-red-700", label: "High Risk" },
     critical: { color: "bg-red-200 text-red-800", label: "Critical Risk" },
@@ -206,7 +206,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
         <div className="p-3 bg-gray-50 rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Value</p>
           <div className="flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-emerald-500" />
+            <DollarSign className="w-4 h-4 text-violet-500" />
             <span className="font-medium text-sm">
               {contract.value !== undefined
                 ? formatCurrency(contract.value, contract.currency)
@@ -219,7 +219,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
         <div className="p-3 bg-gray-50 rounded-lg">
           <p className="text-xs text-muted-foreground mb-1">Start Date</p>
           <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-500" />
+            <Calendar className="w-4 h-4 text-violet-500" />
             <span className="font-medium text-sm">
               {contract.startDate
                 ? format(parseISO(contract.startDate), "MMM d, yyyy")
@@ -255,7 +255,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
             <Badge
               className={cn(
                 "text-xs",
-                contract.health.riskLevel === "low" && "bg-emerald-100 text-emerald-700",
+                contract.health.riskLevel === "low" && "bg-violet-100 text-violet-700",
                 contract.health.riskLevel === "medium" && "bg-amber-100 text-amber-700",
                 contract.health.riskLevel === "high" && "bg-orange-100 text-orange-700",
                 contract.health.riskLevel === "critical" && "bg-red-100 text-red-700"
@@ -273,7 +273,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
               <motion.div
                 className={cn(
                   "h-full rounded-full",
-                  contract.health.score >= 80 && "bg-emerald-500",
+                  contract.health.score >= 80 && "bg-violet-500",
                   contract.health.score >= 50 && contract.health.score < 80 && "bg-amber-500",
                   contract.health.score < 50 && "bg-red-500"
                 )}
@@ -318,7 +318,7 @@ const OverviewTab = memo(function OverviewTab({ contract }: OverviewTabProps) {
                     className="w-10 h-10 rounded-lg object-cover"
                   />
                 ) : (
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 font-semibold">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-violet-100 to-purple-200 flex items-center justify-center text-violet-700 font-semibold">
                     {party.name.charAt(0)}
                   </div>
                 )}
@@ -485,14 +485,14 @@ const ObligationsTab = memo(function ObligationsTab({ obligations }: Obligations
             "p-3 rounded-lg border",
             obligation.status === "overdue" && "border-red-200 bg-red-50/50",
             obligation.status === "pending" && "border-gray-200 bg-gray-50/50",
-            obligation.status === "completed" && "border-emerald-200 bg-emerald-50/50"
+            obligation.status === "completed" && "border-violet-200 bg-violet-50/50"
           )}
         >
           <div className="flex items-start gap-3">
             <div
               className={cn(
                 "w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5",
-                obligation.status === "completed" && "bg-emerald-500 text-white",
+                obligation.status === "completed" && "bg-violet-500 text-white",
                 obligation.status === "pending" && "border-2 border-gray-300",
                 obligation.status === "overdue" && "bg-red-500 text-white"
               )}
@@ -548,7 +548,7 @@ const AttachmentsTab = memo(function AttachmentsTab({ attachments }: Attachments
           key={attachment.id}
           className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer group"
         >
-          <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600">
+          <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-violet-600">
             <FileText className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
@@ -609,11 +609,11 @@ const ActivityTab = memo(function ActivityTab({ activities }: ActivityTabProps) 
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center z-10",
                     activity.type === "ai_analysis" && "bg-purple-100 text-purple-600",
-                    activity.type === "created" && "bg-emerald-100 text-emerald-600",
-                    activity.type === "updated" && "bg-blue-100 text-blue-600",
+                    activity.type === "created" && "bg-violet-100 text-violet-600",
+                    activity.type === "updated" && "bg-violet-100 text-violet-600",
                     activity.type === "status_changed" && "bg-amber-100 text-amber-600",
                     activity.type === "comment" && "bg-gray-100 text-gray-600",
-                    activity.type === "attachment" && "bg-indigo-100 text-indigo-600"
+                    activity.type === "attachment" && "bg-purple-100 text-purple-600"
                   )}
                 >
                   <Icon className="w-4 h-4" />

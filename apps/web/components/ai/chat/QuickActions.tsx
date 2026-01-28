@@ -191,13 +191,13 @@ function parseAction(actionString: string): ParsedAction {
 const getButtonVariant = (variant: QuickAction['variant']) => {
   switch (variant) {
     case 'success':
-      return 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200'
+      return 'bg-violet-50 hover:bg-violet-100 text-violet-700 border-violet-200'
     case 'warning':
       return 'bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200'
     case 'destructive':
       return 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
     case 'premium':
-      return 'bg-gradient-to-r from-purple-50 to-indigo-50 hover:from-purple-100 hover:to-indigo-100 text-indigo-700 border-indigo-200'
+      return 'bg-gradient-to-r from-purple-50 to-purple-50 hover:from-purple-100 hover:to-purple-100 text-purple-700 border-indigo-200'
     default:
       return undefined
   }
@@ -301,7 +301,7 @@ export const QuickActions = memo(({
             disabled={action.disabled}
             className={cn(
               "inline-flex items-center justify-center rounded-md border font-medium transition-colors",
-              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2",
               "disabled:pointer-events-none disabled:opacity-50",
               sizeClasses[size],
               customVariant || "bg-white hover:bg-slate-50 text-slate-700 border-slate-200",

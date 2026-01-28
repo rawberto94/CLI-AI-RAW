@@ -90,14 +90,14 @@ export function InteractiveTooltip({
 
   const variantStyles = {
     default: 'bg-slate-900 dark:bg-slate-800 border-slate-700',
-    info: 'bg-blue-900 dark:bg-blue-950 border-blue-700',
+    info: 'bg-violet-900 dark:bg-violet-950 border-violet-700',
     tip: 'bg-amber-900 dark:bg-amber-950 border-amber-700',
     warning: 'bg-orange-900 dark:bg-orange-950 border-orange-700',
   };
 
   const variantIcons = {
     default: null,
-    info: <Info className="h-4 w-4 text-blue-400" />,
+    info: <Info className="h-4 w-4 text-violet-400" />,
     tip: <Lightbulb className="h-4 w-4 text-amber-400" />,
     warning: <Info className="h-4 w-4 text-orange-400" />,
   };
@@ -214,7 +214,7 @@ export function InteractiveTooltip({
               "absolute w-0 h-0 border-4",
               arrowStyles[position],
               variant === 'default' && "border-slate-900 dark:border-slate-800",
-              variant === 'info' && "border-blue-900 dark:border-blue-950",
+              variant === 'info' && "border-violet-900 dark:border-violet-950",
               variant === 'tip' && "border-amber-900 dark:border-amber-950",
               variant === 'warning' && "border-orange-900 dark:border-orange-950"
             )} />
@@ -286,8 +286,8 @@ export function FeatureSpotlight({
               exit={{ scale: 0.8, opacity: 0 }}
               className="absolute -inset-1 rounded-lg pointer-events-none"
             >
-              <div className="absolute inset-0 rounded-lg bg-indigo-500/20 animate-pulse" />
-              <div className="absolute inset-0 rounded-lg border-2 border-indigo-500/50 animate-ping" />
+              <div className="absolute inset-0 rounded-lg bg-purple-500/20 animate-pulse" />
+              <div className="absolute inset-0 rounded-lg border-2 border-purple-500/50 animate-ping" />
             </motion.div>
 
             {/* Tooltip */}
@@ -297,7 +297,7 @@ export function FeatureSpotlight({
               exit={{ opacity: 0, y: 10 }}
               className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50"
             >
-              <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg shadow-xl p-4 max-w-xs">
+              <div className="bg-gradient-to-r from-purple-600 to-purple-600 rounded-lg shadow-xl p-4 max-w-xs">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-white/20 rounded">
@@ -321,7 +321,7 @@ export function FeatureSpotlight({
                 </button>
               </div>
               {/* Arrow */}
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-indigo-600" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-purple-600" />
             </motion.div>
           </>
         )}
@@ -344,7 +344,7 @@ export function InfoBadge({ content, variant = 'info' }: InfoBadgeProps) {
   };
 
   const colors = {
-    info: 'text-blue-500 hover:bg-blue-100 dark:hover:bg-blue-900/30',
+    info: 'text-violet-500 hover:bg-violet-100 dark:hover:bg-violet-900/30',
     tip: 'text-amber-500 hover:bg-amber-100 dark:hover:bg-amber-900/30',
     warning: 'text-orange-500 hover:bg-orange-100 dark:hover:bg-orange-900/30',
   };

@@ -51,7 +51,7 @@ const StepIcon = ({ status, stepName }: { status: string; stepName?: string }) =
     case 'completed':
       return <CheckCircle2 className="h-4 w-4 text-green-600" />;
     case 'running':
-      return <Icon className="h-4 w-4 text-blue-600 animate-pulse" />;
+      return <Icon className="h-4 w-4 text-violet-600 animate-pulse" />;
     case 'failed':
       return <XCircle className="h-4 w-4 text-red-600" />;
     case 'skipped':
@@ -66,7 +66,7 @@ const getStatusColor = (status: string) => {
     case 'completed':
       return 'bg-green-500';
     case 'running':
-      return 'bg-blue-500';
+      return 'bg-violet-500';
     case 'failed':
       return 'bg-red-500';
     default:
@@ -234,9 +234,9 @@ export function OrchestratorProgress({
                 {progress.agent.lastDecision.enqueued.map((job, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 text-xs p-2 rounded bg-blue-50 dark:bg-blue-900/10"
+                    className="flex items-center gap-2 text-xs p-2 rounded bg-violet-50 dark:bg-violet-900/10"
                   >
-                    <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                    <Loader2 className="h-3 w-3 animate-spin text-violet-600" />
                     <span className="font-medium capitalize">
                       {job.name.replace(/_/g, ' ').toLowerCase()}
                     </span>

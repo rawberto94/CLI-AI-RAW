@@ -37,9 +37,9 @@ export function AlertBanner({
 
   const typeStyles = {
     info: {
-      bg: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
-      icon: <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
-      text: 'text-blue-800 dark:text-blue-200',
+      bg: 'bg-violet-50 dark:bg-violet-950 border-violet-200 dark:border-violet-800',
+      icon: <Info className="w-5 h-5 text-violet-600 dark:text-violet-400" />,
+      text: 'text-violet-800 dark:text-violet-200',
     },
     success: {
       bg: 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800',
@@ -115,7 +115,7 @@ interface InlineAlertProps {
 
 export function InlineAlert({ type, children, className = '' }: InlineAlertProps) {
   const typeStyles = {
-    info: 'text-blue-600 dark:text-blue-400',
+    info: 'text-violet-600 dark:text-violet-400',
     success: 'text-green-600 dark:text-green-400',
     warning: 'text-yellow-600 dark:text-yellow-400',
     error: 'text-red-600 dark:text-red-400',
@@ -161,9 +161,9 @@ export function Callout({
 
   const typeStyles = {
     note: {
-      bg: 'bg-blue-50 dark:bg-blue-950',
-      border: 'border-l-4 border-blue-500',
-      icon: <Info className="w-5 h-5 text-blue-600 dark:text-blue-400" />,
+      bg: 'bg-violet-50 dark:bg-violet-950',
+      border: 'border-l-4 border-violet-500',
+      icon: <Info className="w-5 h-5 text-violet-600 dark:text-violet-400" />,
       title: title || 'Note',
     },
     tip: {
@@ -331,7 +331,7 @@ export function MessageBubble({
     sending: <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />,
     sent: <Check className="w-3 h-3 text-gray-400" />,
     delivered: <div className="flex -space-x-1"><Check className="w-3 h-3 text-gray-400" /><Check className="w-3 h-3 text-gray-400" /></div>,
-    read: <div className="flex -space-x-1"><Check className="w-3 h-3 text-blue-500" /><Check className="w-3 h-3 text-blue-500" /></div>,
+    read: <div className="flex -space-x-1"><Check className="w-3 h-3 text-violet-500" /><Check className="w-3 h-3 text-violet-500" /></div>,
   };
 
   return (
@@ -347,7 +347,7 @@ export function MessageBubble({
         <div
           className={`px-4 py-2 rounded-2xl ${
             isUser
-              ? 'bg-blue-600 text-white rounded-br-sm'
+              ? 'bg-violet-600 text-white rounded-br-sm'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-bl-sm'
           }`}
         >
@@ -387,7 +387,7 @@ export function SystemMessage({
         type === 'date'
           ? 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400'
           : type === 'action'
-          ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400'
+          ? 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400'
           : 'bg-gray-50 dark:bg-gray-900 text-gray-500 dark:text-gray-500'
       }`}>
         {icon}
@@ -424,7 +424,7 @@ export function AnnouncementBar({
   const [isVisible, setIsVisible] = useState(true);
 
   const typeStyles = {
-    info: 'bg-blue-600 text-white',
+    info: 'bg-violet-600 text-white',
     promo: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white',
     warning: 'bg-yellow-400 text-yellow-900',
   };

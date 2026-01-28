@@ -53,10 +53,10 @@ const ValueSection = memo(function ValueSection({
   periodicity,
 }: Pick<QuickOverviewProps, 'tcvAmount' | 'currency' | 'paymentType' | 'periodicity'>) {
   return (
-    <div className="p-4 sm:p-5 border-b sm:border-b lg:border-b-0 sm:border-r border-slate-100 bg-gradient-to-br from-emerald-50/40 via-white to-white">
+    <div className="p-4 sm:p-5 border-b sm:border-b lg:border-b-0 sm:border-r border-slate-100 bg-gradient-to-br from-violet-50/40 via-white to-white">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-emerald-100">
-          <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-600" />
+        <div className="p-1.5 rounded-lg bg-violet-100">
+          <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Value</span>
       </div>
@@ -67,7 +67,7 @@ const ValueSection = memo(function ValueSection({
       </p>
       <div className="flex flex-wrap items-center gap-1">
         {paymentType && paymentType !== 'none' && (
-          <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] sm:text-xs font-medium hover:bg-emerald-100">
+          <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs font-medium hover:bg-violet-100">
             {formatPaymentType(paymentType as any)}
           </Badge>
         )}
@@ -89,8 +89,8 @@ const PartiesSection = memo(function PartiesSection({
   return (
     <div className="p-4 sm:p-5 border-b lg:border-b-0 sm:border-r border-slate-100">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-blue-100">
-          <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-600" />
+        <div className="p-1.5 rounded-lg bg-violet-100">
+          <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Parties</span>
       </div>
@@ -102,10 +102,10 @@ const PartiesSection = memo(function PartiesSection({
               <div key={idx} className="flex items-center gap-2">
                 <div className={cn(
                   "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0",
-                  isClient ? "bg-blue-100" : "bg-purple-100"
+                  isClient ? "bg-violet-100" : "bg-purple-100"
                 )}>
                   {isClient ? (
-                    <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-blue-600" />
+                    <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-violet-600" />
                   ) : (
                     <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
                   )}
@@ -115,7 +115,7 @@ const PartiesSection = memo(function PartiesSection({
                   {party.role && (
                     <p className={cn(
                       "text-[10px] sm:text-xs",
-                      isClient ? "text-blue-600" : "text-purple-600"
+                      isClient ? "text-violet-600" : "text-purple-600"
                     )}>
                       {party.role}
                     </p>
@@ -128,7 +128,7 @@ const PartiesSection = memo(function PartiesSection({
           <p className="text-xs sm:text-sm text-slate-400 italic">No parties identified</p>
         )}
         {parties.length > 2 && (
-          <button className="text-[10px] sm:text-xs text-blue-600 hover:text-blue-700 font-medium">
+          <button className="text-[10px] sm:text-xs text-violet-600 hover:text-violet-700 font-medium">
             +{parties.length - 2} more
           </button>
         )}
@@ -155,8 +155,8 @@ const DurationSection = memo(function DurationSection({
   return (
     <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-slate-100">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-indigo-100">
-          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-600" />
+        <div className="p-1.5 rounded-lg bg-purple-100">
+          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
         </div>
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</span>
       </div>
@@ -168,7 +168,7 @@ const DurationSection = memo(function DurationSection({
           <span className={cn(
             "font-medium",
             isExpired ? "text-red-600" : 
-            isEvergreen ? "text-blue-600" :
+            isEvergreen ? "text-violet-600" :
             daysRemaining !== null && daysRemaining <= 90 ? "text-amber-600" : 
             "text-slate-700"
           )}>
@@ -184,13 +184,13 @@ const DurationSection = memo(function DurationSection({
               Expired
             </Badge>
           ) : isEvergreen ? (
-            <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px] sm:text-xs">
-              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-blue-500 rounded-full mr-1" />
+            <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs">
+              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-500 rounded-full mr-1" />
               Auto-renewing
             </Badge>
           ) : isActive ? (
-            <Badge className="bg-emerald-100 text-emerald-700 border-0 text-[10px] sm:text-xs">
-              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-emerald-500 rounded-full mr-1 animate-pulse" />
+            <Badge className="bg-violet-100 text-violet-700 border-0 text-[10px] sm:text-xs">
+              <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-violet-500 rounded-full mr-1 animate-pulse" />
               Active
             </Badge>
           ) : (
@@ -242,7 +242,7 @@ const AssessmentSection = memo(function AssessmentSection({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
-              signatureStatus === 'signed' ? 'bg-emerald-500' : 
+              signatureStatus === 'signed' ? 'bg-violet-500' : 
               signatureStatus === 'partially_signed' ? 'bg-amber-500' : 
               signatureStatus === 'unsigned' ? 'bg-red-500' :
               'bg-slate-400'
@@ -254,7 +254,7 @@ const AssessmentSection = memo(function AssessmentSection({
           </div>
           <Badge className={cn(
             "text-[10px] sm:text-xs font-medium border-0 flex items-center gap-1",
-            signatureStatus === 'signed' ? 'bg-emerald-100 text-emerald-700' : 
+            signatureStatus === 'signed' ? 'bg-violet-100 text-violet-700' : 
             signatureStatus === 'partially_signed' ? 'bg-amber-100 text-amber-700' : 
             signatureStatus === 'unsigned' ? 'bg-red-100 text-red-700' :
             'bg-slate-100 text-slate-600'
@@ -274,7 +274,7 @@ const AssessmentSection = memo(function AssessmentSection({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
-              riskLevel === 'low' ? 'bg-emerald-500' : 
+              riskLevel === 'low' ? 'bg-violet-500' : 
               riskLevel === 'medium' ? 'bg-amber-500' : 
               'bg-red-500'
             )} />
@@ -282,7 +282,7 @@ const AssessmentSection = memo(function AssessmentSection({
           </div>
           <Badge className={cn(
             "text-[10px] sm:text-xs font-medium border-0",
-            riskLevel === 'low' ? 'bg-emerald-100 text-emerald-700' : 
+            riskLevel === 'low' ? 'bg-violet-100 text-violet-700' : 
             riskLevel === 'medium' ? 'bg-amber-100 text-amber-700' : 
             'bg-red-100 text-red-700'
           )}>
@@ -295,13 +295,13 @@ const AssessmentSection = memo(function AssessmentSection({
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className={cn(
               "w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full",
-              complianceStatus === 'ok' ? 'bg-emerald-500' : 'bg-amber-500'
+              complianceStatus === 'ok' ? 'bg-violet-500' : 'bg-amber-500'
             )} />
             <span className="text-xs sm:text-sm font-medium text-slate-700">Compliance</span>
           </div>
           <Badge className={cn(
             "text-[10px] sm:text-xs font-medium border-0",
-            complianceStatus === 'ok' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+            complianceStatus === 'ok' ? 'bg-violet-100 text-violet-700' : 'bg-amber-100 text-amber-700'
           )}>
             {complianceStatus === 'ok' ? 'OK' : 'Review'}
           </Badge>

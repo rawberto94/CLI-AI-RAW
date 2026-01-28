@@ -233,7 +233,7 @@ export const ContractNotes = memo(function ContractNotes({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-blue-500" />
+            <MessageSquare className="h-4 w-4 text-violet-500" />
             Notes & Comments
             {notes.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full">

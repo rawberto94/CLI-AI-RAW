@@ -324,7 +324,7 @@ export default function CategoryAnalyticsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-400" />
+        <Loader2 className="w-8 h-8 animate-spin text-violet-400" />
       </div>
     );
   }
@@ -337,7 +337,7 @@ export default function CategoryAnalyticsPage() {
           <p className="text-lg font-medium">{error}</p>
           <button
             onClick={fetchAnalytics}
-            className="mt-4 px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors"
+            className="mt-4 px-4 py-2 bg-violet-500 rounded-lg hover:bg-violet-600 transition-colors"
           >
             Retry
           </button>
@@ -363,7 +363,7 @@ export default function CategoryAnalyticsPage() {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
+              <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
                 <BarChart3 className="w-6 h-6" />
               </div>
               <div>
@@ -383,7 +383,7 @@ export default function CategoryAnalyticsPage() {
                     onClick={() => setPeriod(p)}
                     className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                       period === p
-                        ? "bg-blue-500 text-white"
+                        ? "bg-violet-500 text-white"
                         : "text-white/60 hover:text-white"
                     }`}
                   >
@@ -469,7 +469,7 @@ export default function CategoryAnalyticsPage() {
                   onClick={handleBulkCategorize}
                   disabled={isBulkCategorizing}
                   className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3
-                           bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl
+                           bg-gradient-to-r from-purple-500 to-purple-500 rounded-xl
                            font-medium hover:opacity-90 transition-opacity
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 >
@@ -488,12 +488,12 @@ export default function CategoryAnalyticsPage() {
           <div className="lg:col-span-2 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold flex items-center gap-2">
-                <BarChart3 className="w-5 h-5 text-blue-400" />
+                <BarChart3 className="w-5 h-5 text-violet-400" />
                 Category Distribution
               </h3>
               <Link
                 href="/settings/taxonomy"
-                className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1"
               >
                 Manage Categories
                 <ChevronRight className="w-4 h-4" />
@@ -506,8 +506,8 @@ export default function CategoryAnalyticsPage() {
                 <p>No categorized contracts yet</p>
                 <Link
                   href="/settings/taxonomy"
-                  className="inline-block mt-4 px-4 py-2 bg-blue-500/20 text-blue-400 
-                           rounded-lg hover:bg-blue-500/30 transition-colors"
+                  className="inline-block mt-4 px-4 py-2 bg-violet-500/20 text-violet-400 
+                           rounded-lg hover:bg-violet-500/30 transition-colors"
                 >
                   Set Up Categories
                 </Link>
@@ -583,8 +583,8 @@ export default function CategoryAnalyticsPage() {
                      hover:bg-white/10 transition-colors flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-500/20 rounded-lg">
-                <Tag className="w-5 h-5 text-blue-400" />
+              <div className="p-2 bg-violet-500/20 rounded-lg">
+                <Tag className="w-5 h-5 text-violet-400" />
               </div>
               <div>
                 <p className="font-medium">Manage Taxonomy</p>

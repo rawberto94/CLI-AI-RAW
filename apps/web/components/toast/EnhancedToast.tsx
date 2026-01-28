@@ -296,8 +296,8 @@ function ToastContainer({ toasts, position, onDismiss }: ToastContainerProps) {
 const variantConfig: Record<ToastVariant, { icon: LucideIcon; styles: string; iconColor: string }> = {
   success: {
     icon: CheckCircle2,
-    styles: 'bg-white border-emerald-200',
-    iconColor: 'text-emerald-500',
+    styles: 'bg-white border-violet-200',
+    iconColor: 'text-violet-500',
   },
   error: {
     icon: XCircle,
@@ -311,13 +311,13 @@ const variantConfig: Record<ToastVariant, { icon: LucideIcon; styles: string; ic
   },
   info: {
     icon: Info,
-    styles: 'bg-white border-blue-200',
-    iconColor: 'text-blue-500',
+    styles: 'bg-white border-violet-200',
+    iconColor: 'text-violet-500',
   },
   loading: {
     icon: Loader2,
     styles: 'bg-white border-slate-200',
-    iconColor: 'text-indigo-500',
+    iconColor: 'text-purple-500',
   },
   default: {
     icon: Info,
@@ -374,7 +374,7 @@ function ToastItem({ toast, onDismiss, fromTop }: ToastItemProps) {
                   'text-sm font-medium transition-colors',
                   action.variant === 'destructive'
                     ? 'text-red-600 hover:text-red-700'
-                    : 'text-indigo-600 hover:text-indigo-700'
+                    : 'text-purple-600 hover:text-purple-700'
                 )}
               >
                 {action.label}
@@ -403,10 +403,10 @@ function ToastItem({ toast, onDismiss, fromTop }: ToastItemProps) {
           transition={{ duration: duration / 1000, ease: 'linear' }}
           className={cn(
             'absolute bottom-0 left-0 h-1',
-            variant === 'success' && 'bg-emerald-500',
+            variant === 'success' && 'bg-violet-500',
             variant === 'error' && 'bg-red-500',
             variant === 'warning' && 'bg-amber-500',
-            variant === 'info' && 'bg-blue-500',
+            variant === 'info' && 'bg-violet-500',
             variant === 'default' && 'bg-slate-400',
           )}
         />

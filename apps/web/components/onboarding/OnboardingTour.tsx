@@ -404,7 +404,7 @@ export function OnboardingTour({
           {/* Progress bar */}
           <div className="h-1 bg-gray-100 dark:bg-gray-800">
             <motion.div
-              className="h-full bg-gradient-to-r from-blue-500 to-indigo-500"
+              className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               transition={{ duration: 0.3 }}
@@ -415,7 +415,7 @@ export function OnboardingTour({
           <div className="p-5">
             <div className="flex items-start gap-4">
               {step.icon && (
-                <div className="flex-shrink-0 p-2.5 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-xl shadow-lg">
+                <div className="flex-shrink-0 p-2.5 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl shadow-lg">
                   <step.icon className="h-5 w-5 text-white" />
                 </div>
               )}
@@ -458,9 +458,9 @@ export function OnboardingTour({
                     className={cn(
                       'h-1.5 rounded-full transition-all',
                       i === currentStep
-                        ? 'w-4 bg-blue-500'
+                        ? 'w-4 bg-violet-500'
                         : i < currentStep
-                          ? 'w-1.5 bg-blue-300'
+                          ? 'w-1.5 bg-violet-300'
                           : 'w-1.5 bg-gray-300 dark:bg-gray-600'
                     )}
                   />
@@ -492,7 +492,7 @@ export function OnboardingTour({
               <Button
                 size="sm"
                 onClick={handleNext}
-                className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
               >
                 {isLastStep ? (
                   <>

@@ -144,7 +144,7 @@ export default function ImportWizardPage() {
                     <div
                       className={`
                         w-12 h-12 rounded-full flex items-center justify-center text-2xl
-                        ${isActive ? 'bg-blue-600 text-white' : ''}
+                        ${isActive ? 'bg-violet-600 text-white' : ''}
                         ${isComplete ? 'bg-green-600 text-white' : ''}
                         ${!isActive && !isComplete ? 'bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-slate-400' : ''}
                       `}
@@ -153,7 +153,7 @@ export default function ImportWizardPage() {
                     </div>
                     <p className={`
                       mt-2 text-sm font-medium
-                      ${isActive ? 'text-blue-600 dark:text-blue-400' : ''}
+                      ${isActive ? 'text-violet-600 dark:text-violet-400' : ''}
                       ${isComplete ? 'text-green-600 dark:text-green-400' : ''}
                       ${!isActive && !isComplete ? 'text-gray-600 dark:text-slate-400' : ''}
                     `}>
@@ -207,16 +207,16 @@ export default function ImportWizardPage() {
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-lg file:border-0
                     file:text-sm file:font-semibold
-                    file:bg-blue-50 file:text-blue-700
-                    dark:file:bg-blue-900/50 dark:file:text-blue-300
-                    hover:file:bg-blue-100 dark:hover:file:bg-blue-900/70"
+                    file:bg-violet-50 file:text-violet-700
+                    dark:file:bg-violet-900/50 dark:file:text-violet-300
+                    hover:file:bg-violet-100 dark:hover:file:bg-violet-900/70"
                   aria-label="Select rate card file to import"
                 />
               </div>
 
               {isProcessing && (
                 <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 dark:border-violet-400"></div>
                   <p className="mt-4 text-gray-600 dark:text-slate-400">Processing file...</p>
                 </div>
               )}
@@ -281,7 +281,7 @@ export default function ImportWizardPage() {
               <div className="flex gap-4 justify-center">
                 <button
                   onClick={handleStartOver}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+                  className="px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium"
                 >
                   Import Another File
                 </button>

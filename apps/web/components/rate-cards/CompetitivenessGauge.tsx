@@ -11,7 +11,7 @@ interface CompetitivenessGaugeProps {
 export function CompetitivenessGauge({ score, ranking }: CompetitivenessGaugeProps) {
   const getColor = (score: number) => {
     if (score >= 90) return 'text-green-600';
-    if (score >= 75) return 'text-blue-600';
+    if (score >= 75) return 'text-violet-600';
     if (score >= 60) return 'text-yellow-600';
     if (score >= 40) return 'text-orange-600';
     return 'text-red-600';

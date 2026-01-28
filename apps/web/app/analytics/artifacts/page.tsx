@@ -109,7 +109,7 @@ export default function ArtifactsAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-indigo-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
         <div className="container mx-auto py-8">
           <div className="flex items-center justify-center h-64">
             <motion.div
@@ -118,8 +118,8 @@ export default function ArtifactsAnalyticsPage() {
               className="flex flex-col items-center gap-4"
             >
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-indigo-500/20 blur-2xl rounded-full" />
-                <div className="relative p-4 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-purple-500/20 blur-2xl rounded-full" />
+                <div className="relative p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg">
                   <RefreshCw className="h-8 w-8 animate-spin text-white" />
                 </div>
               </div>
@@ -136,7 +136,7 @@ export default function ArtifactsAnalyticsPage() {
   const artifactTypes = ['OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RATES', 'COMPLIANCE', 'RISK'];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto py-8 space-y-6">
         {/* Header */}
         <motion.div 
@@ -145,7 +145,7 @@ export default function ArtifactsAnalyticsPage() {
           className="flex items-start justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl shadow-lg shadow-purple-500/25">
+            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
               <Brain className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function ArtifactsAnalyticsPage() {
             </Button>
             <Button 
               onClick={loadMetrics}
-              className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 shadow-lg shadow-purple-500/25"
+              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/25"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -178,14 +178,14 @@ export default function ArtifactsAnalyticsPage() {
             { label: 'Total Artifacts', value: metrics.totalArtifacts.toLocaleString(), iconName: 'FileText', color: 'blue' },
             { label: 'Avg Confidence', value: `${Math.round(metrics.avgConfidence * 100)}%`, iconName: 'CheckCircle2', color: 'green' },
             { label: 'Avg Completeness', value: `${metrics.avgCompleteness}%`, iconName: 'BarChart3', color: 'purple' },
-            { label: 'Cost Savings', value: `$${(metrics.costSavingsTotal / 1000000).toFixed(1)}M`, iconName: 'DollarSign', color: 'emerald' }
+            { label: 'Cost Savings', value: `$${(metrics.costSavingsTotal / 1000000).toFixed(1)}M`, iconName: 'DollarSign', color: 'violet' }
           ].map((item, index) => {
             const IconComponent = item.iconName === 'FileText' ? FileText : item.iconName === 'CheckCircle2' ? CheckCircle2 : item.iconName === 'BarChart3' ? BarChart3 : DollarSign;
             const gradients: Record<string, string> = {
-              blue: 'from-blue-500 to-indigo-600',
-              green: 'from-green-500 to-emerald-600',
+              blue: 'from-violet-500 to-purple-600',
+              green: 'from-violet-500 to-violet-600',
               purple: 'from-purple-500 to-violet-600',
-              emerald: 'from-emerald-500 to-teal-600'
+              emerald: 'from-violet-500 to-violet-600'
             };
             return (
               <motion.div
@@ -252,7 +252,7 @@ export default function ArtifactsAnalyticsPage() {
                         initial={{ width: 0 }}
                         animate={{ width: `${metrics.avgConfidence * 100}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        className="bg-gradient-to-r from-green-500 to-emerald-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-violet-500 to-violet-600 h-2.5 rounded-full"
                       />
                     </div>
                   </div>
@@ -267,7 +267,7 @@ export default function ArtifactsAnalyticsPage() {
                         initial={{ width: 0 }}
                         animate={{ width: `${metrics.avgCompleteness}%` }}
                         transition={{ duration: 1, ease: "easeOut", delay: 0.2 }}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-violet-500 to-purple-600 h-2.5 rounded-full"
                       />
                     </div>
                   </div>
@@ -290,7 +290,7 @@ export default function ArtifactsAnalyticsPage() {
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5 text-emerald-500" />
+                    <DollarSign className="h-5 w-5 text-violet-500" />
                     Cost Savings Impact
                   </CardTitle>
                   <CardDescription>
@@ -303,7 +303,7 @@ export default function ArtifactsAnalyticsPage() {
                       initial={{ scale: 0.5, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ type: "spring", stiffness: 200 }}
-                      className="text-5xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-2"
+                      className="text-5xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent mb-2"
                     >
                       ${(metrics.costSavingsTotal / 1000000).toFixed(1)}M
                     </motion.div>
@@ -382,8 +382,8 @@ export default function ArtifactsAnalyticsPage() {
                 {metrics.recentActivity.map((activity) => (
                   <div key={activity.id} className="flex items-center justify-between p-4 border rounded-lg hover:shadow-sm transition-shadow">
                     <div className="flex items-center gap-4">
-                      <div className="p-2 bg-blue-50 rounded-lg">
-                        <FileText className="h-4 w-4 text-blue-600" />
+                      <div className="p-2 bg-violet-50 rounded-lg">
+                        <FileText className="h-4 w-4 text-violet-600" />
                       </div>
                       <div>
                         <div className="font-medium">{activity.contractName}</div>

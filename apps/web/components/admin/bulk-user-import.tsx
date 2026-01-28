@@ -164,7 +164,7 @@ export function BulkUserImport() {
       case 'created':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'invited':
-        return <Clock className="h-4 w-4 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-violet-500" />;
       case 'skipped':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case 'error':
@@ -326,8 +326,8 @@ export function BulkUserImport() {
                 <div className="text-2xl font-bold text-green-600">{summary.created}</div>
                 <div className="text-xs text-muted-foreground">Created</div>
               </div>
-              <div className="text-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{summary.invited}</div>
+              <div className="text-center p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <div className="text-2xl font-bold text-violet-600">{summary.invited}</div>
                 <div className="text-xs text-muted-foreground">Invited</div>
               </div>
               <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">

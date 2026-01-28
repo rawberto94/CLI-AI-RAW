@@ -76,9 +76,9 @@ export function KeyboardShortcutsExample() {
 
   return (
     <div className="max-w-4xl mx-auto p-8 space-y-6">
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg p-6">
+      <div className="bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-lg p-6">
         <h2 className="text-2xl font-bold mb-2">Keyboard Shortcuts Demo</h2>
-        <p className="text-blue-100">
+        <p className="text-violet-100">
           Try using keyboard shortcuts to interact with this page. Press <kbd className="px-2 py-1 bg-white/20 rounded">?</kbd> to see all available shortcuts.
         </p>
       </div>
@@ -101,7 +101,7 @@ export function KeyboardShortcutsExample() {
                   <button
                     onClick={() => setIsEditing(true)}
                     data-edit-button
-                    className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    className="flex items-center gap-2 px-3 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
                   >
                     <Edit className="w-4 h-4" />
                     Edit
@@ -189,7 +189,7 @@ export function KeyboardShortcutsExample() {
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full h-32 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
             placeholder="Enter content..."
           />
         ) : (

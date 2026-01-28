@@ -226,7 +226,7 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
                   className={cn(
                     'max-w-[80%] rounded-lg p-3 text-sm',
                     message.role === 'user'
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-violet-600 text-white'
                       : 'bg-gray-100 text-gray-900'
                   )}
                 >
@@ -247,8 +247,8 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
                   )}
                 </div>
                 {message.role === 'user' && (
-                  <div className="p-2 bg-blue-100 rounded-full h-fit">
-                    <User className="h-4 w-4 text-blue-600" />
+                  <div className="p-2 bg-violet-100 rounded-full h-fit">
+                    <User className="h-4 w-4 text-violet-600" />
                   </div>
                 )}
               </div>

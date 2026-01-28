@@ -53,7 +53,7 @@ export default function RateBenchmarkingPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
         
@@ -64,7 +64,7 @@ export default function RateBenchmarkingPage() {
         >
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+              <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
                 <BarChart3 className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -115,7 +115,7 @@ export default function RateBenchmarkingPage() {
                     onCheckedChange={(checked) => setShowBaselineOnly(checked as boolean)}
                   />
                   <Label htmlFor="baselineOnly" className="cursor-pointer">
-                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
                       ⭐ Baseline Only
                 </Badge>
               </Label>

@@ -278,8 +278,8 @@ export function WorkflowBuilder({
       
       {/* Workflow Configuration */}
       <Card className="shadow-2xl border-0">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b">
-          <CardTitle className="text-2xl bg-gradient-to-r from-blue-900 to-indigo-900 bg-clip-text text-transparent">
+        <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 border-b">
+          <CardTitle className="text-2xl bg-gradient-to-r from-violet-900 to-purple-900 bg-clip-text text-transparent">
             Workflow Configuration
           </CardTitle>
         </CardHeader>
@@ -592,7 +592,7 @@ export function WorkflowBuilder({
           <Button
             onClick={handleSave}
             disabled={saving || !workflow.name || steps.length === 0}
-            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700"
           >
             <Save className={cn('h-4 w-4 mr-2', saving && 'animate-spin')} />
             {saving ? 'Saving...' : 'Save Workflow'}

@@ -370,7 +370,7 @@ export function PDFCanvasViewer({
         {/* Loading state */}
         {loading && (
           <div className="flex flex-col items-center justify-center h-full">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+            <Loader2 className="h-8 w-8 animate-spin text-violet-500 mb-3" />
             <p className="text-sm text-slate-600">Loading document...</p>
           </div>
         )}

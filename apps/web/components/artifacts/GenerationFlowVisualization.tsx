@@ -108,7 +108,7 @@ const PIPELINE_STAGES = [
 const ARTIFACT_TYPES = [
   { id: 'OVERVIEW', label: 'Overview', icon: FileText, color: 'blue' },
   { id: 'CLAUSES', label: 'Clauses', icon: FileCheck, color: 'indigo' },
-  { id: 'FINANCIAL', label: 'Financial', icon: DollarSign, color: 'emerald' },
+  { id: 'FINANCIAL', label: 'Financial', icon: DollarSign, color: 'violet' },
   { id: 'RISK', label: 'Risk', icon: AlertTriangle, color: 'amber' },
   { id: 'COMPLIANCE', label: 'Compliance', icon: Shield, color: 'violet' }
 ] as const;
@@ -137,13 +137,13 @@ function StageIndicator({
       ring: 'ring-rose-200'
     };
     if (isComplete) return {
-      bg: 'bg-emerald-100',
-      icon: 'text-emerald-600',
-      ring: 'ring-emerald-200'
+      bg: 'bg-violet-100',
+      icon: 'text-violet-600',
+      ring: 'ring-violet-200'
     };
     if (isActive) return {
-      bg: 'bg-indigo-100',
-      icon: 'text-indigo-600',
+      bg: 'bg-purple-100',
+      icon: 'text-purple-600',
       ring: 'ring-indigo-300 ring-2'
     };
     return {
@@ -167,7 +167,7 @@ function StageIndicator({
         transition={{ duration: 1.5, repeat: isActive ? Infinity : 0 }}
       >
         {isComplete ? (
-          <CheckCircle2 className="h-6 w-6 text-emerald-600" />
+          <CheckCircle2 className="h-6 w-6 text-violet-600" />
         ) : isError ? (
           <XCircle className="h-6 w-6 text-rose-600" />
         ) : isActive ? (
@@ -184,7 +184,7 @@ function StageIndicator({
         {/* Pulse effect for active */}
         {isActive && (
           <motion.div
-            className="absolute inset-0 rounded-2xl bg-indigo-400"
+            className="absolute inset-0 rounded-2xl bg-purple-400"
             initial={{ opacity: 0.5, scale: 1 }}
             animate={{ opacity: 0, scale: 1.4 }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -195,7 +195,7 @@ function StageIndicator({
       <div className="flex-1">
         <p className={cn(
           "font-medium",
-          isActive ? "text-slate-900" : isComplete ? "text-emerald-700" : "text-slate-500"
+          isActive ? "text-slate-900" : isComplete ? "text-violet-700" : "text-slate-500"
         )}>
           {stage.label}
         </p>
@@ -218,13 +218,13 @@ function ArtifactBubble({
     switch (artifact.status) {
       case 'completed':
         return {
-          bg: 'bg-gradient-to-br from-emerald-500 to-green-600',
-          ring: 'ring-emerald-200',
+          bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+          ring: 'ring-violet-200',
           text: 'text-white'
         };
       case 'generating':
         return {
-          bg: 'bg-gradient-to-br from-indigo-500 to-purple-600',
+          bg: 'bg-gradient-to-br from-purple-500 to-purple-600',
           ring: 'ring-indigo-300 ring-2',
           text: 'text-white'
         };
@@ -308,8 +308,8 @@ function ArtifactBubble({
       
       <span className={cn(
         "text-xs font-medium",
-        artifact.status === 'completed' ? "text-emerald-600" :
-        artifact.status === 'generating' ? "text-indigo-600" :
+        artifact.status === 'completed' ? "text-violet-600" :
+        artifact.status === 'generating' ? "text-purple-600" :
         artifact.status === 'error' ? "text-rose-600" :
         "text-slate-400"
       )}>
@@ -388,10 +388,10 @@ export function GenerationFlowVisualization({
               <div className={cn(
                 "p-3 rounded-xl shadow-sm",
                 isComplete 
-                  ? "bg-gradient-to-br from-emerald-500 to-green-600"
+                  ? "bg-gradient-to-br from-violet-500 to-purple-600"
                   : isError
                   ? "bg-gradient-to-br from-rose-500 to-red-600"
-                  : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                  : "bg-gradient-to-br from-purple-500 to-purple-600"
               )}>
                 {isComplete ? (
                   <CheckCircle2 className="h-6 w-6 text-white" />
@@ -430,8 +430,8 @@ export function GenerationFlowVisualization({
               <div className="flex items-center gap-2">
                 {isConnected ? (
                   <>
-                    <Wifi className="h-4 w-4 text-emerald-500" />
-                    <span className="text-xs text-emerald-600 font-medium">Live</span>
+                    <Wifi className="h-4 w-4 text-violet-500" />
+                    <span className="text-xs text-violet-600 font-medium">Live</span>
                   </>
                 ) : (
                   <>
@@ -469,7 +469,7 @@ export function GenerationFlowVisualization({
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-purple-500 to-purple-500 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.5 }}
@@ -500,7 +500,7 @@ export function GenerationFlowVisualization({
                     <div className="absolute left-7 top-14 w-0.5 h-6">
                       <div className={cn(
                         "w-full h-full rounded-full",
-                        isComplete ? "bg-emerald-300" : "bg-slate-200"
+                        isComplete ? "bg-violet-300" : "bg-slate-200"
                       )} />
                     </div>
                   )}
@@ -583,13 +583,13 @@ export function CompactGenerationFlow({
       <div className={cn(
         "w-10 h-10 rounded-lg flex items-center justify-center",
         isComplete 
-          ? "bg-emerald-100"
+          ? "bg-violet-100"
           : isError
           ? "bg-rose-100"
-          : "bg-indigo-100"
+          : "bg-purple-100"
       )}>
         {isComplete ? (
-          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+          <CheckCircle2 className="h-5 w-5 text-violet-600" />
         ) : isError ? (
           <XCircle className="h-5 w-5 text-rose-600" />
         ) : (
@@ -597,7 +597,7 @@ export function CompactGenerationFlow({
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           >
-            <Loader2 className="h-5 w-5 text-indigo-600" />
+            <Loader2 className="h-5 w-5 text-purple-600" />
           </motion.div>
         )}
       </div>
@@ -618,10 +618,10 @@ export function CompactGenerationFlow({
             className={cn(
               "h-full rounded-full",
               isComplete 
-                ? "bg-emerald-500"
+                ? "bg-violet-500"
                 : isError
                 ? "bg-rose-500"
-                : "bg-indigo-500"
+                : "bg-purple-500"
             )}
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}

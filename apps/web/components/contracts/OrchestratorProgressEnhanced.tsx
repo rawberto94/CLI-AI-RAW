@@ -50,7 +50,7 @@ const StepIcon = ({ status, stepName }: { status: string; stepName?: string }) =
     case 'completed':
       return <CheckCircle2 className="h-4 w-4 text-green-600" />;
     case 'running':
-      return <Icon className="h-4 w-4 text-blue-600 animate-pulse" />;
+      return <Icon className="h-4 w-4 text-violet-600 animate-pulse" />;
     case 'failed':
       return <XCircle className="h-4 w-4 text-red-600" />;
     case 'skipped':
@@ -143,7 +143,7 @@ export function OrchestratorProgress({
       {/* Main Status Card */}
       <Card className="border-2 border-purple-100 dark:border-purple-900/50 shadow-lg overflow-hidden">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 p-4">
+        <div className="bg-gradient-to-r from-purple-600 via-purple-600 to-purple-600 p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 flex-1">
               <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -190,9 +190,9 @@ export function OrchestratorProgress({
                 className={cn(
                   'h-12 w-12 rounded-full flex items-center justify-center shadow-lg',
                   isProcessing
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600 animate-pulse'
+                    ? 'bg-gradient-to-br from-violet-500 to-purple-600 animate-pulse'
                     : progress.status === 'completed'
-                    ? 'bg-gradient-to-br from-green-500 to-green-600'
+                    ? 'bg-gradient-to-br from-violet-500 to-purple-600'
                     : 'bg-gradient-to-br from-gray-400 to-gray-500'
                 )}
               >
@@ -242,7 +242,7 @@ export function OrchestratorProgress({
                   initial={{ width: 0 }}
                   animate={{ width: `${overallProgress}%` }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 rounded-full relative overflow-hidden"
+                  className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 rounded-full relative overflow-hidden"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-shimmer" />
                 </motion.div>
@@ -284,7 +284,7 @@ export function OrchestratorProgress({
                         className={cn(
                           'flex items-center gap-3 p-3 rounded-lg border-2 transition-all',
                           step.status === 'running'
-                            ? 'bg-blue-50 dark:bg-blue-950/30 border-blue-300 dark:border-blue-800 shadow-md'
+                            ? 'bg-violet-50 dark:bg-violet-950/30 border-violet-300 dark:border-violet-800 shadow-md'
                             : step.status === 'completed'
                             ? 'bg-green-50 dark:bg-green-950/30 border-green-300 dark:border-green-800'
                             : step.status === 'failed'
@@ -301,7 +301,7 @@ export function OrchestratorProgress({
                               {stepName.replace(/([A-Z])/g, ' $1').trim()}
                             </p>
                             {step.progress !== undefined && step.status === 'running' && (
-                              <span className="text-xs font-mono text-blue-600 dark:text-blue-400">
+                              <span className="text-xs font-mono text-violet-600 dark:text-violet-400">
                                 {step.progress}%
                               </span>
                             )}
@@ -319,7 +319,7 @@ export function OrchestratorProgress({
                           )}
                         </div>
                         {step.status === 'running' && (
-                          <Loader2 className="h-4 w-4 text-blue-600 animate-spin flex-shrink-0" />
+                          <Loader2 className="h-4 w-4 text-violet-600 animate-spin flex-shrink-0" />
                         )}
                         {step.status === 'completed' && (
                           <CheckCircle2 className="h-4 w-4 text-green-600 flex-shrink-0" />
@@ -334,7 +334,7 @@ export function OrchestratorProgress({
 
           {/* Artifacts Progress Card */}
           {progress.artifacts && (
-            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 via-pink-50 to-blue-50 dark:from-purple-950/30 dark:via-pink-950/30 dark:to-blue-950/30 border-2 border-purple-200 dark:border-purple-800 shadow-md">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-950/30 dark:via-pink-950/30 dark:to-purple-950/30 border-2 border-purple-200 dark:border-purple-800 shadow-md">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-purple-600 rounded-lg">
@@ -382,8 +382,8 @@ export function OrchestratorProgress({
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <div className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-                    <span className="text-blue-700 dark:text-blue-400">
+                    <div className="h-2.5 w-2.5 rounded-full bg-violet-500" />
+                    <span className="text-violet-700 dark:text-violet-400">
                       {progress.artifacts.total - progress.artifacts.completed} Remaining
                     </span>
                   </div>
@@ -394,8 +394,8 @@ export function OrchestratorProgress({
 
           {/* Current Activity */}
           {progress.agent?.lastDecision?.enqueued && progress.agent.lastDecision.enqueued.length > 0 && (
-            <div className="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-800">
-              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-blue-900 dark:text-blue-100">
+            <div className="p-4 rounded-xl bg-violet-50 dark:bg-violet-950/30 border-2 border-violet-200 dark:border-violet-800">
+              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2 text-violet-900 dark:text-violet-100">
                 <Activity className="h-4 w-4 animate-pulse" />
                 Currently Processing
               </h4>
@@ -406,9 +406,9 @@ export function OrchestratorProgress({
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-blue-200 dark:border-blue-800"
+                    className="flex items-center gap-2 text-xs p-2.5 rounded-lg bg-white dark:bg-gray-900 border border-violet-200 dark:border-violet-800"
                   >
-                    <Loader2 className="h-3.5 w-3.5 animate-spin text-blue-600 flex-shrink-0" />
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-violet-600 flex-shrink-0" />
                     <span className="font-medium capitalize flex-1">
                       {job.name.replace(/_/g, ' ').toLowerCase()}
                     </span>
@@ -456,10 +456,10 @@ export function OrchestratorProgress({
 
       {/* Smart Suggestions Card */}
       {suggestions.length > 0 && (
-        <Card className="border-2 border-blue-100 dark:border-blue-900/50 shadow-lg">
-          <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30">
+        <Card className="border-2 border-violet-100 dark:border-violet-900/50 shadow-lg">
+          <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-600 rounded-lg">
+              <div className="p-2 bg-violet-600 rounded-lg">
                 <TrendingUp className="h-4 w-4 text-white" />
               </div>
               <div>
@@ -478,7 +478,7 @@ export function OrchestratorProgress({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: idx * 0.05 }}
-                  className="flex items-start justify-between p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-700 hover:shadow-md transition-all bg-white dark:bg-gray-900"
+                  className="flex items-start justify-between p-3 rounded-lg border-2 border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 hover:shadow-md transition-all bg-white dark:bg-gray-900"
                 >
                   <div className="flex-1 min-w-0 mr-3">
                     <div className="flex items-center gap-2 mb-1">
@@ -504,7 +504,7 @@ export function OrchestratorProgress({
                       size="sm"
                       onClick={() => handleGenerateArtifact(suggestion.type)}
                       disabled={generatingArtifact === suggestion.type}
-                      className="flex-shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                      className="flex-shrink-0 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                     >
                       {generatingArtifact === suggestion.type ? (
                         <Loader2 className="h-3 w-3 animate-spin" />

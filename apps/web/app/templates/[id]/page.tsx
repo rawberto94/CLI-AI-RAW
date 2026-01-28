@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,18 +13,15 @@ import {
   ArrowLeft,
   Plus,
   Library,
-  Type,
-  Code,
   Eye,
   EyeOff,
-  Sparkles,
-  Copy,
   Trash2,
+  Loader2,
   AlertCircle,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
 
 interface Clause {
   id: string
@@ -42,6 +39,17 @@ interface TemplateVariable {
   defaultValue?: string
 }
 
+interface TemplateData {
+  id?: string
+  name: string
+  description: string
+  category: string
+  clauses: unknown[]
+  structure: Record<string, unknown>
+  metadata: Record<string, unknown>
+  isActive: boolean
+}
+
 export default function TemplateEditorPage() {
   const params = useParams()
   const router = useRouter()
@@ -49,7 +57,7 @@ export default function TemplateEditorPage() {
   
   const [templateName, setTemplateName] = useState('')
   const [templateDescription, setTemplateDescription] = useState('')
-  const [templateCategory, setTemplateCategory] = useState('')
+  const [templateCategory, setTemplateCategory] = useState('GENERAL')
   const [templateLanguage, setTemplateLanguage] = useState('en-US')
   const [templateStatus, setTemplateStatus] = useState<'draft' | 'active'>('draft')
   const [templateContent, setTemplateContent] = useState('')
@@ -58,6 +66,8 @@ export default function TemplateEditorPage() {
   const [showPreview, setShowPreview] = useState(false)
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [existingTemplateId, setExistingTemplateId] = useState<string | null>(null)
 
   const clauseLibrary: Clause[] = [
     {
@@ -118,6 +128,43 @@ export default function TemplateEditorPage() {
     },
   ]
 
+  // Load template data from API
+  const loadTemplate = useCallback(async () => {
+    if (isNew) return
+    
+    setLoading(true)
+    setError(null)
+    
+    try {
+      const response = await fetch(`/api/templates/${params.id}`)
+      const data = await response.json()
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to load template')
+      }
+      
+      const template = data.template
+      setExistingTemplateId(template.id)
+      setTemplateName(template.name || '')
+      setTemplateDescription(template.description || '')
+      setTemplateCategory(template.category || 'GENERAL')
+      
+      // Load from metadata
+      const meta = template.metadata || {}
+      setTemplateStatus(meta.status || 'draft')
+      setTemplateContent(meta.content || '')
+      setTemplateLanguage(meta.language || 'en-US')
+      setVariables(meta.variables || [])
+      
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load template'
+      setError(message)
+      toast.error(message)
+    } finally {
+      setLoading(false)
+    }
+  }, [isNew, params.id])
+
   useEffect(() => {
     if (!isNew) {
       loadTemplate()
@@ -153,48 +200,7 @@ export default function TemplateEditorPage() {
         { name: 'endDate', label: 'End Date', type: 'date', required: true },
       ])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [params.id])
-
-  const loadTemplate = async () => {
-    setLoading(true)
-    try {
-      // Mock loading - in production, fetch from API
-      await new Promise(resolve => setTimeout(resolve, 500))
-      
-      setTemplateName('Software License Agreement')
-      setTemplateDescription('Standard SaaS software licensing agreement with usage terms')
-      setTemplateCategory('Technology')
-      setTemplateLanguage('en-US')
-      setTemplateStatus('active')
-      setTemplateContent(
-        '# {{contractTitle}}\n\n' +
-        '## SOFTWARE LICENSE AGREEMENT\n\n' +
-        'This Agreement is entered into on {{effectiveDate}} between {{clientName}} and {{supplierName}}.\n\n' +
-        '### 1. Grant of License\n' +
-        'Supplier grants Client a non-exclusive, non-transferable license to use the Software.\n\n' +
-        '### 2. Fees\n' +
-        'Client agrees to pay {{totalValue}} {{currency}} per {{billingCycle}}.\n\n' +
-        '### 3. Term and Termination\n' +
-        'This Agreement begins on {{startDate}} and continues until {{endDate}}.\n\n'
-      )
-      setVariables([
-        { name: 'contractTitle', label: 'Contract Title', type: 'text', required: true },
-        { name: 'effectiveDate', label: 'Effective Date', type: 'date', required: true },
-        { name: 'clientName', label: 'Client Name', type: 'text', required: true },
-        { name: 'supplierName', label: 'Supplier Name', type: 'text', required: true },
-        { name: 'totalValue', label: 'License Fee', type: 'currency', required: true },
-        { name: 'currency', label: 'Currency', type: 'text', required: true, defaultValue: 'USD' },
-        { name: 'billingCycle', label: 'Billing Cycle', type: 'text', required: true, defaultValue: 'month' },
-        { name: 'startDate', label: 'Start Date', type: 'date', required: true },
-        { name: 'endDate', label: 'End Date', type: 'date', required: true },
-      ])
-    } catch {
-      // Template loading failed silently
-    } finally {
-      setLoading(false)
-    }
-  }
+  }, [isNew, loadTemplate])
 
   const insertClause = (clause: Clause) => {
     const clauseText = `\n\n### ${clause.title}\n${clause.content}\n\n`
@@ -215,6 +221,7 @@ export default function TemplateEditorPage() {
     }
     
     setShowClauseLibrary(false)
+    toast.success(`Inserted "${clause.title}" clause`)
   }
 
   const addVariable = () => {
@@ -229,13 +236,62 @@ export default function TemplateEditorPage() {
   }
 
   const handleSave = async () => {
+    if (!templateName.trim()) {
+      toast.error('Template name is required')
+      return
+    }
+    
     setSaving(true)
+    setError(null)
+    
     try {
-      // In production, save to API
-      await new Promise(resolve => setTimeout(resolve, 1000))
+      const templateData: TemplateData = {
+        name: templateName.trim(),
+        description: templateDescription.trim(),
+        category: templateCategory,
+        clauses: [],
+        structure: {},
+        metadata: {
+          status: templateStatus,
+          content: templateContent,
+          language: templateLanguage,
+          variables: variables,
+          tags: [],
+        },
+        isActive: templateStatus === 'active',
+      }
+      
+      let response: Response
+      
+      if (isNew) {
+        // Create new template
+        response = await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(templateData),
+        })
+      } else {
+        // Update existing template
+        response = await fetch(`/api/templates/${existingTemplateId || params.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(templateData),
+        })
+      }
+      
+      const data = await response.json()
+      
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to save template')
+      }
+      
+      toast.success(isNew ? 'Template created successfully!' : 'Template saved successfully!')
       router.push('/templates')
-    } catch {
-      // Save failed silently
+      
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save template'
+      setError(message)
+      toast.error(message)
     } finally {
       setSaving(false)
     }
@@ -251,8 +307,40 @@ export default function TemplateEditorPage() {
     return preview
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading template...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error && !isNew) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6 flex items-center justify-center">
+        <Card className="max-w-md">
+          <CardContent className="pt-6 text-center">
+            <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Error Loading Template</h2>
+            <p className="text-gray-600 mb-4">{error}</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => router.push('/templates')}>
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Templates
+              </Button>
+              <Button onClick={loadTemplate}>Try Again</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -485,7 +573,7 @@ export default function TemplateEditorPage() {
                     {clauseLibrary.map((clause) => (
                       <div
                         key={clause.id}
-                        className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200 hover:shadow-md transition-shadow cursor-pointer"
+                        className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 rounded-lg border border-violet-200 hover:shadow-md transition-shadow cursor-pointer"
                         onClick={() => insertClause(clause)}
                       >
                         <div className="flex items-start justify-between mb-2">

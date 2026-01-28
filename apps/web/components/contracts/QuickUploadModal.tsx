@@ -71,7 +71,7 @@ interface QuickUploadModalProps {
 const getFileIcon = (mimeType: string) => {
   if (mimeType.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />
   if (mimeType.includes('image')) return <FileImage className="h-5 w-5 text-purple-500" />
-  if (mimeType.includes('word') || mimeType.includes('document')) return <FileText className="h-5 w-5 text-blue-500" />
+  if (mimeType.includes('word') || mimeType.includes('document')) return <FileText className="h-5 w-5 text-violet-500" />
   return <File className="h-5 w-5 text-slate-500" />
 }
 
@@ -291,7 +291,7 @@ export function QuickUploadModal({
       <DialogContent className="sm:max-w-[600px] max-h-[85vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-blue-500" />
+            <Upload className="h-5 w-5 text-violet-500" />
             Quick Upload
           </DialogTitle>
           <DialogDescription>
@@ -313,9 +313,9 @@ export function QuickUploadModal({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.1 }}
-                className="p-4 bg-emerald-100 rounded-full mb-4"
+                className="p-4 bg-violet-100 rounded-full mb-4"
               >
-                <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+                <CheckCircle2 className="h-12 w-12 text-violet-600" />
               </motion.div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
                 Upload Complete!
@@ -356,8 +356,8 @@ export function QuickUploadModal({
                 className={cn(
                   "relative border-2 border-dashed rounded-xl p-8 transition-all cursor-pointer",
                   isDragging
-                    ? "border-blue-500 bg-blue-50"
-                    : "border-slate-200 hover:border-blue-400 hover:bg-slate-50"
+                    ? "border-violet-500 bg-violet-50"
+                    : "border-slate-200 hover:border-violet-400 hover:bg-slate-50"
                 )}
               >
                 <input
@@ -374,12 +374,12 @@ export function QuickUploadModal({
                     animate={{ y: isDragging ? -5 : 0 }}
                     className={cn(
                       "p-3 rounded-xl mb-3 transition-colors",
-                      isDragging ? "bg-blue-100" : "bg-slate-100"
+                      isDragging ? "bg-violet-100" : "bg-slate-100"
                     )}
                   >
                     <Upload className={cn(
                       "h-8 w-8 transition-colors",
-                      isDragging ? "text-blue-600" : "text-slate-400"
+                      isDragging ? "text-violet-600" : "text-slate-400"
                     )} />
                   </motion.div>
                   <p className="text-sm font-medium text-slate-700">
@@ -441,9 +441,9 @@ export function QuickUploadModal({
                         exit={{ opacity: 0, x: 10 }}
                         className={cn(
                           "flex items-center gap-3 p-3 rounded-lg border transition-colors",
-                          file.status === 'complete' && "bg-emerald-50 border-emerald-200",
+                          file.status === 'complete' && "bg-violet-50 border-violet-200",
                           file.status === 'error' && "bg-red-50 border-red-200",
-                          file.status === 'uploading' && "bg-blue-50 border-blue-200",
+                          file.status === 'uploading' && "bg-violet-50 border-violet-200",
                           file.status === 'pending' && "bg-white border-slate-200"
                         )}
                       >
@@ -458,12 +458,12 @@ export function QuickUploadModal({
                               {formatFileSize(file.file.size)}
                             </span>
                             {file.status === 'uploading' && (
-                              <span className="text-xs text-blue-600">
+                              <span className="text-xs text-violet-600">
                                 {file.progress}%
                               </span>
                             )}
                             {file.status === 'complete' && (
-                              <span className="text-xs text-emerald-600 flex items-center gap-1">
+                              <span className="text-xs text-violet-600 flex items-center gap-1">
                                 <CheckCircle2 className="h-3 w-3" />
                                 Uploaded
                               </span>
@@ -496,11 +496,11 @@ export function QuickUploadModal({
                         )}
                         
                         {file.status === 'uploading' && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                          <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
                         )}
                         
                         {file.status === 'complete' && (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                          <CheckCircle2 className="h-5 w-5 text-violet-600" />
                         )}
                       </motion.div>
                     ))}
@@ -512,7 +512,7 @@ export function QuickUploadModal({
               <div className="flex items-center justify-between pt-4 border-t">
                 <div className="flex items-center gap-2">
                   {completedCount > 0 && (
-                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-700">
                       {completedCount} uploaded
                     </Badge>
                   )}
@@ -530,7 +530,7 @@ export function QuickUploadModal({
                   <Button
                     onClick={handleUploadAll}
                     disabled={pendingCount === 0 || isUploading}
-                    className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
                   >
                     {isUploading ? (
                       <>

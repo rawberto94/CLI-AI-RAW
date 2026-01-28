@@ -169,7 +169,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
               hasError
                 ? 'border-red-300 focus:border-red-400 focus:ring-red-200 bg-red-50/50'
                 : hasSuccess
-                ? 'border-emerald-300 focus:border-emerald-400 focus:ring-emerald-200 bg-emerald-50/50'
+                ? 'border-violet-300 focus:border-violet-400 focus:ring-violet-200 bg-violet-50/50'
                 : 'border-slate-200 focus:border-indigo-400 focus:ring-indigo-200',
               disabled && 'bg-slate-50 text-slate-400 cursor-not-allowed',
               className
@@ -193,7 +193,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
                 animate={{ scale: 1 }}
                 className={cn(
                   'rounded-full p-0.5',
-                  isValid ? 'text-emerald-500' : 'text-red-500'
+                  isValid ? 'text-violet-500' : 'text-red-500'
                 )}
               >
                 {isValid ? (
@@ -242,7 +242,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
                 initial={{ opacity: 0, y: -5 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -5 }}
-                className="text-sm text-emerald-600 flex items-center gap-1"
+                className="text-sm text-violet-600 flex items-center gap-1"
               >
                 <Check className="h-3.5 w-3.5" />
                 {success}
@@ -312,7 +312,7 @@ export const PasswordInput = forwardRef<HTMLInputElement, PasswordInputProps>(
     };
 
     const strengthLabels = ['Weak', 'Fair', 'Good', 'Strong'];
-    const strengthColors = ['bg-red-500', 'bg-amber-500', 'bg-yellow-500', 'bg-emerald-500'];
+    const strengthColors = ['bg-red-500', 'bg-amber-500', 'bg-yellow-500', 'bg-violet-500'];
 
     return (
       <div className="space-y-2">

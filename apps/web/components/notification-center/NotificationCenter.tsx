@@ -158,12 +158,12 @@ export function NotificationBell({ className }: NotificationBellProps) {
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'relative p-2 rounded-lg transition-colors',
-          isOpen ? 'bg-slate-100' : 'hover:bg-slate-100'
+          'relative p-2 rounded-xl transition-all duration-200',
+          isOpen ? 'bg-violet-100 text-violet-700' : 'hover:bg-slate-100 text-slate-600 hover:text-slate-900'
         )}
         whileTap={{ scale: 0.95 }}
       >
-        <Bell className="w-5 h-5 text-slate-600" />
+        <Bell className="w-5 h-5" />
         
         {/* Badge */}
         <AnimatePresence>
@@ -174,7 +174,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
               exit={{ scale: 0 }}
               className={cn(
                 'absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] flex items-center justify-center',
-                'bg-red-500 text-white text-xs font-bold rounded-full px-1'
+                'bg-gradient-to-r from-rose-500 to-red-500 text-white text-xs font-bold rounded-full px-1 shadow-sm shadow-rose-500/40'
               )}
             >
               {unreadCount > 99 ? '99+' : unreadCount}
@@ -221,27 +221,27 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+            className="absolute right-0 top-full mt-2 w-96 bg-white dark:bg-slate-900 rounded-2xl shadow-2xl shadow-violet-500/10 border border-slate-200/60 dark:border-slate-700/60 z-50 overflow-hidden backdrop-blur-lg"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-slate-100">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
               <div>
-                <h3 className="font-semibold text-slate-900">Notifications</h3>
+                <h3 className="font-bold text-slate-900 dark:text-white">Notifications</h3>
                 {unreadCount > 0 && (
-                  <p className="text-xs text-slate-500">{unreadCount} unread</p>
+                  <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">{unreadCount} unread</p>
                 )}
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={markAllAsRead}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/50 rounded-lg transition-all"
                   title="Mark all as read"
                 >
                   <CheckCheck className="w-4 h-4" />
                 </button>
                 <button
                   onClick={clearAll}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                  className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/50 rounded-lg transition-all"
                   title="Clear all"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -250,16 +250,16 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
             </div>
 
             {/* Filter Tabs */}
-            <div className="flex p-2 gap-1 border-b border-slate-100">
+            <div className="flex p-2 gap-1 border-b border-slate-100 dark:border-slate-800">
               {(['all', 'unread'] as const).map((f) => (
                 <button
                   key={f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    'flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors capitalize',
+                    'flex-1 px-3 py-1.5 text-sm rounded-lg transition-all capitalize',
                     filter === f
-                      ? 'bg-indigo-100 text-indigo-700 font-medium'
-                      : 'text-slate-500 hover:bg-slate-50'
+                      ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 font-semibold'
+                      : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'
                   )}
                 >
                   {f}
@@ -271,8 +271,11 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
             <div className="max-h-96 overflow-y-auto">
               {filteredNotifications.length === 0 ? (
                 <div className="p-8 text-center">
-                  <Bell className="w-12 h-12 text-slate-200 mx-auto mb-3" />
-                  <p className="text-sm text-slate-500">No notifications</p>
+                  <div className="w-16 h-16 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                    <Bell className="w-8 h-8 text-violet-400" />
+                  </div>
+                  <p className="text-sm text-slate-500 font-medium">No notifications</p>
+                  <p className="text-xs text-slate-400 mt-1">You&apos;re all caught up!</p>
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
@@ -287,8 +290,8 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
             </div>
 
             {/* Footer */}
-            <div className="p-3 border-t border-slate-100 bg-slate-50">
-              <button className="w-full text-center text-sm text-indigo-600 hover:text-indigo-700 font-medium">
+            <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800 dark:to-slate-900">
+              <button className="w-full text-center text-sm text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300 font-semibold transition-colors">
                 View all notifications
               </button>
             </div>
@@ -321,12 +324,12 @@ function NotificationItem({ notification }: NotificationItemProps) {
   };
 
   const typeColors: Record<NotificationType, string> = {
-    info: 'bg-blue-100 text-blue-600',
+    info: 'bg-violet-100 text-violet-600',
     success: 'bg-green-100 text-green-600',
     warning: 'bg-amber-100 text-amber-600',
     error: 'bg-red-100 text-red-600',
     message: 'bg-purple-100 text-purple-600',
-    mention: 'bg-indigo-100 text-indigo-600',
+    mention: 'bg-purple-100 text-purple-600',
     system: 'bg-slate-100 text-slate-600',
   };
 
@@ -339,8 +342,8 @@ function NotificationItem({ notification }: NotificationItemProps) {
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: 20 }}
       className={cn(
-        'flex gap-3 p-4 hover:bg-slate-50 transition-colors group cursor-pointer',
-        !notification.read && 'bg-indigo-50/50'
+        'flex gap-3 p-4 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all group cursor-pointer',
+        !notification.read && 'bg-violet-50/50 dark:bg-violet-950/20'
       )}
       onClick={() => markAsRead(notification.id)}
     >
@@ -388,7 +391,7 @@ function NotificationItem({ notification }: NotificationItemProps) {
 
           {/* Unread indicator */}
           {!notification.read && (
-            <span className="w-2 h-2 bg-indigo-500 rounded-full" />
+            <span className="w-2 h-2 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full shadow-sm shadow-violet-500/50" />
           )}
         </div>
 
@@ -403,10 +406,10 @@ function NotificationItem({ notification }: NotificationItemProps) {
                   action.onClick();
                 }}
                 className={cn(
-                  'px-3 py-1.5 text-xs font-medium rounded-lg transition-colors',
+                  'px-3 py-1.5 text-xs font-semibold rounded-lg transition-all',
                   action.variant === 'primary'
-                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                    ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:shadow-md hover:shadow-violet-500/25'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 )}
               >
                 {action.label}

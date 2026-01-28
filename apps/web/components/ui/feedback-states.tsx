@@ -346,7 +346,7 @@ const errorConfig = {
     icon: <WifiOff />,
     title: 'Connection lost',
     description: "You appear to be offline. Check your internet connection and try again.",
-    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-500',
+    color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-500',
   },
   permission: {
     icon: <Lock />,
@@ -510,7 +510,7 @@ export function EnhancedSuccessState({
         className={cn(
           'flex items-center justify-center rounded-full mb-6',
           sizeConfig.iconWrapper,
-          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500'
+          'bg-violet-100 dark:bg-violet-900/30 text-violet-500'
         )}
       >
         <motion.div
@@ -555,7 +555,7 @@ export function EnhancedSuccessState({
               whileTap={{ scale: 0.98 }}
               onClick={action.onClick}
               className={cn(
-                'inline-flex items-center gap-2 font-medium rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors',
+                'inline-flex items-center gap-2 font-medium rounded-xl bg-violet-500 text-white hover:bg-violet-600 transition-colors',
                 sizeConfig.button
               )}
             >
@@ -682,21 +682,21 @@ interface AlertBannerProps {
 const alertConfig = {
   info: {
     icon: Info,
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    iconBg: 'bg-blue-100 dark:bg-blue-800',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    titleColor: 'text-blue-900 dark:text-blue-100',
-    textColor: 'text-blue-700 dark:text-blue-300',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
+    border: 'border-violet-200 dark:border-violet-800',
+    iconBg: 'bg-violet-100 dark:bg-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    titleColor: 'text-violet-900 dark:text-violet-100',
+    textColor: 'text-violet-700 dark:text-violet-300',
   },
   success: {
     icon: CheckCircle2,
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-800',
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    titleColor: 'text-emerald-900 dark:text-emerald-100',
-    textColor: 'text-emerald-700 dark:text-emerald-300',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
+    border: 'border-violet-200 dark:border-violet-800',
+    iconBg: 'bg-violet-100 dark:bg-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    titleColor: 'text-violet-900 dark:text-violet-100',
+    textColor: 'text-violet-700 dark:text-violet-300',
   },
   warning: {
     icon: AlertTriangle,

@@ -43,10 +43,10 @@ interface RelatedContractsProps {
 
 const relationshipLabels: Record<string, { label: string; color: string }> = {
   'similar': { label: 'Similar Terms', color: 'bg-purple-100 text-purple-700' },
-  'same-client': { label: 'Same Client', color: 'bg-blue-100 text-blue-700' },
+  'same-client': { label: 'Same Client', color: 'bg-violet-100 text-violet-700' },
   'same-category': { label: 'Same Category', color: 'bg-slate-100 text-slate-700' },
   'amendment': { label: 'Amendment', color: 'bg-amber-100 text-amber-700' },
-  'renewal': { label: 'Renewal', color: 'bg-emerald-100 text-emerald-700' },
+  'renewal': { label: 'Renewal', color: 'bg-violet-100 text-violet-700' },
 }
 
 const ContractCard = memo(function ContractCard({ contract }: { contract: RelatedContract }) {
@@ -60,13 +60,13 @@ const ContractCard = memo(function ContractCard({ contract }: { contract: Relate
         className="p-3 rounded-lg border border-slate-200 hover:border-slate-300 hover:shadow-sm bg-white transition-all cursor-pointer group"
       >
         <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center shrink-0">
-            <FileText className="h-4 w-4 text-indigo-600" />
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-100 to-purple-100 flex items-center justify-center shrink-0">
+            <FileText className="h-4 w-4 text-purple-600" />
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <p className="text-sm font-medium text-slate-800 truncate group-hover:text-indigo-600 transition-colors">
+              <p className="text-sm font-medium text-slate-800 truncate group-hover:text-purple-600 transition-colors">
                 {contract.filename}
               </p>
               <ChevronRight className="h-4 w-4 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

@@ -270,7 +270,7 @@ const PriorityBadge = memo(function PriorityBadge({ priority }: { priority: Appr
 
 const StatusBadge = memo(function StatusBadge({ status }: { status: ApprovalStatus }) {
   const config = {
-    pending: { label: 'Pending', class: 'bg-blue-100 text-blue-700', icon: Clock },
+    pending: { label: 'Pending', class: 'bg-violet-100 text-violet-700', icon: Clock },
     approved: { label: 'Approved', class: 'bg-green-100 text-green-700', icon: CheckCircle2 },
     rejected: { label: 'Rejected', class: 'bg-red-100 text-red-700', icon: XCircle },
     changes_requested: { label: 'Changes Requested', class: 'bg-amber-100 text-amber-700', icon: MessageSquare },
@@ -312,7 +312,7 @@ const ApprovalChainVisualization = memo(function ApprovalChainVisualization({
             "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
             step.status === 'approved' && "bg-green-100 text-green-700",
             step.status === 'rejected' && "bg-red-100 text-red-700",
-            step.status === 'pending' && idx === currentStep - 1 && "bg-blue-100 text-blue-700 ring-2 ring-blue-300",
+            step.status === 'pending' && idx === currentStep - 1 && "bg-violet-100 text-violet-700 ring-2 ring-violet-300",
             step.status === 'pending' && idx !== currentStep - 1 && "bg-gray-100 text-gray-500 dark:text-slate-400",
           )}>
             {step.status === 'approved' ? (
@@ -342,11 +342,11 @@ const ApprovalChainVisualization = memo(function ApprovalChainVisualization({
 const StatsCards = memo(function StatsCards({ stats }: { stats: ApprovalStats }) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-      <Card className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/20 dark:to-background border-blue-200/50">
+      <Card className="bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background border-violet-200/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg dark:bg-blue-900/30">
-              <Clock className="h-5 w-5 text-blue-600" />
+            <div className="p-2 bg-violet-100 rounded-lg dark:bg-violet-900/30">
+              <Clock className="h-5 w-5 text-violet-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.pending}</p>
@@ -384,7 +384,7 @@ const StatsCards = memo(function StatsCards({ stats }: { stats: ApprovalStats })
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-green-50 to-white dark:from-green-950/20 dark:to-background border-green-200/50">
+      <Card className="bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background border-green-200/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-green-100 rounded-lg dark:bg-green-900/30">
@@ -466,11 +466,11 @@ const ApprovalItemRow = memo(function ApprovalItemRow({
       {/* Category Icon */}
       <div className={cn(
         "p-2 rounded-lg",
-        item.category === 'contract' && "bg-blue-100 text-blue-600",
+        item.category === 'contract' && "bg-violet-100 text-violet-600",
         item.category === 'artifact' && "bg-purple-100 text-purple-600",
         item.category === 'ai_output' && "bg-amber-100 text-amber-600",
         item.category === 'amendment' && "bg-green-100 text-green-600",
-        item.category === 'renewal' && "bg-cyan-100 text-cyan-600",
+        item.category === 'renewal' && "bg-purple-100 text-purple-600",
       )}>
         <CategoryIcon category={item.category} />
       </div>

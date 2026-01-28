@@ -206,7 +206,7 @@ const mockRenewals: RenewalContract[] = [
 
 const getStatusConfig = (status: RenewalContract['status']) => {
   switch (status) {
-    case 'upcoming': return { color: 'bg-blue-100 text-blue-700', icon: Calendar, label: 'Upcoming' };
+    case 'upcoming': return { color: 'bg-violet-100 text-violet-700', icon: Calendar, label: 'Upcoming' };
     case 'in-progress': return { color: 'bg-amber-100 text-amber-700', icon: RefreshCw, label: 'In Progress' };
     case 'completed': return { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' };
     case 'lapsed': return { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Lapsed' };
@@ -233,7 +233,7 @@ const getUrgencyColor = (days: number, hasAutoRenewal: boolean, noticeDeadline?:
   }
   if (days <= 30) return 'text-red-600 bg-red-50';
   if (days <= 60) return 'text-amber-600 bg-amber-50';
-  if (days <= 90) return 'text-blue-600 bg-blue-50';
+  if (days <= 90) return 'text-violet-600 bg-violet-50';
   return 'text-slate-600 bg-slate-50';
 };
 
@@ -269,14 +269,14 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
 
   return (
     <motion.div
-      whileHover={{ scale: 1.01 }}
+      whileHover={{ scale: 1.01, y: -2 }}
       onClick={onSelect}
-      className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
+      className={`p-4 rounded-2xl border-2 cursor-pointer transition-all duration-300 backdrop-blur-sm ${
         isSelected
-          ? 'border-blue-500 bg-blue-50/50 shadow-lg'
+          ? 'border-green-500 bg-gradient-to-br from-violet-50/80 to-violet-50/50 shadow-xl shadow-green-200/40'
           : renewal.daysUntilRenewal <= 30 || (renewal.noticeDeadline && new Date(renewal.noticeDeadline).getTime() - new Date().getTime() <= 7 * 24 * 60 * 60 * 1000)
-          ? 'border-red-200 bg-red-50/30 hover:border-red-300'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
+          ? 'border-red-200/70 bg-gradient-to-br from-red-50/50 to-rose-50/30 hover:border-red-300 hover:shadow-lg hover:shadow-red-200/30'
+          : 'border-slate-200/50 bg-white/90 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-200/30'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -417,7 +417,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
                   e.stopPropagation();
                   onSubmitForApproval(renewal);
                 }}
-                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                className="p-1.5 text-violet-600 hover:bg-violet-50 rounded-lg transition-colors"
                 title="Submit for approval"
               >
                 <SendHorizonal className="w-4 h-4" />
@@ -628,29 +628,31 @@ export const RenewalManager: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-slate-50">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-green-50/20 to-violet-50/10">
       {/* Header */}
-      <div className="flex-none p-6 bg-white border-b border-slate-200">
+      <div className="flex-none p-6 bg-white/80 backdrop-blur-sm border-b border-slate-200/50 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <RefreshCw className="w-5 h-5 text-green-500" />
+            <h1 className="text-xl font-semibold text-slate-900 flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-green-500/30">
+                <RefreshCw className="w-5 h-5" />
+              </div>
               Renewal Manager
             </h1>
             <p className="text-sm text-slate-500 mt-1">Track and manage upcoming contract renewals</p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
+            <button className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2">
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="px-3 py-2 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors font-medium flex items-center gap-2">
+            <button className="px-3 py-2 bg-white/80 backdrop-blur-sm text-slate-700 rounded-xl border border-slate-200/50 hover:bg-white hover:shadow-md transition-all duration-200 font-medium flex items-center gap-2">
               <Bell className="w-4 h-4" />
               Notifications
             </button>
             <button 
               onClick={handleInitiateRenewal}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-violet-700 shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
               Initiate Renewal
@@ -660,35 +662,35 @@ export const RenewalManager: React.FC = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-6 gap-4">
-          <div className="p-3 bg-slate-50 rounded-lg text-center">
+          <div className="group p-3 bg-gradient-to-br from-slate-50 to-slate-100/70 rounded-xl text-center border border-slate-200/50 shadow-md hover:shadow-lg hover:shadow-slate-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-xs text-slate-500">Total Renewals</div>
+            <div className="text-xs text-slate-500 font-medium">Total Renewals</div>
           </div>
-          <div className="p-3 bg-red-50 rounded-lg text-center border border-red-200">
+          <div className="group p-3 bg-gradient-to-br from-red-50 to-rose-100/70 rounded-xl text-center border border-red-200/50 shadow-md hover:shadow-lg hover:shadow-red-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-red-600">{stats.urgent}</div>
-            <div className="text-xs text-red-600">Due in 30 Days</div>
+            <div className="text-xs text-red-600 font-medium">Due in 30 Days</div>
           </div>
-          <div className="p-3 bg-purple-50 rounded-lg text-center">
+          <div className="group p-3 bg-gradient-to-br from-purple-50 to-violet-100/70 rounded-xl text-center border border-purple-200/50 shadow-md hover:shadow-lg hover:shadow-purple-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-purple-600">{stats.autoRenewal}</div>
-            <div className="text-xs text-purple-600">Auto-Renewal</div>
+            <div className="text-xs text-purple-600 font-medium">Auto-Renewal</div>
           </div>
-          <div className="p-3 bg-amber-50 rounded-lg text-center">
+          <div className="group p-3 bg-gradient-to-br from-amber-50 to-orange-100/70 rounded-xl text-center border border-amber-200/50 shadow-md hover:shadow-lg hover:shadow-amber-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-amber-600">{stats.atRisk}</div>
-            <div className="text-xs text-amber-600">Action Needed</div>
+            <div className="text-xs text-amber-600 font-medium">Action Needed</div>
           </div>
-          <div className="p-3 bg-blue-50 rounded-lg text-center">
-            <div className="text-xl font-bold text-blue-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
-            <div className="text-xs text-blue-600">Total Value</div>
+          <div className="group p-3 bg-gradient-to-br from-violet-50 to-purple-100/70 rounded-xl text-center border border-violet-200/50 shadow-md hover:shadow-lg hover:shadow-violet-200/50 transition-all duration-300">
+            <div className="text-xl font-bold text-violet-600">${(stats.totalValue / 1000000).toFixed(1)}M</div>
+            <div className="text-xs text-violet-600 font-medium">Total Value</div>
           </div>
-          <div className="p-3 bg-green-50 rounded-lg text-center">
+          <div className="group p-3 bg-gradient-to-br from-violet-50 to-violet-100/70 rounded-xl text-center border border-green-200/50 shadow-md hover:shadow-lg hover:shadow-green-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-green-600">${(stats.potentialSavings / 1000).toFixed(0)}K</div>
-            <div className="text-xs text-green-600">Potential Savings</div>
+            <div className="text-xs text-green-600 font-medium">Potential Savings</div>
           </div>
         </div>
       </div>
 
       {/* Filters & View Toggle */}
-      <div className="flex-none p-4 bg-white border-b border-slate-100 flex items-center justify-between">
+      <div className="flex-none p-4 bg-white/80 backdrop-blur-sm border-b border-slate-100/50 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -697,18 +699,18 @@ export const RenewalManager: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search renewals..."
-              className="pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              className="pl-10 pr-4 py-2 border border-slate-200/50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-green-500/30 focus:border-green-400 w-64 bg-white/80 backdrop-blur-sm shadow-sm"
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 p-1 bg-slate-100/50 rounded-xl">
             {(['all', 'urgent', 'auto-renew', 'action-needed'] as const).map(f => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors capitalize ${
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 capitalize ${
                   filter === f
-                    ? 'bg-green-500 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    ? 'bg-gradient-to-r from-violet-500 to-violet-600 text-white shadow-md shadow-green-500/30'
+                    : 'text-slate-600 hover:bg-white hover:shadow-sm'
                 }`}
               >
                 {f.replace('-', ' ')}
@@ -716,13 +718,15 @@ export const RenewalManager: React.FC = () => {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1">
+        <div className="flex items-center gap-1 border border-slate-200/50 rounded-xl p-1 bg-white/80 backdrop-blur-sm shadow-sm">
           {(['list', 'timeline'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-3 py-1 rounded text-sm font-medium transition-colors capitalize ${
-                view === v ? 'bg-slate-900 text-white' : 'text-slate-600 hover:bg-slate-100'
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 capitalize ${
+                view === v 
+                  ? 'bg-gradient-to-r from-slate-800 to-slate-900 text-white shadow-md' 
+                  : 'text-slate-600 hover:bg-slate-100'
               }`}
             >
               {v}
@@ -791,7 +795,7 @@ export const RenewalManager: React.FC = () => {
               <Mail className="w-4 h-4" />
               Send Reminders
             </button>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
+            <button className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2">
               <Zap className="w-4 h-4" />
               Bulk Actions
             </button>
@@ -830,7 +834,7 @@ export const RenewalManager: React.FC = () => {
               onClick={(e) => e.stopPropagation()}
               className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 overflow-hidden"
             >
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-green-100">
+              <div className="bg-gradient-to-r from-violet-50 to-violet-50 px-6 py-4 border-b border-green-100">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-green-500 rounded-lg">
                     <Play className="w-5 h-5 text-white" />
@@ -859,12 +863,12 @@ export const RenewalManager: React.FC = () => {
                   </div>
                 </div>
                 
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg mb-4">
+                <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg mb-4">
                   <div className="flex items-start gap-2">
-                    <GitBranch className="w-4 h-4 text-blue-500 mt-0.5" />
+                    <GitBranch className="w-4 h-4 text-violet-500 mt-0.5" />
                     <div className="text-sm">
-                      <p className="font-medium text-blue-900">Auto-submit for Approval</p>
-                      <p className="text-blue-700">This will start the approval workflow automatically after initiating the renewal.</p>
+                      <p className="font-medium text-violet-900">Auto-submit for Approval</p>
+                      <p className="text-violet-700">This will start the approval workflow automatically after initiating the renewal.</p>
                     </div>
                   </div>
                 </div>

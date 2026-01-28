@@ -527,7 +527,7 @@ export function FeatureFlagDebugPanel({ className = '' }: { className?: string }
                       {hasOverride && (
                         <button
                           onClick={() => clearOverride(flag.id)}
-                          className="text-xs text-blue-500 hover:text-blue-700"
+                          className="text-xs text-violet-500 hover:text-violet-700"
                         >
                           (override)
                         </button>

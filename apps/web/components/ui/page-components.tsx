@@ -145,7 +145,7 @@ export const PageHeader = memo<PageHeaderProps>(({
 
             {/* Icon */}
             {Icon && (
-              <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <div className="flex-shrink-0 h-12 w-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/20">
                 <Icon className="h-6 w-6 text-white" />
               </div>
             )}
@@ -185,7 +185,7 @@ export const PageHeader = memo<PageHeaderProps>(({
                 onClick={action.onClick}
                 disabled={action.disabled}
                 className={cn(
-                  action.variant === 'primary' && 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25'
+                  action.variant === 'primary' && 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25'
                 )}
               >
                 {action.icon && <action.icon className="h-4 w-4 mr-1.5" />}
@@ -360,7 +360,7 @@ export const Section = memo<SectionProps>(({
               variant="ghost"
               size="sm"
               onClick={action.onClick}
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              className="text-violet-600 hover:text-violet-700 hover:bg-violet-50 dark:text-violet-400 dark:hover:bg-violet-900/20"
             >
               {action.icon && <action.icon className="h-4 w-4 mr-1.5" />}
               {action.label}
@@ -442,7 +442,7 @@ export const StatGrid = memo<StatGridProps>(({
                 <p
                   className={cn(
                     'text-xs font-medium flex items-center gap-1',
-                    stat.change.trend === 'up' && 'text-emerald-600',
+                    stat.change.trend === 'up' && 'text-violet-600',
                     stat.change.trend === 'down' && 'text-red-600',
                     stat.change.trend === 'neutral' && 'text-gray-500'
                   )}
@@ -563,7 +563,7 @@ export const PageTabs = memo<PageTabsProps>(({
             className={cn(
               'relative px-4 py-3 text-sm font-medium transition-colors',
               isActive
-                ? 'text-blue-600 dark:text-blue-400'
+                ? 'text-violet-600 dark:text-violet-400'
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             )}
           >
@@ -575,7 +575,7 @@ export const PageTabs = memo<PageTabsProps>(({
                   className={cn(
                     'px-1.5 py-0.5 text-[10px] font-semibold rounded-full',
                     isActive
-                      ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                      ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400'
                       : 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
                   )}
                 >
@@ -586,7 +586,7 @@ export const PageTabs = memo<PageTabsProps>(({
             {isActive && (
               <motion.div
                 layoutId="activeTab"
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600 dark:bg-blue-400"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-600 dark:bg-violet-400"
                 transition={{ type: 'spring', stiffness: 500, damping: 30 }}
               />
             )}

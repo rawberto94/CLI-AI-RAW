@@ -63,11 +63,11 @@ export function ToastComponent({
       case "info":
       default:
         return {
-          bg: "bg-blue-50 dark:bg-blue-950",
-          border: "border-blue-200 dark:border-blue-800",
-          icon: "text-blue-600 dark:text-blue-400",
-          title: "text-blue-900 dark:text-blue-100",
-          message: "text-blue-700 dark:text-blue-300",
+          bg: "bg-violet-50 dark:bg-violet-950",
+          border: "border-violet-200 dark:border-violet-800",
+          icon: "text-violet-600 dark:text-violet-400",
+          title: "text-violet-900 dark:text-violet-100",
+          message: "text-violet-700 dark:text-violet-300",
         };
     }
   };

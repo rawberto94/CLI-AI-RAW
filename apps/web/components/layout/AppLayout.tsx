@@ -166,7 +166,7 @@ export function AILayout({
       title={title} 
       description={description} 
       actions={actions}
-      className={cn('bg-gradient-to-br from-blue-50/50 via-white to-purple-50/50', className)}
+      className={cn('bg-gradient-to-br from-violet-50/50 via-white to-purple-50/50', className)}
     >
       <div className="space-y-8">
         {children}

@@ -164,8 +164,8 @@ export function ContextualActionBar({
 
   const variantStyles = {
     default: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
-    primary: 'bg-indigo-500 text-white hover:bg-indigo-600',
-    success: 'bg-emerald-500 text-white hover:bg-emerald-600',
+    primary: 'bg-purple-500 text-white hover:bg-purple-600',
+    success: 'bg-violet-500 text-white hover:bg-violet-600',
     warning: 'bg-amber-500 text-white hover:bg-amber-600',
   };
 

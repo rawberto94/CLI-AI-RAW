@@ -31,8 +31,8 @@ const toggleSizes = {
 };
 
 const toggleVariants = {
-  default: 'bg-blue-500',
-  success: 'bg-emerald-500',
+  default: 'bg-violet-500',
+  success: 'bg-violet-500',
   danger: 'bg-red-500',
 };
 
@@ -55,7 +55,7 @@ export function AnimatedToggle({
         disabled={disabled}
         onClick={() => !disabled && onChange?.(!checked)}
         className={cn(
-          'relative inline-flex flex-shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-500',
+          'relative inline-flex flex-shrink-0 rounded-full transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-violet-500',
           sizeConfig.track,
           checked ? toggleVariants[variant] : 'bg-slate-200 dark:bg-slate-700'
         )}
@@ -131,7 +131,7 @@ export function LikeButton({
 
   const likeColors = {
     heart: { active: 'text-red-500 fill-red-500', inactive: 'text-slate-400 hover:text-red-400' },
-    thumbs: { active: 'text-blue-500', inactive: 'text-slate-400 hover:text-blue-400' },
+    thumbs: { active: 'text-violet-500', inactive: 'text-slate-400 hover:text-violet-400' },
     star: { active: 'text-amber-500 fill-amber-500', inactive: 'text-slate-400 hover:text-amber-400' },
   };
 
@@ -240,7 +240,7 @@ export function CopyFeedbackButton({
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, rotate: 45 }}
             >
-              <Check className={cn(sizeConfig.icon, 'text-emerald-500')} />
+              <Check className={cn(sizeConfig.icon, 'text-violet-500')} />
             </motion.div>
           ) : (
             <motion.div
@@ -267,7 +267,7 @@ export function CopyFeedbackButton({
         sizeConfig.button,
         sizeConfig.text,
         copied
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
           : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
       )}
     >
@@ -320,7 +320,7 @@ export function IconToggle({
   inactiveIcon,
   active = false,
   onChange,
-  activeColor = 'text-blue-500',
+  activeColor = 'text-violet-500',
   inactiveColor = 'text-slate-400',
   size = 'md',
   tooltip,
@@ -386,7 +386,7 @@ export function BookmarkToggle({ bookmarked = false, onChange }: { bookmarked?: 
       inactiveIcon={<Bookmark className="w-full h-full" />}
       active={bookmarked}
       onChange={onChange}
-      activeColor="text-blue-500"
+      activeColor="text-violet-500"
       tooltip={{ active: 'Remove bookmark', inactive: 'Bookmark' }}
     />
   );
@@ -480,7 +480,7 @@ export function ProgressRing({
   progress,
   size = 'md',
   strokeWidth = 4,
-  color = 'stroke-blue-500',
+  color = 'stroke-violet-500',
   trackColor = 'stroke-slate-200 dark:stroke-slate-700',
   showValue = true,
   animated = true,
@@ -732,7 +732,7 @@ export function ArchiveButton({ onArchive, size = 'md' }: ArchiveButtonProps) {
         sizeConfig.button,
         sizeConfig.text,
         state === 'done'
-          ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+          ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400'
           : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800',
         state === 'loading' && 'opacity-50 cursor-wait'
       )}

@@ -73,9 +73,9 @@ function getInitials(name: string): string {
 
 function stringToColor(str: string): string {
   const colors = [
-    'bg-blue-500', 'bg-purple-500', 'bg-pink-500', 'bg-red-500',
-    'bg-orange-500', 'bg-amber-500', 'bg-green-500', 'bg-teal-500',
-    'bg-cyan-500', 'bg-indigo-500',
+    'bg-violet-500', 'bg-purple-500', 'bg-pink-500', 'bg-red-500',
+    'bg-orange-500', 'bg-amber-500', 'bg-green-500', 'bg-violet-500',
+    'bg-purple-500', 'bg-purple-500',
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -222,7 +222,7 @@ export function ListItem({
       className={cn(
         'flex items-center gap-4 p-4 transition-colors',
         onClick && !disabled && 'cursor-pointer',
-        selected && 'bg-blue-50 dark:bg-blue-900/20',
+        selected && 'bg-violet-50 dark:bg-violet-900/20',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
@@ -304,7 +304,7 @@ const timelineColors = {
   success: 'bg-green-500',
   warning: 'bg-amber-500',
   error: 'bg-red-500',
-  info: 'bg-blue-500',
+  info: 'bg-violet-500',
 };
 
 export function Timeline({ items, variant = 'default' }: TimelineProps) {
@@ -459,7 +459,7 @@ export function DataTable<T extends Record<string, any>>({
                     className={cn(
                       'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                       allSelected || someSelected
-                        ? 'bg-blue-500 border-blue-500 text-white'
+                        ? 'bg-violet-500 border-violet-500 text-white'
                         : 'border-slate-300 dark:border-slate-600'
                     )}
                   >
@@ -486,7 +486,7 @@ export function DataTable<T extends Record<string, any>>({
                     {(column.sortable || sortable) && (
                       <ArrowUpDown className={cn(
                         'w-4 h-4',
-                        sortKey === column.key ? 'text-blue-500' : 'text-slate-400'
+                        sortKey === column.key ? 'text-violet-500' : 'text-slate-400'
                       )} />
                     )}
                   </div>
@@ -531,7 +531,7 @@ export function DataTable<T extends Record<string, any>>({
                     className={cn(
                       'transition-colors',
                       onRowClick && 'cursor-pointer',
-                      isSelected && 'bg-blue-50 dark:bg-blue-900/20',
+                      isSelected && 'bg-violet-50 dark:bg-violet-900/20',
                       striped && index % 2 === 1 && 'bg-slate-50 dark:bg-slate-800/30',
                       !isSelected && 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     )}
@@ -543,8 +543,8 @@ export function DataTable<T extends Record<string, any>>({
                           className={cn(
                             'w-5 h-5 rounded border-2 flex items-center justify-center transition-colors',
                             isSelected
-                              ? 'bg-blue-500 border-blue-500 text-white'
-                              : 'border-slate-300 dark:border-slate-600 hover:border-blue-500'
+                              ? 'bg-violet-500 border-violet-500 text-white'
+                              : 'border-slate-300 dark:border-slate-600 hover:border-violet-500'
                           )}
                         >
                           {isSelected && <Check className="w-3 h-3" />}
@@ -589,7 +589,7 @@ interface StatDisplayProps {
 
 const statColors = {
   default: 'text-slate-600 dark:text-slate-400',
-  blue: 'text-blue-600 dark:text-blue-400',
+  blue: 'text-violet-600 dark:text-violet-400',
   green: 'text-green-600 dark:text-green-400',
   red: 'text-red-600 dark:text-red-400',
   amber: 'text-amber-600 dark:text-amber-400',
@@ -722,7 +722,7 @@ interface ProgressTrackerProps {
 }
 
 const progressColors = {
-  blue: 'bg-blue-500',
+  blue: 'bg-violet-500',
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',

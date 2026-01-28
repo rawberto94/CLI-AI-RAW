@@ -202,13 +202,13 @@ export function CommandGroup({ children, heading, className, ...props }: Command
   const headingLabel = typeof heading === 'string' ? heading : undefined;
   return (
     <div
-      className={cn("overflow-hidden p-1", className)}
+      className={cn("overflow-hidden p-1.5", className)}
       role="group"
       aria-label={headingLabel}
       {...props}
     >
       {heading && (
-        <div className="px-2 py-1.5 text-xs font-semibold text-slate-400 uppercase tracking-wider">
+        <div className="px-2 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 uppercase tracking-wider">
           {heading}
         </div>
       )}
@@ -283,10 +283,10 @@ export function CommandItem({
     <div
       ref={itemRef}
       className={cn(
-        "relative flex cursor-pointer select-none items-center rounded-md px-2 py-2 text-sm outline-none transition-colors",
-        isSelected && "bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white",
+        "relative flex cursor-pointer select-none items-center rounded-lg px-3 py-2.5 text-sm outline-none transition-all duration-150",
+        isSelected && "bg-violet-50 dark:bg-violet-950/50 text-violet-900 dark:text-violet-100 border border-violet-200 dark:border-violet-800",
         disabled && "pointer-events-none opacity-50",
-        !isSelected && !disabled && "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50",
+        !isSelected && !disabled && "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-violet-600 dark:hover:text-violet-400",
         className
       )}
       role="option"
@@ -361,11 +361,11 @@ export function CommandDialog({ open, onOpenChange, children }: CommandDialogPro
   return (
     <div className="fixed inset-0 z-50">
       <div 
-        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
       <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg">
-        <Command className="shadow-2xl">
+        <Command className="shadow-2xl shadow-violet-500/20 border-violet-200 dark:border-violet-800">
           {children}
         </Command>
       </div>

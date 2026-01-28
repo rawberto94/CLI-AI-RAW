@@ -70,7 +70,7 @@ export const TypingIndicator = memo(({
                 animate="animate"
                 transition={dotTransition(delay)}
                 className={cn(
-                  "rounded-full bg-gradient-to-r from-indigo-500 to-purple-500",
+                  "rounded-full bg-gradient-to-r from-purple-500 to-purple-500",
                   dotSizes[size]
                 )}
               />
@@ -83,7 +83,7 @@ export const TypingIndicator = memo(({
             <motion.div
               animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-indigo-500"
+              className="w-2 h-2 rounded-full bg-purple-500"
             />
             <span className="text-sm text-slate-500 dark:text-slate-400">
               {label}...
@@ -103,7 +103,7 @@ export const TypingIndicator = memo(({
                   ease: 'easeInOut',
                   delay,
                 }}
-                className="w-1 h-4 rounded-full bg-gradient-to-t from-indigo-500 to-purple-500 origin-center"
+                className="w-1 h-4 rounded-full bg-gradient-to-t from-purple-500 to-purple-500 origin-center"
               />
             ))}
           </div>
@@ -135,7 +135,7 @@ export const StreamingIndicator = memo(({ text, showCursor = true }: StreamingIn
             <motion.span
               animate={{ opacity: [1, 0, 1] }}
               transition={{ duration: 0.8, repeat: Infinity }}
-              className="inline-block w-2 h-4 bg-indigo-500 ml-0.5 -mb-0.5"
+              className="inline-block w-2 h-4 bg-purple-500 ml-0.5 -mb-0.5"
             />
           )}
         </div>
@@ -190,9 +190,9 @@ export const ThinkingStatus = memo(({
                 className={cn(
                   "flex items-center gap-2 text-sm transition-all",
                   isPast || stage.completed
-                    ? "text-emerald-600 dark:text-emerald-400"
+                    ? "text-violet-600 dark:text-violet-400"
                     : isCurrent
-                    ? "text-indigo-600 dark:text-indigo-400"
+                    ? "text-purple-600 dark:text-indigo-400"
                     : "text-slate-400 dark:text-slate-500"
                 )}
               >
@@ -200,7 +200,7 @@ export const ThinkingStatus = memo(({
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center"
+                    className="w-4 h-4 rounded-full bg-violet-500 flex items-center justify-center"
                   >
                     <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
@@ -210,7 +210,7 @@ export const ThinkingStatus = memo(({
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 1, repeat: Infinity }}
-                    className="w-4 h-4 rounded-full bg-indigo-500"
+                    className="w-4 h-4 rounded-full bg-purple-500"
                   />
                 ) : (
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 dark:border-slate-600" />

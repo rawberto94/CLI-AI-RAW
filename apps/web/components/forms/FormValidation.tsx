@@ -55,8 +55,8 @@ export interface FormFieldProps {
 const validationIcons = {
   error: { icon: AlertCircle, color: 'text-red-500' },
   warning: { icon: AlertTriangle, color: 'text-amber-500' },
-  success: { icon: CheckCircle2, color: 'text-emerald-500' },
-  info: { icon: Info, color: 'text-blue-500' },
+  success: { icon: CheckCircle2, color: 'text-violet-500' },
+  info: { icon: Info, color: 'text-violet-500' },
   validating: { icon: Loader2, color: 'text-slate-400' },
 };
 
@@ -90,8 +90,8 @@ export function ValidationMessageDisplay({ type, message, className }: Validatio
         "text-xs",
         type === 'error' && "text-red-600 dark:text-red-400",
         type === 'warning' && "text-amber-600 dark:text-amber-400",
-        type === 'success' && "text-emerald-600 dark:text-emerald-400",
-        type === 'info' && "text-blue-600 dark:text-blue-400",
+        type === 'success' && "text-violet-600 dark:text-violet-400",
+        type === 'info' && "text-violet-600 dark:text-violet-400",
         isValidating && "text-slate-500"
       )}>
         {message}
@@ -247,7 +247,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
       (rightIcon || showPasswordToggle || clearable) && "pr-10",
       validationState === 'invalid' && "border-red-300 focus:border-red-500 focus:ring-red-500/20 dark:border-red-700",
       validationState === 'warning' && "border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 dark:border-amber-700",
-      validationState === 'valid' && "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-emerald-700",
+      validationState === 'valid' && "border-violet-300 focus:border-violet-500 focus:ring-violet-500/20 dark:border-violet-700",
       validationState === 'validating' && "border-slate-300 dark:border-slate-600",
       className
     );
@@ -382,7 +382,7 @@ export const EnhancedTextarea = forwardRef<HTMLTextAreaElement, EnhancedTextarea
       "transition-all duration-200",
       validationState === 'invalid' && "border-red-300 focus:border-red-500 focus:ring-red-500/20 dark:border-red-700",
       validationState === 'warning' && "border-amber-300 focus:border-amber-500 focus:ring-amber-500/20 dark:border-amber-700",
-      validationState === 'valid' && "border-emerald-300 focus:border-emerald-500 focus:ring-emerald-500/20 dark:border-emerald-700",
+      validationState === 'valid' && "border-violet-300 focus:border-violet-500 focus:ring-violet-500/20 dark:border-violet-700",
       className
     );
 
@@ -489,21 +489,21 @@ export function FormSuccessMessage({ message, className, onDismiss }: FormSucces
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -10 }}
       className={cn(
-        "bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded-lg p-4",
+        "bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 rounded-lg p-4",
         className
       )}
       role="status"
       aria-live="polite"
     >
       <div className="flex items-center gap-3">
-        <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
-        <p className="text-sm text-emerald-700 dark:text-emerald-300 flex-1">
+        <CheckCircle2 className="h-5 w-5 text-violet-500 flex-shrink-0" />
+        <p className="text-sm text-violet-700 dark:text-violet-300 flex-1">
           {message}
         </p>
         {onDismiss && (
           <button
             onClick={onDismiss}
-            className="p-1 text-emerald-400 hover:text-emerald-600 dark:hover:text-emerald-300 transition-colors"
+            className="p-1 text-violet-400 hover:text-violet-600 dark:hover:text-violet-300 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>

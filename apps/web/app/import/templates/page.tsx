@@ -98,7 +98,7 @@ export default function TemplatesPage() {
           </div>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/50 p-6">
             <p className="text-sm text-gray-600 dark:text-slate-400">Suppliers</p>
-            <p className="text-3xl font-bold text-blue-600 dark:text-blue-400">
+            <p className="text-3xl font-bold text-violet-600 dark:text-violet-400">
               {Object.keys(stats.bySupplier).length}
             </p>
           </div>
@@ -108,7 +108,7 @@ export default function TemplatesPage() {
         <div className="mb-6 flex gap-4">
           <button
             onClick={() => setShowImport(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
           >
             Import Template
           </button>
@@ -128,7 +128,7 @@ export default function TemplatesPage() {
               <div className="mt-4 flex gap-4">
                 <button
                   onClick={handleImport}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
                 >
                   Import
                 </button>
@@ -165,7 +165,7 @@ export default function TemplatesPage() {
                   onClick={() => setSelectedTemplate(template)}
                   className={`
                     bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/50 p-6 cursor-pointer transition-colors
-                    ${selectedTemplate?.id === template.id ? 'ring-2 ring-blue-500' : 'hover:shadow-lg dark:hover:shadow-slate-900'}
+                    ${selectedTemplate?.id === template.id ? 'ring-2 ring-violet-500' : 'hover:shadow-lg dark:hover:shadow-slate-900'}
                   `}
                 >
                   <div className="flex items-start justify-between">
@@ -174,7 +174,7 @@ export default function TemplatesPage() {
                       <p className="text-sm text-gray-600 dark:text-slate-400 mt-1">{template.description}</p>
                       
                       {template.supplierName && (
-                        <p className="text-sm text-blue-600 dark:text-blue-400 mt-2">
+                        <p className="text-sm text-violet-600 dark:text-violet-400 mt-2">
                           Supplier: {template.supplierName}
                         </p>
                       )}
@@ -283,7 +283,7 @@ export default function TemplatesPage() {
                     {selectedTemplate.headerPatterns.map((pattern, i) => (
                       <span
                         key={i}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 rounded text-sm"
+                        className="px-2 py-1 bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-300 rounded text-sm"
                       >
                         {pattern}
                       </span>

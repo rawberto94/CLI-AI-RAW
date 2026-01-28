@@ -43,7 +43,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
     return (
       <div className="fixed inset-0 bg-white flex items-center justify-center z-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Analyzing contracts...</p>
         </div>
       </div>
@@ -129,7 +129,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
         <div className="grid grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-lg border border-gray-200">
             <div className="text-sm text-gray-600 mb-1">Similarity Score</div>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-violet-600">
               {comparison.metrics.similarityScore}%
             </div>
           </div>

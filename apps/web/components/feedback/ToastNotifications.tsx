@@ -241,21 +241,21 @@ function ToastContainer() {
 
 // Toast Icons
 const toastIcons: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
+  success: <CheckCircle2 className="h-5 w-5 text-violet-500" />,
   error: <XCircle className="h-5 w-5 text-red-500" />,
   warning: <AlertTriangle className="h-5 w-5 text-amber-500" />,
-  info: <Info className="h-5 w-5 text-blue-500" />,
-  loading: <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />,
-  promise: <Loader2 className="h-5 w-5 text-indigo-500 animate-spin" />,
+  info: <Info className="h-5 w-5 text-violet-500" />,
+  loading: <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />,
+  promise: <Loader2 className="h-5 w-5 text-purple-500 animate-spin" />,
 };
 
 const toastStyles: Record<ToastType, string> = {
-  success: 'border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50',
+  success: 'border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/50',
   error: 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-950/50',
   warning: 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50',
-  info: 'border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/50',
-  loading: 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50',
-  promise: 'border-indigo-200 dark:border-indigo-800 bg-indigo-50 dark:bg-indigo-950/50',
+  info: 'border-violet-200 dark:border-violet-800 bg-violet-50 dark:bg-violet-950/50',
+  loading: 'border-indigo-200 dark:border-indigo-800 bg-purple-50 dark:bg-purple-950/50',
+  promise: 'border-indigo-200 dark:border-indigo-800 bg-purple-50 dark:bg-purple-950/50',
 };
 
 // Individual Toast Item
@@ -330,7 +330,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
                         ? "bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/50 dark:text-red-300"
                         : toast.action.variant === 'secondary'
                         ? "bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300"
-                        : "bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/50 dark:text-indigo-300"
+                        : "bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/50 dark:text-indigo-300"
                     )}
                   >
                     {toast.action.label}
@@ -375,10 +375,10 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
             style={{ width: `${progress}%` }}
             className={cn(
               "h-full transition-none",
-              toast.type === 'success' && "bg-emerald-500",
+              toast.type === 'success' && "bg-violet-500",
               toast.type === 'error' && "bg-red-500",
               toast.type === 'warning' && "bg-amber-500",
-              toast.type === 'info' && "bg-blue-500"
+              toast.type === 'info' && "bg-violet-500"
             )}
           />
         </div>
@@ -390,7 +390,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
           <motion.div
             initial={{ width: 0 }}
             animate={{ width: `${toast.progress}%` }}
-            className="h-full bg-indigo-500"
+            className="h-full bg-purple-500"
           />
         </div>
       )}

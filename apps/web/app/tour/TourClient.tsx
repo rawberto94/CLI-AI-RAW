@@ -98,7 +98,7 @@ const tourSteps: TourStep[] = [
       { text: 'Smart contract health scoring', icon: Shield },
       { text: 'Natural language Q&A', icon: MessageSquare },
     ],
-    gradient: 'from-violet-600 via-purple-600 to-indigo-600',
+    gradient: 'from-violet-600 via-purple-600 to-purple-600',
     accentColor: 'violet',
     duration: '1 min',
   },
@@ -115,7 +115,7 @@ const tourSteps: TourStep[] = [
       { text: 'Quick action shortcuts', icon: Rocket },
     ],
     action: { label: 'Go to Dashboard', href: '/dashboard' },
-    gradient: 'from-blue-600 via-indigo-600 to-purple-600',
+    gradient: 'from-violet-600 via-purple-600 to-purple-600',
     accentColor: 'blue',
     duration: '2 min',
   },
@@ -132,7 +132,7 @@ const tourSteps: TourStep[] = [
       { text: 'Real-time processing status', icon: Zap },
     ],
     action: { label: 'Upload Contracts', href: '/upload' },
-    gradient: 'from-emerald-500 via-teal-500 to-cyan-500',
+    gradient: 'from-violet-500 via-violet-500 to-purple-500',
     accentColor: 'emerald',
     duration: '2 min',
   },
@@ -149,7 +149,7 @@ const tourSteps: TourStep[] = [
       { text: 'Bulk actions & exports', icon: FileSearch },
     ],
     action: { label: 'Browse Contracts', href: '/contracts' },
-    gradient: 'from-cyan-500 via-blue-500 to-indigo-500',
+    gradient: 'from-purple-500 via-purple-500 to-purple-500',
     accentColor: 'cyan',
     duration: '3 min',
   },
@@ -200,7 +200,7 @@ const tourSteps: TourStep[] = [
       { text: 'Export comparison reports', icon: FileText },
     ],
     action: { label: 'Compare Contracts', href: '/compare' },
-    gradient: 'from-purple-500 via-violet-500 to-indigo-500',
+    gradient: 'from-purple-500 via-violet-500 to-purple-500',
     accentColor: 'purple',
     duration: '2 min',
   },
@@ -217,7 +217,7 @@ const tourSteps: TourStep[] = [
       { text: 'One-click PDF export', icon: ExternalLink },
     ],
     action: { label: 'View Analytics', href: '/analytics' },
-    gradient: 'from-teal-500 via-emerald-500 to-green-500',
+    gradient: 'from-violet-500 via-violet-500 to-purple-500',
     accentColor: 'teal',
     duration: '3 min',
   },
@@ -450,7 +450,7 @@ function InteractiveTour() {
             Restart Tour
           </Button>
           {completedSteps.size > 0 && (
-            <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
+            <Badge variant="secondary" className="bg-violet-100 text-violet-700">
               <CheckCircle2 className="h-3 w-3 mr-1" />
               {completedSteps.size} completed
             </Badge>
@@ -470,7 +470,7 @@ function InteractiveTour() {
               className={cn(
                 "flex items-center justify-center w-8 h-8 rounded-full text-xs font-medium transition-all",
                 completedSteps.has(s.id) 
-                  ? "bg-emerald-500 text-white"
+                  ? "bg-violet-500 text-white"
                   : i === currentStep
                     ? `bg-gradient-to-br ${step.gradient} text-white shadow-lg`
                     : "bg-slate-200 text-slate-500 hover:bg-slate-300"
@@ -609,7 +609,7 @@ function InteractiveTour() {
 function LearningCenter() {
   const getLevelColor = (level: LearningModule['level']) => {
     switch (level) {
-      case 'beginner': return 'bg-emerald-100 text-emerald-700';
+      case 'beginner': return 'bg-violet-100 text-violet-700';
       case 'intermediate': return 'bg-amber-100 text-amber-700';
       case 'advanced': return 'bg-purple-100 text-purple-700';
     }
@@ -618,7 +618,7 @@ function LearningCenter() {
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-lg">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-500 text-white shadow-lg">
           <GraduationCap className="h-6 w-6" />
         </div>
         <div>
@@ -653,7 +653,7 @@ function LearningCenter() {
                           {module.level}
                         </Badge>
                         {module.locked && <Lock className="h-4 w-4 text-slate-400" />}
-                        {module.completed && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                        {module.completed && <CheckCircle2 className="h-4 w-4 text-violet-500" />}
                       </div>
                     </div>
                     <CardTitle className="text-lg">{module.title}</CardTitle>
@@ -694,7 +694,7 @@ function FeatureGuides() {
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-teal-500 to-emerald-500 text-white shadow-lg">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-500 text-white shadow-lg">
           <BookOpen className="h-6 w-6" />
         </div>
         <div>
@@ -794,8 +794,8 @@ export default function TourClient() {
         >
           {[
             { label: 'Tour Steps', value: tourSteps.length, icon: PlayCircle, color: 'from-violet-500 to-purple-500' },
-            { label: 'Learning Modules', value: learningModules.length, icon: GraduationCap, color: 'from-indigo-500 to-blue-500' },
-            { label: 'Feature Guides', value: featureGuides.length, icon: BookOpen, color: 'from-teal-500 to-emerald-500' },
+            { label: 'Learning Modules', value: learningModules.length, icon: GraduationCap, color: 'from-purple-500 to-purple-500' },
+            { label: 'Feature Guides', value: featureGuides.length, icon: BookOpen, color: 'from-violet-500 to-violet-500' },
             { label: 'Total Duration', value: '~2hrs', icon: Clock, color: 'from-amber-500 to-orange-500' },
           ].map((stat, i) => {
             const StatIcon = stat.icon;
@@ -860,7 +860,7 @@ export default function TourClient() {
           transition={{ delay: 0.3 }}
           className="mt-16 text-center"
         >
-          <Card className="bg-gradient-to-r from-violet-500 via-purple-500 to-indigo-500 text-white border-0">
+          <Card className="bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500 text-white border-0">
             <CardContent className="py-12">
               <Trophy className="h-12 w-12 mx-auto mb-4 opacity-90" />
               <h3 className="text-2xl font-bold mb-2">Ready to Get Started?</h3>

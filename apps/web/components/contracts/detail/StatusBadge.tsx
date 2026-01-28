@@ -11,14 +11,14 @@ export function StatusBadge({ status }: { status: string }) {
     { bg: string; text: string; icon: React.ElementType; label: string; animate?: boolean }
   > = {
     completed: {
-      bg: 'bg-emerald-50 border-emerald-200',
-      text: 'text-emerald-700',
+      bg: 'bg-violet-50 border-violet-200',
+      text: 'text-violet-700',
       icon: CheckCircle2,
       label: 'Completed',
     },
     processing: {
-      bg: 'bg-blue-50 border-blue-200',
-      text: 'text-blue-700',
+      bg: 'bg-violet-50 border-violet-200',
+      text: 'text-violet-700',
       icon: Loader2,
       label: 'Processing',
       animate: true,

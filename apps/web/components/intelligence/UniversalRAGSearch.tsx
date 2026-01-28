@@ -221,7 +221,7 @@ const generateMockResults = (query: string): SearchResult[] => {
 const getResultTypeConfig = (type: SearchResult['type']) => {
   switch (type) {
     case 'contract':
-      return { icon: FileText, color: 'bg-blue-100 text-blue-600', label: 'Contract' };
+      return { icon: FileText, color: 'bg-violet-100 text-violet-600', label: 'Contract' };
     case 'clause':
       return { icon: BookOpen, color: 'bg-purple-100 text-purple-600', label: 'Clause' };
     case 'obligation':
@@ -304,7 +304,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, onViewSourc
 
         <button
           onClick={onViewSource}
-          className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+          className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded-lg transition-colors"
         >
           <ExternalLink className="w-4 h-4" />
         </button>
@@ -322,7 +322,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, onViewSourc
             </>
           )}
         </div>
-        <button className="text-xs text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
+        <button className="text-xs text-violet-500 hover:text-violet-600 font-medium flex items-center gap-1">
           View in context
           <ArrowRight className="w-3 h-3" />
         </button>
@@ -354,7 +354,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
         <div
           className={`rounded-2xl px-4 py-3 ${
             isUser
-              ? 'bg-blue-500 text-white rounded-br-md'
+              ? 'bg-violet-500 text-white rounded-br-md'
               : 'bg-white border border-slate-200 text-slate-900 rounded-bl-md'
           }`}
         >
@@ -404,7 +404,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
               <button
                 key={idx}
                 onClick={() => onFollowUp(suggestion)}
-                className="px-3 py-1.5 bg-blue-50 text-blue-600 text-sm rounded-full hover:bg-blue-100 transition-colors flex items-center gap-1"
+                className="px-3 py-1.5 bg-violet-50 text-violet-600 text-sm rounded-full hover:bg-violet-100 transition-colors flex items-center gap-1"
               >
                 <Lightbulb className="w-3 h-3" />
                 {suggestion}
@@ -422,7 +422,7 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
             <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
               <ThumbsDown className="w-4 h-4" />
             </button>
-            <button className="p-1.5 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded transition-colors">
+            <button className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded transition-colors">
               <Copy className="w-4 h-4" />
             </button>
           </div>
@@ -565,7 +565,7 @@ export const UniversalRAGSearch: React.FC = () => {
       <div className="flex-none p-4 bg-white border-b border-slate-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -577,7 +577,7 @@ export const UniversalRAGSearch: React.FC = () => {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors ${
-                showFilters ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                showFilters ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Filter className="w-5 h-5" />
@@ -642,7 +642,7 @@ export const UniversalRAGSearch: React.FC = () => {
           /* Initial Suggestions State */
           <div className="max-w-2xl mx-auto pt-8">
             <div className="text-center mb-8">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <Search className="w-8 h-8 text-white" />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
@@ -670,9 +670,9 @@ export const UniversalRAGSearch: React.FC = () => {
                         <button
                           key={suggestion.id}
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all text-left"
+                          className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-violet-300 hover:shadow-md transition-all text-left"
                         >
-                          <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center">
+                          <div className="w-8 h-8 bg-violet-50 text-violet-500 rounded-lg flex items-center justify-center">
                             <Icon className="w-4 h-4" />
                           </div>
                           <span className="text-sm font-medium text-slate-700">{suggestion.query}</span>
@@ -698,7 +698,7 @@ export const UniversalRAGSearch: React.FC = () => {
                         <button
                           key={suggestion.id}
                           onClick={() => handleSuggestionClick(suggestion)}
-                          className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all text-left w-full"
+                          className="flex items-center gap-3 p-3 bg-white border border-slate-200 rounded-lg hover:border-violet-300 hover:shadow-md transition-all text-left w-full"
                         >
                           <div className="w-8 h-8 bg-slate-100 text-slate-500 rounded-lg flex items-center justify-center">
                             <Icon className="w-4 h-4" />
@@ -724,7 +724,7 @@ export const UniversalRAGSearch: React.FC = () => {
                       <button
                         key={suggestion.id}
                         onClick={() => handleSuggestionClick(suggestion)}
-                        className="px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 text-blue-700 rounded-full text-sm font-medium hover:shadow-md transition-all"
+                        className="px-4 py-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 text-violet-700 rounded-full text-sm font-medium hover:shadow-md transition-all"
                       >
                         {suggestion.query}
                       </button>
@@ -764,12 +764,12 @@ export const UniversalRAGSearch: React.FC = () => {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ask anything about your contracts..."
-              className="w-full pl-5 pr-14 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full pl-5 pr-14 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             />
             <button
               type="submit"
               disabled={!query.trim()}
-              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-500 text-white rounded-xl hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-violet-500 text-white rounded-xl hover:bg-violet-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-5 h-5" />
             </button>

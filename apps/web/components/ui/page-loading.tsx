@@ -50,14 +50,14 @@ export function PageSpinner({ title, description, className }: PageLoadingProps)
   return (
     <div className={cn("relative flex flex-col items-center justify-center min-h-[400px] gap-6 overflow-hidden", className)}>
       {/* Background orbs */}
-      <FloatingOrb className="w-48 h-48 bg-indigo-400 -top-24 -left-24" duration={4} />
+      <FloatingOrb className="w-48 h-48 bg-purple-400 -top-24 -left-24" duration={4} />
       <FloatingOrb className="w-64 h-64 bg-purple-400 -bottom-32 -right-32" delay={1} duration={5} />
       
       {/* Premium spinner */}
       <div className="relative">
         {/* Outer glow ring */}
         <motion.div
-          className="absolute -inset-4 rounded-full bg-gradient-to-r from-indigo-500/20 via-purple-500/20 to-pink-500/20 blur-xl"
+          className="absolute -inset-4 rounded-full bg-gradient-to-r from-purple-500/20 via-purple-500/20 to-pink-500/20 blur-xl"
           animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -77,7 +77,7 @@ export function PageSpinner({ title, description, className }: PageLoadingProps)
               animate={{ scale: [1, 1.1, 1] }}
               transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
             >
-              <Sparkles className="h-6 w-6 text-indigo-600" />
+              <Sparkles className="h-6 w-6 text-purple-600" />
             </motion.div>
           </div>
         </motion.div>
@@ -114,7 +114,7 @@ export function PageSpinner({ title, description, className }: PageLoadingProps)
           {[0, 1, 2].map((i) => (
             <motion.div
               key={i}
-              className="w-1.5 h-1.5 rounded-full bg-indigo-400"
+              className="w-1.5 h-1.5 rounded-full bg-purple-400"
               animate={{ y: [0, -6, 0] }}
               transition={{
                 duration: 0.6,
@@ -469,7 +469,7 @@ export function ChatSkeleton() {
  */
 export function FullPageLoading({ title = "Loading..." }: { title?: string }) {
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-gradient-to-br from-slate-50 to-purple-50 flex items-center justify-center z-50">
       <div className="flex flex-col items-center gap-6">
         <motion.div
           className="relative"
@@ -482,7 +482,7 @@ export function FullPageLoading({ title = "Loading..." }: { title?: string }) {
             ease: "easeInOut" 
           }}
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-2xl flex items-center justify-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl shadow-2xl flex items-center justify-center">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
@@ -491,7 +491,7 @@ export function FullPageLoading({ title = "Loading..." }: { title?: string }) {
             </motion.div>
           </div>
           <motion.div
-            className="absolute -inset-1 bg-gradient-to-br from-blue-600/20 to-indigo-600/20 rounded-2xl blur-lg"
+            className="absolute -inset-1 bg-gradient-to-br from-violet-600/20 to-purple-600/20 rounded-2xl blur-lg"
             animate={{ 
               opacity: [0.5, 1, 0.5],
             }}

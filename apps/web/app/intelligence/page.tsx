@@ -24,7 +24,7 @@ const features = [
     description: 'Visualize relationships between contracts, suppliers, clauses, and risks in an interactive graph explorer.',
     icon: Share2,
     href: '/intelligence/graph',
-    color: 'from-blue-500 to-cyan-500',
+    color: 'from-violet-500 to-purple-500',
     stats: '5 contracts • 3 suppliers • 12 connections',
   },
   {
@@ -33,7 +33,7 @@ const features = [
     description: 'Monitor contract performance with AI-powered health scoring across risk, compliance, financial, and operational dimensions.',
     icon: Activity,
     href: '/intelligence/health',
-    color: 'from-green-500 to-emerald-500',
+    color: 'from-violet-500 to-violet-500',
     stats: '78 avg score • 2 at risk • 6 action items',
   },
   {
@@ -71,7 +71,7 @@ const item = {
 
 export default function IntelligencePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/30">
       {/* Breadcrumb Navigation */}
       <div className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 px-6 py-3 sticky top-0 z-10">
         <PageBreadcrumb />
@@ -87,14 +87,14 @@ export default function IntelligencePage() {
       >
         <div className="flex items-center gap-4 mb-2">
           <motion.div 
-            className="w-16 h-16 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-blue-500/30"
+            className="w-16 h-16 bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-xl shadow-violet-500/30"
             whileHover={{ scale: 1.05, rotate: 5 }}
             transition={{ type: "spring", stiffness: 300 }}
           >
             <Brain className="w-8 h-8 text-white" />
           </motion.div>
           <div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 bg-clip-text text-transparent">
               Contract Intelligence
             </h1>
             <p className="text-muted-foreground text-lg">AI-powered insights and analysis for your contract portfolio</p>
@@ -111,29 +111,29 @@ export default function IntelligencePage() {
       >
         <div className="grid grid-cols-4 gap-4">
           <motion.div 
-            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-blue-500/5 hover:shadow-2xl hover:shadow-blue-500/10 transition-all duration-300 group"
+            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-violet-500/5 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-300 group"
             whileHover={{ scale: 1.02, y: -2 }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">78</div>
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">78</div>
                 <div className="text-sm text-muted-foreground">Avg Health Score</div>
               </div>
             </div>
           </motion.div>
           <motion.div 
-            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-emerald-500/5 hover:shadow-2xl hover:shadow-emerald-500/10 transition-all duration-300 group"
+            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-violet-500/5 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-300 group"
             whileHover={{ scale: 1.02, y: -2 }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">92%</div>
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">92%</div>
                 <div className="text-sm text-muted-foreground">Compliance Rate</div>
               </div>
             </div>
@@ -195,7 +195,7 @@ export default function IntelligencePage() {
                       <Icon className="w-8 h-8 text-white" />
                     </motion.div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-2">
+                      <h3 className="text-xl font-semibold text-slate-900 group-hover:text-violet-600 transition-colors flex items-center gap-2">
                         {feature.title}
                         <ArrowRight className="w-5 h-5 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                       </h3>
@@ -219,7 +219,7 @@ export default function IntelligencePage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.5 }}
       >
-        <div className="relative overflow-hidden bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 rounded-2xl p-6 text-white shadow-2xl shadow-blue-500/30">
+        <div className="relative overflow-hidden bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 rounded-2xl p-6 text-white shadow-2xl shadow-violet-500/30">
           <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
           <div className="flex items-center justify-between relative">
@@ -233,12 +233,12 @@ export default function IntelligencePage() {
               </motion.div>
               <div>
                 <h3 className="text-xl font-semibold">AI Contract Assistant</h3>
-                <p className="text-blue-100">Ask me anything about your contracts - I can search, analyze, and provide recommendations</p>
+                <p className="text-violet-100">Ask me anything about your contracts - I can search, analyze, and provide recommendations</p>
               </div>
             </div>
             <Link href="/intelligence/search">
               <motion.button 
-                className="px-5 py-2.5 bg-white text-blue-600 rounded-xl font-semibold hover:bg-blue-50 transition-colors flex items-center gap-2 shadow-lg"
+                className="px-5 py-2.5 bg-white text-violet-600 rounded-xl font-semibold hover:bg-violet-50 transition-colors flex items-center gap-2 shadow-lg"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.98 }}
               >

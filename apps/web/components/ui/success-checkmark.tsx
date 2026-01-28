@@ -39,9 +39,9 @@ export function SuccessCheckmark({
       border: 'border-green-200',
     },
     blue: {
-      text: 'text-blue-600',
-      bg: 'bg-blue-100',
-      border: 'border-blue-200',
+      text: 'text-violet-600',
+      bg: 'bg-violet-100',
+      border: 'border-violet-200',
     },
     purple: {
       text: 'text-purple-600',

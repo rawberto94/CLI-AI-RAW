@@ -199,7 +199,7 @@ const ForecastChart: React.FC<{ data: ForecastData[] }> = ({ data }) => {
                 initial={{ height: 0 }}
                 animate={{ height: `${(d.renewalValue / maxValue) * 100}%` }}
                 transition={{ delay: idx * 0.05, duration: 0.5 }}
-                className="w-full bg-blue-500 rounded-t"
+                className="w-full bg-violet-500 rounded-t"
                 title={`Renewals: $${d.renewalValue.toLocaleString()}`}
               />
             )}
@@ -244,7 +244,7 @@ interface OpportunityCardProps {
 const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
   const typeConfig = {
     consolidation: { icon: Target, color: 'bg-purple-100 text-purple-700', label: 'Consolidation' },
-    renegotiation: { icon: RefreshCw, color: 'bg-blue-100 text-blue-700', label: 'Renegotiation' },
+    renegotiation: { icon: RefreshCw, color: 'bg-violet-100 text-violet-700', label: 'Renegotiation' },
     termination: { icon: AlertTriangle, color: 'bg-red-100 text-red-700', label: 'Termination' },
     optimization: { icon: Zap, color: 'bg-green-100 text-green-700', label: 'Optimization' },
   };
@@ -300,7 +300,7 @@ const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
             )}
           </div>
         </div>
-        <button className="p-2 text-slate-400 hover:text-blue-500 hover:bg-blue-50 rounded-lg transition-colors">
+        <button className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded-lg transition-colors">
           <ArrowRight className="w-5 h-5" />
         </button>
       </div>
@@ -331,7 +331,7 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, isSelected, onSel
       onClick={onSelect}
       className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
         isSelected
-          ? 'border-blue-500 bg-blue-50 shadow-lg'
+          ? 'border-violet-500 bg-violet-50 shadow-lg'
           : 'border-slate-200 bg-white hover:border-slate-300'
       }`}
     >
@@ -363,7 +363,7 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({ scenario, isSelected, onSel
         </div>
         <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-500 rounded-full"
+            className="h-full bg-violet-500 rounded-full"
             style={{ width: `${scenario.probability}%` }}
           />
         </div>
@@ -455,7 +455,7 @@ export const ForecastingDashboard: React.FC = () => {
             <select
               value={timeRange}
               onChange={(e) => setTimeRange(e.target.value as '6m' | '12m' | '24m')}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
             >
               <option value="6m">Next 6 Months</option>
               <option value="12m">Next 12 Months</option>
@@ -465,7 +465,7 @@ export const ForecastingDashboard: React.FC = () => {
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium flex items-center gap-2">
+            <button className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors font-medium flex items-center gap-2">
               <Play className="w-4 h-4" />
               Run Simulation
             </button>
@@ -477,8 +477,8 @@ export const ForecastingDashboard: React.FC = () => {
       <div className="grid grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 border border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-blue-600" />
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+              <DollarSign className="w-5 h-5 text-violet-600" />
             </div>
             <div>
               <div className="text-2xl font-bold text-slate-900">${(stats.projectedSpend / 1000000).toFixed(2)}M</div>
@@ -549,7 +549,7 @@ export const ForecastingDashboard: React.FC = () => {
             </div>
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 bg-blue-500 rounded" />
+                <div className="w-3 h-3 bg-violet-500 rounded" />
                 <span className="text-sm text-slate-500">Renewals</span>
               </div>
               <div className="flex items-center gap-2">
@@ -593,7 +593,7 @@ export const ForecastingDashboard: React.FC = () => {
             <h3 className="text-lg font-semibold text-slate-900">Discovered Opportunities</h3>
             <p className="text-sm text-slate-500">AI-identified savings and optimization opportunities</p>
           </div>
-          <button className="text-sm text-blue-500 hover:text-blue-600 font-medium flex items-center gap-1">
+          <button className="text-sm text-violet-500 hover:text-violet-600 font-medium flex items-center gap-1">
             View All
             <ChevronRight className="w-4 h-4" />
           </button>

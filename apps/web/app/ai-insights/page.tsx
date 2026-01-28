@@ -122,19 +122,19 @@ export default function AIInsightsDashboard() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4"
         >
           <motion.div variants={itemVariants}>
-            <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30 border-blue-200/60">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 border-violet-200/60">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-blue-600 dark:text-blue-400 mb-1">
+                    <p className="text-sm font-medium text-violet-600 dark:text-violet-400 mb-1">
                       Active Recommendations
                     </p>
                     <p className="text-3xl font-bold text-slate-900 dark:text-white">
                       {statsLoading ? '...' : stats?.activeRecommendations || 0}
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl bg-blue-100 dark:bg-blue-900/50">
-                    <Sparkles className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  <div className="p-3 rounded-xl bg-violet-100 dark:bg-violet-900/50">
+                    <Sparkles className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                   </div>
                 </div>
               </CardContent>
@@ -142,7 +142,7 @@ export default function AIInsightsDashboard() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 border-green-200/60">
+            <Card className="bg-gradient-to-br from-violet-50 to-violet-50 dark:from-violet-950/30 dark:to-violet-950/30 border-green-200/60">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
@@ -256,7 +256,7 @@ export default function AIInsightsDashboard() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-blue-500" />
+                    <Shield className="h-5 w-5 text-violet-500" />
                     Active Agents
                   </CardTitle>
                   <CardDescription>
@@ -273,7 +273,7 @@ export default function AIInsightsDashboard() {
                     ].map((agent, idx) => (
                       <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                         <div className="flex items-center gap-3">
-                          <agent.icon className="h-4 w-4 text-blue-600" />
+                          <agent.icon className="h-4 w-4 text-violet-600" />
                           <span className="text-sm font-medium">{agent.name}</span>
                         </div>
                         <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -340,7 +340,7 @@ export default function AIInsightsDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-blue-500" />
+                  <TrendingUp className="h-5 w-5 text-violet-500" />
                   Recent Agent Activity
                 </CardTitle>
                 <CardDescription>

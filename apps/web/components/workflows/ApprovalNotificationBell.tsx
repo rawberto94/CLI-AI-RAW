@@ -45,7 +45,7 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
       case 'approval_rejected':
         return <XCircle className="w-4 h-4 text-red-500" aria-hidden="true" />;
       case 'step_completed':
-        return <CheckCircle2 className="w-4 h-4 text-blue-500" aria-hidden="true" />;
+        return <CheckCircle2 className="w-4 h-4 text-violet-500" aria-hidden="true" />;
       case 'deadline_reminder':
         return <AlertTriangle className="w-4 h-4 text-orange-500" aria-hidden="true" />;
       default:
@@ -153,7 +153,7 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
             </span>
             <Link 
               href={`/approvals?id=${notification.approvalId}`}
-              className="text-xs text-blue-600 hover:text-blue-700 flex items-center gap-1 focus:outline-none focus:underline"
+              className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1 focus:outline-none focus:underline"
               aria-label={`View ${notification.title}`}
             >
               <Eye className="w-3 h-3" aria-hidden="true" />
@@ -354,13 +354,13 @@ export function ApprovalNotificationBell() {
         align="end"
         sideOffset={8}
       >
-        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b">
+        <div className="bg-gradient-to-r from-violet-50 to-purple-50 px-4 py-3 border-b">
           <div className="flex items-center justify-between">
             <h3 className="font-semibold text-gray-900">Approval Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={handleClearAll}
-                className="text-xs text-blue-600 hover:text-blue-700"
+                className="text-xs text-violet-600 hover:text-violet-700"
               >
                 Clear all
               </button>
@@ -404,7 +404,7 @@ export function ApprovalNotificationBell() {
         <div className="bg-gray-50 px-4 py-2 border-t">
           <Link 
             href="/approvals"
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-violet-600 hover:text-violet-700 font-medium"
             onClick={() => setIsOpen(false)}
           >
             View all approvals →

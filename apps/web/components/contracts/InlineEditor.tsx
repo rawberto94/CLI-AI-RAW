@@ -540,8 +540,8 @@ export function InlineEditor({
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-2 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-blue-600">
+            <div className="p-2 bg-violet-50 rounded-lg border border-violet-200 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-violet-600">
                 <MessageSquare className="w-3 h-3" />
                 Add a comment about this change
               </div>

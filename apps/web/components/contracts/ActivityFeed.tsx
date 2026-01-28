@@ -60,14 +60,14 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
   const getActivityConfig = (type: string) => {
     switch (type) {
       case 'upload':
-        return { icon: Upload, color: 'bg-blue-100 text-blue-700', gradient: 'from-blue-500 to-indigo-600' }
+        return { icon: Upload, color: 'bg-violet-100 text-violet-700', gradient: 'from-violet-500 to-purple-600' }
       case 'edit':
       case 'metadata':
         return { icon: FileEdit, color: 'bg-purple-100 text-purple-700', gradient: 'from-purple-500 to-pink-600' }
       case 'comment':
-        return { icon: MessageSquare, color: 'bg-green-100 text-green-700', gradient: 'from-green-500 to-emerald-600' }
+        return { icon: MessageSquare, color: 'bg-green-100 text-green-700', gradient: 'from-violet-500 to-violet-600' }
       case 'approval':
-        return { icon: CheckCircle2, color: 'bg-green-100 text-green-700', gradient: 'from-green-500 to-emerald-600' }
+        return { icon: CheckCircle2, color: 'bg-green-100 text-green-700', gradient: 'from-violet-500 to-violet-600' }
       case 'rejection':
         return { icon: XCircle, color: 'bg-red-100 text-red-700', gradient: 'from-red-500 to-pink-600' }
       case 'share':
@@ -75,7 +75,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
       case 'download':
         return { icon: Download, color: 'bg-gray-100 text-gray-700', gradient: 'from-gray-500 to-slate-600' }
       case 'workflow':
-        return { icon: Sparkles, color: 'bg-indigo-100 text-indigo-700', gradient: 'from-indigo-500 to-purple-600' }
+        return { icon: Sparkles, color: 'bg-purple-100 text-purple-700', gradient: 'from-purple-500 to-purple-600' }
       default:
         return { icon: Activity, color: 'bg-gray-100 text-gray-700', gradient: 'from-gray-500 to-slate-600' }
     }
@@ -100,7 +100,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
     return (
       <Card className="shadow-xl border-0">
         <CardContent className="p-8 text-center">
-          <Activity className="h-8 w-8 animate-pulse text-blue-600 mx-auto" />
+          <Activity className="h-8 w-8 animate-pulse text-violet-600 mx-auto" />
         </CardContent>
       </Card>
     )
@@ -111,10 +111,10 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
       <CardHeader className="border-b bg-gradient-to-br from-gray-50 to-slate-50">
         <div className="flex items-center justify-between">
           <CardTitle className="text-2xl flex items-center gap-2">
-            <Activity className="h-6 w-6 text-blue-600" />
+            <Activity className="h-6 w-6 text-violet-600" />
             Activity Feed
           </CardTitle>
-          <Badge className="bg-blue-100 text-blue-700 border-blue-300">
+          <Badge className="bg-violet-100 text-violet-700 border-violet-300">
             {activities.length} event{activities.length !== 1 ? 's' : ''}
           </Badge>
         </div>
@@ -130,7 +130,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
         ) : (
           <div className="relative">
             {/* Timeline Line */}
-            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-blue-200 via-purple-200 to-gray-200"></div>
+            <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-gradient-to-b from-violet-200 via-purple-200 to-gray-200"></div>
 
             {/* Activity Items */}
             <div className="space-y-6">
@@ -156,10 +156,10 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
 
                     {/* Content */}
                     <div className="flex-1 pb-6">
-                      <div className="bg-white rounded-xl border-2 border-gray-200 p-4 hover:border-blue-300 hover:shadow-md transition-all">
+                      <div className="bg-white rounded-xl border-2 border-gray-200 p-4 hover:border-violet-300 hover:shadow-md transition-all">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8 bg-gradient-to-br from-blue-500 to-indigo-600">
+                            <Avatar className="h-8 w-8 bg-gradient-to-br from-violet-500 to-purple-600">
                               <AvatarFallback className="text-white text-xs font-bold">
                                 {initials}
                               </AvatarFallback>

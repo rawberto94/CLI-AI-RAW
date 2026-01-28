@@ -68,7 +68,7 @@ export const GlobalHeader = memo(function GlobalHeader({
       role="banner"
     >
       {/* Decorative gradient line */}
-      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500 opacity-80 dark:opacity-90" />
+      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500 opacity-80 dark:opacity-90" />
       
       <div className="flex h-14 items-center gap-4 px-4 md:px-6">
         {/* Search */}
@@ -80,7 +80,7 @@ export const GlobalHeader = memo(function GlobalHeader({
           >
             <Search className={cn(
               "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors motion-reduce:transition-none",
-              isSearchFocused ? "text-blue-500 dark:text-blue-400" : "text-slate-400 dark:text-slate-500"
+              isSearchFocused ? "text-violet-500 dark:text-violet-400" : "text-slate-400 dark:text-slate-500"
             )} aria-hidden="true" />
             <Input
               type="search"
@@ -89,8 +89,8 @@ export const GlobalHeader = memo(function GlobalHeader({
               className={cn(
                 "pl-9 h-10 rounded-xl border-slate-200/80 bg-slate-50/80 transition-all duration-200 motion-reduce:transition-none",
                 "dark:border-slate-600/80 dark:bg-slate-800/80 dark:text-slate-100 dark:placeholder:text-slate-500",
-                "focus:bg-white focus:border-blue-300 focus:ring-2 focus:ring-blue-100",
-                "dark:focus:bg-slate-800 dark:focus:border-blue-500/50 dark:focus:ring-blue-500/20",
+                "focus:bg-white focus:border-violet-300 focus:ring-2 focus:ring-violet-100",
+                "dark:focus:bg-slate-800 dark:focus:border-violet-500/50 dark:focus:ring-violet-500/20",
                 "placeholder:text-slate-400"
               )}
               onFocus={() => setIsSearchFocused(true)}
@@ -140,20 +140,20 @@ export const GlobalHeader = memo(function GlobalHeader({
           <DropdownMenuContent align="end" className="w-80 rounded-xl shadow-xl border-slate-200/80 dark:border-slate-700/80 dark:bg-slate-800">
             <DropdownMenuLabel className="flex items-center justify-between py-3">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
                   <Bell className="h-3 w-3 text-white" aria-hidden="true" />
                 </div>
                 <span className="font-semibold dark:text-slate-100">Notifications</span>
               </div>
-              <Button variant="ghost" size="sm" className="h-6 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300">
+              <Button variant="ghost" size="sm" className="h-6 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300">
                 Mark all read
               </Button>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="dark:bg-slate-700" />
             <div className="max-h-72 overflow-y-auto">
               <DropdownMenuItem className="flex items-start gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg mx-1">
-                <div className="p-1.5 rounded-lg bg-emerald-100 dark:bg-emerald-900/50 mt-0.5">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" aria-hidden="true" />
+                <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/50 mt-0.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-slate-900 dark:text-slate-100">Contract Processing Complete</p>
@@ -182,8 +182,8 @@ export const GlobalHeader = memo(function GlobalHeader({
                 </div>
               </DropdownMenuItem>
               <DropdownMenuItem className="flex items-start gap-3 p-3 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 rounded-lg mx-1">
-                <div className="p-1.5 rounded-lg bg-blue-100 dark:bg-blue-900/50 mt-0.5">
-                  <FileText className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+                <div className="p-1.5 rounded-lg bg-violet-100 dark:bg-violet-900/50 mt-0.5">
+                  <FileText className="h-3.5 w-3.5 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-sm text-slate-900 dark:text-slate-100">New Database Sync</p>
@@ -201,7 +201,7 @@ export const GlobalHeader = memo(function GlobalHeader({
             <DropdownMenuItem asChild className="p-0">
               <Link 
                 href="/notifications" 
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded-b-lg transition-colors motion-reduce:transition-none"
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 text-sm font-medium text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 hover:bg-violet-50/50 dark:hover:bg-violet-900/20 rounded-b-lg transition-colors motion-reduce:transition-none"
               >
                 View all notifications
                 <ExternalLink className="h-3 w-3" aria-hidden="true" />
@@ -223,10 +223,10 @@ export const GlobalHeader = memo(function GlobalHeader({
         {/* User Menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full p-0 hover:ring-2 hover:ring-blue-200 dark:hover:ring-blue-500/50 transition-all motion-reduce:transition-none" aria-label="User menu">
+            <Button variant="ghost" size="icon" className="h-10 w-10 rounded-full p-0 hover:ring-2 hover:ring-violet-200 dark:hover:ring-violet-500/50 transition-all motion-reduce:transition-none" aria-label="User menu">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-blue-500/25 motion-reduce:transform-none"
+                className="h-9 w-9 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md shadow-violet-500/25 motion-reduce:transform-none"
               >
                 R
               </motion.div>
@@ -235,7 +235,7 @@ export const GlobalHeader = memo(function GlobalHeader({
           <DropdownMenuContent align="end" className="w-60 rounded-xl shadow-xl border-slate-200/80 dark:border-slate-700/80 dark:bg-slate-800">
             <DropdownMenuLabel className="p-4">
               <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md" aria-hidden="true">
+                <div className="h-10 w-10 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-md" aria-hidden="true">
                   R
                 </div>
                 <div>

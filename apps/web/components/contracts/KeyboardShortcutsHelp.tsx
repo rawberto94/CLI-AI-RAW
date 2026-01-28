@@ -69,8 +69,8 @@ export function KeyboardShortcutsHelp({ open, onOpenChange, shortcuts }: Keyboar
           ))}
         </div>
 
-        <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-          <p className="text-sm text-blue-900 dark:text-blue-100">
+        <div className="mt-6 p-4 bg-violet-50 dark:bg-violet-950/30 rounded-lg border border-violet-200 dark:border-violet-800">
+          <p className="text-sm text-violet-900 dark:text-violet-100">
             💡 <strong>Tip:</strong> Press{' '}
             <Badge variant="outline" className="font-mono text-xs mx-1">
               ?

@@ -198,7 +198,7 @@ function UndoToastItem({ toast, onDismiss }: UndoToastItemProps) {
       {/* Progress bar */}
       <div className="absolute top-0 left-0 right-0 h-1 bg-slate-700">
         <motion.div
-          className="h-full bg-indigo-500"
+          className="h-full bg-purple-500"
           initial={{ width: '100%' }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.1 }}
@@ -225,7 +225,7 @@ function UndoToastItem({ toast, onDismiss }: UndoToastItemProps) {
               'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors',
               isUndoing
                 ? 'bg-slate-700 text-slate-400 cursor-not-allowed'
-                : 'bg-indigo-600 hover:bg-indigo-500 text-white'
+                : 'bg-purple-600 hover:bg-purple-500 text-white'
             )}
             whileHover={!isUndoing ? { scale: 1.05 } : undefined}
             whileTap={!isUndoing ? { scale: 0.95 } : undefined}

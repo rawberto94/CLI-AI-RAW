@@ -49,7 +49,7 @@ export function DataModeToggle({
                 relative overflow-hidden transition-all duration-300
                 ${isMock 
                   ? 'border-purple-300 bg-purple-50 hover:bg-purple-100 text-purple-700' 
-                  : 'border-blue-300 bg-blue-50 hover:bg-blue-100 text-blue-700'
+                  : 'border-violet-300 bg-violet-50 hover:bg-violet-100 text-violet-700'
                 }
               `}
             >
@@ -90,7 +90,7 @@ export function DataModeToggle({
         className={`
           ${isMock 
             ? 'border-purple-300 bg-purple-100 text-purple-700' 
-            : 'border-blue-300 bg-blue-100 text-blue-700'
+            : 'border-violet-300 bg-violet-100 text-violet-700'
           }
         `}
       >
@@ -150,7 +150,7 @@ export function DataModeToggleCompact() {
               transition-all duration-300 hover:scale-105
               ${isMock 
                 ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
-                : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                : 'bg-violet-100 text-violet-700 hover:bg-violet-200'
               }
             `}
           >

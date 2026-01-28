@@ -245,8 +245,8 @@ export function RealtimeArtifactViewer({
             </>
           ) : isEffectivelyComplete ? (
             <>
-              <CheckCircle2 className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">Processing Complete</span>
+              <CheckCircle2 className="h-4 w-4 text-violet-600" />
+              <span className="text-sm text-violet-600 font-medium">Processing Complete</span>
             </>
           ) : error ? (
             <>
@@ -275,8 +275,8 @@ export function RealtimeArtifactViewer({
             </>
           ) : (
             <>
-              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-              <span className="text-sm text-blue-500">Connecting to live updates...</span>
+              <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />
+              <span className="text-sm text-violet-500">Connecting to live updates...</span>
             </>
           )}
         </div>
@@ -303,7 +303,7 @@ export function RealtimeArtifactViewer({
                     {contractStatus === 'PROCESSING' ? 'Analyzing document with AI' : contractStatus}
                   </p>
                 </div>
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
               </div>
               <Progress value={progressPercent} className="h-2" />
               <p className="text-xs text-gray-500 text-right">
@@ -354,7 +354,7 @@ export function RealtimeArtifactViewer({
               key={artifact.id}
               className={cn(
                 "transition-all duration-500",
-                isAnimating && "scale-105 shadow-lg border-blue-500",
+                isAnimating && "scale-105 shadow-lg border-violet-500",
                 isCompleted && "hover:shadow-md",
                 isFailed && "border-red-300 bg-red-50"
               )}
@@ -365,7 +365,7 @@ export function RealtimeArtifactViewer({
                     <div className={cn(
                       "p-2 rounded-lg transition-colors",
                       isCompleted && "bg-green-100 text-green-700",
-                      isProcessing && "bg-blue-100 text-blue-700 animate-pulse",
+                      isProcessing && "bg-violet-100 text-violet-700 animate-pulse",
                       isFailed && "bg-red-100 text-red-700",
                       !isCompleted && !isProcessing && !isFailed && "bg-gray-100 text-gray-400"
                     )}>
@@ -382,7 +382,7 @@ export function RealtimeArtifactViewer({
                   </div>
                   
                   {isAnimating && (
-                    <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
+                    <Sparkles className="h-4 w-4 text-violet-600 animate-pulse" />
                   )}
                 </div>
               </CardHeader>
@@ -425,7 +425,7 @@ export function RealtimeArtifactViewer({
                         </p>
                       </div>
                       <button 
-                        className="text-xs text-blue-600 hover:underline font-medium"
+                        className="text-xs text-violet-600 hover:underline font-medium"
                         onClick={() => {
                           // Navigate to detailed view
                           window.location.href = `/contracts/${contractId}?artifact=${artifact.type}`;

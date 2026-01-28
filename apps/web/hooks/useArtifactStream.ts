@@ -177,8 +177,8 @@ export function useArtifactStream({
       eventSourceRef.current.close();
     }
 
-    // Create new EventSource connection
-    const url = `/api/contracts/${contractId}/artifacts/stream`;
+    // Create new EventSource connection with tenant ID in URL (EventSource can't send headers)
+    const url = `/api/contracts/${contractId}/artifacts/stream?tenantId=${encodeURIComponent(tenantId)}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -305,7 +305,7 @@ export function useArtifactStream({
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [contractId, enabled, isComplete, onComplete, onError]);
+  }, [contractId, enabled, isComplete, onComplete, onError, tenantId]);
 
   useEffect(() => {
     if (!enabled || !contractId) {

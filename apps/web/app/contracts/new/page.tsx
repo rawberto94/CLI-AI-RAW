@@ -189,8 +189,8 @@ function StepIndicator({ steps, currentStep, completedSteps, onStepClick }: Step
                     disabled={!isClickable}
                     className={cn(
                       "relative flex items-center justify-center w-10 h-10 rounded-full transition-all",
-                      isActive && "bg-gradient-to-r from-blue-500 to-indigo-500 text-white shadow-lg shadow-blue-500/25",
-                      isCompleted && !isActive && "bg-emerald-100 text-emerald-700",
+                      isActive && "bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25",
+                      isCompleted && !isActive && "bg-violet-100 text-violet-700",
                       !isActive && !isCompleted && "bg-slate-100 text-slate-400",
                       isClickable && "cursor-pointer hover:scale-105",
                       !isClickable && "cursor-not-allowed"
@@ -204,7 +204,7 @@ function StepIndicator({ steps, currentStep, completedSteps, onStepClick }: Step
                     {isActive && (
                       <motion.div
                         layoutId="activeStep"
-                        className="absolute inset-0 rounded-full border-2 border-blue-500"
+                        className="absolute inset-0 rounded-full border-2 border-violet-500"
                         transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
                       />
                     )}
@@ -220,7 +220,7 @@ function StepIndicator({ steps, currentStep, completedSteps, onStepClick }: Step
             {index < steps.length - 1 && (
               <div className={cn(
                 "w-12 h-0.5 rounded-full transition-colors",
-                isCompleted ? "bg-emerald-300" : "bg-slate-200"
+                isCompleted ? "bg-violet-300" : "bg-slate-200"
               )} />
             )}
           </React.Fragment>
@@ -399,7 +399,7 @@ export default function CreateContractPage() {
   }, [formValues.currency])
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-6 py-4">
@@ -472,7 +472,7 @@ export default function CreateContractPage() {
             <Card className="shadow-lg border-slate-200/60">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {React.createElement(WIZARD_STEPS[currentStep].icon, { className: "h-5 w-5 text-blue-500" })}
+                  {React.createElement(WIZARD_STEPS[currentStep].icon, { className: "h-5 w-5 text-violet-500" })}
                   {WIZARD_STEPS[currentStep].title}
                 </CardTitle>
                 <CardDescription>{WIZARD_STEPS[currentStep].description}</CardDescription>
@@ -770,7 +770,7 @@ export default function CreateContractPage() {
                           </div>
                           
                           {formValues.autoRenew && (
-                            <div className="space-y-2 pl-4 border-l-2 border-blue-200">
+                            <div className="space-y-2 pl-4 border-l-2 border-violet-200">
                               <Label>Renewal Notice Period (Days)</Label>
                               <Input
                                 type="number"
@@ -850,12 +850,12 @@ export default function CreateContractPage() {
                           />
                         </div>
                         
-                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="p-4 bg-violet-50 rounded-lg border border-violet-100">
                           <div className="flex items-start gap-3">
-                            <Info className="h-5 w-5 text-blue-500 mt-0.5" />
+                            <Info className="h-5 w-5 text-violet-500 mt-0.5" />
                             <div>
-                              <p className="text-sm font-medium text-blue-900">Financial Information</p>
-                              <p className="text-sm text-blue-700 mt-1">
+                              <p className="text-sm font-medium text-violet-900">Financial Information</p>
+                              <p className="text-sm text-violet-700 mt-1">
                                 All financial fields are optional. You can add or update them later when the contract is finalized.
                               </p>
                             </div>
@@ -995,7 +995,7 @@ export default function CreateContractPage() {
                       <Button
                         type="button"
                         onClick={handleNext}
-                        className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+                        className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
                       >
                         Next
                         <ChevronRight className="h-4 w-4 ml-2" />
@@ -1005,7 +1005,7 @@ export default function CreateContractPage() {
                         type="button"
                         onClick={form.handleSubmit(handleSubmit)}
                         disabled={isSubmitting}
-                        className="bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600"
+                        className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
                       >
                         {isSubmitting ? (
                           <>
@@ -1038,7 +1038,7 @@ export default function CreateContractPage() {
                 <Card className="sticky top-28 shadow-lg border-slate-200/60">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-blue-500" />
+                      <Eye className="h-4 w-4 text-violet-500" />
                       Live Preview
                     </CardTitle>
                   </CardHeader>
@@ -1094,7 +1094,7 @@ export default function CreateContractPage() {
                     {formValues.totalValue && (
                       <div>
                         <span className="text-slate-500">Value</span>
-                        <p className="font-medium text-lg text-emerald-600">
+                        <p className="font-medium text-lg text-violet-600">
                           {currencySymbol}{formValues.totalValue.toLocaleString()}
                         </p>
                       </div>

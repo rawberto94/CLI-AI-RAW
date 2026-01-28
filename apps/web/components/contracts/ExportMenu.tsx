@@ -115,7 +115,7 @@ export function ExportMenu({ contractId, contractName }: ExportMenuProps) {
           disabled={isExporting}
           className="cursor-pointer"
         >
-          <Code className="h-4 w-4 mr-2 text-blue-600" />
+          <Code className="h-4 w-4 mr-2 text-violet-600" />
           <div className="flex-1">
             <p className="font-medium">JSON Data</p>
             <p className="text-xs text-gray-500">API integration</p>

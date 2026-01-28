@@ -29,15 +29,15 @@ export default function CompetitiveIntelligencePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-2xl rounded-full" />
-            <div className="relative p-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl shadow-lg">
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-purple-500/20 blur-2xl rounded-full" />
+            <div className="relative p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg">
               <Loader2 className="h-8 w-8 animate-spin text-white" />
             </div>
           </div>
@@ -63,7 +63,7 @@ export default function CompetitiveIntelligencePage() {
 
   const getTrendIcon = () => {
     if (metrics.trends.direction === 'improving') {
-      return <TrendingUp className="h-5 w-5 text-emerald-500" />;
+      return <TrendingUp className="h-5 w-5 text-violet-500" />;
     } else if (metrics.trends.direction === 'declining') {
       return <TrendingDown className="h-5 w-5 text-red-500" />;
     }
@@ -71,7 +71,7 @@ export default function CompetitiveIntelligencePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="p-8 space-y-6">
         {/* Header */}
         <motion.div
@@ -79,7 +79,7 @@ export default function CompetitiveIntelligencePage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4"
         >
-          <div className="p-3 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-500/25">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
             <Target className="w-7 h-7 text-white" />
           </div>
           <div>
@@ -119,7 +119,7 @@ export default function CompetitiveIntelligencePage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-slate-500">Percentile Rank</span>
-                      <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                      <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-transparent">
                         {metrics.marketPosition.percentile}th
                       </span>
                     </div>
@@ -128,7 +128,7 @@ export default function CompetitiveIntelligencePage() {
                         initial={{ width: 0 }}
                         animate={{ width: `${metrics.marketPosition.percentile}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        className="bg-gradient-to-r from-indigo-500 to-purple-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full"
                       />
                     </div>
                   </div>
@@ -157,14 +157,14 @@ export default function CompetitiveIntelligencePage() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all h-full">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
                     <TrendingUp className="w-4 h-4 text-white" />
                   </div>
                   <CardTitle className="text-sm font-medium text-slate-700">Price Competitiveness</CardTitle>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                   {Math.round(metrics.priceCompetitiveness.score)}%
                 </div>
                 <p className="text-sm text-slate-500 mt-2">
@@ -188,7 +188,7 @@ export default function CompetitiveIntelligencePage() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all h-full">
               <CardHeader className="pb-2">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-600 rounded-lg shadow-md">
                     <Target className="w-4 h-4 text-white" />
                   </div>
                   <CardTitle className="text-sm font-medium text-slate-700">Coverage</CardTitle>

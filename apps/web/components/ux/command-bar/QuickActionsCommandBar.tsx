@@ -116,7 +116,7 @@ const CommandItemComponent = memo(({
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
         isSelected
-          ? "bg-indigo-50 dark:bg-indigo-900/30"
+          ? "bg-purple-50 dark:bg-purple-900/30"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
         item.disabled && "opacity-50 cursor-not-allowed"
       )}
@@ -125,14 +125,14 @@ const CommandItemComponent = memo(({
       <div className={cn(
         "p-2 rounded-lg",
         isSelected
-          ? "bg-indigo-100 dark:bg-indigo-800"
+          ? "bg-purple-100 dark:bg-purple-800"
           : "bg-slate-100 dark:bg-slate-800"
       )}>
         {Icon ? (
           <Icon className={cn(
             "h-4 w-4",
             isSelected
-              ? "text-indigo-600 dark:text-indigo-400"
+              ? "text-purple-600 dark:text-indigo-400"
               : "text-slate-500 dark:text-slate-400"
           )} />
         ) : (
@@ -145,7 +145,7 @@ const CommandItemComponent = memo(({
         <p className={cn(
           "text-sm font-medium truncate",
           isSelected
-            ? "text-indigo-700 dark:text-indigo-300"
+            ? "text-purple-700 dark:text-indigo-300"
             : "text-slate-700 dark:text-slate-300"
         )}>
           {item.title}
@@ -162,7 +162,7 @@ const CommandItemComponent = memo(({
 
       {/* Arrow indicator when selected */}
       {isSelected && (
-        <ChevronRight className="h-4 w-4 text-indigo-500" />
+        <ChevronRight className="h-4 w-4 text-purple-500" />
       )}
     </button>
   );

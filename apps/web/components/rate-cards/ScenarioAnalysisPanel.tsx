@@ -62,7 +62,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
   const getScenarioColor = (type: string) => {
     switch (type) {
       case 'best': return 'bg-green-100 border-green-300 text-green-800';
-      case 'likely': return 'bg-blue-100 border-blue-300 text-blue-800';
+      case 'likely': return 'bg-violet-100 border-violet-300 text-violet-800';
       case 'worst': return 'bg-orange-100 border-orange-300 text-orange-800';
       default: return 'bg-gray-100 border-gray-300 text-gray-800';
     }
@@ -80,7 +80,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
   return (
     <div className="space-y-6">
       {/* Summary Card */}
-      <Card className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <Card className="p-6 bg-gradient-to-r from-violet-50 to-purple-50">
         <h3 className="text-xl font-bold mb-4">Negotiation Scenario Analysis</h3>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -94,7 +94,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
           </div>
           <div>
             <div className="text-sm text-gray-600">Recommended Target</div>
-            <div className="text-2xl font-bold text-blue-600">${analysis.recommendedTarget}</div>
+            <div className="text-2xl font-bold text-violet-600">${analysis.recommendedTarget}</div>
           </div>
           <div>
             <div className="text-sm text-gray-600">Expected Savings</div>
@@ -108,7 +108,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
           <div className="text-sm text-gray-600">Confidence Level:</div>
           <div className="flex-1 bg-gray-200 rounded-full h-2">
             <div
-              className="bg-blue-600 h-2 rounded-full"
+              className="bg-violet-600 h-2 rounded-full"
               style={{ width: `${analysis.confidenceLevel}%` }}
             />
           </div>
@@ -149,7 +149,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
                 <ul className="text-sm space-y-1">
                   {scenario.assumptions.map((assumption, idx) => (
                     <li key={idx} className="flex items-start gap-2">
-                      <span className="text-blue-500">•</span>
+                      <span className="text-violet-500">•</span>
                       <span>{assumption}</span>
                     </li>
                   ))}

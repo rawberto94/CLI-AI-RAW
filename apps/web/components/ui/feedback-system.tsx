@@ -104,7 +104,7 @@ export const Toast = memo<ToastProps>(({
     success: 'bg-green-500',
     error: 'bg-red-500',
     warning: 'bg-amber-500',
-    info: 'bg-blue-500',
+    info: 'bg-violet-500',
     loading: 'bg-primary',
   };
   
@@ -237,7 +237,7 @@ export const InlineAlert = memo<InlineAlertProps>(({
     success: 'bg-green-500/10 border-green-500/20 text-green-700 dark:text-green-400',
     error: 'bg-red-500/10 border-red-500/20 text-red-700 dark:text-red-400',
     warning: 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400',
-    info: 'bg-blue-500/10 border-blue-500/20 text-blue-700 dark:text-blue-400',
+    info: 'bg-violet-500/10 border-violet-500/20 text-violet-700 dark:text-violet-400',
     loading: 'bg-primary/10 border-primary/20 text-primary',
   };
   
@@ -632,7 +632,7 @@ export const SuccessState = memo<SuccessStateProps>(({
                 className={cn(
                   'absolute top-1/2 left-1/2 h-2 w-2 rounded-full',
                   i % 3 === 0 && 'bg-green-500',
-                  i % 3 === 1 && 'bg-blue-500',
+                  i % 3 === 1 && 'bg-violet-500',
                   i % 3 === 2 && 'bg-amber-500',
                 )}
                 style={{

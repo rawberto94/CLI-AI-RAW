@@ -75,17 +75,17 @@ const statusConfig: Record<OperationStatus, StatusConfigEntry> = {
   },
   running: {
     icon: Loader2,
-    color: 'text-blue-500',
-    bg: 'bg-blue-50 dark:bg-blue-950/30',
-    border: 'border-blue-200 dark:border-blue-800',
+    color: 'text-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200 dark:border-violet-800',
     label: 'Processing...',
     animate: true
   },
   success: {
     icon: CheckCircle2,
-    color: 'text-emerald-500',
-    bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-    border: 'border-emerald-200 dark:border-emerald-800',
+    color: 'text-violet-500',
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200 dark:border-violet-800',
     label: 'Complete'
   },
   error: {
@@ -165,7 +165,7 @@ function StepItem({ step, isActive }: StepItemProps) {
         <span className="text-xs text-slate-400">{formatDuration(step.duration)}</span>
       )}
       {step.progress !== undefined && step.status === 'running' && (
-        <span className="text-xs text-blue-500 font-medium">{step.progress}%</span>
+        <span className="text-xs text-violet-500 font-medium">{step.progress}%</span>
       )}
     </motion.div>
   );
@@ -239,8 +239,8 @@ export function AsyncOperationProgress({
               </h4>
               <span className={cn(
                 "text-xs px-2 py-0.5 rounded-full font-medium",
-                status === 'running' && "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-                status === 'success' && "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300",
+                status === 'running' && "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
+                status === 'success' && "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300",
                 status === 'error' && "bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300",
                 status === 'pending' && "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400",
                 status === 'cancelled' && "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300"
@@ -395,7 +395,7 @@ export function CompactProgress({ status, progress, label, className }: CompactP
       )} />
       {label && <span className="text-sm text-slate-600 dark:text-slate-400">{label}</span>}
       {progress !== undefined && status === 'running' && (
-        <span className="text-xs font-medium text-blue-500">{progress}%</span>
+        <span className="text-xs font-medium text-violet-500">{progress}%</span>
       )}
     </div>
   );

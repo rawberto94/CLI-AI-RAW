@@ -29,13 +29,13 @@ const CATEGORY_LABELS: Record<string, string> = {
 
 const CATEGORY_COLORS: Record<string, string> = {
   master_framework: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-  scope_work_authorization: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+  scope_work_authorization: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   performance_operations: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
   purchase_supply: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
   data_security_privacy: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
   confidentiality_ip: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-  software_cloud: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
-  partnerships_jv: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+  software_cloud: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+  partnerships_jv: 'bg-purple-100 text-indigo-800 dark:bg-purple-900 dark:text-indigo-200',
   hr_employment: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
   compliance_regulatory: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
 };

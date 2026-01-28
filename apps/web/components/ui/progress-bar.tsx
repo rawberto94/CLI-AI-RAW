@@ -34,7 +34,7 @@ export function ProgressBar({
   };
 
   const colorClasses = {
-    blue: 'bg-blue-600',
+    blue: 'bg-violet-600',
     green: 'bg-green-600',
     orange: 'bg-orange-600',
     red: 'bg-red-600',

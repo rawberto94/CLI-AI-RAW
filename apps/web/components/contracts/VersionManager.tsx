@@ -134,7 +134,7 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
         <div className={cn(
           "relative z-10 flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2",
           version.isActive 
-            ? "bg-emerald-100 border-emerald-500 text-emerald-700"
+            ? "bg-violet-100 border-violet-500 text-violet-700"
             : "bg-white border-slate-300 text-slate-500"
         )}>
           <span className="text-sm font-semibold">v{version.versionNumber}</span>
@@ -145,7 +145,7 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
           <div 
             className={cn(
               "rounded-lg border transition-colors",
-              version.isActive ? "bg-emerald-50 border-emerald-200" : "bg-white border-slate-200 hover:border-slate-300"
+              version.isActive ? "bg-violet-50 border-violet-200" : "bg-white border-slate-200 hover:border-slate-300"
             )}
           >
             {/* Header */}
@@ -156,7 +156,7 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   {version.isActive && (
-                    <Badge className="bg-emerald-500 text-white text-[10px]">
+                    <Badge className="bg-violet-500 text-white text-[10px]">
                       Current
                     </Badge>
                   )}
@@ -255,7 +255,7 @@ function VersionItem({ version, isLast, onCompare, onRevert, onView }: VersionIt
                             {formatChangeValue(change?.old)}
                           </span>
                           <ArrowRight className="h-3 w-3 text-slate-400" />
-                          <span className="text-emerald-600">
+                          <span className="text-violet-600">
                             {formatChangeValue(change?.new)}
                           </span>
                         </div>
@@ -452,7 +452,7 @@ export function VersionManager({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
               <History className="h-4 w-4 text-white" />
             </div>
             <div>
@@ -484,7 +484,7 @@ export function VersionManager({
             <Button 
               size="sm"
               onClick={() => setShowUploadDialog(true)}
-              className="h-8 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600"
+              className="h-8 bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
             >
               <Upload className="h-3 w-3 mr-1" />
               New Version
@@ -546,7 +546,7 @@ export function VersionManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-blue-500" />
+              <Upload className="h-5 w-5 text-violet-500" />
               Upload New Version
             </DialogTitle>
             <DialogDescription>
@@ -558,7 +558,7 @@ export function VersionManager({
             <div className="space-y-2">
               <Label>Document File</Label>
               <div 
-                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-violet-400 transition-colors"
                 onClick={() => fileInputRef.current?.click()}
               >
                 <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
@@ -649,7 +649,7 @@ export function VersionManager({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-indigo-500" />
+              <GitCompare className="h-5 w-5 text-purple-500" />
               Compare Versions
             </DialogTitle>
             <DialogDescription>

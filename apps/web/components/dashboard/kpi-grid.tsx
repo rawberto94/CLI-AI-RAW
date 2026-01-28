@@ -31,7 +31,7 @@ const kpiCards = [
     change: "+3",
     trend: "up",
     icon: Building2,
-    color: "text-blue-600",
+    color: "text-violet-600",
   },
   {
     title: "Compliance Rate",
@@ -63,7 +63,7 @@ const kpiCards = [
     change: "Active",
     trend: "neutral",
     icon: Hourglass,
-    color: "text-blue-600",
+    color: "text-violet-600",
   },
 ]
 

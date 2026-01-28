@@ -348,24 +348,24 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
               </div>
 
               {/* AI Analysis */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Lightbulb className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-medium text-blue-900">AI Analysis</span>
+                      <span className="text-sm font-medium text-violet-900">AI Analysis</span>
                       <div className={`flex items-center gap-1 text-xs ${marketConfig.color}`}>
                         <MarketIcon className="w-3 h-3" />
                         {marketConfig.label} vs Market
                       </div>
                     </div>
-                    <p className="text-sm text-blue-800 mb-3">{redline.aiAnalysis.rationale}</p>
+                    <p className="text-sm text-violet-800 mb-3">{redline.aiAnalysis.rationale}</p>
                     
                     {redline.aiAnalysis.fallbackSuggestion && (
-                      <div className="p-3 bg-white rounded border border-blue-200">
-                        <div className="text-xs font-medium text-blue-600 uppercase mb-1">Suggested Counter</div>
+                      <div className="p-3 bg-white rounded border border-violet-200">
+                        <div className="text-xs font-medium text-violet-600 uppercase mb-1">Suggested Counter</div>
                         <p className="text-sm text-slate-700">{redline.aiAnalysis.fallbackSuggestion}</p>
                       </div>
                     )}

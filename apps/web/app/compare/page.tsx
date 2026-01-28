@@ -210,7 +210,7 @@ function ComparisonBar({
         <div className="w-20 text-right">
           <span className={cn(
             "text-sm font-semibold",
-            winner === 'group1' ? "text-blue-600" : "text-gray-600"
+            winner === 'group1' ? "text-violet-600" : "text-gray-600"
           )}>
             {formatValue(value1)}
           </span>
@@ -220,7 +220,7 @@ function ComparisonBar({
             <div 
               className={cn(
                 "h-full rounded-l-md transition-all",
-                winner === 'group1' ? "bg-blue-500" : "bg-blue-300"
+                winner === 'group1' ? "bg-violet-500" : "bg-violet-300"
               )}
               style={{ width: `${pct1}%` }}
             />
@@ -266,7 +266,7 @@ function RiskGauge({ score, label, color }: { score: number; label: string; colo
   return (
     <div className={cn(
       "p-4 rounded-xl border",
-      color === 'blue' ? "bg-blue-50 border-blue-200" : "bg-purple-50 border-purple-200"
+      color === 'blue' ? "bg-violet-50 border-violet-200" : "bg-purple-50 border-purple-200"
     )}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-gray-600">{label}</span>
@@ -466,7 +466,7 @@ function ContractGroupSelector({
                     onClick={() => toggleContract(contract)}
                     className={`w-full text-left p-2 rounded-lg border transition-all ${
                       isSelected
-                        ? "bg-blue-50 border-blue-300"
+                        ? "bg-violet-50 border-violet-300"
                         : "bg-white border-gray-200 hover:border-gray-300"
                     }`}
                   >
@@ -901,7 +901,7 @@ export default function ContractComparisonPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <ArrowLeftRight className="w-5 h-5 text-white" />
               </div>
               <div>
@@ -953,7 +953,7 @@ export default function ContractComparisonPage() {
             <div className="flex gap-4 items-stretch">
               <ContractGroupSelector
                 label="Group A"
-                colorClass="border-blue-300"
+                colorClass="border-violet-300"
                 contracts={contracts}
                 selectedContracts={group1Contracts}
                 onSelectionChange={setGroup1Contracts}
@@ -1008,7 +1008,7 @@ export default function ContractComparisonPage() {
                 size="lg"
                 onClick={performComparison} 
                 disabled={!canCompare || isComparing || isAiAnalyzing}
-                className="px-8 py-3 text-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                className="px-8 py-3 text-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >
                 {isComparing || isAiAnalyzing ? (
                   <>
@@ -1035,7 +1035,7 @@ export default function ContractComparisonPage() {
         {isComparing && (
           <div className="flex items-center justify-center py-12">
             <div className="text-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-4" />
+              <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-4" />
               <p className="text-gray-500">Analyzing contract groups...</p>
             </div>
           </div>
@@ -1050,14 +1050,14 @@ export default function ContractComparisonPage() {
           >
             {/* Quick Stats Header */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-white">
+              <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-white">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-blue-100 rounded-lg">
-                      <DollarSign className="h-4 w-4 text-blue-600" />
+                    <div className="p-2.5 bg-violet-100 rounded-lg">
+                      <DollarSign className="h-4 w-4 text-violet-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-blue-600 font-medium">{comparison.group1.name}</p>
+                      <p className="text-xs text-violet-600 font-medium">{comparison.group1.name}</p>
                       <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
                     </div>
                   </div>
@@ -1078,14 +1078,14 @@ export default function ContractComparisonPage() {
                 </CardContent>
               </Card>
               
-              <Card className="border-emerald-200 bg-gradient-to-br from-emerald-50 to-white">
+              <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-white">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-emerald-100 rounded-lg">
-                      <FileText className="h-4 w-4 text-emerald-600" />
+                    <div className="p-2.5 bg-violet-100 rounded-lg">
+                      <FileText className="h-4 w-4 text-violet-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-emerald-600 font-medium">Total Contracts</p>
+                      <p className="text-xs text-violet-600 font-medium">Total Contracts</p>
                       <p className="text-xl font-bold text-gray-900">{comparison.group1.count + comparison.group2.count}</p>
                     </div>
                   </div>
@@ -1133,10 +1133,10 @@ export default function ContractComparisonPage() {
 
             {/* AI Analysis Section */}
             {(aiAnalysis || isAiAnalyzing) && (
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-blue-50 overflow-hidden">
+              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-50 overflow-hidden">
                 <CardHeader className="border-b border-purple-100">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-lg">
+                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     AI-Powered Analysis
@@ -1194,14 +1194,14 @@ export default function ContractComparisonPage() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
-                        <Activity className="w-5 h-5 text-blue-500" />
+                        <Activity className="w-5 h-5 text-violet-500" />
                         Side-by-Side Comparison
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
                       <div className="flex items-center justify-center gap-8 pb-4 border-b">
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-blue-500" />
+                          <div className="w-4 h-4 rounded-full bg-violet-500" />
                           <span className="text-sm font-medium">{comparison.group1.name}</span>
                         </div>
                         <span className="text-gray-400">vs</span>
@@ -1245,21 +1245,21 @@ export default function ContractComparisonPage() {
                 
                 <TabsContent value="financial">
                   <div className="grid grid-cols-2 gap-4">
-                    <Card className="border-blue-200">
+                    <Card className="border-violet-200">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-base text-blue-800 flex items-center gap-2">
+                        <CardTitle className="text-base text-violet-800 flex items-center gap-2">
                           <Building2 className="w-4 h-4" />
                           {comparison.group1.name}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-blue-50 rounded-lg">
-                            <p className="text-xs text-blue-600 mb-1">Total Value</p>
+                          <div className="p-3 bg-violet-50 rounded-lg">
+                            <p className="text-xs text-violet-600 mb-1">Total Value</p>
                             <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.totalValue)}</p>
                           </div>
-                          <div className="p-3 bg-blue-50 rounded-lg">
-                            <p className="text-xs text-blue-600 mb-1">Avg Contract</p>
+                          <div className="p-3 bg-violet-50 rounded-lg">
+                            <p className="text-xs text-violet-600 mb-1">Avg Contract</p>
                             <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group1.avgValue)}</p>
                           </div>
                         </div>
@@ -1321,7 +1321,7 @@ export default function ContractComparisonPage() {
                     <CardContent>
                       <div className="grid grid-cols-2 gap-6">
                         <div className="space-y-4">
-                          <h4 className="font-medium text-blue-800">{comparison.group1.name}</h4>
+                          <h4 className="font-medium text-violet-800">{comparison.group1.name}</h4>
                           <RiskGauge 
                             score={comparison.metrics.riskScore1} 
                             label="Risk Score"
@@ -1332,12 +1332,12 @@ export default function ContractComparisonPage() {
                               <p className="text-2xl font-bold text-orange-600">{comparison.metrics.expiringCount1}</p>
                               <p className="text-xs text-orange-700">Expiring (90d)</p>
                             </div>
-                            <div className="p-3 bg-blue-50 rounded-lg text-center">
-                              <p className="text-2xl font-bold text-blue-600">
+                            <div className="p-3 bg-violet-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-violet-600">
                                 {comparison.metrics.supplierConcentration1 > 2500 ? 'High' : 
                                  comparison.metrics.supplierConcentration1 > 1500 ? 'Med' : 'Low'}
                               </p>
-                              <p className="text-xs text-blue-700">Concentration</p>
+                              <p className="text-xs text-violet-700">Concentration</p>
                             </div>
                           </div>
                         </div>
@@ -1373,7 +1373,7 @@ export default function ContractComparisonPage() {
                     <CardHeader>
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
-                          <FileText className="w-5 h-5 text-blue-500" />
+                          <FileText className="w-5 h-5 text-violet-500" />
                           Included Contracts
                         </CardTitle>
                       </div>
@@ -1381,8 +1381,8 @@ export default function ContractComparisonPage() {
                     <CardContent className="pt-0">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <h4 className="font-medium text-blue-800 mb-3 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-blue-500" />
+                          <h4 className="font-medium text-violet-800 mb-3 flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-violet-500" />
                             {comparison.group1.name}
                             <Badge variant="outline" className="ml-auto">{comparison.group1.contracts.length}</Badge>
                           </h4>
@@ -1391,10 +1391,10 @@ export default function ContractComparisonPage() {
                               <Link 
                                 key={c.id} 
                                 href={`/contracts/${c.id}`}
-                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-blue-200 hover:bg-blue-50 transition-colors group"
+                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-violet-200 hover:bg-violet-50 transition-colors group"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-blue-700">{c.contractTitle}</p>
+                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-violet-700">{c.contractTitle}</p>
                                   <p className="text-xs text-gray-500">{c.supplierName}</p>
                                 </div>
                                 <div className="text-right ml-2">
@@ -1490,15 +1490,15 @@ export default function ContractComparisonPage() {
             )}
 
             {/* Recommendation */}
-            <Card className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+            <Card className="border-violet-200 bg-gradient-to-r from-violet-50 to-purple-50">
               <CardContent className="pt-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Zap className="w-5 h-5 text-blue-600" />
+                  <div className="p-2 bg-violet-100 rounded-lg">
+                    <Zap className="w-5 h-5 text-violet-600" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-blue-900 mb-1">Summary & Recommendation</h3>
-                    <p className="text-sm text-blue-800">{comparison.recommendation}</p>
+                    <h3 className="font-semibold text-violet-900 mb-1">Summary & Recommendation</h3>
+                    <p className="text-sm text-violet-800">{comparison.recommendation}</p>
                   </div>
                 </div>
               </CardContent>
@@ -1509,7 +1509,7 @@ export default function ContractComparisonPage() {
         {/* Empty State */}
         {!comparison && !isComparing && (
           <div className="text-center py-16">
-            <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
               <Brain className="w-10 h-10 text-purple-500" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">AI-Powered Contract Comparison</h3>
@@ -1520,7 +1520,7 @@ export default function ContractComparisonPage() {
             </p>
             <div className="flex justify-center gap-4 text-sm text-gray-500">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-blue-400"></div>
+                <div className="w-3 h-3 rounded-full bg-violet-400"></div>
                 <span>Group A (Blue)</span>
               </div>
               <div className="flex items-center gap-2">

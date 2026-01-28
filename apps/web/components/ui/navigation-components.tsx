@@ -79,9 +79,9 @@ export function AnimatedTabs({
       case 'default':
         return cn(base, isActive ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white');
       case 'pills':
-        return cn(base, 'rounded-full', isActive ? 'bg-blue-500 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800');
+        return cn(base, 'rounded-full', isActive ? 'bg-violet-500 text-white' : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800');
       case 'underline':
-        return cn(base, 'pb-3', isActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white');
+        return cn(base, 'pb-3', isActive ? 'text-violet-600 dark:text-violet-400' : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white');
       case 'enclosed':
         return cn(
           base,
@@ -128,7 +128,7 @@ export function AnimatedTabs({
             'absolute',
             variant === 'default'
               ? 'bg-white dark:bg-slate-700 rounded-lg shadow-sm inset-y-1'
-              : 'bg-blue-500 h-0.5 bottom-0'
+              : 'bg-violet-500 h-0.5 bottom-0'
           )}
           style={indicatorStyle}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
@@ -304,7 +304,7 @@ export function Pagination({
   const buttonClass = cn(
     sizeStyles[size],
     'flex items-center justify-center rounded-lg font-medium transition-all',
-    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+    'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2'
   );
 
   return (
@@ -340,7 +340,7 @@ export function Pagination({
               buttonClass,
               'px-3',
               page === currentPage
-                ? 'bg-blue-500 text-white shadow-sm'
+                ? 'bg-violet-500 text-white shadow-sm'
                 : 'text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800'
             )}
           >
@@ -426,7 +426,7 @@ export function Stepper({
                     status === 'completed'
                       ? 'bg-green-500 border-green-500 text-white'
                       : status === 'current'
-                      ? 'bg-blue-500 border-blue-500 text-white ring-4 ring-blue-500/30'
+                      ? 'bg-violet-500 border-violet-500 text-white ring-4 ring-violet-500/30'
                       : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-400'
                   )}
                 >
@@ -451,7 +451,7 @@ export function Stepper({
               <div className={cn('pb-8', isLast && 'pb-0')}>
                 <div className={cn(
                   'font-medium',
-                  status === 'current' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
+                  status === 'current' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-900 dark:text-white'
                 )}>
                   {step.label}
                   {step.optional && (
@@ -494,7 +494,7 @@ export function Stepper({
                   status === 'completed'
                     ? 'bg-green-500 border-green-500 text-white'
                     : status === 'current'
-                    ? 'bg-blue-500 border-blue-500 text-white ring-4 ring-blue-500/30'
+                    ? 'bg-violet-500 border-violet-500 text-white ring-4 ring-violet-500/30'
                     : 'bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-600 text-slate-400'
                 )}
               >
@@ -514,7 +514,7 @@ export function Stepper({
                   <div className={cn(
                     'font-medium whitespace-nowrap',
                     variant === 'compact' ? 'text-sm' : 'text-base',
-                    status === 'current' ? 'text-blue-600 dark:text-blue-400' : 'text-slate-900 dark:text-white'
+                    status === 'current' ? 'text-violet-600 dark:text-violet-400' : 'text-slate-900 dark:text-white'
                   )}>
                     {step.label}
                   </div>
@@ -560,7 +560,7 @@ export function ProgressSteps({
       <div className="space-y-3">
         <div className="relative h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
           <motion.div
-            className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full"
+            className="absolute inset-y-0 left-0 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -576,7 +576,7 @@ export function ProgressSteps({
                 className={cn(
                   'w-4 h-4 rounded-full border-2 border-white dark:border-slate-900',
                   index <= currentStep
-                    ? 'bg-blue-500'
+                    ? 'bg-violet-500'
                     : 'bg-slate-300 dark:bg-slate-600'
                 )}
               />
@@ -590,7 +590,7 @@ export function ProgressSteps({
               key={index}
               className={cn(
                 index <= currentStep
-                  ? 'text-blue-600 dark:text-blue-400 font-medium'
+                  ? 'text-violet-600 dark:text-violet-400 font-medium'
                   : 'text-slate-400'
               )}
             >
@@ -618,7 +618,7 @@ export function ProgressSteps({
                     index < currentStep
                       ? 'bg-green-500'
                       : index === currentStep
-                      ? 'bg-blue-500 ring-4 ring-blue-500/30'
+                      ? 'bg-violet-500 ring-4 ring-violet-500/30'
                       : 'bg-slate-300 dark:bg-slate-600'
                   )
                 : cn(
@@ -626,7 +626,7 @@ export function ProgressSteps({
                     index < currentStep
                       ? 'bg-green-500 text-white'
                       : index === currentStep
-                      ? 'bg-blue-500 text-white ring-4 ring-blue-500/30'
+                      ? 'bg-violet-500 text-white ring-4 ring-violet-500/30'
                       : 'bg-slate-200 dark:bg-slate-700 text-slate-500'
                   )
             )}

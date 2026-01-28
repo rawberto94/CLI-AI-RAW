@@ -43,8 +43,8 @@ interface EnhancedBulkProgressProps {
 
 const statusConfig = {
   idle: { color: 'bg-slate-100', text: 'Preparing...', icon: Loader2 },
-  running: { color: 'bg-blue-100', text: 'Processing...', icon: Loader2 },
-  completed: { color: 'bg-emerald-100', text: 'Completed', icon: CheckCircle },
+  running: { color: 'bg-violet-100', text: 'Processing...', icon: Loader2 },
+  completed: { color: 'bg-violet-100', text: 'Completed', icon: CheckCircle },
   failed: { color: 'bg-red-100', text: 'Failed', icon: XCircle },
   partial: { color: 'bg-amber-100', text: 'Partial Success', icon: AlertTriangle },
 };
@@ -107,8 +107,8 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
                   <StatusIcon
                     className={cn(
                       'h-5 w-5',
-                      status === 'running' || status === 'idle' ? 'animate-spin text-blue-600' : '',
-                      status === 'completed' && 'text-emerald-600',
+                      status === 'running' || status === 'idle' ? 'animate-spin text-violet-600' : '',
+                      status === 'completed' && 'text-violet-600',
                       status === 'failed' && 'text-red-600',
                       status === 'partial' && 'text-amber-600'
                     )}
@@ -141,10 +141,10 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
                 <motion.div
                   className={cn(
                     'h-full rounded-full',
-                    status === 'completed' && 'bg-emerald-500',
-                    status === 'running' && 'bg-blue-500',
+                    status === 'completed' && 'bg-violet-500',
+                    status === 'running' && 'bg-violet-500',
                     status === 'failed' && 'bg-red-500',
-                    status === 'partial' && 'bg-gradient-to-r from-emerald-500 to-amber-500',
+                    status === 'partial' && 'bg-gradient-to-r from-violet-500 to-amber-500',
                     status === 'idle' && 'bg-slate-400'
                   )}
                   initial={{ width: 0 }}
@@ -157,7 +157,7 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
               {results.length > 0 && (
                 <div className="flex items-center gap-4 mt-3 text-xs">
                   {successCount > 0 && (
-                    <div className="flex items-center gap-1 text-emerald-600">
+                    <div className="flex items-center gap-1 text-violet-600">
                       <CheckCircle className="h-3.5 w-3.5" />
                       <span>{successCount} succeeded</span>
                     </div>
@@ -205,14 +205,14 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
                         transition={{ delay: idx * 0.03 }}
                         className={cn(
                           'px-4 py-2 flex items-center justify-between border-b border-slate-50 dark:border-slate-800 last:border-0',
-                          result.success ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : 'bg-red-50/50 dark:bg-red-950/20'
+                          result.success ? 'bg-violet-50/50 dark:bg-violet-950/20' : 'bg-red-50/50 dark:bg-red-950/20'
                         )}
                       >
                         <span className="text-xs text-slate-700 dark:text-slate-300 truncate flex-1 pr-2">
                           {result.contractTitle}
                         </span>
                         {result.success ? (
-                          <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                          <CheckCircle className="h-4 w-4 text-violet-500 flex-shrink-0" />
                         ) : (
                           <div className="flex items-center gap-1">
                             <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />

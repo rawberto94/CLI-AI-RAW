@@ -180,7 +180,7 @@ export function SmartSearch() {
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'contract': return 'bg-blue-100 text-blue-700'
+      case 'contract': return 'bg-violet-100 text-violet-700'
       case 'artifact': return 'bg-purple-100 text-purple-700'
       case 'supplier': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
@@ -235,11 +235,11 @@ export function SmartSearch() {
 
             {/* Filters */}
             {showFilters && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gradient-to-br from-slate-50 to-violet-50/30 dark:from-slate-800 dark:to-violet-950/20 rounded-xl border border-slate-200/60 dark:border-slate-700/60">
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Date Range</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Date Range</label>
                   <select
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     value={filters.dateRange || ''}
                     onChange={(e) => setFilters({ ...filters, dateRange: e.target.value })}
                   >
@@ -251,7 +251,7 @@ export function SmartSearch() {
                   </select>
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Min Value</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Min Value</label>
                   <Input
                     type="number"
                     placeholder="$0"
@@ -260,9 +260,9 @@ export function SmartSearch() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium mb-2 block">Status</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 block">Status</label>
                   <select
-                    className="w-full p-2 border rounded-md"
+                    className="w-full p-2.5 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     value={filters.status || ''}
                     onChange={(e) => setFilters({ ...filters, status: e.target.value })}
                   >
@@ -277,9 +277,9 @@ export function SmartSearch() {
 
             {/* Recent Searches */}
             {!query && recentSearches.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-sm text-gray-500 flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+              <div className="space-y-3">
+                <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2 font-medium">
+                  <Clock className="h-4 w-4 text-violet-500" />
                   Recent searches
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -287,7 +287,7 @@ export function SmartSearch() {
                     <button
                       key={idx}
                       onClick={() => setQuery(search)}
-                      className="text-sm px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                      className="text-sm px-3 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-slate-700 dark:text-slate-300 hover:text-violet-700 dark:hover:text-violet-300 rounded-lg transition-all"
                     >
                       {search}
                     </button>
@@ -303,8 +303,8 @@ export function SmartSearch() {
       {results.length > 0 && (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600">
-              Found <strong>{results.length}</strong> results for &ldquo;{query}&rdquo;
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Found <strong className="text-slate-900 dark:text-white">{results.length}</strong> results for &ldquo;<span className="text-violet-600 dark:text-violet-400 font-medium">{query}</span>&rdquo;
             </p>
             <Button variant="outline" size="sm">
               <TrendingUp className="h-4 w-4 mr-2" />
@@ -313,7 +313,7 @@ export function SmartSearch() {
           </div>
 
           {results.map((result) => (
-            <Card key={result.id} className="hover:shadow-md transition-shadow">
+            <Card key={result.id} className="hover:shadow-lg hover:shadow-violet-500/5 hover:border-violet-200 dark:hover:border-violet-800 transition-all duration-200">
               <CardContent className="pt-6">
                 <div className="space-y-3">
                   <div className="flex items-start justify-between">
@@ -326,12 +326,12 @@ export function SmartSearch() {
                         {result.metadata.status && (
                           <Badge variant="secondary">{result.metadata.status}</Badge>
                         )}
-                        <span className="text-xs text-gray-500">
+                        <span className="text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full font-medium">
                           {Math.round(result.relevance * 100)}% match
                         </span>
                       </div>
                       <Link href={`/contracts/${result.id}`}>
-                        <h3 className="font-semibold text-lg hover:text-blue-600 transition-colors">
+                        <h3 className="font-semibold text-lg hover:text-violet-600 transition-colors">
                           {result.title}
                         </h3>
                       </Link>
@@ -339,22 +339,22 @@ export function SmartSearch() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                  <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
                     {result.metadata.supplier && (
-                      <div className="flex items-center gap-1">
-                        <Building className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <Building className="h-4 w-4 text-violet-500" />
                         {result.metadata.supplier}
                       </div>
                     )}
                     {result.metadata.value && (
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <DollarSign className="h-4 w-4 text-emerald-500" />
                         ${result.metadata.value.toLocaleString()}
                       </div>
                     )}
                     {result.metadata.date && (
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-4 w-4 text-amber-500" />
                         {result.metadata.date}
                       </div>
                     )}
@@ -370,9 +370,11 @@ export function SmartSearch() {
       {query && !isSearching && results.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-            <p className="text-gray-600 mb-2">No results found for &ldquo;{query}&rdquo;</p>
-            <p className="text-sm text-gray-500">
+            <div className="w-16 h-16 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Search className="h-8 w-8 text-violet-400" />
+            </div>
+            <p className="text-slate-700 dark:text-slate-300 font-medium mb-2">No results found for &ldquo;{query}&rdquo;</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Try different keywords{hasActiveFilters ? ', reset filters,' : ''} or switch to advanced search.
             </p>
 

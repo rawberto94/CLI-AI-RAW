@@ -29,7 +29,7 @@ interface PageHeaderProps {
 }
 
 const badgeVariants = {
-  default: 'bg-blue-100 text-blue-700',
+  default: 'bg-violet-100 text-violet-700',
   success: 'bg-green-100 text-green-700',
   warning: 'bg-yellow-100 text-yellow-700',
   error: 'bg-red-100 text-red-700',
@@ -74,7 +74,7 @@ export function PageHeader({
         <nav className="flex items-center gap-1 text-sm text-gray-500">
           <Link
             href="/"
-            className="flex items-center hover:text-blue-600 transition-colors"
+            className="flex items-center hover:text-violet-600 transition-colors"
           >
             <Home className="h-4 w-4" />
           </Link>
@@ -84,7 +84,7 @@ export function PageHeader({
               {item.href ? (
                 <Link
                   href={item.href}
-                  className="hover:text-blue-600 transition-colors"
+                  className="hover:text-violet-600 transition-colors"
                 >
                   {item.label}
                 </Link>
@@ -104,7 +104,7 @@ export function PageHeader({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg"
+              className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg"
             >
               {icon}
             </motion.div>
@@ -175,7 +175,7 @@ export function PageContainer({
   return (
     <div
       className={cn(
-        'min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6',
+        'min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6',
         className
       )}
     >

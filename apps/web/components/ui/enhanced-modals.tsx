@@ -209,19 +209,19 @@ interface AlertDialogProps {
 }
 
 const alertIcons: Record<AlertType, React.ReactNode> = {
-  info: <Info className="w-6 h-6 text-blue-500" />,
+  info: <Info className="w-6 h-6 text-violet-500" />,
   success: <CheckCircle className="w-6 h-6 text-green-500" />,
   warning: <AlertTriangle className="w-6 h-6 text-amber-500" />,
   error: <AlertCircle className="w-6 h-6 text-red-500" />,
-  confirm: <HelpCircle className="w-6 h-6 text-blue-500" />,
+  confirm: <HelpCircle className="w-6 h-6 text-violet-500" />,
 };
 
 const alertColors: Record<AlertType, string> = {
-  info: 'bg-blue-100 dark:bg-blue-900/30',
+  info: 'bg-violet-100 dark:bg-violet-900/30',
   success: 'bg-green-100 dark:bg-green-900/30',
   warning: 'bg-amber-100 dark:bg-amber-900/30',
   error: 'bg-red-100 dark:bg-red-900/30',
-  confirm: 'bg-blue-100 dark:bg-blue-900/30',
+  confirm: 'bg-violet-100 dark:bg-violet-900/30',
 };
 
 export function AlertDialog({
@@ -271,7 +271,7 @@ export function AlertDialog({
                 'px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors flex items-center gap-2',
                 isDestructive
                   ? 'bg-red-500 hover:bg-red-600'
-                  : 'bg-blue-500 hover:bg-blue-600',
+                  : 'bg-violet-500 hover:bg-violet-600',
                 isLoading && 'opacity-50 cursor-not-allowed'
               )}
             >

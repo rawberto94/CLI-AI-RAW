@@ -75,7 +75,7 @@ export function InteractiveBoxPlot({
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Median:</span>
-            <span className="font-medium text-blue-600">${data.median.toFixed(2)}</span>
+            <span className="font-medium text-violet-600">${data.median.toFixed(2)}</span>
           </div>
           <div className="flex justify-between gap-4">
             <span className="text-gray-600">Mean:</span>

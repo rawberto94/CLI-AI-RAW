@@ -63,7 +63,7 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-muted/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/50 font-medium [&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -78,7 +78,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b dark:border-slate-700 transition-colors hover:bg-muted/50 dark:hover:bg-slate-800/50 data-[state=selected]:bg-muted dark:data-[state=selected]:bg-slate-800",
+      "border-b border-slate-100 dark:border-slate-800 transition-colors hover:bg-slate-50/80 dark:hover:bg-slate-800/50 data-[state=selected]:bg-violet-50 dark:data-[state=selected]:bg-violet-950/30",
       className
     )}
     {...props}
@@ -116,8 +116,8 @@ const TableHead = React.forwardRef<
       ref={ref}
       scope="col"
       className={cn(
-        "h-12 px-4 text-left align-middle font-medium text-muted-foreground dark:text-slate-400 [&:has([role=checkbox])]:pr-0",
-        sortable && "cursor-pointer select-none hover:bg-muted/50 dark:hover:bg-slate-800/50 transition-colors",
+        "h-12 px-4 text-left align-middle font-semibold text-slate-500 dark:text-slate-400 [&:has([role=checkbox])]:pr-0",
+        sortable && "cursor-pointer select-none hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-violet-600 dark:hover:text-violet-400 transition-colors",
         className
       )}
       onClick={sortable ? onSort : undefined}

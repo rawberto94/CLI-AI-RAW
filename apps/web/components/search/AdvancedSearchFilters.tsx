@@ -71,7 +71,7 @@ interface AdvancedSearchFiltersProps {
 
 const statusOptions = [
   { value: 'completed', label: 'Completed', color: 'bg-green-100 text-green-700' },
-  { value: 'processing', label: 'Processing', color: 'bg-blue-100 text-blue-700' },
+  { value: 'processing', label: 'Processing', color: 'bg-violet-100 text-violet-700' },
   { value: 'pending', label: 'Pending', color: 'bg-slate-100 text-slate-700' },
   { value: 'failed', label: 'Failed', color: 'bg-red-100 text-red-700' },
   { value: 'archived', label: 'Archived', color: 'bg-amber-100 text-amber-700' },
@@ -161,13 +161,13 @@ export const AdvancedSearchFilters = memo(function AdvancedSearchFilters({
           onClick={() => setIsExpanded(!isExpanded)}
           className={cn(
             'gap-2 h-11',
-            activeFilterCount > 0 && 'border-blue-300 bg-blue-50'
+            activeFilterCount > 0 && 'border-violet-300 bg-violet-50'
           )}
         >
           <SlidersHorizontal className="h-4 w-4" />
           Filters
           {activeFilterCount > 0 && (
-            <Badge variant="secondary" className="h-5 px-1.5 bg-blue-600 text-white">
+            <Badge variant="secondary" className="h-5 px-1.5 bg-violet-600 text-white">
               {activeFilterCount}
             </Badge>
           )}

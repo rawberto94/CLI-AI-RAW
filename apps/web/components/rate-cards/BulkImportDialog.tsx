@@ -245,12 +245,12 @@ Global IT Partners,Mid-Level Developer,MID,600,GBP,GB,"JavaScript,Vue,PostgreSQL
 
         <div className="space-y-4">
           {/* Template Download */}
-          <div className="border rounded-lg p-4 bg-blue-50">
+          <div className="border rounded-lg p-4 bg-violet-50">
             <div className="flex items-start gap-3">
-              <FileSpreadsheet className="h-5 w-5 text-blue-600 mt-0.5" />
+              <FileSpreadsheet className="h-5 w-5 text-violet-600 mt-0.5" />
               <div className="flex-1">
-                <h4 className="font-medium text-blue-900">Download Template</h4>
-                <p className="text-sm text-blue-700 mt-1">
+                <h4 className="font-medium text-violet-900">Download Template</h4>
+                <p className="text-sm text-violet-700 mt-1">
                   Start with our template to ensure your data is formatted correctly
                 </p>
                 <Button variant="outline" size="sm" onClick={downloadTemplate} className="mt-2">

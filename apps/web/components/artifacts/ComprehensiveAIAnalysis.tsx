@@ -273,14 +273,14 @@ function AnalysisSection({
   const [isExpanded, setIsExpanded] = useState(defaultExpanded)
   
   const scoreColors = {
-    success: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+    success: 'bg-violet-100 text-violet-700 border-violet-200',
     warning: 'bg-amber-100 text-amber-700 border-amber-200',
     danger: 'bg-rose-100 text-rose-700 border-rose-200',
-    info: 'bg-blue-100 text-blue-700 border-blue-200'
+    info: 'bg-violet-100 text-violet-700 border-violet-200'
   }
 
   const statusIcons = {
-    complete: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+    complete: <CheckCircle2 className="h-4 w-4 text-violet-500" />,
     partial: <AlertCircle className="h-4 w-4 text-amber-500" />,
     missing: <XCircle className="h-4 w-4 text-rose-400" />,
     'not-applicable': <Info className="h-4 w-4 text-slate-400" />
@@ -385,16 +385,16 @@ function InsightCard({ type, title, description, priority, action }: InsightCard
       iconColor: 'text-rose-500'
     },
     opportunity: {
-      bg: 'bg-emerald-50',
-      border: 'border-emerald-200',
+      bg: 'bg-violet-50',
+      border: 'border-violet-200',
       icon: TrendingUp,
-      iconColor: 'text-emerald-500'
+      iconColor: 'text-violet-500'
     },
     info: {
-      bg: 'bg-blue-50',
-      border: 'border-blue-200',
+      bg: 'bg-violet-50',
+      border: 'border-violet-200',
       icon: Info,
-      iconColor: 'text-blue-500'
+      iconColor: 'text-violet-500'
     },
     warning: {
       bg: 'bg-amber-50',
@@ -403,10 +403,10 @@ function InsightCard({ type, title, description, priority, action }: InsightCard
       iconColor: 'text-amber-500'
     },
     action: {
-      bg: 'bg-indigo-50',
+      bg: 'bg-purple-50',
       border: 'border-indigo-200',
       icon: Target,
-      iconColor: 'text-indigo-500'
+      iconColor: 'text-purple-500'
     }
   }
 
@@ -684,7 +684,7 @@ export function ComprehensiveAIAnalysis({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
             <Brain className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -725,7 +725,7 @@ export function ComprehensiveAIAnalysis({
           )}
           <Button 
             size="sm" 
-            className="gap-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+            className="gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
             onClick={() => handleRequestAnalysis('full contract')}
           >
             <RefreshCw className="h-4 w-4" />
@@ -738,8 +738,8 @@ export function ComprehensiveAIAnalysis({
       <Card className="border-slate-200/80 shadow-sm overflow-hidden">
         <div className={cn(
           "h-1.5",
-          healthScore.status === 'excellent' && "bg-gradient-to-r from-emerald-400 to-emerald-500",
-          healthScore.status === 'good' && "bg-gradient-to-r from-blue-400 to-blue-500",
+          healthScore.status === 'excellent' && "bg-gradient-to-r from-violet-400 to-violet-500",
+          healthScore.status === 'good' && "bg-gradient-to-r from-violet-400 to-purple-500",
           healthScore.status === 'fair' && "bg-gradient-to-r from-amber-400 to-amber-500",
           healthScore.status === 'poor' && "bg-gradient-to-r from-rose-400 to-rose-500"
         )} />
@@ -750,8 +750,8 @@ export function ComprehensiveAIAnalysis({
             <div className="lg:col-span-1 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-xl">
               <div className={cn(
                 "w-20 h-20 rounded-full flex items-center justify-center text-2xl font-bold shadow-inner mb-2",
-                healthScore.status === 'excellent' && "bg-emerald-100 text-emerald-700",
-                healthScore.status === 'good' && "bg-blue-100 text-blue-700",
+                healthScore.status === 'excellent' && "bg-violet-100 text-violet-700",
+                healthScore.status === 'good' && "bg-violet-100 text-violet-700",
                 healthScore.status === 'fair' && "bg-amber-100 text-amber-700",
                 healthScore.status === 'poor' && "bg-rose-100 text-rose-700"
               )}>
@@ -760,8 +760,8 @@ export function ComprehensiveAIAnalysis({
               <p className="font-medium text-slate-700">Health Score</p>
               <p className={cn(
                 "text-xs font-medium capitalize",
-                healthScore.status === 'excellent' && "text-emerald-600",
-                healthScore.status === 'good' && "text-blue-600",
+                healthScore.status === 'excellent' && "text-violet-600",
+                healthScore.status === 'good' && "text-violet-600",
                 healthScore.status === 'fair' && "text-amber-600",
                 healthScore.status === 'poor' && "text-rose-600"
               )}>
@@ -776,7 +776,7 @@ export function ComprehensiveAIAnalysis({
                 <div className="flex items-center gap-2 mb-2">
                   <AlertTriangle className={cn(
                     "h-4 w-4",
-                    (stats.riskScore || 0) < 40 ? "text-emerald-500" : 
+                    (stats.riskScore || 0) < 40 ? "text-violet-500" : 
                     (stats.riskScore || 0) < 70 ? "text-amber-500" : "text-rose-500"
                   )} />
                   <span className="text-xs font-medium text-slate-500">Risk Score</span>
@@ -794,7 +794,7 @@ export function ComprehensiveAIAnalysis({
                 <div className="flex items-center gap-2 mb-2">
                   <Shield className={cn(
                     "h-4 w-4",
-                    (stats.complianceScore || 0) >= 80 ? "text-emerald-500" : 
+                    (stats.complianceScore || 0) >= 80 ? "text-violet-500" : 
                     (stats.complianceScore || 0) >= 60 ? "text-amber-500" : "text-rose-500"
                   )} />
                   <span className="text-xs font-medium text-slate-500">Compliance</span>
@@ -810,7 +810,7 @@ export function ComprehensiveAIAnalysis({
               {/* Contract Value */}
               <div className="p-4 rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-4 w-4 text-emerald-500" />
+                  <DollarSign className="h-4 w-4 text-violet-500" />
                   <span className="text-xs font-medium text-slate-500">Total Value</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">
@@ -826,7 +826,7 @@ export function ComprehensiveAIAnalysis({
               {/* Key Clauses */}
               <div className="p-4 rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center gap-2 mb-2">
-                  <FileCheck className="h-4 w-4 text-indigo-500" />
+                  <FileCheck className="h-4 w-4 text-purple-500" />
                   <span className="text-xs font-medium text-slate-500">Clauses</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">
@@ -900,29 +900,29 @@ export function ComprehensiveAIAnalysis({
           <div className="space-y-4">
             {/* Extraction Quality Summary */}
             {deepAnalysisResult.extractionQuality && (
-              <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
+              <Card className="bg-gradient-to-r from-violet-50 to-violet-50 border-violet-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 text-white">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-violet-500 text-white">
                       <Shield className="h-4 w-4" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-emerald-800">Extraction Quality Report</h4>
-                      <p className="text-xs text-emerald-600">Multi-pass validation with pattern verification</p>
+                      <h4 className="font-semibold text-violet-800">Extraction Quality Report</h4>
+                      <p className="text-xs text-violet-600">Multi-pass validation with pattern verification</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="bg-white/60 rounded-lg p-2 text-center">
-                      <div className="text-lg font-bold text-emerald-700">
+                      <div className="text-lg font-bold text-violet-700">
                         {Math.round(deepAnalysisResult.extractionQuality.averageConfidence * 100)}%
                       </div>
-                      <div className="text-xs text-emerald-600">Avg Confidence</div>
+                      <div className="text-xs text-violet-600">Avg Confidence</div>
                     </div>
                     <div className="bg-white/60 rounded-lg p-2 text-center">
-                      <div className="text-lg font-bold text-blue-700">
+                      <div className="text-lg font-bold text-violet-700">
                         {deepAnalysisResult.extractionQuality.patternVerified}
                       </div>
-                      <div className="text-xs text-blue-600">Pattern Verified</div>
+                      <div className="text-xs text-violet-600">Pattern Verified</div>
                     </div>
                     <div className="bg-white/60 rounded-lg p-2 text-center">
                       <div className="text-lg font-bold text-violet-700">
@@ -955,29 +955,29 @@ export function ComprehensiveAIAnalysis({
 
             {/* Industry Benchmarks Comparison */}
             {deepAnalysisResult.industryBenchmarks && deepAnalysisResult.industryBenchmarks.comparisons.length > 0 && (
-              <Card className="bg-gradient-to-r from-indigo-50 to-blue-50 border-indigo-200">
+              <Card className="bg-gradient-to-r from-purple-50 to-purple-50 border-indigo-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 text-white">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-500 text-white">
                       <BarChart3 className="h-4 w-4" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-indigo-800">Industry Benchmark Comparison</h4>
-                      <p className="text-xs text-indigo-600">How your contract terms compare to market standards</p>
+                      <p className="text-xs text-purple-600">How your contract terms compare to market standards</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div className="bg-white/60 rounded-lg p-2 text-center">
-                      <div className="text-lg font-bold text-indigo-700">
+                      <div className="text-lg font-bold text-purple-700">
                         {deepAnalysisResult.industryBenchmarks.fieldsCompared}
                       </div>
-                      <div className="text-xs text-indigo-600">Fields Compared</div>
+                      <div className="text-xs text-purple-600">Fields Compared</div>
                     </div>
                     <div className="bg-white/60 rounded-lg p-2 text-center">
-                      <div className="text-lg font-bold text-emerald-700">
+                      <div className="text-lg font-bold text-violet-700">
                         {deepAnalysisResult.industryBenchmarks.aboveMarket}
                       </div>
-                      <div className="text-xs text-emerald-600">Above Market</div>
+                      <div className="text-xs text-violet-600">Above Market</div>
                     </div>
                     <div className="bg-white/60 rounded-lg p-2 text-center">
                       <div className="text-lg font-bold text-amber-700">
@@ -998,7 +998,7 @@ export function ComprehensiveAIAnalysis({
                         key={i}
                         className={cn(
                           "p-2 rounded-lg border bg-white/60",
-                          comp.position === 'above_market' && "border-emerald-300",
+                          comp.position === 'above_market' && "border-violet-300",
                           comp.position === 'below_market' && "border-amber-300",
                           comp.position === 'outlier' && "border-rose-300",
                           comp.position === 'at_market' && "border-slate-300"
@@ -1013,10 +1013,10 @@ export function ComprehensiveAIAnalysis({
                               variant="outline" 
                               className={cn(
                                 "text-[10px]",
-                                comp.position === 'above_market' && "border-emerald-300 text-emerald-600 bg-emerald-50",
+                                comp.position === 'above_market' && "border-violet-300 text-violet-600 bg-violet-50",
                                 comp.position === 'below_market' && "border-amber-300 text-amber-600 bg-amber-50",
                                 comp.position === 'outlier' && "border-rose-300 text-rose-600 bg-rose-50",
-                                comp.position === 'at_market' && "border-blue-300 text-blue-600 bg-blue-50"
+                                comp.position === 'at_market' && "border-violet-300 text-violet-600 bg-violet-50"
                               )}
                             >
                               {comp.position === 'above_market' && <TrendingUp className="h-3 w-3 mr-1" />}
@@ -1033,7 +1033,7 @@ export function ComprehensiveAIAnalysis({
                           <span className="text-xs font-medium">{comp.benchmark.benchmarks.median} {comp.benchmark.benchmarks.unit}</span>
                         </div>
                         {comp.recommendation && (
-                          <p className="text-xs text-indigo-600 mt-1 flex items-start gap-1">
+                          <p className="text-xs text-purple-600 mt-1 flex items-start gap-1">
                             <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
                             {comp.recommendation}
                           </p>
@@ -1130,7 +1130,7 @@ export function ComprehensiveAIAnalysis({
                         "p-3 rounded-lg border",
                         field.importance === 'critical' && "bg-rose-50 border-rose-200",
                         field.importance === 'high' && "bg-amber-50 border-amber-200",
-                        field.importance === 'medium' && "bg-blue-50 border-blue-200",
+                        field.importance === 'medium' && "bg-violet-50 border-violet-200",
                         field.importance === 'low' && "bg-slate-50 border-slate-200"
                       )}
                     >
@@ -1143,8 +1143,8 @@ export function ComprehensiveAIAnalysis({
                               <TooltipTrigger asChild>
                                 <div className={cn(
                                   "flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium",
-                                  field.confidence >= 0.85 && "bg-emerald-100 text-emerald-700",
-                                  field.confidence >= 0.7 && field.confidence < 0.85 && "bg-blue-100 text-blue-700",
+                                  field.confidence >= 0.85 && "bg-violet-100 text-violet-700",
+                                  field.confidence >= 0.7 && field.confidence < 0.85 && "bg-violet-100 text-violet-700",
                                   field.confidence >= 0.5 && field.confidence < 0.7 && "bg-amber-100 text-amber-700",
                                   field.confidence < 0.5 && "bg-rose-100 text-rose-700"
                                 )}>
@@ -1187,7 +1187,7 @@ export function ComprehensiveAIAnalysis({
                           "text-xs mt-1",
                           field.explanation.includes('⚠️') && "text-amber-600",
                           field.explanation.includes('❌') && "text-rose-600",
-                          field.explanation.includes('Pattern-verified') && "text-emerald-600",
+                          field.explanation.includes('Pattern-verified') && "text-violet-600",
                           !field.explanation.includes('⚠️') && !field.explanation.includes('❌') && !field.explanation.includes('Pattern-verified') && "text-slate-500"
                         )}>
                           {field.explanation}
@@ -1244,7 +1244,7 @@ export function ComprehensiveAIAnalysis({
                           &quot;{risk.sourceClause.slice(0, 150)}...&quot;
                         </div>
                       )}
-                      <div className="flex items-start gap-1.5 text-xs text-emerald-600 bg-emerald-50 p-2 rounded">
+                      <div className="flex items-start gap-1.5 text-xs text-violet-600 bg-violet-50 p-2 rounded">
                         <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
                         <span>{risk.mitigationSuggestion}</span>
                       </div>
@@ -1260,14 +1260,14 @@ export function ComprehensiveAIAnalysis({
                 title="Negotiation Opportunities"
                 description={`${deepAnalysisResult.negotiationOpportunities.total} opportunities identified`}
                 icon={Target}
-                iconColor="bg-gradient-to-br from-emerald-500 to-teal-500"
-                bgGradient="bg-gradient-to-r from-emerald-500 to-teal-500"
+                iconColor="bg-gradient-to-br from-violet-500 to-violet-500"
+                bgGradient="bg-gradient-to-r from-violet-500 to-violet-500"
                 status="complete"
                 badge={`${deepAnalysisResult.negotiationOpportunities.highPriority} high priority`}
               >
                 <div className="space-y-3">
                   {deepAnalysisResult.negotiationOpportunities.opportunities.map((opp) => (
-                    <div key={opp.id} className="p-4 rounded-lg border border-emerald-200 bg-emerald-50">
+                    <div key={opp.id} className="p-4 rounded-lg border border-violet-200 bg-violet-50">
                       <div className="flex items-center justify-between mb-2">
                         <h4 className="font-medium text-slate-800">{opp.title}</h4>
                         <Badge variant="outline" className={cn(
@@ -1288,12 +1288,12 @@ export function ComprehensiveAIAnalysis({
                       
                       {opp.suggestedAlternative && (
                         <div className="mb-2">
-                          <p className="text-xs text-emerald-600 mb-1">Suggested Alternative:</p>
-                          <p className="text-xs bg-white p-2 rounded border border-emerald-200">{opp.suggestedAlternative}</p>
+                          <p className="text-xs text-violet-600 mb-1">Suggested Alternative:</p>
+                          <p className="text-xs bg-white p-2 rounded border border-violet-200">{opp.suggestedAlternative}</p>
                         </div>
                       )}
                       
-                      <div className="flex items-start gap-1.5 text-xs text-blue-600 bg-blue-50 p-2 rounded">
+                      <div className="flex items-start gap-1.5 text-xs text-violet-600 bg-violet-50 p-2 rounded">
                         <Lightbulb className="h-3 w-3 mt-0.5 shrink-0" />
                         <span>{opp.negotiationTip}</span>
                       </div>
@@ -1322,7 +1322,7 @@ export function ComprehensiveAIAnalysis({
                         "p-3 rounded-lg border flex items-start gap-3",
                         rec.priority === 'urgent' && "bg-rose-50 border-rose-200",
                         rec.priority === 'high' && "bg-amber-50 border-amber-200",
-                        rec.priority === 'medium' && "bg-blue-50 border-blue-200",
+                        rec.priority === 'medium' && "bg-violet-50 border-violet-200",
                         rec.priority === 'low' && "bg-slate-50 border-slate-200"
                       )}
                     >
@@ -1330,7 +1330,7 @@ export function ComprehensiveAIAnalysis({
                         "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                         rec.priority === 'urgent' && "bg-rose-100",
                         rec.priority === 'high' && "bg-amber-100",
-                        rec.priority === 'medium' && "bg-blue-100",
+                        rec.priority === 'medium' && "bg-violet-100",
                         rec.priority === 'low' && "bg-slate-100"
                       )}>
                         {rec.priority === 'urgent' ? (
@@ -1361,8 +1361,8 @@ export function ComprehensiveAIAnalysis({
           title="Contract Overview"
           description="Key terms, parties, and summary"
           icon={FileText}
-          iconColor="bg-gradient-to-br from-blue-500 to-cyan-500"
-          bgGradient="bg-gradient-to-r from-blue-500 to-cyan-500"
+          iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
+          bgGradient="bg-gradient-to-r from-violet-500 to-purple-500"
           status={data.overview ? 'complete' : 'missing'}
           badge={contractType}
         >
@@ -1387,8 +1387,8 @@ export function ComprehensiveAIAnalysis({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {data.overview.parties.map((party: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                          <Users className="h-4 w-4 text-indigo-600" />
+                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                          <Users className="h-4 w-4 text-purple-600" />
                         </div>
                         <div>
                           <p className="font-medium text-slate-800 text-sm">
@@ -1414,7 +1414,7 @@ export function ComprehensiveAIAnalysis({
                   <ul className="space-y-1">
                     {data.overview.keyTerms.slice(0, 6).map((term: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
-                        <CircleDot className="h-3 w-3 text-blue-500 mt-1.5 shrink-0" />
+                        <CircleDot className="h-3 w-3 text-violet-500 mt-1.5 shrink-0" />
                         <span>{term}</span>
                       </li>
                     ))}
@@ -1452,7 +1452,7 @@ export function ComprehensiveAIAnalysis({
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
                 <div className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold",
-                  (stats.riskScore || 0) < 40 && "bg-emerald-100 text-emerald-700",
+                  (stats.riskScore || 0) < 40 && "bg-violet-100 text-violet-700",
                   (stats.riskScore || 0) >= 40 && (stats.riskScore || 0) < 70 && "bg-amber-100 text-amber-700",
                   (stats.riskScore || 0) >= 70 && "bg-rose-100 text-rose-700"
                 )}>
@@ -1549,7 +1549,7 @@ export function ComprehensiveAIAnalysis({
               <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg">
                 <div className={cn(
                   "w-16 h-16 rounded-full flex items-center justify-center text-xl font-bold",
-                  (stats.complianceScore || 0) >= 80 && "bg-emerald-100 text-emerald-700",
+                  (stats.complianceScore || 0) >= 80 && "bg-violet-100 text-violet-700",
                   (stats.complianceScore || 0) >= 60 && (stats.complianceScore || 0) < 80 && "bg-amber-100 text-amber-700",
                   (stats.complianceScore || 0) < 60 && "bg-rose-100 text-rose-700"
                 )}>
@@ -1578,7 +1578,7 @@ export function ComprehensiveAIAnalysis({
                           "p-3 rounded-lg border flex items-start gap-3",
                           issue.status === 'non-compliant' && "bg-rose-50 border-rose-200",
                           issue.status === 'at-risk' && "bg-amber-50 border-amber-200",
-                          issue.status === 'compliant' && "bg-emerald-50 border-emerald-200"
+                          issue.status === 'compliant' && "bg-violet-50 border-violet-200"
                         )}
                       >
                         {issue.status === 'non-compliant' ? (
@@ -1586,7 +1586,7 @@ export function ComprehensiveAIAnalysis({
                         ) : issue.status === 'at-risk' ? (
                           <AlertCircle className="h-5 w-5 text-amber-500 shrink-0" />
                         ) : (
-                          <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                          <CheckCircle2 className="h-5 w-5 text-violet-500 shrink-0" />
                         )}
                         <div>
                           <p className="font-medium text-slate-800 text-sm">{issue.regulation || 'Requirement'}</p>
@@ -1612,8 +1612,8 @@ export function ComprehensiveAIAnalysis({
           title="Key Clauses"
           description="Important contractual provisions and terms"
           icon={FileCheck}
-          iconColor="bg-gradient-to-br from-indigo-500 to-blue-500"
-          bgGradient="bg-gradient-to-r from-indigo-500 to-blue-500"
+          iconColor="bg-gradient-to-br from-purple-500 to-purple-500"
+          bgGradient="bg-gradient-to-r from-purple-500 to-purple-500"
           badge={`${stats.clauseCount} found`}
           status={data.clauses ? 'complete' : 'missing'}
         >
@@ -1674,8 +1674,8 @@ export function ComprehensiveAIAnalysis({
           title="Financial Analysis"
           description="Contract value, payment terms, and financial details"
           icon={DollarSign}
-          iconColor="bg-gradient-to-br from-emerald-500 to-green-500"
-          bgGradient="bg-gradient-to-r from-emerald-500 to-green-500"
+          iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
+          bgGradient="bg-gradient-to-r from-violet-500 to-purple-500"
           status={data.financial ? 'complete' : 'missing'}
           defaultExpanded={activeView === 'detailed'}
         >
@@ -1684,9 +1684,9 @@ export function ComprehensiveAIAnalysis({
               {/* Financial Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {data.financial.totalValue && (
-                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
-                    <p className="text-xs text-emerald-600 mb-1">Total Value</p>
-                    <p className="text-xl font-bold text-emerald-700">
+                  <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
+                    <p className="text-xs text-violet-600 mb-1">Total Value</p>
+                    <p className="text-xl font-bold text-violet-700">
                       ${(data.financial.totalValue / 1000).toFixed(0)}K
                     </p>
                   </div>
@@ -1765,7 +1765,7 @@ export function ComprehensiveAIAnalysis({
                     "p-3 rounded-lg border flex items-center gap-3",
                     obligation.status === 'overdue' && "bg-rose-50 border-rose-200",
                     obligation.status === 'due' && "bg-amber-50 border-amber-200",
-                    obligation.status === 'completed' && "bg-emerald-50 border-emerald-200",
+                    obligation.status === 'completed' && "bg-violet-50 border-violet-200",
                     !obligation.status && "bg-slate-50 border-slate-200"
                   )}
                 >
@@ -1773,11 +1773,11 @@ export function ComprehensiveAIAnalysis({
                     "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
                     obligation.status === 'overdue' && "bg-rose-100",
                     obligation.status === 'due' && "bg-amber-100",
-                    obligation.status === 'completed' && "bg-emerald-100",
+                    obligation.status === 'completed' && "bg-violet-100",
                     !obligation.status && "bg-slate-100"
                   )}>
                     {obligation.status === 'completed' ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                      <CheckCircle2 className="h-4 w-4 text-violet-600" />
                     ) : obligation.status === 'overdue' ? (
                       <AlertCircle className="h-4 w-4 text-rose-600" />
                     ) : (
@@ -1810,8 +1810,8 @@ export function ComprehensiveAIAnalysis({
           title="Renewal Terms"
           description="Auto-renewal, termination, and renewal conditions"
           icon={RefreshCw}
-          iconColor="bg-gradient-to-br from-teal-500 to-cyan-500"
-          bgGradient="bg-gradient-to-r from-teal-500 to-cyan-500"
+          iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
+          bgGradient="bg-gradient-to-r from-violet-500 to-purple-500"
           status={data.renewal ? 'complete' : 'missing'}
           defaultExpanded={activeView === 'detailed'}
         >
@@ -1874,10 +1874,10 @@ export function ComprehensiveAIAnalysis({
       </div>
 
       {/* AI Chat CTA */}
-      <Card className="border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+      <Card className="border-indigo-200 bg-gradient-to-r from-purple-50 to-purple-50">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
               <MessageSquare className="h-7 w-7 text-white" />
             </div>
             <div className="flex-1 text-center sm:text-left">
@@ -1887,7 +1887,7 @@ export function ComprehensiveAIAnalysis({
               </p>
             </div>
             <Button 
-              className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+              className="gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
               onClick={() => handleRequestAnalysis('any questions')}
             >
               <Sparkles className="h-4 w-4" />

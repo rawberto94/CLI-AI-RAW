@@ -38,20 +38,20 @@ const statusConfig: Record<string, {
   COMPLETED: {
     label: 'Completed',
     icon: CheckCircle,
-    gradient: 'from-emerald-500 to-green-500',
-    bgGradient: 'from-emerald-50 to-green-50 dark:from-emerald-950/30 dark:to-green-950/30',
-    borderColor: 'border-emerald-200 dark:border-emerald-800/50',
-    shadowColor: 'shadow-emerald-500/10',
-    progressColor: 'bg-gradient-to-r from-emerald-500 to-green-500'
+    gradient: 'from-violet-500 to-purple-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
+    borderColor: 'border-violet-200 dark:border-violet-800/50',
+    shadowColor: 'shadow-violet-500/10',
+    progressColor: 'bg-gradient-to-r from-violet-500 to-purple-500'
   },
   PROCESSING: {
     label: 'Processing',
     icon: Activity,
-    gradient: 'from-blue-500 to-cyan-500',
-    bgGradient: 'from-blue-50 to-cyan-50 dark:from-blue-950/30 dark:to-cyan-950/30',
-    borderColor: 'border-blue-200 dark:border-blue-800/50',
-    shadowColor: 'shadow-blue-500/10',
-    progressColor: 'bg-gradient-to-r from-blue-500 to-cyan-500'
+    gradient: 'from-violet-500 to-purple-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30',
+    borderColor: 'border-violet-200 dark:border-violet-800/50',
+    shadowColor: 'shadow-violet-500/10',
+    progressColor: 'bg-gradient-to-r from-violet-500 to-purple-500'
   },
   UPLOADED: {
     label: 'Uploaded',
@@ -100,10 +100,10 @@ export function StatusOverview({ data, totalContracts }: StatusOverviewProps) {
       transition={{ duration: 0.5, delay: 0.4 }}
     >
       <Card className="relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl">
-        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-blue-500/10 via-cyan-500/5 to-transparent rounded-full -translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-0 left-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent rounded-full -translate-y-1/2 -translate-x-1/2" />
         <CardHeader className="pb-3 relative">
           <CardTitle className="flex items-center gap-2 text-base mb-1">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/30">
               <Activity className="h-4 w-4" />
             </div>
             Contract Status

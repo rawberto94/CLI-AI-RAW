@@ -136,7 +136,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
       case 'OPPORTUNITY_DETECTED':
         return <AlertCircle className="h-5 w-5 text-yellow-500" />;
       default:
-        return <Info className="h-5 w-5 text-blue-500" />;
+        return <Info className="h-5 w-5 text-violet-500" />;
     }
   };
 
@@ -149,7 +149,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
       case 'MEDIUM':
         return 'border-l-yellow-500 bg-yellow-50';
       default:
-        return 'border-l-blue-500 bg-blue-50';
+        return 'border-l-violet-500 bg-violet-50';
     }
   };
 
@@ -192,7 +192,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                    className="text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium"
                   >
                     Mark all read
                   </button>
@@ -211,7 +211,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
             <div className="flex-1 overflow-y-auto">
               {loading ? (
                 <div className="flex items-center justify-center p-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" role="status" aria-label="Loading notifications" />
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500" role="status" aria-label="Loading notifications" />
                 </div>
               ) : notifications.length === 0 ? (
                 <div className="flex flex-col items-center justify-center p-8 text-gray-500 dark:text-slate-400">
@@ -224,7 +224,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
                     <div
                       key={notification.id}
                       className={`p-4 hover:bg-gray-50 dark:hover:bg-slate-800 cursor-pointer transition-colors border-l-4 ${
-                        !notification.readAt ? 'bg-blue-50 dark:bg-blue-950/30' : ''
+                        !notification.readAt ? 'bg-violet-50 dark:bg-violet-950/30' : ''
                       } ${getSeverityColor(notification.severity)}`}
                       onClick={() => {
                         if (!notification.readAt) {
@@ -244,7 +244,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
                               {notification.title}
                             </h4>
                             {!notification.readAt && (
-                              <span className="flex-shrink-0 h-2 w-2 bg-blue-500 rounded-full" />
+                              <span className="flex-shrink-0 h-2 w-2 bg-violet-500 rounded-full" />
                             )}
                           </div>
                           
@@ -280,7 +280,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
                     setIsOpen(false);
                     // Navigate to full notifications page
                   }}
-                  className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-sm text-violet-600 hover:text-violet-700 font-medium"
                 >
                   View all notifications
                 </button>

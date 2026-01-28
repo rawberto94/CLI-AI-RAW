@@ -64,8 +64,8 @@ interface GoogleDriveBrowserProps {
 const MIME_TYPE_ICONS: Record<string, React.ReactNode> = {
   'application/vnd.google-apps.folder': <Folder className="h-5 w-5 text-yellow-500" />,
   'application/pdf': <FileText className="h-5 w-5 text-red-500" />,
-  'application/msword': <FileText className="h-5 w-5 text-blue-500" />,
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': <FileText className="h-5 w-5 text-blue-500" />,
+  'application/msword': <FileText className="h-5 w-5 text-violet-500" />,
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': <FileText className="h-5 w-5 text-violet-500" />,
   'application/vnd.ms-excel': <FileSpreadsheet className="h-5 w-5 text-green-500" />,
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': <FileSpreadsheet className="h-5 w-5 text-green-500" />,
   'image/jpeg': <FileImage className="h-5 w-5 text-purple-500" />,
@@ -319,8 +319,8 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
         <DialogHeader className="px-6 py-4 border-b">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Cloud className="h-6 w-6 text-blue-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <Cloud className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <DialogTitle>Import from Google Drive</DialogTitle>
@@ -349,7 +349,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
 
         {connected === null ? (
           <div className="flex-1 flex items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
           </div>
         ) : !connected ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
@@ -430,7 +430,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
             <div className="flex-1 overflow-y-auto p-4">
               {loading ? (
                 <div className="flex items-center justify-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                  <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
                 </div>
               ) : filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -473,7 +473,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
                       animate={{ opacity: 1 }}
                       className={cn(
                         "flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer",
-                        selectedFiles.has(file.id) ? "bg-blue-50" : "hover:bg-gray-100"
+                        selectedFiles.has(file.id) ? "bg-violet-50" : "hover:bg-gray-100"
                       )}
                       onClick={() => handleFileSelect(file.id)}
                     >
@@ -516,13 +516,13 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
                       animate={{ opacity: 1, scale: 1 }}
                       className={cn(
                         "flex flex-col items-center gap-2 p-4 rounded-lg cursor-pointer relative",
-                        selectedFiles.has(file.id) ? "bg-blue-50 ring-2 ring-blue-500" : "hover:bg-gray-100"
+                        selectedFiles.has(file.id) ? "bg-violet-50 ring-2 ring-violet-500" : "hover:bg-gray-100"
                       )}
                       onClick={() => handleFileSelect(file.id)}
                     >
                       {selectedFiles.has(file.id) && (
                         <div className="absolute top-2 right-2">
-                          <Check className="h-5 w-5 text-blue-600" />
+                          <Check className="h-5 w-5 text-violet-600" />
                         </div>
                       )}
                       {file.thumbnailLink ? (
@@ -550,7 +550,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
               <div className="flex items-center justify-between w-full">
                 <div className="text-sm text-gray-500">
                   {selectedFiles.size > 0 ? (
-                    <span className="text-blue-600 font-medium">
+                    <span className="text-violet-600 font-medium">
                       {selectedFiles.size} file(s) selected
                     </span>
                   ) : (

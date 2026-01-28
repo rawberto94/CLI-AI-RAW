@@ -98,13 +98,13 @@ export default function ContractDetailPage() {
       case 'completed':
         return { 
           label: 'Completed', 
-          className: 'bg-gradient-to-r from-green-500 to-emerald-500 text-white border-0',
+          className: 'bg-gradient-to-r from-violet-500 to-violet-500 text-white border-0',
           icon: CheckCircle2
         }
       case 'processing':
         return { 
           label: 'Processing', 
-          className: 'bg-gradient-to-r from-blue-500 to-indigo-500 text-white border-0',
+          className: 'bg-gradient-to-r from-violet-500 to-purple-500 text-white border-0',
           icon: Loader2
         }
       case 'error':
@@ -129,7 +129,7 @@ export default function ContractDetailPage() {
   // Error state
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 flex items-center justify-center p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full shadow-2xl border-0">
           <CardContent className="p-12 text-center">
             <div className="p-4 bg-red-100 dark:bg-red-950/30 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
@@ -142,7 +142,7 @@ export default function ContractDetailPage() {
               {error}
             </p>
             <div className="flex gap-4 justify-center">
-              <Button onClick={loadContract} size="lg" className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+              <Button onClick={loadContract} size="lg" className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
                 <RefreshCw className="h-5 w-5 mr-2" />
                 Try Again
               </Button>
@@ -162,7 +162,7 @@ export default function ContractDetailPage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6">
         <div className="max-w-[1600px] mx-auto space-y-6">
           <div className="flex items-center gap-4 mb-6">
             <div className="h-10 w-32 bg-gray-200 dark:bg-slate-700 rounded-lg animate-pulse"></div>
@@ -186,7 +186,7 @@ export default function ContractDetailPage() {
   const complianceData = contract?.extractedData?.compliance
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6">
       <div className="max-w-[1600px] mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between gap-6 flex-wrap">
@@ -199,7 +199,7 @@ export default function ContractDetailPage() {
             </Link>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                   <FileText className="h-7 w-7 text-white" />
                 </div>
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-slate-100 truncate">
@@ -215,7 +215,7 @@ export default function ContractDetailPage() {
                   {statusConfig.label}
                 </Badge>
                 {contract?.processing && contract.status === 'processing' && (
-                  <Badge className="bg-blue-100 text-blue-700 px-4 py-2 text-sm font-medium">
+                  <Badge className="bg-violet-100 text-violet-700 px-4 py-2 text-sm font-medium">
                     {contract.processing.progress}% Complete
                   </Badge>
                 )}
@@ -224,7 +224,7 @@ export default function ContractDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="lg" onClick={loadContract} className="hover:bg-blue-50 dark:bg-blue-950/30 hover:border-blue-400">
+            <Button variant="outline" size="lg" onClick={loadContract} className="hover:bg-violet-50 dark:bg-violet-950/30 hover:border-violet-400">
               <RefreshCw className="h-5 w-5 mr-2" />
               Refresh
             </Button>
@@ -237,11 +237,11 @@ export default function ContractDetailPage() {
           {/* Contract Value */}
           {financialData?.totalValue && (
             <div className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-violet-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
               <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg">
                       <DollarSign className="h-6 w-6 text-white" />
                     </div>
                     <TrendingUp className="h-5 w-5 text-green-600" />
@@ -259,7 +259,7 @@ export default function ContractDetailPage() {
           {riskData?.riskScore !== undefined && (
             <div className="group relative">
               <div className={`absolute -inset-0.5 bg-gradient-to-r ${
-                riskData.riskScore < 30 ? 'from-green-500 to-emerald-500' :
+                riskData.riskScore < 30 ? 'from-violet-500 to-violet-500' :
                 riskData.riskScore < 70 ? 'from-yellow-500 to-orange-500' :
                 'from-red-500 to-pink-500'
               } rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur`}></div>
@@ -267,7 +267,7 @@ export default function ContractDetailPage() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
                     <div className={`p-3 bg-gradient-to-br ${
-                      riskData.riskScore < 30 ? 'from-green-500 to-emerald-600' :
+                      riskData.riskScore < 30 ? 'from-violet-500 to-violet-600' :
                       riskData.riskScore < 70 ? 'from-yellow-500 to-orange-600' :
                       'from-red-500 to-pink-600'
                     } rounded-xl shadow-lg`}>
@@ -292,14 +292,14 @@ export default function ContractDetailPage() {
           {/* Compliance Score */}
           {complianceData?.complianceScore !== undefined && (
             <div className="group relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
               <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between mb-3">
-                    <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                    <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                       <FileCheck className="h-6 w-6 text-white" />
                     </div>
-                    <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                    <CheckCircle2 className="h-5 w-5 text-violet-600" />
                   </div>
                   <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">Compliance</p>
                   <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
@@ -344,7 +344,7 @@ export default function ContractDetailPage() {
                   <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                       {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
-                        <Building className="h-5 w-5 text-blue-600" />
+                        <Building className="h-5 w-5 text-violet-600" />
                       ) : (
                         <Users className="h-5 w-5 text-purple-600" />
                       )}
@@ -382,7 +382,7 @@ export default function ContractDetailPage() {
               </div>
 
               {overviewData.summary && (
-                <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                <div className="mt-6 p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-violet-100">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-3">Executive Summary</h3>
                   <p className="text-gray-700 dark:text-slate-300 leading-relaxed">{overviewData.summary}</p>
                 </div>
@@ -427,7 +427,7 @@ export default function ContractDetailPage() {
                     insight.color === 'green' ? 'bg-green-50 border-green-500' :
                     insight.color === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
                     insight.color === 'red' ? 'bg-red-50 border-red-500' :
-                    insight.color === 'blue' ? 'bg-blue-50 border-blue-500' :
+                    insight.color === 'blue' ? 'bg-violet-50 border-violet-500' :
                     'bg-purple-50 border-purple-500'
                   }`}>
                     <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-2">{insight.title}</h3>

@@ -85,8 +85,8 @@ export function QuickApprovalCard({ item, onAction }: QuickApprovalCardProps) {
         <CardContent className="p-4">
           <div className="flex items-start gap-4">
             {/* Icon */}
-            <div className="p-2.5 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-xl shrink-0">
-              <FileText className="h-5 w-5 text-indigo-600" />
+            <div className="p-2.5 bg-gradient-to-br from-purple-100 to-purple-100 rounded-xl shrink-0">
+              <FileText className="h-5 w-5 text-purple-600" />
             </div>
 
             {/* Content */}
@@ -117,7 +117,7 @@ export function QuickApprovalCard({ item, onAction }: QuickApprovalCardProps) {
             {/* Actions */}
             <div className="flex items-center gap-2 shrink-0">
               <Link href={`/contracts/${item.contractId}`}>
-                <Button variant="ghost" size="sm" className="gap-1 text-slate-500 hover:text-indigo-600">
+                <Button variant="ghost" size="sm" className="gap-1 text-slate-500 hover:text-purple-600">
                   <ExternalLink className="h-4 w-4" />
                   View
                 </Button>
@@ -140,7 +140,7 @@ export function QuickApprovalCard({ item, onAction }: QuickApprovalCardProps) {
                 size="sm"
                 onClick={() => handleAction('approve')}
                 disabled={loading !== null}
-                className="gap-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+                className="gap-1 bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700"
               >
                 {loading === 'approve' ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -168,7 +168,7 @@ export function QuickApprovalList({ items, onRefresh, loading }: QuickApprovalLi
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-indigo-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
     )
   }
@@ -176,7 +176,7 @@ export function QuickApprovalList({ items, onRefresh, loading }: QuickApprovalLi
   if (items.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="w-16 h-16 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="w-16 h-16 bg-gradient-to-br from-violet-100 to-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
           <CheckCircle className="h-8 w-8 text-green-600" />
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-1">All caught up!</h3>

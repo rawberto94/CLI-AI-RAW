@@ -100,7 +100,7 @@ export function PullToRefresh({
         }}
       >
         <motion.div
-          className="w-8 h-8 border-2 border-blue-500 rounded-full"
+          className="w-8 h-8 border-2 border-violet-500 rounded-full"
           style={{
             borderTopColor: 'transparent',
           }}
@@ -474,7 +474,7 @@ export function DraggableList({ items, onReorder, className = '' }: DraggableLis
           className={`
             flex items-center gap-3 p-3 bg-white border rounded-lg
             ${draggedItem === item.id ? 'opacity-50' : ''}
-            ${dragOverItem === item.id ? 'border-blue-500' : ''}
+            ${dragOverItem === item.id ? 'border-violet-500' : ''}
           `}
           draggable
           onDragStart={() => handleDragStart(item.id)}
@@ -645,8 +645,8 @@ export const TouchCheckbox = memo(function TouchCheckbox({
           rounded-md border-2 transition-all
           flex items-center justify-center
           ${checked 
-            ? 'bg-blue-500 border-blue-500 text-white' 
-            : 'bg-white border-gray-300 hover:border-blue-400'
+            ? 'bg-violet-500 border-violet-500 text-white' 
+            : 'bg-white border-gray-300 hover:border-violet-400'
           }
           ${disabled ? 'cursor-not-allowed' : 'active:scale-95'}
         `}
@@ -693,7 +693,7 @@ export const MobileInput = React.forwardRef<HTMLInputElement, MobileInputProps>(
             w-full px-4 py-3 text-base
             border rounded-xl
             transition-colors
-            focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+            focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500
             ${error ? 'border-red-500' : 'border-gray-300'}
             ${className}
           `}
@@ -753,7 +753,7 @@ export const HapticButton = React.forwardRef<HTMLButtonElement, HapticButtonProp
     }, [haptic, onClick]);
 
     const variantClasses = {
-      primary: 'bg-blue-500 text-white hover:bg-blue-600 active:bg-blue-700',
+      primary: 'bg-violet-500 text-white hover:bg-violet-600 active:bg-violet-700',
       secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 active:bg-gray-300',
       ghost: 'bg-transparent hover:bg-gray-100 active:bg-gray-200',
     };

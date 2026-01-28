@@ -294,7 +294,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
   const getArtifactIcon = (type: string) => {
     switch (type?.toLowerCase()) {
       case 'overview':
-        return <FileText className="h-5 w-5 text-blue-600" />
+        return <FileText className="h-5 w-5 text-violet-600" />
       case 'clauses':
         return <FileCheck className="h-5 w-5 text-purple-600" />
       case 'financial':
@@ -302,7 +302,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
       case 'risk':
         return <AlertTriangle className="h-5 w-5 text-red-600" />
       case 'compliance':
-        return <Shield className="h-5 w-5 text-indigo-600" />
+        return <Shield className="h-5 w-5 text-purple-600" />
       default:
         return <FileText className="h-5 w-5 text-gray-600" />
     }
@@ -390,7 +390,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-blue-600" />
+                <DollarSign className="h-5 w-5 text-violet-600" />
                 <span className="text-2xl font-bold">
                   ${enrichedContract?.totalValue?.toLocaleString() || '0'}
                 </span>
@@ -460,7 +460,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               size="sm" 
               onClick={handleAnalyzeWithAI}
               disabled={analyzing}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+              className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
             >
               {analyzing ? (
                 <>
@@ -580,7 +580,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               <Button 
                 onClick={handleAnalyzeWithAI}
                 disabled={analyzing}
-                className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
+                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
               >
                 {analyzing ? (
                   <>
@@ -607,9 +607,9 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-600 mb-1">Total Contract Value</p>
-                <p className="text-2xl font-bold text-blue-900">
+              <div className="p-4 bg-violet-50 rounded-lg">
+                <p className="text-sm text-violet-600 mb-1">Total Contract Value</p>
+                <p className="text-2xl font-bold text-violet-900">
                   ${contract?.totalValue?.toLocaleString() || '0'}
                 </p>
               </div>
@@ -692,8 +692,8 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
             <div className="space-y-4">
               {[1, 2, 3].map((version) => (
                 <div key={version} className="flex items-start gap-4 pb-4 border-b last:border-0">
-                  <div className="p-2 bg-blue-100 rounded-full">
-                    <Clock className="h-4 w-4 text-blue-600" />
+                  <div className="p-2 bg-violet-100 rounded-full">
+                    <Clock className="h-4 w-4 text-violet-600" />
                   </div>
                   <div className="flex-1">
                     <p className="font-medium">Version {version}</p>
@@ -746,12 +746,12 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               </div>
             </div>
 
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
               <div className="flex items-start gap-3">
-                <CheckCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                <CheckCircle className="h-5 w-5 text-violet-600 mt-0.5" />
                 <div>
-                  <p className="font-medium text-blue-900">Compliance Status</p>
-                  <p className="text-sm text-blue-700 mt-1">
+                  <p className="font-medium text-violet-900">Compliance Status</p>
+                  <p className="text-sm text-violet-700 mt-1">
                     All required clauses present and up to date
                   </p>
                 </div>

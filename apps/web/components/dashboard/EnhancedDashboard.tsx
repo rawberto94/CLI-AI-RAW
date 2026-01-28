@@ -194,11 +194,11 @@ export function EnhancedDashboard() {
                 <p className="text-3xl font-bold text-foreground mt-1">{metrics?.totalContracts || 214}</p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.contractsChange || 12) > 0 ? (
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                    <ArrowUpRight className="h-4 w-4 text-violet-600" />
                   ) : (
                     <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange || 12) > 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange || 12) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
                     {Math.abs(metrics?.trends.contractsChange || 12)}%
                   </span>
                   <span className="text-sm text-muted-foreground">vs last period</span>
@@ -219,11 +219,11 @@ export function EnhancedDashboard() {
                 <p className="text-3xl font-bold text-foreground mt-1">${(metrics?.totalValue || 3.8).toFixed(1)}M</p>
                 <div className="flex items-center gap-1 mt-2">
                   {(metrics?.trends.valueChange || 18) > 0 ? (
-                    <ArrowUpRight className="h-4 w-4 text-emerald-600" />
+                    <ArrowUpRight className="h-4 w-4 text-violet-600" />
                   ) : (
                     <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange || 18) > 0 ? 'text-emerald-600' : 'text-destructive'}`}>
+                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange || 18) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
                     {Math.abs(metrics?.trends.valueChange || 18)}%
                   </span>
                   <span className="text-sm text-muted-foreground">vs last period</span>
@@ -286,7 +286,7 @@ export function EnhancedDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-600" />
+              <TrendingUp className="h-5 w-5 text-violet-600" />
               Contract Growth Trend
             </CardTitle>
             <CardDescription>Monthly contract volume and value over time</CardDescription>
@@ -423,7 +423,7 @@ export function EnhancedDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-indigo-600" />
+            <Activity className="h-5 w-5 text-purple-600" />
             Workflow Pipeline
           </CardTitle>
           <CardDescription>Contracts by workflow stage</CardDescription>

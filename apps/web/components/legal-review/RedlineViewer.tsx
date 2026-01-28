@@ -222,7 +222,7 @@ export function RedlineViewer({
       case 'rejected':
         return <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-full text-xs"><X className="h-3 w-3" /> Rejected</span>;
       case 'negotiating':
-        return <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-full text-xs"><MessageSquare className="h-3 w-3" /> Negotiating</span>;
+        return <span className="flex items-center gap-1 px-2 py-0.5 bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 rounded-full text-xs"><MessageSquare className="h-3 w-3" /> Negotiating</span>;
       default:
         return <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-full text-xs"><Clock className="h-3 w-3" /> Pending</span>;
     }
@@ -232,7 +232,7 @@ export function RedlineViewer({
     switch (type) {
       case 'addition': return <span className="text-green-500 font-bold">+</span>;
       case 'deletion': return <span className="text-red-500 font-bold">−</span>;
-      case 'modification': return <Edit3 className="h-4 w-4 text-blue-500" />;
+      case 'modification': return <Edit3 className="h-4 w-4 text-violet-500" />;
       case 'suggestion': return <Zap className="h-4 w-4 text-purple-500" />;
     }
   };
@@ -244,7 +244,7 @@ export function RedlineViewer({
       case 'approve_with_changes':
         return <span className="flex items-center gap-1 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-700 dark:text-yellow-300 rounded-lg font-medium"><AlertTriangle className="h-4 w-4" /> Approve with Changes</span>;
       case 'negotiate':
-        return <span className="flex items-center gap-1 px-3 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 rounded-lg font-medium"><Scale className="h-4 w-4" /> Negotiate</span>;
+        return <span className="flex items-center gap-1 px-3 py-1 bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 rounded-lg font-medium"><Scale className="h-4 w-4" /> Negotiate</span>;
       case 'reject':
         return <span className="flex items-center gap-1 px-3 py-1 bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 rounded-lg font-medium"><XCircle className="h-4 w-4" /> Reject</span>;
     }
@@ -346,7 +346,7 @@ export function RedlineViewer({
           </div>
 
           {/* Summary */}
-          <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 rounded-lg border border-purple-100 dark:border-purple-900/50">
+          <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-purple-50 dark:from-purple-950/30 dark:to-purple-950/30 rounded-lg border border-purple-100 dark:border-purple-900/50">
             <p className="text-gray-700 dark:text-slate-300">{review.summary}</p>
           </div>
 
@@ -633,7 +633,7 @@ export function RedlineViewer({
                               </button>
                               <button
                                 onClick={() => setSelectedChange(selectedChange === change.id ? null : change.id)}
-                                className="flex items-center gap-2 px-4 py-2 border border-blue-200 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
+                                className="flex items-center gap-2 px-4 py-2 border border-violet-200 text-violet-600 rounded-lg hover:bg-violet-50 transition-colors"
                               >
                                 <MessageSquare className="h-4 w-4" />
                                 Negotiate
@@ -650,22 +650,22 @@ export function RedlineViewer({
                                 exit={{ height: 0, opacity: 0 }}
                                 className="mt-4 overflow-hidden"
                               >
-                                <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
-                                  <label className="block text-sm font-medium text-blue-700 mb-2">
+                                <div className="p-4 bg-violet-50 rounded-lg border border-violet-100">
+                                  <label className="block text-sm font-medium text-violet-700 mb-2">
                                     Negotiation Note
                                   </label>
                                   <textarea
                                     value={negotiationNote}
                                     onChange={(e) => setNegotiationNote(e.target.value)}
                                     placeholder="Add your counter-proposal or negotiation notes..."
-                                    className="w-full px-3 py-2 border border-blue-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                    className="w-full px-3 py-2 border border-violet-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                                     rows={3}
                                   />
                                   <div className="flex items-center gap-2 mt-3">
                                     <button
                                       onClick={() => handleNegotiate(change.id)}
                                       disabled={processingId === change.id || !negotiationNote.trim()}
-                                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                                      className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
                                     >
                                       {processingId === change.id ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -691,12 +691,12 @@ export function RedlineViewer({
 
                           {/* Negotiation Note Display */}
                           {change.status === 'negotiating' && change.negotiationNote && (
-                            <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                            <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100">
                               <div className="flex items-center gap-2 mb-1">
-                                <MessageSquare className="h-4 w-4 text-blue-600" />
-                                <span className="text-sm font-medium text-blue-700">Negotiation Note</span>
+                                <MessageSquare className="h-4 w-4 text-violet-600" />
+                                <span className="text-sm font-medium text-violet-700">Negotiation Note</span>
                               </div>
-                              <p className="text-sm text-blue-800">{change.negotiationNote}</p>
+                              <p className="text-sm text-violet-800">{change.negotiationNote}</p>
                             </div>
                           )}
                         </div>

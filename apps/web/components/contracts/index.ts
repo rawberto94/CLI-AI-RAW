@@ -7,6 +7,8 @@
 
 // AI & Intelligence Components
 export { AISummarizer, QuickSummarizeButton } from './AISummarizer';
+export { ContractAIAnalyst } from './ContractAIAnalyst';
+export type { ContractContext as ContractAIAnalystContext } from './ContractAIAnalyst';
 
 // Enhanced Metadata Section
 export { EnhancedContractMetadataSection } from './EnhancedContractMetadataSection';

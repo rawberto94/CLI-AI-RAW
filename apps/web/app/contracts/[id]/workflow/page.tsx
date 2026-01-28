@@ -411,7 +411,7 @@ export default function ContractWorkflowPage() {
                     toast.success('Template applied');
                   }}
                 >
-                  <GitBranch className="w-4 h-4 mr-2 text-blue-600" />
+                  <GitBranch className="w-4 h-4 mr-2 text-violet-600" />
                   Standard (3 steps)
                 </Button>
                 <Button 

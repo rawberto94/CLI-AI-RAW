@@ -184,7 +184,7 @@ export function UploadForm({ onSubmit, defaultValues, clients = [] }: UploadForm
         <div className="flex items-center gap-2">
           {autoSaveStatus === "saving" && (
             <>
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
               <span className="text-muted-foreground">Saving draft...</span>
             </>
           )}

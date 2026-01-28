@@ -9,7 +9,7 @@ import { EmergingTrendsPanel } from '@/components/rate-cards/EmergingTrendsPanel
 
 export function MarketIntelligenceClientPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       <div className="container mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
         
@@ -18,7 +18,7 @@ export function MarketIntelligenceClientPage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4"
         >
-          <div className="p-3 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl shadow-lg shadow-cyan-500/25">
+          <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg shadow-purple-500/25">
             <TrendingUp className="w-7 h-7 text-white" />
           </div>
           <div>

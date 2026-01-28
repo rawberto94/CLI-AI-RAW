@@ -90,7 +90,7 @@ const typeConfigs: Record<
     icon: Inbox,
     title: 'No data yet',
     description: 'Get started by adding your first item.',
-    gradient: 'from-blue-500 to-cyan-500',
+    gradient: 'from-violet-500 to-purple-500',
   },
   'no-results': {
     icon: Search,
@@ -126,13 +126,13 @@ const typeConfigs: Record<
     icon: Bell,
     title: 'No notifications',
     description: "You're all caught up! Check back later.",
-    gradient: 'from-green-500 to-emerald-500',
+    gradient: 'from-violet-500 to-violet-500',
   },
   'no-messages': {
     icon: MessageSquare,
     title: 'No messages',
     description: 'Start a conversation or wait for incoming messages.',
-    gradient: 'from-blue-500 to-indigo-500',
+    gradient: 'from-violet-500 to-purple-500',
   },
   'no-activity': {
     icon: Clock,
@@ -144,19 +144,19 @@ const typeConfigs: Record<
     icon: FileText,
     title: 'No contracts yet',
     description: 'Upload your first contract to start analyzing.',
-    gradient: 'from-blue-500 to-violet-500',
+    gradient: 'from-violet-500 to-violet-500',
   },
   'no-team': {
     icon: Users,
     title: 'No team members',
     description: 'Invite colleagues to collaborate on contracts.',
-    gradient: 'from-teal-500 to-cyan-500',
+    gradient: 'from-violet-500 to-purple-500',
   },
   'no-analytics': {
     icon: BarChart3,
     title: 'No analytics data',
     description: 'Analytics will appear once you have active contracts.',
-    gradient: 'from-indigo-500 to-purple-500',
+    gradient: 'from-purple-500 to-purple-500',
   },
   'coming-soon': {
     icon: Zap,
@@ -497,7 +497,7 @@ export const InlineEmptyState = memo(function InlineEmptyState({
       {action && (
         <button
           onClick={action.onClick}
-          className="text-sm text-blue-600 dark:text-blue-400 hover:underline font-medium"
+          className="text-sm text-violet-600 dark:text-violet-400 hover:underline font-medium"
         >
           {action.label}
         </button>

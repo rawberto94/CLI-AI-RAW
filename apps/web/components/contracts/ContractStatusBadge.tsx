@@ -56,7 +56,7 @@ const statusConfig: Record<string, {
     label: 'Draft',
     icon: FilePlus,
     variant: 'secondary',
-    className: 'bg-blue-100 text-blue-700 border-blue-200',
+    className: 'bg-violet-100 text-violet-700 border-violet-200',
   },
   PENDING: {
     label: 'Pending Approval',
@@ -70,13 +70,13 @@ const statusConfig: Record<string, {
     label: 'Uploaded',
     icon: FileCheck,
     variant: 'secondary',
-    className: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    className: 'bg-violet-100 text-violet-700 border-violet-200',
   },
   PROCESSING: {
     label: 'Processing',
     icon: Loader2,
     variant: 'default',
-    className: 'bg-purple-100 text-purple-700 border-purple-200 animate-pulse',
+    className: 'bg-violet-100 text-violet-700 border-violet-200 animate-pulse',
   },
   COMPLETED: {
     label: 'Processed',
@@ -134,12 +134,12 @@ const roleConfig: Record<string, {
   NEW_CONTRACT: {
     label: 'New',
     icon: FilePlus,
-    className: 'bg-blue-100 text-blue-700 border-blue-200',
+    className: 'bg-violet-100 text-violet-700 border-violet-200',
   },
   AMENDMENT: {
     label: 'Amendment',
     icon: FileEdit,
-    className: 'bg-purple-100 text-purple-700 border-purple-200',
+    className: 'bg-violet-100 text-violet-700 border-violet-200',
   },
   RENEWAL: {
     label: 'Renewal',
@@ -278,9 +278,9 @@ export function ContractStatusDot({
   if (!config) return null;
 
   const dotColors: Record<string, string> = {
-    DRAFT: 'bg-blue-500',
+    DRAFT: 'bg-violet-500',
     PENDING: 'bg-amber-500',
-    UPLOADED: 'bg-indigo-500',
+    UPLOADED: 'bg-purple-500',
     PROCESSING: 'bg-purple-500 animate-pulse',
     COMPLETED: 'bg-green-500',
     ACTIVE: 'bg-green-500',

@@ -146,8 +146,8 @@ export function ExportDialog({
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-100">
-                <Download className="h-5 w-5 text-blue-600" />
+              <div className="p-2 rounded-lg bg-violet-100">
+                <Download className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <h2 className="font-semibold text-slate-900">{title}</h2>
@@ -180,13 +180,13 @@ export function ExportDialog({
                       className={cn(
                         'flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-left',
                         isSelected
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-violet-500 bg-violet-50'
                           : 'border-slate-200 hover:border-slate-300 bg-white'
                       )}
                     >
-                      <Icon className={cn('h-5 w-5', isSelected ? 'text-blue-600' : 'text-slate-400')} />
+                      <Icon className={cn('h-5 w-5', isSelected ? 'text-violet-600' : 'text-slate-400')} />
                       <div>
-                        <p className={cn('font-medium text-sm', isSelected ? 'text-blue-700' : 'text-slate-700')}>
+                        <p className={cn('font-medium text-sm', isSelected ? 'text-violet-700' : 'text-slate-700')}>
                           {config.label}
                         </p>
                         <p className="text-[10px] text-slate-500 line-clamp-1">{config.description}</p>
@@ -255,7 +255,7 @@ export function ExportDialog({
             <Button
               onClick={handleExport}
               disabled={isExporting}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 min-w-[120px]"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 min-w-[120px]"
             >
               {isExporting ? (
                 <>

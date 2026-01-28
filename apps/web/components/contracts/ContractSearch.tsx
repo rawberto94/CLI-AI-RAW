@@ -119,7 +119,7 @@ export function ContractSearch({
           "relative flex items-center",
           "bg-white border rounded-lg transition-all duration-200",
           isFocused
-            ? "border-blue-500 ring-2 ring-blue-100"
+            ? "border-violet-500 ring-2 ring-violet-100"
             : "border-gray-300 hover:border-gray-400"
         )}
       >
@@ -153,7 +153,7 @@ export function ContractSearch({
         {/* Loading Indicator */}
         {isLoading && (
           <div className="absolute right-12 flex items-center">
-            <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />
+            <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />
           </div>
         )}
 
@@ -235,12 +235,12 @@ export function ContractSearch({
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 rounded-md",
                       "text-sm text-left text-gray-700",
-                      "hover:bg-blue-50 transition-colors"
+                      "hover:bg-violet-50 transition-colors"
                     )}
                     role="option"
                     aria-selected={false}
                   >
-                    <Search className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <Search className="w-4 h-4 text-violet-500 flex-shrink-0" />
                     <span className="truncate">{suggestion}</span>
                   </button>
                 ))}

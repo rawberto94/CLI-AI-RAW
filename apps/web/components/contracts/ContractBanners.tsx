@@ -323,17 +323,17 @@ export const SuccessBanner = memo(function SuccessBanner({
         exit={{ opacity: 0, y: -10, height: 0 }}
         transition={{ duration: 0.2 }}
       >
-        <Card className="bg-gradient-to-r from-emerald-50 to-green-50 border-emerald-200">
+        <Card className="bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200">
           <CardContent className="py-3 px-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-emerald-100 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
-                  <p className="font-medium text-emerald-900">{message}</p>
+                  <p className="font-medium text-violet-900">{message}</p>
                   {description && (
-                    <p className="text-sm text-emerald-700">{description}</p>
+                    <p className="text-sm text-violet-700">{description}</p>
                   )}
                 </div>
               </div>
@@ -341,7 +341,7 @@ export const SuccessBanner = memo(function SuccessBanner({
                 <Button
                   size="sm"
                   variant="ghost"
-                  className="h-8 w-8 p-0 text-emerald-500 hover:text-emerald-700 hover:bg-emerald-100"
+                  className="h-8 w-8 p-0 text-violet-500 hover:text-violet-700 hover:bg-violet-100"
                   onClick={onDismiss}
                 >
                   <X className="h-4 w-4" />

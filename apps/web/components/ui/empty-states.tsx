@@ -63,7 +63,7 @@ export function EmptyState({
           className="mb-6"
           variants={floatAnimation}
         >
-          <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-full shadow-inner">
+          <div className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 rounded-full shadow-inner">
             {icon}
           </div>
         </motion.div>
@@ -124,7 +124,7 @@ export function NoContracts({ onUpload }: { onUpload?: () => void } = {}) {
     <EmptyState
       title="No contracts yet"
       description="Upload your first contract to unlock AI-powered analysis, risk assessment, and insights."
-      icon={<FileText className="h-12 w-12 text-blue-500" />}
+      icon={<FileText className="h-12 w-12 text-violet-500" />}
       tips={[
         "Supports PDF, Word, and text documents",
         "AI extracts key terms and clauses automatically",
@@ -132,7 +132,7 @@ export function NoContracts({ onUpload }: { onUpload?: () => void } = {}) {
       ]}
       action={
         <Link href="/upload">
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg group">
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg group">
             <Upload className="h-4 w-4 mr-2" />
             Upload Your First Contract
             <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />

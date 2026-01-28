@@ -95,7 +95,7 @@ export function WorkflowStepper({
                   'relative flex items-center justify-center rounded-full border-2 transition-all duration-300',
                   config.icon,
                   step.status === 'completed' && 'bg-green-500 border-green-500 text-white',
-                  step.status === 'current' && 'bg-blue-500 border-blue-500 text-white animate-pulse',
+                  step.status === 'current' && 'bg-violet-500 border-violet-500 text-white animate-pulse',
                   step.status === 'upcoming' && 'bg-gray-100 border-gray-300 text-gray-400',
                   step.status === 'error' && 'bg-red-500 border-red-500 text-white'
                 )}
@@ -129,7 +129,7 @@ export function WorkflowStepper({
                     'font-medium transition-colors',
                     config.label,
                     step.status === 'completed' && 'text-green-700',
-                    step.status === 'current' && 'text-blue-700',
+                    step.status === 'current' && 'text-violet-700',
                     step.status === 'upcoming' && 'text-gray-400',
                     step.status === 'error' && 'text-red-700'
                   )}

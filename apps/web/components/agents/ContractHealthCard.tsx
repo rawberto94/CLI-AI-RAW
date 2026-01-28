@@ -49,7 +49,7 @@ export function ContractHealthCard({ contractId, health, onAutoFix }: ContractHe
   const getHealthColor = (healthLevel: string) => {
     switch (healthLevel) {
       case 'excellent': return 'text-green-600';
-      case 'good': return 'text-blue-600';
+      case 'good': return 'text-violet-600';
       case 'fair': return 'text-yellow-600';
       case 'poor': return 'text-orange-600';
       case 'critical': return 'text-red-600';
@@ -60,7 +60,7 @@ export function ContractHealthCard({ contractId, health, onAutoFix }: ContractHe
   const getHealthBg = (healthLevel: string) => {
     switch (healthLevel) {
       case 'excellent': return 'bg-green-100';
-      case 'good': return 'bg-blue-100';
+      case 'good': return 'bg-violet-100';
       case 'fair': return 'bg-yellow-100';
       case 'poor': return 'bg-orange-100';
       case 'critical': return 'bg-red-100';
@@ -179,7 +179,7 @@ export function ContractHealthCard({ contractId, health, onAutoFix }: ContractHe
         {health.predictions.length > 0 && (
           <div className="mb-4">
             <h4 className="text-sm font-semibold text-gray-900 mb-2.5 flex items-center gap-2">
-              <TrendingUp className="h-3.5 w-3.5 text-blue-600" />
+              <TrendingUp className="h-3.5 w-3.5 text-violet-600" />
               Predictions
             </h4>
             <div className="space-y-2">
@@ -189,20 +189,20 @@ export function ContractHealthCard({ contractId, health, onAutoFix }: ContractHe
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="p-2.5 border border-blue-200 bg-blue-50 rounded-lg"
+                  className="p-2.5 border border-violet-200 bg-violet-50 rounded-lg"
                 >
                   <div className="flex items-center gap-2 mb-1">
                     <div className="flex items-center gap-1.5">
-                      <div className="h-1.5 w-1.5 rounded-full bg-blue-600" />
-                      <span className="text-xs font-medium text-blue-900">
+                      <div className="h-1.5 w-1.5 rounded-full bg-violet-600" />
+                      <span className="text-xs font-medium text-violet-900">
                         {(prediction.probability * 100).toFixed(0)}% probability
                       </span>
                     </div>
-                    <Badge variant="outline" className="px-2 py-0 text-xs border-blue-300 text-blue-700">
+                    <Badge variant="outline" className="px-2 py-0 text-xs border-violet-300 text-violet-700">
                       {prediction.impact} impact
                     </Badge>
                   </div>
-                  <p className="text-xs text-blue-800">{prediction.description}</p>
+                  <p className="text-xs text-violet-800">{prediction.description}</p>
                 </motion.div>
               ))}
             </div>

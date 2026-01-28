@@ -58,13 +58,13 @@ interface BannerProps {
 const alertConfig: Record<AlertType, { icon: LucideIcon; colors: string; iconColor: string }> = {
   info: {
     icon: Info,
-    colors: 'bg-blue-50 border-blue-200 text-blue-800',
-    iconColor: 'text-blue-500',
+    colors: 'bg-violet-50 border-violet-200 text-violet-800',
+    iconColor: 'text-violet-500',
   },
   success: {
     icon: CheckCircle,
-    colors: 'bg-emerald-50 border-emerald-200 text-emerald-800',
-    iconColor: 'text-emerald-500',
+    colors: 'bg-violet-50 border-violet-200 text-violet-800',
+    iconColor: 'text-violet-500',
   },
   warning: {
     icon: AlertTriangle,
@@ -164,11 +164,11 @@ export function Banner({
   const [isDismissed, setIsDismissed] = useState(false);
 
   const bannerColors = {
-    info: 'bg-blue-600 text-white',
-    success: 'bg-emerald-600 text-white',
+    info: 'bg-violet-600 text-white',
+    success: 'bg-violet-600 text-white',
     warning: 'bg-amber-500 text-white',
     error: 'bg-red-600 text-white',
-    promo: 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white',
+    promo: 'bg-gradient-to-r from-purple-600 to-purple-600 text-white',
   };
 
   const handleDismiss = () => {
@@ -274,8 +274,8 @@ export function Callout({
     <div
       className={cn(
         'relative pl-6 py-4 pr-4 border-l-4 rounded-r-xl',
-        type === 'info' && 'bg-blue-50 border-blue-500',
-        type === 'success' && 'bg-emerald-50 border-emerald-500',
+        type === 'info' && 'bg-violet-50 border-violet-500',
+        type === 'success' && 'bg-violet-50 border-violet-500',
         type === 'warning' && 'bg-amber-50 border-amber-500',
         type === 'error' && 'bg-red-50 border-red-500',
         className

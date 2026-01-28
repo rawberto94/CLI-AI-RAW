@@ -389,7 +389,7 @@ const KeyboardShortcutsOverlay = memo(function KeyboardShortcutsOverlay() {
             <div className="sticky top-0 z-10 bg-white dark:bg-zinc-900 border-b border-zinc-200 dark:border-zinc-800 px-6 py-4">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-blue-500 to-violet-500 rounded-xl">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-xl">
                     <Keyboard className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -417,7 +417,7 @@ const KeyboardShortcutsOverlay = memo(function KeyboardShortcutsOverlay() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search shortcuts..."
-                  className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   autoFocus
                 />
               </div>
@@ -428,7 +428,7 @@ const KeyboardShortcutsOverlay = memo(function KeyboardShortcutsOverlay() {
                   onClick={() => setSelectedCategory(null)}
                   className={`flex-shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                     !selectedCategory
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                      ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
                       : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                   }`}
                 >
@@ -440,7 +440,7 @@ const KeyboardShortcutsOverlay = memo(function KeyboardShortcutsOverlay() {
                     onClick={() => setSelectedCategory(category.id)}
                     className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                       selectedCategory === category.id
-                        ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+                        ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400'
                         : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                     }`}
                   >

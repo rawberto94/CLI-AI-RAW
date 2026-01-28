@@ -179,7 +179,7 @@ export default function SearchClient() {
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyPress={(e) => e.key === "Enter" && handleSearch(searchQuery)}
               aria-label="Search contracts"
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg"
+              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent text-lg"
             />
             <Button
               onClick={() => handleSearch(searchQuery)}
@@ -202,7 +202,7 @@ export default function SearchClient() {
                     <button
                       key={index}
                       onClick={() => handleSearch(search)}
-                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-violet-600 hover:bg-violet-50 px-2 py-1 rounded transition-colors"
                     >
                       <Clock className="w-4 h-4" />
                       {search}
@@ -220,7 +220,7 @@ export default function SearchClient() {
                     <button
                       key={index}
                       onClick={() => handleSearch(search)}
-                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                      className="flex items-center gap-2 text-sm text-gray-600 hover:text-violet-600 hover:bg-violet-50 px-2 py-1 rounded transition-colors"
                     >
                       <TrendingUp className="w-4 h-4" />
                       {search}
@@ -337,7 +337,7 @@ export default function SearchClient() {
                                 key={highlightIndex}
                                 className="text-sm text-gray-600 flex items-start gap-2"
                               >
-                                <ArrowRight className="w-3 h-3 mt-0.5 text-blue-600 flex-shrink-0" />
+                                <ArrowRight className="w-3 h-3 mt-0.5 text-violet-600 flex-shrink-0" />
                                 <span
                                   dangerouslySetInnerHTML={{
                                     __html: sanitizeHtml(highlight),

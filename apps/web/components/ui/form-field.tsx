@@ -120,7 +120,7 @@ export function FormField({
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
               : success
               ? 'border-green-300 focus:border-green-500 focus:ring-green-500'
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              : 'border-gray-300 focus:border-violet-500 focus:ring-violet-500'
             }
             focus:outline-none focus:ring-2 focus:ring-offset-0
             disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
@@ -170,7 +170,7 @@ export function FormField({
         {isFocused && (
           <motion.div
             layoutId="focus-ring"
-            className="absolute inset-0 rounded-lg border-2 border-blue-500 pointer-events-none"
+            className="absolute inset-0 rounded-lg border-2 border-violet-500 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -243,7 +243,7 @@ export function TextareaField({
             w-full px-4 py-2 rounded-lg border transition-all
             ${error
               ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-              : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+              : 'border-gray-300 focus:border-violet-500 focus:ring-violet-500'
             }
             focus:outline-none focus:ring-2 focus:ring-offset-0
             disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
@@ -255,7 +255,7 @@ export function TextareaField({
         {isFocused && (
           <motion.div
             layoutId="focus-ring-textarea"
-            className="absolute inset-0 rounded-lg border-2 border-blue-500 pointer-events-none"
+            className="absolute inset-0 rounded-lg border-2 border-violet-500 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -312,7 +312,7 @@ export function SelectField({
           w-full px-4 py-2 rounded-lg border transition-all
           ${error
             ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
-            : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'
+            : 'border-gray-300 focus:border-violet-500 focus:ring-violet-500'
           }
           focus:outline-none focus:ring-2 focus:ring-offset-0
           disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed

@@ -213,14 +213,14 @@ function ChangeRow({ change, showUnchanged }: ChangeRowProps) {
   if (change.changeType === 'unchanged' && !showUnchanged) return null
   
   const icons = {
-    added: <Plus className="h-3.5 w-3.5 text-emerald-600" />,
+    added: <Plus className="h-3.5 w-3.5 text-violet-600" />,
     removed: <Minus className="h-3.5 w-3.5 text-red-600" />,
     modified: <ArrowLeftRight className="h-3.5 w-3.5 text-amber-600" />,
     unchanged: <Equal className="h-3.5 w-3.5 text-slate-400" />,
   }
   
   const bgColors = {
-    added: 'bg-emerald-50 border-emerald-200',
+    added: 'bg-violet-50 border-violet-200',
     removed: 'bg-red-50 border-red-200',
     modified: 'bg-amber-50 border-amber-200',
     unchanged: 'bg-slate-50 border-slate-200',
@@ -251,7 +251,7 @@ function ChangeRow({ change, showUnchanged }: ChangeRowProps) {
             <div className={cn(
               "rounded px-2 py-1",
               change.changeType === 'added' || change.changeType === 'modified'
-                ? "bg-emerald-100/50 text-emerald-700"
+                ? "bg-violet-100/50 text-violet-700"
                 : "bg-slate-100 text-slate-600"
             )}>
               {formatValue(change.newValue)}
@@ -371,9 +371,9 @@ export default function VersionComparePage() {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-indigo-500 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-4" />
           <p className="text-slate-600">Loading versions...</p>
         </div>
       </div>
@@ -430,7 +430,7 @@ export default function VersionComparePage() {
 
   return (
     <div className={cn(
-      "min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20",
+      "min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20",
       isFullscreen && "fixed inset-0 z-50"
     )}>
       {/* Header */}
@@ -446,7 +446,7 @@ export default function VersionComparePage() {
               </Button>
               <Separator orientation="vertical" className="h-6 hidden sm:block" />
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
                   <GitCompare className="h-4 w-4 text-white" />
                 </div>
                 <div>
@@ -470,7 +470,7 @@ export default function VersionComparePage() {
                       onClick={handleCopyLink}
                       className="h-9 w-9"
                     >
-                      {copied ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      {copied ? <Check className="h-4 w-4 text-violet-500" /> : <Copy className="h-4 w-4" />}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Copy link</TooltipContent>
@@ -571,12 +571,12 @@ export default function VersionComparePage() {
         
         {/* Stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-          <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className="p-3 rounded-lg bg-violet-50 border border-violet-200">
             <div className="flex items-center gap-2">
-              <Plus className="h-4 w-4 text-emerald-600" />
-              <span className="text-lg font-bold text-emerald-700">{stats.added}</span>
+              <Plus className="h-4 w-4 text-violet-600" />
+              <span className="text-lg font-bold text-violet-700">{stats.added}</span>
             </div>
-            <p className="text-xs text-emerald-600 mt-1">Added</p>
+            <p className="text-xs text-violet-600 mt-1">Added</p>
           </div>
           <div className="p-3 rounded-lg bg-red-50 border border-red-200">
             <div className="flex items-center gap-2">
@@ -606,7 +606,7 @@ export default function VersionComparePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-indigo-500" />
+                <FileText className="h-4 w-4 text-purple-500" />
                 Changes
               </CardTitle>
               <div className="flex items-center gap-2">

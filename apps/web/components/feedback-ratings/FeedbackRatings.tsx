@@ -331,13 +331,13 @@ export function FeedbackForm({
         onChange={e => setMessage(e.target.value)}
         placeholder={placeholder}
         rows={4}
-        className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
       />
 
       <button
         type="submit"
         disabled={rating === 0}
-        className="w-full mt-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+        className="w-full mt-4 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-medium transition-colors"
       >
         Submit Feedback
       </button>
@@ -477,7 +477,7 @@ export function SatisfactionSurvey({
                 <div
                   key={s}
                   className={`flex-1 h-1 rounded-full ${
-                    step >= s ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+                    step >= s ? 'bg-violet-600' : 'bg-gray-200 dark:bg-gray-700'
                   }`}
                 />
               ))}
@@ -500,7 +500,7 @@ export function SatisfactionSurvey({
                   <button
                     onClick={() => setStep(2)}
                     disabled={satisfaction === 0}
-                    className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-medium transition-colors"
+                    className="w-full mt-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-gray-300 dark:disabled:bg-gray-700 text-white rounded-xl font-medium transition-colors"
                   >
                     Continue
                   </button>
@@ -524,7 +524,7 @@ export function SatisfactionSurvey({
                         onClick={() => toggleImprovement(option)}
                         className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                           improvements.includes(option)
-                            ? 'bg-blue-600 text-white'
+                            ? 'bg-violet-600 text-white'
                             : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300'
                         }`}
                       >
@@ -534,7 +534,7 @@ export function SatisfactionSurvey({
                   </div>
                   <button
                     onClick={() => setStep(3)}
-                    className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                    className="w-full mt-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors"
                   >
                     Continue
                   </button>
@@ -556,11 +556,11 @@ export function SatisfactionSurvey({
                     onChange={e => setComment(e.target.value)}
                     placeholder="Share your thoughts..."
                     rows={4}
-                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    className="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
                   />
                   <button
                     onClick={handleSubmit}
-                    className="w-full mt-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
+                    className="w-full mt-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-xl font-medium transition-colors"
                   >
                     Submit
                   </button>

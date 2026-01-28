@@ -33,11 +33,11 @@ export function PageLoading({
   const getIcon = () => {
     switch (type) {
       case 'ai':
-        return <Brain className="w-12 h-12 text-blue-600 animate-pulse" />
+        return <Brain className="w-12 h-12 text-violet-600 animate-pulse" />
       case 'processing':
         return <Activity className="w-12 h-12 text-green-600 animate-pulse" />
       default:
-        return <LoadingSpinner size="lg" className="text-blue-600" />
+        return <LoadingSpinner size="lg" className="text-violet-600" />
     }
   }
 

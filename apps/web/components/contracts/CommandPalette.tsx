@@ -614,7 +614,7 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <div className="space-y-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                 <CommandIcon className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -626,7 +626,7 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
             {/* Global */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-500" />
+                <span className="w-2 h-2 rounded-full bg-violet-500" />
                 Global
               </h3>
               <div className="grid grid-cols-2 gap-2">
@@ -728,31 +728,31 @@ function CommandItem({
       className={cn(
         'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors',
         isSelected
-          ? 'bg-blue-50 border-blue-200'
+          ? 'bg-violet-50 border-violet-200'
           : 'hover:bg-gray-50'
       )}
     >
       <div className={cn(
         'p-2 rounded-lg',
-        isSelected ? 'bg-blue-100' : 'bg-gray-100'
+        isSelected ? 'bg-violet-100' : 'bg-gray-100'
       )}>
         <Icon className={cn(
           'h-4 w-4',
-          isSelected ? 'text-blue-600' : 'text-gray-600'
+          isSelected ? 'text-violet-600' : 'text-gray-600'
         )} />
       </div>
 
       <div className="flex-1 min-w-0">
         <p className={cn(
           'text-sm font-medium',
-          isSelected ? 'text-blue-900' : 'text-gray-900'
+          isSelected ? 'text-violet-900' : 'text-gray-900'
         )}>
           {command.label}
         </p>
         {command.description && (
           <p className={cn(
             'text-xs truncate',
-            isSelected ? 'text-blue-700' : 'text-gray-500'
+            isSelected ? 'text-violet-700' : 'text-gray-500'
           )}>
             {command.description}
           </p>
@@ -763,7 +763,7 @@ function CommandItem({
         <kbd className={cn(
           'px-2 py-1 text-xs font-mono border rounded',
           isSelected
-            ? 'bg-white border-blue-300 text-blue-700'
+            ? 'bg-white border-violet-300 text-violet-700'
             : 'bg-gray-100 border-gray-300 text-gray-600'
         )}>
           {command.shortcut}
@@ -771,7 +771,7 @@ function CommandItem({
       )}
 
       {isSelected && (
-        <ArrowRight className="h-4 w-4 text-blue-600" />
+        <ArrowRight className="h-4 w-4 text-violet-600" />
       )}
     </button>
   )

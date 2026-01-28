@@ -56,7 +56,7 @@ export function UploadSuccess({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full shadow-lg"
+            className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-400 to-violet-500 rounded-full shadow-lg"
           >
             <CheckCircle2 className="w-12 h-12 text-white" />
           </motion.div>
@@ -79,7 +79,7 @@ export function UploadSuccess({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="border-2 border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
+          <Card className="border-2 border-green-200 bg-gradient-to-br from-violet-50 to-violet-50">
             <CardContent className="p-6">
               <div className="flex items-start gap-4">
                 <div className="p-3 bg-white rounded-lg shadow-sm">
@@ -114,7 +114,7 @@ export function UploadSuccess({
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-semibold text-gray-900">AI Processing</h3>
-                <span className="text-sm font-medium text-blue-600">{progress}%</span>
+                <span className="text-sm font-medium text-violet-600">{progress}%</span>
               </div>
               
               <Progress value={progress} className="h-2" />
@@ -150,10 +150,10 @@ export function UploadSuccess({
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
         >
-          <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+          <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
             <CardContent className="p-6">
               <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-blue-600" />
+                <Sparkles className="w-5 h-5 text-violet-600" />
                 AI is Extracting
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -187,7 +187,7 @@ export function UploadSuccess({
         >
           <Button 
             onClick={onViewContract}
-            className="flex-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg"
+            className="flex-1 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg"
             size="lg"
           >
             View Contract Details

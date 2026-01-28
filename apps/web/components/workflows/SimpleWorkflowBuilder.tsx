@@ -191,7 +191,7 @@ export function SimpleWorkflowBuilder({
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-gradient-to-r from-indigo-600 to-purple-600 gap-2"
+            className="bg-gradient-to-r from-purple-600 to-purple-600 gap-2"
           >
             <Save className="h-4 w-4" />
             {saving ? 'Saving...' : 'Save'}
@@ -201,7 +201,7 @@ export function SimpleWorkflowBuilder({
 
       {/* Quick Templates */}
       {!workflowId && (
-        <Card className="bg-gradient-to-br from-slate-50 to-indigo-50/30 border-slate-200">
+        <Card className="bg-gradient-to-br from-slate-50 to-purple-50/30 border-slate-200">
           <CardContent className="p-4">
             <p className="text-sm font-medium text-slate-600 mb-3">Quick Start:</p>
             <div className="flex flex-wrap gap-2">
@@ -211,7 +211,7 @@ export function SimpleWorkflowBuilder({
                   variant="outline"
                   size="sm"
                   onClick={() => applyTemplate(template.id)}
-                  className="bg-white hover:bg-indigo-50 hover:border-indigo-300"
+                  className="bg-white hover:bg-purple-50 hover:border-indigo-300"
                 >
                   <Shield className="h-3 w-3 mr-1.5" />
                   {template.name}
@@ -253,7 +253,7 @@ export function SimpleWorkflowBuilder({
               <div key={step.id} className="relative">
                 <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-200 hover:border-indigo-300 transition-colors">
                   {/* Step Number */}
-                  <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0">
+                  <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center text-white text-sm font-bold shrink-0">
                     {index + 1}
                   </div>
 

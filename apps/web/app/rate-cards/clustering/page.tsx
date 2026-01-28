@@ -194,19 +194,19 @@ export default function ClusteringPage() {
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="p-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl"
+                    className="p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl"
                   >
                     <div className="text-sm text-slate-500 font-medium">Total Opportunities</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                       {summary.totalOpportunities}
                     </div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="p-4 bg-gradient-to-br from-emerald-50 to-teal-100 rounded-xl"
+                    className="p-4 bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl"
                   >
                     <div className="text-sm text-slate-500 font-medium">Consolidation Savings</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
                       ${Math.round(summary.totalConsolidationSavings).toLocaleString()}
                     </div>
                   </motion.div>

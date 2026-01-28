@@ -6,14 +6,14 @@ import { BulkBaselineComparison } from '@/components/rate-cards/BulkBaselineComp
 
 export default function BaselineComparisonPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/20">
       <div className="container mx-auto py-8 px-6">
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4 mb-8"
         >
-          <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-violet-500/25">
             <GitCompare className="w-7 h-7 text-white" />
           </div>
           <div>

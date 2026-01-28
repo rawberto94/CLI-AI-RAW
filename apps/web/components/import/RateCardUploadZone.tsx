@@ -221,7 +221,7 @@ export function RateCardUploadZone({
           transition-colors duration-200
           ${
             isDragging
-              ? 'border-blue-500 bg-blue-50'
+              ? 'border-violet-500 bg-violet-50'
               : 'border-gray-300 hover:border-gray-400 bg-gray-50'
           }
         `}
@@ -293,7 +293,7 @@ export function RateCardUploadZone({
                     <div className="mt-2">
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-blue-500 h-2 rounded-full transition-all"
+                          className="bg-violet-500 h-2 rounded-full transition-all"
                           style={{ width: `${file.progress}%` }}
                         />
                       </div>
@@ -312,7 +312,7 @@ export function RateCardUploadZone({
                     </span>
                   )}
                   {file.status === 'uploading' && (
-                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-600 rounded">
+                    <span className="px-2 py-1 text-xs bg-violet-100 text-violet-600 rounded">
                       Uploading...
                     </span>
                   )}
@@ -346,7 +346,7 @@ export function RateCardUploadZone({
               disabled={
                 isUploading || !files.some((f) => f.status === 'pending')
               }
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? 'Uploading...' : 'Upload All'}
             </button>

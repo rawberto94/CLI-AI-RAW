@@ -41,8 +41,8 @@ const actions: QuickAction[] = [
     description: "Add new contracts",
     href: "/upload",
     color: "blue",
-    gradient: "from-blue-500 to-cyan-500",
-    shadowColor: "shadow-blue-500/20"
+    gradient: "from-violet-500 to-purple-500",
+    shadowColor: "shadow-violet-500/20"
   },
   {
     icon: MessageSquare,
@@ -59,8 +59,8 @@ const actions: QuickAction[] = [
     description: "Find contracts",
     href: "/search",
     color: "emerald",
-    gradient: "from-emerald-500 to-teal-500",
-    shadowColor: "shadow-emerald-500/20"
+    gradient: "from-violet-500 to-violet-500",
+    shadowColor: "shadow-violet-500/20"
   },
   {
     icon: BarChart3,
@@ -98,8 +98,8 @@ const actions: QuickAction[] = [
   //   description: "Upcoming renewals",
   //   href: "/renewals",
   //   color: "green",
-  //   gradient: "from-emerald-500 to-green-500",
-  //   shadowColor: "shadow-emerald-500/20",
+  //   gradient: "from-violet-500 to-purple-500",
+  //   shadowColor: "shadow-violet-500/20",
   //   badge: 2
   // },
   // {
@@ -141,17 +141,17 @@ export function QuickActions() {
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5, delay: 0.5 }}
     >
-      <Card className="relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl">
-        <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent rounded-full -translate-y-1/2 -translate-x-1/2" />
+      <Card className="relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-violet-100/50 dark:border-violet-800/30 shadow-xl shadow-violet-500/5">
+        <div className="absolute top-0 left-0 w-24 h-24 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent rounded-full -translate-y-1/2 -translate-x-1/2" />
         <CardHeader className="pb-3 relative">
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-yellow-500 to-amber-500 text-white shadow-lg shadow-yellow-500/30">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/30">
                 <Zap className="h-4 w-4" />
               </div>
               Quick Actions
             </CardTitle>
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-full">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-violet-50 dark:bg-violet-950/50 px-2.5 py-1 rounded-full border border-violet-100 dark:border-violet-800/50">
               <Keyboard className="h-3 w-3" />
               <span>Press ? for shortcuts</span>
             </div>
@@ -176,7 +176,7 @@ export function QuickActions() {
                     >
                       <Button 
                         variant="outline" 
-                        className={`h-auto w-full flex flex-col items-center gap-2 py-5 transition-all relative group bg-white/80 dark:bg-slate-800/80 border-slate-200/60 dark:border-slate-700/60 hover:bg-white dark:hover:bg-slate-800 hover:shadow-lg ${action.shadowColor} rounded-xl`}
+                        className={`h-auto w-full flex flex-col items-center gap-2 py-5 transition-all relative group bg-white/80 dark:bg-slate-800/80 border-slate-200/60 dark:border-slate-700/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-700 hover:shadow-lg hover:shadow-violet-500/10 rounded-xl`}
                       >
                         {action.isNew && (
                           <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] px-2 py-0.5 shadow-lg shadow-purple-500/30 border-0">

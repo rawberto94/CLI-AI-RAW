@@ -335,9 +335,9 @@ function TourTooltip({
             key={i}
             className={`w-2 h-2 rounded-full transition-colors ${
               i === currentStep
-                ? 'bg-blue-500'
+                ? 'bg-violet-500'
                 : i < currentStep
-                ? 'bg-blue-300'
+                ? 'bg-violet-300'
                 : 'bg-gray-300 dark:bg-gray-600'
             }`}
           />
@@ -366,7 +366,7 @@ function TourTooltip({
           )}
           <button
             onClick={onNext}
-            className="flex items-center gap-1 px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg"
+            className="flex items-center gap-1 px-4 py-1.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium rounded-lg"
           >
             {isLastStep ? (
               <>
@@ -421,9 +421,9 @@ export function FeatureBeacon({
     >
       <span className="relative flex h-4 w-4">
         {pulse && (
-          <span className="absolute inset-0 rounded-full bg-blue-400 animate-ping opacity-75" />
+          <span className="absolute inset-0 rounded-full bg-violet-400 animate-ping opacity-75" />
         )}
-        <span className="relative inline-flex rounded-full h-4 w-4 bg-blue-500" />
+        <span className="relative inline-flex rounded-full h-4 w-4 bg-violet-500" />
       </span>
     </button>
   );
@@ -531,7 +531,7 @@ export function OnboardingChecklist({
             {!item.completed && item.action && (
               <button
                 onClick={item.action}
-                className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+                className="text-sm text-violet-600 hover:text-violet-700 font-medium"
               >
                 {item.actionLabel || 'Start'}
               </button>
@@ -587,7 +587,7 @@ export function WelcomeModal({
           className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-2xl overflow-hidden"
         >
           {/* Decorative Header */}
-          <div className="h-2 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+          <div className="h-2 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500" />
 
           <div className="p-6">
             <div className="text-center mb-6">
@@ -595,7 +595,7 @@ export function WelcomeModal({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: 'spring', delay: 0.2 }}
-                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 mb-4"
+                className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900 mb-4"
               >
                 <span className="text-3xl">👋</span>
               </motion.div>
@@ -631,7 +631,7 @@ export function WelcomeModal({
               {onStartTour && (
                 <button
                   onClick={() => { onStartTour(); onClose(); }}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+                  className="w-full py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
                 >
                   Take a Quick Tour
                 </button>
@@ -740,7 +740,7 @@ export function Coachmark({
         <p className="text-sm text-gray-300">{content}</p>
         <button
           onClick={onDismiss}
-          className="mt-3 text-sm text-blue-400 hover:text-blue-300"
+          className="mt-3 text-sm text-violet-400 hover:text-violet-300"
         >
           Got it
         </button>

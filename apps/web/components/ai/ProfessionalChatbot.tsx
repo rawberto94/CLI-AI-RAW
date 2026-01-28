@@ -100,7 +100,7 @@ const WELCOME_SUGGESTIONS = [
 
 const TypingIndicator = memo(() => (
   <div className="flex items-center gap-2 py-3">
-    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-indigo-600">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-violet-500 to-purple-600">
       <Bot className="h-4 w-4 text-white" />
     </div>
     <div className="flex items-center gap-1">
@@ -173,7 +173,7 @@ const MessageBubble = memo<MessageBubbleProps>(({
           'flex-shrink-0 h-8 w-8 rounded-full flex items-center justify-center',
           isUser
             ? 'bg-gradient-to-br from-gray-700 to-gray-900 dark:from-gray-600 dark:to-gray-800'
-            : 'bg-gradient-to-br from-blue-500 to-indigo-600'
+            : 'bg-gradient-to-br from-violet-500 to-purple-600'
         )}
       >
         {isUser ? (
@@ -194,7 +194,7 @@ const MessageBubble = memo<MessageBubbleProps>(({
           className={cn(
             'rounded-2xl px-4 py-2.5 text-sm leading-relaxed',
             isUser
-              ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-br-md'
+              ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-br-md'
               : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 rounded-bl-md',
             message.isStreaming && 'animate-pulse'
           )}
@@ -284,7 +284,7 @@ const MessageBubble = memo<MessageBubbleProps>(({
               <button
                 key={i}
                 onClick={() => onAction(action.action)}
-                className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-blue-300 transition-colors"
+                className="text-xs px-3 py-1.5 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full hover:bg-gray-50 dark:hover:bg-gray-700 hover:border-violet-300 transition-colors"
               >
                 {action.label}
               </button>
@@ -299,7 +299,7 @@ const MessageBubble = memo<MessageBubbleProps>(({
               <button
                 key={i}
                 onClick={() => onSuggestion(suggestion)}
-                className="text-xs px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors flex items-center gap-1"
+                className="text-xs px-3 py-1.5 bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors flex items-center gap-1"
               >
                 <Lightbulb className="h-3 w-3" />
                 {suggestion}
@@ -427,7 +427,7 @@ const ChatInput = memo<ChatInputProps>(({
             className={cn(
               'flex items-center justify-center h-9 w-9 rounded-xl transition-all',
               value.trim() && !isLoading
-                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/25'
+                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg shadow-violet-500/25'
                 : 'bg-gray-200 dark:bg-gray-700 text-gray-400'
             )}
           >
@@ -629,14 +629,14 @@ What would you like to know about your contracts?`,
         whileTap={{ scale: 0.9 }}
         onClick={() => setIsOpen(true)}
         className={cn(
-          'fixed z-50 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex items-center justify-center group',
+          'fixed z-50 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-violet-600 to-purple-600 text-white flex items-center justify-center group',
           positionClasses[position]
         )}
       >
         <MessageSquare className="h-6 w-6 transition-transform group-hover:scale-110" />
         
         {/* Pulse effect */}
-        <span className="absolute inset-0 rounded-full bg-blue-600 animate-ping opacity-20" />
+        <span className="absolute inset-0 rounded-full bg-violet-600 animate-ping opacity-20" />
         
         {/* Tooltip */}
         <span className="absolute right-full mr-3 px-3 py-1.5 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
@@ -665,7 +665,7 @@ What would you like to know about your contracts?`,
         )}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-blue-600 to-indigo-600">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-violet-600 to-purple-600">
           <div className="flex items-center gap-3">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
               <Bot className="h-5 w-5 text-white" />

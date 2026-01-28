@@ -69,12 +69,12 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 
 // Category colors
 const CATEGORY_COLORS: Record<string, string> = {
-  dates: 'text-blue-500 bg-blue-50 border-blue-200',
+  dates: 'text-violet-500 bg-violet-50 border-violet-200',
   clauses: 'text-purple-500 bg-purple-50 border-purple-200',
   risk: 'text-red-500 bg-red-50 border-red-200',
   compliance: 'text-green-500 bg-green-50 border-green-200',
   cost: 'text-amber-500 bg-amber-50 border-amber-200',
-  parties: 'text-cyan-500 bg-cyan-50 border-cyan-200',
+  parties: 'text-purple-500 bg-purple-50 border-cyan-200',
   general: 'text-slate-500 bg-slate-50 border-slate-200',
 };
 
@@ -283,7 +283,7 @@ export function SmartSuggestions({
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-blue-100 transition-colors ${className}`}
+        className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-purple-100 transition-colors ${className}`}
       >
         <Sparkles className="w-4 h-4 text-purple-500" />
         <span className="text-sm font-medium text-purple-700">
@@ -484,7 +484,7 @@ export function SuggestionPill({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-full text-sm text-purple-700 hover:from-purple-100 hover:to-blue-100 transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-200 rounded-full text-sm text-purple-700 hover:from-purple-100 hover:to-purple-100 transition-colors"
     >
       <Lightbulb className="w-3.5 h-3.5" />
       {text}

@@ -106,7 +106,7 @@ const COLOR_OPTIONS = [
   "#84CC16", // Lime
   "#F97316", // Orange
   "#6366F1", // Indigo
-  "#14B8A6", // Teal
+  "#8B5CF6", // Teal
   "#A855F7", // Violet
 ];
 
@@ -167,12 +167,12 @@ function KeywordInput({
           placeholder="Add keyword..."
           aria-label="Add keyword"
           className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-900
-                     focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+                     focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500"
         />
         <button
           type="button"
           onClick={addKeyword}
-          className="px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200
+          className="px-3 py-2 bg-violet-100 text-violet-600 rounded-lg hover:bg-violet-200
                      transition-colors text-sm font-medium"
         >
           Add
@@ -238,7 +238,7 @@ function CategoryTreeNode({
           group flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer
           transition-all duration-200
           ${isSelected
-            ? "bg-blue-50 border border-blue-300"
+            ? "bg-violet-50 border border-violet-300"
             : "hover:bg-slate-100 border border-transparent"
           }
         `}
@@ -405,11 +405,11 @@ function CategoryFormModal({
         <div className="px-6 py-4 border-b border-slate-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-violet-100 rounded-lg">
                 {isEditing ? (
-                  <Pencil className="w-5 h-5 text-blue-600" />
+                  <Pencil className="w-5 h-5 text-violet-600" />
                 ) : (
-                  <Plus className="w-5 h-5 text-blue-600" />
+                  <Plus className="w-5 h-5 text-violet-600" />
                 )}
               </div>
               <div>
@@ -446,7 +446,7 @@ function CategoryFormModal({
               placeholder="e.g., Professional Services"
               required
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 text-slate-900"
+                       focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 text-slate-900"
             />
           </div>
 
@@ -459,7 +459,7 @@ function CategoryFormModal({
               placeholder="Brief description of this category..."
               rows={2}
               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-                       focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 resize-none text-slate-900"
+                       focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 resize-none text-slate-900"
             />
           </div>
 
@@ -467,7 +467,7 @@ function CategoryFormModal({
           <div>
             <label className="block text-sm font-medium mb-2 text-slate-700">
               <div className="flex items-center gap-2">
-                <Tag className="w-4 h-4 text-blue-600" />
+                <Tag className="w-4 h-4 text-violet-600" />
                 Keywords for Auto-Classification
               </div>
             </label>
@@ -547,7 +547,7 @@ function CategoryFormModal({
                     className={`
                       w-8 h-8 rounded-lg transition-all text-lg
                       ${formData.icon === iconOption.value
-                        ? "bg-blue-100 ring-1 ring-blue-400"
+                        ? "bg-violet-100 ring-1 ring-violet-400"
                         : "hover:bg-slate-100"
                       }
                     `}
@@ -572,7 +572,7 @@ function CategoryFormModal({
             <button
               type="submit"
               disabled={isLoading || !formData.name}
-              className="flex items-center gap-2 px-5 py-2 bg-blue-500 hover:bg-blue-600
+              className="flex items-center gap-2 px-5 py-2 bg-violet-500 hover:bg-violet-600
                        text-white font-medium rounded-lg transition-colors
                        disabled:opacity-50 disabled:cursor-not-allowed"
             >
@@ -720,8 +720,8 @@ function SavePresetModal({
           <div className="px-6 py-4 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Save className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Save className="w-5 h-5 text-violet-600" />
                 </div>
                 <div>
                   <h3 className="font-semibold text-lg text-slate-900">Save as Preset</h3>
@@ -751,7 +751,7 @@ function SavePresetModal({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g., My Company Categories"
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+                         focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500
                          text-slate-900"
                 required
               />
@@ -767,7 +767,7 @@ function SavePresetModal({
                 placeholder="Describe what this preset is for..."
                 rows={2}
                 className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg
-                         focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500
+                         focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500
                          resize-none text-slate-900"
               />
             </div>
@@ -778,8 +778,8 @@ function SavePresetModal({
                 id="isShared"
                 checked={isShared}
                 onChange={(e) => setIsShared(e.target.checked)}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 
-                         focus:ring-blue-500/50"
+                className="w-4 h-4 rounded border-slate-300 text-violet-600 
+                         focus:ring-violet-500/50"
               />
               <label htmlFor="isShared" className="text-sm text-slate-700">
                 <span className="font-medium">Share with other tenants</span>
@@ -801,7 +801,7 @@ function SavePresetModal({
             <button
               type="submit"
               disabled={!name.trim() || isLoading}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+              className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-lg
                        transition-colors disabled:opacity-50 disabled:cursor-not-allowed
                        flex items-center gap-2"
             >
@@ -1190,8 +1190,8 @@ export default function TaxonomyPage() {
               >
                 <ArrowLeft className="w-5 h-5" />
               </Link>
-              <div className="p-2.5 bg-blue-100 rounded-xl">
-                <FolderTree className="w-5 h-5 text-blue-600" />
+              <div className="p-2.5 bg-violet-100 rounded-xl">
+                <FolderTree className="w-5 h-5 text-violet-600" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">Taxonomy Management</h1>
@@ -1267,7 +1267,7 @@ export default function TaxonomyPage() {
                   setParentCategory(null);
                   setShowFormModal(true);
                 }}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700
                          text-white font-medium rounded-lg transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -1295,7 +1295,7 @@ export default function TaxonomyPage() {
                     placeholder="Search categories..."
                     aria-label="Search categories"
                     className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg
-                             text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+                             text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500"
                   />
                 </div>
                 <button
@@ -1311,7 +1311,7 @@ export default function TaxonomyPage() {
               <div className="p-4 min-h-[400px]">
                 {isLoading ? (
                   <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+                    <Loader2 className="w-8 h-8 animate-spin text-violet-500" />
                   </div>
                 ) : error ? (
                   <div className="flex flex-col items-center justify-center h-64 text-slate-500">
@@ -1334,8 +1334,8 @@ export default function TaxonomyPage() {
                     <div className="flex gap-3 mt-4">
                       <button
                         onClick={() => setShowPresetsModal(true)}
-                        className="px-4 py-2 bg-blue-600 
-                                 text-white rounded-lg hover:bg-blue-700 transition-colors
+                        className="px-4 py-2 bg-violet-600 
+                                 text-white rounded-lg hover:bg-violet-700 transition-colors
                                  flex items-center gap-2"
                       >
                         <Sparkles className="w-4 h-4" />
@@ -1379,7 +1379,7 @@ export default function TaxonomyPage() {
             {/* Stats */}
             <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
               <h3 className="font-semibold mb-4 flex items-center gap-2 text-slate-900">
-                <Settings2 className="w-5 h-5 text-blue-600" />
+                <Settings2 className="w-5 h-5 text-violet-600" />
                 Taxonomy Stats
               </h3>
               <div className="space-y-3">
@@ -1545,8 +1545,8 @@ export default function TaxonomyPage() {
               <div className="px-6 py-4 border-b border-slate-200">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Sparkles className="w-5 h-5 text-blue-600" />
+                    <div className="p-2 bg-violet-100 rounded-lg">
+                      <Sparkles className="w-5 h-5 text-violet-600" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-lg text-slate-900">Choose a Template</h3>
@@ -1575,7 +1575,7 @@ export default function TaxonomyPage() {
                       {customPresets.map((preset) => (
                         <div
                           key={preset.id}
-                          className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-200
+                          className="p-4 bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-200
                                    rounded-xl transition-all group relative"
                         >
                           <div className="flex items-center justify-between mb-2">
@@ -1586,7 +1586,7 @@ export default function TaxonomyPage() {
                                   Shared
                                 </span>
                               )}
-                              <span className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">
+                              <span className="text-xs px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded">
                                 {preset.categoryCount}
                               </span>
                             </div>
@@ -1598,8 +1598,8 @@ export default function TaxonomyPage() {
                             <button
                               onClick={() => applyCustomPreset(preset.id, true)}
                               disabled={isApplyingPreset}
-                              className="flex-1 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg
-                                       hover:bg-blue-700 transition-colors disabled:opacity-50"
+                              className="flex-1 text-xs px-3 py-1.5 bg-violet-600 text-white rounded-lg
+                                       hover:bg-violet-700 transition-colors disabled:opacity-50"
                             >
                               {isApplyingPreset ? "Applying..." : "Apply"}
                             </button>
@@ -1637,12 +1637,12 @@ export default function TaxonomyPage() {
                       >
                         <div className="flex items-center justify-between mb-3">
                           <h4 className="font-semibold text-lg text-slate-900">{preset.name}</h4>
-                          <span className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                          <span className="text-xs px-2 py-1 bg-violet-100 text-violet-700 rounded-full">
                             {preset.categoryCount} categories
                           </span>
                         </div>
                         <p className="text-sm text-slate-600 mb-3">{preset.description}</p>
-                        <div className="flex items-center gap-2 text-sm text-blue-600 
+                        <div className="flex items-center gap-2 text-sm text-violet-600 
                                       opacity-0 group-hover:opacity-100 transition-opacity">
                           {isApplyingPreset ? (
                             <Loader2 className="w-4 h-4 animate-spin" />

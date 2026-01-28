@@ -40,7 +40,7 @@ interface QuotaWidgetProps {
 // Tier labels and colors
 const TIER_CONFIG: Record<string, { label: string; color: string }> = {
   free: { label: 'Free', color: 'bg-slate-500' },
-  starter: { label: 'Starter', color: 'bg-blue-500' },
+  starter: { label: 'Starter', color: 'bg-violet-500' },
   professional: { label: 'Professional', color: 'bg-purple-500' },
   enterprise: { label: 'Enterprise', color: 'bg-amber-500' },
 };
@@ -140,7 +140,7 @@ export function AIUsageQuotaWidget({
         onClick={() => setIsExpanded(true)}
       >
         <div className="flex items-center gap-1.5">
-          <Zap className="w-4 h-4 text-blue-500" />
+          <Zap className="w-4 h-4 text-violet-500" />
           <span className="text-sm font-medium">
             {usage.requests.used}/{usage.requests.limit}
           </span>
@@ -230,7 +230,7 @@ export function AIUsageQuotaWidget({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <button className="flex items-center gap-1 text-blue-600 hover:text-blue-700">
+                <button className="flex items-center gap-1 text-violet-600 hover:text-violet-700">
                   <Info className="w-3.5 h-3.5" />
                   <span>View details</span>
                 </button>
@@ -291,7 +291,7 @@ function UsageBar({
       <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
         <motion.div
           className={`h-full rounded-full ${
-            isCritical ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-blue-500'
+            isCritical ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-violet-500'
           }`}
           initial={{ width: 0 }}
           animate={{ width: `${Math.min(percentUsed, 100)}%` }}

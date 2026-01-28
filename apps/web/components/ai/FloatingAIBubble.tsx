@@ -99,6 +99,8 @@ interface Message {
   status?: "sending" | "sent" | "error";
   reaction?: "like" | "dislike";
   contractPreviews?: ContractPreviewCard[];
+  clarificationNeeded?: boolean;
+  clarificationPrompts?: string[];
   metadata?: {
     source?: string;
     confidence?: number;
@@ -136,7 +138,7 @@ const QUICK_ACTIONS = [
     icon: FileText,
     label: "Contract Summary",
     query: "Give me a summary of my contracts",
-    color: "from-blue-500 to-cyan-500",
+    color: "from-violet-500 to-purple-500",
     description: "Overview of all contracts",
   },
   {
@@ -157,28 +159,28 @@ const QUICK_ACTIONS = [
     icon: Search,
     label: "Search",
     query: "Help me find a specific contract",
-    color: "from-green-500 to-emerald-500",
+    color: "from-violet-500 to-violet-500",
     description: "Find contracts quickly",
   },
   {
     icon: Shield,
     label: "Compliance",
     query: "Show me compliance status",
-    color: "from-teal-500 to-cyan-500",
+    color: "from-violet-500 to-purple-500",
     description: "Risk & compliance overview",
   },
   {
     icon: DollarSign,
     label: "Cost Analysis",
     query: "Analyze my contract costs",
-    color: "from-emerald-500 to-green-500",
+    color: "from-violet-500 to-purple-500",
     description: "Spending breakdown",
   },
   {
     icon: FileText,
     label: "Categories",
     query: "Show me all procurement categories",
-    color: "from-indigo-500 to-violet-500",
+    color: "from-purple-500 to-violet-500",
     description: "Taxonomy & categorization",
   },
 ];
@@ -259,10 +261,10 @@ const formatContent = (content: string) => {
   return sanitized
     // Convert markdown links [text](/path) to clickable links
     .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
-      '<a href="/contracts/$2" class="text-blue-600 hover:text-blue-800 underline font-medium" target="_blank">$1</a>')
+      '<a href="/contracts/$2" class="text-violet-600 hover:text-violet-800 underline font-medium" target="_blank">$1</a>')
     // Convert other markdown links
     .replace(/\[([^\]]+)\]\(([^)]+)\)/g, 
-      '<a href="$2" class="text-blue-600 hover:text-blue-800 underline" target="_blank">$1</a>')
+      '<a href="$2" class="text-violet-600 hover:text-violet-800 underline" target="_blank">$1</a>')
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\n/g, "<br />");
 };
@@ -340,6 +342,11 @@ export function FloatingAIBubble() {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   // Conversation history panel - implemented in Round 3
   
+  // Draggable position state
+  const [position, setPosition] = useState({ x: 0, y: 0 }); // Offset from default position (bottom-right)
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  
   // Enhanced features state
   const [isListening, setIsListening] = useState(false);
   const [isSoundEnabled, setIsSoundEnabled] = useState(true);
@@ -389,6 +396,18 @@ export function FloatingAIBubble() {
   const inputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   const pendingAutoMessageRef = useRef<string | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  
+  // Request cancellation support
+  const cancelCurrentRequest = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      setIsTyping(false);
+      setStreamingContent("");
+    }
+  }, []);
 
   // Sync messages with persistence hook
   useEffect(() => {
@@ -548,6 +567,79 @@ export function FloatingAIBubble() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
+  // Draggable functionality - handlers for mouse/touch events
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    // Don't start drag if clicking on interactive elements
+    const target = e.target as HTMLElement;
+    if (target.closest('button, input, a, [role="button"]')) {
+      return;
+    }
+    
+    e.preventDefault();
+    setIsDragging(true);
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    dragStartRef.current = {
+      x: clientX,
+      y: clientY,
+      posX: position.x,
+      posY: position.y,
+    };
+  }, [position]);
+
+  const handleDragMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!isDragging) return;
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    const deltaX = clientX - dragStartRef.current.x;
+    const deltaY = clientY - dragStartRef.current.y;
+    
+    // Calculate new position (negative because we're offsetting from bottom-right)
+    const newX = dragStartRef.current.posX - deltaX;
+    const newY = dragStartRef.current.posY - deltaY;
+    
+    // Clamp to screen bounds with some padding
+    const maxX = window.innerWidth - 100;
+    const maxY = window.innerHeight - 100;
+    
+    setPosition({
+      x: Math.max(-maxX + 80, Math.min(maxX - 80, newX)),
+      y: Math.max(-maxY + 80, Math.min(maxY - 80, newY)),
+    });
+  }, [isDragging]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  // Attach global drag listeners
+  useEffect(() => {
+    if (isDragging) {
+      window.addEventListener('mousemove', handleDragMove);
+      window.addEventListener('mouseup', handleDragEnd);
+      window.addEventListener('touchmove', handleDragMove);
+      window.addEventListener('touchend', handleDragEnd);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleDragMove);
+        window.removeEventListener('mouseup', handleDragEnd);
+        window.removeEventListener('touchmove', handleDragMove);
+        window.removeEventListener('touchend', handleDragEnd);
+      };
+    }
+  }, [isDragging, handleDragMove, handleDragEnd]);
+
+  // Reset position when expanded (fullscreen mode)
+  useEffect(() => {
+    if (isExpanded) {
+      setPosition({ x: 0, y: 0 });
+    }
+  }, [isExpanded]);
+
   // Listen for custom event to open chatbot from other components
   useEffect(() => {
     const handleOpenChatbot = (event: Event) => {
@@ -702,10 +794,21 @@ export function FloatingAIBubble() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  // Send message handler with streaming support and model failover
-  const handleSendMessage = useCallback(async (content?: string) => {
+  // Constants for request handling
+  const REQUEST_TIMEOUT_MS = 60000; // 60 seconds
+  const MAX_RETRIES = 2;
+
+  // Send message handler with streaming support, timeout, retry, and model failover
+  const handleSendMessage = useCallback(async (content?: string, retryCount = 0) => {
     const messageContent = content || input.trim();
     if (!messageContent || isLoading) return;
+
+    // Cancel any previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+    const { signal } = abortControllerRef.current;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -715,15 +818,22 @@ export function FloatingAIBubble() {
       status: "sending",
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
+    // Only add user message on first attempt
+    if (retryCount === 0) {
+      setMessages((prev) => [...prev, userMessage]);
+      setInput("");
+    }
+    
     setIsLoading(true);
     setIsTyping(true);
     setStreamingContent("");
-    playSound("send");
+    
+    if (retryCount === 0) {
+      playSound("send");
+    }
 
-    // Persist user message to database
-    if (persistence.isAuthenticated && persistence.conversationId) {
+    // Persist user message to database (only on first attempt)
+    if (retryCount === 0 && persistence.isAuthenticated && persistence.conversationId) {
       persistence.addMessage({
         role: 'user',
         content: messageContent,
@@ -739,6 +849,13 @@ export function FloatingAIBubble() {
       );
     }, 300);
 
+    // Set up timeout
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    }, REQUEST_TIMEOUT_MS);
+
     try {
       const startTime = Date.now();
       const pageContext = getPageContext(pathname);
@@ -751,6 +868,7 @@ export function FloatingAIBubble() {
         const response = await fetch('/api/ai/chat/stream', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
+          signal, // Add abort signal for timeout/cancellation
           body: JSON.stringify({
             message: messageContent,
             conversationHistory: messages.slice(-10).map(m => ({
@@ -771,6 +889,13 @@ export function FloatingAIBubble() {
         });
 
         if (!response.ok) {
+          // Check for retryable status codes
+          if (response.status >= 500 && retryCount < MAX_RETRIES) {
+            clearTimeout(timeoutId);
+            const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5000);
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            return handleSendMessage(messageContent, retryCount + 1);
+          }
           throw new Error(`Stream request failed: ${response.status}`);
         }
 
@@ -952,12 +1077,18 @@ export function FloatingAIBubble() {
           });
         }
 
+        // ENHANCED: Handle clarification prompts from the API
+        const clarificationNeeded = data.clarificationNeeded || false;
+        const clarificationPrompts = data.clarificationPrompts || [];
+
         const assistantMessage: Message = {
           id: assistantMessageId,
           role: "assistant",
           content: data.response || data.error || "I couldn't process that request.",
           timestamp: new Date(),
-          suggestions: data.suggestions,
+          suggestions: clarificationNeeded ? clarificationPrompts : data.suggestions,
+          clarificationNeeded,
+          clarificationPrompts,
           actions: actions.length > 0 ? actions : undefined,
           contractPreviews: contractPreviews.length > 0 ? contractPreviews : undefined,
           metadata: {
@@ -988,7 +1119,38 @@ export function FloatingAIBubble() {
       
       if (!isOpen) setHasNewMessage(true);
       updateContext(messageContent);
-    } catch (_error) {
+    } catch (error) {
+      // Clear timeout on any error
+      clearTimeout(timeoutId);
+      
+      // Check if request was aborted (timeout or user cancel)
+      if (error instanceof Error && error.name === 'AbortError') {
+        const timeoutMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "⏱️ **Request timed out**\n\nThe request took too long to complete. This could be due to a slow connection or high server load.\n\n💡 **What you can do:**\n• Try asking a simpler question\n• Check your internet connection\n• Wait a moment and try again",
+          timestamp: new Date(),
+          suggestions: ["Try again", "Simplify question"],
+          metadata: {
+            confidence: 1,
+            processingTime: 0,
+            source: "timeout",
+            isError: true,
+          },
+        };
+        setMessages((prev) => [...prev, timeoutMessage]);
+        playSound("receive");
+        return;
+      }
+      
+      // Retry on transient errors (if not already retrying)
+      if (retryCount < MAX_RETRIES && error instanceof Error && 
+          (error.message.includes('network') || error.message.includes('fetch'))) {
+        const backoffMs = Math.min(1000 * Math.pow(2, retryCount), 5000);
+        await new Promise(resolve => setTimeout(resolve, backoffMs));
+        return handleSendMessage(messageContent, retryCount + 1);
+      }
+      
       // Check if we're offline and queue the request
       if (!offlineQueue.isOnline) {
         // Queue the message for later
@@ -1036,11 +1198,13 @@ export function FloatingAIBubble() {
         playSound("receive");
       }
     } finally {
+      clearTimeout(timeoutId);
+      abortControllerRef.current = null;
       setIsLoading(false);
       setIsTyping(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [input, isLoading, conversationContext, isOpen, playSound, messages]);
+  }, [input, isLoading, conversationContext, isOpen, playSound, messages, cancelCurrentRequest]);
 
   // Update conversation context
   const updateContext = (query: string) => {
@@ -1268,7 +1432,7 @@ export function FloatingAIBubble() {
   return (
     <TooltipProvider>
       <>
-        {/* Floating Bubble Button - Enhanced with better animations */}
+        {/* Floating Bubble Button - Draggable with better animations */}
         <AnimatePresence>
           {!isOpen && (
             <motion.div
@@ -1276,20 +1440,30 @@ export function FloatingAIBubble() {
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0, rotate: 180 }}
               transition={{ type: "spring", damping: 15, stiffness: 200 }}
-              className="fixed bottom-6 right-6 z-50"
+              className="fixed z-50"
+              style={{
+                bottom: `${24 + position.y}px`,
+                right: `${24 + position.x}px`,
+                cursor: isDragging ? 'grabbing' : 'grab',
+              }}
+              onMouseDown={handleDragStart}
+              onTouchStart={handleDragStart}
             >
               <Tooltip>
                 <TooltipTrigger asChild>
                   <motion.button
-                    onClick={toggleOpen}
+                    onClick={() => {
+                      // Only toggle if not dragging
+                      if (!isDragging) toggleOpen();
+                    }}
                     className="relative group focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-full"
-                    whileHover={{ scale: 1.08, rotate: 5 }}
-                    whileTap={{ scale: 0.92 }}
-                    aria-label="Open AI Assistant (⌘/)"
+                    whileHover={{ scale: isDragging ? 1 : 1.08, rotate: isDragging ? 0 : 5 }}
+                    whileTap={{ scale: isDragging ? 1 : 0.92 }}
+                    aria-label="Open AI Assistant (⌘/) - Drag to move"
                   >
                     {/* Animated glow rings */}
                     <motion.span 
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500"
                       animate={{ 
                         scale: [1, 1.3, 1],
                         opacity: [0.3, 0, 0.3]
@@ -1301,7 +1475,7 @@ export function FloatingAIBubble() {
                       }}
                     />
                     <motion.span 
-                      className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500"
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-purple-500"
                       animate={{ 
                         scale: [1, 1.5, 1],
                         opacity: [0.2, 0, 0.2]
@@ -1315,7 +1489,7 @@ export function FloatingAIBubble() {
                     />
 
                     {/* Main bubble with refined gradient */}
-                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/40 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:shadow-purple-500/60">
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/40 flex items-center justify-center overflow-hidden transition-all duration-300 group-hover:shadow-purple-500/60">
                       {/* Shimmer effect */}
                       <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/25 to-white/0 animate-shimmer" />
                       
@@ -1394,7 +1568,7 @@ export function FloatingAIBubble() {
           )}
         </AnimatePresence>
 
-        {/* Chat Panel - Enhanced with glassmorphism and better visual hierarchy */}
+        {/* Chat Panel - Draggable with glassmorphism and better visual hierarchy */}
         <AnimatePresence>
           {isOpen && (
             <motion.div
@@ -1405,31 +1579,41 @@ export function FloatingAIBubble() {
               className={`fixed z-50 ${
                 isExpanded
                   ? "inset-2 md:inset-4 lg:inset-8"
-                  : "bottom-4 right-4 w-[560px] h-[780px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)]"
+                  : "w-[560px] h-[780px] max-w-[calc(100vw-32px)] max-h-[calc(100vh-80px)]"
               }`}
+              style={!isExpanded ? {
+                bottom: `${16 + position.y}px`,
+                right: `${16 + position.x}px`,
+              } : undefined}
             >
               <div className="relative w-full h-full rounded-3xl overflow-hidden shadow-2xl shadow-purple-500/20 border border-gray-200/80 backdrop-blur-sm">
                 {/* White/Light background with subtle pattern */}
                 <div className="absolute inset-0 bg-gradient-to-br from-white via-white to-gray-50/50" />
                 
-                {/* Animated gradient accent at top */}
+                {/* Animated gradient accent at top - also serves as drag handle */}
                 <motion.div 
-                  className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"
+                  className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 cursor-grab active:cursor-grabbing"
                   animate={{
                     backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
                   }}
                   transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
                   style={{ backgroundSize: "200% 100%" }}
+                  onMouseDown={handleDragStart}
+                  onTouchStart={handleDragStart}
                 />
 
                 {/* Content */}
                 <div className="relative h-full flex flex-col">
-                  {/* Header - Enhanced with glassmorphism */}
-                  <div className="flex items-center justify-between px-6 py-5 border-b border-gray-200/80 bg-gradient-to-r from-gray-50/90 to-white/90 backdrop-blur-md">
-                    <div className="flex items-center gap-4">
+                  {/* Header - Enhanced with glassmorphism and drag handle */}
+                  <div 
+                    className="flex items-center justify-between px-6 py-5 border-b border-gray-200/80 bg-gradient-to-r from-gray-50/90 to-white/90 backdrop-blur-md cursor-grab active:cursor-grabbing select-none"
+                    onMouseDown={handleDragStart}
+                    onTouchStart={handleDragStart}
+                  >
+                    <div className="flex items-center gap-4 pointer-events-none">
                       <div className="relative">
                         <motion.div 
-                          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25"
+                          className="w-12 h-12 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25"
                           whileHover={{ scale: 1.05, rotate: 5 }}
                           transition={{ type: "spring", damping: 10 }}
                         >
@@ -1441,7 +1625,7 @@ export function FloatingAIBubble() {
                             opacity: [1, 0.7, 1]
                           }}
                           transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full border-2 border-white shadow-sm"
+                          className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full border-2 border-white shadow-sm"
                         />
                       </div>
                       <div>
@@ -1459,7 +1643,7 @@ export function FloatingAIBubble() {
                               animate={{ scale: 1, opacity: 1 }}
                               className="flex items-center gap-1"
                             >
-                              <Badge className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-700 text-[10px] border-green-200/50 px-2 py-0.5 font-medium shadow-sm">
+                              <Badge className="bg-gradient-to-r from-violet-100 to-violet-100 text-green-700 text-[10px] border-green-200/50 px-2 py-0.5 font-medium shadow-sm">
                                 <RefreshCw className="w-2.5 h-2.5 mr-1" />
                                 Live Data
                               </Badge>
@@ -1474,16 +1658,16 @@ export function FloatingAIBubble() {
                               animate={{ opacity: 1 }}
                             >
                               <motion.span 
-                                className="w-1.5 h-1.5 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full"
+                                className="w-1.5 h-1.5 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full"
                                 animate={{ scale: [1, 1.3, 1] }}
                                 transition={{ repeat: Infinity, duration: 0.8 }}
                               />
-                              <span className="text-emerald-600 font-medium">Analyzing contracts...</span>
+                              <span className="text-violet-600 font-medium">Analyzing contracts...</span>
                             </motion.span>
                           ) : currentContractId ? (
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 bg-gradient-to-r from-blue-400 to-blue-500 rounded-full shadow-sm" />
-                              <span className="text-blue-600">Context-aware mode</span>
+                              <span className="w-2 h-2 bg-gradient-to-r from-violet-400 to-purple-500 rounded-full shadow-sm" />
+                              <span className="text-violet-600">Context-aware mode</span>
                               {lastArtifactUpdate && (
                                 <span className="text-xs text-green-600">
                                   • Synced {formatTimeAgo(lastArtifactUpdate)}
@@ -1492,7 +1676,7 @@ export function FloatingAIBubble() {
                             </span>
                           ) : (
                             <span className="flex items-center gap-1.5">
-                              <span className="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-500 rounded-full shadow-sm" />
+                              <span className="w-2 h-2 bg-gradient-to-r from-violet-400 to-violet-500 rounded-full shadow-sm" />
                               Online • {messages.length - 1} message{messages.length - 1 !== 1 ? 's' : ''}
                             </span>
                           )}
@@ -1500,7 +1684,7 @@ export function FloatingAIBubble() {
                       </div>
                     </div>
                     
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 pointer-events-auto">
                       {/* Cost Widget - Real-time token usage */}
                       <AICostWidget
                         currentUsage={currentTokenUsage}
@@ -1658,7 +1842,7 @@ export function FloatingAIBubble() {
                             >
                               {message.role === "assistant" && (
                                 <motion.div 
-                                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center mr-3 flex-shrink-0 shadow-lg shadow-purple-500/20"
+                                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center mr-3 flex-shrink-0 shadow-lg shadow-purple-500/20"
                                   whileHover={{ scale: 1.05, rotate: 5 }}
                                   transition={{ type: "spring", damping: 10 }}
                                 >
@@ -1671,12 +1855,12 @@ export function FloatingAIBubble() {
                                   transition={{ type: "spring", damping: 20 }}
                                   className={`rounded-2xl px-5 py-4 ${
                                     message.role === "user"
-                                      ? "bg-gradient-to-br from-blue-500 via-blue-600 to-purple-600 text-white rounded-br-md shadow-lg shadow-blue-500/20"
+                                      ? "bg-gradient-to-br from-violet-500 via-purple-600 to-purple-600 text-white rounded-br-md shadow-lg shadow-violet-500/20"
                                       : "bg-white/95 backdrop-blur-sm text-gray-800 rounded-bl-md shadow-md border border-gray-100/80 hover:shadow-lg transition-shadow"
                                   }`}
                                 >
                                   <div
-                                    className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-blue-600"
+                                    className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-violet-600"
                                     dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
                                   />
                                   
@@ -1697,7 +1881,7 @@ export function FloatingAIBubble() {
                                         </span>
                                       )}
                                       {message.metadata?.confidence && message.role === "assistant" && (
-                                        <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-200/50">
+                                        <span className="text-[10px] font-semibold text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full flex items-center gap-1 border border-violet-200/50">
                                           <Zap className="w-2.5 h-2.5" />
                                           {Math.round(message.metadata.confidence * 100)}%
                                         </span>
@@ -1738,7 +1922,7 @@ export function FloatingAIBubble() {
                                                 <FileText className="w-3.5 h-3.5 text-purple-500 flex-shrink-0" />
                                                 <span className="truncate font-medium">{src.contractName}</span>
                                               </div>
-                                              <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded flex-shrink-0">
+                                              <span className="text-[10px] font-bold text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded flex-shrink-0">
                                                 {Math.round(src.score * 100)}%
                                               </span>
                                             </motion.li>
@@ -1768,12 +1952,12 @@ export function FloatingAIBubble() {
                                             animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: i * 0.1 }}
                                             onClick={() => router.push(`/contracts/${contract.id}`)}
-                                            className="group/card relative bg-gradient-to-r from-white to-blue-50/30 rounded-xl p-3 border border-gray-200/80 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+                                            className="group/card relative bg-gradient-to-r from-white to-purple-50/30 rounded-xl p-3 border border-gray-200/80 hover:border-violet-300 hover:shadow-md transition-all cursor-pointer"
                                           >
                                             <div className="flex items-start justify-between gap-3">
                                               <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                  <h4 className="font-semibold text-sm text-gray-900 truncate group-hover/card:text-blue-600 transition-colors">
+                                                  <h4 className="font-semibold text-sm text-gray-900 truncate group-hover/card:text-violet-600 transition-colors">
                                                     {contract.name}
                                                   </h4>
                                                   {contract.riskLevel && (
@@ -1820,7 +2004,7 @@ export function FloatingAIBubble() {
                                               </div>
                                             </div>
                                             <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover/card:opacity-100 transition-opacity">
-                                              <ExternalLink className="w-4 h-4 text-blue-500" />
+                                              <ExternalLink className="w-4 h-4 text-violet-500" />
                                             </div>
                                           </motion.div>
                                         ))}
@@ -1828,7 +2012,7 @@ export function FloatingAIBubble() {
                                       {message.contractPreviews.length > 5 && (
                                         <button 
                                           onClick={() => {/* Could expand to show more */}}
-                                          className="w-full text-xs text-center text-blue-600 hover:text-blue-700 py-2 font-medium"
+                                          className="w-full text-xs text-center text-violet-600 hover:text-violet-700 py-2 font-medium"
                                         >
                                           +{message.contractPreviews.length - 5} more contracts
                                         </button>
@@ -1857,7 +2041,7 @@ export function FloatingAIBubble() {
                                               animate={{ scale: 1 }}
                                               transition={{ type: "spring", damping: 10 }}
                                             >
-                                              <Check className="w-4 h-4 text-emerald-500" />
+                                              <Check className="w-4 h-4 text-violet-500" />
                                             </motion.div>
                                           ) : (
                                             <Copy className="w-3.5 h-3.5" />
@@ -1874,8 +2058,8 @@ export function FloatingAIBubble() {
                                           onClick={() => reactToMessage(message.id, "like")}
                                           className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all shadow-lg border backdrop-blur-sm ${
                                             message.reaction === "like"
-                                              ? "bg-emerald-50 text-emerald-600 border-emerald-300 shadow-emerald-500/20"
-                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-emerald-600 border-gray-200/80 hover:border-emerald-300"
+                                              ? "bg-violet-50 text-violet-600 border-violet-300 shadow-violet-500/20"
+                                              : "bg-white/95 hover:bg-gray-50 text-gray-400 hover:text-violet-600 border-gray-200/80 hover:border-violet-300"
                                           }`}
                                         >
                                           <ThumbsUp className="w-3.5 h-3.5" />
@@ -1929,7 +2113,7 @@ export function FloatingAIBubble() {
                                     onClick={() => handleAction(action.action)}
                                     className={`text-sm px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all font-medium ${
                                       action.variant === "primary"
-                                        ? "bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:shadow-purple-500/30 shadow-md"
+                                        ? "bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white hover:shadow-xl hover:shadow-purple-500/30 shadow-md"
                                         : "bg-white hover:bg-gray-50 text-gray-700 hover:text-gray-900 border border-gray-200/80 shadow-sm hover:shadow-md hover:border-gray-300"
                                     }`}
                                   >
@@ -1941,8 +2125,39 @@ export function FloatingAIBubble() {
                               </motion.div>
                             )}
 
+                            {/* ENHANCED: Clarification prompts with visual indicator */}
+                            {message.clarificationNeeded && message.clarificationPrompts && message.clarificationPrompts.length > 0 && (
+                              <motion.div 
+                                className="pl-14"
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 0.3 }}
+                              >
+                                <div className="text-xs text-amber-600 font-medium mb-2 flex items-center gap-1">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                  Need more details? Try one of these:
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  {message.clarificationPrompts.map((prompt, idx) => (
+                                    <motion.button
+                                      key={idx}
+                                      initial={{ opacity: 0, scale: 0.9, y: 5 }}
+                                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                                      transition={{ delay: 0.4 + idx * 0.06, type: "spring", damping: 15 }}
+                                      whileHover={{ scale: 1.05, y: -1 }}
+                                      whileTap={{ scale: 0.95 }}
+                                      onClick={() => handleSendMessage(prompt)}
+                                      className="text-[13px] px-4 py-2 rounded-full bg-amber-50 hover:bg-amber-100 text-amber-700 hover:text-amber-800 border border-amber-200 hover:border-amber-300 transition-all shadow-sm hover:shadow-md font-medium"
+                                    >
+                                      {prompt}
+                                    </motion.button>
+                                  ))}
+                                </div>
+                              </motion.div>
+                            )}
+
                             {/* Suggestions - Enhanced as pills */}
-                            {message.suggestions && message.role === "assistant" && (
+                            {message.suggestions && message.suggestions.length > 0 && message.role === "assistant" && !message.clarificationNeeded && (
                               <motion.div 
                                 className="flex flex-wrap gap-2 pl-14"
                                 initial={{ opacity: 0 }}
@@ -1958,7 +2173,7 @@ export function FloatingAIBubble() {
                                     whileHover={{ scale: 1.05, y: -1 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={() => handleSendMessage(suggestion)}
-                                    className="text-[13px] px-4 py-2 rounded-full bg-white hover:bg-gradient-to-r hover:from-purple-50 hover:to-blue-50 text-gray-600 hover:text-purple-700 border border-gray-200 hover:border-purple-300 transition-all shadow-sm hover:shadow-md font-medium"
+                                    className="text-[13px] px-4 py-2 rounded-full bg-white hover:bg-gradient-to-r hover:from-purple-50 hover:to-purple-50 text-gray-600 hover:text-purple-700 border border-gray-200 hover:border-purple-300 transition-all shadow-sm hover:shadow-md font-medium"
                                   >
                                     {suggestion}
                                   </motion.button>
@@ -1976,7 +2191,7 @@ export function FloatingAIBubble() {
                             className="flex items-start gap-3"
                           >
                             <motion.div 
-                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0"
+                              className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/25 flex-shrink-0"
                               animate={{ rotate: [0, 5, -5, 0] }}
                               transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                             >
@@ -2019,15 +2234,26 @@ export function FloatingAIBubble() {
                                   Searching contracts with RAG...
                                 </motion.p>
                                 <motion.p 
-                                  className="text-xs text-gray-500 flex items-center gap-2 bg-blue-50/50 rounded-lg px-2.5 py-1.5"
+                                  className="text-xs text-gray-500 flex items-center gap-2 bg-violet-50/50 rounded-lg px-2.5 py-1.5"
                                   initial={{ opacity: 0, x: -10 }}
                                   animate={{ opacity: 0.8, x: 0 }}
                                   transition={{ delay: 0.6 }}
                                 >
-                                  <FileText className="w-3 h-3 text-blue-500" />
+                                  <FileText className="w-3 h-3 text-violet-500" />
                                   Analyzing relevant clauses...
                                 </motion.p>
                               </motion.div>
+                              {/* Cancel button */}
+                              <motion.button
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ delay: 2 }}
+                                onClick={cancelCurrentRequest}
+                                className="mt-3 text-xs text-gray-400 hover:text-red-500 transition-colors flex items-center gap-1.5 px-2 py-1 rounded hover:bg-red-50"
+                              >
+                                <X className="w-3 h-3" />
+                                Cancel request
+                              </motion.button>
                             </div>
                           </motion.div>
                         )}
@@ -2149,7 +2375,7 @@ export function FloatingAIBubble() {
                           type="submit"
                           size="icon"
                           disabled={!input.trim() || isLoading}
-                          className="h-14 w-14 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 hover:from-blue-600 hover:via-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
+                          className="h-14 w-14 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 hover:from-violet-600 hover:via-purple-600 hover:to-pink-600 shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-200"
                         >
                           {isLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />

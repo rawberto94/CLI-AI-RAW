@@ -323,7 +323,7 @@ export function TrendVisualization(props: TrendVisualizationProps = {}) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-600" />
+            <Activity className="w-5 h-5 text-violet-600" />
             Market Trend Analysis
           </CardTitle>
           <div className="flex items-center gap-2">
@@ -387,19 +387,19 @@ export function TrendVisualization(props: TrendVisualizationProps = {}) {
 
         {/* Forecast */}
         {forecast && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <TrendingUp className="w-5 h-5 text-violet-600" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-medium text-blue-900 mb-1">
+                <div className="text-sm font-medium text-violet-900 mb-1">
                   {forecast.label}
                 </div>
-                <div className="text-2xl font-bold text-blue-700">
+                <div className="text-2xl font-bold text-violet-700">
                   {formatCurrency(forecast.rate)}/day
                 </div>
-                <div className="text-xs text-blue-600 mt-1">
+                <div className="text-xs text-violet-600 mt-1">
                   Based on current {trendAnalysis.direction.toLowerCase()} trend
                   {trendAnalysis.yearOverYear && ` (${formatPercent(trendAnalysis.yearOverYear, true)} YoY)`}
                 </div>

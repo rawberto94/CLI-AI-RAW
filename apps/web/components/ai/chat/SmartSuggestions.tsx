@@ -316,7 +316,7 @@ export const SmartSuggestions = memo(({
             className={cn(
               "flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-all",
               suggestion.category === 'contextual'
-                ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                ? "bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-indigo-300 hover:bg-purple-100 dark:hover:bg-purple-900/50"
                 : suggestion.category === 'smart'
                 ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50"
                 : suggestion.category === 'recent'
@@ -356,7 +356,7 @@ export const SmartSuggestions = memo(({
                 <div className={cn(
                   "p-2 rounded-lg",
                   suggestion.category === 'contextual'
-                    ? "bg-indigo-100 dark:bg-indigo-900/30"
+                    ? "bg-purple-100 dark:bg-purple-900/30"
                     : suggestion.category === 'smart'
                     ? "bg-amber-100 dark:bg-amber-900/30"
                     : "bg-slate-100 dark:bg-slate-800"
@@ -364,7 +364,7 @@ export const SmartSuggestions = memo(({
                   <suggestion.icon className={cn(
                     "h-4 w-4",
                     suggestion.category === 'contextual'
-                      ? "text-indigo-600 dark:text-indigo-400"
+                      ? "text-purple-600 dark:text-indigo-400"
                       : suggestion.category === 'smart'
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-slate-600 dark:text-slate-400"

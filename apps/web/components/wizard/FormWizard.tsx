@@ -167,10 +167,10 @@ export function WizardProgress({ variant = 'steps', className }: WizardProgressP
             className={cn(
               'w-2.5 h-2.5 rounded-full transition-colors',
               index === currentStep
-                ? 'bg-indigo-600'
+                ? 'bg-violet-600'
                 : index < currentStep
-                ? 'bg-indigo-400'
-                : 'bg-slate-200'
+                ? 'bg-violet-400'
+                : 'bg-slate-200 dark:bg-slate-700'
             )}
             animate={{
               scale: index === currentStep ? 1.2 : 1,
@@ -189,9 +189,9 @@ export function WizardProgress({ variant = 'steps', className }: WizardProgressP
           <span>Step {currentStep + 1} of {steps.length}</span>
           <span>{Math.round(progress)}% complete</span>
         </div>
-        <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
+        <div className="h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-indigo-500 to-purple-500"
+            className="h-full bg-gradient-to-r from-violet-600 to-purple-600"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3, ease: 'easeOut' }}
@@ -223,10 +223,10 @@ export function WizardProgress({ variant = 'steps', className }: WizardProgressP
                 className={cn(
                   'flex items-center justify-center w-10 h-10 rounded-full border-2 transition-all',
                   isCompleted
-                    ? 'bg-indigo-600 border-indigo-600 text-white cursor-pointer'
+                    ? 'bg-gradient-to-br from-violet-600 to-purple-600 border-violet-600 text-white cursor-pointer shadow-lg shadow-violet-500/25'
                     : isCurrent
-                    ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
-                    : 'border-slate-200 text-slate-400 bg-white cursor-not-allowed'
+                    ? 'border-violet-600 text-violet-600 bg-violet-50 dark:bg-violet-950/50'
+                    : 'border-slate-200 dark:border-slate-700 text-slate-400 bg-white dark:bg-slate-800 cursor-not-allowed'
                 )}
                 whileHover={isCompleted ? { scale: 1.05 } : undefined}
                 whileTap={isCompleted ? { scale: 0.95 } : undefined}
@@ -257,7 +257,7 @@ export function WizardProgress({ variant = 'steps', className }: WizardProgressP
               <div className="flex-1 mx-4">
                 <div className={cn(
                   'h-0.5 transition-colors',
-                  index < currentStep ? 'bg-indigo-600' : 'bg-slate-200'
+                  index < currentStep ? 'bg-violet-600' : 'bg-slate-200 dark:bg-slate-700'
                 )} />
               </div>
             )}
@@ -395,10 +395,10 @@ export function WizardNavigation({
           className={cn(
             'flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white rounded-lg transition-all',
             isSubmitting
-              ? 'bg-indigo-400 cursor-not-allowed'
+              ? 'bg-violet-400 cursor-not-allowed'
               : isLastStep
-              ? 'bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 shadow-lg shadow-indigo-500/25'
-              : 'bg-indigo-600 hover:bg-indigo-700'
+              ? 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25'
+              : 'bg-violet-600 hover:bg-violet-700 shadow-lg shadow-violet-500/20'
           )}
           whileHover={!isSubmitting ? { scale: 1.02 } : undefined}
           whileTap={!isSubmitting ? { scale: 0.98 } : undefined}
@@ -539,7 +539,7 @@ export function WizardSuccess({ title, message, action, className }: WizardSucce
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-        className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center"
+        className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-violet-400 to-violet-500 rounded-full flex items-center justify-center"
       >
         <Check className="w-10 h-10 text-white" />
       </motion.div>
@@ -568,7 +568,7 @@ export function WizardSuccess({ title, message, action, className }: WizardSucce
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           onClick={action.onClick}
-          className="px-6 py-3 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
         >
           {action.label}
         </motion.button>

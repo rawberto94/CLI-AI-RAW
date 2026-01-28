@@ -3,7 +3,12 @@
 /**
  * File Upload Components
  * Drag & drop, file previews, upload progress
+ * 
+ * Note: Using native <img> tags for blob URL previews is intentional.
+ * Next.js Image component doesn't support blob: URLs properly.
  */
+
+/* eslint-disable @next/next/no-img-element */
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +38,7 @@ const fileTypeIcons: Record<string, React.ReactNode> = {
   video: <Film className="w-5 h-5 text-pink-500" />,
   audio: <Music className="w-5 h-5 text-green-500" />,
   pdf: <FileText className="w-5 h-5 text-red-500" />,
-  document: <FileText className="w-5 h-5 text-blue-500" />,
+  document: <FileText className="w-5 h-5 text-violet-500" />,
   archive: <Archive className="w-5 h-5 text-amber-500" />,
   default: <File className="w-5 h-5 text-slate-500" />,
 };
@@ -104,7 +109,7 @@ export function FileItem({
       <div className="flex-shrink-0">
         {isImage && preview ? (
           <div className="w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-700">
-            <img src={preview} alt="" className="w-full h-full object-cover" />
+            <img src={preview} alt={`Preview of ${file.name}`} className="w-full h-full object-cover" />
           </div>
         ) : (
           <div className="w-12 h-12 rounded-lg bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
@@ -129,7 +134,7 @@ export function FileItem({
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="h-full bg-blue-500 rounded-full"
+              className="h-full bg-violet-500 rounded-full"
             />
           </div>
         )}
@@ -146,7 +151,7 @@ export function FileItem({
           </button>
         )}
         {status === 'uploading' && (
-          <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+          <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
         )}
         {status === 'success' && (
           <CheckCircle className="w-5 h-5 text-green-500" />
@@ -323,13 +328,13 @@ export function Dropzone({
           className={cn(
             'w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed transition-all',
             isDragOver
-              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+              ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
               : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
         >
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <Upload className="w-5 h-5 text-blue-500" />
+          <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+            <Upload className="w-5 h-5 text-violet-500" />
           </div>
           <div className="text-left">
             <p className="text-sm font-medium text-slate-900 dark:text-white">
@@ -373,16 +378,16 @@ export function Dropzone({
         className={cn(
           'relative flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-colors',
           isDragOver
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+            ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
             : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-600',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
       >
         <motion.div
           animate={{ y: isDragOver ? -5 : 0 }}
-          className="p-4 bg-blue-100 dark:bg-blue-900/30 rounded-2xl mb-4"
+          className="p-4 bg-violet-100 dark:bg-violet-900/30 rounded-2xl mb-4"
         >
-          <CloudUpload className="w-10 h-10 text-blue-500" />
+          <CloudUpload className="w-10 h-10 text-violet-500" />
         </motion.div>
         
         <p className="text-lg font-medium text-slate-900 dark:text-white mb-1">
@@ -512,7 +517,7 @@ export function FileUploadManager({
 
     try {
       await onUpload(pendingFiles.map(f => f.file));
-    } catch (error) {
+    } catch (_error) {
       // Handle error
     }
 
@@ -558,7 +563,7 @@ export function FileUploadManager({
           <button
             onClick={handleUpload}
             disabled={isUploading}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-violet-500 hover:bg-violet-600 rounded-lg transition-colors disabled:opacity-50"
           >
             {isUploading ? (
               <>
@@ -663,7 +668,7 @@ export function ImageUpload({
           'relative cursor-pointer rounded-xl overflow-hidden border-2 border-dashed transition-all',
           aspectClasses[aspectRatio],
           isDragOver
-            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+            ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
             : preview
             ? 'border-transparent'
             : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:border-slate-300'
@@ -713,9 +718,11 @@ export function ImageUpload({
   );
 }
 
-export default {
+const FileUploadComponents = {
   FileItem,
   Dropzone,
   FileUploadManager,
   ImageUpload,
 };
+
+export default FileUploadComponents;

@@ -2,21 +2,12 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
 import {
   Select,
   SelectContent,
@@ -38,7 +29,6 @@ import {
   Play,
   Pause,
   CheckCircle2,
-  XCircle,
   TrendingUp,
   BarChart3,
   Plus,
@@ -426,7 +416,7 @@ export default function ABTestingPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-blue-600" />
+            <CheckCircle2 className="h-4 w-4 text-violet-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedCount}</div>

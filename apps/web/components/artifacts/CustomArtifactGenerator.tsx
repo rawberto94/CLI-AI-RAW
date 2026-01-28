@@ -156,9 +156,9 @@ const PRESET_TOPICS: CustomTopic[] = [
 ];
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Legal: { bg: 'bg-indigo-50', text: 'text-indigo-700', border: 'border-indigo-200' },
-  Financial: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  Operational: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
+  Legal: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-indigo-200' },
+  Financial: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
+  Operational: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
   Commercial: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
   Compliance: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
   Risk: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' }
@@ -353,7 +353,7 @@ export function CustomArtifactGenerator({
 
   const getRiskColor = (level?: string) => {
     switch (level) {
-      case 'low': return 'bg-emerald-100 text-emerald-700 border-emerald-200';
+      case 'low': return 'bg-violet-100 text-violet-700 border-violet-200';
       case 'medium': return 'bg-amber-100 text-amber-700 border-amber-200';
       case 'high': return 'bg-orange-100 text-orange-700 border-orange-200';
       case 'critical': return 'bg-rose-100 text-rose-700 border-rose-200';
@@ -366,7 +366,7 @@ export function CustomArtifactGenerator({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl">
+          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
             <Wand2 className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -383,7 +383,7 @@ export function CustomArtifactGenerator({
       </div>
 
       {/* Custom Query Input */}
-      <Card className="border-purple-100 bg-gradient-to-br from-purple-50/50 to-indigo-50/30">
+      <Card className="border-purple-100 bg-gradient-to-br from-purple-50/50 to-purple-50/30">
         <CardContent className="p-4">
           <Label className="text-sm font-medium text-slate-700 mb-2 block">
             Ask anything about this contract
@@ -625,8 +625,8 @@ export function CustomArtifactGenerator({
                         <Badge 
                           variant="outline" 
                           className={cn(
-                            insight.confidence >= 0.9 ? 'text-emerald-600 border-emerald-200' :
-                            insight.confidence >= 0.75 ? 'text-blue-600 border-blue-200' :
+                            insight.confidence >= 0.9 ? 'text-violet-600 border-violet-200' :
+                            insight.confidence >= 0.75 ? 'text-violet-600 border-violet-200' :
                             'text-amber-600 border-amber-200'
                           )}
                         >
@@ -640,14 +640,14 @@ export function CustomArtifactGenerator({
                     </p>
 
                     {insight.suggestions && insight.suggestions.length > 0 && (
-                      <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                      <div className="mt-4 p-3 bg-violet-50 rounded-lg border border-violet-100">
                         <div className="flex items-center gap-2 mb-2">
-                          <Lightbulb className="h-4 w-4 text-blue-600" />
-                          <span className="text-sm font-medium text-blue-700">Suggestions</span>
+                          <Lightbulb className="h-4 w-4 text-violet-600" />
+                          <span className="text-sm font-medium text-violet-700">Suggestions</span>
                         </div>
                         <ul className="space-y-1">
                           {insight.suggestions.map((suggestion, i) => (
-                            <li key={i} className="text-sm text-blue-600 flex items-start gap-2">
+                            <li key={i} className="text-sm text-violet-600 flex items-start gap-2">
                               <ChevronRight className="h-4 w-4 mt-0.5 shrink-0" />
                               {suggestion}
                             </li>

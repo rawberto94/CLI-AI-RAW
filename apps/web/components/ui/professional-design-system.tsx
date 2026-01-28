@@ -128,12 +128,12 @@ const glassCardVariants = cva(
         subtle: 'bg-white/60 dark:bg-gray-900/60 border-white/10 dark:border-gray-800/30',
         elevated: 'bg-white/90 dark:bg-gray-900/90 border-white/30 shadow-xl shadow-black/5',
         gradient: 'bg-gradient-to-br from-white/80 to-white/60 dark:from-gray-900/80 dark:to-gray-800/60 border-white/20',
-        accent: 'bg-gradient-to-br from-blue-50/80 to-indigo-50/80 dark:from-blue-950/50 dark:to-indigo-950/50 border-blue-200/30',
+        accent: 'bg-gradient-to-br from-violet-50/80 to-purple-50/80 dark:from-violet-950/50 dark:to-purple-950/50 border-violet-200/30',
       },
       hover: {
         none: '',
         lift: 'hover:shadow-lg hover:-translate-y-1',
-        glow: 'hover:shadow-lg hover:shadow-blue-500/10 hover:border-blue-300/50',
+        glow: 'hover:shadow-lg hover:shadow-violet-500/10 hover:border-violet-300/50',
         scale: 'hover:scale-[1.02]',
       },
       padding: {
@@ -226,10 +226,10 @@ const statusPillVariants = cva(
   {
     variants: {
       status: {
-        success: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+        success: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
         warning: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
         error: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-        info: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        info: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
         neutral: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300',
         active: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
         pending: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
@@ -273,19 +273,19 @@ export const StatusPill = memo(forwardRef<HTMLSpanElement, StatusPillProps>(
           <span className="relative flex h-2 w-2">
             <span className={cn(
               'absolute inline-flex h-full w-full animate-ping rounded-full opacity-75',
-              status === 'success' && 'bg-emerald-400',
+              status === 'success' && 'bg-violet-400',
               status === 'warning' && 'bg-amber-400',
               status === 'error' && 'bg-red-400',
-              status === 'info' && 'bg-blue-400',
+              status === 'info' && 'bg-violet-400',
               status === 'active' && 'bg-green-400',
               status === 'pending' && 'bg-yellow-400'
             )} />
             <span className={cn(
               'relative inline-flex h-2 w-2 rounded-full',
-              status === 'success' && 'bg-emerald-500',
+              status === 'success' && 'bg-violet-500',
               status === 'warning' && 'bg-amber-500',
               status === 'error' && 'bg-red-500',
-              status === 'info' && 'bg-blue-500',
+              status === 'info' && 'bg-violet-500',
               status === 'active' && 'bg-green-500',
               status === 'pending' && 'bg-yellow-500'
             )} />
@@ -328,14 +328,14 @@ export const MetricCard = memo<MetricCardProps>(({
 }) => {
   const iconColorClass = {
     default: 'bg-gray-100 text-gray-600',
-    success: 'bg-emerald-100 text-emerald-600',
+    success: 'bg-violet-100 text-violet-600',
     warning: 'bg-amber-100 text-amber-600',
     error: 'bg-red-100 text-red-600',
-    info: 'bg-blue-100 text-blue-600',
+    info: 'bg-violet-100 text-violet-600',
   }[variant];
 
   const trendColorClass = {
-    up: 'text-emerald-600',
+    up: 'text-violet-600',
     down: 'text-red-600',
     neutral: 'text-gray-500',
   };
@@ -354,10 +354,10 @@ export const MetricCard = memo<MetricCardProps>(({
       {/* Background gradient effect */}
       <div className={cn(
         'absolute inset-0 opacity-0 transition-opacity group-hover:opacity-100',
-        variant === 'success' && 'bg-gradient-to-br from-emerald-50/50 to-transparent',
+        variant === 'success' && 'bg-gradient-to-br from-violet-50/50 to-transparent',
         variant === 'warning' && 'bg-gradient-to-br from-amber-50/50 to-transparent',
         variant === 'error' && 'bg-gradient-to-br from-red-50/50 to-transparent',
-        variant === 'info' && 'bg-gradient-to-br from-blue-50/50 to-transparent'
+        variant === 'info' && 'bg-gradient-to-br from-violet-50/50 to-transparent'
       )} />
       
       <div className="relative flex items-start justify-between">
@@ -410,11 +410,11 @@ const professionalButtonVariants = cva(
   {
     variants: {
       variant: {
-        primary: 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-700 hover:to-indigo-700 shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 focus-visible:ring-blue-500',
+        primary: 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 focus-visible:ring-violet-500',
         secondary: 'bg-gray-100 text-gray-900 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-100 dark:hover:bg-gray-700 focus-visible:ring-gray-500',
         outline: 'border-2 border-gray-300 bg-transparent hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800 focus-visible:ring-gray-500',
         ghost: 'bg-transparent hover:bg-gray-100 dark:hover:bg-gray-800 focus-visible:ring-gray-500',
-        success: 'bg-gradient-to-r from-emerald-600 to-green-600 text-white hover:from-emerald-700 hover:to-green-700 shadow-md shadow-emerald-500/25 hover:shadow-lg focus-visible:ring-emerald-500',
+        success: 'bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/25 hover:shadow-lg focus-visible:ring-violet-500',
         danger: 'bg-gradient-to-r from-red-600 to-rose-600 text-white hover:from-red-700 hover:to-rose-700 shadow-md shadow-red-500/25 hover:shadow-lg focus-visible:ring-red-500',
         glass: 'bg-white/20 backdrop-blur-lg border border-white/30 text-white hover:bg-white/30 focus-visible:ring-white/50',
       },
@@ -661,17 +661,17 @@ export const ToastNotification = memo<ToastNotificationProps>(({
   };
   
   const colors = {
-    success: 'border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950',
+    success: 'border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950',
     error: 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950',
     warning: 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950',
-    info: 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950',
+    info: 'border-violet-200 bg-violet-50 dark:border-violet-800 dark:bg-violet-950',
   };
   
   const iconColors = {
-    success: 'text-emerald-600 dark:text-emerald-400',
+    success: 'text-violet-600 dark:text-violet-400',
     error: 'text-red-600 dark:text-red-400',
     warning: 'text-amber-600 dark:text-amber-400',
-    info: 'text-blue-600 dark:text-blue-400',
+    info: 'text-violet-600 dark:text-violet-400',
   };
 
   const Icon = icons[type];
@@ -693,7 +693,7 @@ export const ToastNotification = memo<ToastNotificationProps>(({
         {action && (
           <button
             onClick={action.onClick}
-            className="mt-2 text-sm font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            className="mt-2 text-sm font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
           >
             {action.label} →
           </button>
@@ -730,9 +730,9 @@ export const AIBadge = memo<AIBadgeProps>(({
   className,
 }) => {
   const variants = {
-    default: 'bg-gradient-to-r from-purple-100 to-blue-100 text-purple-700 border border-purple-200/50 dark:from-purple-900/30 dark:to-blue-900/30 dark:text-purple-300 dark:border-purple-700/30',
+    default: 'bg-gradient-to-r from-purple-100 to-purple-100 text-purple-700 border border-purple-200/50 dark:from-purple-900/30 dark:to-purple-900/30 dark:text-purple-300 dark:border-purple-700/30',
     minimal: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400',
-    gradient: 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/25',
+    gradient: 'bg-gradient-to-r from-purple-600 to-purple-600 text-white shadow-lg shadow-purple-500/25',
   };
 
   return (

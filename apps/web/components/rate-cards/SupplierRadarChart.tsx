@@ -170,7 +170,7 @@ export function SupplierRadarChart({
       </div>
 
       {suppliers.length > maxSuppliers && (
-        <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-800">
+        <div className="mt-4 p-3 bg-violet-50 rounded-lg text-sm text-violet-800">
           Showing top {maxSuppliers} suppliers. {suppliers.length - maxSuppliers} more available.
         </div>
       )}

@@ -76,7 +76,7 @@ const AI_MODELS = [
     name: 'Mistral Large (EU)', 
     description: 'EU-hosted AI model - GDPR compliant',
     badge: 'Fast',
-    badgeColor: 'bg-blue-100 text-blue-700'
+    badgeColor: 'bg-violet-100 text-violet-700'
   },
   { 
     id: 'auto', 
@@ -261,7 +261,7 @@ export function ProcessingConfig({ options, onChange, disabled }: ProcessingConf
             <AccordionItem value="concurrency">
               <AccordionTrigger className="text-sm">
                 <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-blue-600" />
+                  <Sparkles className="h-4 w-4 text-violet-600" />
                   Parallel Processing
                 </div>
               </AccordionTrigger>

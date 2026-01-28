@@ -39,8 +39,8 @@ export function ConnectionStatus({ status, showLabel = true, size = 'md' }: Conn
   const statusConfig = {
     online: {
       icon: Wifi,
-      color: 'text-emerald-500',
-      bgColor: 'bg-emerald-500',
+      color: 'text-violet-500',
+      bgColor: 'bg-violet-500',
       label: 'Connected',
     },
     offline: {
@@ -66,7 +66,7 @@ export function ConnectionStatus({ status, showLabel = true, size = 'md' }: Conn
         <Icon className={cn(sizeClasses[size], config.color, status === 'reconnecting' && 'animate-spin')} />
         {status === 'online' && (
           <span className={cn("absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full", config.bgColor)}>
-            <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" />
+            <span className="absolute inset-0 rounded-full bg-violet-400 animate-ping opacity-75" />
           </span>
         )}
       </div>
@@ -113,12 +113,12 @@ export function SyncStatus({ status, lastSynced, showLabel = true }: SyncStatusP
   const statusConfig = {
     synced: {
       icon: Cloud,
-      color: 'text-emerald-500',
+      color: 'text-violet-500',
       label: 'Synced',
     },
     syncing: {
       icon: RefreshCw,
-      color: 'text-blue-500',
+      color: 'text-violet-500',
       label: 'Syncing...',
     },
     error: {
@@ -181,7 +181,7 @@ export function SystemHealth({ metrics: propMetrics, compact = true }: SystemHea
     : 'degraded';
 
   const statusColors = {
-    healthy: 'text-emerald-500 bg-emerald-500',
+    healthy: 'text-violet-500 bg-violet-500',
     degraded: 'text-amber-500 bg-amber-500',
     down: 'text-red-500 bg-red-500',
   };
@@ -263,7 +263,7 @@ export function SystemHealth({ metrics: propMetrics, compact = true }: SystemHea
             <div className="flex items-center gap-3">
               <div className={cn(
                 "p-2 rounded-lg",
-                metric.status === 'healthy' ? 'bg-emerald-100 dark:bg-emerald-900/30' :
+                metric.status === 'healthy' ? 'bg-violet-100 dark:bg-violet-900/30' :
                 metric.status === 'degraded' ? 'bg-amber-100 dark:bg-amber-900/30' :
                 'bg-red-100 dark:bg-red-900/30'
               )}>
@@ -278,7 +278,7 @@ export function SystemHealth({ metrics: propMetrics, compact = true }: SystemHea
                 <span className="text-xs text-slate-500">{metric.latency}ms</span>
               )}
               {metric.status === 'healthy' ? (
-                <Check className="h-4 w-4 text-emerald-500" />
+                <Check className="h-4 w-4 text-violet-500" />
               ) : metric.status === 'degraded' ? (
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
               ) : (
@@ -310,8 +310,8 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
   }, [status]);
 
   const statusConfig = {
-    saved: { color: 'text-emerald-500', label: 'Saved' },
-    saving: { color: 'text-blue-500', label: 'Saving...' },
+    saved: { color: 'text-violet-500', label: 'Saved' },
+    saving: { color: 'text-violet-500', label: 'Saving...' },
     unsaved: { color: 'text-amber-500', label: 'Unsaved changes' },
     error: { color: 'text-red-500', label: 'Save failed' },
   };
@@ -328,10 +328,10 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
           className="flex items-center gap-2"
         >
           {status === 'saving' && (
-            <RefreshCw className="h-3 w-3 text-blue-500 animate-spin" />
+            <RefreshCw className="h-3 w-3 text-violet-500 animate-spin" />
           )}
           {status === 'saved' && (
-            <Check className="h-3 w-3 text-emerald-500" />
+            <Check className="h-3 w-3 text-violet-500" />
           )}
           {(status === 'unsaved' || status === 'error') && (
             <span className={cn("h-2 w-2 rounded-full", status === 'unsaved' ? 'bg-amber-500' : 'bg-red-500')} />
@@ -363,32 +363,32 @@ export function ProcessingStatus({ isProcessing, message, progress, onCancel }: 
           exit={{ height: 0, opacity: 0 }}
           className="overflow-hidden"
         >
-          <div className="bg-indigo-50 dark:bg-indigo-900/20 border-b border-indigo-100 dark:border-indigo-800 px-4 py-2">
+          <div className="bg-purple-50 dark:bg-purple-900/20 border-b border-indigo-100 dark:border-indigo-800 px-4 py-2">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <div className="flex items-center gap-3">
-                <RefreshCw className="h-4 w-4 text-indigo-600 dark:text-indigo-400 animate-spin" />
-                <span className="text-sm text-indigo-700 dark:text-indigo-300">
+                <RefreshCw className="h-4 w-4 text-purple-600 dark:text-indigo-400 animate-spin" />
+                <span className="text-sm text-purple-700 dark:text-indigo-300">
                   {message || 'Processing...'}
                 </span>
                 {progress !== undefined && (
-                  <span className="text-xs text-indigo-500">{progress}%</span>
+                  <span className="text-xs text-purple-500">{progress}%</span>
                 )}
               </div>
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="text-xs text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                  className="text-xs text-purple-600 dark:text-indigo-400 hover:text-purple-700 dark:hover:text-indigo-300 font-medium"
                 >
                   Cancel
                 </button>
               )}
             </div>
             {progress !== undefined && (
-              <div className="mt-2 h-1 bg-indigo-100 dark:bg-indigo-800 rounded-full max-w-7xl mx-auto overflow-hidden">
+              <div className="mt-2 h-1 bg-purple-100 dark:bg-purple-800 rounded-full max-w-7xl mx-auto overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
-                  className="h-full bg-indigo-500 rounded-full"
+                  className="h-full bg-purple-500 rounded-full"
                 />
               </div>
             )}

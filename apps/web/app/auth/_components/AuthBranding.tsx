@@ -27,15 +27,15 @@ function FloatingDocument({
       lines: ["bg-white/90", "bg-white/70", "bg-white/50"],
     },
     secondary: {
-      bg: "from-cyan-500/80 via-teal-500/80 to-emerald-500/80",
-      border: "border-cyan-300/50",
-      shadow: "shadow-cyan-500/40",
+      bg: "from-purple-500/80 via-violet-500/80 to-purple-500/80",
+      border: "border-purple-300/50",
+      shadow: "shadow-purple-500/40",
       lines: ["bg-white/80", "bg-white/60", "bg-white/40"],
     },
     accent: {
-      bg: "from-amber-400/80 via-orange-500/80 to-rose-500/80",
-      border: "border-amber-300/50",
-      shadow: "shadow-amber-500/40",
+      bg: "from-fuchsia-400/80 via-pink-500/80 to-rose-500/80",
+      border: "border-fuchsia-300/50",
+      shadow: "shadow-fuchsia-500/40",
       lines: ["bg-white/80", "bg-white/60", "bg-white/40"],
     },
   };
@@ -291,7 +291,7 @@ function AIChip({ x, y }: { x: number; y: number }) {
           {([[12, 12], [36, 12], [12, 36], [36, 36]] as [number, number][]).map(([nx, ny], i) => (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 rounded-full bg-cyan-400"
+              className="absolute w-2 h-2 rounded-full bg-purple-400"
               style={{ left: (nx ?? 0) - 4, top: (ny ?? 0) - 4 }}
               animate={{ 
                 scale: [1, 1.5, 1], 
@@ -327,7 +327,7 @@ function AIChip({ x, y }: { x: number; y: number }) {
 
 // Data Flow Particles with enhanced dynamics
 function DataParticles() {
-  const colors = ["bg-cyan-400", "bg-violet-400", "bg-fuchsia-400", "bg-emerald-400", "bg-amber-400"];
+  const colors = ["bg-purple-400", "bg-violet-400", "bg-fuchsia-400", "bg-violet-400", "bg-amber-400"];
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {Array.from({ length: 20 }).map((_, i) => {
@@ -418,7 +418,7 @@ export function AuthHeroArt({ className }: { className?: string }) {
       <div className="relative h-56 xl:h-64 w-80 xl:w-96 mx-auto" style={{ perspective: "1200px" }}>
         {/* Ambient glow */}
         <motion.div 
-          className="absolute inset-0 rounded-[3rem] bg-gradient-to-br from-violet-500/20 via-cyan-500/20 to-fuchsia-500/20 blur-3xl"
+          className="absolute inset-0 rounded-[3rem] bg-gradient-to-br from-violet-500/20 via-purple-500/20 to-fuchsia-500/20 blur-3xl"
           animate={{ 
             opacity: [0.3, 0.6, 0.3],
             scale: [1, 1.1, 1],
@@ -435,9 +435,9 @@ export function AuthHeroArt({ className }: { className?: string }) {
 
         {/* Floating orbs */}
         <FloatingOrb size={16} color="bg-violet-400/60" x={20} y={40} delay={0} />
-        <FloatingOrb size={10} color="bg-cyan-400/60" x={280} y={150} delay={0.5} />
+        <FloatingOrb size={10} color="bg-purple-400/60" x={280} y={150} delay={0.5} />
         <FloatingOrb size={12} color="bg-fuchsia-400/60" x={240} y={15} delay={1} />
-        <FloatingOrb size={8} color="bg-emerald-400/60" x={60} y={170} delay={1.5} />
+        <FloatingOrb size={8} color="bg-violet-400/60" x={60} y={170} delay={1.5} />
         
         {/* Main floating documents - centered layout */}
         <FloatingDocument 
@@ -475,7 +475,7 @@ export function AuthHeroArt({ className }: { className?: string }) {
 
         {/* Floating icons with enhanced dynamics */}
         <motion.div
-          className="absolute -left-2 -top-2 w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/40 flex items-center justify-center"
+          className="absolute -left-2 -top-2 w-8 h-8 rounded-xl bg-gradient-to-br from-violet-400 to-violet-500 shadow-lg shadow-violet-500/40 flex items-center justify-center"
           animate={{ 
             y: [0, -10, 3, -6, 0], 
             x: [0, 3, -2, 2, 0],
@@ -526,10 +526,10 @@ export function AuthHeroArt({ className }: { className?: string }) {
 
 export function ConTigoLogo({ size = "lg" }: { size?: "sm" | "md" | "lg" | "xl" }) {
   const sizes = {
-    sm: { height: 40, fontSize: 24 },
-    md: { height: 56, fontSize: 32 },
-    lg: { height: 72, fontSize: 40 },
-    xl: { height: 96, fontSize: 52 },
+    sm: { height: 36, fontSize: 24, barHeight: 6, gap: 9 },
+    md: { height: 48, fontSize: 32, barHeight: 8, gap: 12 },
+    lg: { height: 64, fontSize: 40, barHeight: 10, gap: 15 },
+    xl: { height: 80, fontSize: 52, barHeight: 12, gap: 18 },
   } as const;
 
   const s = sizes[size];
@@ -541,51 +541,57 @@ export function ConTigoLogo({ size = "lg" }: { size?: "sm" | "md" | "lg" | "xl" 
       animate={{ opacity: 1, x: 0 }}
       transition={{ duration: 0.5 }}
     >
+      {/* New Contigo Stacked Bars Logo */}
       <motion.svg 
         width={s.height} 
         height={s.height} 
-        viewBox="0 0 100 100" 
+        viewBox="0 0 48 48" 
         className="flex-shrink-0"
-        whileHover={{ scale: 1.05, rotate: [0, -5, 5, 0] }}
-        transition={{ duration: 0.4 }}
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.3 }}
       >
         <defs>
-          <linearGradient id="loginDocGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+          <linearGradient id="barGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#7C3AED" />
+            <stop offset="100%" stopColor="#8B5CF6" />
+          </linearGradient>
+          <linearGradient id="barGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="100%" stopColor="#A78BFA" />
+          </linearGradient>
+          <linearGradient id="barGradient3" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stopColor="#A78BFA" />
-            <stop offset="50%" stopColor="#8B5CF6" />
-            <stop offset="100%" stopColor="#7C3AED" />
+            <stop offset="100%" stopColor="#C4B5FD" />
           </linearGradient>
-          <linearGradient id="loginPenGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#F472B6" />
-            <stop offset="100%" stopColor="#EC4899" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
         </defs>
-
-        {/* Document with gradient */}
-        <rect x="10" y="5" width="55" height="70" rx="8" fill="url(#loginDocGradient)" filter="url(#glow)" />
-
-        {/* Content lines */}
-        <rect x="20" y="18" width="22" height="6" rx="3" fill="white" opacity="0.9" />
-        <rect x="20" y="32" width="35" height="6" rx="3" fill="white" opacity="0.9" />
-        <rect x="20" y="46" width="18" height="6" rx="3" fill="white" opacity="0.7" />
-
-        {/* Pen with pink gradient */}
-        <g transform="translate(55, 55) rotate(-45)">
-          <rect x="-6" y="0" width="12" height="35" rx="2" fill="url(#loginPenGradient)" />
-          <polygon points="-6,35 0,48 6,35" fill="url(#loginPenGradient)" />
-          <rect x="-5" y="3" width="10" height="5" rx="1" fill="#DB2777" />
+        {/* Three Stacked Bars */}
+        <g transform="translate(8, 10)">
+          <motion.rect 
+            x="0" y="0" width="32" height="8" rx="4" 
+            fill="url(#barGradient1)"
+            initial={{ x: -40 }}
+            animate={{ x: 0 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
+          />
+          <motion.rect 
+            x="0" y="12" width="32" height="8" rx="4" 
+            fill="url(#barGradient2)"
+            initial={{ x: -40 }}
+            animate={{ x: 0 }}
+            transition={{ delay: 0.2, duration: 0.4 }}
+          />
+          <motion.rect 
+            x="0" y="24" width="32" height="8" rx="4" 
+            fill="url(#barGradient3)"
+            initial={{ x: -40 }}
+            animate={{ x: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          />
         </g>
       </motion.svg>
       <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
-        <span className="text-white">Con</span>
-        <span className="text-purple-200">Tigo</span>
+        <span className="text-violet-300">con</span>
+        <span className="text-white">tigo</span>
       </span>
     </motion.div>
   );

@@ -251,7 +251,7 @@ export function DropdownCheckboxItem({
         className={cn(
           'w-4 h-4 rounded border flex items-center justify-center transition-colors',
           checked
-            ? 'bg-indigo-600 border-indigo-600'
+            ? 'bg-purple-600 border-purple-600'
             : 'border-slate-300'
         )}
       >

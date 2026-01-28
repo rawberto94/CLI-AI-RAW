@@ -53,10 +53,10 @@ export function StageIndicator({
         };
       case 'active':
         return {
-          bg: 'bg-blue-100',
-          border: 'border-blue-500',
-          text: 'text-blue-700',
-          icon: 'text-blue-600',
+          bg: 'bg-violet-100',
+          border: 'border-violet-500',
+          text: 'text-violet-700',
+          icon: 'text-violet-600',
         };
       case 'error':
         return {
@@ -91,7 +91,7 @@ export function StageIndicator({
                 className={`
                   flex items-center justify-center w-8 h-8 rounded-full border-2
                   ${colors.bg} ${colors.border} ${colors.icon}
-                  ${isActive ? 'ring-2 ring-offset-2 ring-blue-500' : ''}
+                  ${isActive ? 'ring-2 ring-offset-2 ring-violet-500' : ''}
                 `}
               >
                 {getStageIcon(stage.status)}

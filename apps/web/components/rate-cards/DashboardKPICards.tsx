@@ -62,7 +62,7 @@ export function DashboardKPICards() {
       value: metrics.totalRateCards.toLocaleString(),
       icon: Database,
       description: 'Rate cards tracked',
-      color: 'text-blue-600',
+      color: 'text-violet-600',
     },
     {
       title: 'Total Suppliers',

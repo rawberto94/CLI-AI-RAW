@@ -60,7 +60,7 @@ function GradientOrbs() {
   return (
     <>
       <motion.div 
-        className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-emerald-400/30 via-teal-500/20 to-cyan-400/30 rounded-full blur-3xl"
+        className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-gradient-to-br from-violet-400/30 via-violet-500/20 to-purple-400/30 rounded-full blur-3xl"
         animate={{ 
           scale: [1, 1.2, 1],
           rotate: [0, 90, 0],
@@ -69,7 +69,7 @@ function GradientOrbs() {
         transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div 
-        className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-gradient-to-tr from-violet-500/20 via-purple-400/20 to-indigo-400/20 rounded-full blur-3xl"
+        className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-gradient-to-tr from-violet-500/20 via-purple-400/20 to-purple-400/20 rounded-full blur-3xl"
         animate={{ 
           scale: [1, 1.3, 1],
           rotate: [0, -90, 0],
@@ -167,8 +167,8 @@ function SignUpForm() {
     
     if (score <= 2) return { score, label: "Weak", color: "bg-red-500", checks };
     if (score === 3) return { score, label: "Fair", color: "bg-amber-500", checks };
-    if (score === 4) return { score, label: "Good", color: "bg-emerald-400", checks };
-    return { score, label: "Strong", color: "bg-emerald-500", checks };
+    if (score === 4) return { score, label: "Good", color: "bg-violet-400", checks };
+    return { score, label: "Strong", color: "bg-violet-500", checks };
   }, [formData.password]);
   
   // Configured providers
@@ -309,10 +309,10 @@ function SignUpForm() {
 
   if (step === "complete") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 p-4 relative overflow-hidden">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-violet-50/30 p-4 relative overflow-hidden">
         {/* Background effects */}
         <motion.div 
-          className="absolute top-20 right-20 w-64 h-64 bg-gradient-to-br from-emerald-200/30 to-teal-200/30 rounded-full blur-3xl"
+          className="absolute top-20 right-20 w-64 h-64 bg-gradient-to-br from-violet-200/30 to-violet-200/30 rounded-full blur-3xl"
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 4, repeat: Infinity }}
         />
@@ -327,19 +327,19 @@ function SignUpForm() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, type: "spring" }}
         >
-          <Card className="w-full max-w-md p-8 text-center shadow-2xl shadow-emerald-200/30 border border-emerald-100 bg-white/90 backdrop-blur-xl rounded-2xl relative z-10">
+          <Card className="w-full max-w-md p-8 text-center shadow-2xl shadow-violet-200/30 border border-violet-100 bg-white/90 backdrop-blur-xl rounded-2xl relative z-10">
             <motion.div 
               className="flex justify-center mb-4"
               initial={{ scale: 0 }}
               animate={{ scale: 1, rotate: [0, 10, -10, 0] }}
               transition={{ duration: 0.6, delay: 0.2 }}
             >
-              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+              <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
                 <CheckCircle2 className="h-10 w-10 text-white" />
               </div>
             </motion.div>
             <motion.h1 
-              className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-emerald-600 to-teal-600"
+              className="text-2xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-violet-600 to-violet-600"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -364,7 +364,7 @@ function SignUpForm() {
                 {[0, 1, 2].map((i) => (
                   <motion.div
                     key={i}
-                    className="w-2 h-2 rounded-full bg-emerald-500"
+                    className="w-2 h-2 rounded-full bg-violet-500"
                     animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                     transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
                   />
@@ -380,7 +380,7 @@ function SignUpForm() {
   return (
     <div className="min-h-screen flex">
       {/* Left side - Branding with vibrant colors */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-600 p-12 flex-col justify-between relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-500 via-violet-600 to-purple-600 p-12 flex-col justify-between relative overflow-hidden">
         {/* Animated gradient orbs */}
         <GradientOrbs />
         
@@ -401,7 +401,7 @@ function SignUpForm() {
 
         <div className="text-white relative z-10 flex-1 flex flex-col justify-center -mt-8">
           <motion.h2 
-            className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-emerald-100 to-white"
+            className="text-4xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-white via-violet-100 to-white"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.1 }}
@@ -409,7 +409,7 @@ function SignUpForm() {
             Create your ConTigo account
           </motion.h2>
           <motion.p 
-            className="text-emerald-100 text-lg leading-relaxed max-w-md"
+            className="text-violet-100 text-lg leading-relaxed max-w-md"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2 }}
@@ -449,28 +449,28 @@ function SignUpForm() {
         </div>
 
         <motion.div 
-          className="text-emerald-200 text-sm relative z-10 flex items-center justify-between"
+          className="text-violet-200 text-sm relative z-10 flex items-center justify-between"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.8 }}
         >
           <span>© 2025 ConTigo. All rights reserved.</span>
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+            <CheckCircle2 className="w-4 h-4 text-violet-300" />
             <span className="text-xs">Free to start</span>
           </div>
         </motion.div>
       </div>
 
       {/* Right side - Signup Form with animated background */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 relative overflow-hidden">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-4 sm:p-8 bg-gradient-to-br from-slate-50 via-white to-violet-50/30 relative overflow-hidden">
         {/* Animated gradient mesh background */}
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-100/40 via-transparent to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-teal-100/30 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-violet-100/30 via-transparent to-transparent" />
         
         {/* Subtle animated shapes */}
         <motion.div 
-          className="absolute top-20 right-20 w-32 h-32 rounded-full bg-gradient-to-br from-emerald-200/30 to-teal-200/30 blur-2xl"
+          className="absolute top-20 right-20 w-32 h-32 rounded-full bg-gradient-to-br from-violet-200/30 to-violet-200/30 blur-2xl"
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3], x: [0, 20, 0] }}
           transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
         />
@@ -489,7 +489,7 @@ function SignUpForm() {
           transition={{ duration: 0.5, type: "spring", damping: 20 }}
           className="w-full max-w-md relative z-10"
         >
-        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-teal-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl">
+        <Card className="w-full p-6 sm:p-8 shadow-2xl shadow-violet-200/30 border border-slate-100/80 bg-white/90 backdrop-blur-xl rounded-2xl">
           {/* Mobile Logo */}
           <motion.div 
             className="lg:hidden flex justify-center mb-8"
@@ -508,7 +508,7 @@ function SignUpForm() {
               <motion.div 
                 className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4 shadow-lg ${
                   step === "account" 
-                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/30" 
+                    ? "bg-gradient-to-br from-violet-500 to-violet-600 shadow-violet-500/30" 
                     : "bg-gradient-to-br from-violet-500 to-purple-600 shadow-violet-500/30"
                 }`}
                 initial={{ scale: 0, rotate: -180 }}
@@ -542,12 +542,12 @@ function SignUpForm() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
           >
-            <div className={`flex items-center gap-2 ${step === "account" ? "text-emerald-700" : "text-slate-400"}`}>
+            <div className={`flex items-center gap-2 ${step === "account" ? "text-violet-700" : "text-slate-400"}`}>
               <motion.div 
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
                   step === "account" 
-                    ? "bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/30" 
-                    : "bg-emerald-100 text-emerald-600"
+                    ? "bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-md shadow-violet-500/30" 
+                    : "bg-violet-100 text-violet-600"
                 }`}
                 animate={step === "account" ? { scale: [1, 1.1, 1] } : {}}
                 transition={{ duration: 0.3 }}
@@ -556,7 +556,7 @@ function SignUpForm() {
               </motion.div>
               <span className="text-sm font-medium">Account</span>
             </div>
-            <div className={`w-8 h-px ${step === "organization" ? "bg-emerald-500" : "bg-slate-200"} transition-colors`} />
+            <div className={`w-8 h-px ${step === "organization" ? "bg-violet-500" : "bg-slate-200"} transition-colors`} />
             <div className={`flex items-center gap-2 ${step === "organization" ? "text-violet-700" : "text-slate-400"}`}>
               <motion.div 
                 className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300 ${
@@ -728,7 +728,7 @@ function SignUpForm() {
                     </div>
                     <span className={`text-xs font-medium ${
                       passwordStrength.score <= 2 ? "text-red-500" : 
-                      passwordStrength.score === 3 ? "text-amber-500" : "text-emerald-500"
+                      passwordStrength.score === 3 ? "text-amber-500" : "text-violet-500"
                     }`}>
                       {passwordStrength.label}
                     </span>
@@ -743,7 +743,7 @@ function SignUpForm() {
                       <div 
                         key={req.key} 
                         className={`flex items-center gap-1 ${
-                          (passwordStrength as any).checks?.[req.key] ? "text-emerald-600" : "text-slate-400"
+                          (passwordStrength as any).checks?.[req.key] ? "text-violet-600" : "text-slate-400"
                         }`}
                       >
                         <Check className="w-3 h-3" />
@@ -771,7 +771,7 @@ function SignUpForm() {
                     formData.confirmPassword && formData.password !== formData.confirmPassword 
                       ? "border-red-300 focus:border-red-500" 
                       : formData.confirmPassword && formData.password === formData.confirmPassword
-                      ? "border-emerald-300 focus:border-emerald-500"
+                      ? "border-violet-300 focus:border-violet-500"
                       : ""
                   }`}
                 />
@@ -795,7 +795,7 @@ function SignUpForm() {
               )}
               {formData.confirmPassword && formData.password === formData.confirmPassword && (
                 <motion.p 
-                  className="text-xs text-emerald-500 mt-1 flex items-center gap-1"
+                  className="text-xs text-violet-500 mt-1 flex items-center gap-1"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                 >
@@ -807,7 +807,7 @@ function SignUpForm() {
 
             <Button 
               type="submit" 
-              className="w-full h-11 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-700 hover:via-teal-700 hover:to-cyan-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-teal-500/25 hover:shadow-xl hover:shadow-teal-500/35 group relative overflow-hidden" 
+              className="w-full h-11 bg-gradient-to-r from-violet-600 via-violet-600 to-purple-600 hover:from-violet-700 hover:via-violet-700 hover:to-purple-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/35 group relative overflow-hidden" 
               disabled={loading}
             >
               {/* Shimmer effect */}
@@ -902,7 +902,7 @@ function SignUpForm() {
           transition={{ delay: 0.5 }}
         >
           Already have an account?{" "}
-          <Link href="/auth/signin" className="text-emerald-600 hover:text-emerald-700 hover:underline font-semibold transition-colors underline-offset-2">
+          <Link href="/auth/signin" className="text-violet-600 hover:text-violet-700 hover:underline font-semibold transition-colors underline-offset-2">
             Sign in
           </Link>
         </motion.div>
@@ -917,14 +917,14 @@ function SignUpForm() {
 export default function SignUpPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-100/40 via-transparent to-transparent" />
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-white to-violet-50/30 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-violet-100/40 via-transparent to-transparent" />
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="flex flex-col items-center gap-3"
         >
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg shadow-violet-500/30">
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 1, repeat: Infinity, ease: "linear" }}

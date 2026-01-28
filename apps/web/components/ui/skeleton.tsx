@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 function Shimmer({ className }: { className?: string }) {
   return (
     <div className={cn("relative overflow-hidden", className)}>
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-violet-200/40 dark:via-violet-400/20 to-transparent" />
     </div>
   );
 }
@@ -19,8 +19,8 @@ function Shimmer({ className }: { className?: string }) {
 // Base skeleton with shimmer
 export function Skeleton({ className }: { className?: string }) {
   return (
-    <div className={cn("bg-gradient-to-r from-slate-200 via-slate-100 to-slate-200 rounded animate-pulse relative overflow-hidden", className)}>
-      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+    <div className={cn("bg-gradient-to-r from-slate-200 via-violet-100/50 to-slate-200 dark:from-slate-800 dark:via-violet-900/30 dark:to-slate-800 rounded-lg animate-pulse relative overflow-hidden", className)}>
+      <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 dark:via-violet-400/10 to-transparent" />
     </div>
   );
 }
@@ -83,33 +83,33 @@ export function SkeletonContractOverview() {
       {/* Header section */}
       <div className="flex items-start justify-between">
         <div className="space-y-3 flex-1">
-          <div className="h-8 w-3/4 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-5 w-1/2 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-8 w-3/4 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg"></div>
+          <div className="h-5 w-1/2 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg"></div>
         </div>
         <div className="flex gap-2">
-          <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
-          <div className="h-10 w-24 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <div className="h-10 w-24 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-xl"></div>
+          <div className="h-10 w-24 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-xl"></div>
         </div>
       </div>
 
       {/* Stats cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
         {[1, 2, 3].map((i) => (
-          <Card key={i} className="p-6">
-            <div className="h-4 w-24 bg-gray-200 dark:bg-gray-700 rounded mb-3"></div>
-            <div className="h-8 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
+          <Card key={i} className="p-6 bg-white/50 dark:bg-slate-900/50">
+            <div className="h-4 w-24 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded mb-3"></div>
+            <div className="h-8 w-32 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded-lg"></div>
           </Card>
         ))}
       </div>
 
       {/* Details section */}
-      <Card className="mt-6">
+      <Card className="mt-6 bg-white/50 dark:bg-slate-900/50">
         <CardContent className="pt-6">
           <div className="space-y-4">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="flex justify-between items-center py-3 border-b last:border-0">
-                <div className="h-5 w-32 bg-gray-200 dark:bg-gray-700 rounded"></div>
-                <div className="h-5 w-48 bg-gray-200 dark:bg-gray-700 rounded"></div>
+              <div key={i} className="flex justify-between items-center py-3 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                <div className="h-5 w-32 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded"></div>
+                <div className="h-5 w-48 bg-gradient-to-r from-slate-200 to-violet-100/50 dark:from-slate-700 dark:to-violet-900/30 rounded"></div>
               </div>
             ))}
           </div>

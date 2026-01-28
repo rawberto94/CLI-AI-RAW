@@ -118,7 +118,7 @@ const fallbackTemplates: WorkflowTemplate[] = [
     description: 'Multi-stage approval with Legal, Finance, and Management review',
     category: 'procurement',
     icon: CheckCircle,
-    color: 'from-blue-500 to-indigo-600',
+    color: 'from-violet-500 to-purple-600',
     steps: [
       { name: 'Initial Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 48 },
       { name: 'Legal Review', type: 'APPROVAL', assigneeType: 'ROLE', slaHours: 72 },
@@ -134,7 +134,7 @@ const fallbackTemplates: WorkflowTemplate[] = [
     description: 'Quick review for low-value contracts',
     category: 'procurement',
     icon: Zap,
-    color: 'from-green-500 to-emerald-600',
+    color: 'from-violet-500 to-violet-600',
     steps: [
       { name: 'Quick Review', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
       { name: 'Final Approval', type: 'APPROVAL', assigneeType: 'USER', slaHours: 24 },
@@ -216,7 +216,7 @@ export function WorkflowTemplatesGallery({
     return (
       <div className={cn('space-y-6', className)}>
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
           <span className="ml-3 text-slate-600">Loading workflow templates...</span>
         </div>
       </div>
@@ -242,7 +242,7 @@ export function WorkflowTemplatesGallery({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="gap-1 bg-indigo-50 text-indigo-700 border-indigo-200">
+          <Badge variant="outline" className="gap-1 bg-purple-50 text-purple-700 border-indigo-200">
             <TrendingUp className="w-3 h-3" />
             {templates.length} templates
           </Badge>
@@ -270,7 +270,7 @@ export function WorkflowTemplatesGallery({
               className={cn(
                 'gap-2 whitespace-nowrap',
                 selectedCategory === category.id &&
-                  'bg-gradient-to-r from-indigo-500 to-purple-600'
+                  'bg-gradient-to-r from-purple-500 to-purple-600'
               )}
             >
               <category.icon className="w-4 h-4" />
@@ -290,7 +290,7 @@ export function WorkflowTemplatesGallery({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
             >
-              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col hover:scale-[1.02] focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 dark:bg-slate-800 dark:border-slate-700 dark:hover:shadow-slate-900/50">
+              <Card className="group hover:shadow-2xl transition-all duration-300 cursor-pointer h-full flex flex-col hover:scale-[1.02] focus-within:ring-2 focus-within:ring-purple-500 focus-within:ring-offset-2 dark:bg-slate-800 dark:border-slate-700 dark:hover:shadow-slate-900/50">
                 <CardHeader>
                   <div className="flex items-start justify-between mb-3">
                     <div
@@ -309,14 +309,14 @@ export function WorkflowTemplatesGallery({
                         </Badge>
                       )}
                       {template.recommended && (
-                        <Badge className="bg-indigo-500 text-white border-indigo-600 text-xs">
+                        <Badge className="bg-purple-500 text-white border-purple-600 text-xs">
                           <Sparkles className="w-3 h-3 mr-1" />
                           Recommended
                         </Badge>
                       )}
                     </div>
                   </div>
-                  <CardTitle className="text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors dark:text-slate-100">
+                  <CardTitle className="text-lg group-hover:text-purple-600 dark:group-hover:text-indigo-400 transition-colors dark:text-slate-100">
                     {template.name}
                   </CardTitle>
                   <CardDescription className="text-sm line-clamp-2">
@@ -374,7 +374,7 @@ export function WorkflowTemplatesGallery({
                     </Button>
                     <Button
                       size="sm"
-                      className="flex-1 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                      className="flex-1 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                       onClick={() => handleUseTemplate(template)}
                     >
                       Use Template
@@ -447,7 +447,7 @@ export function WorkflowTemplatesGallery({
                       key={index}
                       className="flex items-center gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200"
                     >
-                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 font-semibold text-sm">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-purple-100 text-purple-600 font-semibold text-sm">
                         {index + 1}
                       </div>
                       <div className="flex-1">
@@ -470,7 +470,7 @@ export function WorkflowTemplatesGallery({
                 Close
               </Button>
               <Button
-                className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
                 onClick={() => handleUseTemplate(selectedTemplate)}
               >
                 Use This Template

@@ -256,15 +256,15 @@ export function AIChatInterface({
       )}
     >
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+      <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-purple-50">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-sm">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-sm">
             <Bot className="h-5 w-5 text-white" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 flex items-center gap-2">
               AI Rate Assistant
-              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-blue-100 text-blue-700 rounded">
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-violet-100 text-violet-700 rounded">
                 BETA
               </span>
             </h3>
@@ -311,7 +311,7 @@ export function AIChatInterface({
               )}
             >
               {message.role === 'assistant' && (
-                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
                   <Sparkles className="h-4 w-4 text-white" />
                 </div>
               )}
@@ -319,7 +319,7 @@ export function AIChatInterface({
               <div className={cn(
                 "max-w-[80%] rounded-2xl px-4 py-3",
                 message.role === 'user' 
-                  ? "bg-blue-600 text-white" 
+                  ? "bg-violet-600 text-white" 
                   : "bg-white border border-gray-200 shadow-sm"
               )}>
                 {message.isLoading ? (
@@ -351,12 +351,12 @@ export function AIChatInterface({
                     <div className={cn(
                       "flex items-center gap-2 mt-2 pt-2 border-t",
                       message.role === 'user' 
-                        ? "border-blue-500/30" 
+                        ? "border-violet-500/30" 
                         : "border-gray-100"
                     )}>
                       <span className={cn(
                         "text-[10px]",
-                        message.role === 'user' ? "text-blue-200" : "text-gray-400"
+                        message.role === 'user' ? "text-violet-200" : "text-gray-400"
                       )}>
                         {formatDistanceToNow(message.timestamp, { addSuffix: true })}
                       </span>
@@ -428,7 +428,7 @@ export function AIChatInterface({
                 disabled={isLoading}
                 className="flex items-center gap-2 p-2 text-left text-sm bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
               >
-                <prompt.icon className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                <prompt.icon className="h-4 w-4 text-violet-500 flex-shrink-0" />
                 <span className="text-gray-700 text-xs line-clamp-1">{prompt.text}</span>
               </button>
             ))}
@@ -449,7 +449,7 @@ export function AIChatInterface({
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about rates, benchmarks, or negotiations..."
             disabled={isLoading}
-            className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50"
+            className="flex-1 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50"
           />
           <button 
             type="submit"
@@ -457,7 +457,7 @@ export function AIChatInterface({
             className={cn(
               "p-2.5 rounded-xl transition-all",
               input.trim() && !isLoading
-                ? "bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
+                ? "bg-violet-600 hover:bg-violet-700 text-white shadow-sm"
                 : "bg-gray-100 text-gray-400 cursor-not-allowed"
             )}
           >

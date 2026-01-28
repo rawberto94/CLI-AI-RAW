@@ -176,9 +176,11 @@ export function EmptyState({
           animate={animated ? { scale: 1, opacity: 1 } : false}
           transition={{ delay: 0.1, type: 'spring', stiffness: 200 }}
           className={`
-            mb-4 p-4 rounded-full
-            bg-gray-100 dark:bg-gray-800
-            text-gray-400 dark:text-gray-500
+            mb-6 p-5 rounded-2xl
+            bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30
+            text-violet-400 dark:text-violet-300
+            shadow-sm shadow-violet-100/50 dark:shadow-none
+            ring-1 ring-violet-100 dark:ring-violet-800/50
             ${iconSizes[size]}
           `}
         >
@@ -192,8 +194,8 @@ export function EmptyState({
         animate={animated ? { opacity: 1, y: 0 } : false}
         transition={{ delay: 0.2 }}
         className={`
-          font-semibold text-gray-900 dark:text-white
-          ${size === 'sm' ? 'text-base' : size === 'lg' ? 'text-xl' : 'text-lg'}
+          font-bold text-slate-900 dark:text-white
+          ${size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-xl'}
         `}
       >
         {displayTitle}
@@ -206,7 +208,7 @@ export function EmptyState({
           animate={animated ? { opacity: 1, y: 0 } : false}
           transition={{ delay: 0.3 }}
           className={`
-            mt-2 text-gray-500 dark:text-gray-400 max-w-md
+            mt-3 text-slate-500 dark:text-slate-400 max-w-md leading-relaxed
             ${size === 'sm' ? 'text-sm' : 'text-base'}
           `}
         >
@@ -220,16 +222,16 @@ export function EmptyState({
           initial={animated ? { opacity: 0, y: 10 } : false}
           animate={animated ? { opacity: 1, y: 0 } : false}
           transition={{ delay: 0.4 }}
-          className="flex items-center gap-3 mt-6"
+          className="flex items-center gap-3 mt-8"
         >
           {action && (
             <button
               onClick={action.onClick}
               className={`
-                px-4 py-2 rounded-lg font-medium transition-colors
+                px-5 py-2.5 rounded-xl font-medium transition-all duration-200 shadow-sm
                 ${action.variant === 'secondary'
-                  ? 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-gray-200'
-                  : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200'
+                  : 'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 hover:-translate-y-0.5'
                 }
               `}
             >
@@ -239,7 +241,7 @@ export function EmptyState({
           {secondaryAction && (
             <button
               onClick={secondaryAction.onClick}
-              className="px-4 py-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 font-medium"
+              className="px-4 py-2.5 text-slate-600 hover:text-violet-600 dark:text-slate-400 dark:hover:text-violet-400 font-medium transition-colors"
             >
               {secondaryAction.label}
             </button>
@@ -347,8 +349,8 @@ export function FirstTimeState({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={`
-        bg-gradient-to-br from-blue-50 to-indigo-50 
-        dark:from-blue-950/30 dark:to-indigo-950/30
+        bg-gradient-to-br from-violet-50 to-purple-50 
+        dark:from-violet-950/30 dark:to-purple-950/30
         rounded-2xl p-8 text-center ${className}
       `}
     >
@@ -356,9 +358,9 @@ export function FirstTimeState({
         initial={{ scale: 0 }}
         animate={{ scale: 1 }}
         transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-        className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 dark:bg-blue-900 mb-4"
+        className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-violet-100 dark:bg-violet-900 mb-4"
       >
-        <Plus className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <Plus className="w-8 h-8 text-violet-600 dark:text-violet-400" />
       </motion.div>
 
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
@@ -378,7 +380,7 @@ export function FirstTimeState({
               transition={{ delay: 0.3 + i * 0.1 }}
               className="flex items-center gap-3"
             >
-              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-sm flex items-center justify-center">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-violet-600 text-white text-sm flex items-center justify-center">
                 {i + 1}
               </span>
               <span className="text-gray-700 dark:text-gray-300">{step}</span>
@@ -391,7 +393,7 @@ export function FirstTimeState({
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={onGetStarted}
-        className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 transition-colors"
+        className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl shadow-lg shadow-violet-500/25 transition-colors"
       >
         Get Started
       </motion.button>
@@ -510,7 +512,7 @@ export function IllustratedEmptyState({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={action.onClick}
-          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-xl transition-colors"
+          className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-xl transition-colors"
         >
           {action.label}
         </motion.button>

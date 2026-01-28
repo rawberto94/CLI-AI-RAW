@@ -72,7 +72,7 @@ const COLOR_OPTIONS = [
   "#84CC16", // Lime
   "#F97316", // Orange
   "#6366F1", // Indigo
-  "#14B8A6", // Teal
+  "#8B5CF6", // Teal
   "#A855F7", // Violet
 ];
 
@@ -227,7 +227,7 @@ export default function TagManagementPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
         {/* Header */}
         <div className="mb-8">
@@ -241,7 +241,7 @@ export default function TagManagementPage() {
           <div className="flex items-center justify-between mt-4">
             <div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white flex items-center gap-3">
-                <Tag className="w-8 h-8 text-blue-600" />
+                <Tag className="w-8 h-8 text-violet-600" />
                 Tag Management
               </h1>
               <p className="text-slate-600 dark:text-slate-400 mt-1">
@@ -261,7 +261,7 @@ export default function TagManagementPage() {
               </Button>
               <Button
                 onClick={handleCreateTag}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white"
+                className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white"
               >
                 <Plus className="w-4 h-4" />
                 Create Tag
@@ -275,8 +275,8 @@ export default function TagManagementPage() {
           <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-xl">
-                  <Hash className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                  <Hash className="w-6 h-6 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">
@@ -333,7 +333,7 @@ export default function TagManagementPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   aria-label="Search tags"
-                  className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                 />
               </div>
               <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ export default function TagManagementPage() {
           <CardContent>
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
               </div>
             ) : filteredTags.length === 0 ? (
               <div className="text-center py-12">
@@ -375,7 +375,7 @@ export default function TagManagementPage() {
                   {searchQuery ? "Try a different search term" : "Create your first tag to get started"}
                 </p>
                 {!searchQuery && (
-                  <Button onClick={handleCreateTag} className="bg-blue-600 hover:bg-blue-700 text-white">
+                  <Button onClick={handleCreateTag} className="bg-violet-600 hover:bg-violet-700 text-white">
                     <Plus className="w-4 h-4 mr-2" />
                     Create Tag
                   </Button>
@@ -391,7 +391,7 @@ export default function TagManagementPage() {
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, scale: 0.9 }}
                       transition={{ delay: index * 0.05 }}
-                      className="group relative p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-blue-300 dark:hover:border-blue-600 transition-all"
+                      className="group relative p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl border border-slate-200 dark:border-slate-600 hover:border-violet-300 dark:hover:border-violet-600 transition-all"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -419,7 +419,7 @@ export default function TagManagementPage() {
                       <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
                         <button
                           onClick={() => handleEditTag(tag)}
-                          className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+                          className="p-1.5 text-slate-500 hover:text-violet-600 hover:bg-violet-100 dark:hover:bg-violet-900/30 rounded-lg transition-colors"
                           title="Edit tag"
                         >
                           <Pencil className="w-4 h-4" />
@@ -460,12 +460,12 @@ export default function TagManagementPage() {
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
                   {editingTag ? (
                     <>
-                      <Pencil className="w-5 h-5 text-blue-600" />
+                      <Pencil className="w-5 h-5 text-violet-600" />
                       Edit Tag
                     </>
                   ) : (
                     <>
-                      <Plus className="w-5 h-5 text-blue-600" />
+                      <Plus className="w-5 h-5 text-violet-600" />
                       Create New Tag
                     </>
                   )}
@@ -483,7 +483,7 @@ export default function TagManagementPage() {
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder="e.g., High Priority"
-                      className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                       disabled={!!editingTag}
                     />
                   </div>
@@ -520,7 +520,7 @@ export default function TagManagementPage() {
                       onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                       placeholder="Optional description for this tag"
                       rows={2}
-                      className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                      className="w-full px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
                     />
                   </div>
 
@@ -549,7 +549,7 @@ export default function TagManagementPage() {
                   <Button
                     onClick={handleSaveTag}
                     disabled={saving || !formData.name.trim()}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    className="bg-violet-600 hover:bg-violet-700 text-white"
                   >
                     {saving ? (
                       <>

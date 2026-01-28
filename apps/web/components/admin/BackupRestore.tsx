@@ -83,8 +83,8 @@ interface BackupRestoreProps {
 const locationConfig: Record<string, { icon: React.ElementType; label: string; color: string }> = {
   local: { icon: HardDrive, label: 'Local Storage', color: 'text-slate-600' },
   s3: { icon: Cloud, label: 'Amazon S3', color: 'text-orange-600' },
-  gcs: { icon: Cloud, label: 'Google Cloud', color: 'text-blue-600' },
-  azure: { icon: Cloud, label: 'Azure Blob', color: 'text-cyan-600' },
+  gcs: { icon: Cloud, label: 'Google Cloud', color: 'text-violet-600' },
+  azure: { icon: Cloud, label: 'Azure Blob', color: 'text-purple-600' },
 };
 
 const typeLabels: Record<string, string> = {
@@ -243,7 +243,7 @@ export const BackupRestore = memo(function BackupRestore({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <HardDrive className="h-5 w-5 text-blue-600" />
+              <HardDrive className="h-5 w-5 text-violet-600" />
               Backup & Restore
             </CardTitle>
             <CardDescription>
@@ -438,9 +438,9 @@ export const BackupRestore = memo(function BackupRestore({
       <CardContent className="space-y-4">
         {/* Backup Progress */}
         {backupInProgress && (
-          <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 space-y-2">
+          <div className="p-4 rounded-lg bg-violet-50 border border-violet-200 space-y-2">
             <div className="flex items-center gap-2">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
               <span className="font-medium">Creating backup...</span>
             </div>
             <Progress value={backupProgress} className="h-2" />
@@ -465,9 +465,9 @@ export const BackupRestore = memo(function BackupRestore({
             <p className="text-2xl font-bold text-red-600">{failedBackups}</p>
             <p className="text-xs text-slate-500">Failed</p>
           </div>
-          <div className="p-4 rounded-lg bg-blue-50 text-center">
-            <Database className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-            <p className="text-2xl font-bold text-blue-600">{formatBytes(totalSize)}</p>
+          <div className="p-4 rounded-lg bg-violet-50 text-center">
+            <Database className="h-6 w-6 mx-auto mb-2 text-violet-600" />
+            <p className="text-2xl font-bold text-violet-600">{formatBytes(totalSize)}</p>
             <p className="text-xs text-slate-500">Total Size</p>
           </div>
         </div>
@@ -476,7 +476,7 @@ export const BackupRestore = memo(function BackupRestore({
         {config.enabled && (
           <div className="p-4 rounded-lg bg-slate-50 border flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <Calendar className="h-5 w-5 text-violet-600" />
               <div>
                 <p className="font-medium text-sm">Automatic Backups Enabled</p>
                 <p className="text-xs text-slate-500">
@@ -496,7 +496,7 @@ export const BackupRestore = memo(function BackupRestore({
           <Label className="text-base font-semibold">Backup History</Label>
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+              <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
               <span>Loading backups...</span>
             </div>
           ) : backups.length === 0 ? (
@@ -521,14 +521,14 @@ export const BackupRestore = memo(function BackupRestore({
                         <div className={cn(
                           'p-2 rounded-lg',
                           backup.status === 'completed' ? 'bg-green-100' : 
-                          backup.status === 'failed' ? 'bg-red-100' : 'bg-blue-100'
+                          backup.status === 'failed' ? 'bg-red-100' : 'bg-violet-100'
                         )}>
                           {backup.status === 'completed' ? (
                             <CheckCircle2 className="h-5 w-5 text-green-600" />
                           ) : backup.status === 'failed' ? (
                             <XCircle className="h-5 w-5 text-red-600" />
                           ) : (
-                            <Loader2 className="h-5 w-5 text-blue-600 animate-spin" />
+                            <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                           )}
                         </div>
                         <div>

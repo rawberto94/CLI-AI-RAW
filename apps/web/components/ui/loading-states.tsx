@@ -39,7 +39,7 @@ export function LoadingSpinner({
   const getIcon = () => {
     switch (variant) {
       case 'ai':
-        return <Brain className={`${sizeClasses[size]} text-blue-600 animate-pulse`} />;
+        return <Brain className={`${sizeClasses[size]} text-violet-600 animate-pulse`} />;
       case 'processing':
         return <Activity className={`${sizeClasses[size]} text-green-600 animate-pulse`} />;
       case 'data':
@@ -47,7 +47,7 @@ export function LoadingSpinner({
       case 'fast':
         return <Zap className={`${sizeClasses[size]} text-yellow-600 animate-pulse`} />;
       default:
-        return <Loader2 className={`${sizeClasses[size]} text-blue-600 animate-spin`} />;
+        return <Loader2 className={`${sizeClasses[size]} text-violet-600 animate-spin`} />;
     }
   };
 
