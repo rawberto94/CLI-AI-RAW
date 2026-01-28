@@ -60,6 +60,10 @@
       "types": "./dist/services/knowledge-graph.service.d.ts",
       "default": "./dist/services/knowledge-graph.service.js"
     },
+    "./services/workflow-auto-start.service": {
+      "types": "./dist/services/workflow-auto-start.service.d.ts",
+      "default": "./dist/services/workflow-auto-start.service.js"
+    },
     "./events": {
       "types": "./dist/events/index.d.ts",
       "default": "./dist/events/index.js"

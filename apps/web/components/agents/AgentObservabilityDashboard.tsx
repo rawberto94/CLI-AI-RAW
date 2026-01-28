@@ -126,7 +126,7 @@ interface AgentMetrics {
 }
 
 // Future types - reserved for extended functionality
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 interface _DebateTrace {
   id: string;
   topic: string;
@@ -145,7 +145,7 @@ interface _DebateTrace {
   endTime?: Date;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 interface _ToolUsageEvent {
   toolId: string;
   toolName: string;

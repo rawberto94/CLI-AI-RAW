@@ -1,6 +1,12 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
-import { WorkflowAutoStartService, getWorkflowAutoStartService } from '@contigo/data-orchestration/services/workflow-auto-start.service';
+import type { WorkflowAutoStartService } from '@repo/data-orchestration/services/workflow-auto-start.service';
+
+// Dynamic import to avoid circular dependencies
+const getWorkflowAutoStartService = async (): Promise<WorkflowAutoStartService> => {
+  const module = await import('@repo/data-orchestration/services/workflow-auto-start.service');
+  return module.getWorkflowAutoStartService();
+};
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();

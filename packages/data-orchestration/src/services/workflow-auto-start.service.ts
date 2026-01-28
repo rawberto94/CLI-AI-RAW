@@ -7,15 +7,21 @@
  * @version 1.0.0
  */
 
-import { PrismaClient } from '@prisma/client';
 import { EventEmitter } from 'events';
-import { getWorkflowManagementService, WorkflowTemplateKey } from './workflow-management.service';
-
-const prisma = new PrismaClient();
 
 // ============================================================================
 // TYPES
 // ============================================================================
+
+export type WorkflowTemplateKey = 
+  | 'standard'
+  | 'express'
+  | 'legal'
+  | 'executive'
+  | 'nda_fast_track'
+  | 'risk_escalation'
+  | 'amendment'
+  | 'procurement';
 
 export interface AutoStartRule {
   id: string;
@@ -182,43 +188,18 @@ export class WorkflowAutoStartService extends EventEmitter {
   }
 
   /**
-   * Initialize rules for a tenant (load from DB or use defaults)
+   * Initialize rules for a tenant (uses defaults - can be extended to load from DB)
    */
   async initializeRules(tenantId: string): Promise<void> {
-    try {
-      // Try to load from database (stored in tenant settings)
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { settings: true },
-      });
-
-      const settings = tenant?.settings as Record<string, unknown> | null;
-      const storedRules = settings?.workflowAutoStartRules as AutoStartRule[] | undefined;
-
-      if (storedRules && storedRules.length > 0) {
-        this.rules.set(tenantId, storedRules);
-      } else {
-        // Use default rules
-        const defaultRules: AutoStartRule[] = DEFAULT_AUTO_START_RULES.map((rule, idx) => ({
-          ...rule,
-          id: `default-${idx}`,
-          tenantId,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        }));
-        this.rules.set(tenantId, defaultRules);
-      }
-    } catch (error) {
-      // Fallback to defaults on error
-      const defaultRules: AutoStartRule[] = DEFAULT_AUTO_START_RULES.map((rule, idx) => ({
-        ...rule,
-        id: `default-${idx}`,
-        tenantId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
-      this.rules.set(tenantId, defaultRules);
-    }
+    // Use default rules
+    const defaultRules: AutoStartRule[] = DEFAULT_AUTO_START_RULES.map((rule, idx) => ({
+      ...rule,
+      id: `default-${idx}`,
+      tenantId,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
+    this.rules.set(tenantId, defaultRules);
   }
 
   /**
@@ -236,28 +217,6 @@ export class WorkflowAutoStartService extends EventEmitter {
    */
   async updateRules(tenantId: string, rules: AutoStartRule[]): Promise<void> {
     this.rules.set(tenantId, rules);
-
-    // Persist to database
-    try {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId },
-        select: { settings: true },
-      });
-
-      const existingSettings = (tenant?.settings as Record<string, unknown>) || {};
-
-      await prisma.tenant.update({
-        where: { id: tenantId },
-        data: {
-          settings: {
-            ...existingSettings,
-            workflowAutoStartRules: rules,
-          },
-        },
-      });
-    } catch (error) {
-      console.error('[WorkflowAutoStart] Failed to persist rules:', error);
-    }
   }
 
   /**
@@ -282,60 +241,26 @@ export class WorkflowAutoStartService extends EventEmitter {
   }
 
   /**
-   * Evaluate contract against rules and auto-start workflow if matched
+   * Evaluate contract against rules and return matching rule
    */
-  async evaluateAndTrigger(
-    contractData: ContractData,
-    initiatedBy: string = 'system'
-  ): Promise<AutoStartResult> {
+  async evaluateContract(contractData: ContractData): Promise<AutoStartResult> {
     const { tenantId } = contractData;
     const rules = await this.getRules(tenantId);
     const activeRules = rules.filter(r => r.isActive).sort((a, b) => a.priority - b.priority);
 
     for (const rule of activeRules) {
       if (this.evaluateConditions(rule.conditions, contractData)) {
-        // Rule matched - start workflow
-        try {
-          const workflowService = getWorkflowManagementService();
-          
-          // Get the workflow definition for this template
-          const workflow = await workflowService.getOrCreateWorkflowFromTemplate(
-            tenantId,
-            rule.workflowTemplateKey
-          );
+        this.emit('workflow:matched', {
+          contractId: contractData.id,
+          tenantId,
+          rule,
+        });
 
-          if (workflow) {
-            // Start the workflow execution
-            const execution = await workflowService.startWorkflow({
-              workflowId: workflow.id,
-              contractId: contractData.id,
-              tenantId,
-              initiatedBy,
-              metadata: {
-                autoStarted: true,
-                ruleId: rule.id,
-                ruleName: rule.name,
-              },
-            });
-
-            this.emit('workflow:auto-started', {
-              contractId: contractData.id,
-              tenantId,
-              rule,
-              executionId: execution.executionId,
-            });
-
-            return {
-              triggered: true,
-              rule,
-              executionId: execution.executionId,
-              reason: `Auto-started by rule: ${rule.name}`,
-            };
-          }
-        } catch (error) {
-          console.error('[WorkflowAutoStart] Failed to start workflow:', error);
-          // Continue to next rule
-        }
+        return {
+          triggered: true,
+          rule,
+          reason: `Matched rule: ${rule.name}`,
+        };
       }
     }
 
