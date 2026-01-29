@@ -52,7 +52,11 @@ interface ImportSummary {
   errors: number;
 }
 
-export function BulkUserImport() {
+interface BulkUserImportProps {
+  onComplete?: () => void;
+}
+
+export function BulkUserImport({ onComplete }: BulkUserImportProps) {
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -151,6 +155,9 @@ export function BulkUserImport() {
       setShowResultsDialog(true);
       
       toast.success(`Imported ${data.summary.created + data.summary.invited} users`);
+      
+      // Call onComplete callback if provided
+      onComplete?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Import failed');
     } finally {

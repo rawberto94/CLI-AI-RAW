@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 
 /**
  * POST /api/admin/groups/members - Add members to a group
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
         groupId,
         userId,
         role,
-        addedById: session.user.id,
+        addedBy: session.user.id,
       })),
       skipDuplicates: true,
     });
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
         addedUserIds: validUserIds,
         role,
       },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ 
@@ -138,7 +138,7 @@ export async function DELETE(request: NextRequest) {
         removedUserIds: userIds,
         removedCount: result.count,
       },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true, removedCount: result.count });
@@ -179,9 +179,10 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 });
     }
     
-    await prisma.userGroupMember.update({
+    await prisma.userGroupMember.updateMany({
       where: {
-        userId_groupId: { userId, groupId },
+        userId,
+        groupId,
       },
       data: { role },
     });

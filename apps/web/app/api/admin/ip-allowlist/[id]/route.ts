@@ -59,7 +59,7 @@ export async function DELETE(
         userId: session.user.id,
         action: 'IP_ALLOWLIST_REMOVED',
         resourceType: 'security',
-        resourceId: params.id,
+        resource: params.id,
         details: { ip: removedEntry.ip },
       },
     });

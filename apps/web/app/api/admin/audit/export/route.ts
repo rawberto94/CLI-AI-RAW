@@ -54,12 +54,12 @@ export async function GET(request: NextRequest) {
     };
     
     if (params.startDate || params.endDate) {
-      where.timestamp = {};
+      where.createdAt = {};
       if (params.startDate) {
-        (where.timestamp as Record<string, Date>).gte = new Date(params.startDate);
+        (where.createdAt as Record<string, Date>).gte = new Date(params.startDate);
       }
       if (params.endDate) {
-        (where.timestamp as Record<string, Date>).lte = new Date(params.endDate);
+        (where.createdAt as Record<string, Date>).lte = new Date(params.endDate);
       }
     }
     
@@ -74,11 +74,11 @@ export async function GET(request: NextRequest) {
     // Fetch audit logs
     const logs = await prisma.auditLog.findMany({
       where,
-      orderBy: { timestamp: 'desc' },
+      orderBy: { createdAt: 'desc' },
       take: Math.min(params.limit || 10000, 50000), // Max 50k records
       include: {
         user: {
-          select: { email: true, name: true },
+          select: { email: true, firstName: true, lastName: true },
         },
       },
     });
@@ -119,14 +119,14 @@ export async function GET(request: NextRequest) {
       ];
       
       const rows = logs.map(log => [
-        log.timestamp.toISOString(),
+        log.createdAt.toISOString(),
         log.action,
         log.user?.email || '',
-        log.user?.name || '',
+        log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() : '',
         log.ipAddress || '',
         (log.userAgent || '').replace(/"/g, '""'), // Escape quotes
         log.resourceType || '',
-        log.resourceId || '',
+        log.resourceId || log.entityId || '',
         JSON.stringify(log.metadata || {}).replace(/"/g, '""'),
       ]);
       
@@ -157,17 +157,17 @@ export async function GET(request: NextRequest) {
         },
         logs: logs.map(log => ({
           id: log.id,
-          timestamp: log.timestamp.toISOString(),
+          timestamp: log.createdAt.toISOString(),
           action: log.action,
           user: {
             id: log.userId,
             email: log.user?.email,
-            name: log.user?.name,
+            name: log.user ? `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() : undefined,
           },
           ipAddress: log.ipAddress,
           userAgent: log.userAgent,
           resourceType: log.resourceType,
-          resourceId: log.resourceId,
+          resourceId: log.resourceId || log.entityId,
           metadata: log.metadata,
         })),
       };

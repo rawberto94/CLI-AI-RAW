@@ -87,7 +87,7 @@ export async function PUT(
         userId: session.user.id,
         action: 'USER_ROLE_CHANGED',
         resourceType: 'user',
-        resourceId: userId,
+        resource: userId,
         details: {
           targetEmail: targetUser.email,
           previousRole: targetUser.role,

@@ -8,62 +8,47 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get user preferences
-    const preferences = await prisma.userPreferences.findUnique({
-      where: { userId: session.user.id },
+    // Check if user has MFA enabled
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { mfaEnabled: true, tenantId: true },
     });
 
-    if (!preferences) {
-      return NextResponse.json({ error: 'MFA not enabled' }, { status: 400 });
-    }
-
-    const settings = preferences.settings as any || {};
-
-    if (!settings.mfa?.enabled) {
+    if (!user?.mfaEnabled) {
       return NextResponse.json({ error: 'MFA not enabled' }, { status: 400 });
     }
 
     // Disable MFA
-    await prisma.userPreferences.update({
-      where: { userId: session.user.id },
+    await prisma.user.update({
+      where: { id: session.user.id },
       data: {
-        settings: {
-          ...settings,
-          mfa: {
-            enabled: false,
-            method: null,
-            secret: null,
-            disabledAt: new Date().toISOString(),
-          },
-        },
+        mfaEnabled: false,
+        mfaSecret: null,
+        mfaBackupCodes: [],
+        mfaPendingSecret: null,
+        mfaPendingBackupCodes: [],
+        mfaEnabledAt: null,
       },
     });
 
     // Log the event
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { tenantId: true },
+    await prisma.auditLog.create({
+      data: {
+        tenantId: user.tenantId,
+        userId: session.user.id,
+        action: 'MFA_DISABLED',
+        resourceType: 'user',
+        resource: session.user.id,
+        details: {},
+      },
     });
-
-    if (user) {
-      await prisma.auditLog.create({
-        data: {
-          tenantId: user.tenantId,
-          userId: session.user.id,
-          action: 'MFA_DISABLED',
-          resourceType: 'user',
-          resourceId: session.user.id,
-          details: {},
-        },
-      });
-    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

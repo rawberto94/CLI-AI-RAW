@@ -27,7 +27,7 @@ function generateOTPAuthURL(secret: string, email: string, issuer: string = 'Con
   return `otpauth://totp/${encodedIssuer}:${encodedEmail}?secret=${secret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
@@ -56,15 +56,14 @@ export async function POST(request: NextRequest) {
     await prisma.userPreferences.upsert({
       where: { userId: user.id },
       update: {
-        settings: {
-          ...(await prisma.userPreferences.findUnique({ where: { userId: user.id } }))?.settings as any,
+        customSettings: {
           pendingMfaSecret: secret,
           pendingMfaExpires: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         },
       },
       create: {
         userId: user.id,
-        settings: {
+        customSettings: {
           pendingMfaSecret: secret,
           pendingMfaExpires: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
         },

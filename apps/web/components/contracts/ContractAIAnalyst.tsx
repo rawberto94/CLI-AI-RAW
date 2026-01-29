@@ -774,7 +774,7 @@ export function ContractAIAnalyst({
                     Your AI Contract Expert
                   </h4>
                   <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xs">
-                    Ask anything about {contractContext.name || 'this contract'} - from risks to payment terms to compliance requirements.
+                    Ask anything about {contract.name || 'this contract'} - from risks to payment terms to compliance requirements.
                   </p>
                   <div className="flex items-center gap-2 mt-4 text-xs text-slate-400">
                     <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">

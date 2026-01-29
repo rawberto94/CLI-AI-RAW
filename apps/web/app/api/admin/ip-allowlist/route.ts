@@ -106,11 +106,11 @@ export async function POST(request: NextRequest) {
     await prisma.tenantConfig.upsert({
       where: { tenantId: user.tenantId },
       update: {
-        securitySettings: { ...securitySettings, ipAllowlist: entries },
+        securitySettings: JSON.parse(JSON.stringify({ ...securitySettings, ipAllowlist: entries })),
       },
       create: {
         tenantId: user.tenantId,
-        securitySettings: { ipAllowlist: entries },
+        securitySettings: JSON.parse(JSON.stringify({ ipAllowlist: entries })),
       },
     });
 
@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
         userId: session.user.id,
         action: 'IP_ALLOWLIST_ADDED',
         resourceType: 'security',
-        resourceId: newEntry.id,
+        resource: newEntry.id,
         details: { ip, description },
       },
     });

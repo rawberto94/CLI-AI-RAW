@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 
 // Standard departments - can be customized per tenant
 export const STANDARD_DEPARTMENTS = [
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       where: { tenantId: session.user.tenantId },
       include: {
         _count: {
-          select: { users: true, contracts: true },
+          select: { members: true },
         },
       },
       orderBy: { name: 'asc' },
@@ -50,9 +50,6 @@ export async function GET(request: NextRequest) {
     // Get user counts per department
     const usersByDepartment = await prisma.userDepartment.groupBy({
       by: ['departmentId'],
-      where: { 
-        user: { tenantId: session.user.tenantId },
-      },
       _count: true,
     });
     
@@ -72,8 +69,8 @@ export async function GET(request: NextRequest) {
         color: cd.color,
         icon: cd.icon,
         isCustom: true,
-        userCount: cd._count.users,
-        contractCount: cd._count.contracts,
+        userCount: cd._count.members,
+        contractCount: 0, // TODO: count contracts by department
       })),
     ];
     
@@ -137,7 +134,7 @@ export async function POST(request: NextRequest) {
       resourceType: 'department',
       resourceId: department.id,
       metadata: { name },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true, department });
@@ -243,7 +240,7 @@ export async function DELETE(request: NextRequest) {
       resourceType: 'department',
       resourceId: departmentId,
       metadata: { name: existing.name },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true });

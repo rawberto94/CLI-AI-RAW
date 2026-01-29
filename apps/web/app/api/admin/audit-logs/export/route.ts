@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           action: log.action,
           user: log.user?.email || 'System',
           resourceType: log.resourceType,
-          resourceId: log.resourceId,
+          resourceId: log.resourceId || log.entityId || '',
           details: log.details,
           ipAddress: log.ipAddress,
         })),
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       log.action,
       log.user?.email || 'System',
       log.resourceType || '',
-      log.resourceId || '',
+      log.resourceId || log.entityId || '',
       log.ipAddress || '',
       JSON.stringify(log.details || {}),
     ]);

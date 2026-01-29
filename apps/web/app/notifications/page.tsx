@@ -501,10 +501,10 @@ export default function NotificationsPage() {
                           </div>
 
                           <div className="flex items-center gap-2.5 mt-3">
-                            {(notification.link || notification.actionUrl) && (
-                              <Link href={notification.link || notification.actionUrl || '#'}>
+                            {notification.link && (
+                              <Link href={notification.link}>
                                 <Button size="sm" variant="secondary" className="h-8">
-                                  {notification.actionLabel || "View"}
+                                  View
                                 </Button>
                               </Link>
                             )}

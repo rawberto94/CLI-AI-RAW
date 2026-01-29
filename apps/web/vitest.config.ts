@@ -3,6 +3,7 @@ import path from 'path';
 import react from '@vitejs/plugin-react';
 
 export default defineConfig({
+  // @ts-expect-error - React plugin types may not match vitest plugin types exactly
   plugins: [react()],
   test: {
     globals: true,

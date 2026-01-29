@@ -1318,11 +1318,6 @@ function detectIntent(query: string): DetectedIntent {
     action: 'general',
     entities: {
       searchQuery: extractedTerms.length > 2 ? extractedTerms : query,
-      questionType,
-      hasImplicitContractContext,
-      hasUrgency,
-      isAskingRecommendation,
-      isClarificationRequest,
     },
     confidence: hasImplicitContractContext ? 0.8 : 0.7,
   };
@@ -6866,7 +6861,7 @@ export async function POST(request: NextRequest) {
     const suggestedActions: { label: string; action: string }[] = []; // Store action buttons
     
     // Helper to format contracts for preview cards - declare before use
-    const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
+    const formatContractForPreview = (c: { id?: string; contractTitle?: string; name?: string; supplierName?: string; status?: string; totalValue?: number | string | { toString(): string }; value?: number | string; expirationDate?: string | Date; contractType?: string; type?: string }) => {
       const expiry = c.expirationDate ? new Date(c.expirationDate) : null;
       const daysUntilExpiry = expiry ? Math.ceil((expiry.getTime() - Date.now()) / (1000 * 60 * 60 * 24)) : null;
       
@@ -7107,19 +7102,19 @@ export async function POST(request: NextRequest) {
           tenantId,
           OR: [
             { contractTitle: { contains: intent.entities.contractName, mode: 'insensitive' } },
-            { name: { contains: intent.entities.contractName, mode: 'insensitive' } },
             { supplierName: { contains: intent.entities.contractName, mode: 'insensitive' } },
+            { fileName: { contains: intent.entities.contractName, mode: 'insensitive' } },
           ],
         },
         select: {
           id: true,
           contractTitle: true,
-          name: true,
           supplierName: true,
           status: true,
           totalValue: true,
           expirationDate: true,
           contractType: true,
+          fileName: true,
         },
         take: 3,
       });
@@ -7127,10 +7122,13 @@ export async function POST(request: NextRequest) {
       if (matchingContracts.length > 0) {
         // Use the first matching contract (or the best match)
         const targetContract = matchingContracts[0];
-        const contractTitle = targetContract.contractTitle || targetContract.name || 'Contract';
+        const contractTitle = targetContract.contractTitle || targetContract.fileName || 'Contract';
         
         // Add contract preview card
-        contractPreviews = matchingContracts.map(formatContractForPreview);
+        contractPreviews = matchingContracts.map(c => formatContractForPreview({
+          ...c,
+          name: c.contractTitle || c.fileName,
+        }));
         
         additionalContext += `\n\n**📄 Analyzing: [${contractTitle}](/contracts/${targetContract.id})**\n`;
         additionalContext += `- Supplier: ${targetContract.supplierName || 'Not specified'}\n`;
@@ -7171,7 +7169,7 @@ export async function POST(request: NextRequest) {
         if (matchingContracts.length > 1) {
           additionalContext += `\n\n*Note: Found ${matchingContracts.length} contracts matching "${intent.entities.contractName}". Analyzing the first match. Other matches:*\n`;
           matchingContracts.slice(1).forEach((c, i) => {
-            additionalContext += `- [${c.contractTitle || c.name}](/contracts/${c.id})\n`;
+            additionalContext += `- [${c.contractTitle || c.fileName}](/contracts/${c.id})\n`;
           });
         }
       } else {
@@ -8213,7 +8211,7 @@ export async function POST(request: NextRequest) {
     }
 
     // ENHANCED: Generate clarification prompts for low-confidence or ambiguous queries
-    if (intent.confidence < 0.6 || intent.entities.isClarificationRequest) {
+    if (intent.confidence < 0.6) {
       const clarification = await conversationMemoryService.generateClarificationPrompts(
         message,
         intent.confidence,

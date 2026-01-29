@@ -23,11 +23,16 @@ import {
 } from 'lucide-react';
 
 export default function ProcurementAnalyticsHub() {
-  const [quickStats, setQuickStats] = useState([
-    { label: 'Active Suppliers', value: '--', change: '', trend: 'neutral' as const },
-    { label: 'Savings Pipeline', value: '--', change: '', trend: 'neutral' as const },
-    { label: 'Upcoming Renewals', value: '--', change: '', trend: 'neutral' as const },
-    { label: 'Avg Supplier Score', value: '--', change: '', trend: 'neutral' as const },
+  const [quickStats, setQuickStats] = useState<{
+    label: string;
+    value: string;
+    change: string;
+    trend: 'up' | 'down' | 'neutral';
+  }[]>([
+    { label: 'Active Suppliers', value: '--', change: '', trend: 'neutral' },
+    { label: 'Savings Pipeline', value: '--', change: '', trend: 'neutral' },
+    { label: 'Upcoming Renewals', value: '--', change: '', trend: 'neutral' },
+    { label: 'Avg Supplier Score', value: '--', change: '', trend: 'neutral' },
   ]);
   const [loading, setLoading] = useState(true);
 
@@ -63,25 +68,25 @@ export default function ProcurementAnalyticsHub() {
             label: 'Active Suppliers',
             value: supplierCount.toString(),
             change: supplierCount > 100 ? '+12%' : '',
-            trend: 'up' as const
+            trend: 'up'
           },
           {
             label: 'Savings Pipeline',
             value: totalSavings > 0 ? `$${(totalSavings / 1000000).toFixed(1)}M` : '$0',
             change: totalSavings > 0 ? '+18%' : '',
-            trend: 'up' as const
+            trend: 'up'
           },
           {
             label: 'Upcoming Renewals',
             value: renewalCount.toString(),
             change: urgentRenewals > 0 ? `${urgentRenewals} urgent` : '',
-            trend: 'neutral' as const
+            trend: 'neutral'
           },
           {
             label: 'Avg Supplier Score',
             value: avgScore > 0 ? `${Math.round(avgScore)}%` : '--',
             change: avgScore > 80 ? '+3%' : '',
-            trend: avgScore > 80 ? 'up' as const : 'neutral' as const
+            trend: avgScore > 80 ? 'up' : 'neutral'
           }
         ]);
       } catch (error) {

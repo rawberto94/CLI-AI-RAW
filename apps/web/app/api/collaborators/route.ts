@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { randomBytes } from 'crypto';
-import bcrypt from 'bcryptjs';
+// bcrypt import reserved for future password hashing needs
 
 type CollaboratorType = 'client' | 'vendor' | 'partner' | 'consultant' | 'auditor';
 
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     }
     
     if (type) {
-      where.collaboratorType = type;
+      where.type = type;
     }
     
     if (status) {
@@ -70,9 +70,6 @@ export async function GET(request: NextRequest) {
             },
           },
         },
-        invitedByUser: {
-          select: { email: true, firstName: true, lastName: true },
-        },
       },
       orderBy: { createdAt: 'desc' },
     });
@@ -83,7 +80,7 @@ export async function GET(request: NextRequest) {
         email: c.email,
         name: c.name,
         company: c.company,
-        type: c.collaboratorType,
+        type: c.type,
         status: c.status,
         permissions: c.permissions,
         contracts: c.contractAccess.map(ca => ({
@@ -91,9 +88,7 @@ export async function GET(request: NextRequest) {
           name: ca.contract.contractTitle || ca.contract.fileName,
           accessLevel: ca.accessLevel,
         })),
-        invitedBy: c.invitedByUser 
-          ? `${c.invitedByUser.firstName || ''} ${c.invitedByUser.lastName || ''}`.trim() || c.invitedByUser.email
-          : null,
+        invitedBy: c.invitedBy,
         lastAccessAt: c.lastAccessAt,
         expiresAt: c.expiresAt,
         createdAt: c.createdAt,
@@ -122,7 +117,7 @@ export async function POST(request: NextRequest) {
     }
     
     const body: CollaboratorInvite = await request.json();
-    const { email, name, company, type, contractIds, permissions, expiresAt, message } = body;
+    const { email, name, company, type, contractIds, permissions, expiresAt, message: _message } = body;
     
     if (!email || !name || !type || !contractIds || contractIds.length === 0) {
       return NextResponse.json({ 
@@ -167,7 +162,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           company,
-          collaboratorType: type,
+          type: type,
           permissions: permissions || getDefaultPermissions(type),
           accessToken,
           expiresAt: expiresAt ? new Date(expiresAt) : defaultExpiry,
@@ -182,10 +177,10 @@ export async function POST(request: NextRequest) {
           email: email.toLowerCase(),
           name,
           company,
-          collaboratorType: type,
+          type: type,
           permissions: permissions || getDefaultPermissions(type),
           accessToken,
-          invitedById: session.user.id,
+          invitedBy: session.user.id,
           expiresAt: expiresAt ? new Date(expiresAt) : defaultExpiry,
           status: 'INVITED',
         },
@@ -205,11 +200,9 @@ export async function POST(request: NextRequest) {
           collaboratorId: collaborator.id,
           contractId,
           accessLevel: getAccessLevelForType(type),
-          grantedById: session.user.id,
         },
         update: {
           accessLevel: getAccessLevelForType(type),
-          grantedById: session.user.id,
         },
       });
     }
@@ -221,7 +214,7 @@ export async function POST(request: NextRequest) {
       resourceType: 'external_collaborator',
       resourceId: collaborator.id,
       metadata: { email, type, contractIds },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     // TODO: Send invitation email
@@ -304,8 +297,7 @@ export async function PUT(request: NextRequest) {
           data: contracts.map(c => ({
             collaboratorId,
             contractId: c.id,
-            accessLevel: getAccessLevelForType(existing.collaboratorType as CollaboratorType),
-            grantedById: session.user.id,
+            accessLevel: getAccessLevelForType(existing.type as CollaboratorType),
           })),
         });
       }
@@ -355,13 +347,14 @@ export async function DELETE(request: NextRequest) {
     });
     
     // Delete or deactivate collaborator
+    // Note: accessToken cannot be set to null due to unique constraint,
+    // use a unique revoked token instead
     await prisma.externalCollaborator.update({
       where: { id: collaboratorId },
       data: { 
         status: 'REVOKED',
-        accessToken: null,
+        accessToken: `revoked_${collaboratorId}_${Date.now()}`,
         revokedAt: new Date(),
-        revokedById: session.user.id,
       },
     });
     
@@ -372,7 +365,7 @@ export async function DELETE(request: NextRequest) {
       resourceType: 'external_collaborator',
       resourceId: collaboratorId,
       metadata: { email: existing.email },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     return NextResponse.json({ success: true });

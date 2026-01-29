@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
       where: { tenantId: user.tenantId },
     });
 
-    const securitySettings = config?.securitySettings as SecuritySettings | null;
+    const securitySettings = config?.securitySettings as unknown as SecuritySettings | null;
 
     return NextResponse.json({
       settings: securitySettings || DEFAULT_SETTINGS,
@@ -106,7 +106,7 @@ export async function PUT(request: NextRequest) {
       where: { tenantId: user.tenantId },
     });
 
-    const currentSettings = (config?.securitySettings as SecuritySettings) || DEFAULT_SETTINGS;
+    const currentSettings = (config?.securitySettings as unknown as SecuritySettings) || DEFAULT_SETTINGS;
 
     // Merge settings
     const updatedSettings: SecuritySettings = {
@@ -137,7 +137,7 @@ export async function PUT(request: NextRequest) {
         userId: session.user.id,
         action: 'SECURITY_SETTINGS_UPDATED',
         resourceType: 'tenant_config',
-        resourceId: user.tenantId,
+        resource: user.tenantId,
         details: { updatedFields: Object.keys(settings) },
       },
     });

@@ -28,8 +28,13 @@ export enum AuditAction {
   PASSWORD_RESET_COMPLETED = 'PASSWORD_RESET_COMPLETED',
   MFA_ENABLED = 'MFA_ENABLED',
   MFA_DISABLED = 'MFA_DISABLED',
+  MFA_SETUP_STARTED = 'MFA_SETUP_STARTED',
+  MFA_VERIFIED = 'MFA_VERIFIED',
+  MFA_FAILED = 'MFA_FAILED',
+  MFA_BACKUP_CODES_REGENERATED = 'MFA_BACKUP_CODES_REGENERATED',
   SESSION_CREATED = 'SESSION_CREATED',
   SESSION_REVOKED = 'SESSION_REVOKED',
+  SESSION_REVOKED_ALL = 'SESSION_REVOKED_ALL',
   
   // User Management
   USER_CREATED = 'USER_CREATED',
@@ -39,6 +44,20 @@ export enum AuditAction {
   USER_PERMISSIONS_CHANGED = 'USER_PERMISSIONS_CHANGED',
   USER_ACTIVATED = 'USER_ACTIVATED',
   USER_DEACTIVATED = 'USER_DEACTIVATED',
+  USER_DEPARTMENTS_UPDATED = 'USER_DEPARTMENTS_UPDATED',
+  USERS_BULK_IMPORTED = 'USERS_BULK_IMPORTED',
+  
+  // Department Management
+  DEPARTMENT_CREATED = 'DEPARTMENT_CREATED',
+  DEPARTMENT_UPDATED = 'DEPARTMENT_UPDATED',
+  DEPARTMENT_DELETED = 'DEPARTMENT_DELETED',
+  
+  // Group Management
+  GROUP_CREATED = 'GROUP_CREATED',
+  GROUP_UPDATED = 'GROUP_UPDATED',
+  GROUP_DELETED = 'GROUP_DELETED',
+  GROUP_MEMBERS_ADDED = 'GROUP_MEMBERS_ADDED',
+  GROUP_MEMBERS_REMOVED = 'GROUP_MEMBERS_REMOVED',
   
   // Contract Management
   CONTRACT_CREATED = 'CONTRACT_CREATED',
@@ -48,6 +67,14 @@ export enum AuditAction {
   CONTRACT_DOWNLOADED = 'CONTRACT_DOWNLOADED',
   CONTRACT_SHARED = 'CONTRACT_SHARED',
   CONTRACT_STATUS_CHANGED = 'CONTRACT_STATUS_CHANGED',
+  CONTRACT_ACCESS_GRANTED = 'CONTRACT_ACCESS_GRANTED',
+  CONTRACT_ACCESS_REVOKED = 'CONTRACT_ACCESS_REVOKED',
+  
+  // Collaborator Management
+  COLLABORATOR_INVITED = 'COLLABORATOR_INVITED',
+  COLLABORATOR_REVOKED = 'COLLABORATOR_REVOKED',
+  COLLABORATOR_ACCESSED = 'COLLABORATOR_ACCESSED',
+  COLLABORATOR_COMMENTED = 'COLLABORATOR_COMMENTED',
   
   // Approval Workflow
   APPROVAL_REQUESTED = 'APPROVAL_REQUESTED',
@@ -86,6 +113,9 @@ export enum AuditAction {
   SUSPICIOUS_ACTIVITY = 'SUSPICIOUS_ACTIVITY',
   ACCESS_DENIED = 'ACCESS_DENIED',
   PERMISSION_DENIED = 'PERMISSION_DENIED',
+  SECURITY_SETTINGS_UPDATED = 'SECURITY_SETTINGS_UPDATED',
+  IP_ALLOWLIST_ADDED = 'IP_ALLOWLIST_ADDED',
+  IP_ALLOWLIST_REMOVED = 'IP_ALLOWLIST_REMOVED',
 }
 
 export enum AuditSeverity {
@@ -138,6 +168,7 @@ export interface AuditLogOptions {
   action: AuditAction;
   userId?: string;
   userEmail?: string;
+  tenantId?: string;
   resourceType?: string;
   resourceId?: string;
   metadata?: Record<string, unknown>;
@@ -150,6 +181,7 @@ export interface AuditLogOptions {
   requestId?: string;
   sessionId?: string;
   organizationId?: string;
+  request?: Request | { headers: { get: (key: string) => string | null } };
 }
 
 // ============================================================================
@@ -331,12 +363,29 @@ class AuditLogger {
    * Log an audit entry
    */
   async log(options: AuditLogOptions): Promise<AuditEntry> {
+    // Extract context from request if provided
+    let requestContext: Partial<AuditLogOptions> = {};
+    if (options.request) {
+      requestContext = {
+        ipAddress: options.request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 
+                   options.request.headers.get('x-real-ip') ?? 
+                   options.ipAddress ?? 
+                   'unknown',
+        userAgent: options.request.headers.get('user-agent') ?? options.userAgent ?? undefined,
+        requestId: options.request.headers.get('x-request-id') ?? options.requestId ?? crypto.randomUUID(),
+      };
+    }
+    
+    // Exclude request from final entry (not serializable)
+    const { request: _request, ...restOptions } = options;
+    
     const entry: AuditEntry = {
       id: crypto.randomUUID(),
       timestamp: new Date(),
       severity: getSeverity(options.action),
       success: options.success ?? true,
-      ...options,
+      ...restOptions,
+      ...requestContext,
     };
     
     // Log to console

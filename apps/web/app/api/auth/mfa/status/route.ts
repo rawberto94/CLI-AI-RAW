@@ -20,6 +20,8 @@ export async function GET(request: NextRequest) {
       select: { 
         id: true,
         email: true,
+        mfaEnabled: true,
+        mfaEnabledAt: true,
       },
     });
 
@@ -27,18 +29,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    // Check if MFA is set up (stored in a secure location)
-    // For now, check user preferences or a dedicated MFA table
-    const preferences = await prisma.userPreferences.findUnique({
-      where: { userId: user.id },
-    });
-
-    const mfaSettings = (preferences?.settings as any)?.mfa || null;
-
     return NextResponse.json({
-      enabled: !!mfaSettings?.enabled,
-      method: mfaSettings?.method || null,
-      enrolledAt: mfaSettings?.enrolledAt || null,
+      enabled: user.mfaEnabled,
+      method: user.mfaEnabled ? 'totp' : null,
+      enrolledAt: user.mfaEnabledAt?.toISOString() || null,
     });
   } catch (error) {
     console.error('Failed to get MFA status:', error);

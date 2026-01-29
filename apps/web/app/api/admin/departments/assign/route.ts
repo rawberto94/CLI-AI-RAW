@@ -7,7 +7,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 
 /**
  * POST /api/admin/departments/assign - Assign users to departments
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       resourceType: 'user',
       resourceId: userId,
       metadata: { departmentIds, accessLevel },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true });
@@ -114,11 +114,11 @@ export async function GET(request: NextRequest) {
       userId,
       departments: assignments.map(a => ({
         id: a.departmentId,
-        name: a.department?.name || a.departmentId,
-        color: a.department?.color || '#3B82F6',
-        icon: a.department?.icon || 'Folder',
+        name: a.department.name,
+        color: a.department.color,
+        icon: a.department.icon,
         accessLevel: a.accessLevel,
-        assignedAt: a.createdAt,
+        assignedAt: a.assignedAt,
       })),
     });
   } catch (error) {

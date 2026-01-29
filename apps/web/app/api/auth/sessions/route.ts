@@ -10,7 +10,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { UAParser } from 'ua-parser-js';
 
 interface SessionInfo {
@@ -47,9 +47,8 @@ export async function GET(request: NextRequest) {
       where: {
         userId: session.user.id,
         expiresAt: { gt: new Date() },
-        revokedAt: null,
       },
-      orderBy: { lastActive: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
     
     const sessionInfos: SessionInfo[] = sessions.map(sess => {
@@ -67,9 +66,9 @@ export async function GET(request: NextRequest) {
         },
         ipAddress: maskIpAddress(sess.ipAddress || 'Unknown'),
         location: sess.location || undefined,
-        lastActive: sess.lastActive,
+        lastActive: sess.lastActive || sess.updatedAt,
         createdAt: sess.createdAt,
-        isCurrent: sess.sessionToken === currentSessionToken,
+        isCurrent: sess.token === currentSessionToken || sess.sessionToken === currentSessionToken,
       };
     });
     
@@ -102,25 +101,23 @@ export async function DELETE(request: NextRequest) {
                                 request.cookies.get('__Secure-next-auth.session-token')?.value;
     
     if (revokeAll) {
-      // Revoke all sessions except current
-      const result = await prisma.userSession.updateMany({
+      // Revoke all sessions except current - delete them since revokedAt doesn't exist
+      const result = await prisma.userSession.deleteMany({
         where: {
           userId: session.user.id,
-          revokedAt: null,
-          NOT: { sessionToken: currentSessionToken },
-        },
-        data: {
-          revokedAt: new Date(),
-          revokedReason: 'User revoked all sessions',
+          NOT: [
+            { token: currentSessionToken },
+            { sessionToken: currentSessionToken },
+          ],
         },
       });
       
       await auditLog({
-        action: AuditAction.SESSION_REVOKED_ALL,
+        action: AuditAction.SESSION_REVOKED,
         userId: session.user.id,
         tenantId: session.user.tenantId,
-        metadata: { count: result.count },
-        request,
+        metadata: { count: result.count, revokeAll: true },
+        ...getAuditContext(request),
       });
       
       return NextResponse.json({
@@ -133,7 +130,6 @@ export async function DELETE(request: NextRequest) {
         where: {
           id: sessionId,
           userId: session.user.id,
-          revokedAt: null,
         },
       });
       
@@ -142,16 +138,12 @@ export async function DELETE(request: NextRequest) {
       }
       
       // Prevent revoking current session
-      if (targetSession.sessionToken === currentSessionToken) {
+      if (targetSession.token === currentSessionToken || targetSession.sessionToken === currentSessionToken) {
         return NextResponse.json({ error: 'Cannot revoke current session' }, { status: 400 });
       }
       
-      await prisma.userSession.update({
+      await prisma.userSession.delete({
         where: { id: sessionId },
-        data: {
-          revokedAt: new Date(),
-          revokedReason: 'User revoked session',
-        },
       });
       
       await auditLog({
@@ -159,7 +151,7 @@ export async function DELETE(request: NextRequest) {
         userId: session.user.id,
         tenantId: session.user.tenantId,
         metadata: { sessionId },
-        request,
+        ...getAuditContext(request),
       });
       
       return NextResponse.json({ success: true });

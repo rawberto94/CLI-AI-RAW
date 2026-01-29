@@ -78,9 +78,9 @@ export async function POST(request: NextRequest) {
       where: { userId: session.user.id },
     });
 
-    const settings = preferences?.settings as any || {};
-    const pendingSecret = secret || settings.pendingMfaSecret;
-    const pendingExpires = settings.pendingMfaExpires;
+    const customSettings = preferences?.customSettings as any || {};
+    const pendingSecret = secret || customSettings.pendingMfaSecret;
+    const pendingExpires = customSettings.pendingMfaExpires;
 
     if (!pendingSecret) {
       return NextResponse.json(
@@ -101,18 +101,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
     }
 
-    // Enable MFA
+    // Enable MFA on user record and clear pending settings
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: {
+        mfaEnabled: true,
+        mfaSecret: pendingSecret, // In production, encrypt this!
+        mfaEnabledAt: new Date(),
+      },
+    });
+    
+    // Clear pending MFA settings from preferences
     await prisma.userPreferences.update({
       where: { userId: session.user.id },
       data: {
-        settings: {
-          ...settings,
-          mfa: {
-            enabled: true,
-            method: 'totp',
-            secret: pendingSecret, // In production, encrypt this!
-            enrolledAt: new Date().toISOString(),
-          },
+        customSettings: {
+          ...customSettings,
           pendingMfaSecret: null,
           pendingMfaExpires: null,
         },
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           action: 'MFA_ENABLED',
           resourceType: 'user',
-          resourceId: session.user.id,
+          resource: session.user.id,
           details: { method: 'totp' },
         },
       });

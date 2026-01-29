@@ -269,7 +269,7 @@ export async function POST(request: NextRequest) {
     await auditLog({
       action: AuditAction.USERS_BULK_IMPORTED,
       userId: session.user.id,
-      tenantId,
+      tenantId: session.user.tenantId,
       metadata: {
         totalAttempted: users.length,
         created: results.filter(r => r.status === 'created').length,
@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
         skipped: results.filter(r => r.status === 'skipped').length,
         errors: results.filter(r => r.status === 'error').length,
       },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     return NextResponse.json({

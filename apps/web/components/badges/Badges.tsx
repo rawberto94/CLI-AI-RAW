@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 
 type BadgeVariant = 'default' | 'outline' | 'soft';
-type BadgeColor = 'slate' | 'indigo' | 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'pink';
+type BadgeColor = 'slate' | 'indigo' | 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'pink' | 'violet';
 type BadgeSize = 'sm' | 'md' | 'lg';
 
 interface BadgeProps {
@@ -49,6 +49,7 @@ const colorClasses: Record<BadgeVariant, Record<BadgeColor, string>> = {
     blue: 'bg-violet-600 text-white',
     purple: 'bg-purple-600 text-white',
     pink: 'bg-pink-600 text-white',
+    violet: 'bg-violet-600 text-white',
   },
   outline: {
     slate: 'border border-slate-300 text-slate-700',
@@ -59,6 +60,7 @@ const colorClasses: Record<BadgeVariant, Record<BadgeColor, string>> = {
     blue: 'border border-violet-300 text-violet-700',
     purple: 'border border-purple-300 text-purple-700',
     pink: 'border border-pink-300 text-pink-700',
+    violet: 'border border-violet-300 text-violet-700',
   },
   soft: {
     slate: 'bg-slate-100 text-slate-700',
@@ -69,6 +71,7 @@ const colorClasses: Record<BadgeVariant, Record<BadgeColor, string>> = {
     blue: 'bg-violet-100 text-violet-700',
     purple: 'bg-purple-100 text-purple-700',
     pink: 'bg-pink-100 text-pink-700',
+    violet: 'bg-violet-100 text-violet-700',
   },
 };
 
@@ -81,6 +84,7 @@ const dotColors: Record<BadgeColor, string> = {
   blue: 'bg-violet-500',
   purple: 'bg-purple-500',
   pink: 'bg-pink-500',
+  violet: 'bg-violet-500',
 };
 
 const sizeClasses: Record<BadgeSize, string> = {

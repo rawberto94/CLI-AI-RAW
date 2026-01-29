@@ -520,7 +520,7 @@ export class ProactiveRiskDetector {
     try {
       logger.info({ contractId, riskScore: riskSummary.overallRiskScore }, '🚨 Triggering risk escalation workflow');
 
-      const workflowAutoStartService = getWorkflowAutoStartService();
+      const workflowAutoStartService = await getWorkflowAutoStartService();
 
       // Get contract details for workflow creation
       const contract = await prisma.contract.findUnique({
@@ -539,30 +539,21 @@ export class ProactiveRiskDetector {
       }
 
       // Trigger the workflow using auto-start service with high-risk context
-      const triggeredWorkflows = await workflowAutoStartService.evaluateAndTrigger({
-        contractId,
+      const result = await workflowAutoStartService.evaluateContract({
+        id: contractId,
         tenantId,
         contractType: 'risk_escalation', // Force risk escalation template
-        totalValue: contract.totalValue || 0,
-        metadata: {
-          counterparty: contract.counterparty || 'Unknown',
-          riskScore: riskSummary.overallRiskScore,
-          criticalRisks: riskSummary.criticalCount,
-          highRisks: riskSummary.highCount,
-          triggerSource: 'ProactiveRiskDetector',
-          riskDetails: riskSummary.risks.map(r => ({
-            type: r.type,
-            severity: r.severity,
-            title: r.title,
-            impact: r.impact,
-          })),
-        },
+        value: Number(contract.totalValue) || 0,
+        riskLevel: 'HIGH',
+        riskScore: riskSummary.overallRiskScore,
+        supplierName: contract.counterparty || 'Unknown',
       });
 
-      if (triggeredWorkflows.length > 0) {
+      if (result.triggered && result.executionId) {
         logger.info({
           contractId,
-          workflowIds: triggeredWorkflows.map(w => w.workflowId),
+          executionId: result.executionId,
+          rule: result.rule?.name,
         }, '✅ Risk escalation workflow triggered successfully');
 
         // Store workflow trigger event
@@ -574,7 +565,7 @@ export class ProactiveRiskDetector {
             tenantId,
             metadata: {
               triggeredBy: 'ProactiveRiskDetector',
-              workflowIds: triggeredWorkflows.map(w => w.workflowId),
+              executionId: result.executionId,
               riskSummary,
             },
           },

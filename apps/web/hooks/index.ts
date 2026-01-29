@@ -296,7 +296,14 @@ export * from './use-pagination';
 export * from './use-contract-selection';
 export * from './use-bulk-operations';
 export * from './use-contracts-keyboard-shortcuts';
-export * from './use-contracts-page';
+// Export from use-contracts-page but exclude ContractFilters which is already exported from use-contract-filters
+export { 
+  type ContractsPageConfig,
+  type ContractsPageState,
+  type ContractsPageActions,
+  type UseContractsPageReturn,
+  useContractsPage,
+} from './use-contracts-page';
 export * from './use-saved-filters';
 export * from './use-contract-analytics';
 export * from './use-contract-export';

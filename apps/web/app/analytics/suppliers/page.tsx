@@ -205,7 +205,7 @@ export default function SupplierAnalyticsPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <span>Error loading supplier analytics: {error}</span>
+              <span>Error loading supplier analytics: {error instanceof Error ? error.message : String(error)}</span>
             </div>
           </CardContent>
         </Card>

@@ -91,6 +91,41 @@ model TenantSettings {
   @@index([tenantId])
 }
 
+// IP Allowlist for tenant security
+model IpAllowlist {
+  id          String    @id @default(cuid())
+  tenantId    String
+  ipAddress   String // IP address or CIDR range
+  description String?
+  isActive    Boolean   @default(true)
+  createdBy   String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  expiresAt   DateTime?
+
+  @@unique([tenantId, ipAddress])
+  @@index([tenantId])
+  @@index([isActive])
+  @@map("ip_allowlist")
+}
+
+// Tenant Security Settings
+model TenantSecuritySettings {
+  id                     String   @id @default(cuid())
+  tenantId               String   @unique
+  mfaRequired            Boolean  @default(false)
+  sessionTimeout         Int      @default(480) // minutes
+  passwordPolicy         Json     @default("{\"minLength\": 8, \"requireUppercase\": true, \"requireLowercase\": true, \"requireNumbers\": true, \"requireSpecialChars\": false}")
+  ipAllowlistEnabled     Boolean  @default(false)
+  allowedLoginMethods    String[] @default(["email", "google"])
+  maxFailedLoginAttempts Int      @default(5)
+  lockoutDuration        Int      @default(15) // minutes
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("tenant_security_settings")
+}
+
 model TenantSubscription {
   id           String             @id @default(cuid())
   tenantId     String             @unique
@@ -127,19 +162,28 @@ model TenantUsage {
 }
 
 model User {
-  id                  String                @id @default(cuid())
-  email               String                @unique
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  avatar              String?
-  emailVerified       Boolean               @default(false)
-  firstName           String?
-  lastLoginAt         DateTime?
-  lastName            String?
-  passwordHash        String
-  status              UserStatus            @default(ACTIVE)
-  tenantId            String
-  role                String                @default("user") // Added for auth compatibility
+  id            String     @id @default(cuid())
+  email         String     @unique
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  avatar        String?
+  emailVerified Boolean    @default(false)
+  firstName     String?
+  lastLoginAt   DateTime?
+  lastName      String?
+  passwordHash  String
+  status        UserStatus @default(ACTIVE)
+  tenantId      String
+  role          String     @default("user") // Added for auth compatibility
+
+  // MFA fields
+  mfaEnabled            Boolean   @default(false)
+  mfaSecret             String? // Encrypted TOTP secret
+  mfaBackupCodes        String[]  @default([]) // Hashed backup codes
+  mfaPendingSecret      String? // Temporary secret during setup
+  mfaPendingBackupCodes String[]  @default([]) // Temporary codes during setup
+  mfaEnabledAt          DateTime?
+
   auditLogs           AuditLog[]
   tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   roles               UserRole[]
@@ -153,6 +197,9 @@ model User {
   uploadedVersions    ContractVersion[]     @relation("VersionUploader")
   createdDrafts       ContractDraft[]       @relation("DraftCreator")
   chatConversations   ChatConversation[]
+  departments         UserDepartment[]
+  groupMemberships    UserGroupMember[]
+  contractAccess      ContractUserAccess[]
 
   @@index([email])
   @@index([tenantId])
@@ -202,20 +249,28 @@ model RolePermission {
 }
 
 model UserSession {
-  id           String   @id @default(cuid())
-  userId       String
-  token        String   @unique
-  refreshToken String?  @unique
-  expiresAt    DateTime
-  ipAddress    String?
-  userAgent    String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  userId        String
+  token         String    @unique
+  sessionToken  String?   @unique // Alternative session identifier
+  refreshToken  String?   @unique
+  expiresAt     DateTime
+  ipAddress     String?
+  userAgent     String?
+  location      String? // Geographic location
+  deviceType    String? // desktop, mobile, tablet
+  lastActive    DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
+  @@index([sessionToken])
   @@index([userId])
   @@index([expiresAt])
+  @@index([lastActive])
 }
 
 model Contract {
@@ -370,6 +425,11 @@ model Contract {
 
   // Synced files relation (for pull model integrations)
   syncedFiles SyncedFile[]
+
+  // Access control relations
+  userAccess         ContractUserAccess[]
+  groupAccess        ContractGroupAccess[]
+  collaboratorAccess CollaboratorContractAccess[]
 
   @@index([tenantId])
   @@index([status])
@@ -1207,6 +1267,7 @@ model AuditLog {
   userId       String?
   action       String
   resource     String?
+  resourceId   String? // Added for resource ID tracking (alias for entityId)
   resourceType String?
   entityType   String? // Alias for resourceType (compatibility)
   entityId     String? // Added for entity ID tracking
@@ -1223,6 +1284,7 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([resourceType])
+  @@index([resourceId])
   @@index([entityType])
   @@index([entityId])
   @@index([createdAt])
@@ -4768,16 +4830,18 @@ model ABTestResult {
 
 /// User Group - Organize users into teams/groups with shared permissions
 model UserGroup {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  name        String
-  description String?  @db.Text
-  color       String   @default("#6366F1") // Hex color for UI
-  permissions Json     @default("{}") // Group-level permissions
-  isSystem    Boolean  @default(false) @map("is_system")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-  createdBy   String?  @map("created_by")
+  id                  String   @id @default(cuid())
+  tenantId            String   @map("tenant_id")
+  name                String
+  description         String?  @db.Text
+  color               String   @default("#8B5CF6") // Hex color for UI (violet)
+  permissions         Json     @default("{}") // Group-level permissions
+  departmentAccess    String[] @default([]) // Department IDs this group can access
+  contractAccessLevel String   @default("assigned") // all, assigned, department, none
+  isSystem            Boolean  @default(false) @map("is_system")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+  createdBy           String?  @map("created_by")
 
   members        UserGroupMember[]
   contractAccess ContractGroupAccess[]
@@ -4798,8 +4862,9 @@ model UserGroupMember {
   addedBy  String?  @map("added_by")
 
   group UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([groupId, userId])
+  @@unique([userId, groupId])
   @@index([groupId])
   @@index([userId])
   @@map("user_group_members")
@@ -4815,6 +4880,9 @@ model Department {
   contractTypes String[] @default([]) @map("contract_types") // Types this dept can access
   accessRules   Json     @default("{}") @map("access_rules") // Additional access rules
   isSystem      Boolean  @default(false) @map("is_system")
+  color         String   @default("#8B5CF6") // UI display color (violet)
+  icon          String   @default("folder") // UI display icon
+  createdById   String?  @map("created_by_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
@@ -4835,9 +4903,11 @@ model UserDepartment {
   userId       String   @map("user_id")
   departmentId String   @map("department_id")
   isPrimary    Boolean  @default(false) @map("is_primary")
+  accessLevel  String   @default("member") // admin, manager, member, viewer
   assignedAt   DateTime @default(now()) @map("assigned_at")
   assignedBy   String?  @map("assigned_by")
 
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, departmentId])
@@ -4857,6 +4927,9 @@ model ContractUserAccess {
   expiresAt   DateTime? @map("expires_at")
   notes       String?   @db.Text
 
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
   @@unique([contractId, userId])
   @@index([contractId])
   @@index([userId])
@@ -4874,7 +4947,8 @@ model ContractGroupAccess {
   grantedBy   String?   @map("granted_by")
   expiresAt   DateTime? @map("expires_at")
 
-  group UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  group    UserGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  contract Contract  @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([contractId, groupId])
   @@index([contractId])
@@ -4890,13 +4964,16 @@ model ExternalCollaborator {
   email        String
   name         String?
   organization String?
+  company      String? // Alias for organization (compatibility)
   type         String    @default("client") // client, vendor, partner, consultant, auditor
   accessToken  String    @unique @map("access_token")
   status       String    @default("pending") // pending, active, expired, revoked
   permissions  Json      @default("{}") // canView, canDownload, canComment
   expiresAt    DateTime  @map("expires_at")
+  revokedAt    DateTime? @map("revoked_at")
   lastAccessAt DateTime? @map("last_access_at")
   invitedBy    String    @map("invited_by")
+  invitedAt    DateTime  @default(now()) @map("invited_at") // Alias for createdAt
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -4915,9 +4992,11 @@ model CollaboratorContractAccess {
   id             String   @id @default(cuid())
   collaboratorId String   @map("collaborator_id")
   contractId     String   @map("contract_id")
+  accessLevel    String   @default("view") // view, comment, download
   grantedAt      DateTime @default(now()) @map("granted_at")
 
   collaborator ExternalCollaborator @relation(fields: [collaboratorId], references: [id], onDelete: Cascade)
+  contract     Contract             @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([collaboratorId, contractId])
   @@index([collaboratorId])

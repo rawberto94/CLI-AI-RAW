@@ -33,9 +33,6 @@ export async function GET(
         ],
       },
       include: {
-        tenant: {
-          select: { id: true, name: true },
-        },
         contractAccess: {
           include: {
             contract: {
@@ -63,6 +60,12 @@ export async function GET(
       }, { status: 401 });
     }
     
+    // Get tenant info separately
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: collaborator.tenantId },
+      select: { id: true, name: true },
+    });
+    
     // Update last access
     await prisma.externalCollaborator.update({
       where: { id: collaborator.id },
@@ -83,7 +86,7 @@ export async function GET(
         email: collaborator.email,
         ip: request.headers.get('x-forwarded-for') || 'unknown',
       },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     return NextResponse.json({
@@ -92,13 +95,13 @@ export async function GET(
         name: collaborator.name,
         email: collaborator.email,
         company: collaborator.company,
-        type: collaborator.collaboratorType,
+        type: collaborator.type,
         permissions: collaborator.permissions,
       },
-      tenant: {
-        id: collaborator.tenant.id,
-        name: collaborator.tenant.name,
-      },
+      tenant: tenant ? {
+        id: tenant.id,
+        name: tenant.name,
+      } : null,
       contracts: collaborator.contractAccess.map(ca => ({
         id: ca.contract.id,
         name: ca.contract.contractTitle || ca.contract.fileName,
@@ -230,10 +233,9 @@ export async function POST(
         const comment = await prisma.contractComment.create({
           data: {
             contractId,
+            tenantId: collaborator.tenantId,
+            userId: collaborator.id, // Use collaborator ID as the user
             content: data.content,
-            authorType: 'EXTERNAL',
-            authorId: collaborator.id,
-            authorEmail: collaborator.email,
           },
         });
         
@@ -244,7 +246,7 @@ export async function POST(
           resourceType: 'contract',
           resourceId: contractId,
           metadata: { commentId: comment.id },
-          request,
+          requestId: request.headers.get('x-request-id') || undefined,
         });
         
         return NextResponse.json({ success: true, comment });

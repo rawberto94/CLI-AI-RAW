@@ -20,12 +20,12 @@ import {
   isMFAEnabled,
   regenerateBackupCodes,
 } from '@/lib/security/mfa';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 
 /**
  * GET /api/auth/mfa/status - Check MFA status
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     
@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           tenantId: session.user.tenantId,
           metadata: {},
-          request,
+          ...getAuditContext(request),
         });
         
         return NextResponse.json({
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             tenantId: session.user.tenantId,
             metadata: { method: 'totp' },
-            request,
+            ...getAuditContext(request),
           });
           
           return NextResponse.json({ success: true });
@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             tenantId: session.user.tenantId,
             metadata: {},
-            request,
+            ...getAuditContext(request),
           });
           
           return NextResponse.json({ success: true });
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
             userId: session.user.id,
             tenantId: session.user.tenantId,
             metadata: {},
-            request,
+            ...getAuditContext(request),
           });
           
           return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
@@ -141,7 +141,7 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           tenantId: session.user.tenantId,
           metadata: {},
-          request,
+          ...getAuditContext(request),
         });
         
         return NextResponse.json({ success: true });
@@ -156,7 +156,7 @@ export async function POST(request: NextRequest) {
           userId: session.user.id,
           tenantId: session.user.tenantId,
           metadata: {},
-          request,
+          ...getAuditContext(request),
         });
         
         return NextResponse.json({ backupCodes: codes });

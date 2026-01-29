@@ -68,8 +68,8 @@ export interface RealTimeContextValue {
   reconnect: () => void;
   disconnect: () => void;
   connectionAttempts: number;
-  subscribe: <T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => () => void;
-  broadcast: <T = RealTimeEventData>(eventType: string, data: T) => void;
+  subscribe: <T extends RealTimeEventData = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => () => void;
+  broadcast: <T extends RealTimeEventData = RealTimeEventData>(eventType: string, data: T) => void;
 }
 
 const RealTimeContext = createContext<RealTimeContextValue | undefined>(undefined);
@@ -223,7 +223,7 @@ export function RealTimeProvider({
   } as any);
 
   // Subscribe to specific event types
-  const subscribe = useCallback(<T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => {
+  const subscribe = useCallback(<T extends RealTimeEventData = RealTimeEventData>(eventType: string, handler: EventHandler<T>) => {
     setSubscribers(prev => {
       const newSubscribers = new Map(prev);
       const handlers = newSubscribers.get(eventType) || new Set();
@@ -251,12 +251,12 @@ export function RealTimeProvider({
   }, []);
 
   // Broadcast events locally (for client-side coordination)
-  const broadcast = useCallback(<T = RealTimeEventData>(eventType: string, data: T) => {
+  const broadcast = useCallback(<T extends RealTimeEventData = RealTimeEventData>(eventType: string, data: T) => {
     const handlers = subscribers.get(eventType);
     if (handlers) {
       handlers.forEach(handler => {
         try {
-          handler(data);
+          handler(data as RealTimeEventData);
         } catch {
           // Error in broadcast handler - silently ignore
         }
@@ -296,7 +296,7 @@ export function useRealTime() {
 /**
  * Hook to subscribe to specific event types
  */
-export function useRealTimeEvent<T = RealTimeEventData>(eventType: string, handler: EventHandler<T>) {
+export function useRealTimeEvent<T extends RealTimeEventData = RealTimeEventData>(eventType: string, handler: EventHandler<T>) {
   const { subscribe } = useRealTime();
 
   useEffect(() => {

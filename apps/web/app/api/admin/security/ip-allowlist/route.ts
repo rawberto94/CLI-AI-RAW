@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { z } from 'zod';
 
 // Validation schema for IP entries
@@ -69,24 +69,19 @@ export async function GET(request: NextRequest) {
         ],
       },
       orderBy: { createdAt: 'desc' },
-      include: {
-        createdByUser: {
-          select: { email: true, name: true },
-        },
-      },
     });
     
     return NextResponse.json({
       enabled: settings?.ipAllowlistEnabled ?? false,
-      enforceMode: settings?.ipAllowlistEnforceMode ?? 'disabled', // disabled, warn, block
+      enforceMode: 'disabled', // Not stored in DB, use default
       entries: entries.map(e => ({
         id: e.id,
-        ip: e.ip,
+        ip: e.ipAddress,
         description: e.description,
         createdAt: e.createdAt,
-        createdBy: e.createdByUser?.email || e.createdById,
+        createdBy: e.createdBy,
         expiresAt: e.expiresAt,
-        isActive: !e.expiresAt || e.expiresAt > new Date(),
+        isActive: e.isActive && (!e.expiresAt || e.expiresAt > new Date()),
       })),
     });
   } catch (error) {
@@ -116,18 +111,16 @@ export async function POST(request: NextRequest) {
     
     // Handle settings update
     if (body.action === 'updateSettings') {
-      const { enabled, enforceMode } = body;
+      const { enabled } = body;
       
       await prisma.tenantSecuritySettings.upsert({
         where: { tenantId: session.user.tenantId },
         create: {
           tenantId: session.user.tenantId,
           ipAllowlistEnabled: enabled ?? false,
-          ipAllowlistEnforceMode: enforceMode ?? 'disabled',
         },
         update: {
           ipAllowlistEnabled: enabled ?? false,
-          ipAllowlistEnforceMode: enforceMode ?? 'disabled',
         },
       });
       
@@ -135,8 +128,8 @@ export async function POST(request: NextRequest) {
         action: AuditAction.SECURITY_SETTINGS_UPDATED,
         userId: session.user.id,
         tenantId: session.user.tenantId,
-        metadata: { ipAllowlistEnabled: enabled, enforceMode },
-        request,
+        metadata: { ipAllowlistEnabled: enabled },
+        ...getAuditContext(request),
       });
       
       return NextResponse.json({ success: true });
@@ -154,7 +147,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.ipAllowlist.findFirst({
       where: {
         tenantId: session.user.tenantId,
-        ip,
+        ipAddress: ip,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } },
@@ -169,10 +162,10 @@ export async function POST(request: NextRequest) {
     const entry = await prisma.ipAllowlist.create({
       data: {
         tenantId: session.user.tenantId,
-        ip,
+        ipAddress: ip,
         description: description || null,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
-        createdById: session.user.id,
+        createdBy: session.user.id,
       },
     });
     
@@ -183,7 +176,7 @@ export async function POST(request: NextRequest) {
       resourceType: 'ip_allowlist',
       resourceId: entry.id,
       metadata: { ip, description },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true, entry });
@@ -238,8 +231,8 @@ export async function DELETE(request: NextRequest) {
       tenantId: session.user.tenantId,
       resourceType: 'ip_allowlist',
       resourceId: entryId,
-      metadata: { ip: entry.ip },
-      request,
+      metadata: { ip: entry.ipAddress },
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true });
@@ -260,7 +253,7 @@ export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ al
     });
     
     // If IP allowlist is not enabled, allow all
-    if (!settings?.ipAllowlistEnabled || settings.ipAllowlistEnforceMode === 'disabled') {
+    if (!settings?.ipAllowlistEnabled) {
       return { allowed: true };
     }
     
@@ -268,6 +261,7 @@ export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ al
     const entries = await prisma.ipAllowlist.findMany({
       where: {
         tenantId,
+        isActive: true,
         OR: [
           { expiresAt: null },
           { expiresAt: { gt: new Date() } },
@@ -282,24 +276,18 @@ export async function checkIPAllowed(ip: string, tenantId: string): Promise<{ al
     
     // Check if IP matches any entry
     const isAllowed = entries.some(entry => {
-      if (entry.ip.includes('/')) {
+      if (entry.ipAddress.includes('/')) {
         // CIDR notation - use proper subnet matching
-        return isIPInCIDR(ip, entry.ip);
+        return isIPInCIDR(ip, entry.ipAddress);
       }
-      return entry.ip === ip;
+      return entry.ipAddress === ip;
     });
     
     if (isAllowed) {
       return { allowed: true };
     }
     
-    // IP not in allowlist
-    if (settings.ipAllowlistEnforceMode === 'warn') {
-      // Log but allow
-      return { allowed: true, reason: 'IP not in allowlist (warn mode)' };
-    }
-    
-    // Block mode
+    // IP not in allowlist - block
     return { allowed: false, reason: 'IP address not authorized' };
   } catch (error) {
     console.error('[IP Check Error]:', error);

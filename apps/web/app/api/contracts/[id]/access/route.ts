@@ -69,7 +69,7 @@ export async function GET(
         name: `${ua.user.firstName || ''} ${ua.user.lastName || ''}`.trim() || ua.user.email,
         avatar: ua.user.avatar,
         accessLevel: ua.accessLevel,
-        grantedAt: ua.createdAt,
+        grantedAt: ua.grantedAt,
         expiresAt: ua.expiresAt,
       })),
       groups: groupAccess.map(ga => ({
@@ -78,7 +78,7 @@ export async function GET(
         color: ga.group.color,
         memberCount: ga.group._count.members,
         accessLevel: ga.accessLevel,
-        grantedAt: ga.createdAt,
+        grantedAt: ga.grantedAt,
         expiresAt: ga.expiresAt,
       })),
     });
@@ -112,7 +112,7 @@ export async function POST(
     }
     
     const body = await request.json();
-    const { userIds, groupIds, accessLevel = 'view', expiresAt, notify = true } = body;
+    const { userIds, groupIds, accessLevel = 'view', expiresAt, notify: _notify = true } = body;
     
     if ((!userIds || userIds.length === 0) && (!groupIds || groupIds.length === 0)) {
       return NextResponse.json({ error: 'userIds or groupIds required' }, { status: 400 });
@@ -150,12 +150,12 @@ export async function POST(
             contractId,
             userId: user.id,
             accessLevel,
-            grantedById: session.user.id,
+            grantedBy: session.user.id,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
           update: {
             accessLevel,
-            grantedById: session.user.id,
+            grantedBy: session.user.id,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
         });
@@ -180,12 +180,12 @@ export async function POST(
             contractId,
             groupId: group.id,
             accessLevel,
-            grantedById: session.user.id,
+            grantedBy: session.user.id,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
           update: {
             accessLevel,
-            grantedById: session.user.id,
+            grantedBy: session.user.id,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
         });
@@ -200,7 +200,7 @@ export async function POST(
       resourceType: 'contract',
       resourceId: contractId,
       metadata: { userIds, groupIds, accessLevel, expiresAt },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     // TODO: Send notifications if notify=true
@@ -260,7 +260,7 @@ export async function DELETE(
       resourceType: 'contract',
       resourceId: contractId,
       metadata: { userIds, groupIds },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
     return NextResponse.json({ success: true, ...results });

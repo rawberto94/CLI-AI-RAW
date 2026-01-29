@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { z } from 'zod';
 
 const groupSchema = z.object({
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
           name: `${m.user.firstName || ''} ${m.user.lastName || ''}`.trim() || m.user.email,
           avatar: m.user.avatar,
           role: m.role,
-          joinedAt: m.createdAt,
+          joinedAt: m.joinedAt,
         })),
         createdAt: g.createdAt,
       })),
@@ -120,7 +120,7 @@ export async function POST(request: NextRequest) {
         permissions: permissions || [],
         departmentAccess: departmentAccess || [],
         contractAccessLevel: contractAccess || 'assigned',
-        createdById: session.user.id,
+        createdBy: session.user.id,
       },
     });
     
@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       resourceType: 'user_group',
       resourceId: group.id,
       metadata: { name, permissions },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true, group });
@@ -197,7 +197,7 @@ export async function PUT(request: NextRequest) {
       resourceType: 'user_group',
       resourceId: groupId,
       metadata: updateData,
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true, group });
@@ -249,7 +249,7 @@ export async function DELETE(request: NextRequest) {
       resourceType: 'user_group',
       resourceId: groupId,
       metadata: { name: existing.name },
-      request,
+      ...getAuditContext(request),
     });
     
     return NextResponse.json({ success: true });

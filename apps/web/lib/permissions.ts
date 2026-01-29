@@ -158,7 +158,7 @@ export async function hasPermission(userId: string, permission: string): Promise
       select: { role: true, status: true },
     });
     
-    if (!user || user.status !== 'active') {
+    if (!user || user.status !== 'ACTIVE') {
       return false;
     }
     
@@ -182,7 +182,7 @@ export async function getUserPermissions(userId: string): Promise<string[]> {
       select: { role: true, status: true },
     });
     
-    if (!user || user.status !== 'active') {
+    if (!user || user.status !== 'ACTIVE') {
       return [];
     }
     

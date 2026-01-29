@@ -163,7 +163,7 @@ export function EnhancedArtifactEditor({
   showHistory,
   readOnly = false,
 }: ArtifactEditorProps) {
-  const [_isEditing, _setIsEditing] = useState(!readOnly);
+  const [isEditing, setIsEditing] = useState(!readOnly);
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<Record<string, any>>(artifact.data || {});
   const [error, setError] = useState<string | null>(null);
