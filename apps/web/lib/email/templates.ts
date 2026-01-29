@@ -375,4 +375,72 @@ export const emailTemplates = {
       </html>
     `,
   }),
+
+  /**
+   * Contract access granted notification
+   */
+  contractAccessGranted: (data: {
+    recipientName: string;
+    contractTitle: string;
+    accessLevel: string;
+    grantedBy: string;
+    expiresAt?: string;
+    contractUrl: string;
+  }) => ({
+    subject: `🔓 You've been granted access to: ${data.contractTitle}`,
+    html: `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: linear-gradient(135deg, #0066CC 0%, #0052A3 100%); color: white; padding: 30px; border-radius: 8px 8px 0 0; }
+            .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 8px 8px; }
+            .info-box { background: #E3F2FD; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; }
+            .access-badge { display: inline-block; background: #4CAF50; color: white; padding: 5px 15px; border-radius: 15px; font-size: 14px; margin: 10px 0; }
+            .button { display: inline-block; background: #0066CC; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; margin: 20px 0; }
+            .footer { text-align: center; color: #666; font-size: 12px; margin-top: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1 style="margin: 0;">🔓 Contract Access Granted</h1>
+            </div>
+            <div class="content">
+              <p>Hello ${data.recipientName},</p>
+              
+              <div class="info-box">
+                <p style="margin: 0;"><strong>${data.grantedBy}</strong> has granted you access to a contract.</p>
+              </div>
+              
+              <h2 style="color: #0066CC;">${data.contractTitle}</h2>
+              
+              <p><strong>Access Level:</strong> <span class="access-badge">${data.accessLevel.toUpperCase()}</span></p>
+              
+              ${data.expiresAt ? `<p><strong>Expires:</strong> ${data.expiresAt}</p>` : ''}
+              
+              <p>You can now:</p>
+              <ul>
+                ${data.accessLevel === 'view' ? '<li>View contract details and documents</li>' : ''}
+                ${data.accessLevel === 'edit' ? '<li>View and edit contract details</li><li>Update contract documents</li>' : ''}
+                ${data.accessLevel === 'manage' ? '<li>Full access to view, edit, and manage the contract</li><li>Grant access to other users</li>' : ''}
+              </ul>
+              
+              <a href="${data.contractUrl}" class="button">View Contract</a>
+              
+              <p style="margin-top: 30px; color: #666; font-size: 14px;">
+                This is an automated notification from ConTigo Contract Intelligence Platform.
+              </p>
+            </div>
+            <div class="footer">
+              <p>ConTigo - AI-Powered Contract Intelligence</p>
+              <p>© ${new Date().getFullYear()} All rights reserved</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `,
+  }),
 };

@@ -10,6 +10,8 @@ import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hasPermission } from '@/lib/permissions';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { sendEmail } from '@/lib/email/email-service';
+import { emailTemplates } from '@/lib/email/templates';
 
 type AccessLevel = 'view' | 'edit' | 'manage' | 'admin';
 
@@ -112,7 +114,7 @@ export async function POST(
     }
     
     const body = await request.json();
-    const { userIds, groupIds, accessLevel = 'view', expiresAt, notify: _notify = true } = body;
+    const { userIds, groupIds, accessLevel = 'view', expiresAt, notify = true } = body;
     
     if ((!userIds || userIds.length === 0) && (!groupIds || groupIds.length === 0)) {
       return NextResponse.json({ error: 'userIds or groupIds required' }, { status: 400 });
@@ -203,7 +205,45 @@ export async function POST(
       requestId: request.headers.get('x-request-id') || undefined,
     });
     
-    // TODO: Send notifications if notify=true
+    // Send notifications if notify=true
+    if (notify && userIds && userIds.length > 0) {
+      try {
+        // Fetch user details for notification
+        const usersToNotify = await prisma.user.findMany({
+          where: { id: { in: userIds }, tenantId: session.user.tenantId },
+          select: { id: true, email: true, firstName: true },
+        });
+        
+        const granterName = session.user.firstName 
+          ? `${session.user.firstName} ${session.user.lastName || ''}`
+          : session.user.email;
+        
+        const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3005';
+        
+        // Send notification emails in parallel
+        await Promise.allSettled(
+          usersToNotify.map((user) => {
+            const template = emailTemplates.contractAccessGranted({
+              recipientName: user.firstName || user.email,
+              contractTitle: contract.title || 'Untitled Contract',
+              accessLevel,
+              grantedBy: granterName,
+              expiresAt: expiresAt ? new Date(expiresAt).toLocaleDateString() : undefined,
+              contractUrl: `${baseUrl}/contracts/${contractId}`,
+            });
+            
+            return sendEmail({
+              to: user.email,
+              subject: template.subject,
+              html: template.html,
+            });
+          })
+        );
+      } catch (notifyError) {
+        // Log but don't fail the request if notifications fail
+        console.error('[Contract Access] Notification error:', notifyError);
+      }
+    }
     
     return NextResponse.json({ success: true, ...results });
   } catch (error) {

@@ -4686,13 +4686,13 @@ model AIUsageLog {
 
 /// Webhook Config - Stores webhook configurations for notifications
 model WebhookConfig {
-  id          String    @id @default(cuid())
-  tenantId    String    @map("tenant_id")
+  id          String   @id @default(cuid())
+  tenantId    String   @map("tenant_id")
   name        String
   url         String
-  secret      String    // HMAC secret for webhook signature verification
-  events      String[]  // Array of event types
-  isActive    Boolean   @default(true) @map("is_active")
+  secret      String // HMAC secret for webhook signature verification
+  events      String[] // Array of event types
+  isActive    Boolean  @default(true) @map("is_active")
   description String?
 
   // Delivery tracking
