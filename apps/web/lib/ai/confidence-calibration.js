@@ -1,5 +1,5 @@
 "use strict";
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-this-alias */
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * Confidence Calibration Service
  *

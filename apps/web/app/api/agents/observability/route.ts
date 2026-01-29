@@ -232,7 +232,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
   ];
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function generateMockMetrics(_tenantId: string): AgentMetrics {
   return {
     totalAgents: 9,

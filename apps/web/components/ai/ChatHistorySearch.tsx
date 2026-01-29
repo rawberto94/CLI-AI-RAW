@@ -353,7 +353,7 @@ export function ChatHistorySearch({
           ) : results.length === 0 && hasSearched ? (
             <div className="text-center py-8 text-slate-500">
               <MessageSquare className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>No results found for "{query}"</p>
+              <p>No results found for &ldquo;{query}&rdquo;</p>
               <p className="text-sm mt-1">Try different keywords or filters</p>
             </div>
           ) : results.length === 0 ? (

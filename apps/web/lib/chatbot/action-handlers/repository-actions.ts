@@ -248,7 +248,7 @@ ${count > 0 ? `**Recommended Actions:**
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 async function showHighRiskContracts(_tenantId: string): Promise<ChatActionResult> {
   return {
     success: true,
@@ -300,7 +300,7 @@ ${count > 0 ? `**Why categorize?**
 
 async function showContractsByStatus(
   entities: DetectedIntent['entities'],
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   _tenantId: string
 ): Promise<ChatActionResult> {
   const status = entities.status || 'active'

@@ -14,7 +14,7 @@ interface GlobalErrorBoundaryProps {
 }
 
 export function GlobalErrorBoundary({ children }: GlobalErrorBoundaryProps) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const handleError = (_error: Error, _errorInfo: React.ErrorInfo) => {
     // Additional global error handling logic can be added here
   };

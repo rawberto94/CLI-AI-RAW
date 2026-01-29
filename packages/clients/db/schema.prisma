@@ -4686,16 +4686,18 @@ model AIUsageLog {
 
 /// Webhook Config - Stores webhook configurations for notifications
 model WebhookConfig {
-  id       String   @id @default(cuid())
-  tenantId String   @map("tenant_id")
-  url      String
-  secret   String?
-  events   String[] // Array of event types
-  active   Boolean  @default(true)
-
-  // Metadata
-  name        String?
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  name        String
+  url         String
+  secret      String    // HMAC secret for webhook signature verification
+  events      String[]  // Array of event types
+  isActive    Boolean   @default(true) @map("is_active")
   description String?
+
+  // Delivery tracking
+  failureCount   Int       @default(0) @map("failure_count")
+  lastDeliveryAt DateTime? @map("last_delivery_at")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -4703,7 +4705,7 @@ model WebhookConfig {
   logs WebhookLog[]
 
   @@index([tenantId])
-  @@index([active])
+  @@index([isActive])
   @@map("webhook_configs")
 }
 

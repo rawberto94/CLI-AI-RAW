@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { auth } from '@/lib/auth';
 
 // Supported webhook events
 export const WEBHOOK_EVENTS = [
@@ -43,22 +44,23 @@ export const WEBHOOK_EVENTS = [
 
 export type WebhookEvent = typeof WEBHOOK_EVENTS[number];
 
-export interface WebhookConfig {
+// Local type for webhook config (matches Prisma model but with string[] for events)
+export interface WebhookConfigType {
   id: string;
   tenantId: string;
   name: string;
   url: string;
   secret: string;
-  events: WebhookEvent[];
+  events: string[];
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
-  lastDeliveryAt?: Date;
+  lastDeliveryAt?: Date | null;
   failureCount: number;
 }
 
-// In-memory storage for webhooks (until database migration is run)
-export const webhookStore = new Map<string, WebhookConfig>();
+// In-memory storage for webhooks (fallback if database not available)
+export const webhookStore = new Map<string, WebhookConfigType>();
 
 async function getPrisma() {
   try {
@@ -75,7 +77,17 @@ async function getPrisma() {
  */
 export async function GET(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    // Authenticate user via session
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Get tenantId from session (secure) with fallback to header for backward compat
+    const tenantId = session.user.tenantId || request.headers.get('x-tenant-id');
     
     // Require tenant ID for data isolation
     if (!tenantId) {
@@ -85,13 +97,13 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    let webhooks: WebhookConfig[] = [];
+    let webhooks: WebhookConfigType[] = [];
     
     const prisma = await getPrisma();
     
     if (prisma) {
       try {
-        webhooks = await (prisma as unknown as { webhookConfig: { findMany: (opts: unknown) => Promise<WebhookConfig[]> } }).webhookConfig.findMany({
+        webhooks = await prisma.webhookConfig.findMany({
           where: { tenantId },
           orderBy: { createdAt: 'desc' },
         });
@@ -130,7 +142,25 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    // Authenticate user via session
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Only admins can manage webhooks
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Get tenantId from session (secure) with fallback to header for backward compat
+    const tenantId = session.user.tenantId || request.headers.get('x-tenant-id');
     
     // Require tenant ID for data isolation
     if (!tenantId) {

@@ -3,14 +3,41 @@
  * POST /api/test/send-email
  * 
  * Test endpoint to verify email configuration
+ * RESTRICTED: Only accessible to admin users in development/staging
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@/lib/auth';
 import { sendEmail } from '@/lib/email/email-service';
 import { emailTemplates } from '@/lib/email/templates';
 
 export async function POST(request: NextRequest) {
   try {
+    // Security: Require authentication and admin role
+    const session = await auth();
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+    
+    // Only admins can send test emails
+    if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+      return NextResponse.json(
+        { error: 'Admin access required' },
+        { status: 403 }
+      );
+    }
+    
+    // Block in production unless explicitly enabled
+    if (process.env.NODE_ENV === 'production' && !process.env.ENABLE_TEST_ENDPOINTS) {
+      return NextResponse.json(
+        { error: 'Test endpoints disabled in production' },
+        { status: 403 }
+      );
+    }
+    
     const body = await request.json();
     const { type = 'test', to } = body;
     

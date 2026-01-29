@@ -8,6 +8,7 @@
  */
 
 import React, { Component, ReactNode, useState, useCallback } from 'react';
+import Link from 'next/link';
 import {
   AlertTriangle,
   RefreshCw,
@@ -240,10 +241,10 @@ Component Stack: ${errorInfo?.componentStack || 'No component stack'}
           </Button>
         )}
         <Button variant="outline" asChild>
-          <a href="/">
+          <Link href="/">
             <Home className="w-4 h-4 mr-2" />
             Go Home
-          </a>
+          </Link>
         </Button>
       </div>
 
