@@ -40,6 +40,7 @@ import {
 import { useDataMode } from '@/contexts/DataModeContext';
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal';
 import { useCrossModuleInvalidation } from '@/hooks/use-queries';
+import { RenewalsCalendar } from '@/components/calendar/RenewalsCalendar';
 
 // ============================================================================
 // Types
@@ -719,7 +720,7 @@ export const RenewalManager: React.FC = () => {
           </div>
         </div>
         <div className="flex items-center gap-1 border border-slate-200/50 rounded-xl p-1 bg-white/80 backdrop-blur-sm shadow-sm">
-          {(['list', 'timeline'] as const).map(v => (
+          {(['list', 'calendar', 'timeline'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
@@ -749,6 +750,12 @@ export const RenewalManager: React.FC = () => {
               />
             ))}
           </div>
+        ) : view === 'calendar' ? (
+          <RenewalsCalendar
+            renewals={filteredRenewals}
+            selectedId={selectedId}
+            onSelect={(renewal) => setSelectedId(selectedId === renewal.id ? null : renewal.id)}
+          />
         ) : (
           <div className="space-y-8">
             {Object.entries(renewalsByMonth).map(([month, monthRenewals]) => (

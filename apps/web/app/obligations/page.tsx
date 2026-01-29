@@ -62,6 +62,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ObligationsCalendar } from '@/components/calendar/ObligationsCalendar';
 
 // Types
 interface Obligation {
@@ -987,16 +988,11 @@ export default function ObligationsDashboardPage() {
 
           {/* Calendar Tab */}
           <TabsContent value="calendar" className="space-y-4">
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
-              <CardContent className="py-12 text-center">
-                <CalendarClock className="w-16 h-16 mx-auto mb-4 text-purple-300 dark:text-purple-700" />
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Calendar View Coming Soon</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                  A visual calendar view for tracking obligations and deadlines is being developed.
-                  For now, use the Overview and All Obligations tabs.
-                </p>
-              </CardContent>
-            </Card>
+            <ObligationsCalendar 
+              obligations={obligations}
+              onStatusUpdate={handleStatusUpdate}
+              onComplete={handleComplete}
+            />
           </TabsContent>
         </Tabs>
       </div>
