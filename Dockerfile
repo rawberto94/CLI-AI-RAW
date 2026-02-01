@@ -24,33 +24,45 @@ RUN pnpm install --frozen-lockfile || pnpm install
 FROM node:22-alpine AS builder
 WORKDIR /app
 
+# Install OpenSSL and other required libraries for Prisma
+RUN apk add --no-cache libc6-compat openssl
+
 # Install pnpm
 RUN npm install -g pnpm@8.9.0
 
-# Copy dependencies from deps stage (all node_modules)
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages ./packages
-
-# Copy source code
+# Copy source code first
 COPY . .
 
+# Install all dependencies including devDependencies for Prisma
+RUN pnpm install --frozen-lockfile || pnpm install
+
 # Generate Prisma client
-RUN cd packages/clients/db && pnpm prisma generate
+RUN pnpm --filter clients-db exec prisma generate
+
+# Build packages that the web app depends on
+RUN pnpm --filter @repo/data-orchestration build
+RUN pnpm --filter clients-db build || true
 
 # Build Next.js app with increased memory
 WORKDIR /app/apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 ENV NODE_OPTIONS="--max-old-space-size=8192"
+# Provide dummy environment variables for build-time (needed for validation, won't connect)
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy?schema=public"
+ENV OPENAI_API_KEY="sk-dummy-key-for-build"
+ENV INTERNAL_API_SECRET="dummy-secret-for-build"
 RUN pnpm build
 
 # Stage 3: Runner
 FROM node:22-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+# Install OpenSSL for Prisma runtime
+RUN apk add --no-cache libc6-compat openssl openssl-dev
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 # Create non-root user
@@ -66,7 +78,7 @@ USER nextjs
 
 EXPOSE 3000
 
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
 CMD ["node", "apps/web/server.js"]
