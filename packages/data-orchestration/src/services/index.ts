@@ -595,3 +595,13 @@ export {
   type ComplianceCheck,
   type AlternativeVersion,
 } from './contract-generation.service';
+
+// Workflow Auto-Start Service - Automatic workflow triggering
+export {
+  WorkflowAutoStartService,
+  getWorkflowAutoStartService,
+  workflowAutoStartService,
+  type WorkflowTemplateKey as AutoStartWorkflowTemplateKey,
+  type AutoStartRule,
+  type AutoStartCondition,
+} from './workflow-auto-start.service';

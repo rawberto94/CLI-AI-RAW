@@ -103,7 +103,7 @@ export async function processCategorizationJob(
     tenantId,
     forceRecategorize = false,
     autoApply = true,
-    autoApplyThreshold = 0.75,
+    autoApplyThreshold: jobThreshold,
     source = "upload",
   } = job.data;
 
@@ -133,6 +133,19 @@ export async function processCategorizationJob(
     // Dynamic imports
     const { AIContractCategorizer } = await import("@/lib/ai/contract-categorizer");
     const { prisma } = await import("@/lib/prisma");
+    
+    // Get tenant extraction settings for configurable thresholds
+    const tenantConfig = await prisma.tenantConfig.findUnique({
+      where: { tenantId },
+      select: { extractionSettings: true },
+    });
+    
+    const extractionSettings = (tenantConfig?.extractionSettings as Record<string, unknown>) || {};
+    const tenantThreshold = (extractionSettings.contractTypeConfidenceThreshold as number) ?? 0.75;
+    const tenantAutoApply = (extractionSettings.autoApplyContractType as boolean) ?? true;
+    
+    // Use job threshold if provided, otherwise use tenant settings
+    const autoApplyThreshold = jobThreshold ?? tenantThreshold;
 
     // Get contract
     const contract = await prisma.contract.findFirst({
@@ -225,8 +238,8 @@ export async function processCategorizationJob(
 
     await job.updateProgress(80);
 
-    // Determine if we should auto-apply
-    const shouldAutoApply = autoApply && 
+    // Determine if we should auto-apply based on tenant settings
+    const shouldAutoApply = (autoApply && tenantAutoApply) && 
       (result.overallConfidence / 100) >= autoApplyThreshold;
 
     // =========================================================================

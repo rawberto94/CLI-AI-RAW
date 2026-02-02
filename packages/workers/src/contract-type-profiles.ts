@@ -5,9 +5,11 @@
  * mandatory/optional fields, and clause categories for adaptive AI extraction.
  */
 
-// ============ CONTRACT TYPES ============
+// ============ CONTRACT/DOCUMENT TYPES ============
+// Includes both contracts and transactional business documents
 
 export type ContractType = 
+  // === CORE AGREEMENTS ===
   | 'NDA'
   | 'MSA'
   | 'SOW'
@@ -46,6 +48,42 @@ export type ContractType =
   | 'REAL_ESTATE'
   | 'SHAREHOLDERS'
   | 'OPERATING'
+  // === TRANSACTIONAL DOCUMENTS ===
+  | 'PURCHASE_ORDER'
+  | 'INVOICE'
+  | 'QUOTE'
+  | 'PROPOSAL'
+  | 'RECEIPT'
+  | 'BILL_OF_LADING'
+  | 'PACKING_LIST'
+  | 'DELIVERY_NOTE'
+  // === COMPLIANCE & REGULATORY ===
+  | 'DATA_PROCESSING_AGREEMENT'
+  | 'TERMS_OF_SERVICE'
+  | 'PRIVACY_POLICY'
+  | 'ACCEPTABLE_USE_POLICY'
+  | 'CODE_OF_CONDUCT'
+  | 'CERTIFICATION'
+  // === CORPORATE DOCUMENTS ===
+  | 'BOARD_RESOLUTION'
+  | 'MINUTES'
+  | 'POWER_OF_ATTORNEY'
+  | 'CORPORATE_GUARANTEE'
+  | 'LETTER_OF_CREDIT'
+  // === PROJECT & WORK ===
+  | 'WORK_ORDER'
+  | 'CHANGE_ORDER'
+  | 'REQUEST_FOR_PROPOSAL'
+  | 'REQUEST_FOR_QUOTE'
+  | 'SCOPE_CHANGE'
+  | 'PROJECT_CHARTER'
+  // === HR & PERSONNEL ===
+  | 'OFFER_LETTER'
+  | 'SEPARATION_AGREEMENT'
+  | 'NON_COMPETE'
+  | 'NON_SOLICITATION'
+  | 'INDEPENDENT_CONTRACTOR'
+  // === CATCH-ALL ===
   | 'OTHER';
 
 // ============ ARTIFACT RELEVANCE ============
@@ -2163,6 +2201,1083 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
     expectedSections: ['Formation', 'Capital', 'Management', 'Allocations', 'Distributions', 'Transfers'],
   },
 
+  // ============ TRANSACTIONAL DOCUMENTS ============
+
+  PURCHASE_ORDER: {
+    displayName: 'Purchase Order',
+    description: 'Commercial document issued to a seller indicating types, quantities, and agreed prices',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'item_description',
+      'quantity',
+      'unit_price',
+      'delivery_terms',
+      'payment_terms',
+      'shipping_instructions',
+      'acceptance_criteria',
+    ],
+    financialFields: [
+      'total_amount',
+      'unit_prices',
+      'taxes',
+      'shipping_cost',
+      'discount',
+      'payment_terms',
+    ],
+    riskCategories: [
+      'delivery_delays',
+      'quality_mismatch',
+      'price_discrepancies',
+    ],
+    keyTermsToExtract: [
+      'PO Number',
+      'Vendor',
+      'Ship To',
+      'Bill To',
+      'Item',
+      'Quantity',
+      'Unit Price',
+      'Delivery Date',
+    ],
+    extractionHints: 'Focus on line items, quantities, prices, and delivery dates. Extract PO number, vendor details, and shipping/billing addresses.',
+    mandatoryFields: ['poNumber', 'vendor', 'lineItems', 'totalAmount'],
+    expectedSections: ['Header', 'Line Items', 'Shipping', 'Billing', 'Terms'],
+  },
+
+  INVOICE: {
+    displayName: 'Invoice',
+    description: 'Commercial document issued by seller to buyer for goods or services provided',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'billing_details',
+      'line_items',
+      'payment_terms',
+      'due_date',
+      'tax_details',
+    ],
+    financialFields: [
+      'invoice_amount',
+      'subtotal',
+      'taxes',
+      'discounts',
+      'total_due',
+      'currency',
+      'payment_terms',
+    ],
+    riskCategories: [
+      'late_payment',
+      'disputed_charges',
+      'incorrect_amounts',
+    ],
+    keyTermsToExtract: [
+      'Invoice Number',
+      'Invoice Date',
+      'Due Date',
+      'Bill To',
+      'Amount Due',
+      'Payment Terms',
+    ],
+    extractionHints: 'Extract invoice number, dates, amounts, line items, and payment terms. Calculate totals and identify any discounts or taxes.',
+    mandatoryFields: ['invoiceNumber', 'invoiceDate', 'dueDate', 'totalAmount'],
+    expectedSections: ['Header', 'Bill To', 'Line Items', 'Summary', 'Payment Instructions'],
+  },
+
+  QUOTE: {
+    displayName: 'Quote/Quotation',
+    description: 'Formal statement of pricing for goods or services before purchase',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'optional',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'scope_of_work',
+      'pricing',
+      'validity_period',
+      'terms_conditions',
+      'delivery_timeline',
+    ],
+    financialFields: [
+      'quoted_price',
+      'unit_prices',
+      'volume_discounts',
+      'validity_period',
+      'payment_terms',
+    ],
+    riskCategories: [
+      'price_changes',
+      'scope_ambiguity',
+      'timeline_uncertainty',
+    ],
+    keyTermsToExtract: [
+      'Quote Number',
+      'Valid Until',
+      'Total Price',
+      'Lead Time',
+      'Terms',
+    ],
+    extractionHints: 'Extract pricing, validity period, and scope. Identify any conditions or exclusions that affect the quote.',
+    mandatoryFields: ['quoteNumber', 'quotedPrice', 'validityDate'],
+    expectedSections: ['Quote Details', 'Pricing', 'Terms', 'Validity'],
+  },
+
+  PROPOSAL: {
+    displayName: 'Business Proposal',
+    description: 'Formal document proposing goods, services, or solutions to a prospective client',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'executive_summary',
+      'problem_statement',
+      'proposed_solution',
+      'pricing',
+      'timeline',
+      'team',
+      'terms',
+    ],
+    financialFields: [
+      'total_investment',
+      'pricing_options',
+      'payment_schedule',
+      'roi_projections',
+    ],
+    riskCategories: [
+      'scope_creep',
+      'unrealistic_timeline',
+      'budget_overrun',
+    ],
+    keyTermsToExtract: [
+      'Proposal',
+      'Solution',
+      'Investment',
+      'Timeline',
+      'Deliverables',
+    ],
+    extractionHints: 'Extract proposed solution, pricing options, timeline, and deliverables. Identify assumptions and exclusions.',
+    mandatoryFields: ['proposedSolution', 'pricing', 'timeline'],
+    expectedSections: ['Executive Summary', 'Solution', 'Pricing', 'Timeline', 'Team', 'Terms'],
+  },
+
+  RECEIPT: {
+    displayName: 'Receipt',
+    description: 'Document acknowledging payment received for goods or services',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'required',
+      RISK: 'not-applicable',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'not-applicable',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'payment_details',
+      'items_purchased',
+      'payment_method',
+    ],
+    financialFields: [
+      'amount_paid',
+      'payment_method',
+      'receipt_date',
+      'reference_number',
+    ],
+    riskCategories: [],
+    keyTermsToExtract: [
+      'Receipt Number',
+      'Amount',
+      'Date',
+      'Payment Method',
+    ],
+    extractionHints: 'Extract payment amount, date, method, and what was paid for. Simple document type.',
+    mandatoryFields: ['amount', 'date', 'payer'],
+    expectedSections: ['Payment Details', 'Items'],
+  },
+
+  BILL_OF_LADING: {
+    displayName: 'Bill of Lading',
+    description: 'Legal document between shipper and carrier detailing goods transported',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'optional',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'shipper_details',
+      'consignee_details',
+      'goods_description',
+      'weight_dimensions',
+      'carrier_liability',
+      'delivery_terms',
+    ],
+    financialFields: [
+      'freight_charges',
+      'declared_value',
+      'insurance',
+    ],
+    riskCategories: [
+      'cargo_damage',
+      'delivery_delays',
+      'liability_limitations',
+    ],
+    keyTermsToExtract: [
+      'Shipper',
+      'Consignee',
+      'Carrier',
+      'Port of Loading',
+      'Port of Discharge',
+      'Vessel',
+      'Container',
+    ],
+    extractionHints: 'Extract shipping details, cargo description, and liability terms. Important for international trade.',
+    mandatoryFields: ['shipper', 'consignee', 'cargoDescription', 'vesselName'],
+    expectedSections: ['Shipper', 'Consignee', 'Cargo', 'Vessel', 'Terms'],
+  },
+
+  // ============ COMPLIANCE & REGULATORY ============
+
+  DATA_PROCESSING_AGREEMENT: {
+    displayName: 'Data Processing Agreement (DPA)',
+    description: 'Agreement governing data processing between controller and processor',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'not-applicable',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'required',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'data_categories',
+      'processing_purposes',
+      'data_subject_rights',
+      'security_measures',
+      'subprocessors',
+      'data_transfers',
+      'audit_rights',
+      'breach_notification',
+    ],
+    financialFields: [],
+    riskCategories: [
+      'gdpr_compliance',
+      'data_breach_exposure',
+      'subprocessor_risk',
+      'cross_border_transfers',
+    ],
+    keyTermsToExtract: [
+      'Controller',
+      'Processor',
+      'Data Subject',
+      'Personal Data',
+      'Processing',
+      'Subprocessor',
+      'SCCs',
+    ],
+    extractionHints: 'Focus on data categories, processing purposes, security measures, and compliance requirements. Critical for GDPR/privacy compliance.',
+    mandatoryFields: ['dataCategories', 'processingPurposes', 'securityMeasures', 'subprocessorProvisions'],
+    expectedSections: ['Definitions', 'Processing', 'Security', 'Subprocessors', 'Transfers', 'Audit', 'Termination'],
+  },
+
+  TERMS_OF_SERVICE: {
+    displayName: 'Terms of Service',
+    description: 'Agreement defining terms for using a service or platform',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'optional',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'acceptance',
+      'permitted_use',
+      'prohibited_use',
+      'user_content',
+      'intellectual_property',
+      'disclaimers',
+      'liability_limitations',
+      'termination',
+      'dispute_resolution',
+    ],
+    financialFields: [
+      'subscription_fees',
+      'payment_terms',
+    ],
+    riskCategories: [
+      'liability_exposure',
+      'content_liability',
+      'service_availability',
+      'data_rights',
+    ],
+    keyTermsToExtract: [
+      'Acceptance',
+      'User',
+      'Service',
+      'Content',
+      'Prohibited',
+      'Disclaimer',
+    ],
+    extractionHints: 'Extract user rights and restrictions, liability limitations, and termination provisions. Consumer-facing document.',
+    mandatoryFields: ['acceptanceTerms', 'permittedUse', 'prohibitedUse', 'liability'],
+    expectedSections: ['Acceptance', 'Use', 'Content', 'IP', 'Liability', 'Termination'],
+  },
+
+  // ============ CORPORATE DOCUMENTS ============
+
+  BOARD_RESOLUTION: {
+    displayName: 'Board Resolution',
+    description: 'Formal record of decisions made by company board of directors',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'optional',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'resolution_topic',
+      'resolved_actions',
+      'authorization',
+      'effective_date',
+    ],
+    financialFields: [
+      'authorized_amount',
+    ],
+    riskCategories: [
+      'authorization_scope',
+      'compliance_issues',
+    ],
+    keyTermsToExtract: [
+      'RESOLVED',
+      'WHEREAS',
+      'Board of Directors',
+      'Authorized',
+      'Approved',
+    ],
+    extractionHints: 'Extract resolved actions, authorizations, and effective dates. Formal corporate document.',
+    mandatoryFields: ['resolutions', 'effectiveDate'],
+    expectedSections: ['Recitals', 'Resolutions', 'Signatures'],
+  },
+
+  POWER_OF_ATTORNEY: {
+    displayName: 'Power of Attorney',
+    description: 'Legal document authorizing someone to act on another\'s behalf',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'optional',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'powers_granted',
+      'limitations',
+      'duration',
+      'revocation',
+      'successor_agent',
+    ],
+    financialFields: [
+      'transaction_limits',
+    ],
+    riskCategories: [
+      'scope_of_authority',
+      'abuse_potential',
+      'revocation_complexity',
+    ],
+    keyTermsToExtract: [
+      'Principal',
+      'Agent',
+      'Attorney-in-Fact',
+      'Powers',
+      'Revocation',
+    ],
+    extractionHints: 'Extract powers granted, limitations, and duration. Identify whether durable or limited POA.',
+    mandatoryFields: ['principal', 'agent', 'powersGranted'],
+    expectedSections: ['Appointment', 'Powers', 'Limitations', 'Duration', 'Signatures'],
+  },
+
+  // ============ PROJECT & WORK DOCUMENTS ============
+
+  WORK_ORDER: {
+    displayName: 'Work Order',
+    description: 'Document authorizing specific work to be performed',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'required',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'scope_of_work',
+      'timeline',
+      'pricing',
+      'acceptance',
+      'change_process',
+    ],
+    financialFields: [
+      'work_order_value',
+      'hourly_rates',
+      'materials_cost',
+      'not_to_exceed',
+    ],
+    riskCategories: [
+      'scope_creep',
+      'timeline_delays',
+      'cost_overruns',
+    ],
+    keyTermsToExtract: [
+      'Work Order',
+      'Scope',
+      'Duration',
+      'Rate',
+      'Not to Exceed',
+    ],
+    extractionHints: 'Extract work scope, timeline, pricing, and any caps or limitations.',
+    mandatoryFields: ['scope', 'timeline', 'pricing'],
+    expectedSections: ['Scope', 'Timeline', 'Pricing', 'Acceptance'],
+  },
+
+  CHANGE_ORDER: {
+    displayName: 'Change Order',
+    description: 'Document modifying scope, cost, or schedule of existing contract',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'required',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'change_description',
+      'cost_impact',
+      'schedule_impact',
+      'approval',
+    ],
+    financialFields: [
+      'change_amount',
+      'revised_total',
+      'schedule_extension',
+    ],
+    riskCategories: [
+      'budget_impact',
+      'timeline_extension',
+      'scope_creep',
+    ],
+    keyTermsToExtract: [
+      'Change Order',
+      'Original Amount',
+      'Change Amount',
+      'Revised Amount',
+      'Days Extension',
+    ],
+    extractionHints: 'Extract change description, cost impact, and schedule impact. Track cumulative changes.',
+    mandatoryFields: ['changeDescription', 'costImpact', 'originalContract'],
+    expectedSections: ['Change Description', 'Cost Impact', 'Schedule Impact', 'Approvals'],
+  },
+
+  REQUEST_FOR_PROPOSAL: {
+    displayName: 'Request for Proposal (RFP)',
+    description: 'Document soliciting proposals from vendors for goods or services',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'optional',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'requirements',
+      'evaluation_criteria',
+      'submission_guidelines',
+      'timeline',
+      'terms_conditions',
+    ],
+    financialFields: [
+      'budget_range',
+      'pricing_format',
+    ],
+    riskCategories: [
+      'unclear_requirements',
+      'unrealistic_timeline',
+      'evaluation_bias',
+    ],
+    keyTermsToExtract: [
+      'RFP',
+      'Requirements',
+      'Evaluation Criteria',
+      'Submission Deadline',
+      'Questions Due',
+    ],
+    extractionHints: 'Extract requirements, evaluation criteria, timeline, and submission instructions.',
+    mandatoryFields: ['requirements', 'submissionDeadline', 'evaluationCriteria'],
+    expectedSections: ['Introduction', 'Requirements', 'Evaluation', 'Timeline', 'Submission'],
+  },
+
+  // ============ HR & PERSONNEL ============
+
+  OFFER_LETTER: {
+    displayName: 'Offer Letter',
+    description: 'Letter extending formal job offer to candidate',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'position',
+      'compensation',
+      'start_date',
+      'benefits',
+      'contingencies',
+      'at_will_statement',
+    ],
+    financialFields: [
+      'base_salary',
+      'bonus_target',
+      'equity',
+      'signing_bonus',
+    ],
+    riskCategories: [
+      'contingency_failures',
+      'compensation_disputes',
+    ],
+    keyTermsToExtract: [
+      'Position',
+      'Salary',
+      'Start Date',
+      'Reporting To',
+      'Benefits',
+      'Contingent Upon',
+    ],
+    extractionHints: 'Extract position, compensation, start date, and any contingencies. Simpler than full employment agreement.',
+    mandatoryFields: ['position', 'salary', 'startDate'],
+    expectedSections: ['Position', 'Compensation', 'Benefits', 'Start Date', 'Contingencies'],
+  },
+
+  SEPARATION_AGREEMENT: {
+    displayName: 'Separation Agreement',
+    description: 'Agreement governing terms of employment termination',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: [
+      'separation_date',
+      'severance_payment',
+      'release_of_claims',
+      'confidentiality',
+      'non_disparagement',
+      'return_of_property',
+      'cooperation',
+      'references',
+    ],
+    financialFields: [
+      'severance_amount',
+      'bonus_payout',
+      'accrued_pto',
+      'cobra_continuation',
+      'outplacement_services',
+    ],
+    riskCategories: [
+      'release_scope',
+      'revocation_period',
+      'confidentiality_breach',
+    ],
+    keyTermsToExtract: [
+      'Separation Date',
+      'Severance',
+      'Release',
+      'Consideration Period',
+      'Revocation Period',
+    ],
+    extractionHints: 'Extract severance terms, release scope, and any post-employment obligations. Check for ADEA compliance.',
+    mandatoryFields: ['separationDate', 'severanceAmount', 'releaseOfClaims'],
+    expectedSections: ['Separation', 'Severance', 'Release', 'Confidentiality', 'Non-Disparagement'],
+  },
+
+  INDEPENDENT_CONTRACTOR: {
+    displayName: 'Independent Contractor Agreement',
+    description: 'Agreement engaging individual or entity as independent contractor',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: [
+      'services',
+      'compensation',
+      'independent_contractor_status',
+      'taxes',
+      'insurance',
+      'confidentiality',
+      'ip_ownership',
+      'termination',
+    ],
+    financialFields: [
+      'rate',
+      'payment_terms',
+      'expenses',
+      'invoicing',
+    ],
+    riskCategories: [
+      'misclassification_risk',
+      'ip_ownership_disputes',
+      'tax_liability',
+    ],
+    keyTermsToExtract: [
+      'Contractor',
+      'Independent Contractor',
+      'Rate',
+      'Services',
+      'Work Product',
+    ],
+    extractionHints: 'Focus on contractor status provisions and IP ownership. Critical to distinguish from employment.',
+    mandatoryFields: ['services', 'rate', 'independentContractorStatus', 'ipOwnership'],
+    expectedSections: ['Services', 'Compensation', 'Contractor Status', 'IP', 'Confidentiality', 'Termination'],
+  },
+
+  // Catch-all documents
+  PACKING_LIST: {
+    displayName: 'Packing List',
+    description: 'Document listing contents of shipment',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'optional',
+      RISK: 'not-applicable',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'not-applicable',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['item_list', 'quantities', 'weights'],
+    financialFields: ['declared_value'],
+    riskCategories: [],
+    keyTermsToExtract: ['Items', 'Quantity', 'Weight', 'Dimensions'],
+    extractionHints: 'Extract item list, quantities, and shipping details.',
+    mandatoryFields: ['items', 'shipper', 'consignee'],
+    expectedSections: ['Items', 'Shipper', 'Consignee'],
+  },
+
+  DELIVERY_NOTE: {
+    displayName: 'Delivery Note',
+    description: 'Document accompanying delivered goods',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'optional',
+      RISK: 'not-applicable',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'optional',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['items_delivered', 'recipient', 'delivery_date'],
+    financialFields: [],
+    riskCategories: ['delivery_disputes'],
+    keyTermsToExtract: ['Delivery Note', 'Delivered To', 'Items', 'Date'],
+    extractionHints: 'Extract items delivered, recipient, and delivery confirmation.',
+    mandatoryFields: ['items', 'recipient', 'deliveryDate'],
+    expectedSections: ['Items', 'Delivery Details', 'Confirmation'],
+  },
+
+  PRIVACY_POLICY: {
+    displayName: 'Privacy Policy',
+    description: 'Document describing how an organization collects, uses, and protects data',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'not-applicable',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['data_collected', 'data_use', 'data_sharing', 'user_rights', 'security', 'cookies', 'retention'],
+    financialFields: [],
+    riskCategories: ['compliance_gaps', 'data_breach_exposure', 'consent_issues'],
+    keyTermsToExtract: ['Personal Information', 'Cookies', 'Third Parties', 'Rights', 'Opt-Out'],
+    extractionHints: 'Extract data collection practices, sharing policies, and user rights. Check for GDPR/CCPA compliance.',
+    mandatoryFields: ['dataCollected', 'dataUse', 'userRights', 'contact'],
+    expectedSections: ['Data Collection', 'Data Use', 'Sharing', 'Rights', 'Security', 'Contact'],
+  },
+
+  ACCEPTABLE_USE_POLICY: {
+    displayName: 'Acceptable Use Policy',
+    description: 'Policy defining acceptable and prohibited uses of a service or system',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'not-applicable',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['permitted_use', 'prohibited_activities', 'enforcement', 'consequences'],
+    financialFields: [],
+    riskCategories: ['violation_exposure', 'enforcement_gaps'],
+    keyTermsToExtract: ['Acceptable', 'Prohibited', 'Violation', 'Enforcement'],
+    extractionHints: 'Extract permitted and prohibited activities, and enforcement mechanisms.',
+    mandatoryFields: ['permittedUse', 'prohibitedActivities', 'consequences'],
+    expectedSections: ['Permitted Use', 'Prohibited Activities', 'Enforcement', 'Consequences'],
+  },
+
+  CODE_OF_CONDUCT: {
+    displayName: 'Code of Conduct',
+    description: 'Document outlining behavioral expectations and ethical standards',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'not-applicable',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['ethical_standards', 'expected_behavior', 'prohibited_conduct', 'reporting', 'consequences'],
+    financialFields: [],
+    riskCategories: ['compliance_violations', 'reporting_gaps'],
+    keyTermsToExtract: ['Ethics', 'Conduct', 'Standards', 'Reporting', 'Violation'],
+    extractionHints: 'Extract behavioral expectations, prohibited conduct, and reporting mechanisms.',
+    mandatoryFields: ['standards', 'prohibitedConduct', 'reportingProcess'],
+    expectedSections: ['Standards', 'Expected Behavior', 'Prohibited Conduct', 'Reporting', 'Consequences'],
+  },
+
+  CERTIFICATION: {
+    displayName: 'Certification',
+    description: 'Document certifying compliance, qualification, or achievement',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'not-applicable',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'not-applicable',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'not-applicable',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['certification_type', 'requirements_met', 'validity', 'issuer'],
+    financialFields: [],
+    riskCategories: ['expiration', 'validity'],
+    keyTermsToExtract: ['Certifies', 'Certified', 'Valid Until', 'Standards', 'Compliance'],
+    extractionHints: 'Extract certification type, issuer, validity period, and standards met.',
+    mandatoryFields: ['certificationType', 'issuedTo', 'validUntil'],
+    expectedSections: ['Certification', 'Standards', 'Validity'],
+  },
+
+  MINUTES: {
+    displayName: 'Meeting Minutes',
+    description: 'Official record of proceedings at a meeting',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'not-applicable',
+      FINANCIAL: 'optional',
+      RISK: 'optional',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['attendees', 'agenda', 'discussions', 'resolutions', 'action_items'],
+    financialFields: ['budget_approvals'],
+    riskCategories: ['incomplete_records'],
+    keyTermsToExtract: ['Present', 'Absent', 'Resolved', 'Action Item', 'Approved'],
+    extractionHints: 'Extract attendees, discussions, resolutions, and action items.',
+    mandatoryFields: ['date', 'attendees', 'resolutions'],
+    expectedSections: ['Attendees', 'Agenda', 'Discussion', 'Resolutions', 'Action Items'],
+  },
+
+  CORPORATE_GUARANTEE: {
+    displayName: 'Corporate Guarantee',
+    description: 'Agreement where corporation guarantees obligations of another party',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['guarantee_scope', 'guaranteed_obligations', 'limitations', 'termination', 'enforcement'],
+    financialFields: ['guarantee_amount', 'maximum_liability'],
+    riskCategories: ['unlimited_exposure', 'enforcement_risk', 'subsidiary_default'],
+    keyTermsToExtract: ['Guarantor', 'Guaranteed Party', 'Guarantee', 'Primary Obligation', 'Demand'],
+    extractionHints: 'Extract scope of guarantee, limitations, and enforcement mechanisms.',
+    mandatoryFields: ['guarantor', 'guaranteedParty', 'guaranteedObligations', 'maximumAmount'],
+    expectedSections: ['Guarantee', 'Scope', 'Limitations', 'Enforcement', 'Termination'],
+  },
+
+  LETTER_OF_CREDIT: {
+    displayName: 'Letter of Credit',
+    description: 'Bank guarantee of payment used in international trade',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'optional',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'required',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['credit_amount', 'beneficiary', 'required_documents', 'expiry', 'payment_terms'],
+    financialFields: ['credit_amount', 'currency', 'fees'],
+    riskCategories: ['documentary_compliance', 'expiry_risk', 'fraud'],
+    keyTermsToExtract: ['Beneficiary', 'Applicant', 'Issuing Bank', 'Amount', 'Expiry Date', 'Documents Required'],
+    extractionHints: 'Extract credit amount, required documents, expiry, and payment conditions.',
+    mandatoryFields: ['beneficiary', 'amount', 'expiryDate', 'requiredDocuments'],
+    expectedSections: ['Credit Details', 'Beneficiary', 'Documents', 'Terms', 'Expiry'],
+  },
+
+  SCOPE_CHANGE: {
+    displayName: 'Scope Change Request',
+    description: 'Document requesting changes to project scope',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'optional',
+      AMENDMENTS: 'required',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['current_scope', 'proposed_changes', 'impact_analysis', 'justification'],
+    financialFields: ['cost_impact', 'budget_change'],
+    riskCategories: ['budget_overrun', 'timeline_impact', 'scope_creep'],
+    keyTermsToExtract: ['Current Scope', 'Proposed', 'Impact', 'Cost', 'Timeline'],
+    extractionHints: 'Extract current scope, proposed changes, and impact analysis.',
+    mandatoryFields: ['currentScope', 'proposedChanges', 'costImpact'],
+    expectedSections: ['Current Scope', 'Proposed Changes', 'Impact', 'Approval'],
+  },
+
+  PROJECT_CHARTER: {
+    displayName: 'Project Charter',
+    description: 'Document formally authorizing a project and defining its scope',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'required',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['project_purpose', 'objectives', 'scope', 'stakeholders', 'budget', 'timeline', 'risks'],
+    financialFields: ['project_budget', 'funding_source'],
+    riskCategories: ['scope_clarity', 'stakeholder_alignment', 'resource_availability'],
+    keyTermsToExtract: ['Project', 'Objectives', 'Scope', 'Sponsor', 'Budget', 'Milestones'],
+    extractionHints: 'Extract project purpose, objectives, scope, budget, and key stakeholders.',
+    mandatoryFields: ['projectName', 'objectives', 'scope', 'sponsor', 'budget'],
+    expectedSections: ['Purpose', 'Objectives', 'Scope', 'Stakeholders', 'Budget', 'Timeline', 'Risks'],
+  },
+
+  REQUEST_FOR_QUOTE: {
+    displayName: 'Request for Quote (RFQ)',
+    description: 'Document requesting pricing information from vendors',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'optional',
+      FINANCIAL: 'required',
+      RISK: 'optional',
+      COMPLIANCE: 'optional',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'not-applicable',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'required',
+    },
+    clauseCategories: ['item_specifications', 'quantities', 'delivery_requirements', 'submission_deadline'],
+    financialFields: ['budget_estimate', 'quantity_breaks'],
+    riskCategories: ['specification_clarity', 'vendor_capability'],
+    keyTermsToExtract: ['RFQ', 'Specifications', 'Quantity', 'Delivery', 'Deadline'],
+    extractionHints: 'Extract item specifications, quantities, and submission requirements.',
+    mandatoryFields: ['specifications', 'quantities', 'deliveryRequirements', 'deadline'],
+    expectedSections: ['Specifications', 'Quantities', 'Delivery', 'Submission'],
+  },
+
+  NON_COMPETE: {
+    displayName: 'Non-Compete Agreement',
+    description: 'Agreement restricting competitive activities',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'optional',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['restricted_activities', 'geographic_scope', 'duration', 'consideration', 'enforcement'],
+    financialFields: ['consideration_amount'],
+    riskCategories: ['enforceability', 'scope_overbroad', 'geographic_limitations'],
+    keyTermsToExtract: ['Non-Compete', 'Restricted', 'Geographic Area', 'Duration', 'Competition'],
+    extractionHints: 'Extract restricted activities, geographic scope, and duration. Check enforceability considerations.',
+    mandatoryFields: ['restrictedActivities', 'geographicScope', 'duration'],
+    expectedSections: ['Restrictions', 'Geographic Scope', 'Duration', 'Consideration', 'Enforcement'],
+  },
+
+  NON_SOLICITATION: {
+    displayName: 'Non-Solicitation Agreement',
+    description: 'Agreement restricting solicitation of employees or customers',
+    artifactRelevance: {
+      OVERVIEW: 'required',
+      CLAUSES: 'required',
+      FINANCIAL: 'optional',
+      RISK: 'required',
+      COMPLIANCE: 'required',
+      OBLIGATIONS: 'required',
+      RENEWAL: 'not-applicable',
+      NEGOTIATION_POINTS: 'required',
+      AMENDMENTS: 'optional',
+      CONTACTS: 'optional',
+    },
+    clauseCategories: ['prohibited_solicitation', 'covered_persons', 'duration', 'exceptions', 'enforcement'],
+    financialFields: ['consideration_amount'],
+    riskCategories: ['enforceability', 'scope_definition', 'exceptions_clarity'],
+    keyTermsToExtract: ['Non-Solicitation', 'Employees', 'Customers', 'Solicit', 'Duration'],
+    extractionHints: 'Extract who is covered, what is prohibited, and duration.',
+    mandatoryFields: ['prohibitedSolicitation', 'coveredPersons', 'duration'],
+    expectedSections: ['Prohibited Activities', 'Covered Persons', 'Duration', 'Exceptions'],
+  },
+
   OTHER: {
     displayName: 'Other Contract',
     description: 'Contract type not matching standard categories',
@@ -2250,6 +3365,47 @@ export const CONTRACT_TYPE_KEYWORDS: Record<ContractType, string[]> = {
   REAL_ESTATE: ['real estate', 'purchase and sale agreement', 'property agreement', 'conveyance', 'closing date', 'title insurance', 'earnest money', 'deed'],
   SHAREHOLDERS: ['shareholders agreement', 'shareholder', 'share ownership', 'drag along', 'tag along', 'pre-emption', 'reserved matters', 'board composition'],
   OPERATING: ['operating agreement', 'llc agreement', 'limited liability company', 'member', 'membership interest', 'capital contribution', 'capital account', 'manager'],
+  
+  // Transactional Documents
+  PURCHASE_ORDER: ['purchase order', 'po number', 'order confirmation', 'buyer order', 'requisition', 'delivery date', 'ship to', 'bill to', 'order quantity', 'unit price', 'order total'],
+  INVOICE: ['invoice', 'invoice number', 'billing statement', 'amount due', 'payment terms', 'due date', 'remit to', 'tax invoice', 'subtotal', 'total amount', 'bill of sale'],
+  QUOTE: ['quote', 'quotation', 'price quote', 'proposal', 'estimate', 'quoted price', 'valid until', 'quote reference', 'pricing proposal', 'cost estimate'],
+  PROPOSAL: ['proposal', 'business proposal', 'project proposal', 'technical proposal', 'commercial proposal', 'proposal submission', 'proposed solution', 'scope of proposal'],
+  RECEIPT: ['receipt', 'payment receipt', 'sales receipt', 'acknowledgment of payment', 'received from', 'amount received', 'receipt number', 'cash receipt'],
+  BILL_OF_LADING: ['bill of lading', 'bol', 'b/l', 'shipping document', 'carrier', 'shipper', 'consignee', 'port of loading', 'port of discharge', 'freight', 'cargo'],
+  PACKING_LIST: ['packing list', 'packing slip', 'shipment contents', 'package details', 'carton', 'weight', 'dimensions', 'sku', 'item description'],
+  DELIVERY_NOTE: ['delivery note', 'delivery receipt', 'proof of delivery', 'goods received', 'delivery confirmation', 'delivered to', 'delivery date'],
+  
+  // Compliance & Regulatory Documents
+  DATA_PROCESSING_AGREEMENT: ['data processing agreement', 'dpa', 'data processor', 'data controller', 'gdpr', 'personal data', 'subprocessor', 'data protection', 'privacy compliance', 'data subject rights'],
+  TERMS_OF_SERVICE: ['terms of service', 'terms and conditions', 'tos', 'user agreement', 'service terms', 'acceptable use', 'user conduct', 'account terms', 'subscription terms'],
+  PRIVACY_POLICY: ['privacy policy', 'privacy notice', 'data collection', 'personal information', 'cookies', 'data retention', 'privacy rights', 'data sharing', 'opt out'],
+  ACCEPTABLE_USE_POLICY: ['acceptable use policy', 'aup', 'acceptable use', 'prohibited uses', 'usage guidelines', 'content policy', 'network policy', 'system resources'],
+  CODE_OF_CONDUCT: ['code of conduct', 'ethical guidelines', 'professional conduct', 'behavior standards', 'ethics policy', 'workplace conduct', 'business ethics'],
+  CERTIFICATION: ['certification', 'certificate', 'compliance certificate', 'certified', 'attestation', 'compliance attestation', 'audit certificate', 'certification authority'],
+  
+  // Corporate Documents
+  BOARD_RESOLUTION: ['board resolution', 'board of directors', 'resolved', 'hereby resolved', 'unanimous consent', 'corporate resolution', 'directors meeting', 'board approval'],
+  MINUTES: ['meeting minutes', 'minutes of meeting', 'board minutes', 'shareholder minutes', 'proceedings', 'meeting notes', 'recorded minutes', 'annual meeting'],
+  POWER_OF_ATTORNEY: ['power of attorney', 'poa', 'attorney-in-fact', 'principal', 'authorize', 'grant authority', 'legal authority', 'limited power', 'general power'],
+  CORPORATE_GUARANTEE: ['corporate guarantee', 'guarantee', 'guarantor', 'guaranteed obligations', 'unconditional guarantee', 'irrevocable guarantee', 'parent guarantee', 'performance guarantee'],
+  LETTER_OF_CREDIT: ['letter of credit', 'l/c', 'lc', 'documentary credit', 'beneficiary', 'issuing bank', 'confirming bank', 'sight credit', 'usance credit', 'standby letter'],
+  
+  // Project & Work Documents
+  WORK_ORDER: ['work order', 'work authorization', 'service order', 'job order', 'work ticket', 'field service', 'work request', 'maintenance order', 'repair order'],
+  CHANGE_ORDER: ['change order', 'change request', 'contract change', 'scope change', 'change directive', 'variation order', 'modification order', 'change notice'],
+  REQUEST_FOR_PROPOSAL: ['request for proposal', 'rfp', 'proposal request', 'invitation to bid', 'procurement', 'tender', 'bidding', 'evaluation criteria'],
+  REQUEST_FOR_QUOTE: ['request for quote', 'rfq', 'request for quotation', 'price request', 'quote request', 'vendor quote', 'supplier quote'],
+  SCOPE_CHANGE: ['scope change', 'scope modification', 'scope amendment', 'project scope', 'scope adjustment', 'revised scope', 'scope document'],
+  PROJECT_CHARTER: ['project charter', 'project initiation', 'project authorization', 'project scope', 'project objectives', 'stakeholders', 'project sponsor', 'project manager'],
+  
+  // HR & Personnel Documents
+  OFFER_LETTER: ['offer letter', 'employment offer', 'job offer', 'compensation', 'start date', 'position offered', 'offer of employment', 'signing bonus', 'conditional offer'],
+  SEPARATION_AGREEMENT: ['separation agreement', 'termination agreement', 'severance', 'release of claims', 'separation payment', 'exit agreement', 'mutual separation', 'severance pay'],
+  INDEPENDENT_CONTRACTOR: ['independent contractor', 'contractor agreement', '1099', 'self-employed', 'contractor services', 'independent services', 'freelance', 'consultant'],
+  NON_COMPETE: ['non-compete', 'non-competition', 'covenant not to compete', 'competitive restriction', 'restricted activities', 'competing business', 'restricted territory'],
+  NON_SOLICITATION: ['non-solicitation', 'non-solicit', 'no solicitation', 'employee solicitation', 'customer solicitation', 'restricted solicitation', 'hiring restriction'],
+  
   OTHER: [],
 };
 
@@ -2270,50 +3426,82 @@ export async function detectContractTypeWithAI(text: string): Promise<{ type: Co
     
     const openai = new OpenAI({ apiKey });
     
-    // Get list of available contract types for the AI
-    const contractTypes = Object.keys(CONTRACT_TYPE_KEYWORDS).filter(t => t !== 'OTHER');
+    // Get list of available contract types for the AI, grouped by category for better understanding
+    const contractTypesByCategory = {
+      'Employment & HR': ['EMPLOYMENT', 'OFFER_LETTER', 'SEPARATION_AGREEMENT', 'INDEPENDENT_CONTRACTOR', 'NON_COMPETE', 'NON_SOLICITATION'],
+      'Transactional Documents': ['PURCHASE_ORDER', 'INVOICE', 'QUOTE', 'PROPOSAL', 'RECEIPT', 'BILL_OF_LADING', 'PACKING_LIST', 'DELIVERY_NOTE'],
+      'Service & Work Agreements': ['MSA', 'SOW', 'CONSULTING', 'SERVICES', 'SLA', 'MAINTENANCE', 'WARRANTY', 'WORK_ORDER', 'CHANGE_ORDER'],
+      'Intellectual Property': ['LICENSE', 'NDA', 'IP_ASSIGNMENT', 'TECHNOLOGY', 'ROYALTY'],
+      'Sales & Supply': ['SALES', 'SUPPLY', 'DISTRIBUTION', 'RESELLER', 'MANUFACTURING', 'AGENCY', 'FRANCHISE'],
+      'Financial': ['LOAN', 'INVESTMENT', 'LETTER_OF_CREDIT', 'CORPORATE_GUARANTEE'],
+      'Real Estate & Construction': ['LEASE', 'REAL_ESTATE', 'CONSTRUCTION'],
+      'Corporate & Governance': ['SHAREHOLDERS', 'OPERATING', 'JOINT_VENTURE', 'PARTNERSHIP', 'MERGER_ACQUISITION', 'BOARD_RESOLUTION', 'MINUTES', 'POWER_OF_ATTORNEY'],
+      'Compliance & Legal': ['DATA_PROCESSING_AGREEMENT', 'TERMS_OF_SERVICE', 'PRIVACY_POLICY', 'ACCEPTABLE_USE_POLICY', 'CODE_OF_CONDUCT', 'CERTIFICATION', 'SETTLEMENT'],
+      'Project & Procurement': ['REQUEST_FOR_PROPOSAL', 'REQUEST_FOR_QUOTE', 'SCOPE_CHANGE', 'PROJECT_CHARTER'],
+      'Contract Modifications': ['AMENDMENT', 'ADDENDUM', 'VARIATION', 'ENGAGEMENT_LETTER'],
+      'Preliminary Agreements': ['MEMORANDUM_OF_UNDERSTANDING', 'LETTER_OF_INTENT'],
+      'Other': ['SPONSORSHIP', 'INSURANCE', 'SUBSCRIPTION', 'OTHER']
+    };
     
-    // Prepare a sample of the text (first 3000 chars to stay within token limits)
-    const textSample = text.slice(0, 3000);
+    // Prepare a sample of the text (first 4000 chars for better context)
+    const textSample = text.slice(0, 4000);
     
-    const prompt = `Analyze this contract excerpt and determine its type. Consider the overall context, structure, purpose, and language patterns - not just keyword matching.
+    // Also analyze the beginning and specific sections for better detection
+    const titleSection = text.slice(0, 500); // Often contains the document title
+    const keywordAnalysis = detectContractTypeKeywords(text); // Get keyword hints
+    
+    const prompt = `You are an expert document classifier. Analyze this document and determine its precise type.
 
-Contract Text:
+DOCUMENT TEXT:
 """
 ${textSample}
 """
 
-Available Contract Types:
-${contractTypes.map(type => `- ${type}: ${CONTRACT_TYPE_PROFILES[type as ContractType]?.displayName || type}`).join('\n')}
+TITLE/HEADER SECTION:
+"""
+${titleSection}
+"""
 
-Respond with a JSON object in this exact format:
+KEYWORD ANALYSIS HINT: The keyword matching suggests this might be a "${keywordAnalysis.type}" document with keywords: [${keywordAnalysis.matchedKeywords.slice(0, 10).join(', ')}]
+
+AVAILABLE DOCUMENT TYPES BY CATEGORY:
+${Object.entries(contractTypesByCategory).map(([category, types]) => 
+  `${category}:\n${types.map(t => `  - ${t}: ${CONTRACT_TYPE_PROFILES[t as ContractType]?.displayName || t}`).join('\n')}`
+).join('\n\n')}
+
+CLASSIFICATION GUIDELINES:
+1. CONTEXT OVER KEYWORDS: Consider the document's overall purpose, not just specific words
+2. STRUCTURAL PATTERNS: Look at headings, sections, and document organization
+3. INTENT: What is this document trying to accomplish legally/commercially?
+4. PARTY RELATIONSHIPS: Who are the parties and what is their relationship?
+5. SPECIFICITY: Choose the most specific type that fits (e.g., "PURCHASE_ORDER" over "SALES" for a PO)
+6. HYBRID DOCUMENTS: If a document combines multiple types, choose the primary purpose
+7. AMENDMENTS: Documents that modify another contract are "AMENDMENT" unless they're specifically a "CHANGE_ORDER" or "VARIATION"
+8. TRANSACTIONAL: Invoices, POs, Receipts are NOT contracts - classify them as their document type
+
+RESPOND WITH JSON:
 {
-  "type": "CONTRACT_TYPE",
-  "confidence": 0.95,
-  "reasoning": "Brief explanation of why this is the detected type"
-}
-
-Rules:
-1. Use the exact contract type key (e.g., "SOW" not "Statement of Work")
-2. Confidence should be 0.0 to 1.0
-3. Consider the full context and intent of the document
-4. If truly uncertain, use "OTHER" with lower confidence
-5. Look for structural patterns, not just keywords`;
+  "type": "DOCUMENT_TYPE_KEY",
+  "confidence": 0.85,
+  "reasoning": "Explanation of why this type was chosen",
+  "alternativeType": "SECOND_BEST_TYPE_OR_NULL",
+  "alternativeConfidence": 0.15
+}`;
 
     const response = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
-          content: 'You are an expert legal contract analyst specializing in contract classification. You understand the nuances and context of different contract types.'
+          content: `You are an expert legal and business document classifier with deep knowledge of contract law, commercial documents, and business transactions. You understand the nuances between similar document types (e.g., MSA vs SOW, Purchase Order vs Sales Agreement, Amendment vs Addendum). Always consider the document's primary purpose and legal effect when classifying.`
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      temperature: 0.1,
-      max_tokens: 200,
+      temperature: 0.05, // Very low temperature for consistency
+      max_tokens: 300,
       response_format: { type: 'json_object' }
     });
 
@@ -2324,18 +3512,36 @@ Rules:
 
     const result = JSON.parse(content);
     
+    // Flatten contract types for validation
+    const allContractTypes = Object.values(contractTypesByCategory).flat();
+    
     // Validate the result
-    if (!result.type || !contractTypes.includes(result.type)) {
+    if (!result.type || !allContractTypes.includes(result.type)) {
+      // If AI returned invalid type, check if keyword analysis has a strong match
+      if (keywordAnalysis.confidence > 0.6) {
+        return convertKeywordResultToAIFormat(keywordAnalysis);
+      }
       return convertKeywordResultToAIFormat(detectContractTypeKeywords(text));
     }
 
-    const keywordHints = detectContractTypeKeywords(text);
+    // Calculate final confidence by combining AI confidence with keyword evidence
+    let finalConfidence = result.confidence || 0.7;
+    
+    // Boost confidence if AI and keyword analysis agree
+    if (keywordAnalysis.type === result.type) {
+      finalConfidence = Math.min(0.98, finalConfidence + 0.1);
+    }
+    
+    // Slight reduction if AI and keyword analysis disagree significantly
+    if (keywordAnalysis.type !== result.type && keywordAnalysis.confidence > 0.5) {
+      finalConfidence = Math.max(0.5, finalConfidence - 0.1);
+    }
     
     return {
       type: result.type as ContractType,
-      confidence: Math.min(1.0, Math.max(0.0, result.confidence || 0.7)),
-      reasoning: result.reasoning || 'AI analysis based on contract structure and content',
-      matchedKeywords: keywordHints.matchedKeywords,
+      confidence: Math.min(1.0, Math.max(0.0, finalConfidence)),
+      reasoning: result.reasoning || 'AI analysis based on document structure, context, and content',
+      matchedKeywords: keywordAnalysis.matchedKeywords,
     };
     
   } catch {
@@ -2344,34 +3550,121 @@ Rules:
 }
 
 /**
- * Detect contract type from extracted text using keyword matching (fallback method)
+ * Detect contract type from extracted text using enhanced keyword matching (fallback method)
+ * Uses weighted scoring: title/header matches weighted higher, considers keyword specificity
  */
 export function detectContractTypeKeywords(text: string): { type: ContractType; confidence: number; matchedKeywords: string[] } {
   const lowercaseText = text.toLowerCase();
-  const scores: { type: ContractType; score: number; matchedKeywords: string[] }[] = [];
+  const titleSection = text.slice(0, 500).toLowerCase(); // Title/header section
+  const scores: { type: ContractType; score: number; matchedKeywords: string[]; titleMatch: boolean }[] = [];
+
+  // Define high-value keywords that strongly indicate specific document types
+  const strongIndicators: Record<string, ContractType> = {
+    'purchase order': 'PURCHASE_ORDER',
+    'invoice': 'INVOICE',
+    'quotation': 'QUOTE',
+    'statement of work': 'SOW',
+    'master services agreement': 'MSA',
+    'master service agreement': 'MSA',
+    'non-disclosure agreement': 'NDA',
+    'confidentiality agreement': 'NDA',
+    'employment agreement': 'EMPLOYMENT',
+    'offer letter': 'OFFER_LETTER',
+    'consulting agreement': 'CONSULTING',
+    'software license': 'LICENSE',
+    'lease agreement': 'LEASE',
+    'service level agreement': 'SLA',
+    'data processing agreement': 'DATA_PROCESSING_AGREEMENT',
+    'terms of service': 'TERMS_OF_SERVICE',
+    'privacy policy': 'PRIVACY_POLICY',
+    'board resolution': 'BOARD_RESOLUTION',
+    'power of attorney': 'POWER_OF_ATTORNEY',
+    'bill of lading': 'BILL_OF_LADING',
+    'work order': 'WORK_ORDER',
+    'change order': 'CHANGE_ORDER',
+    'request for proposal': 'REQUEST_FOR_PROPOSAL',
+    'rfp': 'REQUEST_FOR_PROPOSAL',
+    'memorandum of understanding': 'MEMORANDUM_OF_UNDERSTANDING',
+    'mou': 'MEMORANDUM_OF_UNDERSTANDING',
+    'letter of intent': 'LETTER_OF_INTENT',
+    'loi': 'LETTER_OF_INTENT',
+    'separation agreement': 'SEPARATION_AGREEMENT',
+    'independent contractor': 'INDEPENDENT_CONTRACTOR',
+  };
+
+  // Check for strong indicators in title section first
+  for (const [indicator, type] of Object.entries(strongIndicators)) {
+    if (titleSection.includes(indicator)) {
+      const allKeywords = CONTRACT_TYPE_KEYWORDS[type] || [];
+      const matchedKeywords = allKeywords.filter(keyword => lowercaseText.includes(keyword.toLowerCase()));
+      return {
+        type,
+        confidence: 0.9,
+        matchedKeywords: [indicator, ...matchedKeywords.filter(k => k !== indicator)].slice(0, 10),
+      };
+    }
+  }
 
   for (const [type, keywords] of Object.entries(CONTRACT_TYPE_KEYWORDS) as [ContractType, string[]][]) {
     if (type === 'OTHER') continue;
     
-    const matchedKeywords = keywords.filter(keyword => lowercaseText.includes(keyword.toLowerCase()));
-    const score = matchedKeywords.length / keywords.length;
+    const matchedKeywords: string[] = [];
+    let score = 0;
+    let titleMatch = false;
+    
+    for (const keyword of keywords) {
+      const keywordLower = keyword.toLowerCase();
+      const inTitle = titleSection.includes(keywordLower);
+      const inBody = lowercaseText.includes(keywordLower);
+      
+      if (inTitle) {
+        // Title matches are weighted 3x
+        score += 3;
+        matchedKeywords.push(keyword);
+        titleMatch = true;
+      } else if (inBody) {
+        score += 1;
+        matchedKeywords.push(keyword);
+      }
+    }
+    
+    // Normalize score by keyword count but factor in total matches
+    const normalizedScore = (score / (keywords.length * 3)) * (1 + Math.log(matchedKeywords.length + 1) / 10);
     
     if (matchedKeywords.length > 0) {
-      scores.push({ type, score, matchedKeywords });
+      scores.push({ type, score: normalizedScore, matchedKeywords, titleMatch });
     }
   }
 
-  // Sort by score descending
-  scores.sort((a, b) => b.score - a.score);
+  // Sort by score descending, then by title match
+  scores.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    if (a.titleMatch !== b.titleMatch) return a.titleMatch ? -1 : 1;
+    return b.matchedKeywords.length - a.matchedKeywords.length;
+  });
 
   const topScore = scores[0];
-  if (scores.length === 0 || !topScore || topScore.score < 0.1) {
-    return { type: 'OTHER', confidence: 0.5, matchedKeywords: [] };
+  if (scores.length === 0 || !topScore || topScore.score < 0.05) {
+    return { type: 'OTHER', confidence: 0.3, matchedKeywords: [] };
+  }
+
+  // Check if there's a close second - reduces confidence if ambiguous
+  const secondScore = scores[1];
+  let confidence = Math.min(0.95, topScore.score + 0.3);
+  
+  if (secondScore && (secondScore.score / topScore.score) > 0.8) {
+    // Close match - reduce confidence
+    confidence = Math.max(0.5, confidence - 0.15);
+  }
+  
+  // Boost confidence for title matches
+  if (topScore.titleMatch) {
+    confidence = Math.min(0.95, confidence + 0.1);
   }
 
   return {
     type: topScore.type,
-    confidence: Math.min(0.95, topScore.score + 0.3), // Boost confidence but cap at 95%
+    confidence,
     matchedKeywords: topScore.matchedKeywords,
   };
 }
@@ -2608,7 +3901,7 @@ export function getContractTypeInsights(type: ContractType): {
   negotiationFocus: string[];
   industryBenchmarks: { metric: string; typical: string }[];
 } {
-  const insights: Record<ContractType, ReturnType<typeof getContractTypeInsights>> = {
+  const insights: Partial<Record<ContractType, ReturnType<typeof getContractTypeInsights>>> = {
     NDA: {
       typicalDuration: '1-5 years',
       commonIssues: ['Overly broad confidentiality definitions', 'Indefinite obligations', 'One-sided provisions'],
@@ -2955,6 +4248,267 @@ export function getContractTypeInsights(type: ContractType): {
       industryBenchmarks: [
         { metric: 'Manager Appointment', typical: 'Majority vote or designated' },
         { metric: 'Capital Call Notice', typical: '10-30 days' }
+      ]
+    },
+    // Transactional Documents
+    PURCHASE_ORDER: {
+      typicalDuration: 'One-time transaction',
+      commonIssues: ['Delivery delays', 'Quantity discrepancies', 'Quality issues', 'Price disputes'],
+      negotiationFocus: ['Delivery terms', 'Quality standards', 'Payment terms', 'Return policy'],
+      industryBenchmarks: [
+        { metric: 'Payment Terms', typical: 'Net 30-60' },
+        { metric: 'Delivery Window', typical: '2-4 weeks' }
+      ]
+    },
+    INVOICE: {
+      typicalDuration: 'One-time payment',
+      commonIssues: ['Payment disputes', 'Late fees', 'Incorrect amounts', 'Missing details'],
+      negotiationFocus: ['Payment terms', 'Early payment discounts', 'Late fees'],
+      industryBenchmarks: [
+        { metric: 'Payment Terms', typical: 'Net 30' },
+        { metric: 'Late Fee', typical: '1.5% per month' }
+      ]
+    },
+    QUOTE: {
+      typicalDuration: 'Valid for 30-90 days',
+      commonIssues: ['Scope ambiguity', 'Price validity', 'Hidden charges', 'Specification gaps'],
+      negotiationFocus: ['Price components', 'Validity period', 'Scope clarity'],
+      industryBenchmarks: [
+        { metric: 'Validity Period', typical: '30-60 days' },
+        { metric: 'Binding Status', typical: 'Non-binding until PO' }
+      ]
+    },
+    PROPOSAL: {
+      typicalDuration: 'Valid for 30-90 days',
+      commonIssues: ['Scope creep', 'Timeline ambiguity', 'Hidden assumptions', 'Resource commitments'],
+      negotiationFocus: ['Scope definition', 'Pricing model', 'Timeline', 'Assumptions'],
+      industryBenchmarks: [
+        { metric: 'Response Timeline', typical: '2-4 weeks' },
+        { metric: 'Validity Period', typical: '60-90 days' }
+      ]
+    },
+    RECEIPT: {
+      typicalDuration: 'Proof of payment',
+      commonIssues: ['Missing information', 'Incorrect amounts', 'Duplicate receipts'],
+      negotiationFocus: ['Itemization', 'Tax information', 'Return period'],
+      industryBenchmarks: [
+        { metric: 'Return Period', typical: '30 days' }
+      ]
+    },
+    BILL_OF_LADING: {
+      typicalDuration: 'Transit period',
+      commonIssues: ['Cargo damage', 'Delivery delays', 'Documentation errors', 'Liability disputes'],
+      negotiationFocus: ['Liability limits', 'Delivery terms', 'Insurance coverage'],
+      industryBenchmarks: [
+        { metric: 'Carrier Liability', typical: 'Per Hague-Visby Rules' },
+        { metric: 'Notice Period', typical: '3 days for apparent damage' }
+      ]
+    },
+    PACKING_LIST: {
+      typicalDuration: 'Shipment documentation',
+      commonIssues: ['Missing items', 'Incorrect quantities', 'Weight discrepancies'],
+      negotiationFocus: ['Accuracy requirements', 'Verification process'],
+      industryBenchmarks: [
+        { metric: 'Accuracy', typical: '99%+ expected' }
+      ]
+    },
+    DELIVERY_NOTE: {
+      typicalDuration: 'Proof of delivery',
+      commonIssues: ['Missing signatures', 'Condition disputes', 'Time of delivery'],
+      negotiationFocus: ['Acceptance criteria', 'Inspection period'],
+      industryBenchmarks: [
+        { metric: 'Inspection Period', typical: '24-48 hours' }
+      ]
+    },
+    // Compliance Documents
+    DATA_PROCESSING_AGREEMENT: {
+      typicalDuration: 'Matches main agreement',
+      commonIssues: ['Subprocessor approval', 'Data transfer mechanisms', 'Breach notification', 'Audit rights'],
+      negotiationFocus: ['Subprocessor consent', 'SCCs inclusion', 'Notification timeline', 'Audit scope'],
+      industryBenchmarks: [
+        { metric: 'Breach Notification', typical: '72 hours (GDPR)' },
+        { metric: 'Audit Frequency', typical: 'Annual' }
+      ]
+    },
+    TERMS_OF_SERVICE: {
+      typicalDuration: 'Ongoing until termination',
+      commonIssues: ['Unilateral changes', 'Liability exclusions', 'Arbitration clauses', 'Data use'],
+      negotiationFocus: ['Change notification', 'Liability limits', 'Dispute resolution', 'Data rights'],
+      industryBenchmarks: [
+        { metric: 'Change Notice', typical: '30 days' },
+        { metric: 'Account Termination Notice', typical: '30 days' }
+      ]
+    },
+    PRIVACY_POLICY: {
+      typicalDuration: 'Ongoing',
+      commonIssues: ['Data collection scope', 'Third-party sharing', 'Opt-out mechanisms', 'Data retention'],
+      negotiationFocus: ['Collection limits', 'Sharing restrictions', 'User rights', 'Retention periods'],
+      industryBenchmarks: [
+        { metric: 'Policy Update Notice', typical: '30 days' },
+        { metric: 'Data Access Response', typical: '30 days (GDPR)' }
+      ]
+    },
+    ACCEPTABLE_USE_POLICY: {
+      typicalDuration: 'Matches service agreement',
+      commonIssues: ['Vague prohibited uses', 'Enforcement consistency', 'Appeal process'],
+      negotiationFocus: ['Clear prohibitions', 'Violation consequences', 'Appeal rights'],
+      industryBenchmarks: [
+        { metric: 'Warning Before Termination', typical: 'At least 1 warning for minor violations' }
+      ]
+    },
+    CODE_OF_CONDUCT: {
+      typicalDuration: 'Ongoing employment/relationship',
+      commonIssues: ['Vague standards', 'Inconsistent enforcement', 'Reporting mechanisms'],
+      negotiationFocus: ['Clear expectations', 'Reporting channels', 'Consequence framework'],
+      industryBenchmarks: [
+        { metric: 'Training Frequency', typical: 'Annual' }
+      ]
+    },
+    CERTIFICATION: {
+      typicalDuration: '1-3 years renewable',
+      commonIssues: ['Compliance maintenance', 'Renewal requirements', 'Scope limitations'],
+      negotiationFocus: ['Scope coverage', 'Renewal terms', 'Audit requirements'],
+      industryBenchmarks: [
+        { metric: 'Renewal Period', typical: 'Annual or triennial' }
+      ]
+    },
+    // Corporate Documents
+    BOARD_RESOLUTION: {
+      typicalDuration: 'Until superseded',
+      commonIssues: ['Quorum issues', 'Authorization scope', 'Conflict of interest'],
+      negotiationFocus: ['Clear authorization', 'Voting records', 'Effective date'],
+      industryBenchmarks: [
+        { metric: 'Quorum', typical: 'Majority of directors' }
+      ]
+    },
+    MINUTES: {
+      typicalDuration: 'Permanent record',
+      commonIssues: ['Incomplete records', 'Approval delays', 'Missing attendees'],
+      negotiationFocus: ['Accuracy', 'Approval process', 'Distribution'],
+      industryBenchmarks: [
+        { metric: 'Distribution Timeline', typical: 'Within 10 business days' }
+      ]
+    },
+    POWER_OF_ATTORNEY: {
+      typicalDuration: 'Specified or until revoked',
+      commonIssues: ['Scope overreach', 'Revocation issues', 'Third-party acceptance'],
+      negotiationFocus: ['Scope limitations', 'Duration', 'Revocation process'],
+      industryBenchmarks: [
+        { metric: 'Notarization', typical: 'Required for real estate transactions' }
+      ]
+    },
+    CORPORATE_GUARANTEE: {
+      typicalDuration: 'Matches underlying obligation',
+      commonIssues: ['Scope of guarantee', 'Release conditions', 'Subrogation rights'],
+      negotiationFocus: ['Guarantee cap', 'Release triggers', 'Notice requirements'],
+      industryBenchmarks: [
+        { metric: 'Common Use', typical: 'Parent guarantees for subsidiaries' }
+      ]
+    },
+    LETTER_OF_CREDIT: {
+      typicalDuration: '30 days to 1 year',
+      commonIssues: ['Document discrepancies', 'Expiry management', 'Amendment delays'],
+      negotiationFocus: ['Terms and conditions', 'Required documents', 'Amendment process'],
+      industryBenchmarks: [
+        { metric: 'Sight vs Usance', typical: 'Sight for most commercial transactions' },
+        { metric: 'Confirmation', typical: 'Recommended for emerging markets' }
+      ]
+    },
+    // Project Documents
+    WORK_ORDER: {
+      typicalDuration: 'Task-based (days to weeks)',
+      commonIssues: ['Scope creep', 'Pricing disputes', 'Completion criteria'],
+      negotiationFocus: ['Clear scope', 'Fixed vs T&M pricing', 'Acceptance criteria'],
+      industryBenchmarks: [
+        { metric: 'Approval Timeline', typical: 'Within 24-48 hours' }
+      ]
+    },
+    CHANGE_ORDER: {
+      typicalDuration: 'Matches project timeline',
+      commonIssues: ['Cost disputes', 'Timeline impact', 'Approval delays'],
+      negotiationFocus: ['Cost justification', 'Timeline adjustment', 'Impact assessment'],
+      industryBenchmarks: [
+        { metric: 'Approval Process', typical: 'Written approval required before work' }
+      ]
+    },
+    REQUEST_FOR_PROPOSAL: {
+      typicalDuration: '30-90 day response period',
+      commonIssues: ['Unclear requirements', 'Unrealistic timelines', 'Evaluation bias'],
+      negotiationFocus: ['Evaluation criteria', 'Timeline', 'Specification clarity'],
+      industryBenchmarks: [
+        { metric: 'Response Period', typical: '3-6 weeks' },
+        { metric: 'Q&A Period', typical: '1-2 weeks' }
+      ]
+    },
+    REQUEST_FOR_QUOTE: {
+      typicalDuration: '7-30 day response period',
+      commonIssues: ['Incomplete specifications', 'Price validity', 'Hidden costs'],
+      negotiationFocus: ['Specification clarity', 'Price components', 'Delivery terms'],
+      industryBenchmarks: [
+        { metric: 'Response Period', typical: '1-2 weeks' },
+        { metric: 'Quote Validity', typical: '30-60 days' }
+      ]
+    },
+    SCOPE_CHANGE: {
+      typicalDuration: 'Matches project timeline',
+      commonIssues: ['Budget impact', 'Timeline delays', 'Resource constraints'],
+      negotiationFocus: ['Impact assessment', 'Cost adjustment', 'Timeline revision'],
+      industryBenchmarks: [
+        { metric: 'Approval Required', typical: 'For changes >10% of budget' }
+      ]
+    },
+    PROJECT_CHARTER: {
+      typicalDuration: 'Project lifecycle',
+      commonIssues: ['Scope ambiguity', 'Authority gaps', 'Resource commitment'],
+      negotiationFocus: ['Objectives', 'Authority levels', 'Success criteria'],
+      industryBenchmarks: [
+        { metric: 'Approval', typical: 'Executive sponsor sign-off' }
+      ]
+    },
+    // HR Documents
+    OFFER_LETTER: {
+      typicalDuration: 'Valid for acceptance period',
+      commonIssues: ['Conditional terms', 'Start date flexibility', 'Benefit details'],
+      negotiationFocus: ['Compensation', 'Start date', 'Sign-on bonus', 'Benefits'],
+      industryBenchmarks: [
+        { metric: 'Acceptance Period', typical: '7-14 days' },
+        { metric: 'Counter-offer Rate', typical: '30-50%' }
+      ]
+    },
+    SEPARATION_AGREEMENT: {
+      typicalDuration: 'One-time with ongoing obligations',
+      commonIssues: ['Release scope', 'Consideration adequacy', 'Non-disparagement scope'],
+      negotiationFocus: ['Severance amount', 'Release language', 'References', 'Benefits continuation'],
+      industryBenchmarks: [
+        { metric: 'Severance', typical: '1-2 weeks per year of service' },
+        { metric: 'Review Period', typical: '21 days (40+ years old: 21 days minimum)' }
+      ]
+    },
+    INDEPENDENT_CONTRACTOR: {
+      typicalDuration: 'Project or term-based',
+      commonIssues: ['Misclassification risk', 'Control issues', 'IP ownership', 'Benefits exclusion'],
+      negotiationFocus: ['Work arrangements', 'IP assignment', 'Termination terms', 'Insurance'],
+      industryBenchmarks: [
+        { metric: 'IRS Classification', typical: 'Must pass ABC test' },
+        { metric: 'Payment Terms', typical: 'Net 30 on invoice' }
+      ]
+    },
+    NON_COMPETE: {
+      typicalDuration: '6-24 months post-employment',
+      commonIssues: ['Enforceability', 'Geographic scope', 'Industry restrictions', 'Consideration'],
+      negotiationFocus: ['Duration', 'Geographic limits', 'Industry scope', 'Carve-outs'],
+      industryBenchmarks: [
+        { metric: 'Duration', typical: '6-12 months' },
+        { metric: 'Geographic Scope', typical: 'Reasonable based on business footprint' }
+      ]
+    },
+    NON_SOLICITATION: {
+      typicalDuration: '12-24 months post-employment',
+      commonIssues: ['Definition of solicitation', 'Customer scope', 'Employee scope'],
+      negotiationFocus: ['Covered relationships', 'Duration', 'Definition of solicitation'],
+      industryBenchmarks: [
+        { metric: 'Duration', typical: '12-18 months' },
+        { metric: 'Scope', typical: 'Customers/employees worked with in last 12-24 months' }
       ]
     },
     OTHER: {

@@ -32,6 +32,7 @@ model Tenant {
   contractDrafts          ContractDraft[]
   chatConversations       ChatConversation[]
   obligationNotifications ObligationNotification[]
+  obligations             Obligation[]
 
   @@index([status])
   @@index([createdAt])
@@ -67,17 +68,19 @@ enum InvitationStatus {
 }
 
 model TenantConfig {
-  id               String   @id @default(cuid())
-  tenantId         String   @unique
-  aiModels         Json     @default("{}")
-  aiCostBudget     Decimal? @db.Decimal(10, 2)
-  aiCostAlerts     Boolean  @default(true)
-  securitySettings Json     @default("{}")
-  integrations     Json     @default("{}")
-  workflowSettings Json     @default("{}")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  tenant           Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  aiModels           Json     @default("{}")
+  aiCostBudget       Decimal? @db.Decimal(10, 2)
+  aiCostAlerts       Boolean  @default(true)
+  securitySettings   Json     @default("{}")
+  integrations       Json     @default("{}")
+  workflowSettings   Json     @default("{}")
+  // AI Extraction Configuration
+  extractionSettings Json     @default("{\"contractTypeConfidenceThreshold\": 0.75, \"autoApplyContractType\": true, \"gapFillingCompletenessThreshold\": 0.85, \"alwaysRunGapFilling\": false, \"aggressiveGapFilling\": true, \"ocrProvider\": \"openai\", \"preferredModel\": \"gpt-4o-mini\"}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 }
 
 // Tenant-level custom settings storage (for data connections, preferences, etc.)
@@ -200,6 +203,8 @@ model User {
   departments         UserDepartment[]
   groupMemberships    UserGroupMember[]
   contractAccess      ContractUserAccess[]
+  assignedObligations Obligation[]          @relation("ObligationAssignee")
+  calendarSyncTokens  CalendarSyncToken[]
 
   @@index([email])
   @@index([tenantId])
@@ -419,6 +424,7 @@ model Contract {
   signatureRequests   SignatureRequest[]
   legalReviews        LegalReview[]
   sourcedDrafts       ContractDraft[]          @relation("DraftSourceContract")
+  obligations         Obligation[]
 
   // Extraction corrections relation
   extractionCorrections ExtractionCorrection[]
@@ -1224,12 +1230,210 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// ============================================================================
+// OBLIGATION MANAGEMENT SYSTEM
+// ============================================================================
+
+/// Obligation Status Enum
+enum ObligationStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  OVERDUE
+  AT_RISK
+  WAIVED
+  CANCELLED
+  DISPUTED
+}
+
+/// Obligation Priority Enum
+enum ObligationPriority {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+/// Obligation Type Enum
+enum ObligationType {
+  PAYMENT
+  DELIVERY
+  PERFORMANCE
+  REPORTING
+  COMPLIANCE
+  NOTIFICATION
+  RENEWAL
+  TERMINATION
+  AUDIT
+  INSURANCE
+  MILESTONE
+  WARRANTY
+  CONFIDENTIALITY
+  INDEMNIFICATION
+  SERVICE_LEVEL
+  OTHER
+}
+
+/// Obligation Owner Enum
+enum ObligationOwner {
+  US
+  COUNTERPARTY
+  BOTH
+  THIRD_PARTY
+}
+
+/// Recurrence Frequency Enum
+enum RecurrenceFrequency {
+  ONCE
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  SEMIANNUALLY
+  ANNUALLY
+}
+
+/// Contract Obligation - Dedicated table for tracking obligations
+model Obligation {
+  id       String @id @default(cuid())
+  tenantId String
+
+  // Contract relationship
+  contractId String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  // Core details
+  title       String
+  description String?            @db.Text
+  type        ObligationType     @default(OTHER)
+  owner       ObligationOwner    @default(US)
+  priority    ObligationPriority @default(MEDIUM)
+  status      ObligationStatus   @default(PENDING)
+
+  // Timing
+  dueDate     DateTime?
+  startDate   DateTime?
+  endDate     DateTime?
+  completedAt DateTime?
+  completedBy String?
+
+  // Recurrence
+  isRecurring         Boolean              @default(false)
+  recurrenceFrequency RecurrenceFrequency?
+  recurrenceInterval  Int? // Every N frequency (e.g., every 2 months)
+  recurrenceEndDate   DateTime?
+  nextOccurrenceDate  DateTime?
+  parentObligationId  String? // For recurring instances
+  parentObligation    Obligation?          @relation("ObligationRecurrence", fields: [parentObligationId], references: [id])
+  recurringInstances  Obligation[]         @relation("ObligationRecurrence")
+
+  // Reminders
+  reminderDays   Json      @default("[]") // Array of days before due date [30, 14, 7, 1]
+  lastReminderAt DateTime?
+  remindersSent  Int       @default(0)
+
+  // Source extraction
+  clauseReference      String?
+  sourceSection        String?
+  sourcePageNumber     Int?
+  sourceExcerpt        String? @db.Text
+  extractionMethod     String? // AI, MANUAL, IMPORT
+  extractionConfidence Float? // 0-1 confidence score
+
+  // Risk & Compliance
+  riskScore         Int? // 0-100
+  riskFactors       Json     @default("[]") // Array of risk factor strings
+  penaltyForMissing String?  @db.Text
+  financialImpact   Decimal? @db.Decimal(15, 2)
+  currency          String?
+
+  // Evidence & Completion
+  completionCriteria String? @db.Text
+  requiredEvidence   Json    @default("[]") // Array of required evidence types
+  attachedEvidence   Json    @default("[]") // Array of { id, name, url, uploadedAt, uploadedBy }
+  completionNotes    String? @db.Text
+
+  // Assignment
+  assignedToUserId String?
+  assignedToUser   User?   @relation("ObligationAssignee", fields: [assignedToUserId], references: [id])
+  assignedToTeam   String?
+  escalationPath   Json    @default("[]") // Array of { userId, level, notifyAfterDays }
+
+  // Dependencies
+  dependsOn Json @default("[]") // Array of obligation IDs that must complete first
+  blockedBy Json @default("[]") // Array of obligation IDs currently blocking this
+
+  // Tags & Custom Fields
+  tags         Json @default("[]")
+  customFields Json @default("{}")
+  metadata     Json @default("{}")
+
+  // Audit trail
+  createdBy String?
+  updatedBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant        Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  notifications ObligationNotification[] @relation("ObligationNotifications")
+  history       ObligationHistory[]
+
+  @@index([tenantId])
+  @@index([contractId])
+  @@index([status])
+  @@index([priority])
+  @@index([type])
+  @@index([owner])
+  @@index([dueDate])
+  @@index([completedAt])
+  @@index([assignedToUserId])
+  @@index([parentObligationId])
+  @@index([tenantId, status])
+  @@index([tenantId, contractId])
+  @@index([tenantId, dueDate])
+  @@index([tenantId, status, dueDate])
+  @@index([tenantId, priority, status])
+  @@index([tenantId, type, status])
+  @@index([tenantId, owner, status])
+  @@index([tenantId, assignedToUserId, status])
+  @@index([contractId, status])
+  @@index([contractId, dueDate])
+  @@index([isRecurring])
+  @@index([nextOccurrenceDate])
+  @@map("obligations")
+}
+
+/// Obligation History - Audit trail for obligation changes
+model ObligationHistory {
+  id           String     @id @default(cuid())
+  obligationId String
+  obligation   Obligation @relation(fields: [obligationId], references: [id], onDelete: Cascade)
+
+  action        String // CREATED, STATUS_CHANGED, ASSIGNED, COMPLETED, WAIVED, ESCALATED, etc.
+  description   String? @db.Text
+  previousValue Json? // Previous state
+  newValue      Json? // New state
+
+  performedBy     String?
+  performedByName String?
+  performedAt     DateTime @default(now())
+
+  metadata Json @default("{}")
+
+  @@index([obligationId])
+  @@index([performedAt])
+  @@index([action])
+  @@map("obligation_history")
+}
+
 /// Obligation Notification - Tracks obligation reminders
 model ObligationNotification {
   id           String @id @default(cuid())
   tenantId     String
   contractId   String
-  obligationId String // ID within contract metadata
+  obligationId String
 
   // Notification details
   type         String // EMAIL, IN_APP, SMS
@@ -1251,14 +1455,42 @@ model ObligationNotification {
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  obligation Obligation? @relation("ObligationNotifications", fields: [obligationId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([contractId])
+  @@index([obligationId])
   @@index([status])
   @@index([scheduledFor])
   @@index([tenantId, status])
   @@map("obligation_notifications")
+}
+
+/// Calendar Sync Token - For syncing obligations to external calendars
+model CalendarSyncToken {
+  id       String @id @default(cuid())
+  token    String @unique // Unique token for accessing the calendar feed
+  tenantId String
+  userId   String
+
+  name     String @default("ConTigo Obligations") // Name of the calendar feed
+  provider String @default("ical") // ical, google, outlook, apple
+  filters  Json   @default("{}") // Optional filters for what obligations to sync
+
+  isActive     Boolean   @default(true)
+  lastSyncedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([isActive])
+  @@map("calendar_sync_tokens")
 }
 
 model AuditLog {
@@ -1551,6 +1783,17 @@ enum ArtifactType {
   NEGOTIATION_POINTS
   AMENDMENTS
   CONTACTS
+  // Additional artifact types for comprehensive analysis
+  PROACTIVE_RISKS
+  PARTIES
+  TIMELINE
+  DELIVERABLES
+  PRICING
+  INTELLECTUAL_PROPERTY
+  DATA_PRIVACY
+  AUDIT_TRAIL
+  EXECUTIVE_SUMMARY
+  ACTION_ITEMS
 }
 
 enum RunStatus {

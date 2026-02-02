@@ -88,6 +88,7 @@ const navigationGroups: NavigationGroup[] = [
       { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, description: 'Overview & insights' },
       { name: 'Contracts', href: '/contracts', icon: FileText, description: 'Manage your contracts' },
       { name: 'Renewals', href: '/renewals', icon: RefreshCcw, description: 'Track & manage renewals', badge: 'Live' },
+      { name: 'Obligations', href: '/obligations', icon: Calendar, description: 'Track obligations & deadlines' },
       { name: 'Templates', href: '/templates', icon: FolderKanban, description: 'Manage contract templates' },
       { name: 'Compare', href: '/compare', icon: Target, description: 'Side-by-side contract comparison' },
     ]

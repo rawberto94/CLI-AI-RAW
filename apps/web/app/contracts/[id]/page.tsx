@@ -232,6 +232,7 @@ export default function ContractDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showPdfViewer, setShowPdfViewer] = useState(false)
   const [isExtractingAI, setIsExtractingAI] = useState(false)
+  const [isExtractingObligations, setIsExtractingObligations] = useState(false)
   const [isSavingCategory, setIsSavingCategory] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
   const [showRenewalModal, setShowRenewalModal] = useState(false)
@@ -535,6 +536,48 @@ export default function ContractDetailPage() {
     }
   }, [params.id, loadContract])
 
+  const handleExtractObligations = useCallback(async () => {
+    setIsExtractingObligations(true)
+    try {
+      toast.info('Extracting obligations from contract...')
+      
+      const response = await fetch('/api/obligations/v2', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-tenant-id': getTenantId() 
+        },
+        body: JSON.stringify({
+          action: 'extract',
+          contractId: params.id,
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to extract obligations')
+      }
+      
+      const data = await response.json()
+      const count = data.obligations?.length || 0
+      
+      if (count > 0) {
+        toast.success(`Successfully extracted ${count} obligation${count > 1 ? 's' : ''} from this contract!`, {
+          action: {
+            label: 'View Obligations',
+            onClick: () => router.push(`/obligations?contract=${params.id}`)
+          }
+        })
+      } else {
+        toast.warning('No obligations found in this contract. The AI could not identify specific obligations, deadlines, or requirements.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to extract obligations')
+    } finally {
+      setIsExtractingObligations(false)
+    }
+  }, [params.id, router])
+
   const handleCategorySelect = useCallback(async (categoryId: string) => {
     setIsSavingCategory(true)
     try {
@@ -721,6 +764,7 @@ export default function ContractDetailPage() {
         showPdfViewer={showPdfViewer}
         isEditing={isEditing}
         isExtractingAI={isExtractingAI}
+        isExtractingObligations={isExtractingObligations}
         isExpiredOrExpiring={
           contract?.expirationDate 
             ? new Date(contract.expirationDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
@@ -730,6 +774,7 @@ export default function ContractDetailPage() {
         onTogglePdf={() => setPdfViewerOpen(!showPdfViewer)}
         onEdit={() => setIsEditing(true)}
         onAIExtract={handleAIExtraction}
+        onExtractObligations={handleExtractObligations}
         onDownload={handleDownload}
         onShare={() => setShowShareDialog(true)}
         onCompare={() => setShowComparison(true)}

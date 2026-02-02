@@ -134,6 +134,7 @@ export default function ObligationsDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [contracts, setContracts] = useState<Array<{ id: string; title: string }>>([]);
   
   // New obligation form state
   const [newObligation, setNewObligation] = useState({
@@ -143,6 +144,7 @@ export default function ObligationsDashboardPage() {
     priority: 'medium',
     dueDate: '',
     owner: '',
+    contractId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -158,6 +160,10 @@ export default function ObligationsDashboardPage() {
       toast.error('Please fill in required fields (Title and Due Date)');
       return;
     }
+    if (!newObligation.contractId) {
+      toast.error('Please select a contract for this obligation');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -165,8 +171,17 @@ export default function ObligationsDashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newObligation,
-          status: 'pending',
+          action: 'create',
+          contractId: newObligation.contractId,
+          obligation: {
+            title: newObligation.title,
+            description: newObligation.description,
+            type: newObligation.type,
+            priority: newObligation.priority,
+            dueDate: newObligation.dueDate,
+            owner: newObligation.owner || 'us',
+            status: 'pending',
+          },
         }),
       });
       
@@ -180,11 +195,13 @@ export default function ObligationsDashboardPage() {
           priority: 'medium',
           dueDate: '',
           owner: '',
+          contractId: '',
         });
         fetchObligations();
         fetchMetrics();
       } else {
-        toast.error('Failed to add obligation');
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to add obligation');
       }
     } catch (error) {
       toast.error('Failed to add obligation');
@@ -204,9 +221,8 @@ export default function ObligationsDashboardPage() {
       const response = await fetch(`/api/obligations?${params.toString()}`);
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setObligations(data.obligations || []);
-        }
+        // API returns { obligations, pagination, metrics } directly
+        setObligations(data.obligations || []);
       }
     } catch (error) {
       console.error('Failed to fetch obligations:', error);
@@ -220,8 +236,37 @@ export default function ObligationsDashboardPage() {
       const response = await fetch('/api/obligations/metrics');
       if (response.ok) {
         const data = await response.json();
-        if (data.success) {
-          setMetrics(data.metrics);
+        // API returns metrics at root level
+        if (!data.error) {
+          // Transform API response to match expected DashboardMetrics interface
+          setMetrics({
+            total: data.totalObligations || 0,
+            byStatus: data.byStatus || {},
+            byPriority: data.byPriority || {},
+            byType: data.byType || {},
+            byOwner: data.byOwner || {},
+            overdueCount: data.overdueCount || 0,
+            atRiskCount: data.atRiskCount || 0,
+            complianceRate: data.complianceRate || 100,
+            upcomingDeadlines: (data.upcomingDeadlines || []).map((d: Record<string, unknown>) => ({
+              id: d.obligationId,
+              title: d.title,
+              dueDate: d.dueDate,
+              priority: d.priority,
+            })),
+            criticalItems: (data.criticalItems || []).map((c: Record<string, unknown>) => ({
+              id: c.obligationId,
+              title: c.title,
+              dueDate: c.dueDate,
+              status: 'overdue',
+            })),
+            trends: {
+              completedThisWeek: 0,
+              completedLastWeek: 0,
+              createdThisWeek: 0,
+              createdLastWeek: 0,
+            },
+          });
         }
       }
     } catch (error) {
@@ -229,11 +274,28 @@ export default function ObligationsDashboardPage() {
     }
   }, []);
 
+  // Fetch contracts for the add dialog
+  const fetchContracts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/contracts?limit=100');
+      if (response.ok) {
+        const data = await response.json();
+        const contractList = (data.contracts || []).map((c: Record<string, unknown>) => ({
+          id: c.id as string,
+          title: (c.contractTitle || c.title || 'Untitled Contract') as string,
+        }));
+        setContracts(contractList);
+      }
+    } catch (error) {
+      console.error('Failed to fetch contracts:', error);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
-    Promise.all([fetchObligations(), fetchMetrics()])
+    Promise.all([fetchObligations(), fetchMetrics(), fetchContracts()])
       .finally(() => setLoading(false));
-  }, [fetchObligations, fetchMetrics]);
+  }, [fetchObligations, fetchMetrics, fetchContracts]);
 
   // Refresh on filter change
   useEffect(() => {
@@ -378,6 +440,24 @@ export default function ObligationsDashboardPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contract">Contract <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={newObligation.contractId}
+                        onValueChange={(value) => setNewObligation(prev => ({ ...prev, contractId: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a contract..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contracts.map((contract) => (
+                            <SelectItem key={contract.id} value={contract.id}>
+                              {contract.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
                       <Input

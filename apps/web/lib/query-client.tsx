@@ -1,10 +1,14 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, lazy, Suspense, type ReactNode } from 'react';
 import { setGlobalQueryClient } from './propagation';
 import { getTenantId } from '@/lib/tenant';
+
+// Lazy load devtools to reduce initial memory footprint
+const ReactQueryDevtools = lazy(() =>
+  import('@tanstack/react-query-devtools').then(mod => ({ default: mod.ReactQueryDevtools }))
+);
 
 // =====================
 // Query Client Configuration
@@ -132,7 +136,9 @@ export function QueryProvider({ children }: { children: ReactNode }) {
     <QueryClientProvider client={queryClient}>
       {children}
       {process.env.NODE_ENV === 'development' && (
-        <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} position="bottom" />
+        </Suspense>
       )}
     </QueryClientProvider>
   );

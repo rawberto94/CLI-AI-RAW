@@ -200,7 +200,7 @@ export class GoalPersistenceService {
   async setPlan(goalId: string, steps: GoalPlanStep[]) {
     try {
       // Create steps in the database
-      await prisma.$transaction(async (tx) => {
+      await prisma.$transaction(async (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => {
         // Delete existing steps
         await tx.agentGoalStep.deleteMany({
           where: { goalId },
@@ -451,7 +451,7 @@ export class GoalPersistenceService {
       }),
     ]);
 
-    const statusCounts = byStatus.reduce((acc, item) => {
+    const statusCounts = byStatus.reduce((acc: Record<string, number>, item: { status: string; _count: number }) => {
       acc[item.status] = item._count;
       return acc;
     }, {} as Record<string, number>);

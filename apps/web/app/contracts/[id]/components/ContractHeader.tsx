@@ -36,6 +36,8 @@ import {
   Scale,
   Target,
   Edit3,
+  ClipboardList,
+  Loader2,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -46,11 +48,13 @@ interface ContractHeaderProps {
   showPdfViewer: boolean
   isEditing: boolean
   isExtractingAI: boolean
+  isExtractingObligations?: boolean
   isExpiredOrExpiring?: boolean
   onRefresh: () => void
   onTogglePdf: () => void
   onEdit: () => void
   onAIExtract: () => void
+  onExtractObligations?: () => void
   onDownload: () => void
   onShare: () => void
   onCompare: () => void
@@ -65,11 +69,13 @@ export const ContractHeader = memo(function ContractHeader({
   showPdfViewer,
   isEditing,
   isExtractingAI,
+  isExtractingObligations = false,
   isExpiredOrExpiring = false,
   onRefresh,
   onTogglePdf,
   onEdit,
   onAIExtract,
+  onExtractObligations,
   onDownload,
   onShare,
   onCompare,
@@ -175,6 +181,19 @@ export const ContractHeader = memo(function ContractHeader({
                   <Sparkles className="h-4 w-4 mr-2" />
                   {isExtractingAI ? 'Extracting...' : 'AI Extract'}
                 </DropdownMenuItem>
+                {onExtractObligations && (
+                  <DropdownMenuItem onClick={onExtractObligations} disabled={isExtractingObligations} className="cursor-pointer">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    {isExtractingObligations ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Extracting Obligations...
+                      </>
+                    ) : (
+                      'Extract Obligations'
+                    )}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDownload} className="cursor-pointer">
                   <Download className="h-4 w-4 mr-2" />

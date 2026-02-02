@@ -95,9 +95,9 @@ export class DatabaseManager {
     };
 
     this.prisma = new PrismaClient({
-      log: this.config.monitoring.enableQueryLogging 
-        ? ['query', 'info', 'warn', 'error']
-        : ['error'],
+      log: process.env.NODE_ENV === 'production' || !this.config.monitoring.enableQueryLogging
+        ? ['error']
+        : ['warn', 'error'],
       datasources: {
         db: {
           url: process.env.DATABASE_URL,

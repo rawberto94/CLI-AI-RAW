@@ -223,3 +223,12 @@ export { QuickUploadModal } from './QuickUploadModal';
 
 // AI Draft Assistant
 export { AIDraftAssistant } from './AIDraftAssistant';
+
+// Enhanced Contract Preview Panel
+export { EnhancedContractPreviewPanel } from './EnhancedContractPreviewPanel';
+
+// Contract Comparison Dialog
+export { ContractComparisonDialog } from './ContractComparisonDialog';
+
+// Enhanced Bulk Selection Toolbar
+export { EnhancedBulkSelectionToolbar } from './EnhancedBulkSelectionToolbar';

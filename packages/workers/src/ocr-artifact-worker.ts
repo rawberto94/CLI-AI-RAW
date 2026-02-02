@@ -59,6 +59,9 @@ const WORKER_CONFIG = {
     enableImageOCR: true,                  // Enable OCR for images in PDFs
     enableTableExtraction: true,           // Enhanced table extraction
     confidenceThreshold: 0.7,              // Minimum confidence for extracted data
+    enablePreprocessing: true,             // Enable image preprocessing before OCR
+    preprocessingPreset: 'balanced' as const, // 'fast' | 'balanced' | 'quality'
+    minQualityScoreForSkip: 80,            // Skip preprocessing if quality > this
   },
   // AI Extraction Enhancement
   ai: {
@@ -395,6 +398,285 @@ import { ocrCache, artifactCache } from '@repo/utils/cache/distributed-cache';
 
 // TTL values for reference (applied via the distributed cache)
 const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
+
+// ============ IMAGE PREPROCESSING UTILITIES ============
+
+/**
+ * Preprocessing options for image enhancement before OCR
+ */
+interface ImagePreprocessingOptions {
+  enableDeskew: boolean;
+  enableDenoise: boolean;
+  enableContrastEnhancement: boolean;
+  enableBinarization: boolean;
+  targetDpi: number;
+  maxDimension: number;
+}
+
+/**
+ * Quality metrics from preprocessing analysis
+ */
+interface PreprocessingQualityMetrics {
+  estimatedDpi: number;
+  sharpness: number;
+  contrast: number;
+  brightness: number;
+  noiseLevel: number;
+  qualityScore: number;
+  recommendations: string[];
+}
+
+/**
+ * Result from image preprocessing
+ */
+interface PreprocessingResult {
+  buffer: Buffer;
+  qualityBefore: PreprocessingQualityMetrics;
+  qualityAfter: PreprocessingQualityMetrics;
+  stepsApplied: string[];
+  processingTimeMs: number;
+  estimatedAccuracyImprovement: number;
+}
+
+/**
+ * Preprocess image buffer for better OCR accuracy using sharp
+ * This is a lightweight preprocessing pipeline for the worker
+ */
+async function preprocessImageForOCR(
+  imageBuffer: Buffer,
+  options: Partial<ImagePreprocessingOptions> = {}
+): Promise<PreprocessingResult> {
+  const startTime = Date.now();
+  const stepsApplied: string[] = [];
+  
+  const opts: ImagePreprocessingOptions = {
+    enableDeskew: options.enableDeskew ?? true,
+    enableDenoise: options.enableDenoise ?? true,
+    enableContrastEnhancement: options.enableContrastEnhancement ?? true,
+    enableBinarization: options.enableBinarization ?? false,
+    targetDpi: options.targetDpi ?? 300,
+    maxDimension: options.maxDimension ?? 3000,
+  };
+  
+  try {
+    const sharp = (await import('sharp')).default;
+    
+    // Analyze initial quality
+    const inputImage = sharp(imageBuffer);
+    const metadata = await inputImage.metadata();
+    const stats = await inputImage.stats();
+    
+    // Calculate initial quality metrics
+    const qualityBefore = calculateImageQuality(metadata, stats);
+    
+    // Skip preprocessing if quality is already good
+    if (qualityBefore.qualityScore >= WORKER_CONFIG.ocr.minQualityScoreForSkip) {
+      logger.info({ qualityScore: qualityBefore.qualityScore }, 'Image quality sufficient, skipping preprocessing');
+      return {
+        buffer: imageBuffer,
+        qualityBefore,
+        qualityAfter: qualityBefore,
+        stepsApplied: ['skipped-good-quality'],
+        processingTimeMs: Date.now() - startTime,
+        estimatedAccuracyImprovement: 0,
+      };
+    }
+    
+    let pipeline = sharp(imageBuffer);
+    
+    // Step 1: Convert to grayscale
+    if (metadata.channels && metadata.channels > 1) {
+      pipeline = pipeline.grayscale();
+      stepsApplied.push('grayscale');
+    }
+    
+    // Step 2: Resize if too large (memory efficiency)
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
+    if (width > opts.maxDimension || height > opts.maxDimension) {
+      pipeline = pipeline.resize({
+        width: opts.maxDimension,
+        height: opts.maxDimension,
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+      stepsApplied.push('resize');
+    }
+    
+    // Step 3: Upscale low-DPI images
+    if (qualityBefore.estimatedDpi < opts.targetDpi && width < opts.maxDimension / 2) {
+      const scale = Math.min(2, opts.targetDpi / Math.max(qualityBefore.estimatedDpi, 72));
+      if (scale > 1.1) {
+        const newWidth = Math.round(width * scale);
+        pipeline = pipeline.resize({
+          width: Math.min(newWidth, opts.maxDimension),
+          fit: 'inside',
+        });
+        stepsApplied.push(`upscale-${scale.toFixed(1)}x`);
+      }
+    }
+    
+    // Step 4: Denoise if noisy
+    if (opts.enableDenoise && qualityBefore.noiseLevel > 0.3) {
+      pipeline = pipeline.median(3);
+      stepsApplied.push('denoise');
+    }
+    
+    // Step 5: Enhance contrast
+    if (opts.enableContrastEnhancement) {
+      pipeline = pipeline.normalize();
+      stepsApplied.push('normalize-contrast');
+      
+      // Additional contrast boost for low-contrast images
+      if (qualityBefore.contrast < 0.5) {
+        pipeline = pipeline.linear(1.2, -30);
+        stepsApplied.push('boost-contrast');
+      }
+    }
+    
+    // Step 6: Sharpen if blurry
+    if (qualityBefore.sharpness < 0.7) {
+      pipeline = pipeline.sharpen({
+        sigma: 1.5,
+        m1: 1.0,
+        m2: 0.5,
+      });
+      stepsApplied.push('sharpen');
+    }
+    
+    // Step 7: Binarize for very low quality
+    if (opts.enableBinarization && qualityBefore.qualityScore < 50) {
+      pipeline = pipeline.threshold(128);
+      stepsApplied.push('binarize');
+    }
+    
+    // Output as PNG for best quality
+    const processedBuffer = await pipeline
+      .png({ compressionLevel: 6 })
+      .toBuffer();
+    
+    // Analyze output quality
+    const outputImage = sharp(processedBuffer);
+    const outputMetadata = await outputImage.metadata();
+    const outputStats = await outputImage.stats();
+    const qualityAfter = calculateImageQuality(outputMetadata, outputStats);
+    
+    const processingTimeMs = Date.now() - startTime;
+    const estimatedAccuracyImprovement = Math.max(0, ((qualityAfter.qualityScore - qualityBefore.qualityScore) / 10) * 5);
+    
+    logger.info({
+      qualityBefore: qualityBefore.qualityScore,
+      qualityAfter: qualityAfter.qualityScore,
+      stepsApplied,
+      processingTimeMs,
+      estimatedAccuracyImprovement: `${estimatedAccuracyImprovement.toFixed(1)}%`,
+    }, 'Image preprocessing completed');
+    
+    return {
+      buffer: processedBuffer,
+      qualityBefore,
+      qualityAfter,
+      stepsApplied,
+      processingTimeMs,
+      estimatedAccuracyImprovement,
+    };
+  } catch (error) {
+    logger.warn({ error }, 'Image preprocessing failed, using original buffer');
+    const defaultMetrics: PreprocessingQualityMetrics = {
+      estimatedDpi: 72,
+      sharpness: 0.5,
+      contrast: 0.5,
+      brightness: 128,
+      noiseLevel: 0.2,
+      qualityScore: 50,
+      recommendations: ['Preprocessing failed - using original'],
+    };
+    return {
+      buffer: imageBuffer,
+      qualityBefore: defaultMetrics,
+      qualityAfter: defaultMetrics,
+      stepsApplied: ['preprocessing-failed'],
+      processingTimeMs: Date.now() - startTime,
+      estimatedAccuracyImprovement: 0,
+    };
+  }
+}
+
+/**
+ * Calculate image quality score from metadata and stats
+ */
+function calculateImageQuality(
+  metadata: { width?: number; height?: number; density?: number; channels?: number },
+  stats: { channels: Array<{ min: number; max: number; mean: number; stdev?: number }> }
+): PreprocessingQualityMetrics {
+  const width = metadata.width || 1;
+  const height = metadata.height || 1;
+  
+  // Estimate DPI (assume letter size 8.5x11 if no metadata)
+  const estimatedDpi = metadata.density || Math.round(((width / 8.5) + (height / 11)) / 2);
+  
+  // Get channel stats (use first channel for grayscale metrics)
+  const channel = stats.channels[0] || { min: 0, max: 255, mean: 128 };
+  
+  // Calculate contrast from range
+  const contrast = (channel.max - channel.min) / 255;
+  
+  // Brightness from mean
+  const brightness = channel.mean;
+  
+  // Simplified sharpness and noise estimation
+  const sharpness = contrast > 0.6 ? 0.8 : contrast > 0.4 ? 0.6 : 0.4;
+  const noiseLevel = contrast < 0.3 ? 0.5 : 0.2;
+  
+  // Calculate overall quality score (0-100)
+  let qualityScore = 0;
+  
+  // DPI contribution (30 points)
+  if (estimatedDpi >= 300) qualityScore += 30;
+  else if (estimatedDpi >= 200) qualityScore += 20;
+  else if (estimatedDpi >= 150) qualityScore += 10;
+  
+  // Contrast contribution (25 points)
+  qualityScore += contrast * 25;
+  
+  // Sharpness contribution (20 points)
+  qualityScore += sharpness * 20;
+  
+  // Brightness contribution (10 points, optimal 100-180)
+  if (brightness >= 100 && brightness <= 180) qualityScore += 10;
+  else if (brightness >= 50 && brightness <= 220) qualityScore += 5;
+  
+  // Noise penalty (15 points max)
+  qualityScore += (1 - noiseLevel) * 15;
+  
+  // Generate recommendations
+  const recommendations: string[] = [];
+  if (estimatedDpi < 200) recommendations.push('Consider higher DPI scan (300+ recommended)');
+  if (sharpness < 0.5) recommendations.push('Image appears blurry');
+  if (contrast < 0.4) recommendations.push('Low contrast detected');
+  if (brightness < 80) recommendations.push('Image is too dark');
+  if (brightness > 200) recommendations.push('Image is too bright');
+  if (noiseLevel > 0.4) recommendations.push('High noise detected');
+  if (qualityScore >= 75) recommendations.push('Quality is acceptable');
+  
+  return {
+    estimatedDpi,
+    sharpness,
+    contrast,
+    brightness,
+    noiseLevel,
+    qualityScore: Math.max(0, Math.min(100, qualityScore)),
+    recommendations,
+  };
+}
+
+/**
+ * Check if file is an image type that can be preprocessed
+ */
+function isPreprocessableImage(filePath: string): boolean {
+  const ext = filePath.toLowerCase().split('.').pop() || '';
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
+}
 const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
 // OCR fallback chain - includes OpenAI for testing, Swiss FADP compliant options (Azure CH → Mistral EU)
@@ -728,20 +1010,44 @@ async function performMistralOCR(filePath: string): Promise<string> {
       logger.info({ enhancedLength: enhancedText.length }, 'Text enhanced with Mistral AI');
       return enhancedText;
     } else if (isImage) {
-      // For images, use Pixtral vision model
+      // For images, use Pixtral vision model with optional preprocessing
       const { Mistral } = await import('@mistralai/mistralai');
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) {
         throw new Error('MISTRAL_API_KEY not configured');
       }
       
+      // Apply preprocessing if enabled
+      let processedBuffer: Buffer = fileBuffer;
+      if (WORKER_CONFIG.ocr.enablePreprocessing) {
+        logger.info({ filePath }, 'Preprocessing image for better OCR accuracy');
+        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
+          enableDeskew: true,
+          enableDenoise: true,
+          enableContrastEnhancement: true,
+          enableBinarization: false,
+          targetDpi: 300,
+          maxDimension: 3000,
+        });
+        processedBuffer = Buffer.from(preprocessResult.buffer);
+        
+        if (preprocessResult.estimatedAccuracyImprovement > 0) {
+          logger.info({
+            qualityBefore: preprocessResult.qualityBefore.qualityScore,
+            qualityAfter: preprocessResult.qualityAfter.qualityScore,
+            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
+            stepsApplied: preprocessResult.stepsApplied,
+          }, 'Image preprocessing improved quality');
+        }
+      }
+      
       const client = new Mistral({ apiKey });
-      const base64Data = fileBuffer.toString('base64');
+      const base64Data = processedBuffer.toString('base64');
       const mimeType = ext === 'png' ? 'image/png' : 
                        ext === 'gif' ? 'image/gif' : 
                        ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
-      logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
+      logger.info({ filePath, size: processedBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
       
       const chatResponse = await client.chat.complete({
         model: 'pixtral-12b-2409',
@@ -851,15 +1157,40 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       
       return enhancedText;
     } else if (isImage) {
-      // For images, use GPT-4o Vision (full model for best accuracy)
-      const base64 = fileBuffer.toString('base64');
+      // For images, use GPT-4o Vision (full model for best accuracy) with preprocessing
+      
+      // Apply preprocessing if enabled for better OCR accuracy
+      let processedBuffer: Buffer = fileBuffer;
+      if (WORKER_CONFIG.ocr.enablePreprocessing) {
+        logger.info({ filePath }, 'Preprocessing image for GPT-4o Vision OCR');
+        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
+          enableDeskew: true,
+          enableDenoise: true,
+          enableContrastEnhancement: true,
+          enableBinarization: false,
+          targetDpi: 300,
+          maxDimension: 4000, // Higher resolution for GPT-4o Vision
+        });
+        processedBuffer = Buffer.from(preprocessResult.buffer);
+        
+        if (preprocessResult.estimatedAccuracyImprovement > 0) {
+          logger.info({
+            qualityBefore: preprocessResult.qualityBefore.qualityScore,
+            qualityAfter: preprocessResult.qualityAfter.qualityScore,
+            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
+            stepsApplied: preprocessResult.stepsApplied,
+          }, 'Image preprocessing improved quality for GPT-4o Vision');
+        }
+      }
+      
+      const base64 = processedBuffer.toString('base64');
       const mimeType = ext === 'png' ? 'image/png' : 
                        ext === 'gif' ? 'image/gif' : 
                        ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
       // Use GPT-4o for Vision OCR (NOT gpt-4o-mini) for best quality
       const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
-      logger.info({ filePath, size: fileBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
+      logger.info({ filePath, size: processedBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
       
       const response = await openai.chat.completions.create({
         model: visionModel,
@@ -1514,12 +1845,25 @@ export async function processOCRArtifactJob(
       },
     };
 
-    // Save enterprise metadata to contract.aiMetadata
+    // Save enterprise metadata to contract.aiMetadata AND update signature status on contract
     try {
+      // Parse signature date if string
+      let signatureDateParsed: Date | null = null;
+      if (enterpriseMetadata.signature_date) {
+        const parsed = new Date(enterpriseMetadata.signature_date);
+        if (!isNaN(parsed.getTime())) {
+          signatureDateParsed = parsed;
+        }
+      }
+      
       await prisma.contract.updateMany({
         where: { id: contractId, tenantId },
         data: {
           aiMetadata: enterpriseMetadata as any,
+          // Update signature fields on the contract model for easy querying and legal tracking
+          signatureStatus: enterpriseMetadata.signature_status || 'unknown',
+          signatureDate: signatureDateParsed,
+          signatureRequiredFlag: enterpriseMetadata.signature_required_flag || false,
           updatedAt: new Date(),
         },
       });
@@ -1527,7 +1871,9 @@ export async function processOCRArtifactJob(
         fieldsPopulated: Object.keys(enterpriseMetadata).filter(k => !k.startsWith('_')).length,
         partiesCount: externalParties.length,
         hasFinancials: !!enterpriseMetadata.tcv_amount,
-      }, 'Enterprise metadata schema populated in aiMetadata');
+        signatureStatus: enterpriseMetadata.signature_status,
+        signatureRequiredFlag: enterpriseMetadata.signature_required_flag,
+      }, 'Enterprise metadata schema populated in aiMetadata and signature status updated');
     } catch (metadataError) {
       jobLogger.warn({ error: metadataError }, 'Failed to save enterprise metadata, continuing with processing');
     }
@@ -1552,6 +1898,17 @@ export async function processOCRArtifactJob(
         smartGapFillingAgent,
         contractHealthMonitor,
       } = await import('./agents');
+      
+      // Get tenant extraction settings for configurable thresholds
+      const tenantConfig = await prisma.tenantConfig.findUnique({
+        where: { tenantId },
+        select: { extractionSettings: true },
+      });
+      
+      const extractionSettings = (tenantConfig?.extractionSettings as Record<string, unknown>) || {};
+      const tenantCompleteness = (extractionSettings.gapFillingCompletenessThreshold as number) ?? 0.85;
+      const tenantAlwaysRun = (extractionSettings.alwaysRunGapFilling as boolean) ?? false;
+      const tenantAggressive = (extractionSettings.aggressiveGapFilling as boolean) ?? true;
 
       // 1. Run proactive validation on all artifacts
       jobLogger.info('Running proactive validation agent');
@@ -1565,13 +1922,38 @@ export async function processOCRArtifactJob(
         triggeredBy: 'ocr_pipeline',
       });
 
-      // 2. Run smart gap filling if validation found issues or data is incomplete
+      // 2. Run smart gap filling ALWAYS to ensure completeness
+      // Triggers: validation issues, partial success, or proactive gap detection
       const hasGaps = validationResult.output?.issues?.some((i: any) => 
         i.type === 'missing_critical_data' || i.type === 'placeholder_detected'
       ) || false;
       
-      if (hasGaps || hasPartialSuccess) {
-        jobLogger.info('Running smart gap filling agent');
+      // Calculate overall completeness to decide on gap filling aggressiveness
+      const overallCompleteness = validationResult.output?.overallCompleteness ?? 1.0;
+      // Use tenant setting, env var fallback, or default 0.85
+      const completenessThreshold = tenantCompleteness || parseFloat(process.env.GAP_FILLING_COMPLETENESS_THRESHOLD || '0.85');
+      const alwaysRunGapFilling = tenantAlwaysRun || process.env.ALWAYS_RUN_GAP_FILLING === 'true';
+      const aggressiveMode = tenantAggressive;
+      
+      // Run gap filling if:
+      // 1. There are identified gaps from validation
+      // 2. There was any partial success during artifact generation
+      // 3. Overall completeness is below threshold (default 85%)
+      // 4. ALWAYS_RUN_GAP_FILLING env var is set to true or tenant config
+      const shouldRunGapFilling = hasGaps || 
+                                   hasPartialSuccess || 
+                                   overallCompleteness < completenessThreshold ||
+                                   alwaysRunGapFilling;
+      
+      if (shouldRunGapFilling) {
+        jobLogger.info({ 
+          hasGaps, 
+          hasPartialSuccess, 
+          overallCompleteness, 
+          completenessThreshold,
+          alwaysRunGapFilling,
+          aggressiveMode,
+        }, 'Running smart gap filling agent');
         const gapFillingResult = await smartGapFillingAgent.executeWithTracking({
           contractId,
           tenantId,
@@ -1579,6 +1961,10 @@ export async function processOCRArtifactJob(
             artifacts: artifactDataArray,
             validationIssues: validationResult.output?.issues,
             contractType: detectedContractType,
+            // Pass additional context for more aggressive gap filling
+            aggressiveMode, // Use tenant setting
+            minimumCompleteness: completenessThreshold,
+            contractText: extractedText, // Pass full text for re-extraction
           },
           triggeredBy: 'ocr_pipeline',
         });

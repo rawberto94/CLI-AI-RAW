@@ -16,6 +16,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert'
 import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import { EnhancedUploadProgress, ProcessingConfig } from '@/components/contracts/upload'
 import type { ProcessingOptions } from '@/components/contracts/upload/ProcessingConfig'
@@ -48,6 +53,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Timer,
+  Key,
   Layers,
   BarChart3,
   FileUp,
@@ -121,6 +127,17 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`
 }
 
+// AI Status interface
+interface AIStatus {
+  status: 'healthy' | 'degraded' | 'limited' | 'error';
+  providers: {
+    openai: { configured: boolean; status: string };
+    mistral: { configured: boolean; status: string };
+  };
+  capabilities: Record<string, boolean>;
+  recommendations: string[];
+}
+
 export default function UploadPage() {
   const router = useRouter()
   const { dataMode, isRealData, isMockData, isAIGenerated } = useDataMode()
@@ -131,6 +148,28 @@ export default function UploadPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [totalProcessingTime, setTotalProcessingTime] = useState(0)
   const [activeTab, setActiveTab] = useState<'upload' | 'queue' | 'recent'>('upload')
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null)
+  const [aiStatusLoading, setAiStatusLoading] = useState(true)
+
+  // Check AI status on mount
+  useEffect(() => {
+    const checkAIStatus = async () => {
+      try {
+        const response = await fetch('/api/ai/status', {
+          headers: { 'x-tenant-id': getTenantId() }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAiStatus(data)
+        }
+      } catch (error) {
+        console.error('Failed to check AI status:', error)
+      } finally {
+        setAiStatusLoading(false)
+      }
+    }
+    checkAIStatus()
+  }, [])
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles.map(file => ({
@@ -403,6 +442,47 @@ export default function UploadPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6 space-y-6">
+        {/* AI Status Alert */}
+        {!aiStatusLoading && aiStatus && (aiStatus.status === 'limited' || aiStatus.status === 'degraded') && (
+          <Alert variant={aiStatus.status === 'limited' ? 'destructive' : 'default'} className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30">
+            <Key className="h-4 w-4" />
+            <AlertTitle className="font-semibold">
+              {aiStatus.status === 'limited' ? 'AI Features Limited' : 'AI System Degraded'}
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="font-medium">Providers:</span>
+                  <Badge variant={aiStatus.providers.openai.configured ? 'default' : 'outline'} className="text-xs">
+                    OpenAI: {aiStatus.providers.openai.configured ? '✅ Ready' : '❌ Not configured'}
+                  </Badge>
+                  <Badge variant={aiStatus.providers.mistral.configured ? 'default' : 'outline'} className="text-xs">
+                    Mistral: {aiStatus.providers.mistral.configured ? '✅ Ready' : '❌ Not configured'}
+                  </Badge>
+                </div>
+                {aiStatus.recommendations.length > 0 && (
+                  <ul className="text-sm list-disc list-inside space-y-1 mt-2 text-muted-foreground">
+                    {aiStatus.recommendations.map((rec, idx) => (
+                      <li key={idx}>{rec}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* AI Ready Status */}
+        {!aiStatusLoading && aiStatus?.status === 'healthy' && (
+          <Alert className="border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle className="font-semibold text-green-800 dark:text-green-200">AI System Ready</AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              All AI providers are configured and operational. Upload your contracts for instant AI analysis.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <div className="flex items-center justify-between mb-4">

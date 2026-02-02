@@ -1,11 +1,24 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
-import type { WorkflowAutoStartService } from '@repo/data-orchestration/services/workflow-auto-start.service';
+
+// Define the WorkflowAutoStartService interface locally to avoid module resolution issues
+interface WorkflowAutoStartService {
+  evaluateContract(contractId: string, tenantId: string, contractData: Record<string, unknown>): Promise<{ triggeredWorkflows: string[]; skippedRules: string[] }>;
+  triggerWorkflow(tenantId: string, contractId: string, workflowKey: string): Promise<void>;
+}
 
 // Dynamic import to avoid circular dependencies
 const getWorkflowAutoStartService = async (): Promise<WorkflowAutoStartService> => {
-  const module = await import('@repo/data-orchestration/services/workflow-auto-start.service');
-  return module.getWorkflowAutoStartService();
+  try {
+    const module = await import('@repo/data-orchestration');
+    return (module as { workflowAutoStartService: WorkflowAutoStartService }).workflowAutoStartService;
+  } catch {
+    // Fallback: return a no-op service if not available
+    return {
+      evaluateContract: async () => ({ triggeredWorkflows: [], skippedRules: [] }),
+      triggerWorkflow: async () => {},
+    };
+  }
 };
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;

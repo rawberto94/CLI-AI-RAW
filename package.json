@@ -9,6 +9,7 @@
   },
   "scripts": {
     "dev": "(cd packages/workers && pnpm dev &) && cd apps/web && npm run dev",
+    "dev:lite": "cd apps/web && npm run dev",
     "dev:web": "cd apps/web && npm run dev",
     "dev:all": "bash scripts/start-all.sh",
     "stop:all": "bash scripts/stop-all.sh",

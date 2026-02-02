@@ -53,3 +53,12 @@ export {
   staggerContainer,
   staggerItem,
 } from './DesignSystem'
+
+// NEW: Enhanced components for improved UX
+export { ContractHealthScoreWidget } from './ContractHealthScoreWidget'
+export { AIInsightsSummaryCard } from './AIInsightsSummaryCard'
+export { SignatureDetailsCard } from './SignatureDetailsCard'
+export { ContractQuickActionsBar } from './ContractQuickActionsBar'
+export { ContractSmartAlerts } from './ContractSmartAlerts'
+export { ContractLifecycleTimeline } from './ContractLifecycleTimeline'
+export { ContractRenewalWorkflowCard } from './ContractRenewalWorkflowCard'

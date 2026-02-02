@@ -23,6 +23,8 @@ import {
   LogOut,
   HelpCircle,
   Sparkles,
+  Calendar,
+  RefreshCcw,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -52,6 +54,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: Home },
       { label: 'Contracts', href: '/contracts', icon: FileText },
+      { label: 'Renewals', href: '/renewals', icon: RefreshCcw },
+      { label: 'Obligations', href: '/obligations', icon: Calendar },
       { label: 'Upload', href: '/upload', icon: Upload },
     ],
   },

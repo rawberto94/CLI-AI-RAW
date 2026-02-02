@@ -167,6 +167,10 @@ export interface GapFillingInput {
   allArtifacts: ArtifactData[];
   contractText: string;
   contractMetadata?: any;
+  /** Enable aggressive gap filling with lower confidence thresholds */
+  aggressiveMode?: boolean;
+  /** Target completeness threshold (0.0-1.0), default 0.85 */
+  minimumCompleteness?: number;
 }
 
 export interface IdentifiedGap {
@@ -190,7 +194,8 @@ export type GapFillSource =
   | 'targeted_ai_extraction'
   | 'metadata_lookup'
   | 'default_value'
-  | 'user_provided';
+  | 'user_provided'
+  | 'context_inference';
 
 export interface GapFillingResult {
   originalCompleteness: number;
@@ -198,6 +203,10 @@ export interface GapFillingResult {
   filledGaps: FilledGap[];
   remainingGaps: IdentifiedGap[];
   confidence: number;
+  /** Whether the result meets the target completeness threshold */
+  meetsTargetCompleteness?: boolean;
+  /** The target completeness that was used */
+  targetCompleteness?: number;
 }
 
 // ============================================================================
