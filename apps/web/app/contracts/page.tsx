@@ -2490,51 +2490,67 @@ export default function ContractsPage() {
         <AnimatePresence>
           {selectedContracts.size > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.15 }}
+              initial={{ opacity: 0, y: -20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
             >
-              <Card className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700/50 shadow-xl shadow-slate-900/20">
-                {/* Top highlight line */}
-                <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500" />
-                <CardContent className="py-3.5 px-5">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div className="flex items-center gap-4">
+              <Card className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-slate-700/30 shadow-2xl shadow-slate-900/40 rounded-2xl overflow-hidden">
+                {/* Animated gradient top line */}
+                <motion.div 
+                  className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500"
+                  animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                  style={{ backgroundSize: "200% 200%" }}
+                />
+                <CardContent className="py-4 px-6">
+                  <div className="flex items-center justify-between flex-wrap gap-4">
+                    <div className="flex items-center gap-5">
                       <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        className="flex items-center gap-2"
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                        className="flex items-center gap-3"
                       >
-                        <Badge className="bg-gradient-to-r from-violet-500 to-purple-500 text-white font-bold px-3 py-1.5 text-sm shadow-lg shadow-violet-500/30">
-                          {selectedContracts.size}
-                        </Badge>
-                        <span className="font-medium text-white text-sm">
-                          contract{selectedContracts.size !== 1 ? 's' : ''} selected
-                        </span>
+                        <div className="relative">
+                          <Badge className="bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white font-black px-4 py-2 text-lg shadow-lg shadow-violet-500/30 rounded-xl">
+                            {selectedContracts.size}
+                          </Badge>
+                          <motion.div 
+                            className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 rounded-xl blur opacity-30"
+                            animate={{ opacity: [0.3, 0.5, 0.3] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-white text-sm">
+                            contract{selectedContracts.size !== 1 ? 's' : ''} selected
+                          </span>
+                          <span className="text-slate-400 text-xs">Ready for bulk actions</span>
+                        </div>
                       </motion.div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-400 hover:text-white hover:bg-slate-700/50 h-8 rounded-lg"
+                        className="text-slate-400 hover:text-red-400 hover:bg-red-950/30 h-9 rounded-xl transition-all"
                         onClick={() => setSelectedContracts(new Set())}
                       >
-                        <X className="h-3.5 w-3.5 mr-1.5" />
-                        Clear
+                        <X className="h-4 w-4 mr-1.5" />
+                        Clear selection
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-white border-0 h-8"
+                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={() => performBulkAction('export')}
                             disabled={isProcessingBulk}
                           >
                             {isProcessingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            <span className="hidden sm:inline ml-1.5">Export</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Export</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Export selected contracts</TooltipContent>
@@ -2545,12 +2561,12 @@ export default function ContractsPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-white border-0 h-8"
+                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={() => performBulkAction('analyze')}
                             disabled={isProcessingBulk}
                           >
                             <Brain className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-1.5">Analyze</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Analyze</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Run AI analysis on selected</TooltipContent>
@@ -2560,12 +2576,12 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-8"
+                            className="bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={() => setAiReportModalOpen(true)}
                             disabled={isProcessingBulk}
                           >
                             <FileBarChart className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-1.5">Report</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Report</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Generate comprehensive AI report for selected contracts</TooltipContent>
@@ -2575,12 +2591,12 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-purple-600 hover:bg-purple-700 text-white border-0 h-8"
+                            className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={handleBulkCategorize}
                             disabled={isProcessingBulk || isBulkCategorizing}
                           >
                             {isBulkCategorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Tag className="h-4 w-4" />}
-                            <span className="hidden sm:inline ml-1.5">Categorize</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Categorize</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Auto-categorize selected contracts with AI</TooltipContent>
@@ -2591,7 +2607,7 @@ export default function ContractsPage() {
                           <TooltipTrigger asChild>
                             <Button
                               size="sm"
-                              className="bg-violet-600 hover:bg-violet-700 text-white border-0 h-8"
+                              className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                               onClick={() => {
                                 const ids = Array.from(selectedContracts);
                                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
@@ -2599,7 +2615,7 @@ export default function ContractsPage() {
                               disabled={isProcessingBulk}
                             >
                               <ArrowLeftRight className="h-4 w-4" />
-                              <span className="hidden sm:inline ml-1.5">Compare</span>
+                              <span className="hidden sm:inline ml-2 font-medium">Compare</span>
                             </Button>
                           </TooltipTrigger>
                           <TooltipContent>Compare selected contracts side-by-side</TooltipContent>
@@ -2611,27 +2627,29 @@ export default function ContractsPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700 hover:bg-slate-600 text-white border-0 h-8"
+                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={() => performBulkAction('share')}
                             disabled={isProcessingBulk}
                           >
                             <Share2 className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-1.5">Share</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Share</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Share selected contracts</TooltipContent>
                       </Tooltip>
                       
+                      <div className="w-px h-6 bg-slate-700 mx-1 hidden sm:block" />
+                      
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-red-600 hover:bg-red-700 text-white border-0 h-8"
+                            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-red-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
                             onClick={handleBulkDeleteClick}
                             disabled={isProcessingBulk}
                           >
                             <Trash2 className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-1.5">Delete</span>
+                            <span className="hidden sm:inline ml-2 font-medium">Delete</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Delete selected contracts</TooltipContent>
@@ -2966,57 +2984,63 @@ export default function ContractsPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between bg-white/80 backdrop-blur-sm border border-slate-200 rounded-lg px-4 py-2 shadow-sm"
+            className="flex items-center justify-between bg-white border border-slate-200/80 rounded-xl px-5 py-3 shadow-sm"
           >
             {/* Selection info */}
             <div className="flex items-center gap-3">
               {selectedContracts.size > 0 ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="flex items-center gap-1.5 px-2.5 py-1 bg-violet-100 text-violet-700 rounded-md"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 rounded-lg border border-violet-200/50"
                   >
-                    <CheckCircle className="h-3.5 w-3.5" />
-                    <span className="text-xs font-semibold">{selectedContracts.size} selected</span>
+                    <CheckCircle className="h-4 w-4" />
+                    <span className="text-sm font-bold">{selectedContracts.size}</span>
+                    <span className="text-xs font-medium">selected</span>
                   </motion.div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedContracts(new Set())}
-                    className="h-7 text-xs text-slate-500 hover:text-slate-700"
+                    className="h-8 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
                   >
+                    <X className="h-3.5 w-3.5 mr-1" />
                     Clear
                   </Button>
                 </div>
               ) : (
-                <span className="text-xs text-slate-500">
-                  Page {currentPage} of {totalPages}
-                </span>
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <span className="font-medium">Page {currentPage}</span>
+                  <span className="text-slate-400">of</span>
+                  <span className="font-medium">{totalPages}</span>
+                </div>
               )}
             </div>
             
             {/* Quick pagination */}
             {totalPages > 1 && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-violet-50 hover:border-violet-300 disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
-                <span className="text-xs text-slate-600 min-w-[60px] text-center">
-                  {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}
-                </span>
+                <div className="px-3 py-1 bg-slate-100 rounded-lg">
+                  <span className="text-sm font-medium text-slate-700 tabular-nums">
+                    {((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}
+                  </span>
+                </div>
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="h-7 w-7 p-0"
+                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-violet-50 hover:border-violet-300 disabled:opacity-40"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -3068,9 +3092,9 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200/80 shadow-lg shadow-slate-200/50 rounded-xl hover:shadow-xl transition-shadow duration-300">
+              <Card className="overflow-hidden bg-white border-slate-200/60 shadow-xl shadow-slate-200/40 rounded-2xl hover:shadow-2xl transition-all duration-300">
                 {/* Table Header */}
-                <div className="flex items-center gap-2 px-4 py-3.5 bg-gradient-to-r from-slate-50 via-slate-100/50 to-slate-50 border-b border-slate-200 text-xs font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10 shadow-sm">
+                <div className="flex items-center gap-2 px-5 py-4 bg-gradient-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200/80 text-xs font-bold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
                   <div className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -3085,44 +3109,60 @@ export default function ContractsPage() {
                               });
                             }}
                             aria-label="Select all on this page"
-                            className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                            className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600 transition-colors"
                           />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Select all on this page</TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex-1 min-w-[200px] flex items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-slate-400" />
-                    Contract
+                  <div className="flex-1 min-w-[200px] flex items-center gap-2">
+                    <div className="p-1.5 bg-violet-100 rounded-md">
+                      <FileText className="h-3.5 w-3.5 text-violet-600" />
+                    </div>
+                    <span>Contract</span>
                   </div>
-                  <div className="hidden lg:flex w-[100px] items-center gap-1.5">
-                    <Tag className="h-3.5 w-3.5 text-slate-400" />
-                    Category
+                  <div className="hidden lg:flex w-[100px] items-center gap-2">
+                    <div className="p-1.5 bg-purple-100 rounded-md">
+                      <Tag className="h-3.5 w-3.5 text-purple-600" />
+                    </div>
+                    <span>Category</span>
                   </div>
-                  <div className="hidden lg:flex w-[80px] items-center gap-1.5">
-                    <FileText className="h-3.5 w-3.5 text-slate-400" />
-                    Type
+                  <div className="hidden lg:flex w-[80px] items-center gap-2">
+                    <div className="p-1.5 bg-slate-100 rounded-md">
+                      <FileText className="h-3.5 w-3.5 text-slate-500" />
+                    </div>
+                    <span>Type</span>
                   </div>
-                  <div className="hidden md:flex w-[120px] items-center gap-1.5">
-                    <Building2 className="h-3.5 w-3.5 text-slate-400" />
-                    Party
+                  <div className="hidden md:flex w-[120px] items-center gap-2">
+                    <div className="p-1.5 bg-blue-100 rounded-md">
+                      <Building2 className="h-3.5 w-3.5 text-blue-600" />
+                    </div>
+                    <span>Party</span>
                   </div>
-                  <div className="hidden lg:flex w-[90px] items-center justify-end gap-1.5">
-                    <DollarSign className="h-3.5 w-3.5 text-slate-400" />
-                    Value
+                  <div className="hidden lg:flex w-[90px] items-center justify-end gap-2">
+                    <span>Value</span>
+                    <div className="p-1.5 bg-green-100 rounded-md">
+                      <DollarSign className="h-3.5 w-3.5 text-green-600" />
+                    </div>
                   </div>
-                  <div className="hidden md:flex w-[90px] items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5 text-slate-400" />
-                    Expires
+                  <div className="hidden md:flex w-[90px] items-center gap-2">
+                    <div className="p-1.5 bg-amber-100 rounded-md">
+                      <Calendar className="h-3.5 w-3.5 text-amber-600" />
+                    </div>
+                    <span>Expires</span>
                   </div>
-                  <div className="hidden lg:flex w-[70px] items-center gap-1.5">
-                    <CheckCircle className="h-3.5 w-3.5 text-slate-400" />
-                    Signed
+                  <div className="hidden lg:flex w-[70px] items-center gap-2">
+                    <div className="p-1.5 bg-teal-100 rounded-md">
+                      <CheckCircle className="h-3.5 w-3.5 text-teal-600" />
+                    </div>
+                    <span>Signed</span>
                   </div>
-                  <div className="w-[90px] flex items-center gap-1.5">
-                    <Activity className="h-3.5 w-3.5 text-slate-400" />
-                    Status
+                  <div className="w-[90px] flex items-center gap-2">
+                    <div className="p-1.5 bg-indigo-100 rounded-md">
+                      <Activity className="h-3.5 w-3.5 text-indigo-600" />
+                    </div>
+                    <span>Status</span>
                   </div>
                   <div className="w-10 flex-shrink-0"></div>
                 </div>
@@ -3217,9 +3257,10 @@ export default function ContractsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-white/90 backdrop-blur-sm border-slate-200/80 shadow-lg shadow-slate-200/40 rounded-xl">
-              <CardContent className="py-4 px-5">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <Card className="bg-gradient-to-r from-white via-slate-50/30 to-white border-slate-200/60 shadow-lg shadow-slate-200/30 rounded-2xl overflow-hidden">
+              <div className="h-0.5 w-full bg-gradient-to-r from-violet-500/20 via-purple-500/30 to-violet-500/20" />
+              <CardContent className="py-5 px-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
                   {/* Page Size Selector */}
                   <div className="flex items-center gap-3">
                     <span className="text-sm text-slate-500 font-medium">Show</span>
@@ -3229,7 +3270,7 @@ export default function ContractsPage() {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 cursor-pointer hover:border-slate-300 transition-colors shadow-sm"
+                      className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 cursor-pointer hover:border-violet-300 transition-all shadow-sm hover:shadow-md font-medium"
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <option key={size} value={size}>{size} per page</option>
@@ -3238,34 +3279,34 @@ export default function ContractsPage() {
                   </div>
                   
                   {/* Page Info */}
-                  <div className="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-100">
-                    <span className="font-semibold text-slate-800">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
-                    <span className="text-slate-400 mx-1"> of </span>
-                    <span className="font-semibold text-slate-800">{contractsData?.total ?? 0}</span>
-                    <span className="text-slate-400"> contracts</span>
+                  <div className="text-sm text-slate-600 bg-gradient-to-r from-violet-50 to-purple-50 px-5 py-2.5 rounded-xl border border-violet-100/50 shadow-sm">
+                    <span className="font-bold text-violet-700 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
+                    <span className="text-slate-400 mx-1.5"> of </span>
+                    <span className="font-bold text-slate-800 tabular-nums">{contractsData?.total ?? 0}</span>
+                    <span className="text-slate-500 ml-1"> contracts</span>
                   </div>
                   
                   {/* Page Navigation */}
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className="p-2 rounded-md border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
                       title="First page"
                     >
-                      <ChevronsLeft className="w-4 h-4 text-slate-600" />
+                      <ChevronsLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="p-2 rounded-md border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
                       title="Previous page"
                     >
-                      <ChevronLeft className="w-4 h-4 text-slate-600" />
+                      <ChevronLeft className="w-4 h-4" />
                     </button>
                     
                     {/* Page Numbers */}
-                    <div className="flex items-center gap-1 px-1">
+                    <div className="flex items-center gap-1.5 px-1">
                       {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                         let pageNum: number;
                         if (totalPages <= 5) {
@@ -3278,18 +3319,20 @@ export default function ContractsPage() {
                           pageNum = currentPage - 2 + i;
                         }
                         return (
-                          <button
+                          <motion.button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
                             className={cn(
-                              "min-w-[32px] h-8 text-sm font-medium rounded-md transition-colors",
+                              "min-w-[36px] h-9 text-sm font-semibold rounded-xl transition-all shadow-sm",
                               currentPage === pageNum
-                                ? 'bg-violet-600 text-white'
-                                : 'border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700'
+                                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-500/30'
+                                : 'border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-300 text-slate-700 hover:text-violet-700 hover:shadow-md'
                             )}
                           >
                             {pageNum}
-                          </button>
+                          </motion.button>
                         );
                       })}
                     </div>
@@ -3297,18 +3340,18 @@ export default function ContractsPage() {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="p-2 rounded-md border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
                       title="Next page"
                     >
-                      <ChevronRight className="w-4 h-4 text-slate-600" />
+                      <ChevronRight className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className="p-2 rounded-md border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
                       title="Last page"
                     >
-                      <ChevronsRight className="w-4 h-4 text-slate-600" />
+                      <ChevronsRight className="w-4 h-4" />
                     </button>
                   </div>
                 </div>
