@@ -14,15 +14,27 @@ import pino from 'pino';
 
 const logger = pino({ name: 'real-artifact-generator' });
 
-// Artifact types to generate
+// Artifact types to generate - matching the workers package configuration
+// These are organized by priority: core > analysis > advanced
 const ARTIFACT_TYPES: ArtifactType[] = [
+  // Core artifacts (highest priority)
   'OVERVIEW',
   'CLAUSES', 
   'FINANCIAL',
+  // Analysis artifacts
   'RISK',
   'COMPLIANCE',
   'OBLIGATIONS',
   'RENEWAL',
+  // Advanced artifacts
+  'NEGOTIATION_POINTS',
+  'AMENDMENTS',
+  'CONTACTS',
+  // Additional artifacts for comprehensive analysis
+  'PARTIES',
+  'TIMELINE',
+  'DELIVERABLES',
+  'EXECUTIVE_SUMMARY',
 ];
 
 interface ArtifactData {
@@ -115,6 +127,115 @@ async function extractTextFromFile(
 }
 
 /**
+ * Extract key metadata from contract text
+ */
+async function extractContractMetadata(
+  contractText: string,
+  contractId: string
+): Promise<{
+  title?: string;
+  contractType?: string;
+  startDate?: string;
+  endDate?: string;
+  totalValue?: number;
+  currency?: string;
+  parties?: string[];
+}> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  
+  // Basic regex-based extraction as fallback
+  const basicMetadata: {
+    title?: string;
+    contractType?: string;
+    startDate?: string;
+    endDate?: string;
+    totalValue?: number;
+    currency?: string;
+    parties?: string[];
+  } = {};
+
+  // Try to extract dates with regex
+  const datePatterns = [
+    /effective\s*(?:date|as\s*of)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+    /(?:commencing|starting|begins?)\s*(?:on)?[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+    /(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/i,
+  ];
+  
+  for (const pattern of datePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      basicMetadata.startDate = match[1] || match[0];
+      break;
+    }
+  }
+
+  // Try to extract monetary values
+  const moneyPattern = /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD|dollars?)?/i;
+  const moneyMatch = contractText.match(moneyPattern);
+  if (moneyMatch) {
+    basicMetadata.totalValue = parseFloat(moneyMatch[1].replace(/,/g, ''));
+    basicMetadata.currency = 'USD';
+  }
+
+  // Try AI extraction if available
+  if (apiKey) {
+    try {
+      const { OpenAI } = await import('openai');
+      const openai = new OpenAI({ apiKey });
+
+      const truncatedText = contractText.substring(0, 50000); // First 50k chars for metadata
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a contract metadata extractor. Extract key metadata and return valid JSON only.',
+          },
+          {
+            role: 'user',
+            content: `Extract the following metadata from this contract:
+- title: Contract title or name
+- contractType: Type (e.g., SERVICE, NDA, EMPLOYMENT, LEASE, MSA, SOW, etc.)
+- startDate: Effective/start date (ISO format YYYY-MM-DD or null)
+- endDate: Expiration/end date (ISO format YYYY-MM-DD or null)  
+- totalValue: Total contract value as number (or null)
+- currency: Currency code (e.g., USD, EUR, GBP)
+- parties: Array of party names (companies/individuals)
+
+Return ONLY valid JSON.
+
+Contract text:
+${truncatedText}`,
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 1000,
+        response_format: { type: 'json_object' },
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (content) {
+        const parsed = JSON.parse(content);
+        return {
+          title: parsed.title || basicMetadata.title,
+          contractType: parsed.contractType || basicMetadata.contractType,
+          startDate: parsed.startDate || basicMetadata.startDate,
+          endDate: parsed.endDate || basicMetadata.endDate,
+          totalValue: parsed.totalValue ?? basicMetadata.totalValue,
+          currency: parsed.currency || basicMetadata.currency,
+          parties: parsed.parties || basicMetadata.parties,
+        };
+      }
+    } catch (aiError) {
+      logger.warn({ aiError, contractId }, 'AI metadata extraction failed, using basic extraction');
+    }
+  }
+
+  return basicMetadata;
+}
+
+/**
  * Generate basic artifact data without AI (fallback mode)
  */
 function generateBasicArtifact(type: ArtifactType, contractText: string, contractId: string): Record<string, any> {
@@ -193,6 +314,64 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
         note: 'Renewal analysis requires AI processing',
       };
 
+    case 'NEGOTIATION_POINTS':
+      return {
+        ...baseData,
+        negotiationPoints: [],
+        priorityAreas: [],
+        note: 'Negotiation points analysis requires AI processing',
+      };
+
+    case 'AMENDMENTS':
+      return {
+        ...baseData,
+        amendments: [],
+        hasAmendments: false,
+        note: 'Amendments analysis requires AI processing',
+      };
+
+    case 'CONTACTS':
+      return {
+        ...baseData,
+        contacts: [],
+        primaryContact: null,
+        note: 'Contact extraction requires AI processing',
+      };
+
+    case 'PARTIES':
+      return {
+        ...baseData,
+        parties: [],
+        partyRoles: {},
+        note: 'Party extraction requires AI processing',
+      };
+
+    case 'TIMELINE':
+      return {
+        ...baseData,
+        milestones: [],
+        keyDates: [],
+        duration: null,
+        note: 'Timeline extraction requires AI processing',
+      };
+
+    case 'DELIVERABLES':
+      return {
+        ...baseData,
+        deliverables: [],
+        deliverySchedule: null,
+        note: 'Deliverables extraction requires AI processing',
+      };
+
+    case 'EXECUTIVE_SUMMARY':
+      return {
+        ...baseData,
+        executiveSummary: `Contract document with ${wordCount} words uploaded for review.`,
+        keyTakeaways: [],
+        recommendations: [],
+        note: 'Executive summary requires AI processing',
+      };
+
     default:
       return {
         ...baseData,
@@ -226,7 +405,7 @@ async function generateAIArtifact(
       ? contractText.substring(0, maxChars) + '\n\n[... text truncated for analysis ...]'
       : contractText;
 
-    const prompts: Record<ArtifactType, string> = {
+    const prompts: Record<string, string> = {
       OVERVIEW: `Analyze this contract and provide a JSON response with:
         - summary: A brief summary (2-3 sentences)
         - keyPoints: Array of key points (max 5)
@@ -263,15 +442,57 @@ async function generateAIArtifact(
         - noticePeriod: Notice period for renewal/termination
         - expirationDate: Contract expiration date if found`,
 
-      // Other artifact types with basic prompts
-      PARTIES: 'Extract all parties mentioned in the contract with their roles.',
-      DATES: 'Extract all important dates from the contract.',
-      TERMS: 'Extract key terms and definitions from the contract.',
-      AMENDMENTS: 'Identify any amendments or modifications referenced.',
-      NEGOTIATION_POINTS: 'Identify potential negotiation points in the contract.',
-      CONTACTS: 'Extract contact information for all parties.',
-      METADATA: 'Extract metadata about this contract document.',
-      SUMMARY: 'Provide a comprehensive summary of this contract.',
+      NEGOTIATION_POINTS: `Identify potential negotiation points in this contract. Return JSON with:
+        - negotiationPoints: Array of {area, currentTerm, suggestedChange, priority, rationale}
+        - priorityAreas: Array of top 3 areas to focus on
+        - overallLeverage: 'STRONG', 'MODERATE', or 'WEAK'`,
+
+      AMENDMENTS: `Identify any amendments or modifications in this contract. Return JSON with:
+        - amendments: Array of {date, description, section, impact}
+        - hasAmendments: Boolean
+        - originalVersion: Reference to original if found`,
+
+      CONTACTS: `Extract contact information from this contract. Return JSON with:
+        - contacts: Array of {name, role, organization, email, phone, address}
+        - primaryContact: The main contact for each party
+        - notificationAddresses: Where formal notices should be sent`,
+
+      PARTIES: `Extract all parties mentioned in this contract. Return JSON with:
+        - parties: Array of {name, role, type, jurisdiction, signatoryName}
+        - relationships: Description of party relationships
+        - partyRoles: Object mapping party names to their contractual roles`,
+
+      TIMELINE: `Extract timeline information from this contract. Return JSON with:
+        - effectiveDate: When contract begins
+        - endDate: When contract ends
+        - milestones: Array of {date, event, description}
+        - keyDates: Array of important dates
+        - duration: Total contract duration`,
+
+      DELIVERABLES: `Extract deliverables from this contract. Return JSON with:
+        - deliverables: Array of {name, description, party, deadline, acceptanceCriteria}
+        - deliverySchedule: Timeline of deliverables
+        - acceptanceProcess: How deliverables are accepted`,
+
+      EXECUTIVE_SUMMARY: `Provide an executive summary of this contract. Return JSON with:
+        - executiveSummary: 3-5 paragraph summary for executives
+        - keyTakeaways: Array of critical points (max 5)
+        - recommendations: Array of suggested actions
+        - riskHighlights: Top risks to be aware of
+        - valueProposition: Main value of this contract`,
+
+      // Additional artifact types
+      METADATA: `Extract metadata about this contract document. Return JSON with:
+        - documentType: Type of contract
+        - language: Primary language
+        - jurisdiction: Governing law jurisdiction
+        - confidentialityLevel: Public, Confidential, etc.
+        - version: Document version if found`,
+      
+      SUMMARY: `Provide a comprehensive summary of this contract. Return JSON with:
+        - summary: Detailed summary (5-10 sentences)
+        - purpose: Main purpose of the contract
+        - scope: What the contract covers`,
     };
 
     const prompt = prompts[type] || `Analyze the ${type} aspects of this contract and return relevant information as JSON.`;
@@ -531,6 +752,47 @@ export async function generateRealArtifacts(
         logger.error({ error: errorMsg, type, contractId }, `Failed to generate ${type} artifact`);
         errors.push(`${type}: ${errorMsg}`);
       }
+    }
+
+    // Extract and store basic metadata from the contract text
+    await prisma.processingJob.updateMany({
+      where: { contractId, tenantId },
+      data: { 
+        currentStep: 'extracting_metadata',
+        progress: 92,
+      },
+    });
+
+    try {
+      logger.info({ contractId }, 'Extracting contract metadata');
+      const metadata = await extractContractMetadata(contractText, contractId);
+      
+      // Update contract with extracted metadata
+      const updateData: Record<string, any> = {};
+      
+      if (metadata.title) updateData.contractTitle = metadata.title;
+      if (metadata.contractType) updateData.contractType = metadata.contractType;
+      if (metadata.startDate) updateData.startDate = new Date(metadata.startDate);
+      if (metadata.endDate) updateData.endDate = new Date(metadata.endDate);
+      if (metadata.totalValue) updateData.totalValue = metadata.totalValue;
+      if (metadata.currency) updateData.currency = metadata.currency;
+      if (metadata.parties?.length > 0) {
+        // Extract first party as client, second as supplier
+        if (metadata.parties[0]) updateData.clientName = metadata.parties[0];
+        if (metadata.parties[1]) updateData.supplierName = metadata.parties[1];
+      }
+      
+      if (Object.keys(updateData).length > 0) {
+        await prisma.contract.update({
+          where: { id: contractId },
+          data: updateData,
+        });
+        logger.info({ contractId, fieldsUpdated: Object.keys(updateData) }, 'Contract metadata updated');
+      }
+    } catch (metadataError) {
+      const metadataErrorMsg = metadataError instanceof Error ? metadataError.message : String(metadataError);
+      logger.warn({ error: metadataErrorMsg, contractId }, 'Failed to extract metadata (non-fatal)');
+      // Don't fail the whole process for metadata extraction errors
     }
 
     // Determine final status
