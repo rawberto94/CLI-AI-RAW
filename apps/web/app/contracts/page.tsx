@@ -464,15 +464,17 @@ const CompactContractRow = memo(function CompactContractRow({
 
   return (
     <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2, delay: index * 0.015 }}
-      whileHover={{ scale: 1.003, boxShadow: "0 4px 12px rgba(0,0,0,0.06)" }}
+      initial={{ opacity: 0, y: 5 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, delay: index * 0.02 }}
+      whileHover={{ x: 2, backgroundColor: "rgba(139, 92, 246, 0.03)" }}
       className={cn(
         "flex items-center gap-2 px-4 py-3.5 cursor-pointer transition-all duration-200 group border-b border-slate-100/80 relative",
         isSelected 
-          ? "bg-gradient-to-r from-violet-50/90 via-purple-50/70 to-purple-50/90 shadow-sm ring-1 ring-violet-200/50" 
-          : "hover:bg-gradient-to-r hover:from-slate-50 hover:via-white hover:to-slate-50/80 bg-white"
+          ? "bg-gradient-to-r from-violet-50 via-purple-50/80 to-violet-50 shadow-sm ring-1 ring-violet-300/60" 
+          : "hover:bg-gradient-to-r hover:from-violet-50/40 hover:via-purple-50/30 hover:to-white bg-white",
+        isExpiringSoon && !isSelected && "bg-gradient-to-r from-amber-50/30 via-white to-white",
+        isExpired && !isSelected && "bg-gradient-to-r from-red-50/30 via-white to-white"
       )}
       onClick={onView}
       role="link"
@@ -514,21 +516,35 @@ const CompactContractRow = memo(function CompactContractRow({
         side="right"
         delay={500}
       >
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-3">
           <motion.div 
-            className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-50 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:from-violet-50 group-hover:to-purple-50 transition-all duration-200 shadow-sm group-hover:shadow"
-            whileHover={{ rotate: 5, scale: 1.1 }}
-            transition={{ type: "spring", stiffness: 400, damping: 10 }}
+            className={cn(
+              "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-sm",
+              isExpired 
+                ? "bg-gradient-to-br from-red-100 to-red-50 group-hover:from-red-200 group-hover:to-red-100"
+                : isExpiringSoon
+                  ? "bg-gradient-to-br from-amber-100 to-amber-50 group-hover:from-amber-200 group-hover:to-amber-100"
+                  : "bg-gradient-to-br from-slate-100 to-slate-50 group-hover:from-violet-100 group-hover:to-purple-50"
+            )}
+            whileHover={{ rotate: 3, scale: 1.08 }}
+            transition={{ type: "spring", stiffness: 400, damping: 12 }}
           >
-            <FileText className="h-4 w-4 text-slate-400 group-hover:text-violet-500 transition-colors" />
+            <FileText className={cn(
+              "h-4 w-4 transition-colors",
+              isExpired 
+                ? "text-red-500" 
+                : isExpiringSoon 
+                  ? "text-amber-500" 
+                  : "text-slate-400 group-hover:text-violet-600"
+            )} />
           </motion.div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-medium text-slate-700 truncate group-hover:text-violet-600 transition-colors text-sm" title={contract.title}>
+              <p className="font-semibold text-slate-800 truncate group-hover:text-violet-700 transition-colors text-sm" title={contract.title}>
                 <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
               </p>
               {isNew && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-violet-100 text-violet-600 flex-shrink-0">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm flex-shrink-0">
                   New
                 </span>
               )}
@@ -537,7 +553,10 @@ const CompactContractRow = memo(function CompactContractRow({
                 showWarning={!!contract.documentClassificationWarning}
               />
             </div>
-            <p className="text-xs text-slate-400 mt-0.5">{formatDate(contract.createdAt)}</p>
+            <p className="text-xs text-slate-500 mt-0.5 flex items-center gap-1.5">
+              <Clock className="h-3 w-3" />
+              {formatDate(contract.createdAt)}
+            </p>
           </div>
         </div>
       </ContractHoverPreview>
@@ -637,49 +656,49 @@ const CompactContractRow = memo(function CompactContractRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 w-7 p-0 rounded-md hover:bg-slate-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+              className="h-8 w-8 p-0 rounded-lg hover:bg-violet-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 hover:scale-110"
               onClick={() => {}}
             >
-              <MoreHorizontal className="h-4 w-4 text-slate-400" />
+              <MoreHorizontal className="h-4 w-4 text-slate-500 group-hover:text-violet-600" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48" onCloseAutoFocus={(e) => e.preventDefault()}>
-            <DropdownMenuItem onSelect={onView} className="text-sm">
-              <Eye className="h-3.5 w-3.5 mr-2 text-slate-500" /> View Details
+          <DropdownMenuContent align="end" className="w-52 p-1.5 shadow-xl border-slate-200/80 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
+            <DropdownMenuItem onSelect={onView} className="text-sm rounded-lg cursor-pointer hover:bg-violet-50 focus:bg-violet-50">
+              <Eye className="h-4 w-4 mr-2.5 text-violet-500" /> View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm">
-              <Brain className="h-3.5 w-3.5 mr-2 text-slate-500" /> AI Analysis
+            <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm rounded-lg cursor-pointer hover:bg-purple-50 focus:bg-purple-50">
+              <Brain className="h-4 w-4 mr-2.5 text-purple-500" /> AI Analysis
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm">
-              <Scale className="h-3.5 w-3.5 mr-2 text-slate-500" /> Legal Review
+            <DropdownMenuSeparator className="my-1.5" />
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm rounded-lg cursor-pointer">
+              <Scale className="h-4 w-4 mr-2.5 text-slate-500" /> Legal Review
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm">
-              <Edit3 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Redline Editor
+            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm rounded-lg cursor-pointer">
+              <Edit3 className="h-4 w-4 mr-2.5 text-slate-500" /> Redline Editor
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm">
-              <RefreshCw className="h-3.5 w-3.5 mr-2 text-slate-500" /> Start Renewal
+            <DropdownMenuSeparator className="my-1.5" />
+            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm rounded-lg cursor-pointer hover:bg-green-50 focus:bg-green-50">
+              <RefreshCw className="h-4 w-4 mr-2.5 text-green-500" /> Start Renewal
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm">
-              <GitBranch className="h-3.5 w-3.5 mr-2 text-slate-500" /> Create Amendment
+            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm rounded-lg cursor-pointer hover:bg-blue-50 focus:bg-blue-50">
+              <GitBranch className="h-4 w-4 mr-2.5 text-blue-500" /> Create Amendment
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onSelect={onDownload} className="text-sm">
-              <Download className="h-3.5 w-3.5 mr-2 text-slate-500" /> Download
+            <DropdownMenuSeparator className="my-1.5" />
+            <DropdownMenuItem onSelect={onDownload} className="text-sm rounded-lg cursor-pointer">
+              <Download className="h-4 w-4 mr-2.5 text-slate-500" /> Download
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onShare} className="text-sm">
-              <Share2 className="h-3.5 w-3.5 mr-2 text-slate-500" /> Share
+            <DropdownMenuItem onSelect={onShare} className="text-sm rounded-lg cursor-pointer">
+              <Share2 className="h-4 w-4 mr-2.5 text-slate-500" /> Share
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="my-1.5" />
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
                 onDelete();
               }}
-              className="text-sm text-red-600 focus:text-red-600 focus:bg-red-50"
+              className="text-sm rounded-lg cursor-pointer text-red-600 focus:text-red-600 hover:bg-red-50 focus:bg-red-50"
             >
-              <Trash2 className="h-3.5 w-3.5 mr-2" /> Delete
+              <Trash2 className="h-4 w-4 mr-2.5" /> Delete Contract
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
