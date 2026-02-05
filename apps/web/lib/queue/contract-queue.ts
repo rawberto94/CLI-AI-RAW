@@ -76,39 +76,37 @@ export interface ContractQueueManager {
 
 // Singleton instance
 let queueInstance: ContractQueueManager | null = null;
+let queueInitFailed = false;
 
 /**
  * Get the contract queue manager instance
  * Lazy loads the actual implementation from packages/utils
  */
 export function getContractQueue(): ContractQueueManager {
+  // If initialization has already failed, throw immediately to trigger fallback
+  if (queueInitFailed) {
+    throw new Error('Queue service not available - Redis not connected');
+  }
+  
   if (!queueInstance) {
     try {
       // Ensure the QueueService singleton is initialized before constructing queue managers
       initializeQueueService();
       queueInstance = getContractQueueFromUtils();
-    } catch {
-      // Return a stub implementation for when queue is not available
-      queueInstance = {
-        async queueMetadataExtraction(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueContractProcessing(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueCategorization(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueArtifactGeneration(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueAgentOrchestration(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async getJobStatus(_queueName, _jobId) {
-          return { state: 'pending' };
-        },
-      };
+      
+      // Verify the queue service is actually connected (not using stub)
+      // If initializeQueueService returns a stub, we should fallback to legacy processing
+      const queueService = initializeQueueService();
+      // @ts-expect-error - accessing internal property to check connection
+      if (queueService?.isStub || !queueService?.isConnected?.()) {
+        console.log('[ContractQueue] Queue service is using stub mode or not connected, falling back to legacy processing');
+        queueInitFailed = true;
+        throw new Error('Queue service not available - using stub mode');
+      }
+    } catch (error) {
+      console.error('[ContractQueue] Failed to initialize queue:', error);
+      queueInitFailed = true;
+      throw error; // Re-throw to trigger fallback
     }
   }
   return queueInstance!;
