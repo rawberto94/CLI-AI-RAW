@@ -2462,7 +2462,7 @@ export default function ContractsPage() {
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
             >
-              <Card className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700/50 shadow-xl shadow-slate-900/20 overflow-hidden">
+              <Card className="bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700/50 shadow-xl shadow-slate-900/20">
                 {/* Top highlight line */}
                 <div className="h-0.5 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500" />
                 <CardContent className="py-3.5 px-5">
@@ -2490,7 +2490,7 @@ export default function ContractsPage() {
                         Clear
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
