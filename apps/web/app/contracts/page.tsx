@@ -51,6 +51,7 @@ import {
   Clock,
   CheckCircle,
   AlertTriangle,
+  AlertCircle,
   Loader2,
   Calendar,
   DollarSign,
@@ -552,32 +553,41 @@ const CompactContractRow = memo(function CompactContractRow({
             size="sm"
           />
         ) : (
-          <span className="text-xs text-slate-400">—</span>
+          <span className="text-xs text-slate-300 italic">Not set</span>
         )}
       </div>
 
       {/* Contract Type */}
       <div className="hidden lg:block w-[80px]">
-        <span className="text-[13px] text-slate-600 truncate block" title={contract.type}>
-          {contract.type || '—'}
-        </span>
+        {contract.type && contract.type !== 'OTHER' ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600 truncate" title={contract.type}>
+            {contract.type}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300 italic">Unknown</span>
+        )}
       </div>
 
       {/* Party */}
       <div className="hidden md:block w-[120px]">
-        <span className="text-[13px] text-slate-600 truncate block" title={contract.parties?.supplier || contract.parties?.client}>
-          {contract.parties?.supplier || contract.parties?.client || '—'}
-        </span>
+        {(contract.parties?.supplier || contract.parties?.client) ? (
+          <span className="text-[13px] text-slate-600 truncate block" title={contract.parties?.supplier || contract.parties?.client}>
+            {contract.parties?.supplier || contract.parties?.client}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300 italic">Not specified</span>
+        )}
       </div>
 
       {/* Value */}
       <div className="hidden lg:block w-[90px] text-right">
-        <span className={cn(
-          "text-[13px] font-semibold tabular-nums",
-          contract.value ? "text-slate-800" : "text-slate-400"
-        )}>
-          {formatCurrency(contract.value)}
-        </span>
+        {contract.value ? (
+          <span className="text-[13px] font-semibold tabular-nums text-slate-800">
+            {formatCurrency(contract.value)}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-300 italic">—</span>
+        )}
       </div>
 
       {/* Expiration Date */}
@@ -586,19 +596,23 @@ const CompactContractRow = memo(function CompactContractRow({
           <div className="flex flex-col">
             <span className={cn(
               "text-[13px] tabular-nums",
-              isExpired ? "text-red-600" : isExpiringSoon ? "text-amber-600" : "text-slate-600"
+              isExpired ? "text-red-600 font-medium" : isExpiringSoon ? "text-amber-600 font-medium" : "text-slate-600"
             )}>
               {formatDate(contract.expirationDate)}
             </span>
             {isExpired && (
-              <span className="text-[10px] font-medium text-red-500 mt-0.5">Expired</span>
+              <span className="text-[10px] font-semibold text-red-500 mt-0.5 flex items-center gap-0.5">
+                <AlertCircle className="h-3 w-3" /> Expired
+              </span>
             )}
             {!isExpired && isExpiringSoon && (
-              <span className="text-[10px] font-medium text-amber-500 mt-0.5">Soon</span>
+              <span className="text-[10px] font-semibold text-amber-500 mt-0.5 flex items-center gap-0.5">
+                <Clock className="h-3 w-3" /> Soon
+              </span>
             )}
           </div>
         ) : (
-          <span className="text-[13px] text-slate-400">—</span>
+          <span className="text-xs text-slate-300 italic">No date</span>
         )}
       </div>
 
