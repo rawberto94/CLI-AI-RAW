@@ -93,6 +93,8 @@ import {
   XCircle,
   FileWarning,
   Zap,
+  CalendarOff,
+  User,
 } from "lucide-react";
 // ObligationWidget and Obligation type available if needed from @/components/contracts/ObligationTracker
 import { CategoryBadge } from "@/components/contracts/CategoryComponents";
@@ -132,39 +134,47 @@ interface SignatureStatusBadgeProps {
 
 const SignatureStatusBadge = memo(function SignatureStatusBadge({ status }: SignatureStatusBadgeProps) {
   if (!status || status === 'unknown') {
-    return <span className="text-[11px] text-slate-400">—</span>;
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+        Pending
+      </span>
+    );
   }
   
-  const config: Record<Exclude<SignatureStatus, 'unknown'>, { label: string; bgClass: string; textClass: string; icon: string }> = {
+  const config: Record<Exclude<SignatureStatus, 'unknown'>, { label: string; bgClass: string; textClass: string; borderClass: string; Icon: typeof CheckCircle2 }> = {
     signed: {
       label: 'Signed',
-      bgClass: 'bg-green-50',
+      bgClass: 'bg-gradient-to-r from-green-50 to-emerald-50',
       textClass: 'text-green-700',
-      icon: '✓',
+      borderClass: 'border-green-200',
+      Icon: CheckCircle2,
     },
     partially_signed: {
       label: 'Partial',
-      bgClass: 'bg-amber-50',
+      bgClass: 'bg-gradient-to-r from-amber-50 to-yellow-50',
       textClass: 'text-amber-700',
-      icon: '⚠',
+      borderClass: 'border-amber-200',
+      Icon: AlertCircle,
     },
     unsigned: {
       label: 'Unsigned',
-      bgClass: 'bg-red-50',
-      textClass: 'text-red-700',
-      icon: '✗',
+      bgClass: 'bg-gradient-to-r from-red-50 to-rose-50',
+      textClass: 'text-red-600',
+      borderClass: 'border-red-200',
+      Icon: XCircle,
     },
   };
   
-  const { label, bgClass, textClass, icon } = config[status];
+  const { label, bgClass, textClass, borderClass, Icon } = config[status];
   
   return (
     <span className={cn(
-      "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[11px] font-medium",
+      "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-medium border",
       bgClass,
-      textClass
+      textClass,
+      borderClass
     )}>
-      <span>{icon}</span>
+      <Icon className="h-3 w-3" />
       {label}
     </span>
   );
@@ -467,14 +477,17 @@ const CompactContractRow = memo(function CompactContractRow({
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: index * 0.02 }}
-      whileHover={{ x: 2, backgroundColor: "rgba(139, 92, 246, 0.03)" }}
+      whileHover={{ x: 3, backgroundColor: "rgba(139, 92, 246, 0.04)" }}
       className={cn(
         "flex items-center gap-2 px-4 py-3.5 cursor-pointer transition-all duration-200 group border-b border-slate-100/80 relative",
         isSelected 
           ? "bg-gradient-to-r from-violet-50 via-purple-50/80 to-violet-50 shadow-sm ring-1 ring-violet-300/60" 
-          : "hover:bg-gradient-to-r hover:from-violet-50/40 hover:via-purple-50/30 hover:to-white bg-white",
-        isExpiringSoon && !isSelected && "bg-gradient-to-r from-amber-50/30 via-white to-white",
-        isExpired && !isSelected && "bg-gradient-to-r from-red-50/30 via-white to-white"
+          : "hover:bg-gradient-to-r hover:from-violet-50/40 hover:via-purple-50/30 hover:to-white",
+        // Zebra striping for unselected rows
+        !isSelected && index % 2 === 0 && "bg-white",
+        !isSelected && index % 2 === 1 && "bg-slate-50/50",
+        isExpiringSoon && !isSelected && "bg-gradient-to-r from-amber-50/40 via-amber-50/20 to-white border-l-2 border-l-amber-400",
+        isExpired && !isSelected && "bg-gradient-to-r from-red-50/40 via-red-50/20 to-white border-l-2 border-l-red-400"
       )}
       onClick={onView}
       role="link"
@@ -572,7 +585,10 @@ const CompactContractRow = memo(function CompactContractRow({
             size="sm"
           />
         ) : (
-          <span className="text-xs text-slate-300 italic">Not set</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+            <Tag className="h-3 w-3" />
+            Uncategorized
+          </span>
         )}
       </div>
 
@@ -583,29 +599,42 @@ const CompactContractRow = memo(function CompactContractRow({
             {contract.type}
           </span>
         ) : (
-          <span className="text-xs text-slate-300 italic">Unknown</span>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+            General
+          </span>
         )}
       </div>
 
       {/* Party */}
       <div className="hidden md:block w-[120px]">
         {(contract.parties?.supplier || contract.parties?.client) ? (
-          <span className="text-[13px] text-slate-600 truncate block" title={contract.parties?.supplier || contract.parties?.client}>
-            {contract.parties?.supplier || contract.parties?.client}
-          </span>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
+              <Building2 className="h-3 w-3 text-slate-500" />
+            </div>
+            <span className="text-[13px] text-slate-600 truncate" title={contract.parties?.supplier || contract.parties?.client}>
+              {contract.parties?.supplier || contract.parties?.client}
+            </span>
+          </div>
         ) : (
-          <span className="text-xs text-slate-300 italic">Not specified</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+            <User className="h-3 w-3" />
+            Add party
+          </span>
         )}
       </div>
 
       {/* Value */}
       <div className="hidden lg:block w-[90px] text-right">
         {contract.value ? (
-          <span className="text-[13px] font-semibold tabular-nums text-slate-800">
+          <span className="text-[13px] font-semibold tabular-nums text-slate-800 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-0.5 rounded-md border border-green-100">
             {formatCurrency(contract.value)}
           </span>
         ) : (
-          <span className="text-xs text-slate-300 italic">—</span>
+          <span className="inline-flex items-center justify-end gap-1 text-[11px] text-slate-400">
+            <DollarSign className="h-3 w-3" />
+            N/A
+          </span>
         )}
       </div>
 
@@ -631,7 +660,10 @@ const CompactContractRow = memo(function CompactContractRow({
             )}
           </div>
         ) : (
-          <span className="text-xs text-slate-300 italic">No date</span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+            <CalendarOff className="h-3 w-3" />
+            No expiry
+          </span>
         )}
       </div>
 
@@ -656,10 +688,10 @@ const CompactContractRow = memo(function CompactContractRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-lg hover:bg-violet-100 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 hover:scale-110"
+              className="h-8 w-8 p-0 rounded-lg hover:bg-violet-100 opacity-40 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 hover:scale-110 hover:shadow-md"
               onClick={() => {}}
             >
-              <MoreHorizontal className="h-4 w-4 text-slate-500 group-hover:text-violet-600" />
+              <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-violet-600" />
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52 p-1.5 shadow-xl border-slate-200/80 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
