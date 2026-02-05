@@ -3008,6 +3008,57 @@ export default function ContractsPage() {
                     <X className="h-3.5 w-3.5 mr-1" />
                     Clear
                   </Button>
+                  
+                  {/* Quick Bulk Actions - Always visible when items selected */}
+                  <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 text-xs border-slate-200 hover:bg-slate-50"
+                          onClick={() => performBulkAction('export')}
+                          disabled={isProcessingBulk}
+                        >
+                          <Download className="h-3.5 w-3.5 mr-1.5" />
+                          Export
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Export selected</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-8 px-3 text-xs border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700"
+                          onClick={() => performBulkAction('analyze')}
+                          disabled={isProcessingBulk}
+                        >
+                          <Brain className="h-3.5 w-3.5 mr-1.5" />
+                          Analyze
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>AI analysis</TooltipContent>
+                    </Tooltip>
+                    
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-8 px-3 text-xs bg-red-600 hover:bg-red-700"
+                          onClick={handleBulkDeleteClick}
+                          disabled={isProcessingBulk}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                          Delete
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Delete selected contracts</TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-slate-600">
