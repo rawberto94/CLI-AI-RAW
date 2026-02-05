@@ -8,8 +8,8 @@ import {
   MessageSquare,
   Eye,
   Clock,
-  Building,
-  User,
+  Building as _Building,
+  User as _User,
   AlertTriangle,
   CheckCircle,
   Send,
@@ -22,7 +22,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
+  DialogFooter as _DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -92,7 +92,7 @@ export default function CollaboratorPortalPage() {
       const data = await response.json();
       setCollaborator(data.collaborator);
       setContracts(data.contracts);
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to load portal');
     } finally {
       setLoading(false);

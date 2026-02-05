@@ -413,7 +413,7 @@ export function useHotkeys(
       handler: (e) => handlerRef.current(e),
       ...config,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [keys, context, config.scope, config.enabled, ...deps]);
 }
 

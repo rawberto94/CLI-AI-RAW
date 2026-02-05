@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       permission = 'VIEW',
       expiresAt,
       message, // Optional message to include in notification
-      notifyByEmail = true,
+      notifyByEmail: _notifyByEmail = true,
     } = body;
 
     if (!documentId || !recipients || recipients.length === 0) {

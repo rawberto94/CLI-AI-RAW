@@ -4,7 +4,7 @@ import React, { useState, use, useCallback, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RedlineEditor, type Change } from '@/components/contracts/RedlineEditor';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle, Loader2, Sparkles, GitCompare, Edit3 } from 'lucide-react';
+import { ArrowLeft, FileText as _FileText, Clock, Users, Shield, Download, Share2, MoreHorizontal, CheckCircle, Loader2 as _Loader2, Sparkles as _Sparkles, GitCompare, Edit3 } from 'lucide-react';
 import Link from 'next/link';
 import {
   DropdownMenu,

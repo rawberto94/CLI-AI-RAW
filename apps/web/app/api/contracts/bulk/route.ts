@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     // Validate request body with Zod schema
     try {
       const validated = bulkOperationSchema.parse(body)
-      const { operation, contractIds } = validated
+      const { operation: _operation, contractIds: _contractIds } = validated
     } catch (validationError) {
       if (validationError instanceof ZodError) {
         return NextResponse.json(
@@ -343,7 +343,7 @@ export async function POST(request: NextRequest) {
       case 'ai-analyze':
       case 'analyze':
         // Trigger AI analysis for multiple contracts
-        const aiAnalyzeResults: Array<{ contractId: string; status: string; error?: string }> = []
+        const _aiAnalyzeResults: Array<{ contractId: string; status: string; error?: string }> = []
         for (const contractId of contractIds.slice(0, 10)) { // Limit to 10 at a time
           try {
             // Queue analysis job or run inline
@@ -401,7 +401,7 @@ export async function POST(request: NextRequest) {
 
       case 'email':
         // Send contracts via email
-        const { recipients, subject: emailSubject, message } = body
+        const { recipients, subject: emailSubject, message: _message } = body
         if (!recipients || !Array.isArray(recipients) || recipients.length === 0) {
           return NextResponse.json(
             { success: false, error: 'Recipients required' },

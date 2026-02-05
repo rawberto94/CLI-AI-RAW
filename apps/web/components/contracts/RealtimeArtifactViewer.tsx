@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
+import { useArtifactStream } from '@/hooks/useArtifactStream';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,6 @@ import {
   Clock,
   Loader2,
   Wifi,
-  WifiOff,
   Sparkles,
   RefreshCw
 } from 'lucide-react';
@@ -28,6 +27,7 @@ interface RealtimeArtifactViewerProps {
   contractId: string;
   tenantId?: string;
   onComplete?: () => void;
+  onContractNotFound?: () => void;  // Called when contract returns 404
 }
 
 // Helper to normalize artifact types to uppercase
@@ -67,7 +67,8 @@ const stageLabels: Record<string, string> = {
 export function RealtimeArtifactViewer({ 
   contractId, 
   tenantId = 'demo',
-  onComplete
+  onComplete,
+  onContractNotFound
 }: RealtimeArtifactViewerProps) {
   const {
     artifacts,
@@ -76,7 +77,8 @@ export function RealtimeArtifactViewer({
     contractStatus,
     processingStage,
     error,
-    disconnect,
+    contractNotFound,
+    disconnect: _disconnect,
     reconnect
   } = useArtifactStream({
     contractId,
@@ -84,12 +86,25 @@ export function RealtimeArtifactViewer({
     onComplete: () => {
       if (onComplete) onComplete();
     },
+    onError: (errorMsg) => {
+      // If contract was not found, notify parent
+      if (errorMsg.includes('not found') && onContractNotFound) {
+        onContractNotFound();
+      }
+    },
     enabled: true
   });
 
+  // Immediately notify parent if contract not found
+  useEffect(() => {
+    if (contractNotFound && onContractNotFound) {
+      onContractNotFound();
+    }
+  }, [contractNotFound, onContractNotFound]);
+
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
-  const [localError, setError] = useState<string | null>(null);
+  const [_localError, setError] = useState<string | null>(null);
   const [isPollingFallback, setIsPollingFallback] = useState(false);
   const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -112,7 +127,7 @@ export function RealtimeArtifactViewer({
         }, 1000);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [artifacts]);
 
   // Polling fallback when SSE fails
@@ -233,6 +248,11 @@ export function RealtimeArtifactViewer({
   const totalCount = Math.max(10, artifacts.length);
   const progressPercent = Math.min(100, (completedCount / totalCount) * 100);
 
+  // Early return if contract not found - don't render anything
+  if (contractNotFound) {
+    return null;
+  }
+
   return (
     <div className="space-y-6">
       {/* Connection Status */}
@@ -251,22 +271,26 @@ export function RealtimeArtifactViewer({
           ) : error ? (
             <>
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-red-500">Connection Error</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  setIsPollingFallback(false);
-                  if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                  }
-                  reconnect();
-                }}
-                className="ml-2"
-              >
-                <RefreshCw className="h-3 w-3" />
-              </Button>
+              <span className="text-sm text-red-500">
+                {error.includes('not found') ? 'Contract not found' : 'Connection Error'}
+              </span>
+              {!error.includes('not found') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    setIsPollingFallback(false);
+                    if (pollingIntervalRef.current) {
+                      clearInterval(pollingIntervalRef.current);
+                    }
+                    reconnect();
+                  }}
+                  className="ml-2"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
             </>
           ) : isPollingFallback ? (
             <>

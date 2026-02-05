@@ -47,7 +47,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function generateSupplierData(fields: string[], filters: any) {
+async function generateSupplierData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany({
     include: {
       rateCards: true,
@@ -63,7 +63,7 @@ async function generateSupplierData(fields: string[], filters: any) {
   }));
 }
 
-async function generateRateCardData(fields: string[], filters: any) {
+async function generateRateCardData(_fields: string[], _filters: any) {
   const rateCards = await db.rateCardEntry.findMany({
     include: { supplier: true },
   });
@@ -76,7 +76,7 @@ async function generateRateCardData(fields: string[], filters: any) {
   }));
 }
 
-async function generateContractData(fields: string[], filters: any) {
+async function generateContractData(_fields: string[], _filters: any) {
   const contracts = await db.contract.findMany({
     include: { supplier: true },
   });
@@ -91,7 +91,7 @@ async function generateContractData(fields: string[], filters: any) {
   }));
 }
 
-async function generatePerformanceData(fields: string[], filters: any) {
+async function generatePerformanceData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany();
 
   return suppliers.map((s) => ({
@@ -103,7 +103,7 @@ async function generatePerformanceData(fields: string[], filters: any) {
   }));
 }
 
-async function generateFinancialData(fields: string[], filters: any) {
+async function generateFinancialData(_fields: string[], _filters: any) {
   const contracts = await db.contract.findMany();
 
   const monthlyData = new Map<string, any>();
@@ -122,7 +122,7 @@ async function generateFinancialData(fields: string[], filters: any) {
   return Array.from(monthlyData.values());
 }
 
-function exportToExcel(data: any[], fields: string[]) {
+function exportToExcel(data: any[], _fields: string[]) {
   // Mock CSV export (use xlsx library in production)
   const headers = Object.keys(data[0] || {}).join(",");
   const rows = data.map((row) => Object.values(row).join(",")).join("\n");
@@ -136,7 +136,7 @@ function exportToExcel(data: any[], fields: string[]) {
   });
 }
 
-function exportToPDF(data: any[], fields: string[]) {
+function exportToPDF(data: any[], _fields: string[]) {
   // Mock PDF export (use jsPDF or react-pdf in production)
   const pdfContent = `
     REPORT EXPORT

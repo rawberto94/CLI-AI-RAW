@@ -19,7 +19,7 @@ interface RouteParams {
  * Validate that a taxonomy category belongs to the tenant
  * Prevents cross-tenant category assignment attacks
  */
-async function validateCategoryOwnership(
+async function _validateCategoryOwnership(
   categoryId: string,
   tenantId: string
 ): Promise<boolean> {

@@ -12,7 +12,7 @@ import { getServerTenantId } from '@/lib/tenant-server';
  * GET /api/rate-cards/filter-options
  * Get unique values for all filterable fields
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const tenantId = await getServerTenantId();
 

@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
     const reportType = searchParams.get('type') || 'executive';
     const format = searchParams.get('format') || 'json';
     const supplierName = searchParams.get('supplier');
-    const deepAnalysis = searchParams.get('deep') === 'true';
+    const _deepAnalysis = searchParams.get('deep') === 'true';
 
     const tenantId = session.user.tenantId;
 
@@ -185,7 +185,7 @@ async function generateCustomReport(
   tenantId: string,
   fields: string[],
   filters: Record<string, any> = {},
-  groupBy?: string
+  _groupBy?: string
 ): Promise<any[]> {
   // Build dynamic query based on selected fields
   const where: any = { tenantId };

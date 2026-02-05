@@ -126,7 +126,7 @@ export async function POST(
       model,
       tokensUsed,
       responseTimeMs,
-      metadata,
+      metadata: _metadata,
     } = body;
 
     if (!role || !content) {

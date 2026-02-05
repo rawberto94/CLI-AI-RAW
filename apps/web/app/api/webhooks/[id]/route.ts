@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfig, webhookStore } from '../route';
+import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfigType, webhookStore } from '../route';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -31,11 +31,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     const prisma = await getPrisma();
-    let webhook: WebhookConfig | null = null;
+    let webhook: WebhookConfigType | null = null;
     
     if (prisma) {
       try {
-        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfig | null> } }).webhookConfig.findFirst({
+        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfigType | null> } }).webhookConfig.findFirst({
           where: { id, tenantId },
         });
       } catch { /* ignore */ }
@@ -77,7 +77,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const body = await request.json();
     
     const { name, url, events, isActive } = body;
-    const updateData: Partial<WebhookConfig> = {};
+    const updateData: Partial<WebhookConfigType> = {};
     
     if (name !== undefined) {
       if (typeof name !== 'string' || name.trim() === '') {
@@ -115,7 +115,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     
     if (prisma) {
       try {
-        const webhook = await (prisma as unknown as { webhookConfig: { update: (opts: unknown) => Promise<WebhookConfig> } }).webhookConfig.update({
+        const webhook = await (prisma as unknown as { webhookConfig: { update: (opts: unknown) => Promise<WebhookConfigType> } }).webhookConfig.update({
           where: { id, tenantId },
           data: updateData,
         });

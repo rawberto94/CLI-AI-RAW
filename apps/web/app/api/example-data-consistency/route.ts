@@ -94,7 +94,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     }
 
     // 4. Execute update with optimistic locking in a transaction
-    const result = await transactionManager.executeTransaction(async (tx) => {
+    const result = await transactionManager.executeTransaction(async (_tx) => {
       // Update with version check
       const updated = await optimisticLockingService.updateWithVersion({
         resourceType: 'contract',

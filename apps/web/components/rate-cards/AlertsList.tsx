@@ -24,7 +24,7 @@ export function AlertsList({ userId }: AlertsListProps) {
 
   useEffect(() => {
     fetchAlerts();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [userId]);
 
   const fetchAlerts = async () => {

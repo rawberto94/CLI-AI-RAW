@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import type { Prisma as _Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
 
 export const dynamic = 'force-dynamic';

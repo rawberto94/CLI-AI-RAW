@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get rate changes from last 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
     });
 
     const totalRates = allRateCardEntries.length;
-    const increasedToday = recentRateCardEntries.filter((rc) => {
+    const increasedToday = recentRateCardEntries.filter((_rc) => {
       // This would need historical data tracking
       // For now, approximate based on market trends
       return Math.random() > 0.6;

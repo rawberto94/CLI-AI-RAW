@@ -526,7 +526,7 @@ export function GoogleDriveBrowser({ isOpen, onClose, onImport }: GoogleDriveBro
                         </div>
                       )}
                       {file.thumbnailLink ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
+                        
                         <img
                           src={file.thumbnailLink}
                           alt={file.name}

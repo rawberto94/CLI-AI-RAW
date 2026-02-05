@@ -564,7 +564,7 @@ export function FloatingAIBubble() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isOpen]);
 
   // Draggable functionality - handlers for mouse/touch events
@@ -791,7 +791,7 @@ export function FloatingAIBubble() {
         // Unhandled action - no-op
         break;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [router]);
 
   // Constants for request handling
@@ -1203,7 +1203,7 @@ export function FloatingAIBubble() {
       setIsLoading(false);
       setIsTyping(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [input, isLoading, conversationContext, isOpen, playSound, messages, cancelCurrentRequest]);
 
   // Update conversation context

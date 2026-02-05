@@ -150,6 +150,9 @@ export async function POST(request: NextRequest) {
     
     // In production, upload to S3 and return download URL
     // For now, return the data directly
+    // Note: content and contentType are used when implementing actual file downloads
+    void content;
+    void contentType;
     return NextResponse.json({
       success: true,
       count: contracts.length,

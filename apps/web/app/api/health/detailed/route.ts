@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  * Detailed health check endpoint
  * Returns comprehensive health information for all system components
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const health = await healthCheckService.getOverallHealth();
     

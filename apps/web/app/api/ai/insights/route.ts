@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
       totalContracts,
       expiringContracts,
       recentContracts,
-      contractsByStatus,
+      _contractsByStatus,
       totalValue,
       riskArtifacts,
       complianceArtifacts,

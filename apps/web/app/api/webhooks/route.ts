@@ -214,7 +214,7 @@ export async function POST(request: NextRequest) {
     
     const secret = crypto.randomBytes(32).toString('hex');
     
-    const webhook: WebhookConfig = {
+    const webhook: WebhookConfigType = {
       id: crypto.randomUUID(),
       tenantId,
       name,
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
     
     if (prisma) {
       try {
-        const dbWebhook = await (prisma as unknown as { webhookConfig: { create: (opts: unknown) => Promise<WebhookConfig> } }).webhookConfig.create({
+        const dbWebhook = await (prisma as unknown as { webhookConfig: { create: (opts: unknown) => Promise<WebhookConfigType> } }).webhookConfig.create({
           data: webhook,
         });
         // Note: Secret is returned once on creation so user can store it - subsequent GETs will mask it

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { CheckCircle, Clock, UserCheck, ThumbsUp } from 'lucide-react';
+import { CheckCircle, Clock, UserCheck, ThumbsUp as _ThumbsUp } from 'lucide-react';
 
 export default function ApprovalsLoading() {
   return (

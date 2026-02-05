@@ -121,7 +121,7 @@ export function useLocalStorage<T>(
   // Read value on mount (handles hydration)
   useEffect(() => {
     setStoredValue(readValue());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   return [storedValue, setValue, removeValue];

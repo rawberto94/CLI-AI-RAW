@@ -6,22 +6,22 @@ import {
   Users,
   UserPlus,
   Search,
-  Filter,
+  Filter as _Filter,
   MoreVertical,
   Mail,
   Shield,
-  Clock,
+  Clock as _Clock,
   Trash2,
   Edit2,
   Upload,
-  Download,
+  Download as _Download,
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -98,10 +98,10 @@ const STATUS_CONFIG = {
 };
 
 export default function UsersPage() {
-  const { data: session } = useSession();
+  const { data: _session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -127,7 +127,7 @@ export default function UsersPage() {
         const data = await invitesRes.json();
         setInvitations(data.invitations || []);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);

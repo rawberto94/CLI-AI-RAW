@@ -278,7 +278,7 @@ export function QuickActionsFAB() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isOpen, actions]);
 
   return (

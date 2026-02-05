@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
     if (maxScore) conditions.push(`overall_score <= ${parseInt(maxScore)}`);
     if (contractId) conditions.push(`contract_id = '${contractId}'`);
 
-    const whereClause = conditions.join(' AND ');
+    const _whereClause = conditions.join(' AND ');
 
     // Query health scores
     const healthScores = await prisma.$queryRaw<Array<{

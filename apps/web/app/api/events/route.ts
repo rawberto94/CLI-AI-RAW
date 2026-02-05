@@ -60,7 +60,7 @@ const sseConnectionManager = {
     controller: ReadableStreamDefaultController,
     tenantId: string,
     userId?: string,
-    metadata?: Record<string, string | null | undefined>
+    _metadata?: Record<string, string | null | undefined>
   ): SSEConnection => {
     const id = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const connection: SSEConnection = {
@@ -156,7 +156,7 @@ export async function GET(request: NextRequest) {
           try {
             controller.enqueue(encoder.encode(': keep-alive\n\n'));
             sseConnectionManager.updateActivity(connection!.id);
-          } catch (e) {
+          } catch (_e) {
             clearInterval(keepAliveInterval);
           }
         }, 30000);
@@ -178,7 +178,7 @@ export async function GET(request: NextRequest) {
           
           try {
             controller.close();
-          } catch (e) {
+          } catch (_e) {
             // Already closed
           }
         });
@@ -196,7 +196,7 @@ export async function GET(request: NextRequest) {
         // Close the connection
         try {
           controller.close();
-        } catch (e) {
+        } catch (_e) {
           // Already closed
         }
       }

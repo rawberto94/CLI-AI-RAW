@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import getClient from 'clients-db';
+import { prisma } from '@/lib/prisma';
 import { ObligationStatus, ObligationPriority, Prisma } from '@prisma/client';
 
-const prisma = getClient();
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -191,7 +190,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
         description: body.status === 'completed' 
           ? 'Obligation marked as completed'
           : `Obligation updated: ${Object.keys(changes).join(', ')}`,
-        previousValue: Object.keys(changes).length > 0 ? changes : undefined,
+        previousValue: Object.keys(changes).length > 0 ? JSON.parse(JSON.stringify(changes)) : undefined,
         performedBy: session.user.id,
       },
     });

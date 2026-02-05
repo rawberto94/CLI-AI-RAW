@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 import {
   Users,
   TrendingUp,
-  TrendingDown,
+  TrendingDown as _TrendingDown,
   DollarSign,
   AlertCircle,
   Clock,
@@ -77,7 +77,7 @@ export default function SupplierAnalyticsPage() {
       link.download = `supplier-analytics-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Supplier analytics exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };

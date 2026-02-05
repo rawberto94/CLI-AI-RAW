@@ -206,6 +206,10 @@ model User {
   assignedObligations Obligation[]          @relation("ObligationAssignee")
   calendarSyncTokens  CalendarSyncToken[]
 
+  // OCR Review relations
+  ocrReviewsAssigned OcrReviewItem[] @relation("OcrReviewAssignee")
+  ocrReviewsCreated  OcrReviewItem[] @relation("OcrReviewCreator")
+
   @@index([email])
   @@index([tenantId])
   @@index([status])
@@ -436,6 +440,9 @@ model Contract {
   userAccess         ContractUserAccess[]
   groupAccess        ContractGroupAccess[]
   collaboratorAccess CollaboratorContractAccess[]
+
+  // OCR Review relation
+  ocrReviewItems OcrReviewItem[]
 
   @@index([tenantId])
   @@index([status])
@@ -5247,4 +5254,53 @@ model CollaboratorContractAccess {
   @@index([collaboratorId])
   @@index([contractId])
   @@map("collaborator_contract_access")
+}
+
+/// OCR Review Queue Item - Documents flagged for human review
+model OcrReviewItem {
+  id            String @id @default(cuid())
+  tenantId      String @map("tenant_id")
+  contractId    String @map("contract_id")
+  type          String @default("ocr_quality") // ocr_quality, handwriting, mixed_language, legal_entity, sensitive_content
+  status        String @default("pending") // pending, in_progress, completed, escalated
+  priority      String @default("medium") // low, medium, high, critical
+  ocrConfidence Float  @map("ocr_confidence")
+
+  // Document info
+  documentName String  @map("document_name")
+  documentType String? @map("document_type")
+
+  // Low confidence regions
+  lowConfidenceRegions Json? @default("[]") @map("low_confidence_regions")
+
+  // Review tracking
+  assignedTo       String?   @map("assigned_to")
+  assignedAt       DateTime? @map("assigned_at")
+  completedAt      DateTime? @map("completed_at")
+  completedBy      String?   @map("completed_by")
+  escalatedAt      DateTime? @map("escalated_at")
+  escalatedBy      String?   @map("escalated_by")
+  escalationReason String?   @map("escalation_reason") @db.Text
+
+  // Corrections made
+  corrections Json? @default("[]") // Array of { field, original, corrected, confidence }
+
+  // Metadata
+  notes     String?  @db.Text
+  createdBy String   @map("created_by")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  contract      Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  assignedUser  User?    @relation("OcrReviewAssignee", fields: [assignedTo], references: [id])
+  createdByUser User?    @relation("OcrReviewCreator", fields: [createdBy], references: [id])
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([tenantId, priority])
+  @@index([contractId])
+  @@index([assignedTo])
+  @@index([status, priority])
+  @@map("ocr_review_items")
 }

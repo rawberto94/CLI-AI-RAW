@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { WebhookConfig, webhookStore } from '../../route';
+import { WebhookConfigType, webhookStore } from '../../route';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -32,11 +32,11 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     }
     
     const prisma = await getPrisma();
-    let webhook: WebhookConfig | null = null;
+    let webhook: WebhookConfigType | null = null;
     
     if (prisma) {
       try {
-        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfig | null> } }).webhookConfig.findFirst({
+        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfigType | null> } }).webhookConfig.findFirst({
           where: { id, tenantId },
         });
       } catch { /* ignore */ }

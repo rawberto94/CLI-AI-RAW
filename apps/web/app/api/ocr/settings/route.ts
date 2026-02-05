@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getAvailableProviders, logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
+import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
 
 // ============================================================================
 // Types

@@ -215,7 +215,7 @@ export function RichTextEditor({
               title="Insert Link"
             />
             <ToolbarButton
-              icon={<Image className="w-4 h-4" />}
+              icon={<Image className="w-4 h-4" aria-label="Insert image" />}
               onClick={insertImage}
               title="Insert Image"
             />

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // In production, these would be parallel database queries
     // For now, we aggregate mock data from different sources
@@ -68,7 +68,7 @@ async function getApprovalsStats() {
 
 async function getRenewalsStats() {
   // Mock data - in production, query from database
-  const now = new Date();
+  const _now = new Date();
   return {
     total: 5,
     urgentCount: 2,

@@ -140,7 +140,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
-  const tenantId = await getApiTenantId(request);
+  const _tenantId = await getApiTenantId(request);
 
   try {
     const results = await getExtractionResults(contractId);

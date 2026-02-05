@@ -81,9 +81,9 @@ export async function POST(request: NextRequest) {
  * GET /api/renewals/scan
  * Get information about renewal scanning
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const tenantId = await getServerTenantId();
+    const _tenantId = await getServerTenantId();
 
     return NextResponse.json({
       success: true,
@@ -101,7 +101,7 @@ export async function GET(request: NextRequest) {
         cron: '0 8 * * *',
       },
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Failed to get scan info' },
       { status: 500 }

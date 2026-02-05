@@ -297,7 +297,7 @@ const TimelineEventCard = memo(function TimelineEventCard({
         {event.user && (
           <div className="flex items-center gap-2 mt-2">
             {event.user.avatar ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
+              
               <img 
                 src={event.user.avatar} 
                 alt={event.user.name}

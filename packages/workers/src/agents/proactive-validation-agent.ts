@@ -20,7 +20,44 @@ export class ProactiveValidationAgent extends BaseAgent {
   capabilities = ['validation', 'quality-check', 'placeholder-detection'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const validationInput = input.context as ValidationInput;
+    // Handle different input formats defensively
+    const validationInput: ValidationInput = input.context?.partialData 
+      ? input.context as ValidationInput
+      : {
+          // Build from artifacts if provided
+          partialData: input.context?.artifacts?.reduce((acc: any, artifact: any) => {
+            const data = artifact?.data;
+            if (data && typeof data === 'object') {
+              Object.assign(acc, data);
+            }
+            return acc;
+          }, {}) || {},
+          contractText: input.context?.contractText || '',
+          artifactType: input.context?.artifactType || input.context?.contractType || 'unknown',
+          confidence: input.context?.confidence ?? 0.8,
+          ocrQuality: input.context?.ocrQuality,
+        };
+
+    // If no data to validate, return early success
+    if (!validationInput.partialData || Object.keys(validationInput.partialData).length === 0) {
+      return {
+        success: true,
+        data: {
+          decision: 'continue' as const,
+          reason: 'No data available for validation',
+          confidence: 1.0,
+          issues: [],
+          overallCompleteness: 0,
+        },
+        actions: [],
+        confidence: 1.0,
+        reasoning: 'No partial data available for validation',
+        metadata: {
+          processingTime: 0,
+        },
+      };
+    }
+
     const decision = await this.validateDuringExtraction(validationInput);
 
     const actions: AgentAction[] = [];
@@ -77,6 +114,7 @@ export class ProactiveValidationAgent extends BaseAgent {
 
     const reasoning = this.buildReasoningExplanation(decision);
 
+    const startTime = input.metadata?.timestamp?.getTime?.() || Date.now();
     return {
       success: decision.decision !== 'retry_immediately',
       data: decision,
@@ -84,7 +122,7 @@ export class ProactiveValidationAgent extends BaseAgent {
       confidence: decision.confidence,
       reasoning,
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - startTime,
       },
     };
   }

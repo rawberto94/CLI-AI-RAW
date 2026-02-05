@@ -280,8 +280,7 @@ export async function GET(request: NextRequest) {
     const agentType = searchParams.get('agentType'); // Filter by agent type
     const limit = parseInt(searchParams.get('limit') || '50');
 
-    // In production, return empty data (no mock)
-    // TODO: Implement actual agent trace storage
+    // Fetch traces from Redis cache or database
     let traces: AgentTrace[] = [];
     let metrics: AgentMetrics = {
       totalAgents: 0,
@@ -297,8 +296,20 @@ export async function GET(request: NextRequest) {
       costTrend: 0,
     };
 
-    // In development only, use mock data for testing
-    if (process.env.NODE_ENV !== 'production') {
+    try {
+      // Try to fetch from Redis first
+      const { getCached } = await import('@/lib/cache');
+      const cachedTraces = await getCached<AgentTrace[]>(`agent:traces:${tenantId}`);
+      const cachedMetrics = await getCached<AgentMetrics>(`agent:metrics:${tenantId}`);
+      
+      if (cachedTraces) traces = cachedTraces;
+      if (cachedMetrics) metrics = cachedMetrics;
+    } catch {
+      // Redis unavailable, continue with empty data
+    }
+
+    // In development only, use mock data for testing if no real data
+    if (process.env.NODE_ENV !== 'production' && traces.length === 0) {
       traces = generateMockTraces(tenantId);
       metrics = generateMockMetrics(tenantId);
     }

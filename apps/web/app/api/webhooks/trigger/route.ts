@@ -4,7 +4,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
-import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfig, webhookStore } from '../route';
+import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfigType, webhookStore } from '../route';
 
 interface TriggerPayload {
   event: WebhookEvent;
@@ -61,11 +61,11 @@ export async function POST(request: NextRequest) {
     }
     
     const prisma = await getPrisma();
-    let webhooks: WebhookConfig[] = [];
+    let webhooks: WebhookConfigType[] = [];
     
     if (prisma) {
       try {
-        webhooks = await (prisma as unknown as { webhookConfig: { findMany: (opts: unknown) => Promise<WebhookConfig[]> } }).webhookConfig.findMany({
+        webhooks = await (prisma as unknown as { webhookConfig: { findMany: (opts: unknown) => Promise<WebhookConfigType[]> } }).webhookConfig.findMany({
           where: { tenantId, isActive: true, events: { has: event } },
         });
       } catch {

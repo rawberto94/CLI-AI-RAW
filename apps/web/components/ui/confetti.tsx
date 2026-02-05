@@ -53,7 +53,7 @@ export function Confetti({
       
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [active, duration, isActive]);
 
   const createParticles = () => {

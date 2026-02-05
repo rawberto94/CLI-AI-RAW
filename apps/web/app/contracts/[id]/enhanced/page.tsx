@@ -20,23 +20,23 @@ import {
   Edit,
   RefreshCw,
   Users,
-  Calendar,
+  Calendar as _Calendar,
   TrendingUp,
   Target,
   Eye,
   BarChart3,
-  CheckCircle,
-  Clock,
+  CheckCircle as _CheckCircle,
+  Clock as _Clock,
   Loader2,
   Star,
   Brain,
-  Network,
+  Network as _Network,
   Activity,
-  PieChart,
-  Tag,
-  Settings
+  PieChart as _PieChart,
+  Tag as _Tag,
+  Settings as _Settings
 } from 'lucide-react'
-import { ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
+import { ContractMetadataEditor as _ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
 import Link from 'next/link'
 
 interface EnhancedContractData {
@@ -102,7 +102,7 @@ interface EnhancedContractData {
 
 export default function EnhancedContractDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const _router = useRouter()
   const contractId = params.id as string
 
   const [contract, setContract] = useState<EnhancedContractData | null>(null)
@@ -114,7 +114,7 @@ export default function EnhancedContractDetailPage() {
     if (contractId) {
       loadContract()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId])
 
   // Auto-refresh for processing contracts
@@ -123,7 +123,7 @@ export default function EnhancedContractDetailPage() {
       const interval = setInterval(loadContract, 3000)
       return () => clearInterval(interval)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contract?.status])
 
   const loadContract = async () => {
@@ -163,7 +163,7 @@ export default function EnhancedContractDetailPage() {
     }
   }
 
-  const formatCurrency = (amount: number, currency = 'USD') => {
+  const _formatCurrency = (amount: number, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
@@ -186,7 +186,7 @@ export default function EnhancedContractDetailPage() {
     }
   }
 
-  const getRiskColor = (score: number) => {
+  const _getRiskColor = (score: number) => {
     if (score >= 80) return 'text-red-600'
     if (score >= 60) return 'text-yellow-600'
     if (score >= 40) return 'text-violet-600'

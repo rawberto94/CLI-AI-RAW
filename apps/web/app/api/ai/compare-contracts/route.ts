@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { getServerTenantId as _getServerTenantId } from '@/lib/tenant-server';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',

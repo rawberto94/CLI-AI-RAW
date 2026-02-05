@@ -14,7 +14,7 @@ import { rateCardBenchmarkingService } from 'data-orchestration/services';
  * GET /api/rate-cards/best-rates/changes
  * Get recent best rate changes for the tenant
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {

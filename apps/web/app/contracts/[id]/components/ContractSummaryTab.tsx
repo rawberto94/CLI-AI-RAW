@@ -1,8 +1,8 @@
 'use client'
 
-import React, { memo, Suspense } from 'react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import React, { memo, Suspense as _Suspense } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription as _CardDescription } from '@/components/ui/card'
+import { Badge as _Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/design-tokens'

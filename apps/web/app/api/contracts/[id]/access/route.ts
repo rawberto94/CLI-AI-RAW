@@ -214,9 +214,10 @@ export async function POST(
           select: { id: true, email: true, firstName: true },
         });
         
-        const granterName = session.user.firstName 
-          ? `${session.user.firstName} ${session.user.lastName || ''}`
-          : session.user.email;
+        const userSession = session.user as { firstName?: string; lastName?: string; email?: string } & typeof session.user;
+        const granterName = userSession.firstName 
+          ? `${userSession.firstName} ${userSession.lastName || ''}`
+          : session.user.email || 'Unknown';
         
         const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3005';
         
@@ -225,7 +226,7 @@ export async function POST(
           usersToNotify.map((user) => {
             const template = emailTemplates.contractAccessGranted({
               recipientName: user.firstName || user.email,
-              contractTitle: contract.title || 'Untitled Contract',
+              contractTitle: (contract as any).title || (contract as any).contractTitle || 'Untitled Contract',
               accessLevel,
               grantedBy: granterName,
               expiresAt: expiresAt ? new Date(expiresAt).toLocaleDateString() : undefined,

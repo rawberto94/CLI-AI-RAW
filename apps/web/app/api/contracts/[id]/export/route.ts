@@ -61,7 +61,7 @@ function getTenantId(request: NextRequest): string | null {
 // Simple XLSX generator (no external dependencies)
 function generateXLSX(contract: ContractExportData): Buffer {
   // Create XML-based XLSX (Office Open XML format)
-  const escapeXml = (str: string) => 
+  const _escapeXml = (str: string) => 
     String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
   const rows = [

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { chunkText, embedChunks } from "clients-rag";
+import { chunkText as _chunkText, embedChunks as _embedChunks } from "clients-rag";
 import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";

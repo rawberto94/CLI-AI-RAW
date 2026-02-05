@@ -67,7 +67,7 @@ export function DeadlineDashboard({
 
   useEffect(() => {
     loadDeadlines()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId, clientFilter, filterType])
 
   const loadDeadlines = async () => {

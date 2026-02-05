@@ -178,10 +178,10 @@ function NotificationItem({ notification, onDismiss, onQuickApprove, onQuickReje
 
 export function ApprovalNotificationBell() {
   const ws = useWebSocket();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const approvalNotifications = ws?.approvalNotifications ?? [];
   const clearApprovalNotification = ws?.clearApprovalNotification ?? (() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const subscribeToApprovals = ws?.subscribeToApprovals ?? (() => {});
   const connected = ws?.connected ?? false;
   const [isOpen, setIsOpen] = useState(false);

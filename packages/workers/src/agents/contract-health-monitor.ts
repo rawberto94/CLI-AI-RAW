@@ -21,7 +21,24 @@ export class ContractHealthMonitor extends BaseAgent {
   capabilities = ['health-monitoring', 'prediction', 'issue-detection'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contract } = input.context;
+    // Defensive: contract may not be provided directly
+    const contract = input.context?.contract || {
+      id: input.contractId,
+      // Build minimal contract from artifacts if available
+      ...(input.context?.artifacts?.find?.((a: any) => a.type === 'OVERVIEW')?.data || {}),
+    };
+
+    if (!contract || !contract.id) {
+      return {
+        success: false,
+        data: null,
+        confidence: 0,
+        reasoning: 'No contract data available for health assessment',
+        metadata: {
+          processingTime: 0,
+        },
+      };
+    }
 
     const healthReport = await this.assessHealth(contract);
 
@@ -65,6 +82,7 @@ export class ContractHealthMonitor extends BaseAgent {
       reasoning: `Health Score: ${healthReport.score}/100 (${healthReport.overallHealth})`,
     }));
 
+    const startTime = input.metadata?.timestamp?.getTime?.() || Date.now();
     return {
       success: true,
       data: healthReport,
@@ -82,7 +100,7 @@ export class ContractHealthMonitor extends BaseAgent {
         ...healthReport.predictions.map(pred => `🔮 ${pred.description} (${(pred.probability * 100).toFixed(0)}% probability)`),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - startTime,
       },
     };
   }

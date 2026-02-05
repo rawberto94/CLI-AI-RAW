@@ -21,7 +21,7 @@ import {
  * GET /api/settings/artifacts
  * Get current artifact configuration for the tenant
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
 
       case 'enableAll': {
         // Enable all artifact types
-        const config = await artifactConfigService.getTenantConfig(tenantId);
+        const _config = await artifactConfigService.getTenantConfig(tenantId);
         const updates: Record<string, { enabled: boolean }> = {};
         DEFAULT_ARTIFACT_TYPES.forEach(t => {
           updates[t.type] = { enabled: true };

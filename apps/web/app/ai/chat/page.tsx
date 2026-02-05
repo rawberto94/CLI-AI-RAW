@@ -395,7 +395,7 @@ function AIChatPageContent() {
       }, 500);
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [initialQuery]);
 
   // Keyboard shortcuts

@@ -247,7 +247,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { resource, id, updates } = body;
+    const { resource, id, updates: _updates } = body;
     
     // In a full implementation, this would update goals/triggers in the database
     // For now, we return a success response

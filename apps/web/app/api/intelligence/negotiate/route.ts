@@ -138,7 +138,7 @@ const mockAnalysis = {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, contractId, clauseText, playbook } = body;
+    const { action, contractId, clauseText, playbook: _playbook } = body;
 
     if (action === 'analyze') {
       // Full contract analysis
@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }

@@ -67,7 +67,7 @@ export function AnalyticsHub() {
 
   useEffect(() => {
     loadMetrics()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [dataMode])
 
   const loadMetrics = async () => {

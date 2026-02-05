@@ -11,7 +11,7 @@ interface ReportGenerationRequest {
 export async function POST(request: NextRequest) {
   try {
     const body: ReportGenerationRequest = await request.json();
-    const { type, fields, filters = {}, groupBy } = body;
+    const { type, fields, filters = {}, groupBy: _groupBy } = body;
 
     let data: any[] = [];
     let rows = 0;
@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
 
 async function generateSupplierReport(
   fields: string[],
-  filters: Record<string, any>
+  _filters: Record<string, any>
 ): Promise<any[]> {
   const suppliers = await db.rateCardSupplier.findMany({
     include: {
@@ -85,7 +85,7 @@ async function generateSupplierReport(
 
 async function generateRateCardReport(
   fields: string[],
-  filters: Record<string, any>
+  _filters: Record<string, any>
 ): Promise<any[]> {
   const rateCards = await db.rateCardEntry.findMany({
     include: {
@@ -110,7 +110,7 @@ async function generateRateCardReport(
 
 async function generateContractReport(
   fields: string[],
-  filters: Record<string, any>
+  _filters: Record<string, any>
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
     include: {
@@ -143,7 +143,7 @@ async function generateContractReport(
 
 async function generatePerformanceReport(
   fields: string[],
-  filters: Record<string, any>
+  _filters: Record<string, any>
 ): Promise<any[]> {
   const suppliers = await db.rateCardSupplier.findMany();
 
@@ -168,7 +168,7 @@ async function generatePerformanceReport(
 
 async function generateFinancialReport(
   fields: string[],
-  filters: Record<string, any>
+  _filters: Record<string, any>
 ): Promise<any[]> {
   const contracts = await db.contract.findMany({
     include: {

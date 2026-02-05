@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
  * Basic health check endpoint
  * Returns simple status for load balancers and monitoring tools
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const health = await healthCheckService.getOverallHealth();
     

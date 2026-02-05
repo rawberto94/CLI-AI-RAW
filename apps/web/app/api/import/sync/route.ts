@@ -11,7 +11,7 @@ import {
   upsertSyncSchedule,
   deleteSyncSchedule,
   updateSyncStats,
-  type SyncSchedule,
+  type SyncSchedule as _SyncSchedule,
   type SyncRun,
 } from '@/lib/import/sync-schedule';
 import {
@@ -151,9 +151,9 @@ export async function POST(request: NextRequest) {
 
         try {
           // Build query with incremental filter if configured
-          let whereClause = '';
+          let _whereClause = '';
           if (schedule.options.incrementalField && schedule.options.lastSyncValue) {
-            whereClause = ` WHERE "${schedule.options.incrementalField}" > '${schedule.options.lastSyncValue}'`;
+            _whereClause = ` WHERE "${schedule.options.incrementalField}" > '${schedule.options.lastSyncValue}'`;
           }
 
           // Run the import

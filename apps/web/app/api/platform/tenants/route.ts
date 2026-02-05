@@ -10,7 +10,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 
 // Check if user is a platform admin
-async function isPlatformAdmin(userId: string): Promise<boolean> {
+async function _isPlatformAdmin(userId: string): Promise<boolean> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { 
@@ -33,7 +33,7 @@ async function isPlatformAdmin(userId: string): Promise<boolean> {
 }
 
 // GET - List all tenants
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await auth();
     

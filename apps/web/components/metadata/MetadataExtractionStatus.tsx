@@ -180,7 +180,7 @@ export function MetadataExtractionStatus({
 
   useEffect(() => {
     fetchStatus();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId, tenantId]);
 
   // Trigger extraction

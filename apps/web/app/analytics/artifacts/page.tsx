@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { 
   FileText, 
   DollarSign, 
-  TrendingUp, 
+  TrendingUp as _TrendingUp, 
   CheckCircle2,
   AlertTriangle,
   BarChart3,

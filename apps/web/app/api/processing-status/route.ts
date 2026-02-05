@@ -357,7 +357,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-async function getContractStatus(contractId: string) {
+async function _getContractStatus(contractId: string) {
   try {
     const contractDataPath = join(
       process.cwd(),

@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const tenantId = request.headers.get('x-tenant-id');
-    const userId = searchParams.get('userId');
+    const _userId = searchParams.get('userId');
 
     if (!tenantId) {
       return NextResponse.json(

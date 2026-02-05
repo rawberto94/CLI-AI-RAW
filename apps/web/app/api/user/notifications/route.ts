@@ -289,7 +289,7 @@ function getPriorityFromType(type: string): 'critical' | 'high' | 'medium' | 'lo
   }
 }
 
-function generateMockNotifications() {
+function _generateMockNotifications() {
   const types = ['APPROVAL_REQUEST', 'APPROVAL_COMPLETED', 'COMMENT_MENTION', 'CONTRACT_DEADLINE', 'WORKFLOW_STEP', 'SHARE_INVITE', 'SYSTEM'];
   
   const contracts = [

@@ -40,7 +40,7 @@ export function OpportunitiesList() {
 
   useEffect(() => {
     fetchOpportunities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [statusFilter, categoryFilter, sortBy]);
 
   const fetchOpportunities = async () => {

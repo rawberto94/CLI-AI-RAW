@@ -18,7 +18,7 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const _userId = session.user.id;
     const { contractId } = params;
 
     // Validate contract exists and has text - scoped to tenant

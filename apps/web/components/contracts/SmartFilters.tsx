@@ -727,7 +727,7 @@ export const SmartFilters = memo(function SmartFilters({
   className,
 }: SmartFiltersProps) {
   // Ensure filters is never undefined
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const effectiveFilters = filters ?? {};
   
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
@@ -845,7 +845,7 @@ export const SmartFilters = memo(function SmartFilters({
     }
 
     return chips;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [filters]);
 
   return (

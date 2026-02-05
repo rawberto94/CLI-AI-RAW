@@ -40,7 +40,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
 
   useEffect(() => {
     loadActivities()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId])
 
   const loadActivities = async () => {

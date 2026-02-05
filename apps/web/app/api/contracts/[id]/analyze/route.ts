@@ -10,7 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { 
   customContractAnalysis, 
-  continueConversation,
+  continueConversation as _continueConversation,
   getAnalysisTemplates,
   type AnalysisTemplate,
   type ConversationMessage,

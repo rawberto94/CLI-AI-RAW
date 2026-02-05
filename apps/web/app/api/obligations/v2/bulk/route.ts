@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import getClient from 'clients-db';
+import { prisma } from '@/lib/prisma';
 import { ObligationStatus } from '@prisma/client';
 
-const prisma = getClient();
 
 const statusMap: Record<string, ObligationStatus> = {
   pending: 'PENDING',

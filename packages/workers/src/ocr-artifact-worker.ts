@@ -36,6 +36,25 @@ import {
   getTabPriorityOrder,
 } from './contract-type-profiles';
 
+// Import OCR enhancements module
+import {
+  deskewImage,
+  postOCRValidation,
+  selectAdaptiveModel,
+  runOCREnhancementPipeline,
+  collectTrainingData,
+  analyzeCharacterConfidence,
+  getLowConfidenceRegions,
+  type OCREnhancementPipelineResult,
+  type AdaptiveModelConfig,
+} from './ocr-enhancements';
+
+// Import LLM-enhanced OCR module (Swiss data protection compliant)
+import {
+  runHybridEnhancement,
+  type HybridEnhancementResult,
+} from './ocr-llm-enhancement';
+
 import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
@@ -62,6 +81,23 @@ const WORKER_CONFIG = {
     enablePreprocessing: true,             // Enable image preprocessing before OCR
     preprocessingPreset: 'balanced' as const, // 'fast' | 'balanced' | 'quality'
     minQualityScoreForSkip: 80,            // Skip preprocessing if quality > this
+    // NEW: OCR accuracy enhancements
+    enableDeskew: true,                    // Enable automatic image deskewing
+    enableLegalSpellCheck: true,           // Enable legal dictionary spell-check
+    enableDateValidation: true,            // Validate and correct date formats
+    enableAmountValidation: true,          // Validate and correct currency amounts
+    enablePostOCRCorrection: true,         // Apply post-OCR corrections
+    enableAdaptiveModelSelection: true,    // Auto-select best model based on document
+    enableCharacterConfidenceAnalysis: true, // Analyze character-level confidence
+    collectTrainingData: true,             // Collect corrections for training
+    lowConfidenceThreshold: 0.6,           // Threshold for flagging low confidence
+    // LLM-enhanced correction (Swiss data protection compliant)
+    enableLLMCorrection: true,             // Use LLM for intelligent spell correction
+    // Data residency: 'CH' (Switzerland only), 'EU' (EU regions), 'ANY' (dev mode)
+    llmDataResidency: (process.env.NODE_ENV === 'production' ? 'CH' : 'ANY') as 'CH' | 'EU' | 'ANY',
+    llmAnonymizePII: true,                 // Anonymize PII before sending to LLM
+    llmAuditLogging: true,                 // Log all LLM operations for compliance
+    llmBlockNonCompliant: process.env.NODE_ENV === 'production', // Block in prod only
   },
   // AI Extraction Enhancement
   ai: {
@@ -513,6 +549,21 @@ async function preprocessImageForOCR(
           fit: 'inside',
         });
         stepsApplied.push(`upscale-${scale.toFixed(1)}x`);
+      }
+    }
+    
+    // Step 3b: Deskew if enabled (NEW ENHANCEMENT)
+    if (opts.enableDeskew && WORKER_CONFIG.ocr.enableDeskew) {
+      try {
+        const tempBuffer = await pipeline.toBuffer();
+        const deskewResult = await deskewImage(tempBuffer);
+        if (deskewResult.wasApplied) {
+          pipeline = sharp(deskewResult.buffer);
+          stepsApplied.push(`deskew-${deskewResult.angle.toFixed(1)}deg`);
+          logger.info({ angle: deskewResult.angle, confidence: deskewResult.confidence }, 'Deskew applied');
+        }
+      } catch (deskewError) {
+        logger.warn({ error: deskewError }, 'Deskew failed, continuing without');
       }
     }
     
@@ -1354,22 +1405,125 @@ export async function processOCRArtifactJob(
     const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
     const rawExtractedText = await performOCR(localFilePath, ocrMode);
     
+    // ============ OCR ENHANCEMENT PIPELINE (NEW) ============
+    // Apply post-OCR corrections, validation, and quality improvements
+    let enhancedText = rawExtractedText;
+    let ocrEnhancementResult: OCREnhancementPipelineResult | null = null;
+    let adaptiveConfig: AdaptiveModelConfig | null = null;
+    
+    if (WORKER_CONFIG.ocr.enablePostOCRCorrection && rawExtractedText.length > 0) {
+      try {
+        jobLogger.info('Running OCR enhancement pipeline...');
+        await publishJobProgress(job.id || '', contractId, tenantId, 30, 'ocr-enhancement', 'Enhancing OCR accuracy');
+        
+        // Run the full enhancement pipeline
+        const enhancementResult = await runOCREnhancementPipeline(
+          Buffer.alloc(0), // Image buffer not needed for text-only enhancements
+          rawExtractedText,
+          {
+            enableDeskew: false, // Already done in preprocessing
+            enableSpellCheck: WORKER_CONFIG.ocr.enableLegalSpellCheck,
+            enableDateValidation: WORKER_CONFIG.ocr.enableDateValidation,
+            enableAmountValidation: WORKER_CONFIG.ocr.enableAmountValidation,
+            enableAdaptiveModel: WORKER_CONFIG.ocr.enableAdaptiveModelSelection,
+            collectTrainingData: WORKER_CONFIG.ocr.collectTrainingData,
+            tenantId,
+            contractId,
+            ocrProvider: ocrMode,
+          }
+        );
+        
+        enhancedText = enhancementResult.enhancedText;
+        ocrEnhancementResult = enhancementResult;
+        adaptiveConfig = enhancementResult.preprocessing.adaptiveConfig || null;
+        
+        jobLogger.info({
+          correctionsApplied: enhancementResult.validation.metrics.totalCorrections,
+          spellingCorrections: enhancementResult.validation.metrics.spellingCorrections,
+          dateCorrections: enhancementResult.validation.metrics.dateCorrections,
+          amountCorrections: enhancementResult.validation.metrics.amountCorrections,
+          confidenceImprovement: enhancementResult.validation.metrics.confidenceImprovement.toFixed(2),
+          lowConfidenceRegions: enhancementResult.lowConfidenceRegions?.length || 0,
+        }, 'OCR enhancement pipeline completed');
+        
+        // Flag low-confidence regions for human review
+        if (enhancementResult.lowConfidenceRegions && enhancementResult.lowConfidenceRegions.length > 5) {
+          jobLogger.warn({
+            regionCount: enhancementResult.lowConfidenceRegions.length,
+          }, 'Multiple low-confidence regions detected - document may need human review');
+        }
+      } catch (enhancementError) {
+        jobLogger.warn({ error: enhancementError }, 'OCR enhancement failed, using raw text');
+        enhancedText = rawExtractedText;
+      }
+    }
+    
+    // ============ LLM ENHANCEMENT (Swiss Data Protection Compliant) ============
+    // Use AI for intelligent spell correction with data residency compliance
+    let llmEnhancementResult: HybridEnhancementResult | null = null;
+    
+    if (WORKER_CONFIG.ocr.enableLLMCorrection && enhancedText.length > 100) {
+      try {
+        jobLogger.info({
+          dataResidency: WORKER_CONFIG.ocr.llmDataResidency,
+          anonymizePII: WORKER_CONFIG.ocr.llmAnonymizePII,
+        }, 'Running LLM-enhanced spell correction (Swiss compliant)...');
+        
+        await publishJobProgress(job.id || '', contractId, tenantId, 35, 'llm-enhancement', 'AI spell correction (Swiss compliant)');
+        
+        llmEnhancementResult = await runHybridEnhancement(enhancedText, {
+          enableLLMCorrection: true,
+          enableLocalCorrection: false, // Already done above
+          dataProtection: {
+            dataResidencyRegion: WORKER_CONFIG.ocr.llmDataResidency,
+            anonymizePII: WORKER_CONFIG.ocr.llmAnonymizePII,
+            auditLogging: WORKER_CONFIG.ocr.llmAuditLogging,
+            blockNonCompliant: WORKER_CONFIG.ocr.llmBlockNonCompliant,
+            tenantId,
+            contractId,
+          },
+          focusAreas: ['legal', 'financial', 'general'],
+          tenantId,
+          contractId,
+        });
+        
+        if (llmEnhancementResult.totalCorrections > 0) {
+          enhancedText = llmEnhancementResult.enhancedText;
+          
+          jobLogger.info({
+            llmCorrections: llmEnhancementResult.llmResult?.corrections.length || 0,
+            provider: llmEnhancementResult.llmResult?.provider || 'none',
+            piiProtected: llmEnhancementResult.dataProtection.piiProtected,
+            region: llmEnhancementResult.dataProtection.region,
+            processingTimeMs: llmEnhancementResult.processingTimeMs,
+          }, 'LLM enhancement completed (Swiss compliant)');
+        } else {
+          jobLogger.info({
+            llmUsed: llmEnhancementResult.dataProtection.llmUsed,
+            region: llmEnhancementResult.dataProtection.region,
+          }, 'LLM enhancement found no corrections needed');
+        }
+      } catch (llmError) {
+        jobLogger.warn({ error: llmError }, 'LLM enhancement failed, continuing with local enhancements only');
+      }
+    }
+    
     // Initialize quality metrics
     qualityMetrics = {
       contractId,
       startTime: Date.now(),
-      textLength: rawExtractedText.length,
+      textLength: enhancedText.length,
       artifactsGenerated: 0,
       failedArtifacts: [],
-      textConfidence: 0.5,
+      textConfidence: ocrEnhancementResult?.validation.confidence || 0.5,
       tablesDetected: 0,
       financialIndicators: { hasCurrency: false, currencies: [], hasPercentages: false, hasPaymentTerms: false, estimatedTotalValue: null, confidence: 0.5 },
       errors: [],
       warnings: [],
     };
     
-    // 3.1 Preprocess the extracted text
-    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(rawExtractedText);
+    // 3.1 Preprocess the extracted text (use enhanced text)
+    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(enhancedText);
     qualityMetrics.textLength = extractedText.length;
     qualityMetrics.textConfidence = textMetrics.confidenceScore;
     qualityMetrics.tablesDetected = textMetrics.tablesDetected;
@@ -1384,12 +1538,21 @@ export async function processOCRArtifactJob(
     jobLogger.info({ 
       ocrMode, 
       rawTextLength: rawExtractedText.length,
+      enhancedTextLength: enhancedText.length,
       cleanedTextLength: extractedText.length, 
       tablesDetected: textMetrics.tablesDetected,
       textConfidence: textMetrics.confidenceScore,
       hasCurrency: financialIndicators.hasCurrency,
       currencies: financialIndicators.currencies,
       hasRateTables: rateTableInfo.hasRateTables,
+      ocrEnhancements: ocrEnhancementResult ? {
+        totalCorrections: ocrEnhancementResult.validation.metrics.totalCorrections,
+        spellingCorrections: ocrEnhancementResult.validation.metrics.spellingCorrections,
+        dateCorrections: ocrEnhancementResult.validation.metrics.dateCorrections,
+        amountCorrections: ocrEnhancementResult.validation.metrics.amountCorrections,
+        lowConfidenceRegions: ocrEnhancementResult.lowConfidenceRegions?.length || 0,
+        confidence: ocrEnhancementResult.validation.confidence,
+      } : null,
     }, 'OCR extraction and preprocessing completed');
 
     // Save extracted text to contract's rawText field for AI processing

@@ -41,7 +41,7 @@ function calculateEstimatedTimeRemaining(
   let remainingMs = 0;
   
   // Add time for remaining stages
-  for (const [stage, info] of Object.entries(PROCESSING_STAGES)) {
+  for (const [_stage, info] of Object.entries(PROCESSING_STAGES)) {
     if (info.order > stageInfo.order) {
       remainingMs += info.estimatedMs;
     }

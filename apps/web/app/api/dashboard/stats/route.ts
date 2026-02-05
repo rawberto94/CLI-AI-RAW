@@ -13,7 +13,7 @@ import { getServerTenantId } from "@/lib/tenant-server";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const startTime = Date.now();
   
   try {

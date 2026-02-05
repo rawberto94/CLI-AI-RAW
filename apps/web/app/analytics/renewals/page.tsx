@@ -74,7 +74,7 @@ export default function RenewalRadarPage() {
       link.download = `renewal-radar-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Renewal data exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };

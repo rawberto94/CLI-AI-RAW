@@ -144,7 +144,7 @@ export function WelcomeTutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
-  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [dontShowAgain, _setDontShowAgain] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const router = useRouter();
 

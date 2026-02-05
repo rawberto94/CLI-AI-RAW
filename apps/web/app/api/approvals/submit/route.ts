@@ -215,7 +215,7 @@ export async function POST(request: NextRequest) {
         documentRole: contract.documentRole,
         metadata: contract.metadata,
       });
-      const effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
+      const _effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
 
       // Check for existing active approval workflow
       const existingWorkflow = await prisma.workflowExecution.findFirst({

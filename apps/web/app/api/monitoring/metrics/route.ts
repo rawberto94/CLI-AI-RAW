@@ -5,7 +5,7 @@ import { monitoringService } from 'data-orchestration/services';
  * GET /api/monitoring/metrics
  * Returns current system metrics
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const systemMetrics = monitoringService.getSystemMetrics();
     const performanceMetrics = monitoringService.getPerformanceMetrics();

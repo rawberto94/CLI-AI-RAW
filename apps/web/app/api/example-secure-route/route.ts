@@ -5,7 +5,7 @@
  * with validation, sanitization, rate limiting, and security headers
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest as _NextRequest, NextResponse } from 'next/server';
 import { withSecurity, AuthenticatedEndpointSecurity } from '@/lib/middleware/security.middleware';
 import { z } from 'zod';
 
@@ -150,7 +150,7 @@ export const PUT = withSecurity(
  */
 export const DELETE = withSecurity(
   async (request, data) => {
-    const { tenantId } = data.validated!.query;
+    const { tenantId: _tenantId } = data.validated!.query;
 
     // Simulate deleting item
     return NextResponse.json({

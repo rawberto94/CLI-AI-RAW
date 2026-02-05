@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, nodeId, targetId, relationshipType } = body;
+    const { action, nodeId, targetId, relationshipType: _relationshipType } = body;
 
     if (action === 'explore') {
       // Get node and its immediate connections
@@ -110,7 +110,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }

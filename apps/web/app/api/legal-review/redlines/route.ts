@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     const { 
       originalText,
       proposedText,
-      playbookId,
+      playbookId: _playbookId,
       includeRiskAssessment = true,
     } = body;
 

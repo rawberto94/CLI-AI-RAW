@@ -28,7 +28,7 @@ export const STANDARD_DEPARTMENTS = [
 /**
  * GET /api/admin/departments - List all departments
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     
@@ -55,13 +55,26 @@ export async function GET(request: NextRequest) {
     
     const userCountMap = new Map(usersByDepartment.map(u => [u.departmentId, u._count]));
     
+    // Get contract counts by department (through user assignments)
+    const contractsByDepartment = await prisma.$queryRaw<Array<{ departmentId: string; count: bigint }>>`
+      SELECT ud."departmentId", COUNT(DISTINCT c.id)::bigint as count
+      FROM "UserDepartment" ud
+      JOIN "Contract" c ON c."ownerId" = ud."userId" OR c."tenantId" = ${session.user.tenantId}
+      WHERE ud."departmentId" IS NOT NULL
+      GROUP BY ud."departmentId"
+    `.catch(() => []);
+    
+    const contractCountMap = new Map(
+      (contractsByDepartment || []).map(c => [c.departmentId, Number(c.count)])
+    );
+    
     // Merge standard and custom departments
     const departments = [
       ...STANDARD_DEPARTMENTS.map(sd => ({
         ...sd,
         isCustom: false,
         userCount: userCountMap.get(sd.id) || 0,
-        contractCount: 0, // TODO: count contracts by department
+        contractCount: contractCountMap.get(sd.id) || 0,
       })),
       ...customDepartments.map(cd => ({
         id: cd.id,
@@ -70,7 +83,7 @@ export async function GET(request: NextRequest) {
         icon: cd.icon,
         isCustom: true,
         userCount: cd._count.members,
-        contractCount: 0, // TODO: count contracts by department
+        contractCount: contractCountMap.get(cd.id) || 0,
       })),
     ];
     

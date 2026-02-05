@@ -162,7 +162,7 @@ export function FileBrowser({
       return <Folder className="w-5 h-5 text-violet-500" />;
     }
     if (file.mimeType?.startsWith("image/")) {
-      return <Image className="w-5 h-5 text-green-500" />;
+      return <Image className="w-5 h-5 text-green-500" aria-label="Image file" />;
     }
     if (file.mimeType?.includes("pdf") || file.mimeType?.includes("document")) {
       return <FileText className="w-5 h-5 text-red-500" />;

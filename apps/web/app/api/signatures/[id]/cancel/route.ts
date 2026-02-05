@@ -6,7 +6,7 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const workflowId = params.id;
+    const _workflowId = params.id;
 
     // Mock response
     return NextResponse.json({

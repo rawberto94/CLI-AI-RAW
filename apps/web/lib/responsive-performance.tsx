@@ -164,7 +164,7 @@ export const ProgressiveImage = memo(function ProgressiveImage({
     >
       {/* Placeholder */}
       {placeholder && !loaded && (
-        /* eslint-disable-next-line @next/next/no-img-element */
+        
         <img
           src={placeholder}
           alt=""
@@ -174,7 +174,7 @@ export const ProgressiveImage = memo(function ProgressiveImage({
       )}
 
       {/* Main image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {}
       <img
         ref={imgRef}
         src={optimizedSrc}

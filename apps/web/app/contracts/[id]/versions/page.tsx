@@ -6,7 +6,7 @@ import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionC
 import { VersionTimeline, ContractVersion } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs as _Tabs, TabsContent as _TabsContent, TabsList as _TabsList, TabsTrigger as _TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles, GitCompare, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -95,7 +95,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     });
   };
 
-  const handleMergeVersions = (leftId: string, rightId: string) => {
+  const handleMergeVersions = (_leftId: string, _rightId: string) => {
     toast.info('Merge initiated', {
       description: 'Opening merge editor to combine versions...',
     });
@@ -236,7 +236,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
               onRevert={(versionId) => {
                 toast.info('Reverting...', { description: `Reverting to version ${versionId}` });
               }}
-              onView={(versionId) => {
+              onView={(_versionId) => {
                 setViewMode('compare');
               }}
               onCreateSnapshot={() => {

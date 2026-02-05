@@ -819,7 +819,7 @@ function ReviewStep({
 function TermsStep({ 
   draft, 
   onUpdate, 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   original 
 }: { 
   draft: RenewalDraft; 
@@ -1138,7 +1138,7 @@ interface LibraryClause {
 function ContentStep({ 
   draft, 
   onUpdate,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   original,
 }: { 
   draft: RenewalDraft; 

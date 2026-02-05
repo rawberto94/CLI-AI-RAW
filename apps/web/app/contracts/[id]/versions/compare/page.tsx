@@ -13,10 +13,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { format, formatDistanceToNow } from 'date-fns'
 import {
   ArrowLeft,
-  ArrowRight,
+  ArrowRight as _ArrowRight,
   GitCompare,
   History,
-  ChevronDown,
+  ChevronDown as _ChevronDown,
   FileText,
   User,
   Clock,
@@ -26,12 +26,12 @@ import {
   AlertCircle,
   Loader2,
   RefreshCw,
-  Download,
+  Download as _Download,
   Copy,
   Check,
   ArrowLeftRight,
-  Eye,
-  EyeOff,
+  Eye as _Eye,
+  EyeOff as _EyeOff,
   Maximize2,
   Minimize2,
 } from 'lucide-react'

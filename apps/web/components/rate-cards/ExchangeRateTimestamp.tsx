@@ -23,7 +23,7 @@ export function ExchangeRateTimestamp({
 
   useEffect(() => {
     fetchExchangeRate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [fromCurrency, toCurrency]);
 
   const fetchExchangeRate = async () => {

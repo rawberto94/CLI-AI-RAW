@@ -133,7 +133,7 @@ async function getInsights(tenantId: string, limit = 10) {
   for (const artifact of riskArtifacts) {
     const artifactData = artifact.data as { risks?: Array<{ title?: string; description?: string; severity?: string }> };
     const risks = artifactData?.risks || [];
-    const contractTitle = artifact.contract?.contractTitle || artifact.contract?.fileName || 'Unknown Contract';
+    const _contractTitle = artifact.contract?.contractTitle || artifact.contract?.fileName || 'Unknown Contract';
     for (const risk of risks.slice(0, 2)) {
       insights.push({
         id: `risk-${artifact.id}-${Math.random().toString(36).slice(2, 8)}`,
@@ -287,7 +287,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }

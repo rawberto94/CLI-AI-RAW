@@ -74,7 +74,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, connectionId, tenantId, userId } = body;
+    const { action, connectionId, tenantId: _tenantId, userId: _userId } = body;
 
     switch (action) {
       case 'cleanup':
@@ -292,7 +292,7 @@ function disconnectConnection(connectionId: string) {
 
   try {
     connection.controller.close();
-  } catch (error) {
+  } catch (_error) {
     // Controller might already be closed
   }
 

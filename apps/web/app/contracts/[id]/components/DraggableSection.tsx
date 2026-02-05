@@ -1,11 +1,11 @@
 'use client'
 
 import React, { memo, useState, useCallback, useRef } from 'react'
-import { motion, Reorder, useDragControls } from 'framer-motion'
+import { motion as _motion, Reorder, useDragControls as _useDragControls } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { GripVertical, ChevronUp, ChevronDown, X, Plus } from 'lucide-react'
+import { GripVertical, ChevronUp, ChevronDown, X, Plus as _Plus } from 'lucide-react'
 
 interface DraggableItem {
   id: string

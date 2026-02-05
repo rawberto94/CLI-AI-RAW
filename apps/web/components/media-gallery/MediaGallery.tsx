@@ -437,7 +437,6 @@ export function ImageCompare({
       onTouchMove={handleTouchMove}
     >
       {/* After image (background) */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={afterImage} alt={afterLabel} className="w-full h-full object-cover" />
       
       {/* Before image (clipped) */}
@@ -445,7 +444,6 @@ export function ImageCompare({
         className="absolute inset-0 overflow-hidden"
         style={{ clipPath: `inset(0 ${100 - position}% 0 0)` }}
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={beforeImage} alt={beforeLabel} className="w-full h-full object-cover" />
       </div>
 

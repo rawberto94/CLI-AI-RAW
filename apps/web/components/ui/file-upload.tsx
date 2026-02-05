@@ -8,7 +8,7 @@
  * Next.js Image component doesn't support blob: URLs properly.
  */
 
-/* eslint-disable @next/next/no-img-element */
+
 
 import React, { useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';

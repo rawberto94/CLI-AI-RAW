@@ -337,7 +337,7 @@ export function MessageBubble({
   return (
     <div className={`flex gap-2 ${isUser ? 'flex-row-reverse' : ''} ${className}`}>
       {avatar && (
-        // eslint-disable-next-line @next/next/no-img-element
+        
         <img src={avatar} alt={`${name}'s avatar`} className="w-8 h-8 rounded-full shrink-0" />
       )}
       <div className={`max-w-[70%] ${isUser ? 'items-end' : 'items-start'}`}>

@@ -67,7 +67,7 @@ export function EnhancedDashboard() {
 
   useEffect(() => {
     fetchMetrics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [timeframe]);
 
   const fetchMetrics = async () => {

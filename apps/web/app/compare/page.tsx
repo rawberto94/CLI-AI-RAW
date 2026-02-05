@@ -31,41 +31,41 @@ import {
   X,
   FileText,
   DollarSign,
-  Calendar,
-  Clock,
+  Calendar as _Calendar,
+  Clock as _Clock,
   AlertTriangle,
-  CheckCircle,
-  RefreshCw,
+  CheckCircle as _CheckCircle,
+  RefreshCw as _RefreshCw,
   Download,
-  ChevronDown,
-  ChevronUp,
+  ChevronDown as _ChevronDown,
+  ChevronUp as _ChevronUp,
   Building2,
   Scale,
   Shield,
   TrendingUp,
-  TrendingDown,
-  Minus,
-  Info,
+  TrendingDown as _TrendingDown,
+  Minus as _Minus,
+  Info as _Info,
   Loader2,
-  ExternalLink,
+  ExternalLink as _ExternalLink,
   Plus,
   Filter,
   Sparkles,
   Brain,
-  Target,
+  Target as _Target,
   Activity,
   BarChart3,
-  PieChart,
+  PieChart as _PieChart,
   Percent,
   Zap,
-  Award,
+  Award as _Award,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Progress } from "@/components/ui/progress";
+import { Progress as _Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -88,13 +88,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
+  Collapsible as _Collapsible,
+  CollapsibleContent as _CollapsibleContent,
+  CollapsibleTrigger as _CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Checkbox } from "@/components/ui/checkbox";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence as _AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
@@ -295,7 +295,7 @@ const formatCurrency = (value: number, currency: string = "USD") => {
   }).format(value);
 };
 
-const formatDate = (dateStr: string | null) => {
+const _formatDate = (dateStr: string | null) => {
   if (!dateStr) return "N/A";
   return new Date(dateStr).toLocaleDateString("en-US", {
     year: "numeric",
@@ -496,11 +496,11 @@ function ContractGroupSelector({
 }
 
 // Comparison Field Row (updated for group comparison)
-function ComparisonRow({
+function _ComparisonRow({
   label,
   value1,
   value2,
-  icon: Icon,
+  icon: _Icon,
   highlight,
   advantage,
 }: {
@@ -535,8 +535,8 @@ function ComparisonRow({
 }
 
 export default function ContractComparisonPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const _router = useRouter();
+  const _searchParams = useSearchParams();
   
   // State - Multi-contract selection
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -554,7 +554,7 @@ export default function ContractComparisonPage() {
   
   const [comparison, setComparison] = useState<GroupComparisonResult | null>(null);
   const [isComparing, setIsComparing] = useState(false);
-  const [expandedSections, setExpandedSections] = useState({
+  const [_expandedSections, _setExpandedSections] = useState({
     overview: true,
     financial: true,
     contracts: true,
@@ -871,8 +871,8 @@ export default function ContractComparisonPage() {
     return analysis;
   };
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
+  const _toggleSection = (section: keyof typeof _expandedSections) => {
+    _setExpandedSections((prev) => ({ ...prev, [section]: !prev[section] }));
   };
 
   const swapGroups = () => {

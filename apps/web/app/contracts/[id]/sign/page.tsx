@@ -7,7 +7,7 @@ import {
   Clock,
   FileText,
   User,
-  Mail,
+  Mail as _Mail,
   Send,
   Pen,
   Archive,
@@ -18,10 +18,10 @@ import {
   Trash2,
   Loader2,
   Building2,
-  Calendar,
+  Calendar as _Calendar,
   AlertCircle,
-  ExternalLink,
-  Copy,
+  ExternalLink as _ExternalLink,
+  Copy as _Copy,
   Check,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -296,7 +296,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
     toast.success('Signer removed');
   };
 
-  const handleResendInvite = (signerId: string) => {
+  const handleResendInvite = (_signerId: string) => {
     toast.success('Invitation resent');
   };
 

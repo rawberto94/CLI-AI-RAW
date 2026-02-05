@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback as _useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Building2, 
   Users, 
-  Settings, 
-  Shield, 
+  Settings as _Settings, 
+  Shield as _Shield, 
   Mail, 
-  Plus, 
+  Plus as _Plus, 
   Trash2, 
   UserPlus,
   Crown,

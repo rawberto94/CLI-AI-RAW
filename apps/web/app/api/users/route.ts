@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
         }),
         source: 'database',
       });
-    } catch (dbError) {
+    } catch (_dbError) {
       // Database query failed - return error, not mock data
       return NextResponse.json(
         { success: false, error: 'Database connection failed' },

@@ -23,7 +23,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
+import { Switch as _Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Building2,
@@ -85,7 +85,7 @@ const CONTRACT_TYPES = [
 
 export function DepartmentManagement() {
   const [departments, setDepartments] = useState<Department[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
@@ -105,7 +105,7 @@ export function DepartmentManagement() {
         const data = await response.json();
         setDepartments(data.departments);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to fetch departments');
     } finally {
       setLoading(false);
@@ -125,8 +125,8 @@ export function DepartmentManagement() {
           departments: u.departments || [],
         })));
       }
-    } catch (error) {
-      console.error('Failed to fetch users');
+    } catch (_error) {
+      console.warn('Failed to fetch users');
     }
   };
 

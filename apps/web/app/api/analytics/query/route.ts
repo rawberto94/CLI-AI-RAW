@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
     const query = searchParams.get('query');
-    const sessionId = searchParams.get('sessionId');
+    const _sessionId = searchParams.get('sessionId');
 
     const nlqEngine = analyticalIntelligenceService.getNLQEngine();
 

@@ -87,7 +87,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
 
   useEffect(() => {
     loadNegotiationBrief();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [rateCardId]);
 
   const loadNegotiationBrief = async () => {

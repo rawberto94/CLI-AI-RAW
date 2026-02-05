@@ -88,7 +88,7 @@ interface RedlineViewerProps {
 // ============================================================================
 
 export function RedlineViewer({
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   contractId,
   review,
   onAcceptChange,

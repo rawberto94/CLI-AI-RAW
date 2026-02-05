@@ -12,7 +12,7 @@ const segmentService = new segmentManagementService(prisma);
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
   try {
-    const body = await request.json();
+    const _body = await request.json();
     
     // Get authenticated user from session
     const session = await getServerSession();

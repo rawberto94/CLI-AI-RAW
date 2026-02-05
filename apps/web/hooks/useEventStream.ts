@@ -358,7 +358,7 @@ export function useEventStream(options: UseEventStreamOptions = {}) {
       
       isConnectingRef.current = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []); // Only run once on mount
 
   return {

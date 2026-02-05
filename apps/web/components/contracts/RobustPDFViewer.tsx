@@ -524,7 +524,7 @@ export function RobustPDFViewer({
                     >
                       <div className="relative bg-white rounded shadow-sm overflow-hidden">
                         {thumb.dataUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
+                          
                           <img
                             src={thumb.dataUrl}
                             alt={`Page ${thumb.pageNum}`}
@@ -804,7 +804,7 @@ export function RobustPDFViewer({
                   >
                     <div className="relative bg-white rounded shadow-sm overflow-hidden">
                       {thumb.dataUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
+                        
                         <img
                           src={thumb.dataUrl}
                           alt={`Page ${thumb.pageNum}`}

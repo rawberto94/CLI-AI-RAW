@@ -59,7 +59,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, category, potentialSavings, probability, timeToRealize } = body;
+    const { title, category, potentialSavings, probability, timeToRealize: _timeToRealize } = body;
     
     // For now, this only works with real data
     // Mock mode would just return the input as confirmation

@@ -5,16 +5,16 @@ import {
   Database,
   Plus,
   Check,
-  X,
+  X as _X,
   AlertCircle,
   Loader2,
   RefreshCw,
   Settings,
   Link2,
-  Unlink,
-  FileText,
+  Unlink as _Unlink,
+  FileText as _FileText,
   Cloud,
-  Server,
+  Server as _Server,
   Shield,
   Eye,
   EyeOff,
@@ -23,9 +23,9 @@ import {
   TestTube,
   ChevronRight,
   Download,
-  Upload,
-  ExternalLink,
-  Zap,
+  Upload as _Upload,
+  ExternalLink as _ExternalLink,
+  Zap as _Zap,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -219,7 +219,7 @@ export default function DataConnectionsPage() {
         success: data.success,
         message: data.message || (data.success ? 'Connection successful!' : 'Connection failed'),
       });
-    } catch (err) {
+    } catch (_err) {
       setTestResult({
         success: false,
         message: 'Failed to test connection',
@@ -278,7 +278,7 @@ export default function DataConnectionsPage() {
           c.id === connectionId ? { ...c, status: 'connected', lastSync: new Date().toISOString(), contractCount: data.contractCount } : c
         ));
       }
-    } catch (err) {
+    } catch (_err) {
       setConnections(prev => prev.map(c => 
         c.id === connectionId ? { ...c, status: 'error' } : c
       ));

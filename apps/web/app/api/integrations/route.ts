@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
           message: 'Integration created',
           data: integration,
         });
-      } catch (dbError) {
+      } catch (_dbError) {
         return NextResponse.json({
           success: true,
           message: 'Integration created (mock)',
@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
           message: 'Integration connected',
           data: integration,
         });
-      } catch (dbError) {
+      } catch (_dbError) {
         return NextResponse.json({
           success: true,
           message: 'Integration connected',
@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
           message: 'Integration disconnected',
           data: integration,
         });
-      } catch (dbError) {
+      } catch (_dbError) {
         return NextResponse.json({
           success: true,
           message: 'Integration disconnected',
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
             startedAt: syncLog.startedAt,
           },
         });
-      } catch (dbError) {
+      } catch (_dbError) {
         return NextResponse.json({
           success: true,
           message: 'Sync initiated',
@@ -245,7 +245,7 @@ export async function POST(request: NextRequest) {
           message: 'Configuration updated',
           data: integration,
         });
-      } catch (dbError) {
+      } catch (_dbError) {
         return NextResponse.json({
           success: true,
           message: 'Configuration updated',
@@ -262,7 +262,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }
@@ -311,7 +311,7 @@ export async function DELETE(request: NextRequest) {
       success: true,
       message: 'Integration deleted',
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json({
       success: true,
       message: 'Integration deleted (mock)',

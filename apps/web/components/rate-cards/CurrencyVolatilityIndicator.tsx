@@ -28,7 +28,7 @@ export function CurrencyVolatilityIndicator({
 
   useEffect(() => {
     fetchVolatility();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [currency, baseCurrency]);
 
   const fetchVolatility = async () => {

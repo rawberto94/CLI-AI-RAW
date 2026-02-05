@@ -144,7 +144,7 @@ export function LazyImage({
   return (
     <div ref={imgRef} className={className} style={{ width, height }}>
       {isVisible ? (
-        /* eslint-disable-next-line @next/next/no-img-element */
+        
         <img
           src={src}
           alt={alt}
@@ -190,7 +190,7 @@ export function ResponsiveImage({
           style={{ width, height }}
         />
       )}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {}
       <img
         src={src}
         srcSet={srcSet}

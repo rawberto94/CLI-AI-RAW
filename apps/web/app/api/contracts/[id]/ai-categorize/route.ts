@@ -153,7 +153,7 @@ export async function POST(
         const shouldApply = autoApply && (result.overallConfidence / 100) >= autoApplyThreshold;
 
         if (shouldApply) {
-          const riskScoreMap: Record<string, number> = {
+          const _riskScoreMap: Record<string, number> = {
             LOW: 20, MEDIUM: 50, HIGH: 75, CRITICAL: 95,
           };
 

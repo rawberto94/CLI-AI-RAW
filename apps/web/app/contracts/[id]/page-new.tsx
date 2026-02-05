@@ -15,9 +15,9 @@ import {
   Shield,
   FileCheck,
   TrendingUp,
-  Download,
-  Edit,
-  MoreVertical,
+  Download as _Download,
+  Edit as _Edit,
+  MoreVertical as _MoreVertical,
   Sparkles,
   Clock,
   Calendar,
@@ -52,13 +52,13 @@ interface ContractData {
 
 export default function ContractDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const _router = useRouter()
   const searchParams = useSearchParams()
   const { dataMode } = useDataMode()
   const [contract, setContract] = useState<ContractData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
+  const [activeTab, _setActiveTab] = useState(searchParams.get('tab') || 'overview')
 
   const loadContract = useCallback(async () => {
     setLoading(true)

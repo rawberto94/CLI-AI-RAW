@@ -4519,5 +4519,6 @@ export function getContractTypeInsights(type: ContractType): {
     }
   };
   
-  return insights[type] || insights.OTHER;
+  const result = insights[type] || insights.OTHER;
+  return result!;
 }

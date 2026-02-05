@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Mock user for now - in production, get from session
     const mockTenantId = 'tenant-1';

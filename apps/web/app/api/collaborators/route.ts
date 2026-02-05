@@ -217,8 +217,26 @@ export async function POST(request: NextRequest) {
       requestId: request.headers.get('x-request-id') || undefined,
     });
     
-    // TODO: Send invitation email
-    // await sendCollaboratorInvitation(collaborator, accessToken, message);
+    // Send invitation email to collaborator
+    try {
+      const { sendEmail } = await import('@/lib/email/email-service');
+      const accessLink = `${process.env.NEXT_PUBLIC_APP_URL}/collaborate/${accessToken}`;
+      await sendEmail({
+        to: email,
+        subject: 'You\'ve been invited to review contracts on ConTigo',
+        html: `
+          <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Contract Access Invitation</h2>
+            <p>You've been invited as an external collaborator to review contracts.</p>
+            ${_message ? `<p style="background: #f5f5f5; padding: 12px; border-radius: 6px;">${_message}</p>` : ''}
+            <p><a href="${accessLink}" style="display: inline-block; background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Access Contracts</a></p>
+            <p style="color: #666; font-size: 14px;">This link is valid for your assigned access period.</p>
+          </div>
+        `,
+      });
+    } catch (emailErr) {
+      console.warn('Failed to send collaborator invitation email:', emailErr);
+    }
     
     return NextResponse.json({ 
       success: true, 

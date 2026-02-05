@@ -15,7 +15,7 @@
  * are defined for future use and are intentionally preserved.
  */
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 
 "use client";
 
@@ -1183,7 +1183,7 @@ export default function ContractsPage() {
   const crossModule = useCrossModuleInvalidation();
   const queryClient = useQueryClient();
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const contracts: Contract[] = contractsData?.contracts || [];
   
   // Fetch categories for filter
@@ -1328,7 +1328,7 @@ export default function ContractsPage() {
         return new Set(visibleIds);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   // Bulk operations

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Zap, Settings, Play, Repeat } from 'lucide-react';
+import { Zap, Settings, Play as _Play, Repeat } from 'lucide-react';
 
 export default function AutomationLoading() {
   return (

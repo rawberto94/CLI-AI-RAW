@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
  * POST /api/monitoring/alerts/check
  * Manually trigger threshold checks
  */
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     const newAlerts = await alertingService.checkThresholds();
 

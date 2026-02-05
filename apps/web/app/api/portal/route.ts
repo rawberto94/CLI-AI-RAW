@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: portalData,
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Failed to fetch portal data' },
       { status: 500 }
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, contractId, taskId, message, document } = body;
+    const { action, contractId, taskId, message: _message, document: _document } = body;
 
     if (action === 'sign') {
       return NextResponse.json({
@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname as _usePathname } from 'next/navigation';
 
 /**
  * Skip to main content link for keyboard navigation accessibility.

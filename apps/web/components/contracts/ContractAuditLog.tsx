@@ -123,7 +123,7 @@ export function ContractAuditLog({
   // Fetch logs
   useEffect(() => {
     fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId, categoryFilter, actionFilter, timeRange]);
 
   const fetchLogs = async () => {

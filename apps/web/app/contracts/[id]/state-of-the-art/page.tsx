@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArtifactEditor } from '@/components/contracts/ArtifactEditor';
+import { ArtifactEditor as _ArtifactEditor } from '@/components/contracts/ArtifactEditor';
 import { EnhancedArtifactEditor } from '@/components/contracts/EnhancedArtifactEditor';
 import { RateCardEditor } from '@/components/contracts/RateCardEditor';
 import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor';
@@ -16,8 +16,8 @@ import { VersionHistoryPanel } from '@/components/contracts/VersionHistoryPanel'
 import { AIAnalysisPanel } from '@/components/contracts/AIAnalysisPanel';
 import { 
   FileText, DollarSign, TrendingUp, AlertCircle, CheckCircle2,
-  RefreshCw, Download, Edit, History, Tags, ChevronLeft,
-  Sparkles, Zap, Target, Clock, Users, Shield, MessageSquare
+  RefreshCw as _RefreshCw, Download, Edit, History, Tags, ChevronLeft,
+  Sparkles, Zap, Target, Clock, Users as _Users, Shield as _Shield, MessageSquare
 } from 'lucide-react';
 
 import { ArtifactViewer } from '@/components/contracts/ArtifactViewer';
@@ -49,7 +49,7 @@ export default function StateOfTheArtContractPage() {
 
   useEffect(() => {
     loadContractData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadContractData = async () => {
@@ -70,7 +70,7 @@ export default function StateOfTheArtContractPage() {
     }
   };
 
-  const handleArtifactSave = async (artifactId: string, updates: any) => {
+  const _handleArtifactSave = async (artifactId: string, updates: any) => {
     try {
       const response = await fetch(`/api/contracts/${contractId}/artifacts/${artifactId}`, {
         method: 'PUT',
@@ -496,7 +496,7 @@ export default function StateOfTheArtContractPage() {
                       contractId={contractId}
                       contractName={contract.name}
                       className="h-[600px]"
-                      onAnalysisComplete={(result) => {
+                      onAnalysisComplete={(_result) => {
                         // Analysis completed successfully
                       }}
                     />

@@ -10,7 +10,9 @@
  * - Performance timing
  */
 
-export const runtime = 'nodejs'; // Force nodejs runtime for middleware
+// Note: Using nodejs runtime requires Next.js experimental feature
+// For dev mode, this is handled by Next.js turbopack
+export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";

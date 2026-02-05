@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { parallelArtifactGeneratorService } from 'data-orchestration/services';
+import { parallelArtifactGeneratorService as _parallelArtifactGeneratorService } from 'data-orchestration/services';
 import { confidenceScoringService } from 'data-orchestration/services';
 import { artifactVersioningService } from 'data-orchestration/services';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';

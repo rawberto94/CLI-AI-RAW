@@ -144,7 +144,7 @@ function TreeNode({
   const FileIcon = node.type === 'file' ? getFileIcon(node.name) : null;
 
   return (
-    <div role="treeitem" aria-expanded={isExpanded}>
+    <div role="treeitem" aria-expanded={isExpanded} aria-selected={isSelected}>
       <div
         onClick={() => {
           if (hasChildren) {

@@ -25,9 +25,9 @@ export async function POST(request: NextRequest) {
       contractText,
       playbookId = 'default_playbook',
       contractType,
-      counterpartyName,
-      includePatternAnalysis = false,
-      includePrecedents = false,
+      counterpartyName: _counterpartyName,
+      includePatternAnalysis: _includePatternAnalysis = false,
+      includePrecedents: _includePrecedents = false,
     } = body;
 
     if (!contractText) {

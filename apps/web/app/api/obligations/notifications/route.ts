@@ -136,7 +136,7 @@ export async function POST(request: NextRequest) {
       type, // 'reminder', 'alert', 'escalation'
       scheduledFor,
       message,
-      channels, // ['email', 'in-app', 'slack']
+      channels: _channels, // ['email', 'in-app', 'slack']
       metadata,
     } = body;
 

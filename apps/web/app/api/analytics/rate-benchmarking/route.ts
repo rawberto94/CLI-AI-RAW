@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { action, rates, cohort, currentRates, benchmarks } = body;
+    const { action, rates, cohort: _cohort, currentRates, benchmarks: _benchmarks } = body;
 
     const rateCardEngine = analyticalIntelligenceService.getRateCardEngine();
 

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Info, 
+  Info as _Info, 
   X, 
   TrendingUp, 
   Zap, 

@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { BookOpen, FileText, Scale, Bookmark } from 'lucide-react';
+import { BookOpen, FileText as _FileText, Scale, Bookmark } from 'lucide-react';
 
 export default function ClausesLoading() {
   return (

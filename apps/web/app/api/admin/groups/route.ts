@@ -24,7 +24,7 @@ const groupSchema = z.object({
 /**
  * GET /api/admin/groups - List all groups
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     

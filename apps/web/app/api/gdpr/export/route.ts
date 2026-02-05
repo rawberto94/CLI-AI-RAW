@@ -11,8 +11,8 @@ import { NextRequest } from 'next/server';
 import { 
   requestDataExport, 
   getExportStatus,
-  requestAccountDeletion,
-  cancelAccountDeletion,
+  requestAccountDeletion as _requestAccountDeletion,
+  cancelAccountDeletion as _cancelAccountDeletion,
 } from '@/lib/gdpr/data-rights';
 
 // Data Export

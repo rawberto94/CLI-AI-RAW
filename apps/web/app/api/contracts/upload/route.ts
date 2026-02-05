@@ -281,50 +281,62 @@ export async function POST(
     const contentHash = generateContentHash(buffer);
     
     // Check for duplicate file using transactional read for consistency
-    try {
-      const existingContract = await prisma.$transaction(async (tx) => {
-        const contract = await tx.contract.findFirst({
-          where: {
-            tenantId,
-            checksum: contentHash,
-            isDeleted: false,
-            status: { notIn: ['FAILED', 'DELETED'] }
-          },
-          select: { id: true, status: true, fileName: true, createdAt: true }
+    // DISABLED: Duplicate detection is currently disabled to avoid false positives
+    // To re-enable, set ENABLE_DUPLICATE_DETECTION=true in env
+    const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
+    const enableDuplicateDetection = process.env.ENABLE_DUPLICATE_DETECTION === 'true';
+    
+    if (enableDuplicateDetection && !skipDuplicateCheck) {
+      try {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        
+        const existingContract = await prisma.$transaction(async (tx) => {
+          const contract = await tx.contract.findFirst({
+            where: {
+              tenantId,
+              checksum: contentHash,
+              isDeleted: false,
+              status: { notIn: ['FAILED', 'DELETED'] },
+              // Only consider as duplicate if uploaded in last 7 days
+              createdAt: { gte: sevenDaysAgo }
+            },
+            select: { id: true, status: true, fileName: true, createdAt: true }
+          });
+          
+          // Double-check the contract exists in same transaction
+          if (contract) {
+            const verified = await tx.contract.findUnique({
+              where: { id: contract.id },
+              select: { id: true, status: true }
+            });
+            return verified ? contract : null;
+          }
+          return null;
+        }, {
+          isolationLevel: 'ReadCommitted',
+          maxWait: 5000,
+          timeout: 10000,
         });
         
-        // Double-check the contract exists in same transaction
-        if (contract) {
-          const verified = await tx.contract.findUnique({
-            where: { id: contract.id },
-            select: { id: true, status: true }
-          });
-          return verified ? contract : null;
+        if (existingContract) {
+          return NextResponse.json(
+            {
+              success: true,
+              contractId: existingContract.id,
+              fileName: file.name,
+              fileSize: file.size,
+              mimeType: file.type,
+              status: existingContract.status,
+              message: "This file was uploaded recently (within 7 days). You can re-process or view existing.",
+              isDuplicate: true,
+            },
+            { status: 200 }
+          );
         }
-        return null;
-      }, {
-        isolationLevel: 'ReadCommitted',
-        maxWait: 5000,
-        timeout: 10000,
-      });
-      
-      if (existingContract) {
-        return NextResponse.json(
-          {
-            success: true,
-            contractId: existingContract.id,
-            fileName: file.name,
-            fileSize: file.size,
-            mimeType: file.type,
-            status: existingContract.status,
-            message: "This file was already uploaded. Returning existing contract.",
-            isDuplicate: true,
-          },
-          { status: 200 }
-        );
+      } catch {
+        // Continue with upload if duplicate check fails
       }
-    } catch {
-      // Continue with upload if duplicate check fails
     }
 
     let filePath = objectKey;

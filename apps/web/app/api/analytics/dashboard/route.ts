@@ -60,7 +60,7 @@ export async function GET(request: NextRequest) {
       totalContracts,
       previousTotalContracts,
       activeContracts,
-      previousActiveContracts,
+      _previousActiveContracts,
       valueAgg,
       previousValueAgg,
       pendingApprovals,

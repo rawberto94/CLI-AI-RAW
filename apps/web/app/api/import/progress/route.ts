@@ -130,8 +130,8 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const body = await request.json();
-    const { jobId, status, progress, currentStep, error, ...rest } = body;
-    const tenantId = await getApiTenantId(request) || body.tenantId;
+    const { jobId, status, progress: _progress, currentStep: _currentStep, error, ..._rest } = body;
+    const _tenantId = await getApiTenantId(request) || body.tenantId;
 
     if (!jobId) {
       return NextResponse.json(

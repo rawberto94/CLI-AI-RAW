@@ -550,12 +550,63 @@ export class DocumentPreprocessor {
     }
   }
 
-  private async detectSkewAngle(_buffer: Buffer): Promise<number> {
-    // Simplified skew detection using projection profile
-    // In production, use a proper skew detection algorithm
-    // For now, return 0 as placeholder
-    // TODO: Implement Hough transform or projection profile analysis
-    return 0;
+  private async detectSkewAngle(buffer: Buffer): Promise<number> {
+    // Projection profile-based skew detection
+    // Analyzes horizontal line densities at different rotation angles
+    try {
+      const testAngles = [-5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5];
+      let bestAngle = 0;
+      let maxVariance = 0;
+      
+      // Resize image for faster processing
+      const smallImage = sharp(buffer)
+        .grayscale()
+        .resize({ width: 300, fit: 'inside' })
+        .threshold(128);
+      
+      const baseBuffer = await smallImage.raw().toBuffer({ resolveWithObject: true });
+      const { width, height } = baseBuffer.info;
+      const data = baseBuffer.data;
+      
+      for (const angle of testAngles) {
+        // Calculate horizontal projection profile
+        // For simplicity, we count dark pixels per row
+        const rowSums: number[] = [];
+        
+        // Apply rotation transform (simplified - just shift calculation)
+        const radians = (angle * Math.PI) / 180;
+        const cos = Math.cos(radians);
+        const sin = Math.sin(radians);
+        
+        for (let y = 0; y < height; y++) {
+          let rowSum = 0;
+          for (let x = 0; x < width; x++) {
+            // Transform coordinates
+            const newX = Math.round(x * cos - y * sin + width / 2);
+            const newY = Math.round(x * sin + y * cos + height / 2);
+            
+            if (newX >= 0 && newX < width && newY >= 0 && newY < height) {
+              const idx = newY * width + newX;
+              if (data[idx] < 128) rowSum++; // Count dark pixels
+            }
+          }
+          rowSums.push(rowSum);
+        }
+        
+        // Calculate variance of row sums (higher = more aligned text)
+        const mean = rowSums.reduce((a, b) => a + b, 0) / rowSums.length;
+        const variance = rowSums.reduce((sum, val) => sum + (val - mean) ** 2, 0) / rowSums.length;
+        
+        if (variance > maxVariance) {
+          maxVariance = variance;
+          bestAngle = angle;
+        }
+      }
+      
+      return bestAngle;
+    } catch {
+      return 0;
+    }
   }
 
   private calculateQualityScore(metrics: Omit<ImageQualityMetrics, 'qualityScore' | 'recommendations'>): number {

@@ -14,7 +14,7 @@ import { prisma } from '@/lib/prisma'
 import { classifyContract } from '@/lib/ai/contract-classifier-taxonomy'
 
 // Rate limiting: only run if last run was > 1 hour ago
-const RATE_LIMIT_HOURS = 1
+const _RATE_LIMIT_HOURS = 1
 const BATCH_SIZE = 50 // Process 50 contracts per run
 
 interface MigrationStats {

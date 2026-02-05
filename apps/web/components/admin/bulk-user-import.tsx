@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input as _Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -111,7 +111,7 @@ export function BulkUserImport({ onComplete }: BulkUserImportProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Template downloaded');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to download template');
     }
   };

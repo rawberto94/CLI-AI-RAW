@@ -92,7 +92,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { id } = await params;
+    const { id: _id } = await params;
 
     // In a full implementation, delete from database
     // For now, return success

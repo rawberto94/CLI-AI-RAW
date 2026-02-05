@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateSupplierAnalyticsMock(params: Record<string, string>) {
+function _generateSupplierAnalyticsMock(params: Record<string, string>) {
   return {
     suppliers: [],
     params,
@@ -249,7 +249,7 @@ function generateSupplierAnalyticsMock(params: Record<string, string>) {
   };
 }
 
-function generateNegotiationPrepMock(params: Record<string, string>) {
+function _generateNegotiationPrepMock(params: Record<string, string>) {
   return {
     recommendations: [],
     params,
@@ -257,7 +257,7 @@ function generateNegotiationPrepMock(params: Record<string, string>) {
   };
 }
 
-function generateSavingsPipelineMock(params: Record<string, string>) {
+function _generateSavingsPipelineMock(params: Record<string, string>) {
   return {
     opportunities: [],
     params,
@@ -265,7 +265,7 @@ function generateSavingsPipelineMock(params: Record<string, string>) {
   };
 }
 
-function generateRenewalRadarMock(params: Record<string, string>) {
+function _generateRenewalRadarMock(params: Record<string, string>) {
   return {
     upcomingRenewals: [],
     params,

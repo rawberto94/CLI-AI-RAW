@@ -4,7 +4,7 @@ import React, { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/design-tokens'
-import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX } from 'lucide-react'
+import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX as _FileX } from 'lucide-react'
 import type { SignatureStatus, DocumentClassification } from '@/lib/types/contract-metadata-schema'
 
 type BannerType = 'expired' | 'expiring' | 'high-risk' | 'review-needed' | 'unsigned' | 'not-a-contract' | null

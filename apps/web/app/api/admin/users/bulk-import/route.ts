@@ -208,8 +208,26 @@ export async function POST(request: NextRequest) {
             },
           });
           
-          // TODO: Send invitation email
-          // await sendInvitationEmail(user.email, token, user.firstName);
+          // Send invitation email
+          try {
+            const { sendEmail } = await import('@/lib/email/email-service');
+            const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite?token=${token}`;
+            await sendEmail({
+              to: user.email,
+              subject: 'You\'ve been invited to ConTigo',
+              html: `
+                <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+                  <h2>Welcome to ConTigo!</h2>
+                  <p>Hi${user.firstName ? ` ${user.firstName}` : ''},</p>
+                  <p>You've been invited to join our contract management platform.</p>
+                  <p><a href="${inviteUrl}" style="display: inline-block; background: #7C3AED; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px;">Accept Invitation</a></p>
+                  <p style="color: #666; font-size: 14px;">This invitation expires in 7 days.</p>
+                </div>
+              `,
+            });
+          } catch (emailErr) {
+            console.warn('Failed to send invitation email:', emailErr);
+          }
           
           pendingInvitations.add(user.email);
           

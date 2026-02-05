@@ -256,7 +256,7 @@ export async function POST(
     const contractId = params.id;
     const tenantId = await getServerTenantId();
     const body = await request.json().catch(() => ({}));
-    const { force = false, useAISelection = true } = body;
+    const { force = false, useAISelection: _useAISelection = true } = body;
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },

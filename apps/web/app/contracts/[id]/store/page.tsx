@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Cloud,
   HardDrive,
-  Link as LinkIcon,
+  Link as _LinkIcon,
   Copy,
   Check,
   Loader2,
@@ -21,7 +21,7 @@ import {
   DollarSign,
   Tag,
   Shield,
-  ExternalLink,
+  ExternalLink as _ExternalLink,
   PartyPopper,
   Pen,
 } from 'lucide-react';
@@ -33,11 +33,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select as _Select,
+  SelectContent as _SelectContent,
+  SelectItem as _SelectItem,
+  SelectTrigger as _SelectTrigger,
+  SelectValue as _SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';

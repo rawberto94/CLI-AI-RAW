@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { type, host, port, database, username, password, connectionString, ...otherConfig } = body;
+    const { type, host, port: _port, database, username, password: _password, connectionString, ...otherConfig } = body;
 
     // Simulate connection test based on type
     // In production, you would actually attempt to connect

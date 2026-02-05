@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       activeContracts,
       processingContracts,
       pendingContracts,
-      completedContracts,
+      _completedContracts,
     ] = await Promise.all([
       prisma.contract.count({ where: { tenantId, isDeleted: false } }),
       prisma.contract.count({ where: { tenantId, status: 'COMPLETED' } }),
@@ -191,8 +191,8 @@ export async function GET(request: NextRequest) {
       : contractsThisMonth > 0 ? 100 : 0;
     
     // Calculate value trend from metadata
-    let valueLastMonth = 0;
-    let valueThisMonth = 0;
+    const _valueLastMonth = 0;
+    let _valueThisMonth = 0;
     for (const contract of contractsWithMetadata) {
       if (contract.metadata && typeof contract.metadata === 'object') {
         const metadata = contract.metadata as Record<string, unknown>;
@@ -207,12 +207,12 @@ export async function GET(request: NextRequest) {
           }
         }
         // We don't have createdAt in this query, so we just use total value trend
-        valueThisMonth += numValue;
+        _valueThisMonth += numValue;
       }
     }
     
     // Estimate last month's value (use 90% of current if no historical data)
-    valueLastMonth = totalValue * 0.9;
+    const valueLastMonth = totalValue * 0.9;
     const valueChange = valueLastMonth > 0
       ? Math.round(((totalValue - valueLastMonth) / valueLastMonth) * 1000) / 10
       : 0;

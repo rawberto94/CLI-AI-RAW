@@ -142,9 +142,9 @@ const defaultActions: BulkAction[] = [
 export function BulkOperationsToolbar({
   selectedIds,
   onSelectionChange,
-  _totalCount,
+  totalCount: _totalCount,
   onAction,
-  _isLoading = false,
+  isLoading: _isLoading = false,
 }: BulkOperationsProps) {
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [currentAction, setCurrentAction] = useState<BulkAction | null>(null);

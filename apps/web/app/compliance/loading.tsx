@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Shield, CheckCircle, FileCheck, Scale } from 'lucide-react';
+import { Shield, CheckCircle, FileCheck as _FileCheck, Scale } from 'lucide-react';
 
 export default function ComplianceLoading() {
   return (

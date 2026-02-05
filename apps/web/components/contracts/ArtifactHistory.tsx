@@ -52,7 +52,7 @@ export function ArtifactHistory({
     if (open && contractId && artifactId) {
       loadHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [open, contractId, artifactId]);
 
   const loadHistory = async () => {

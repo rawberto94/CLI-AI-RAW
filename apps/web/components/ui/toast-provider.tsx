@@ -72,7 +72,7 @@ export function ToastProvider({
 
       return id;
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
     [maxToasts]
   );
 

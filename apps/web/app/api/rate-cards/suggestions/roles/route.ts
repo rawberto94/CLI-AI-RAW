@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEntryService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { getServerSession as _getServerSession } from '@/lib/auth';
 
 const rateCardService = new rateCardEntryService(prisma);
 

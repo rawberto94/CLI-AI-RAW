@@ -67,7 +67,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
 
   useEffect(() => {
     fetchRateCards();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [filters]);
 
   const fetchRateCards = async () => {

@@ -97,7 +97,7 @@ export function EnhancedUploadZone({
     });
 
     setFiles(prev => [...prev, ...validFiles]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [files.length, maxFiles, accept, maxSize]);
 
   const removeFile = (id: string) => {

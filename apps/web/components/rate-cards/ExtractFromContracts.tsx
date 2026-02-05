@@ -73,7 +73,7 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
     if (open) {
       loadContracts();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [open]);
 
   const loadContracts = async () => {

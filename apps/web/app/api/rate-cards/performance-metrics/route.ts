@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { multiLevelCache } from 'data-orchestration/services';
 import { poolMonitor } from '@/../../packages/data-orchestration/src/config/database-pool.config';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Get cache statistics
     const cacheStats = multiLevelCache.getStats();

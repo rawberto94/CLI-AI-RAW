@@ -430,7 +430,7 @@ describe('Rate Cards API', () => {
       mockPrisma.rateCardEntry.count.mockResolvedValue(1);
 
       const request = createRequest('/api/rate-cards');
-      const response = await GET(request);
+      const _response = await GET(request);
 
       expect(mockPrisma.rateCardEntry.findMany).toHaveBeenCalledWith(
         expect.objectContaining({

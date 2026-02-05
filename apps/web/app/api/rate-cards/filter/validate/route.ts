@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { AdvancedFilterService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { getServerSession as _getServerSession } from '@/lib/auth';
 
 const advancedFilterService = new AdvancedFilterService(prisma);
 

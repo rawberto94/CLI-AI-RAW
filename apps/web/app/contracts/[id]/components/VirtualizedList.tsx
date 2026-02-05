@@ -1,7 +1,7 @@
 'use client'
 
 import React, { memo, useCallback, useMemo, useRef, useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion as _motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
 
 interface VirtualizedListProps<T> {
@@ -36,7 +36,7 @@ export function VirtualizedList<T>({
     setScrollTop(e.currentTarget.scrollTop)
   }, [])
 
-  const { startIndex, endIndex, offsetTop, visibleItems } = useMemo(() => {
+  const { startIndex, endIndex: _endIndex, offsetTop, visibleItems } = useMemo(() => {
     const start = Math.max(0, Math.floor(scrollTop / itemHeight) - overscan)
     const end = Math.min(
       items.length,

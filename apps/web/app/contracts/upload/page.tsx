@@ -83,6 +83,7 @@ interface UploadFile {
   existingContractId?: string
   startTime?: number
   endTime?: number
+  skipDuplicateCheck?: boolean
 }
 
 const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
@@ -150,6 +151,33 @@ export default function UploadPage() {
   const [activeTab, setActiveTab] = useState<'upload' | 'queue' | 'recent'>('upload')
   const [aiStatus, setAiStatus] = useState<AIStatus | null>(null)
   const [aiStatusLoading, setAiStatusLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Simple approach: Clear ALL stale state on mount
+  // HMR preserves React state, so any files in "uploading"/"processing" are stale
+  useEffect(() => {
+    // Clear files array completely - any HMR-preserved state is stale
+    setFiles([]);
+    setIsUploading(false);
+    setIsMounted(true);
+    
+    // Also clear any stale sessionStorage
+    if (typeof window !== 'undefined') {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (
+          key.startsWith('artifact-stream-') || 
+          key.startsWith('artifact-complete-') || 
+          key.startsWith('artifact-notfound-') ||
+          key.startsWith('valid-contract-')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    }
+  }, []);
 
   // Check AI status on mount
   useEffect(() => {
@@ -203,7 +231,7 @@ export default function UploadPage() {
     disabled: isUploading,
   })
 
-  const uploadFile = async (uploadFile: UploadFile) => {
+  const uploadFile = async (uploadFile: UploadFile, skipDuplicateCheck = false) => {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('dataMode', dataMode)
@@ -214,7 +242,7 @@ export default function UploadPage() {
       // Update to uploading
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...' }
+          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...', isDuplicate: false }
           : f
       ))
 
@@ -232,14 +260,19 @@ export default function UploadPage() {
         ))
       }
 
-      // Upload file
+      // Upload file - skip duplicate check if re-processing
+      const headers: Record<string, string> = {
+        'x-tenant-id': getTenantId(),
+        'x-data-mode': dataMode
+      }
+      if (skipDuplicateCheck) {
+        headers['x-skip-duplicate-check'] = 'true'
+      }
+      
       const uploadResponse = await fetch('/api/contracts/upload', {
         method: 'POST',
         body: formData,
-        headers: {
-          'x-tenant-id': getTenantId(),
-          'x-data-mode': dataMode
-        }
+        headers
       })
 
       const responseData = await uploadResponse.json()
@@ -306,7 +339,8 @@ export default function UploadPage() {
       if (isPaused) break
       
       const batch = pendingFiles.slice(i, i + concurrency)
-      await Promise.all(batch.map(file => uploadFile(file)))
+      // Pass skipDuplicateCheck flag if set (for re-processing)
+      await Promise.all(batch.map(file => uploadFile(file, file.skipDuplicateCheck)))
     }
     
     setIsUploading(false)
@@ -322,7 +356,7 @@ export default function UploadPage() {
 
   const retryFile = useCallback((id: string) => {
     setFiles(prev => prev.map(f =>
-      f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined } : f
+      f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined, isDuplicate: false, existingContractId: undefined, skipDuplicateCheck: true } : f
     ))
   }, [])
 
@@ -769,7 +803,7 @@ export default function UploadPage() {
                 <CardContent className="pt-0">
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                     <AnimatePresence mode="popLayout">
-                      {files.map((file, index) => (
+                      {isMounted && files.map((file, index) => (
                         <motion.div
                           key={file.id}
                           initial={{ opacity: 0, y: 20 }}
@@ -789,6 +823,10 @@ export default function UploadPage() {
                             onRetry={() => retryFile(file.id)}
                             onRemove={() => removeFile(file.id)}
                             onViewContract={viewContract}
+                            onContractNotFound={() => {
+                              // Auto-remove files with stale/deleted contracts
+                              setFiles(prev => prev.filter(f => f.id !== file.id));
+                            }}
                             tenantId={getTenantId()}
                           />
                           
@@ -812,6 +850,10 @@ export default function UploadPage() {
                                       ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
                                       : f
                                   ))
+                                }}
+                                onContractNotFound={() => {
+                                  // Auto-remove files with stale/deleted contracts
+                                  setFiles(prev => prev.filter(f => f.id !== file.id));
                                 }}
                               />
                             </motion.div>

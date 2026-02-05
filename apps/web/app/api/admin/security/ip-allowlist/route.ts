@@ -27,7 +27,7 @@ const ipEntrySchema = z.object({
   expiresAt: z.string().datetime().optional(),
 });
 
-interface IPAllowlistEntry {
+interface _IPAllowlistEntry {
   id: string;
   ip: string;
   description: string | null;
@@ -41,7 +41,7 @@ interface IPAllowlistEntry {
  * GET /api/admin/security/ip-allowlist
  * Get tenant IP allowlist
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     

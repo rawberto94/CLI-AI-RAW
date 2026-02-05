@@ -17,7 +17,7 @@ interface IPAllowlistEntry {
 }
 
 // GET - List IP allowlist entries
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {

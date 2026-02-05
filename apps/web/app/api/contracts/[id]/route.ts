@@ -34,7 +34,7 @@ interface ExtractedDataArtifact {
   [key: string]: unknown;
 }
 
-interface ContractChild {
+interface _ContractChild {
   id: string;
   contractTitle?: string | null;
   contractType?: string | null;
@@ -276,7 +276,7 @@ export async function GET(
     };
 
     // Check if we have real processing results
-    const hasRealResults =
+    const _hasRealResults =
       contractData.extractedData && contractData.status === "completed";
 
     // Add some computed fields for the UI

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import getClient from 'clients-db';
+import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import {
   ObligationStatus,
@@ -11,7 +11,6 @@ import {
   Prisma,
 } from '@prisma/client';
 
-const prisma = getClient();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // Type mappings for string to enum conversion
@@ -512,7 +511,7 @@ async function handleExtraction(
         priority: priorityMap[obl.priority] || 'MEDIUM',
         status: 'PENDING',
         dueDate: obl.dueDate ? new Date(obl.dueDate) : null,
-        clauseReference: obl.clauseReference || null,
+        clauseReference: obl.sourceClause || null,
         sourceSection: obl.sourceSection || null,
         sourceExcerpt: obl.sourceClause || null,
         extractionMethod: 'AI',

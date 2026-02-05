@@ -109,7 +109,7 @@ export function HighRiskRatesAlert({
       const interval = setInterval(fetchHighRiskRates, refreshInterval * 1000);
       return () => clearInterval(interval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId, minRiskScore, limit, autoRefresh, refreshInterval]);
 
   if (loading && !highRiskRates.length) {

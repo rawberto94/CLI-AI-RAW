@@ -7,10 +7,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import getClient from 'clients-db';
+import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 
-const prisma = getClient();
 
 export const dynamic = 'force-dynamic';
 

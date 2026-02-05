@@ -17,7 +17,7 @@ import {
   Ban,
   CheckCircle2,
   XCircle,
-  Edit,
+  Edit as _Edit,
   Trash2,
   Key,
   Loader2,
@@ -62,7 +62,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format as _format, formatDistanceToNow } from 'date-fns';
 
 export interface User {
   id: string;
@@ -229,7 +229,7 @@ export const UserManagement = memo(function UserManagement({
 
       setShowInviteDialog(false);
       setInviteForm({ email: '', name: '', role: 'viewer', department: '' });
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to send invitation');
     } finally {
       setInviting(false);
@@ -238,7 +238,7 @@ export const UserManagement = memo(function UserManagement({
 
   const handleStatusChange = async (userId: string, newStatus: User['status']) => {
     try {
-      const response = await fetch(`/api/users/${userId}/status`, {
+      const _response = await fetch(`/api/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -271,7 +271,7 @@ export const UserManagement = memo(function UserManagement({
     toast.success('User removed');
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const handleResetPassword = async (_userId: string) => {
     toast.success('Password reset email sent');
   };
 

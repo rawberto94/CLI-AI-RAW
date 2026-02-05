@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
       contractIds, 
       processAll = false, 
       reprocessExisting = false,
-      priority = 'normal',
+      priority: _priority = 'normal',
       maxConcurrent = 3,
     } = body;
 
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
 /**
  * GET /api/ai/rag/batch - Get batch processing status and stats
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const tenantId = await getServerTenantId();
 

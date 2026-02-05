@@ -79,7 +79,7 @@ export async function POST(
 
     // Create step executions for all steps
     if (workflow.steps.length > 0) {
-      const stepExecutions = await prisma.workflowStepExecution.createMany({
+      const _stepExecutions = await prisma.workflowStepExecution.createMany({
         data: workflow.steps.map((step, index) => ({
           executionId: execution.id,
           stepId: step.id,

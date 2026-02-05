@@ -516,7 +516,7 @@ function EnhancedNavigation() {
               >
                 <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white font-medium text-xs shadow-sm overflow-hidden">
                   {session?.user?.image ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
+                    
                     <img src={session.user.image} alt={`${session.user.name || 'User'}'s profile photo`} className="w-full h-full object-cover" />
                   ) : (
                     <span>{session?.user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || 'U'}</span>

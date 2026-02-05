@@ -10,7 +10,7 @@ import type { Contract } from '@/types/artifacts'
 
 export default function ContractDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const _router = useRouter()
   const [contract, setContract] = useState<Contract | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)

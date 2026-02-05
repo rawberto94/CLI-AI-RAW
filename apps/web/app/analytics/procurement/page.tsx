@@ -14,7 +14,7 @@ import {
   Handshake,
   DollarSign,
   Calendar,
-  TrendingUp,
+  TrendingUp as _TrendingUp,
   ArrowRight,
   BarChart3,
   Target,

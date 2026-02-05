@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET, POST, PATCH, DELETE } from '../route';
+import { GET, POST, PATCH as _PATCH, DELETE as _DELETE } from '../route';
 
 // Mock dependencies
 vi.mock('@/lib/prisma', () => ({
@@ -227,7 +227,7 @@ describe('POST /api/templates', () => {
       category: 'LEGAL',
       clauses: [],
     });
-    const response = await POST(request);
+    const _response = await POST(request);
 
     expect(prisma.contractTemplate.create).toHaveBeenCalledWith(
       expect.objectContaining({

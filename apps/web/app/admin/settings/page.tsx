@@ -15,9 +15,9 @@ import {
   ClipboardList,
   HardDrive,
   Download,
-  Shield,
-  Database,
-  Activity
+  Shield as _Shield,
+  Database as _Database,
+  Activity as _Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

@@ -6,8 +6,8 @@ export async function POST(
   { params }: { params: { id: string } }
 ) {
   try {
-    const workflowId = params.id;
-    const { signerId, message } = await request.json();
+    const _workflowId = params.id;
+    const { signerId: _signerId, message: _message } = await request.json();
 
     // Mock response
     return NextResponse.json({

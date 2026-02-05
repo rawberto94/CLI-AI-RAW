@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+
 // Note: This file contains many helper functions for AI chat capabilities.
 // Some functions are prepared for future features and may not be in use yet.
 import { NextRequest, NextResponse } from 'next/server'

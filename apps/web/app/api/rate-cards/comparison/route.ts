@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Calculate comparisons
-    const comparisons = Array.from(groupedRates.entries()).map(([key, data]) => {
+    const comparisons = Array.from(groupedRates.entries()).map(([_key, data]) => {
       const currentRate = Math.round(data.rates.reduce((a, b) => a + b, 0) / data.rates.length);
 
       // Calculate market average for this role/seniority

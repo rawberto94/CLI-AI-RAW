@@ -50,7 +50,7 @@ export function MarketIntelligenceFilters({
 
   useEffect(() => {
     onFilterChange(filters);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [filters]);
 
   const loadFilterOptions = async () => {

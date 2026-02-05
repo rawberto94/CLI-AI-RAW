@@ -171,7 +171,7 @@ interface NegotiationOpportunity {
 // INTELLIGENT ANALYSIS PROMPTS
 // ============================================================================
 
-const COMPREHENSIVE_ANALYSIS_PROMPT = `You are an expert contract analyst with deep expertise in legal document analysis, risk assessment, and contract management.
+const _COMPREHENSIVE_ANALYSIS_PROMPT = `You are an expert contract analyst with deep expertise in legal document analysis, risk assessment, and contract management.
 
 Your task is to perform a COMPREHENSIVE analysis of this contract document. Go beyond standard templates - discover ALL important information that would be valuable for managing this contract.
 
@@ -1107,7 +1107,7 @@ function enhanceWithPatternMatching(
   aiFields: DiscoveredField[]
 ): DiscoveredField[] {
   const enhanced = [...aiFields];
-  const existingFieldNames = new Set(aiFields.map(f => f.fieldName.toLowerCase()));
+  const _existingFieldNames = new Set(aiFields.map(f => f.fieldName.toLowerCase()));
 
   for (const pattern of EXTRACTION_PATTERNS) {
     // Skip if AI already found this field with good confidence

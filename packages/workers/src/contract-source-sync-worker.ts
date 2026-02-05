@@ -224,17 +224,37 @@ export function createContractSourceSyncWorker(): Worker<JobData> {
  * Get queue statistics
  */
 export async function getQueueStats() {
-  // Use count methods available in BullMQ
-  const waiting = await contractSourceSyncQueue.count();
+  // Get job counts using BullMQ - casting to access methods
+  const queue = contractSourceSyncQueue as any;
   
-  return {
-    waiting,
-    active: 0, // These would need JobState tracking
-    completed: 0,
-    failed: 0,
-    delayed: 0,
-    total: waiting,
-  };
+  try {
+    const [waiting, active, completed, failed, delayed] = await Promise.all([
+      queue.getWaitingCount?.() ?? queue.count?.() ?? 0,
+      queue.getActiveCount?.() ?? 0,
+      queue.getCompletedCount?.() ?? 0,
+      queue.getFailedCount?.() ?? 0,
+      queue.getDelayedCount?.() ?? 0,
+    ]);
+    
+    return {
+      waiting,
+      active,
+      completed,
+      failed,
+      delayed,
+      total: waiting + active + delayed,
+    };
+  } catch {
+    // Fallback if methods not available
+    return {
+      waiting: 0,
+      active: 0,
+      completed: 0,
+      failed: 0,
+      delayed: 0,
+      total: 0,
+    };
+  }
 }
 
 /**

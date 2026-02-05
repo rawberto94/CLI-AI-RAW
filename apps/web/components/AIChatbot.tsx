@@ -270,7 +270,7 @@ How can I help you today?`;
         },
       ]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [context, messages.length, contractId]);
 
   // Load chat sessions from localStorage
@@ -352,7 +352,7 @@ How can I help you today?`;
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isOpen, isMinimized, showSearch]);
 
   // Network status monitoring

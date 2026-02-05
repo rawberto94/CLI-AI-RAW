@@ -224,7 +224,7 @@ const DurationSection = memo(function DurationSection({
 const AssessmentSection = memo(function AssessmentSection({
   riskLevel,
   complianceStatus,
-  contractStatus,
+  contractStatus: _contractStatus,
   signatureStatus,
   signatureRequiredFlag,
 }: Pick<QuickOverviewProps, 'riskLevel' | 'complianceStatus' | 'contractStatus' | 'signatureStatus' | 'signatureRequiredFlag'>) {

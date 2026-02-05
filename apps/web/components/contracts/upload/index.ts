@@ -14,5 +14,5 @@ export { EnhancedUploadProgress } from './EnhancedUploadProgress';
 export { UploadQueue } from './UploadQueue';
 export { ProcessingConfig } from './ProcessingConfig';
 
-export type { UploadProgressProps, ProcessingStage, ArtifactProgress } from './EnhancedUploadProgress';
+export type { UploadProgressProps, ProcessingStage } from './EnhancedUploadProgress';
 export type { QueuedFile, UploadQueueProps } from './UploadQueue';

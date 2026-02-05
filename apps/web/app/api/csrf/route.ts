@@ -17,7 +17,7 @@ export async function GET() {
     const userId = session?.user?.id;
     
     // Generate and set CSRF token
-    const token = await setCSRFCookie(userId);
+    const _token = await setCSRFCookie(userId);
     
     return NextResponse.json(
       { success: true, message: 'CSRF token set' },

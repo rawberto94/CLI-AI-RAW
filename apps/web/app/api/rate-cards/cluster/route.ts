@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
 
         // Create cluster member records
         await Promise.all(
-          cluster.members.map((memberId, index) =>
+          cluster.members.map((memberId, _index) =>
             prisma.clusterMember.create({
               data: {
                 clusterId: clusterRecord.id,

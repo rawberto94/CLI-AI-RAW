@@ -24,7 +24,7 @@ import {
   Settings,
   ChevronUp,
   ChevronDown,
-  X,
+  X as _X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

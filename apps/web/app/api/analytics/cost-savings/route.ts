@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { costSavingsAnalyzerService } from 'data-orchestration/services';
+import { costSavingsAnalyzerService as _costSavingsAnalyzerService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
 
@@ -202,7 +202,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { opportunityId, contractId, tenantId, userId, status, notes } = body;
+    const { opportunityId, contractId, tenantId, userId, status, notes: _notes } = body;
 
     if (!opportunityId || !contractId || !tenantId || !userId) {
       return NextResponse.json(

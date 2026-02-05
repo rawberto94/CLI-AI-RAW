@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { GitCompare, ArrowLeftRight, FileText, Diff } from 'lucide-react';
+import { GitCompare, ArrowLeftRight, FileText, Diff as _Diff } from 'lucide-react';
 
 export default function CompareLoading() {
   return (

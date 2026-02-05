@@ -12,14 +12,14 @@ import {
   Zap,
   DollarSign,
   MessageSquare,
-  TrendingUp,
+  TrendingUp as _TrendingUp,
   AlertTriangle,
   RefreshCw,
   ChevronDown,
   ChevronUp,
   Info,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence as _AnimatePresence } from 'framer-motion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 // Types
@@ -53,7 +53,7 @@ export function AIUsageQuotaWidget({
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExpanded, setIsExpanded] = useState(!compact);
-  const [error, setError] = useState<string | null>(null);
+  const [_error, setError] = useState<string | null>(null);
 
   const fetchUsage = useCallback(async () => {
     try {

@@ -4,12 +4,12 @@ import { signIn } from "next-auth/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, Suspense, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence as _AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Building2, User, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Shield, Zap, Eye, EyeOff, Quote, Star, Check } from "lucide-react";
+import { Building2, User, Mail, Lock, CheckCircle2, AlertCircle, ArrowRight, Sparkles, Shield, Zap, Eye, EyeOff, Quote as _Quote, Star as _Star, Check } from "lucide-react";
 import { AuthHeroArt, ConTigoLogo } from "../_components/AuthBranding";
 
 // Floating Particles Component
@@ -208,7 +208,7 @@ function SignUpForm() {
       await signIn(provider, { 
         callbackUrl: inviteToken ? `/?invite=${inviteToken}` : "/" 
       });
-    } catch (error) {
+    } catch (_error) {
       setError(`Failed to sign up with ${provider}`);
       setSsoLoading(null);
     }

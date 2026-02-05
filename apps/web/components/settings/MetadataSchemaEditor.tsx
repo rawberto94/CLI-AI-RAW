@@ -187,7 +187,7 @@ export function MetadataSchemaEditor({
   // Load schema
   useEffect(() => {
     loadSchema();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const loadSchema = async () => {
@@ -247,7 +247,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleUpdateField = useCallback(async (fieldData: MetadataFieldDefinition) => {
@@ -282,7 +282,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleDeleteField = useCallback(async (fieldId: string) => {
@@ -307,7 +307,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================
@@ -342,7 +342,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================
@@ -375,7 +375,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleExport = useCallback(() => {
@@ -415,7 +415,7 @@ export function MetadataSchemaEditor({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================

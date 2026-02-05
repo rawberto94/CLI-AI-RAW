@@ -15,7 +15,7 @@ import {
   ChevronDown,
   ChevronUp,
   Bug,
-  MessageSquare,
+  MessageSquare as _MessageSquare,
   Copy,
   Check,
   ExternalLink,

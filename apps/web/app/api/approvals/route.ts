@@ -5,7 +5,7 @@ import { getServerSession } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 // Mock approval queue data (fallback)
-const mockApprovals = [
+const _mockApprovals = [
   {
     id: 'appr1',
     type: 'contract',
@@ -167,12 +167,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
   const tenantId = session.user.tenantId;
-  const userId = session.user.id;
+  const _userId = session.user.id;
   const { searchParams } = new URL(request.url);
   const status = searchParams.get('status');
   const priority = searchParams.get('priority');
   const type = searchParams.get('type');
-  const assignedTo = searchParams.get('assignedTo');
+  const _assignedTo = searchParams.get('assignedTo');
   const sortBy = searchParams.get('sortBy') || 'dueDate'; // dueDate, priority, value, createdAt
   const sortOrder = searchParams.get('sortOrder') || 'asc';
 
@@ -583,7 +583,7 @@ export async function POST(request: NextRequest) {
       { success: false, error: 'Invalid action' },
       { status: 400 }
     );
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }
@@ -612,7 +612,7 @@ export async function PATCH(request: NextRequest) {
         updatedAt: new Date().toISOString(),
       },
     });
-  } catch (error) {
+  } catch (_error) {
     return NextResponse.json(
       { success: false, error: 'Invalid request body' },
       { status: 400 }

@@ -126,7 +126,7 @@ export function SmartMetadataValidator({
   // Load metadata and AI extraction results
   useEffect(() => {
     loadMetadata();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadMetadata = async () => {

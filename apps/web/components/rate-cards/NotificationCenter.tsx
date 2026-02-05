@@ -36,7 +36,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
     if (isOpen) {
       fetchNotifications();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isOpen, tenantId]);
 
   useEffect(() => {
@@ -48,7 +48,7 @@ export function NotificationCenter({ tenantId, onNotificationClick }: Notificati
     fetchUnreadCount();
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const fetchNotifications = async () => {

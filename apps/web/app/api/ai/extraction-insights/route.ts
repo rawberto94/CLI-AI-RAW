@@ -90,14 +90,14 @@ export async function POST(request: NextRequest) {
       contractId,
       eventType,
       fieldKey,
-      fieldType,
-      confidence,
+      fieldType: _fieldType,
+      confidence: _confidence,
       originalValue,
       correctedValue,
       processingTimeMs,
       modelUsed,
-      success,
-      errorMessage,
+      success: _success,
+      errorMessage: _errorMessage,
     } = body;
 
     if (!contractId || !eventType) {

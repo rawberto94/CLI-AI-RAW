@@ -97,7 +97,7 @@ export function CollaborativeEditorWrapper({
         color: p.color,
       }))
     : [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const updateCursor = wsContext?.updateCursor ?? ((_pos: { x: number; y: number }) => {});
   const lockSection = wsContext?.lockSection ?? (async (_id: string) => false);
   const unlockSection = wsContext?.unlockSection ?? ((_id: string) => {});

@@ -3,7 +3,7 @@
 import React, { memo, useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn as _cn } from '@/lib/utils'
 import { X, Undo2 } from 'lucide-react'
 
 interface UndoAction {

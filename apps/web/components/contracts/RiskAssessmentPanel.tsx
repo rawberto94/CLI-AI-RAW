@@ -240,7 +240,7 @@ export const RiskAssessmentPanel = memo(function RiskAssessmentPanel({
 
   useEffect(() => {
     loadAssessment();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadAssessment = async () => {

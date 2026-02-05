@@ -179,7 +179,7 @@ function WorkflowsPageContent() {
   const createWorkflowMutation = useCreateWorkflow()
   const crossModule = useCrossModuleInvalidation()
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const workflows: WorkflowType[] = workflowsData?.workflows || []
 
   const stats = useMemo(() => ({

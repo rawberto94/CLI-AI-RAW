@@ -1,6 +1,6 @@
 'use client'
 
-import React, { memo, useState, useCallback } from 'react'
+import React, { memo, useState, useCallback as _useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -195,7 +195,7 @@ const NoteItem = memo(function NoteItem({
 })
 
 export const ContractNotes = memo(function ContractNotes({
-  contractId,
+  contractId: _contractId,
   notes,
   currentUserId,
   onAddNote,

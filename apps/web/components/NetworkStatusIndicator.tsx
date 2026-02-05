@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 
 export function NetworkStatusIndicator() {
-  const { status, isOnline, isSlow, reconnect, reconnectAttempts } = useNetworkStatus();
+  const { status, isOnline: _isOnline, isSlow: _isSlow, reconnect, reconnectAttempts } = useNetworkStatus();
 
   const showBanner = status === 'offline' || status === 'slow' || status === 'reconnecting';
 

@@ -111,7 +111,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     
     const contractId = searchParams.get("contractId");
     const jobId = searchParams.get("jobId");
-    const includeStats = searchParams.get("stats") === "true";
+    const _includeStats = searchParams.get("stats") === "true";
 
     const queue = getExtractionQueue();
 

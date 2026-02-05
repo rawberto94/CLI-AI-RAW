@@ -995,7 +995,7 @@ export const ApprovalsQueue: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen, rejectModalOpen, approveConfirmOpen]);
 
   const stats = useMemo(() => ({

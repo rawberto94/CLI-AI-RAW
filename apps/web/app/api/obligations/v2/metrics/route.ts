@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import getClient from 'clients-db';
+import { prisma } from '@/lib/prisma';
 
-const prisma = getClient();
 
 /**
  * GET /api/obligations/v2/metrics

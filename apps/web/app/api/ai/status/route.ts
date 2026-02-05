@@ -14,7 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   const startTime = Date.now();
   
   try {
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
         await openai.models.list();
         openaiLatency = Date.now() - testStart;
         openaiStatus = 'connected';
-      } catch (error) {
+      } catch (_error) {
         openaiStatus = 'error';
       }
     }

@@ -330,7 +330,7 @@ export default function ContractDetailPage() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer])
 
   // Initialize tab from URL (shareable deep-link)
@@ -389,7 +389,7 @@ export default function ContractDetailPage() {
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [params.id, dataMode])
 
   const loadVersions = useCallback(async () => {

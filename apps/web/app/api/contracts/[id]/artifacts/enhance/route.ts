@@ -24,7 +24,7 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const contractId = params.id;
+  const _contractId = params.id;
 
   try {
     const body: EnhanceRequest = await request.json();

@@ -27,9 +27,9 @@ interface HealthCheck {
   recommendations: string[]
 }
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
-    const startTime = Date.now()
+    const _startTime = Date.now()
 
     // Check database connectivity
     const dbStart = Date.now()

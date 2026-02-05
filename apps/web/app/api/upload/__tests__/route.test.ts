@@ -206,7 +206,7 @@ describe('Upload API (Compatibility Route)', () => {
       vi.stubGlobal('fetch', mockFetch);
 
       // Should not throw
-      const response = await POST(mockRequest as any);
+      const _response = await POST(mockRequest as any);
       
       // Should add CORS headers even on error
       expect(mockCorsAddHeaders).toHaveBeenCalled();

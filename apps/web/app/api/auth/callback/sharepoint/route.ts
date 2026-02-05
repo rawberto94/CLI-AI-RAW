@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { cookies as _cookies } from 'next/headers';
 import { SharePointConnector } from '@/lib/integrations/connectors/sharepoint.connector';
 import { SharePointCredentials } from '@/lib/integrations/connectors/types';
 

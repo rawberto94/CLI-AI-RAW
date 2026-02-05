@@ -8,7 +8,7 @@ import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {

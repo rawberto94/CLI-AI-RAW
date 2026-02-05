@@ -207,7 +207,7 @@ function VersionSelector({
           )}
         >
           {selectedVersion.author.avatar ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
+            
             <img
               src={selectedVersion.author.avatar}
               alt={selectedVersion.author.name}
@@ -250,7 +250,7 @@ function VersionSelector({
                 >
                   <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 text-sm font-medium">
                     {version.author.avatar ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
+                      
                       <img
                         src={version.author.avatar}
                         alt={version.author.name}

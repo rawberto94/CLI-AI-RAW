@@ -12,7 +12,7 @@ interface ComplianceTabProps {
   findings: any;
 }
 
-export function ComplianceTab({ summary, findings }: ComplianceTabProps) {
+export function ComplianceTab({ summary, findings: _findings }: ComplianceTabProps) {
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold mb-4">Compliance Analysis</h3>

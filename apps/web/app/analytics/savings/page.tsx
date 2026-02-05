@@ -74,7 +74,7 @@ export default function SavingsPipelinePage() {
       link.download = `savings-pipeline-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Savings pipeline exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };

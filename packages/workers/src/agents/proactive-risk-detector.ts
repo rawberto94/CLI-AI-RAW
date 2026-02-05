@@ -1,21 +1,62 @@
 import pino from 'pino';
 import clientsDb from 'clients-db';
 
-// Define the WorkflowAutoStartService interface locally to avoid module resolution issues
+// Define types to match workflow-auto-start.service.ts
+interface AutoStartRule {
+  id: string;
+  tenantId: string;
+  name: string;
+  description?: string;
+  isActive: boolean;
+  priority: number;
+  workflowTemplateKey: string;
+}
+
+interface AutoStartResult {
+  triggered: boolean;
+  rule?: AutoStartRule;
+  executionId?: string;
+  reason?: string;
+}
+
+interface ContractData {
+  id: string;
+  tenantId: string;
+  title?: string;
+  contractType?: string;
+  value?: number;
+  status?: string;
+  riskLevel?: string;
+  riskScore?: number;
+  supplierName?: string;
+  [key: string]: unknown;
+}
+
 interface WorkflowAutoStartService {
-  evaluateContract(contractId: string, tenantId: string, contractData: Record<string, unknown>): Promise<{ triggeredWorkflows: string[]; skippedRules: string[] }>;
+  evaluateContract(contractData: ContractData): Promise<AutoStartResult>;
   triggerWorkflow(tenantId: string, contractId: string, workflowKey: string): Promise<void>;
 }
 
 // Dynamic import to avoid circular dependencies
 const getWorkflowAutoStartService = async (): Promise<WorkflowAutoStartService> => {
   try {
-    const module = await import('@repo/data-orchestration');
-    return (module as { workflowAutoStartService: WorkflowAutoStartService }).workflowAutoStartService;
-  } catch {
+    // Import from specific service file using proper export path
+    // @ts-ignore - Module resolution handled at runtime
+    const { workflowAutoStartService } = await import('@repo/data-orchestration/services/workflow-auto-start.service') as any;
+    if (workflowAutoStartService) {
+      return workflowAutoStartService;
+    }
+    // Fallback to main module export
+    const module = await import('@repo/data-orchestration') as any;
+    if (module?.workflowAutoStartService) {
+      return module.workflowAutoStartService;
+    }
+    throw new Error('workflowAutoStartService not found');
+  } catch (error) {
     // Fallback: return a no-op service if not available
+    logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'WorkflowAutoStartService not available, using no-op fallback');
     return {
-      evaluateContract: async () => ({ triggeredWorkflows: [], skippedRules: [] }),
+      evaluateContract: async () => ({ triggered: false, reason: 'Service unavailable' }),
       triggerWorkflow: async () => {},
     };
   }
@@ -539,10 +580,11 @@ export class ProactiveRiskDetector {
       const contract = await prisma.contract.findUnique({
         where: { id: contractId },
         select: {
-          name: true,
-          type: true,
+          contractTitle: true,
+          contractType: true,
           totalValue: true,
-          counterparty: true,
+          supplierName: true,
+          fileName: true,
         },
       });
 
@@ -559,7 +601,7 @@ export class ProactiveRiskDetector {
         value: Number(contract.totalValue) || 0,
         riskLevel: 'HIGH',
         riskScore: riskSummary.overallRiskScore,
-        supplierName: contract.counterparty || 'Unknown',
+        supplierName: contract.supplierName || 'Unknown',
       });
 
       if (result.triggered && result.executionId) {
@@ -570,12 +612,13 @@ export class ProactiveRiskDetector {
         }, '✅ Risk escalation workflow triggered successfully');
 
         // Store workflow trigger event
-        await prisma.activity.create({
+        await prisma.contractActivity.create({
           data: {
-            type: 'workflow_triggered' as any,
-            description: `Risk escalation workflow triggered - Score: ${riskSummary.overallRiskScore}, Critical: ${riskSummary.criticalCount}, High: ${riskSummary.highCount}`,
+            type: 'workflow_triggered',
+            action: `Risk escalation workflow triggered - Score: ${riskSummary.overallRiskScore}, Critical: ${riskSummary.criticalCount}, High: ${riskSummary.highCount}`,
             contractId,
             tenantId,
+            userId: 'system', // System-generated activity
             metadata: {
               triggeredBy: 'ProactiveRiskDetector',
               executionId: result.executionId,
@@ -590,11 +633,13 @@ export class ProactiveRiskDetector {
         await prisma.notification.create({
           data: {
             tenantId,
+            userId: 'system', // System-generated notification
             type: 'risk_escalation' as any,
             title: 'High-Risk Contract Requires Attention',
-            message: `Contract "${contract.name}" has a risk score of ${riskSummary.overallRiskScore}/100 with ${riskSummary.criticalCount} critical risks. Immediate review recommended.`,
-            priority: 'critical' as any,
+            message: `Contract "${contract.contractTitle || contract.fileName || contractId}" has a risk score of ${riskSummary.overallRiskScore}/100 with ${riskSummary.criticalCount} critical risks. Immediate review recommended.`,
+            // Note: priority is stored in metadata since it's not a schema field
             metadata: {
+              priority: 'critical',
               contractId,
               riskScore: riskSummary.overallRiskScore,
               criticalCount: riskSummary.criticalCount,

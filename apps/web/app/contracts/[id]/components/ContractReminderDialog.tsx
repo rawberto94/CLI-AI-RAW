@@ -59,7 +59,7 @@ interface ContractReminderDialogProps {
 export const ContractReminderDialog = memo(function ContractReminderDialog({
   isOpen,
   onClose,
-  contractId,
+  contractId: _contractId,
   contractName,
   expirationDate,
   currentConfig,

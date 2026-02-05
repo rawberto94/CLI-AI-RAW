@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { baselineManagementService } from 'data-orchestration/services';
+import { baselineManagementService as _baselineManagementService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

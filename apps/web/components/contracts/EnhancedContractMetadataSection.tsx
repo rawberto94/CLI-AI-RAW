@@ -756,7 +756,7 @@ function MetadataSection({
   tenantId,
   fieldValidations,
   onFieldValidated,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   sectionProgress // Can be used for external sync, currently calculated internally
 }: MetadataSectionProps & { sectionProgress?: { verified: number; total: number } }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);

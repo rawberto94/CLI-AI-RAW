@@ -14,7 +14,7 @@ import { getSessionTenantId } from '@/lib/tenant-server';
 import { 
   getAICopilotService,
   type CopilotContext,
-  type RealtimeSuggestion 
+  type RealtimeSuggestion as _RealtimeSuggestion 
 } from '@repo/data-orchestration';
 
 // ============================================================================

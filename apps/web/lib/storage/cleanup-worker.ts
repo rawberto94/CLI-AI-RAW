@@ -7,7 +7,7 @@
  * Run via: pnpm storage:cleanup or as scheduled job
  */
 
-/* eslint-disable no-console */
+
 import { prisma } from '@/lib/prisma';
 import { deleteFromStorage } from '@/lib/storage';
 import { getStorageConfig, getDocumentsForCleanup } from './retention-config';

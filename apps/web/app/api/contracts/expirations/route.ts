@@ -13,7 +13,7 @@ import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-interface ExpirationFilters {
+interface _ExpirationFilters {
   risk?: string;
   status?: string;
   isExpired?: boolean;

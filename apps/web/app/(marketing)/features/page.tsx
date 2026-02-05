@@ -4,7 +4,7 @@ import {
   MessageSquare, 
   Clock, 
   Shield, 
-  Zap, 
+  Zap as _Zap, 
   BarChart3, 
   FileText,
   Search,

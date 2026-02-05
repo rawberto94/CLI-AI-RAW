@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { contractIds, tenantId } = body;
+    const { contractIds, tenantId: _tenantId } = body;
 
     if (!contractIds || !Array.isArray(contractIds)) {
       return NextResponse.json(

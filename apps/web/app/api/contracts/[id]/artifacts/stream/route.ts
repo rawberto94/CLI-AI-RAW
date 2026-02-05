@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse as _NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 
 // Bulletproof constants
 const POLL_INTERVAL_MS = 1000; // Poll every 1 second
-const HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
+const _HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
 const MAX_POLL_SECONDS = 300; // 5 minute timeout (increased from 3)
 const EXPECTED_ARTIFACT_COUNT = 10;
 const MAX_CONSECUTIVE_ERRORS = 5;
@@ -38,7 +38,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   let isInitiallyCompleted = false;
   
   try {
-    contract = await prisma.contract.findUnique({
+    // Use findFirst with tenant filter for proper multi-tenant isolation
+    contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
       select: { id: true, status: true }
     });
@@ -91,7 +92,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               contractId,
               timestamp: new Date().toISOString()
             });
-          } catch (e) {
+          } catch (_e) {
             // Connection closed
             clearInterval(heartbeatInterval);
           }
@@ -357,7 +358,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         isClosed = true;
         try {
           controller.close();
-        } catch (e) {
+        } catch (_e) {
           // Already closed
         }
       });

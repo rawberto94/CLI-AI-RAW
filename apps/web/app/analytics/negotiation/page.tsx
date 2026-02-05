@@ -76,7 +76,7 @@ export default function NegotiationPrepPage() {
       link.download = `negotiation-prep-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Negotiation data exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };

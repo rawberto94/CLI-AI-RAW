@@ -253,7 +253,7 @@ export function useFetch<T = unknown>(
         abortControllerRef.current.abort();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, [url, skip, ...dependencies]);
 
   // Refetch interval
@@ -549,7 +549,7 @@ export function useInfiniteScroll<T>(
   // Initial load
   useEffect(() => {
     fetchPage(initialPage, false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   }, []);
 
   return {

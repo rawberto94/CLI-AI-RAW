@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  ArrowRight,
+  ArrowRight as _ArrowRight,
 } from 'lucide-react'
 
 interface TimelineEvent {

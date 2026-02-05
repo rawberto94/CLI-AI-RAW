@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { MessageCircle, Sparkles, Brain, Bot } from 'lucide-react';
+import { MessageCircle, Sparkles, Brain, Bot as _Bot } from 'lucide-react';
 
 export default function AIChatLoading() {
   return (

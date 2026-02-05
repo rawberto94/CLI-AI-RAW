@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
  * 
  * Get baseline import statistics
  */
-export async function GET(req: NextRequest) {
+export async function GET(_req: NextRequest) {
   try {
     const tenantId = await getServerTenantId();
 

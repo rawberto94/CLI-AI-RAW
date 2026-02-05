@@ -154,7 +154,7 @@ export const RelatedContracts = memo(function RelatedContracts({
       
       const data = await response.json()
       setContracts(data.contracts || [])
-    } catch (err) {
+    } catch (_err) {
       setError('Unable to load related contracts')
       // Fallback to empty for graceful degradation
       setContracts([])

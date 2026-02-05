@@ -192,7 +192,7 @@ export const BackupRestore = memo(function BackupRestore({
 
       setBackups(prev => [newBackup, ...prev]);
       toast.success('Backup completed successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Backup failed');
     } finally {
       setBackupInProgress(false);

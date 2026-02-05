@@ -426,7 +426,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
   const [featureFilter, setFeatureFilter] = useState<string>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<string>('all');
   // Used for future detail view modal
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
 
   useEffect(() => {

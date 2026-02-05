@@ -8,7 +8,7 @@ import { db } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     // Fetch all suppliers from rate card suppliers with their rate cards
     const suppliers = await db.rateCardSupplier.findMany({

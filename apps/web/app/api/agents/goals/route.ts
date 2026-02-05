@@ -26,7 +26,7 @@ async function queueGoalExecution(goalId: string, tenantId: string): Promise<voi
         removeOnFail: { age: 86400 * 30 }, // Keep 30 days
       });
       await queue.close();
-      console.log(`[Agent Goals] Queued goal execution: ${goalId}`);
+      console.warn(`[Agent Goals] Queued goal execution: ${goalId}`);
       return;
     }
   } catch (error) {

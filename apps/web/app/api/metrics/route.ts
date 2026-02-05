@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMetrics } from '@/lib/metrics';
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const metrics = await getMetrics();
     

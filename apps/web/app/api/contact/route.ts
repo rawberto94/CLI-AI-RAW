@@ -41,14 +41,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the submission (in production, send email/store in DB)
-    console.log('📧 Contact Form Submission:');
-    console.log('----------------------------');
-    console.log(`Name: ${data.name}`);
-    console.log(`Email: ${data.email}`);
-    console.log(`Company: ${data.company || 'Not provided'}`);
-    console.log(`Reason: ${REASON_LABELS[data.reason] || data.reason}`);
-    console.log(`Message: ${data.message}`);
-    console.log('----------------------------');
+    console.warn('📧 Contact Form Submission:');
+    console.warn('----------------------------');
+    console.warn(`Name: ${data.name}`);
+    console.warn(`Email: ${data.email}`);
+    console.warn(`Company: ${data.company || 'Not provided'}`);
+    console.warn(`Reason: ${REASON_LABELS[data.reason] || data.reason}`);
+    console.warn(`Message: ${data.message}`);
+    console.warn('----------------------------');
 
     // Email integration
     const emailHtml = `

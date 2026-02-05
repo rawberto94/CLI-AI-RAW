@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma';
  * GET /api/rate-cards/filters
  * Get all saved filters for the user
  */
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   try {
     const session = await getServerSession();
     if (!session?.user?.id || !session?.user?.tenantId) {

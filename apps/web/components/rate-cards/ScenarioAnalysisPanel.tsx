@@ -34,7 +34,7 @@ export function ScenarioAnalysisPanel({ rateCardId, tenantId }: ScenarioAnalysis
 
   useEffect(() => {
     loadScenarios();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [rateCardId]);
 
   const loadScenarios = async () => {

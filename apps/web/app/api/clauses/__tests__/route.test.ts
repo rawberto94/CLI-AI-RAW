@@ -70,7 +70,7 @@ describe('GET /api/clauses', () => {
   it('should filter clauses by search query', async () => {
     const request = createRequest('GET', 'http://localhost:3000/api/clauses?search=confidentiality');
     const response = await GET(request);
-    const data = await response.json();
+    const _data = await response.json();
 
     expect(response.status).toBe(200);
     // Results should contain search term in title, content, or tags

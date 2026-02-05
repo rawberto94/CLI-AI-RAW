@@ -65,12 +65,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: contractId } = await params;
+  const { id: _contractId } = await params;
   
   try {
     const body: ValidationRequest = await request.json();
     const { fields, contractText, validateAll = true, fieldsToValidate } = body;
-    const tenantId = await getApiTenantId(request);
+    const _tenantId = await getApiTenantId(request);
 
     if (!fields || Object.keys(fields).length === 0) {
       return NextResponse.json(

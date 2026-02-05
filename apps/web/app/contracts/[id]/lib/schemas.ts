@@ -13,7 +13,7 @@ import { z } from 'zod';
 
 const nullableString = z.string().nullable().optional();
 const nullableNumber = z.number().nullable().optional();
-const nullableDate = z.string().datetime().nullable().optional();
+const _nullableDate = z.string().datetime().nullable().optional();
 
 // ============================================================================
 // PARTY SCHEMA

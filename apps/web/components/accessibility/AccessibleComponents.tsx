@@ -8,7 +8,7 @@
 import React, { useRef, useEffect } from 'react';
 import { useFocusTrap, useAnnouncer, usePrefersReducedMotion } from '@/hooks/useAccessibility';
 import { motion } from 'framer-motion';
-import { X, ChevronDown, Check } from 'lucide-react';
+import { X, ChevronDown, Check as _Check } from 'lucide-react';
 
 // ============================================================================
 // Skip Links

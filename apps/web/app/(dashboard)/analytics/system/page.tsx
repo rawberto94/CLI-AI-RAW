@@ -66,7 +66,7 @@ export default function SystemAnalyticsPage() {
           <Suspense fallback={<LoadingSkeleton />}>
             <DashboardBuilder
               onSave={(config) => {
-                console.log('Dashboard saved:', config);
+                console.warn('Dashboard saved:', config);
                 // In production, save to API
               }}
             />

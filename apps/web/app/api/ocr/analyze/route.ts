@@ -7,7 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { 
-  DocumentPreprocessor, 
+  DocumentPreprocessor as _DocumentPreprocessor, 
   analyzeDocumentQuality, 
   shouldPreprocess,
   preprocessForOCR,

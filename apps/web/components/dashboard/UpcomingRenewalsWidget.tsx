@@ -151,7 +151,7 @@ interface RenewalItemProps {
 
 function RenewalItem({ 
   renewal, 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   onInitiateRenewal, 
   onSetReminder, 
   variant = 'card' 

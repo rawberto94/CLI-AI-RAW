@@ -27,7 +27,7 @@ import {
   RefreshCw,
   Eye,
   Calendar,
-  TrendingUp,
+  TrendingUp as _TrendingUp,
   Shield,
   DollarSign,
   FileText,
@@ -37,7 +37,7 @@ import {
   Brain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription as _CardDescription, CardHeader as _CardHeader, CardTitle as _CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -54,9 +54,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger as _DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Input as _Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -328,7 +328,7 @@ const GoalCard: React.FC<{
             >
               <h5 className="text-sm font-medium mb-2">Execution Plan</h5>
               <div className="space-y-2">
-                {goal.plan.steps.map((step, index) => (
+                {goal.plan.steps.map((step, _index) => (
                   <div 
                     key={step.id}
                     className={cn(
@@ -529,7 +529,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('active');
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
+  const [_selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
   
   // Fetch data
   const fetchData = useCallback(async () => {

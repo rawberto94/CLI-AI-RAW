@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   XCircle,
   TrendingUp,
-  TrendingDown,
+  TrendingDown as _TrendingDown,
   Activity,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,7 +45,7 @@ interface ContractHealthProps {
   onAutoFix?: () => void;
 }
 
-export function ContractHealthCard({ contractId, health, onAutoFix }: ContractHealthProps) {
+export function ContractHealthCard({ contractId: _contractId, health, onAutoFix }: ContractHealthProps) {
   const getHealthColor = (healthLevel: string) => {
     switch (healthLevel) {
       case 'excellent': return 'text-green-600';
