@@ -3077,25 +3077,34 @@ export default function ContractsPage() {
                     <FileText className="h-3.5 w-3.5 text-slate-400" />
                     Contract
                   </div>
-                  <div className="hidden lg:block w-[100px] flex items-center gap-1.5">
+                  <div className="hidden lg:flex w-[100px] items-center gap-1.5">
                     <Tag className="h-3.5 w-3.5 text-slate-400" />
                     Category
                   </div>
-                  <div className="hidden lg:block w-[80px]">Type</div>
-                  <div className="hidden md:block w-[120px] flex items-center gap-1.5">
+                  <div className="hidden lg:flex w-[80px] items-center gap-1.5">
+                    <FileText className="h-3.5 w-3.5 text-slate-400" />
+                    Type
+                  </div>
+                  <div className="hidden md:flex w-[120px] items-center gap-1.5">
                     <Building2 className="h-3.5 w-3.5 text-slate-400" />
                     Party
                   </div>
-                  <div className="hidden lg:block w-[90px] text-right flex items-center justify-end gap-1.5">
+                  <div className="hidden lg:flex w-[90px] items-center justify-end gap-1.5">
                     <DollarSign className="h-3.5 w-3.5 text-slate-400" />
                     Value
                   </div>
-                  <div className="hidden md:block w-[90px] flex items-center gap-1.5">
+                  <div className="hidden md:flex w-[90px] items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5 text-slate-400" />
                     Expires
                   </div>
-                  <div className="hidden lg:block w-[70px]">Signed</div>
-                  <div className="w-[90px]">Status</div>
+                  <div className="hidden lg:flex w-[70px] items-center gap-1.5">
+                    <CheckCircle className="h-3.5 w-3.5 text-slate-400" />
+                    Signed
+                  </div>
+                  <div className="w-[90px] flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5 text-slate-400" />
+                    Status
+                  </div>
                   <div className="w-10 flex-shrink-0"></div>
                 </div>
                 
