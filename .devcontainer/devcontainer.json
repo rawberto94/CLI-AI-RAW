@@ -1,19 +1,17 @@
 {
-  "name": "Next-Gen Contract Intelligence",
+  "name": "Contigo",
   "image": "mcr.microsoft.com/devcontainers/typescript-node:1-20-bullseye",
-  
-  "hostRequirements": {
-    "cpus": 8,
-    "memory": "32gb",
-    "storage": "256gb"
-  },
-  
+
   "features": {
     "ghcr.io/devcontainers/features/docker-in-docker:2": {},
     "ghcr.io/devcontainers/features/git:1": {},
-    "ghcr.io/devcontainers/features/github-cli:1": {}
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20",
+      "pnpmVersion": "9"
+    }
   },
-  
+
   "customizations": {
     "vscode": {
       "settings": {
@@ -21,7 +19,9 @@
         "editor.formatOnSave": true,
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": "explicit"
-        }
+        },
+        "files.eol": "\n",
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
       },
       "extensions": [
         "dbaeumer.vscode-eslint",
@@ -32,10 +32,23 @@
       ]
     }
   },
-  
+
   "forwardPorts": [3005, 5432, 6379, 9324],
-  
-  "postCreateCommand": "pnpm install",
-  
-  "remoteUser": "node"
+  "portsAttributes": {
+    "3005": { "label": "App", "onAutoForward": "openBrowser" },
+    "5432": { "label": "Postgres" },
+    "6379": { "label": "Redis" },
+    "9324": { "label": "Tests" }
+  },
+
+  "remoteEnv": {
+    "PNPM_HOME": "/home/node/.local/share/pnpm",
+    "PATH": "/home/node/.local/share/pnpm:$PATH"
+  },
+
+  "postCreateCommand": "corepack enable && pnpm --version && pnpm install --frozen-lockfile",
+  "postStartCommand": "git config --global --add safe.directory ${containerWorkspaceFolder} || true",
+
+  "remoteUser": "node",
+  "updateRemoteUserUID": true
 }
