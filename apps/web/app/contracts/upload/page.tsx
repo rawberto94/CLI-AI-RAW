@@ -199,6 +199,9 @@ export default function UploadPage() {
     checkAIStatus()
   }, [])
 
+  // Auto-start upload when files are added via drop/browse
+  const [shouldAutoStart, setShouldAutoStart] = useState(false)
+
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles.map(file => ({
       id: Math.random().toString(36).substr(2, 9),
@@ -213,6 +216,9 @@ export default function UploadPage() {
     if (files.length === 0 && newFiles.length > 0) {
       setActiveTab('queue')
     }
+    
+    // Auto-start upload after files are added
+    setShouldAutoStart(true)
   }, [files.length])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -303,6 +309,9 @@ export default function UploadPage() {
       }
 
       const { contractId } = responseData
+      
+      // Debug log the contract ID received from server
+      console.log(`[Upload] Received contractId from server: ${contractId}, File: ${uploadFile.file.name}`);
 
       // Update to processing with artifact viewer enabled
       setFiles(prev => prev.map(f =>
@@ -345,6 +354,18 @@ export default function UploadPage() {
     
     setIsUploading(false)
   }, [files, processingOptions.concurrency, isPaused])
+
+  // Auto-start upload effect (must be after handleUploadAll is defined)
+  useEffect(() => {
+    if (shouldAutoStart && !isUploading && files.some(f => f.status === 'pending')) {
+      setShouldAutoStart(false)
+      // Small delay to ensure state is updated
+      const timer = setTimeout(() => {
+        handleUploadAll()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [shouldAutoStart, isUploading, files, handleUploadAll])
 
   const handlePauseAll = useCallback(() => {
     setIsPaused(true)
@@ -766,7 +787,10 @@ export default function UploadPage() {
                       )}
                       
                       {pendingCount > 0 && !isUploading && (
-                        <Button onClick={handleUploadAll} className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600">
+                        <Button 
+                          onClick={handleUploadAll} 
+                          className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600"
+                        >
                           <Play className="h-4 w-4" aria-hidden="true" />
                           Start All ({pendingCount})
                         </Button>
@@ -824,8 +848,21 @@ export default function UploadPage() {
                             onRemove={() => removeFile(file.id)}
                             onViewContract={viewContract}
                             onContractNotFound={() => {
-                              // Auto-remove files with stale/deleted contracts
-                              setFiles(prev => prev.filter(f => f.id !== file.id));
+                              // Don't remove the file - show error state instead
+                              console.log('[Upload] EnhancedUploadProgress: Contract not found for file:', file.id);
+                              setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                  ? { ...f, status: 'error', error: 'Contract not found. Please try uploading again.', endTime: Date.now() }
+                                  : f
+                              ));
+                            }}
+                            onComplete={() => {
+                              // Update file status to completed when processing finishes
+                              setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                  ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
+                                  : f
+                              ))
                             }}
                             tenantId={getTenantId()}
                           />
@@ -852,8 +889,14 @@ export default function UploadPage() {
                                   ))
                                 }}
                                 onContractNotFound={() => {
-                                  // Auto-remove files with stale/deleted contracts
-                                  setFiles(prev => prev.filter(f => f.id !== file.id));
+                                  // Don't remove the file - show error state instead
+                                  // This gives user a chance to retry or see what happened
+                                  console.log('[Upload] Contract not found for file:', file.id);
+                                  setFiles(prev => prev.map(f =>
+                                    f.id === file.id
+                                      ? { ...f, status: 'error', error: 'Contract not found. Please try uploading again.', endTime: Date.now() }
+                                      : f
+                                  ));
                                 }}
                               />
                             </motion.div>

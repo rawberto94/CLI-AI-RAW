@@ -87,17 +87,17 @@ export function RealtimeArtifactViewer({
       if (onComplete) onComplete();
     },
     onError: (errorMsg) => {
-      // If contract was not found, notify parent
-      if (errorMsg.includes('not found') && onContractNotFound) {
-        onContractNotFound();
-      }
+      // Log the error but don't trigger onContractNotFound here
+      // The contractNotFound state will handle that via the useEffect below
+      console.warn('[RealtimeArtifactViewer] Error:', errorMsg);
     },
     enabled: true
   });
 
-  // Immediately notify parent if contract not found
+  // Notify parent if contract not found (only after retries exhausted)
   useEffect(() => {
     if (contractNotFound && onContractNotFound) {
+      console.log('[RealtimeArtifactViewer] Contract not found, notifying parent');
       onContractNotFound();
     }
   }, [contractNotFound, onContractNotFound]);

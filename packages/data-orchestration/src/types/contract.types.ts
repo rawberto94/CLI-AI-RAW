@@ -232,6 +232,17 @@ export const ArtifactTypeEnum = z.enum([
   "NEGOTIATION_POINTS",
   "AMENDMENTS",
   "CONTACTS",
+  // Additional artifact types (matching Prisma schema)
+  "PROACTIVE_RISKS",
+  "PARTIES",
+  "TIMELINE",
+  "DELIVERABLES",
+  "PRICING",
+  "INTELLECTUAL_PROPERTY",
+  "DATA_PRIVACY",
+  "AUDIT_TRAIL",
+  "EXECUTIVE_SUMMARY",
+  "ACTION_ITEMS",
 ]);
 
 export type ArtifactType = z.infer<typeof ArtifactTypeEnum>;

@@ -169,7 +169,14 @@ export const ContractUploadSchema = z.object({
 export const ArtifactSchema = z.object({
   contractId: z.string().uuid({ message: 'Invalid contract ID' }),
   tenantId: z.string().uuid({ message: 'Invalid tenant ID' }),
-  type: z.enum(['OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RATES', 'COMPLIANCE', 'RISK', 'INGESTION', 'TEMPLATE', 'BENCHMARK', 'REPORT'] as const),
+  type: z.enum([
+    'OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RATES', 'COMPLIANCE', 'RISK', 
+    'INGESTION', 'TEMPLATE', 'BENCHMARK', 'REPORT', 'OBLIGATIONS', 
+    'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS',
+    // Additional artifact types
+    'PROACTIVE_RISKS', 'PARTIES', 'TIMELINE', 'DELIVERABLES', 'PRICING',
+    'INTELLECTUAL_PROPERTY', 'DATA_PRIVACY', 'AUDIT_TRAIL', 'EXECUTIVE_SUMMARY', 'ACTION_ITEMS'
+  ] as const),
   data: z.record(z.string(), z.any()),
   confidence: z.number().min(0).max(1).optional(),
   version: z.string().optional(),

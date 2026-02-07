@@ -150,6 +150,9 @@ export async function GET(
     }
 
     const tenantId = await getServerTenantId();
+    
+    // Debug log
+    console.log(`[GET /api/contracts/${contractId}] Resolved tenant: ${tenantId}`);
 
     // Get contract with parent and child relationships
     const contract = await prisma.contract.findFirst({

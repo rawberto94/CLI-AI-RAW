@@ -50,17 +50,9 @@ export function useArtifactStream({
   // Storage keys for tracking state (simplified - no sessionStorage caching)
   const storageKey = `artifact-stream-${contractId}`;
   const completeKey = `artifact-complete-${contractId}`;
-  const notFoundKey = `artifact-notfound-${contractId}`;
   
-  // Check if this contract was previously marked as not found (prevents repeat 404s)
-  const wasNotFound = typeof window !== 'undefined' && sessionStorage.getItem(notFoundKey) === 'true';
-  
-  // Early exit: if already known as not found, notify immediately and don't do anything
-  useEffect(() => {
-    if (wasNotFound && onError) {
-      onError('Contract not found - it may have been deleted.');
-    }
-  }, [wasNotFound, onError]);
+  // Don't use sessionStorage for notFound - it causes issues when contracts are temporarily unavailable
+  const wasNotFound = false;
   
   // Don't restore from sessionStorage - it causes stale data issues
   const [artifacts, setArtifacts] = useState<ArtifactUpdate[]>([]);
@@ -290,8 +282,14 @@ export function useArtifactStream({
 
     let cancelled = false;
     let cleanup: (() => void) | undefined;
+    let verifyAttempts = 0;
+    const MAX_VERIFY_ATTEMPTS = 5;
+    const VERIFY_RETRY_DELAY = 2000; // 2 seconds between retries
+    const INITIAL_DELAY = 1000; // Wait 1 second before first verification to allow DB commit
 
     const verifyAndConnect = async () => {
+      verifyAttempts++;
+      console.log(`[useArtifactStream] Verification attempt ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} for contract ${contractId} with tenant ${tenantId}`);
       try {
         // Add timeout to prevent hanging requests
         const controller = new AbortController();
@@ -305,16 +303,24 @@ export function useArtifactStream({
         });
 
         clearTimeout(timeoutId);
+        console.log(`[useArtifactStream] Verification response status: ${response.status} for contract ${contractId}`);
 
         if (!response.ok) {
-          // For 404, clear cached data and don't retry
+          // For 404, retry a few times before giving up (contract may not be committed yet)
           if (response.status === 404) {
-            // Mark as not found to prevent future retries
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem(notFoundKey, 'true');
-              sessionStorage.removeItem(storageKey);
-              sessionStorage.removeItem(completeKey);
+            if (verifyAttempts < MAX_VERIFY_ATTEMPTS) {
+              console.log(`[useArtifactStream] Contract ${contractId} not found (404), retry ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} in ${VERIFY_RETRY_DELAY}ms`);
+              // Retry after delay
+              if (!cancelled) {
+                setTimeout(() => {
+                  if (!cancelled) verifyAndConnect();
+                }, VERIFY_RETRY_DELAY);
+              }
+              return;
             }
+            // Max retries reached - mark as not found (but don't persist in sessionStorage)
+            console.warn(`[useArtifactStream] Contract ${contractId} not found after ${MAX_VERIFY_ATTEMPTS} retries - marking as not found`);
+            // Don't persist in sessionStorage - just set local state
             setContractNotFound(true);
             setArtifacts([]);
             setIsComplete(false);
@@ -325,9 +331,12 @@ export function useArtifactStream({
             }
             return; // Don't retry on 404
           }
+          console.error(`[useArtifactStream] Non-404 error: ${response.status} for contract ${contractId}`);
           throw new Error('Unable to verify contract status.');
         }
 
+        console.log(`[useArtifactStream] Contract ${contractId} verified successfully, connecting to SSE...`);
+        
         if (cancelled) {
           return;
         }
@@ -352,10 +361,16 @@ export function useArtifactStream({
       }
     };
 
-    verifyAndConnect();
+    // Add initial delay to allow database transaction to commit
+    const initialDelayTimeout = setTimeout(() => {
+      if (!cancelled) {
+        verifyAndConnect();
+      }
+    }, INITIAL_DELAY);
 
     return () => {
       cancelled = true;
+      clearTimeout(initialDelayTimeout);
       if (cleanup) cleanup();
       if (eventSourceRef.current) {
         eventSourceRef.current.close();

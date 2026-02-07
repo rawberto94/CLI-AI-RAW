@@ -178,6 +178,7 @@ export function EnhancedUploadProgress({
   const [startTime] = useState(Date.now());
   const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);  // Track internal completion state
   const pollRef = useRef<NodeJS.Timeout | null>(null);
   const hasCompletedRef = useRef(false);
 
@@ -202,6 +203,7 @@ export function EnhancedUploadProgress({
     hasCompletedRef.current = true;
     
     setShowSuccess(true);
+    setIsCompleted(true);  // Mark as completed internally
     if (onComplete) onComplete(finalContractId);
     
     if (autoNavigate) {
@@ -216,7 +218,7 @@ export function EnhancedUploadProgress({
     let notFoundCount = 0;
     let pollCount = 0;
     const MAX_NOT_FOUND = 5;
-    const INITIAL_GRACE_POLLS = 3;
+    const INITIAL_GRACE_POLLS = 5; // Increased grace period for DB commit delay
 
     const poll = async () => {
       pollCount++;
@@ -229,15 +231,13 @@ export function EnhancedUploadProgress({
         if (res.status === 404) {
           // During initial grace period, don't count 404s (database may not have committed yet)
           if (pollCount <= INITIAL_GRACE_POLLS) {
+            console.log(`[EnhancedUploadProgress] 404 during grace period (poll ${pollCount}/${INITIAL_GRACE_POLLS})`);
             return;
           }
           notFoundCount++;
-          if (notFoundCount >= MAX_NOT_FOUND && onContractNotFound) {
-            if (pollRef.current) clearInterval(pollRef.current);
-            // Also remove from valid contracts
-            sessionStorage.removeItem(`valid-contract-${contractId}`);
-            onContractNotFound();
-          }
+          console.log(`[EnhancedUploadProgress] 404 count: ${notFoundCount}/${MAX_NOT_FOUND}`);
+          // Don't trigger onContractNotFound - just log it
+          // The parent will handle this via RealtimeArtifactViewer if needed
           return;
         }
         
@@ -277,7 +277,7 @@ export function EnhancedUploadProgress({
     const initialDelay = setTimeout(() => {
       poll();
       pollRef.current = setInterval(poll, 1500);  // Faster polling for better UX
-    }, 500);
+    }, 1000); // Wait 1 second before first poll
     
     return () => { 
       clearTimeout(initialDelay);
@@ -350,7 +350,7 @@ export function EnhancedUploadProgress({
       className={cn(
         'rounded-lg border bg-white overflow-hidden transition-all relative',
         status === 'error' && 'border-red-200 bg-red-50',
-        status === 'completed' && 'border-green-200 bg-green-50',
+        (status === 'completed' || isCompleted) && 'border-green-200 bg-green-50',
         showSuccess && 'ring-2 ring-green-400 ring-offset-2'
       )}
     >
@@ -359,19 +359,19 @@ export function EnhancedUploadProgress({
         {/* Icon with pulse animation */}
         <div className={cn(
           'p-2 rounded-lg shrink-0 relative',
-          status === 'completed' ? 'bg-green-100' :
+          (status === 'completed' || isCompleted) ? 'bg-green-100' :
           status === 'error' ? 'bg-red-100' :
           status === 'processing' || status === 'uploading' ? 'bg-violet-100' :
           'bg-gray-100'
         )}>
-          {(status === 'processing' || status === 'uploading') && (
+          {(status === 'processing' || status === 'uploading') && !isCompleted && (
             <motion.div
               className="absolute inset-0 rounded-lg bg-violet-400"
               animate={{ opacity: [0.15, 0.3, 0.15] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
           )}
-          {status === 'completed' ? (
+          {(status === 'completed' || isCompleted) ? (
             <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             </motion.div>
@@ -393,10 +393,10 @@ export function EnhancedUploadProgress({
           
           {/* Status Line */}
           <div className="flex items-center gap-2 mt-0.5">
-            {status === 'pending' && (
+            {status === 'pending' && !isCompleted && (
               <span className="text-xs text-gray-500">Waiting to upload...</span>
             )}
-            {(status === 'uploading' || status === 'processing') && (
+            {(status === 'uploading' || status === 'processing') && !isCompleted && (
               <>
                 <span className="text-xs text-violet-600 font-medium">
                   {processingMessage}
@@ -411,13 +411,13 @@ export function EnhancedUploadProgress({
                 )}
               </>
             )}
-            {status === 'completed' && (
+            {(status === 'completed' || isCompleted) && (
               <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-green-600 font-medium flex items-center gap-1">
                 <Zap className="h-3 w-3" />
                 Complete • {artifactCount} insights extracted
               </motion.span>
             )}
-            {status === 'error' && (
+            {status === 'error' && !isCompleted && (
               <span className="text-xs text-red-600 font-medium">
                 {error || 'Processing failed'}
               </span>
@@ -427,7 +427,7 @@ export function EnhancedUploadProgress({
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {status === 'completed' && contractId && (
+          {(status === 'completed' || isCompleted) && contractId && (
             <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}>
               <Button 
                 size="sm" 
@@ -459,7 +459,7 @@ export function EnhancedUploadProgress({
             </Button>
           )}
 
-          {(status === 'pending' || status === 'error' || status === 'completed') && (
+          {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
             <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
               <X className="h-4 w-4" />
             </Button>
@@ -468,7 +468,7 @@ export function EnhancedUploadProgress({
       </div>
 
       {/* Progress Bar */}
-      {(status === 'uploading' || status === 'processing') && (
+      {(status === 'uploading' || status === 'processing') && !isCompleted && (
         <div className="px-3 pb-3">
           <Progress value={progress} className="h-1.5" />
         </div>

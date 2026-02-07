@@ -70,6 +70,7 @@ export async function getTenantContext(): Promise<TenantContext> {
     const session = await getServerSession();
     
     if (session?.user) {
+      console.log(`[getTenantContext] Using session tenant: ${session.user.tenantId || 'default'}`);
       return {
         tenantId: session.user.tenantId || getDefaultTenantId(),
         userId: session.user.id,
@@ -85,6 +86,8 @@ export async function getTenantContext(): Promise<TenantContext> {
   const headersList = await headers();
   const headerTenantId = headersList.get("x-tenant-id");
   
+  console.log(`[getTenantContext] Header x-tenant-id: ${headerTenantId || 'NOT SET'}`);
+  
   if (headerTenantId) {
     return {
       tenantId: headerTenantId,
@@ -93,6 +96,7 @@ export async function getTenantContext(): Promise<TenantContext> {
   }
 
   // Return demo tenant only in development
+  console.log('[getTenantContext] Using default tenant: demo');
   return {
     tenantId: getDefaultTenantId(),
     isAuthenticated: false,

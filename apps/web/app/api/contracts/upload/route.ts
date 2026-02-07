@@ -590,6 +590,9 @@ export async function POST(
       // Continue anyway - job will still process via fallback
     }
 
+    // Debug log the contract ID
+    console.log(`[ContractUpload] SUCCESS - Contract ID: ${contract.id}, Tenant: ${tenantId}, File: ${file.name}`);
+
     const response = NextResponse.json<UploadResponse>(
       {
         success: true,
