@@ -412,11 +412,11 @@ const StatsCards = memo(function StatsCards({ stats }: { stats: ApprovalStats })
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/20 dark:to-background border-purple-200/50">
+      <Card className="bg-gradient-to-br from-violet-50 to-white dark:from-violet-950/20 dark:to-background border-violet-200/50">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg dark:bg-purple-900/30">
-              <Timer className="h-5 w-5 text-purple-600" />
+            <div className="p-2 bg-violet-100 rounded-lg dark:bg-violet-900/30">
+              <Timer className="h-5 w-5 text-violet-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.avgTimeToApprove}d</p>
@@ -467,10 +467,10 @@ const ApprovalItemRow = memo(function ApprovalItemRow({
       <div className={cn(
         "p-2 rounded-lg",
         item.category === 'contract' && "bg-violet-100 text-violet-600",
-        item.category === 'artifact' && "bg-purple-100 text-purple-600",
+        item.category === 'artifact' && "bg-violet-100 text-violet-600",
         item.category === 'ai_output' && "bg-amber-100 text-amber-600",
         item.category === 'amendment' && "bg-green-100 text-green-600",
-        item.category === 'renewal' && "bg-purple-100 text-purple-600",
+        item.category === 'renewal' && "bg-violet-100 text-violet-600",
       )}>
         <CategoryIcon category={item.category} />
       </div>

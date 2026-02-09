@@ -172,8 +172,8 @@ const activityTypeConfig: Record<
   },
   linked: {
     icon: Link,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Linked',
   },
   sent: {
@@ -196,8 +196,8 @@ const activityTypeConfig: Record<
   },
   status_changed: {
     icon: ArrowRight,
-    color: 'text-purple-500',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-500',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Status Changed',
   },
   reminder: {

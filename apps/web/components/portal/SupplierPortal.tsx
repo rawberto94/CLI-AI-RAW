@@ -238,7 +238,7 @@ const getStatusColor = (status: PortalContract['status']) => {
     case 'in-negotiation':
       return 'bg-violet-100 text-violet-700';
     case 'pending-signature':
-      return 'bg-purple-100 text-purple-700';
+      return 'bg-violet-100 text-violet-700';
     case 'active':
       return 'bg-green-100 text-green-700';
     case 'expired':
@@ -431,8 +431,8 @@ export function SupplierPortal() {
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-200">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <FileCheck className="h-6 w-6 text-purple-600" />
+                  <div className="p-3 bg-violet-100 rounded-lg">
+                    <FileCheck className="h-6 w-6 text-violet-600" />
                   </div>
                   <div>
                     <p className="text-2xl font-bold text-gray-900">98%</p>

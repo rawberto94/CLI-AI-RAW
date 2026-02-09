@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 interface ScheduleRequest {
   name: string;
@@ -14,47 +15,33 @@ interface ScheduleRequest {
 // Mock storage - in production, store in database
 const schedules: any[] = [];
 
-export async function GET(_request: NextRequest) {
-  try {
-    return NextResponse.json({ schedules });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch schedules" },
-      { status: 500 }
-    );
-  }
-}
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  return createSuccessResponse(ctx, { schedules });
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: ScheduleRequest = await request.json();
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const body: ScheduleRequest = await request.json();
 
-    // Calculate next run time
-    const nextRun = calculateNextRun(body);
+  // Calculate next run time
+  const nextRun = calculateNextRun(body);
 
-    const schedule = {
-      id: Date.now().toString(),
-      ...body,
-      createdAt: new Date().toISOString(),
-      lastRun: null,
-      nextRun: nextRun.toISOString(),
-    };
+  const schedule = {
+    id: Date.now().toString(),
+    ...body,
+    createdAt: new Date().toISOString(),
+    lastRun: null,
+    nextRun: nextRun.toISOString(),
+  };
 
-    schedules.push(schedule);
+  schedules.push(schedule);
 
-    // In production, this would:
-    // 1. Save to database
-    // 2. Register cron job with Vercel or similar service
-    // 3. Set up email delivery system
+  // In production, this would:
+  // 1. Save to database
+  // 2. Register cron job with Vercel or similar service
+  // 3. Set up email delivery system
 
-    return NextResponse.json({ success: true, schedule });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to create schedule" },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, { schedule });
+});
 
 function calculateNextRun(schedule: ScheduleRequest): Date {
   const now = new Date();

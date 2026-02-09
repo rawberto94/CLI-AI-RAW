@@ -6,16 +6,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { roleStandardizationService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     const body = await request.json();
@@ -23,10 +20,7 @@ export async function POST(request: NextRequest) {
     const { roleOriginal, context } = body;
 
     if (!roleOriginal) {
-      return NextResponse.json(
-        { error: 'roleOriginal is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'roleOriginal is required', 400);
     }
 
     const result = await roleStandardizationService.standardizeRole(
@@ -35,14 +29,5 @@ export async function POST(request: NextRequest) {
       context
     );
 
-    return NextResponse.json(result);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to standardize role',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, result);
+  });

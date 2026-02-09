@@ -106,7 +106,7 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
   const getColorClasses = (color: string) => {
     const colors = {
       blue: 'border-violet-200 bg-violet-50 text-violet-900',
-      purple: 'border-purple-200 bg-purple-50 text-purple-900',
+      purple: 'border-violet-200 bg-violet-50 text-violet-900',
       green: 'border-green-200 bg-green-50 text-green-900',
       orange: 'border-orange-200 bg-orange-50 text-orange-900',
       red: 'border-red-200 bg-red-50 text-red-900'
@@ -325,7 +325,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
     const colors = {
       blue: 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-100',
       green: 'border-green-500 bg-gradient-to-br from-violet-50 to-purple-100',
-      purple: 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100',
+      purple: 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-100',
       orange: 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100'
     };
     return colors[color as keyof typeof colors] || colors.blue;

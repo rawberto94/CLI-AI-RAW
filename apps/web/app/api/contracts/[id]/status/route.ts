@@ -12,12 +12,14 @@
  * - Queue position information
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
-  return request.headers.get('x-tenant-id');
+  return ctx.tenantId;
 }
 
 // Processing stage definitions with estimated durations
@@ -64,23 +66,18 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const params = await context.params;
     const contractId = params.id;
     const tenantId = getTenantId(request);
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'Contract ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     // Fetch contract with artifacts and processing job - scoped to tenant
@@ -117,10 +114,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     const processingJob = contract.processingJobs[0] || null;
@@ -192,7 +186,7 @@ export async function GET(
         : null,
     }));
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       // Basic info
       contractId: contract.id,
       status: contract.status,
@@ -246,13 +240,7 @@ export async function GET(
         : null,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to fetch contract status',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

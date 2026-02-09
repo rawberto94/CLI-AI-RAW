@@ -317,7 +317,7 @@ const variantConfig: Record<ToastVariant, { icon: LucideIcon; styles: string; ic
   loading: {
     icon: Loader2,
     styles: 'bg-white border-slate-200',
-    iconColor: 'text-purple-500',
+    iconColor: 'text-violet-500',
   },
   default: {
     icon: Info,
@@ -374,7 +374,7 @@ function ToastItem({ toast, onDismiss, fromTop }: ToastItemProps) {
                   'text-sm font-medium transition-colors',
                   action.variant === 'destructive'
                     ? 'text-red-600 hover:text-red-700'
-                    : 'text-purple-600 hover:text-purple-700'
+                    : 'text-violet-600 hover:text-violet-700'
                 )}
               >
                 {action.label}

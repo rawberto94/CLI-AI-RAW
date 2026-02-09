@@ -36,7 +36,7 @@ const ROLE_CONFIG = {
   derivative: {
     label: 'Derivative',
     icon: FilePlus,
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    className: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   },
   reference: {
     label: 'Reference',
@@ -56,7 +56,7 @@ const ROLE_CONFIG = {
   template: {
     label: 'Template',
     icon: FileCheck,
-    className: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    className: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   },
 };
 

@@ -643,8 +643,8 @@ export function IntegrationHub() {
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Zap className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Zap className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">99.4%</p>

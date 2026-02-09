@@ -153,13 +153,13 @@ const QUICK_ACTIONS = [
     icon: DollarSign,
     label: "Rate Comparison",
     query: "Compare my labor rates against market benchmarks",
-    color: "text-purple-500",
+    color: "text-violet-500",
   },
   {
     icon: Clock,
     label: "Obligation Tracking",
     query: "What are my upcoming contractual obligations?",
-    color: "text-purple-500",
+    color: "text-violet-500",
   },
 ];
 
@@ -612,7 +612,7 @@ function AIChatPageContent() {
               <div className="p-4 border-b">
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="w-full gap-2 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
                 >
                   <Plus className="h-4 w-4" />
                   New Chat
@@ -709,7 +709,7 @@ function AIChatPageContent() {
                   </Button>
                 </Link>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
                   <div>
@@ -887,7 +887,7 @@ function AIChatPageContent() {
                   )}
                 >
                   {message.role === "assistant" && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-white" />
                     </div>
                   )}
@@ -1004,7 +1004,7 @@ function AIChatPageContent() {
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-3"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                   <div className="bg-white dark:bg-slate-800 border shadow-sm rounded-xl p-4">
@@ -1071,7 +1071,7 @@ function AIChatPageContent() {
                   type="submit"
                   size="lg"
                   disabled={!input.trim() || isLoading}
-                  className="h-12 px-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="h-12 px-6 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
                 >
                   {isLoading ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
@@ -1121,14 +1121,14 @@ function ConversationItem({
       className={cn(
         "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors",
         isActive
-          ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800"
+          ? "bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800"
           : "hover:bg-slate-100 dark:hover:bg-slate-800"
       )}
       onClick={onSelect}
     >
       <MessageSquare className={cn(
         "h-4 w-4 flex-shrink-0",
-        isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"
+        isActive ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground"
       )} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{conversation.title}</p>
@@ -1182,7 +1182,7 @@ export default function AIChatPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
         </div>
       }
     >

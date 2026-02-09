@@ -7,8 +7,9 @@
  * more detail, or clearer explanations.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -24,6 +25,7 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   const _contractId = params.id;
 
   try {
@@ -31,15 +33,12 @@ export async function POST(
     const { fieldId, currentValue } = body;
 
     if (!fieldId || currentValue === undefined || currentValue === null) {
-      return NextResponse.json(
-        { error: 'fieldId and currentValue are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'fieldId and currentValue are required', 400);
     }
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: false,
         enhancedValue: currentValue,
         message: 'AI enhancement not available (OpenAI not configured)',
@@ -68,7 +67,7 @@ export async function POST(
 
     const enhancedValue = completion.choices[0]?.message?.content?.trim() || currentValue;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       enhancedValue,
       originalValue: currentValue,
@@ -76,14 +75,7 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to enhance field',
-        details: error instanceof Error ? error.message : 'Unknown error',
-        enhancedValue: null, // Cannot fallback - may not have body
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

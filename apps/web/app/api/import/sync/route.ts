@@ -3,8 +3,8 @@
  * Manages sync schedules for periodic database imports
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import {
   getSyncSchedules,
   getSyncSchedule,
@@ -42,50 +42,36 @@ interface CreateScheduleRequest {
 /**
  * GET /api/import/sync - List all sync schedules
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const scheduleId = request.nextUrl.searchParams.get('id');
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const scheduleId = request.nextUrl.searchParams.get('id');
 
-    if (scheduleId) {
-      const schedule = await getSyncSchedule(tenantId, scheduleId);
-      if (!schedule) {
-        return NextResponse.json(
-          { error: 'Schedule not found' },
-          { status: 404 }
-        );
-      }
-      return NextResponse.json(schedule);
+  if (scheduleId) {
+    const schedule = await getSyncSchedule(tenantId, scheduleId);
+    if (!schedule) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
     }
-
-    const schedules = await getSyncSchedules(tenantId);
-    return NextResponse.json({ schedules });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to get schedules' },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, schedule);
   }
-}
+
+  const schedules = await getSyncSchedules(tenantId);
+  return createSuccessResponse(ctx, { schedules });
+});
 
 /**
  * POST /api/import/sync - Create schedule or run sync
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const action = body.action || 'create';
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const body = await request.json();
+  const action = body.action || 'create';
 
     switch (action) {
       case 'create': {
         const scheduleData = body as CreateScheduleRequest;
         
         if (!scheduleData.name || !scheduleData.config || !scheduleData.tableName) {
-          return NextResponse.json(
-            { error: 'Missing required fields: name, config, tableName' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: name, config, tableName', 400);
         }
 
         const schedule = await upsertSyncSchedule(tenantId, {
@@ -115,25 +101,19 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({ success: true, schedule });
+        return createSuccessResponse(ctx, { success: true, schedule });
       }
 
       case 'run': {
         const { scheduleId } = body;
         
         if (!scheduleId) {
-          return NextResponse.json(
-            { error: 'scheduleId required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'scheduleId required', 400);
         }
 
         const schedule = await getSyncSchedule(tenantId, scheduleId);
         if (!schedule) {
-          return NextResponse.json(
-            { error: 'Schedule not found' },
-            { status: 404 }
-          );
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
         }
 
         // Create sync run record
@@ -178,7 +158,7 @@ export async function POST(request: NextRequest) {
           // Update stats
           await updateSyncStats(tenantId, scheduleId, run);
 
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             run,
             result,
@@ -190,14 +170,7 @@ export async function POST(request: NextRequest) {
 
           await updateSyncStats(tenantId, scheduleId, run);
 
-          return NextResponse.json(
-            {
-              success: false,
-              run,
-              error: error instanceof Error ? error.message : 'Sync failed',
-            },
-            { status: 500 }
-          );
+          return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Sync failed', 500);
         }
       }
 
@@ -205,18 +178,12 @@ export async function POST(request: NextRequest) {
         const { scheduleId, enabled } = body;
         
         if (!scheduleId) {
-          return NextResponse.json(
-            { error: 'scheduleId required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'scheduleId required', 400);
         }
 
         const schedule = await getSyncSchedule(tenantId, scheduleId);
         if (!schedule) {
-          return NextResponse.json(
-            { error: 'Schedule not found' },
-            { status: 404 }
-          );
+          return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
         }
 
         // Update the schedule's enabled status
@@ -228,55 +195,30 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({ success: true, enabled: enabled ?? !schedule.schedule.enabled });
+        return createSuccessResponse(ctx, { success: true, enabled: enabled ?? !schedule.schedule.enabled });
       }
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: create, run, or toggle' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action. Use: create, run, or toggle', 400);
     }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Operation failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 /**
  * DELETE /api/import/sync - Delete a sync schedule
  */
-export async function DELETE(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const scheduleId = request.nextUrl.searchParams.get('id');
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const scheduleId = request.nextUrl.searchParams.get('id');
 
-    if (!scheduleId) {
-      return NextResponse.json(
-        { error: 'Schedule ID required' },
-        { status: 400 }
-      );
-    }
-
-    const deleted = await deleteSyncSchedule(tenantId, scheduleId);
-    
-    if (!deleted) {
-      return NextResponse.json(
-        { error: 'Schedule not found' },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete schedule' },
-      { status: 500 }
-    );
+  if (!scheduleId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Schedule ID required', 400);
   }
-}
+
+  const deleted = await deleteSyncSchedule(tenantId, scheduleId);
+  
+  if (!deleted) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Schedule not found', 404);
+  }
+
+  return createSuccessResponse(ctx, { success: true });
+});

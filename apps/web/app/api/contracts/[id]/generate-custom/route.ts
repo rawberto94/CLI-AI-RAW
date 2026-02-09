@@ -5,8 +5,9 @@
  * Leverages the AI artifact generator with custom prompts.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -108,10 +109,11 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
+  const ctx = getApiContext(request);
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const body: GenerationRequest = await request.json();
@@ -119,16 +121,13 @@ export async function POST(
 
     // Validate topic
     if (!topic || !TOPIC_PROMPTS[topic]) {
-      return NextResponse.json(
-        { error: 'Invalid topic. Valid topics: ' + Object.keys(TOPIC_PROMPTS).join(', ') },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid topic. Valid topics: ', 400);
     }
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
       // Return mock data if no API key
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         artifact: generateMockArtifact(topic, focusArea),
         message: 'Generated using mock data (OpenAI not configured)'
@@ -139,10 +138,7 @@ export async function POST(
     const contractText = await getContractText(contractId, tenantId);
     
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'Contract not found or has no text content' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found or has no text content', 404);
     }
 
     // Build the prompt
@@ -166,17 +162,14 @@ export async function POST(
     // Parse and structure the response
     const parsedAnalysis = parseAnalysis(rawAnalysis, topic, focusArea);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       artifact: parsedAnalysis,
       usage: completion.usage
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to generate custom artifact', details: (error as Error).message },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

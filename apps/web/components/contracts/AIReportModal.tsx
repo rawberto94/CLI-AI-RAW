@@ -368,15 +368,15 @@ ${report.recommendations.map((r, i) => `${i + 1}. ${r}`).join('\n')}
                         <p className="text-xl font-bold mt-2 text-orange-900">{report.keyFindings.length}</p>
                       </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-purple-50 to-purple-50 border-purple-100/50 shadow-sm">
+                    <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-100/50 shadow-sm">
                       <CardContent className="pt-4">
                         <div className="flex items-center gap-2">
-                          <div className="p-1.5 bg-purple-100 rounded-lg">
-                            <Target className="h-4 w-4 text-purple-600" />
+                          <div className="p-1.5 bg-violet-100 rounded-lg">
+                            <Target className="h-4 w-4 text-violet-600" />
                           </div>
-                          <span className="text-xs font-medium text-purple-700">Action Items</span>
+                          <span className="text-xs font-medium text-violet-700">Action Items</span>
                         </div>
-                        <p className="text-xl font-bold mt-2 text-purple-900">{report.actionItems.length}</p>
+                        <p className="text-xl font-bold mt-2 text-violet-900">{report.actionItems.length}</p>
                       </CardContent>
                     </Card>
                   </div>

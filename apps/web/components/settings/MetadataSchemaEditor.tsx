@@ -152,7 +152,7 @@ const FIELD_TYPES = [
 const CATEGORY_COLORS = [
   { value: 'blue', label: 'Blue', class: 'bg-violet-100 text-violet-800 border-violet-300' },
   { value: 'green', label: 'Green', class: 'bg-green-100 text-green-800 border-green-300' },
-  { value: 'purple', label: 'Purple', class: 'bg-purple-100 text-purple-800 border-purple-300' },
+  { value: 'purple', label: 'Purple', class: 'bg-violet-100 text-violet-800 border-violet-300' },
   { value: 'red', label: 'Red', class: 'bg-red-100 text-red-800 border-red-300' },
   { value: 'orange', label: 'Orange', class: 'bg-orange-100 text-orange-800 border-orange-300' },
   { value: 'yellow', label: 'Yellow', class: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
@@ -497,7 +497,7 @@ export function MetadataSchemaEditor({
               className={cn(
                 "px-3 py-1.5 text-sm rounded-lg border flex items-center gap-1.5",
                 showPreview 
-                  ? "bg-purple-50 text-purple-700 border-purple-300" 
+                  ? "bg-violet-50 text-violet-700 border-violet-300" 
                   : "hover:bg-gray-50"
               )}
             >
@@ -740,7 +740,7 @@ function FieldRow({
               <span className="text-xs text-red-500">*</span>
             )}
             {field.aiExtractionEnabled && (
-              <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+              <Sparkles className="h-3.5 w-3.5 text-violet-500" />
             )}
             {field.hidden && (
               <EyeOff className="h-3.5 w-3.5 text-gray-400" />
@@ -1062,7 +1062,7 @@ function FieldEditorModal({
                 className="rounded"
               />
               <span className="text-sm flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
                 AI Extraction
               </span>
             </label>

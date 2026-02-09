@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const suppliersParam = searchParams.get('suppliers');
     const rolesParam = searchParams.get('roles');
@@ -107,18 +107,8 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       comparisons,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch rate comparisons',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

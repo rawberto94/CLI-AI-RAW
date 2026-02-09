@@ -672,7 +672,7 @@ export function CommandPalette({ contractId, onClose }: CommandPaletteProps) {
             {/* Contract Context */}
             <div>
               <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-purple-500" />
+                <span className="w-2 h-2 rounded-full bg-violet-500" />
                 Contract Actions
               </h3>
               <div className="grid grid-cols-2 gap-2">

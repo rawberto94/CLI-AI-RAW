@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 // Helper to transform Prisma template to UI-expected format
 function transformTemplate(template: Record<string, unknown>) {
@@ -28,6 +30,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const tenantId = await getApiTenantId(request);
@@ -43,10 +46,7 @@ export async function POST(
     });
 
     if (!original) {
-      return NextResponse.json(
-        { success: false, error: 'Template not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Generate unique name - append timestamp if name already exists
@@ -89,15 +89,11 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       template: transformTemplate(duplicate as unknown as Record<string, unknown>),
     });
   } catch (error) {
-    console.error('Failed to duplicate template:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to duplicate template' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

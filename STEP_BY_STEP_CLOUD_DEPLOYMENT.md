@@ -1,5 +1,9 @@
 # Step-by-Step Cloud Deployment Guide 🚀
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §14 (Deployment) for current deployment documentation. Retained for historical reference only.
+
+---
+
 ## Complete Beginner's Guide to Deploying ConTigo to the Cloud
 
 ---

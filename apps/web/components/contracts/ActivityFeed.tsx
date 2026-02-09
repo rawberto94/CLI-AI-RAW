@@ -63,7 +63,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
         return { icon: Upload, color: 'bg-violet-100 text-violet-700', gradient: 'from-violet-500 to-purple-600' }
       case 'edit':
       case 'metadata':
-        return { icon: FileEdit, color: 'bg-purple-100 text-purple-700', gradient: 'from-purple-500 to-pink-600' }
+        return { icon: FileEdit, color: 'bg-violet-100 text-violet-700', gradient: 'from-violet-500 to-pink-600' }
       case 'comment':
         return { icon: MessageSquare, color: 'bg-green-100 text-green-700', gradient: 'from-violet-500 to-violet-600' }
       case 'approval':
@@ -75,7 +75,7 @@ export function ActivityFeed({ contractId }: ActivityFeedProps) {
       case 'download':
         return { icon: Download, color: 'bg-gray-100 text-gray-700', gradient: 'from-gray-500 to-slate-600' }
       case 'workflow':
-        return { icon: Sparkles, color: 'bg-purple-100 text-purple-700', gradient: 'from-purple-500 to-purple-600' }
+        return { icon: Sparkles, color: 'bg-violet-100 text-violet-700', gradient: 'from-violet-500 to-purple-600' }
       default:
         return { icon: Activity, color: 'bg-gray-100 text-gray-700', gradient: 'from-gray-500 to-slate-600' }
     }

@@ -4,8 +4,9 @@
  * Regenerates specific artifacts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/regenerate
@@ -13,23 +14,18 @@ import { aiArtifactGeneratorService } from 'data-orchestration/services';
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const contractId = params.id;
     const body = await request.json();
     const { artifactType, tenantId, userId, contractText } = body;
 
     if (!artifactType || !tenantId || !userId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: artifactType, tenantId, userId' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: artifactType, tenantId, userId', 400);
     }
 
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'Contract text is required for regeneration' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text is required for regeneration', 400);
     }
 
     // Regenerate the artifact
@@ -46,17 +42,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     );
 
     if (!result.success) {
-      return NextResponse.json(
-        {
-          error: 'Regeneration failed',
-          message: result.error || 'Unknown error',
-          method: result.method
-        },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Regeneration failed', 500);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       artifactType,
@@ -69,12 +58,6 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       regeneratedAt: new Date().toISOString()
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Regeneration failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

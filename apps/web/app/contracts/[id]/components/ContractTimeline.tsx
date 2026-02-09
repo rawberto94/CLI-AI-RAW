@@ -122,7 +122,7 @@ export const ContractTimeline = memo(function ContractTimeline({
     <Card className={cn("border-slate-200", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-purple-500" />
+          <Clock className="h-4 w-4 text-violet-500" />
           Contract Lifecycle
         </CardTitle>
       </CardHeader>

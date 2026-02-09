@@ -76,7 +76,7 @@ export function DashboardKPICards() {
       value: metrics.geographicCoverage.toLocaleString(),
       icon: Globe2,
       description: `${metrics.geographicCoverage} countries`,
-      color: 'text-purple-600',
+      color: 'text-violet-600',
     },
     {
       title: 'Service Lines',

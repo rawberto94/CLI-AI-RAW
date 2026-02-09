@@ -170,7 +170,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
               'transition-colors',
               toast.action.variant === 'outline'
                 ? 'text-slate-600 hover:text-slate-900'
-                : 'text-purple-600 hover:text-purple-700'
+                : 'text-violet-600 hover:text-violet-700'
             )}
           >
             {toast.action.label}

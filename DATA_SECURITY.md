@@ -1,5 +1,9 @@
 # Data Security & Privacy Architecture
 
+> **DEPRECATED:** Superseded by [docs/PRIVACY_POLICY.md](docs/PRIVACY_POLICY.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §8 (Security Architecture). Retained for historical reference only.
+
+---
+
 ## PactumAI - Swiss Data Protection & Client Data Ownership
 
 This document outlines how client data is protected, who owns what, and how to use AI without clients claiming you're "stealing" their data.

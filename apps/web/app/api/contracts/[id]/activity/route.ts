@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,6 +79,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -85,7 +87,7 @@ export async function GET(
 
     // Return mock data if requested
     if (useMock) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         activities: getMockActivities(),
         source: 'mock'
@@ -116,27 +118,17 @@ export async function GET(
         metadata: activity.metadata
       }));
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         activities: formattedActivities,
         source: 'database'
       });
 
-    } catch {
-      return NextResponse.json({
-        success: true,
-        activities: getMockActivities(),
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
-  } catch {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch activity'
-      },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

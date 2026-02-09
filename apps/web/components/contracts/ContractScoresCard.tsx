@@ -205,7 +205,7 @@ export function ContractScoresCard({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Contract Scores & Assessment
             </CardTitle>
             <CardDescription className="mt-1">

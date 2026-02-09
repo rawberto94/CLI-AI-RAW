@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * PUT /api/contracts/[id]/artifacts/[artifactId]/rates/[rateId]
@@ -10,22 +11,17 @@ export async function PUT(
   props: { params: Promise<{ id: string; artifactId: string; rateId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const body = await request.json();
     const { updates, userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     if (!updates) {
-      return NextResponse.json(
-        { error: 'updates are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'updates are required', 400);
     }
 
     await editableArtifactService.updateRateCardEntry(
@@ -35,14 +31,11 @@ export async function PUT(
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Rate card entry updated successfully',
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update rate card entry' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -55,15 +48,13 @@ export async function DELETE(
   props: { params: Promise<{ id: string; artifactId: string; rateId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     await editableArtifactService.deleteRateCardEntry(
@@ -72,13 +63,10 @@ export async function DELETE(
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Rate card entry deleted successfully',
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to delete rate card entry' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

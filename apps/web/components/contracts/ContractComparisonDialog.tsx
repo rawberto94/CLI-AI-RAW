@@ -148,7 +148,7 @@ export const ContractComparisonDialog = memo(function ContractComparisonDialog({
   onClose,
   onViewContract,
   onDownloadComparison,
-  formatCurrency = (v) => v !== undefined ? `$${v.toLocaleString()}` : '—',
+  formatCurrency = (v) => v !== undefined ? new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF', maximumFractionDigits: 0 }).format(v) : '—',
   formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—',
 }: ContractComparisonDialogProps) {
   const [expandedSections, setExpandedSections] = useState({
@@ -266,7 +266,7 @@ export const ContractComparisonDialog = memo(function ContractComparisonDialog({
                   <Card key={contract.id} className={cn(
                     "border-2 transition-colors",
                     idx === 0 && "border-violet-200 bg-violet-50/30",
-                    idx === 1 && "border-blue-200 bg-blue-50/30",
+                    idx === 1 && "border-violet-200 bg-violet-50/30",
                     idx === 2 && "border-emerald-200 bg-emerald-50/30"
                   )}>
                     <CardContent className="p-4">
@@ -276,13 +276,13 @@ export const ContractComparisonDialog = memo(function ContractComparisonDialog({
                             <div className={cn(
                               "p-1.5 rounded-lg",
                               idx === 0 && "bg-violet-100",
-                              idx === 1 && "bg-blue-100",
+                              idx === 1 && "bg-violet-100",
                               idx === 2 && "bg-emerald-100"
                             )}>
                               <FileText className={cn(
                                 "h-4 w-4",
                                 idx === 0 && "text-violet-600",
-                                idx === 1 && "text-blue-600",
+                                idx === 1 && "text-violet-600",
                                 idx === 2 && "text-emerald-600"
                               )} />
                             </div>

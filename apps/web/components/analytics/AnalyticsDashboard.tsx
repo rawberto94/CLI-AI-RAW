@@ -64,7 +64,7 @@ const MetricCard = memo(function MetricCard({
     green: { bg: 'bg-green-100', text: 'text-green-600' },
     yellow: { bg: 'bg-yellow-100', text: 'text-yellow-600' },
     red: { bg: 'bg-red-100', text: 'text-red-600' },
-    purple: { bg: 'bg-purple-100', text: 'text-purple-600' },
+    purple: { bg: 'bg-violet-100', text: 'text-violet-600' },
   };
 
   const colorClass = colorClasses[color] ?? colorClasses.blue!;

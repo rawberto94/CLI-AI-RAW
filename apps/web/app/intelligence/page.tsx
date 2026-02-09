@@ -42,7 +42,7 @@ const features = [
     description: 'Ask questions in natural language and get AI-powered answers with evidence links from across your contract portfolio.',
     icon: Search,
     href: '/intelligence/search',
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-violet-500 to-pink-500',
     stats: '15 contracts indexed • 120 clauses • 45 obligations',
   },
   {
@@ -139,15 +139,15 @@ export default function IntelligencePage() {
             </div>
           </motion.div>
           <motion.div 
-            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-purple-500/5 hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300 group"
+            className="bg-white/90 backdrop-blur-xl rounded-xl p-5 border border-white/50 shadow-xl shadow-violet-500/5 hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-300 group"
             whileHover={{ scale: 1.02, y: -2 }}
           >
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
                 <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">156</div>
+                <div className="text-3xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">156</div>
                 <div className="text-sm text-muted-foreground">AI Insights</div>
               </div>
             </div>

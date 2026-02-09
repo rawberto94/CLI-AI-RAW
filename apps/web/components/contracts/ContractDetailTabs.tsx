@@ -296,13 +296,13 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
       case 'overview':
         return <FileText className="h-5 w-5 text-violet-600" />
       case 'clauses':
-        return <FileCheck className="h-5 w-5 text-purple-600" />
+        return <FileCheck className="h-5 w-5 text-violet-600" />
       case 'financial':
         return <DollarSign className="h-5 w-5 text-green-600" />
       case 'risk':
         return <AlertTriangle className="h-5 w-5 text-red-600" />
       case 'compliance':
-        return <Shield className="h-5 w-5 text-purple-600" />
+        return <Shield className="h-5 w-5 text-violet-600" />
       default:
         return <FileText className="h-5 w-5 text-gray-600" />
     }
@@ -404,7 +404,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
             </CardHeader>
             <CardContent>
               <div className="flex items-center gap-2">
-                <FileText className="h-5 w-5 text-purple-600" />
+                <FileText className="h-5 w-5 text-violet-600" />
                 <span className="text-2xl font-bold">{artifacts?.length || 0}</span>
               </div>
             </CardContent>
@@ -460,7 +460,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               size="sm" 
               onClick={handleAnalyzeWithAI}
               disabled={analyzing}
-              className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               {analyzing ? (
                 <>
@@ -580,7 +580,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
               <Button 
                 onClick={handleAnalyzeWithAI}
                 disabled={analyzing}
-                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >
                 {analyzing ? (
                   <>
@@ -717,7 +717,7 @@ export function ContractDetailTabs({ contract, artifacts, initialTab, onEdit, on
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
+              <Sparkles className="h-5 w-5 text-violet-600" />
               AI-Powered Insights
             </CardTitle>
           </CardHeader>

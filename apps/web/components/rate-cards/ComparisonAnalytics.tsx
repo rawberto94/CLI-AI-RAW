@@ -289,12 +289,12 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Award className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Award className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Recommendations</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-violet-600">
                   {recommendations.length}
                 </p>
                 <p className="text-xs text-muted-foreground">switching options</p>

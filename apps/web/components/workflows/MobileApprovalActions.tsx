@@ -199,10 +199,10 @@ export function MobileApprovalActions({
                     aria-label="Escalate to manager"
                     className={cn(
                       "w-full py-4 px-4 rounded-xl font-semibold transition-all active:scale-[0.98]",
-                      "bg-purple-50 text-purple-700 hover:bg-purple-100 active:bg-purple-200",
+                      "bg-violet-50 text-violet-700 hover:bg-violet-100 active:bg-violet-200",
                       "flex items-center justify-center gap-3 text-base",
                       "touch-manipulation select-none",
-                      "focus:outline-none focus:ring-2 focus:ring-purple-500",
+                      "focus:outline-none focus:ring-2 focus:ring-violet-500",
                       isProcessing && "opacity-50 cursor-not-allowed"
                     )}
                   >

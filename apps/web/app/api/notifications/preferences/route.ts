@@ -4,10 +4,11 @@
  * Handles user notification preferences management.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext } from '@/lib/api-middleware';
+import { notificationService } from 'data-orchestration/services';
 
 // Validation schemas
 const preferencesSchema = z.object({
@@ -39,80 +40,71 @@ const preferencesSchema = z.object({
  * GET /api/notifications/preferences
  * Get user's notification preferences
  */
-export async function GET() {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
-    const preferences = await prisma.notificationPreferences.findUnique({
-      where: { userId: session.user.id },
-    });
-
-    // Return defaults if no preferences exist
-    const defaultPreferences = {
-      channels: {
-        contract_uploaded: { enabled: true, channels: ["in_app", "email"] },
-        contract_shared: { enabled: true, channels: ["in_app", "email"] },
-        contract_expiring: { enabled: true, channels: ["in_app", "email", "push"] },
-        contract_expired: { enabled: true, channels: ["in_app", "email", "push"] },
-        contract_approved: { enabled: true, channels: ["in_app"] },
-        contract_rejected: { enabled: true, channels: ["in_app", "email"] },
-        comment_added: { enabled: true, channels: ["in_app"] },
-        mention: { enabled: true, channels: ["in_app", "email", "push"] },
-        task_assigned: { enabled: true, channels: ["in_app", "email"] },
-        task_completed: { enabled: true, channels: ["in_app"] },
-        reminder: { enabled: true, channels: ["in_app", "email", "push"] },
-        sync_completed: { enabled: false, channels: ["in_app"] },
-        sync_failed: { enabled: true, channels: ["in_app", "email"] },
-        system_update: { enabled: true, channels: ["in_app"] },
-        security_alert: { enabled: true, channels: ["in_app", "email", "push"] },
-      },
-      globalQuietHours: null,
-      emailDigestFrequency: "instant" as const,
-    };
-
-    // Map flat database fields to API response
-    const responsePreferences = preferences ? {
-      emailEnabled: preferences.emailEnabled,
-      pushEnabled: preferences.pushEnabled,
-      emailDigestFrequency: preferences.emailDigest,
-      contractDeadlines: preferences.contractDeadlines,
-      approvalRequests: preferences.approvalRequests,
-      systemUpdates: preferences.systemUpdates,
-      systemAlerts: preferences.systemAlerts,
-      globalQuietHours: preferences.quietHoursStart ? {
-        start: preferences.quietHoursStart,
-        end: preferences.quietHoursEnd,
-        timezone: preferences.quietHoursTimezone ?? "UTC",
-      } : null,
-      // Include default channel settings
-      channels: defaultPreferences.channels,
-    } : defaultPreferences;
-
-    return NextResponse.json({
-      success: true,
-      data: responsePreferences,
-    });
-  } catch (error) {
-    console.error("[Notification Preferences GET Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch preferences" },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!session?.user?.id) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
+
+  const preferences = await prisma.notificationPreferences.findUnique({
+    where: { userId: session.user.id },
+  });
+
+  // Return defaults if no preferences exist
+  const defaultPreferences = {
+    channels: {
+      contract_uploaded: { enabled: true, channels: ["in_app", "email"] },
+      contract_shared: { enabled: true, channels: ["in_app", "email"] },
+      contract_expiring: { enabled: true, channels: ["in_app", "email", "push"] },
+      contract_expired: { enabled: true, channels: ["in_app", "email", "push"] },
+      contract_approved: { enabled: true, channels: ["in_app"] },
+      contract_rejected: { enabled: true, channels: ["in_app", "email"] },
+      comment_added: { enabled: true, channels: ["in_app"] },
+      mention: { enabled: true, channels: ["in_app", "email", "push"] },
+      task_assigned: { enabled: true, channels: ["in_app", "email"] },
+      task_completed: { enabled: true, channels: ["in_app"] },
+      reminder: { enabled: true, channels: ["in_app", "email", "push"] },
+      sync_completed: { enabled: false, channels: ["in_app"] },
+      sync_failed: { enabled: true, channels: ["in_app", "email"] },
+      system_update: { enabled: true, channels: ["in_app"] },
+      security_alert: { enabled: true, channels: ["in_app", "email", "push"] },
+    },
+    globalQuietHours: null,
+    emailDigestFrequency: "instant" as const,
+  };
+
+  // Map flat database fields to API response
+  const responsePreferences = preferences ? {
+    emailEnabled: preferences.emailEnabled,
+    pushEnabled: preferences.pushEnabled,
+    emailDigestFrequency: preferences.emailDigest,
+    contractDeadlines: preferences.contractDeadlines,
+    approvalRequests: preferences.approvalRequests,
+    systemUpdates: preferences.systemUpdates,
+    systemAlerts: preferences.systemAlerts,
+    globalQuietHours: preferences.quietHoursStart ? {
+      start: preferences.quietHoursStart,
+      end: preferences.quietHoursEnd,
+      timezone: preferences.quietHoursTimezone ?? "UTC",
+    } : null,
+    // Include default channel settings
+    channels: defaultPreferences.channels,
+  } : defaultPreferences;
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: responsePreferences,
+  });
+});
 
 /**
  * PUT /api/notifications/preferences
  * Update user's notification preferences
  */
 export async function PUT(req: NextRequest) {
+  const ctx = getApiContext(req);
   try {
-    const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
@@ -138,30 +130,21 @@ export async function PUT(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        emailEnabled: updated.emailEnabled,
-        pushEnabled: updated.pushEnabled,
-        emailDigestFrequency: updated.emailDigest,
-        globalQuietHours: updated.quietHoursStart ? {
-          start: updated.quietHoursStart,
-          end: updated.quietHoursEnd,
-          timezone: updated.quietHoursTimezone ?? "UTC",
-        } : null,
-      },
+    return createSuccessResponse(ctx, {
+      emailEnabled: updated.emailEnabled,
+      pushEnabled: updated.pushEnabled,
+      emailDigestFrequency: updated.emailDigest,
+      globalQuietHours: updated.quietHoursStart ? {
+        start: updated.quietHoursStart,
+        end: updated.quietHoursEnd,
+        timezone: updated.quietHoursTimezone ?? "UTC",
+      } : null,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.errors },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => e.message).join('; ') });
     }
     console.error("[Notification Preferences PUT Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to update preferences" },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

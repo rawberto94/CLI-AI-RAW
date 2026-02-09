@@ -51,7 +51,7 @@ export const TypingIndicator = memo(({
   return (
     <div className="flex items-start gap-3">
       {showAvatar && (
-        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
           <Sparkles className="h-4 w-4 text-white" />
         </div>
       )}
@@ -70,7 +70,7 @@ export const TypingIndicator = memo(({
                 animate="animate"
                 transition={dotTransition(delay)}
                 className={cn(
-                  "rounded-full bg-gradient-to-r from-purple-500 to-purple-500",
+                  "rounded-full bg-gradient-to-r from-violet-500 to-purple-500",
                   dotSizes[size]
                 )}
               />
@@ -83,7 +83,7 @@ export const TypingIndicator = memo(({
             <motion.div
               animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
-              className="w-2 h-2 rounded-full bg-purple-500"
+              className="w-2 h-2 rounded-full bg-violet-500"
             />
             <span className="text-sm text-slate-500 dark:text-slate-400">
               {label}...
@@ -103,7 +103,7 @@ export const TypingIndicator = memo(({
                   ease: 'easeInOut',
                   delay,
                 }}
-                className="w-1 h-4 rounded-full bg-gradient-to-t from-purple-500 to-purple-500 origin-center"
+                className="w-1 h-4 rounded-full bg-gradient-to-t from-violet-500 to-purple-500 origin-center"
               />
             ))}
           </div>
@@ -124,7 +124,7 @@ interface StreamingIndicatorProps {
 export const StreamingIndicator = memo(({ text, showCursor = true }: StreamingIndicatorProps) => {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
         <Sparkles className="h-4 w-4 text-white" />
       </div>
 
@@ -135,7 +135,7 @@ export const StreamingIndicator = memo(({ text, showCursor = true }: StreamingIn
             <motion.span
               animate={{ opacity: [1, 0, 1] }}
               transition={{ duration: 0.8, repeat: Infinity }}
-              className="inline-block w-2 h-4 bg-purple-500 ml-0.5 -mb-0.5"
+              className="inline-block w-2 h-4 bg-violet-500 ml-0.5 -mb-0.5"
             />
           )}
         </div>
@@ -169,7 +169,7 @@ export const ThinkingStatus = memo(({
 }: ThinkingStatusProps) => {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
@@ -192,7 +192,7 @@ export const ThinkingStatus = memo(({
                   isPast || stage.completed
                     ? "text-violet-600 dark:text-violet-400"
                     : isCurrent
-                    ? "text-purple-600 dark:text-indigo-400"
+                    ? "text-violet-600 dark:text-indigo-400"
                     : "text-slate-400 dark:text-slate-500"
                 )}
               >
@@ -210,7 +210,7 @@ export const ThinkingStatus = memo(({
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 1, repeat: Infinity }}
-                    className="w-4 h-4 rounded-full bg-purple-500"
+                    className="w-4 h-4 rounded-full bg-violet-500"
                   />
                 ) : (
                   <div className="w-4 h-4 rounded-full border-2 border-slate-300 dark:border-slate-600" />

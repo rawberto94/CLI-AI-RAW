@@ -5,12 +5,14 @@
 
 import { NextRequest } from 'next/server'
 import { progressTracker } from '@/lib/progress-tracker'
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   const contractId = params.id
 
   // Create SSE response

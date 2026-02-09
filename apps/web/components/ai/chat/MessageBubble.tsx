@@ -203,7 +203,7 @@ const SourceReference = memo(({
     onClick={() => onClick?.(source)}
     className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-left"
   >
-    <FileText className="h-4 w-4 text-purple-500 flex-shrink-0" />
+    <FileText className="h-4 w-4 text-violet-500 flex-shrink-0" />
     <div className="min-w-0 flex-1">
       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 truncate">
         {source.contractName}
@@ -321,7 +321,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
         href={url}
         target="_blank"
         rel="noopener noreferrer"
-        className="text-purple-600 dark:text-indigo-400 hover:underline"
+        className="text-violet-600 dark:text-indigo-400 hover:underline"
       >
         {text}
       </a>
@@ -331,7 +331,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
     if (line.trim().startsWith('• ') || line.trim().startsWith('- ')) {
       processed = (
         <span className="flex items-start gap-2">
-          <span className="text-purple-500 mt-1">•</span>
+          <span className="text-violet-500 mt-1">•</span>
           <span>{line.trim().slice(2)}</span>
         </span>
       );
@@ -342,7 +342,7 @@ function formatInlineMarkdown(text: string): React.ReactNode {
     if (numberedMatch) {
       processed = (
         <span className="flex items-start gap-2">
-          <span className="text-purple-500 font-medium min-w-[1.5rem]">{numberedMatch[1]}.</span>
+          <span className="text-violet-500 font-medium min-w-[1.5rem]">{numberedMatch[1]}.</span>
           <span>{numberedMatch[2]}</span>
         </span>
       );
@@ -458,7 +458,7 @@ export const MessageBubble = memo(({
           "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
           isUser
             ? "bg-gradient-to-br from-violet-500 to-purple-600"
-            : "bg-gradient-to-br from-purple-500 to-pink-500"
+            : "bg-gradient-to-br from-violet-500 to-pink-500"
         )}>
           {isUser ? (
             <User className="h-4 w-4 text-white" />
@@ -528,7 +528,7 @@ export const MessageBubble = memo(({
               <button
                 key={idx}
                 onClick={() => onSuggestionClick?.(suggestion)}
-                className="text-xs px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-indigo-300 hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors"
+                className="text-xs px-3 py-1.5 rounded-full bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-indigo-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors"
               >
                 {suggestion}
               </button>

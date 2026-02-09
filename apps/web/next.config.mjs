@@ -121,10 +121,12 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
       allowedOrigins: [
-        "localhost:3005",
-        "*.app.github.dev",
-        "zany-journey-69w67jw7vvwj347jg-3005.app.github.dev",
-      ],
+        process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).host : '',
+        ...(process.env.NODE_ENV === 'development' ? [
+          "localhost:3005",
+          "*.app.github.dev",
+        ] : []),
+      ].filter(Boolean),
     },
   },
 
@@ -360,6 +362,21 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io wss: ws:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
           {
             key: "X-Frame-Options",
             value: "DENY",

@@ -10,16 +10,16 @@
  * - Model availability
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { analyticalIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(_request: NextRequest) {
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const tenantId = ctx.tenantId;
   const startTime = Date.now();
   
   try {
-    const tenantId = await getServerTenantId();
-    
     // Check OpenAI configuration
     const openaiConfigured = !!process.env.OPENAI_API_KEY;
     const mistralConfigured = !!process.env.MISTRAL_API_KEY;
@@ -46,18 +46,14 @@ export async function GET(_request: NextRequest) {
     // Get RAG statistics
     const [totalContracts, contractsWithEmbeddings, totalEmbeddings] = await Promise.all([
       prisma.contract.count({
-        where: { tenantId, status: { in: ['COMPLETED', 'ACTIVE'] } },
-      }),
+        where: { tenantId, status: { in: ['COMPLETED', 'ACTIVE'] } } }),
       prisma.contract.count({
         where: { 
           tenantId, 
           status: { in: ['COMPLETED', 'ACTIVE'] },
-          contractEmbeddings: { some: {} },
-        },
-      }),
+          contractEmbeddings: { some: {} } } }),
       prisma.contractEmbedding.count({
-        where: { contract: { tenantId } },
-      }),
+        where: { contract: { tenantId } } }),
     ]);
     
     const ragCoverage = totalContracts > 0 
@@ -75,13 +71,12 @@ export async function GET(_request: NextRequest) {
       ocr: openaiConfigured || mistralConfigured,
       embeddings: openaiConfigured,
       queryExpansion: openaiConfigured,
-      crossEncoderReranking: openaiConfigured,
-    };
+      crossEncoderReranking: openaiConfigured };
     
     const enabledCount = Object.values(capabilities).filter(Boolean).length;
     const totalCapabilities = Object.keys(capabilities).length;
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       status: openaiStatus === 'connected' ? 'healthy' : openaiConfigured ? 'degraded' : 'limited',
       timestamp: new Date().toISOString(),
       responseTime: Date.now() - startTime,
@@ -92,13 +87,10 @@ export async function GET(_request: NextRequest) {
           status: openaiStatus,
           latency: openaiLatency,
           model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-          embeddingModel: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
-        },
+          embeddingModel: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small' },
         mistral: {
           configured: mistralConfigured,
-          status: mistralConfigured ? 'available' : 'not_configured',
-        },
-      },
+          status: mistralConfigured ? 'available' : 'not_configured' } },
       
       rag: {
         status: ragCoverage === 100 ? 'fully_indexed' : ragCoverage > 50 ? 'partially_indexed' : 'needs_indexing',
@@ -110,23 +102,19 @@ export async function GET(_request: NextRequest) {
           totalEmbeddings,
           averageEmbeddingsPerContract: contractsWithEmbeddings > 0 
             ? Math.round(totalEmbeddings / contractsWithEmbeddings) 
-            : 0,
-        },
+            : 0 },
         features: {
           semanticChunking: true,
           hybridSearch: true,
           queryExpansion: openaiConfigured,
           reranking: openaiConfigured,
-          crossContractSearch: true,
-        },
-      },
+          crossContractSearch: true } },
       
       capabilities,
       capabilitySummary: {
         enabled: enabledCount,
         total: totalCapabilities,
-        percentage: Math.round((enabledCount / totalCapabilities) * 100),
-      },
+        percentage: Math.round((enabledCount / totalCapabilities) * 100) },
       
       recommendations: [
         ...(!openaiConfigured ? ['Configure OPENAI_API_KEY to enable AI features'] : []),
@@ -141,18 +129,9 @@ export async function GET(_request: NextRequest) {
         insights: '/api/ai/insights',
         batchRAG: '/api/ai/rag/batch',
         suggestions: '/api/ai/suggestions',
-        history: '/api/ai/history',
-      },
-    });
+        history: '/api/ai/history' } });
     
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Status check failed',
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});

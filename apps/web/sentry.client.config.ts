@@ -19,8 +19,8 @@ Sentry.init({
   // Setting this option to true will print useful information to the console while you're setting up Sentry.
   environment: process.env.NODE_ENV,
   
-  // Capture Replay for 10% of all sessions
-  replaysSessionSampleRate: 0.1,
+  // Capture Replay for 1% of all sessions (10% is expensive in production)
+  replaysSessionSampleRate: 0.01,
   
   // Capture Replay for 100% of sessions with an error
   replaysOnErrorSampleRate: 1.0,

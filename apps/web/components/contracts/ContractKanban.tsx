@@ -440,7 +440,7 @@ export function ContractKanban({
       id: 'in_negotiation',
       title: 'In Negotiation',
       status: 'in_negotiation' as const,
-      color: 'bg-gradient-to-r from-purple-500 to-pink-600',
+      color: 'bg-gradient-to-r from-violet-500 to-pink-600',
       icon: <Users className="w-4 h-4 text-white" />,
       contracts: contracts.filter(c => c.status === 'in_negotiation'),
     },

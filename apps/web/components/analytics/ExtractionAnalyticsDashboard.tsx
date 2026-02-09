@@ -293,7 +293,7 @@ export function ExtractionAnalyticsDashboard({
                   {(analytics.averageProcessingTime / 1000).toFixed(1)}s
                 </p>
               </div>
-              <Clock className="h-8 w-8 text-purple-500" />
+              <Clock className="h-8 w-8 text-violet-500" />
             </div>
           </CardContent>
         </Card>

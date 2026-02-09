@@ -246,13 +246,13 @@ export function HelpCard({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'p-4 bg-gradient-to-br from-purple-50 to-purple-50 border border-indigo-100 rounded-xl',
+        'p-4 bg-gradient-to-br from-violet-50 to-purple-50 border border-indigo-100 rounded-xl',
         className
       )}
     >
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-          <Icon className="w-5 h-5 text-purple-600" />
+        <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
+          <Icon className="w-5 h-5 text-violet-600" />
         </div>
         <div className="flex-1">
           <h4 className="font-medium text-slate-900">{title}</h4>
@@ -262,7 +262,7 @@ export function HelpCard({
             {action && (
               <button
                 onClick={action.onClick}
-                className="inline-flex items-center gap-1 text-sm font-medium text-purple-600 hover:text-purple-700"
+                className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 hover:text-violet-700"
               >
                 {action.label}
                 <ChevronRight className="w-4 h-4" />
@@ -330,7 +330,7 @@ export function VideoHelp({
               whileTap={{ scale: 0.95 }}
               className="w-16 h-16 bg-white/90 rounded-full flex items-center justify-center shadow-lg"
             >
-              <PlayCircle className="w-8 h-8 text-purple-600" />
+              <PlayCircle className="w-8 h-8 text-violet-600" />
             </motion.div>
           </div>
           {duration && (
@@ -453,7 +453,7 @@ function HelpPanel({ topics }: HelpPanelProps) {
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-purple-600 dark:text-indigo-400" />
+                <HelpCircle className="w-5 h-5 text-violet-600 dark:text-indigo-400" />
                 <h3 className="font-semibold text-slate-900 dark:text-slate-100">Help Center</h3>
               </div>
               <button
@@ -471,7 +471,7 @@ function HelpPanel({ topics }: HelpPanelProps) {
                 <div className="space-y-4">
                   <button
                     onClick={() => setTopic(null as unknown as HelpTopic)}
-                    className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                    className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1"
                   >
                     ← Back to all topics
                   </button>
@@ -483,7 +483,7 @@ function HelpPanel({ topics }: HelpPanelProps) {
                       href={currentTopic.learnMoreUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 text-purple-600 hover:text-purple-700"
+                      className="inline-flex items-center gap-2 text-violet-600 hover:text-violet-700"
                     >
                       <BookOpen className="w-4 h-4" />
                       Read documentation
@@ -526,7 +526,7 @@ function HelpPanel({ topics }: HelpPanelProps) {
             {/* Footer */}
             <div className="p-4 border-t border-slate-200 bg-slate-50">
               <p className="text-xs text-slate-500 text-center">
-                Need more help? <a href="#" className="text-purple-600 hover:underline">Contact support</a>
+                Need more help? <a href="#" className="text-violet-600 hover:underline">Contact support</a>
               </p>
             </div>
           </motion.div>
@@ -561,7 +561,7 @@ export function FloatingHelpButton({ onClick, className }: FloatingHelpButtonPro
     <motion.button
       onClick={handleClick}
       className={cn(
-        'fixed bottom-6 right-6 w-14 h-14 bg-purple-600 text-white rounded-full shadow-lg shadow-purple-500/30',
+        'fixed bottom-6 right-6 w-14 h-14 bg-violet-600 text-white rounded-full shadow-lg shadow-violet-500/30',
         'flex items-center justify-center z-40',
         className
       )}

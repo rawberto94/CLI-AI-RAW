@@ -5,25 +5,16 @@
  * POST /api/chat/conversations - Create a new conversation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { aiCopilotService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
 // GET /api/chat/conversations - List conversations
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     
     const contextType = searchParams.get('contextType');
@@ -34,9 +25,8 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {
       tenantId,
-      userId: session.user.id,
-      isArchived: archived,
-    };
+      userId: ctx.userId,
+      isArchived: archived };
 
     if (contextType) {
       where.contextType = contextType;
@@ -61,11 +51,7 @@ export async function GET(request: NextRequest) {
             id: true,
             role: true,
             content: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
+            createdAt: true } } } });
 
     const total = await prisma.chatConversation.count({ where });
 
@@ -80,67 +66,35 @@ export async function GET(request: NextRequest) {
       isPinned: conv.isPinned,
       isArchived: conv.isArchived,
       createdAt: conv.createdAt,
-      updatedAt: conv.updatedAt,
-    }));
+      updatedAt: conv.updatedAt }));
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         conversations: formattedConversations,
         total,
         limit,
-        offset,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching conversations:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch conversations' },
-      { status: 500 }
-    );
-  }
-}
+        offset } });
+  });
 
 // POST /api/chat/conversations - Create conversation
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const tenantId = await getApiTenantId(request);
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
 
     const {
       title,
       context,
-      contextType = 'GENERAL',
-    } = body;
+      contextType = 'GENERAL' } = body;
 
     const conversation = await prisma.chatConversation.create({
       data: {
         tenantId,
-        userId: session.user.id,
+        userId: ctx.userId,
         title: title || 'New Conversation',
         context,
         contextType,
-        messageCount: 0,
-      },
-    });
+        messageCount: 0 } });
 
-    return NextResponse.json({
-      success: true,
-      data: { conversation },
-    });
-  } catch (error) {
-    console.error('Error creating conversation:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create conversation' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, {
+      data: { conversation } });
+  });

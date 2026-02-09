@@ -225,7 +225,7 @@ const roundStatusConfig: Record<RoundStatus, { label: string; color: string }> =
   pending: { label: 'Pending Review', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' },
   'in-review': { label: 'In Review', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30' },
   accepted: { label: 'Accepted', color: 'bg-green-100 text-green-700 dark:bg-green-900/30' },
-  countered: { label: 'Countered', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30' },
+  countered: { label: 'Countered', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30' },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700 dark:bg-red-900/30' },
 };
 
@@ -237,7 +237,7 @@ const changeStatusConfig: Record<ChangeStatus, {
   pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: <Clock className="h-3 w-3" /> },
   accepted: { label: 'Accepted', color: 'bg-green-100 text-green-700', icon: <Check className="h-3 w-3" /> },
   rejected: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: <X className="h-3 w-3" /> },
-  countered: { label: 'Countered', color: 'bg-purple-100 text-purple-700', icon: <GitCompare className="h-3 w-3" /> },
+  countered: { label: 'Countered', color: 'bg-violet-100 text-violet-700', icon: <GitCompare className="h-3 w-3" /> },
 };
 
 const importanceConfig: Record<ChangeImportance, { label: string; color: string }> = {

@@ -201,7 +201,7 @@ const frameworkConfig: Record<ComplianceFramework, {
   },
   soc2: { 
     label: 'SOC 2', 
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     icon: <Shield className="h-3 w-3" />
   },
   iso27001: { 
@@ -216,7 +216,7 @@ const frameworkConfig: Record<ComplianceFramework, {
   },
   ccpa: { 
     label: 'CCPA', 
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     icon: <Shield className="h-3 w-3" />
   },
   internal: { 

@@ -4,10 +4,10 @@
  * PATCH /api/chat/conversations/[id]/messages/[messageId] - Update message feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { aiCopilotService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,41 +16,27 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getApiContext(request);
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id: conversationId, messageId } = await params;
     const body = await request.json();
 
     // Verify conversation ownership
     const conversation = await prisma.chatConversation.findFirst({
-      where: { id: conversationId, tenantId, userId: session.user.id },
-    });
+      where: { id: conversationId, tenantId, userId: ctx.userId } });
 
     if (!conversation) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Verify message belongs to conversation
     const existingMessage = await prisma.chatMessage.findFirst({
-      where: { id: messageId, conversationId },
-    });
+      where: { id: messageId, conversationId } });
 
     if (!existingMessage) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Message not found', 404);
     }
 
     const { feedback, feedbackComment, metadata } = body;
@@ -59,10 +45,7 @@ export async function PATCH(
     
     if (feedback !== undefined) {
       if (feedback !== null && !['positive', 'negative'].includes(feedback)) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid feedback. Must be positive, negative, or null' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid feedback. Must be positive, negative, or null', 400);
       }
       updateData.feedback = feedback;
     }
@@ -77,19 +60,12 @@ export async function PATCH(
 
     const message = await prisma.chatMessage.update({
       where: { id: messageId },
-      data: updateData,
-    });
+      data: updateData });
 
-    return NextResponse.json({
-      success: true,
-      data: { message },
-    });
+    return createSuccessResponse(ctx, {
+      data: { message } });
   } catch (error) {
-    console.error('Error updating message:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update message' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -98,55 +74,34 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; messageId: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getApiContext(request);
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id: conversationId, messageId } = await params;
 
     // Verify conversation ownership
     const conversation = await prisma.chatConversation.findFirst({
-      where: { id: conversationId, tenantId, userId: session.user.id },
-    });
+      where: { id: conversationId, tenantId, userId: ctx.userId } });
 
     if (!conversation) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Verify message belongs to conversation
     const existingMessage = await prisma.chatMessage.findFirst({
-      where: { id: messageId, conversationId },
-    });
+      where: { id: messageId, conversationId } });
 
     if (!existingMessage) {
-      return NextResponse.json(
-        { success: false, error: 'Message not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Message not found', 404);
     }
 
     await prisma.chatMessage.delete({
-      where: { id: messageId },
-    });
+      where: { id: messageId } });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Message deleted',
-    });
+    return createSuccessResponse(ctx, {
+      message: 'Message deleted' });
   } catch (error) {
-    console.error('Error deleting message:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete message' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { ObligationStatus, ObligationPriority, Prisma } from '@prisma/client';
-
+import { getServerSession } from '@/lib/auth';
+import { aiObligationTrackerService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -32,11 +32,9 @@ const priorityMap: Record<string, ObligationPriority> = {
  * Get a specific obligation
  */
 export async function GET(request: Request, { params }: RouteParams) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
 
@@ -74,10 +72,10 @@ export async function GET(request: Request, { params }: RouteParams) {
     });
 
     if (!obligation) {
-      return NextResponse.json({ error: 'Obligation not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Obligation not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       obligation: {
         ...obligation,
         type: obligation.type.toLowerCase(),
@@ -89,11 +87,7 @@ export async function GET(request: Request, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error('Failed to fetch obligation:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch obligation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -102,11 +96,9 @@ export async function GET(request: Request, { params }: RouteParams) {
  * Update an obligation
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
     const body = await request.json();
@@ -117,7 +109,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Obligation not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Obligation not found', 404);
     }
 
     // Build update data
@@ -195,7 +187,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       obligation: {
         ...updated,
@@ -206,11 +198,7 @@ export async function PATCH(request: Request, { params }: RouteParams) {
       },
     });
   } catch (error) {
-    console.error('Failed to update obligation:', error);
-    return NextResponse.json(
-      { error: 'Failed to update obligation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -219,11 +207,9 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Delete an obligation
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
 
@@ -233,7 +219,7 @@ export async function DELETE(request: Request, { params }: RouteParams) {
     });
 
     if (!existing) {
-      return NextResponse.json({ error: 'Obligation not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Obligation not found', 404);
     }
 
     // Delete obligation (cascades to history and notifications)
@@ -241,15 +227,11 @@ export async function DELETE(request: Request, { params }: RouteParams) {
       where: { id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Obligation deleted',
     });
   } catch (error) {
-    console.error('Failed to delete obligation:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete obligation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

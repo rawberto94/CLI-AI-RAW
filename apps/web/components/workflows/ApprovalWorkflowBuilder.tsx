@@ -224,7 +224,7 @@ function StepCard({
                   variant="secondary" 
                   className={cn(
                     'text-xs',
-                    step.approvalType === 'all' && 'bg-purple-100 text-purple-700',
+                    step.approvalType === 'all' && 'bg-violet-100 text-violet-700',
                     step.approvalType === 'any' && 'bg-green-100 text-green-700',
                     step.approvalType === 'majority' && 'bg-violet-100 text-violet-700'
                   )}

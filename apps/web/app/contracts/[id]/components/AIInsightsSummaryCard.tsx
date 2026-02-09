@@ -63,7 +63,7 @@ const InsightIcon = ({ type }: { type: AIInsight['type'] }) => {
 
 const InsightBadge = ({ type }: { type: AIInsight['type'] }) => {
   const config = {
-    summary: { label: 'Summary', className: 'bg-blue-100 text-blue-700' },
+    summary: { label: 'Summary', className: 'bg-violet-100 text-violet-700' },
     risk: { label: 'Risk', className: 'bg-red-100 text-red-700' },
     opportunity: { label: 'Opportunity', className: 'bg-emerald-100 text-emerald-700' },
     obligation: { label: 'Obligation', className: 'bg-amber-100 text-amber-700' },

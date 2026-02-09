@@ -40,8 +40,8 @@ export function SkipToContent({
         'sr-only focus:not-sr-only',
         'fixed top-4 left-4 z-[100]',
         'px-4 py-2 text-sm font-medium',
-        'bg-purple-600 text-white rounded-lg',
-        'shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500',
+        'bg-violet-600 text-white rounded-lg',
+        'shadow-lg focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500',
         'transition-transform',
         className
       )}
@@ -261,7 +261,7 @@ export interface FocusRingProps {
 }
 
 const ringColors = {
-  indigo: 'focus-visible:ring-purple-500',
+  indigo: 'focus-visible:ring-violet-500',
   blue: 'focus-visible:ring-violet-500',
   emerald: 'focus-visible:ring-violet-500',
   amber: 'focus-visible:ring-amber-500',

@@ -143,7 +143,7 @@ export function OrchestratorProgress({
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-purple-600" />
+              <Sparkles className="h-5 w-5 text-violet-600" />
               <CardTitle>AI Orchestrator</CardTitle>
               <Badge variant={isConnected ? 'default' : 'secondary'}>
                 {isConnected ? 'Live' : 'Polling'}
@@ -213,14 +213,14 @@ export function OrchestratorProgress({
 
           {/* Artifacts Status */}
           {progress.artifacts && (
-            <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-900/10">
+            <div className="flex items-center justify-between p-3 rounded-lg bg-violet-50 dark:bg-violet-900/10">
               <div>
                 <p className="text-sm font-medium">Artifacts Generated</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {progress.artifacts.completed} of {progress.artifacts.total} complete
                 </p>
               </div>
-              <div className="text-2xl font-bold text-purple-600">
+              <div className="text-2xl font-bold text-violet-600">
                 {progress.artifacts.completed}/{progress.artifacts.total}
               </div>
             </div>
@@ -289,7 +289,7 @@ export function OrchestratorProgress({
             {suggestions.map((suggestion, idx) => (
               <div
                 key={idx}
-                className="flex items-start justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 transition-colors"
+                className="flex items-start justify-between p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-violet-300 dark:hover:border-violet-700 transition-colors"
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">

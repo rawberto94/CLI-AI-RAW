@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const { id } = params;
     const body = await request.json();
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     // Check data mode from header
@@ -23,7 +23,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     
     // If mock mode, return success without updating database
     if (dataMode === 'mock') {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         message: 'Mock mode - changes not persisted',
         rateCard: {
@@ -59,17 +59,11 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     });
 
     if (!currentRateCard) {
-      return NextResponse.json(
-        { error: 'Rate card not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found or access denied', 404);
     }
 
     if (!currentRateCard.isEditable) {
-      return NextResponse.json(
-        { error: 'This rate card is locked and cannot be edited' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'This rate card is locked and cannot be edited', 403);
     }
 
     // Build edit history entry
@@ -136,29 +130,24 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       rateCard: updatedRateCard,
     });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to update rate card' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update rate card', 500);
   }
 }
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const { id } = params;
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const rateCard = await prisma.rateCardEntry.findFirst({
@@ -176,17 +165,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!rateCard) {
-      return NextResponse.json(
-        { error: 'Rate card not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
-    return NextResponse.json(rateCard);
+    return createSuccessResponse(ctx, rateCard);
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch rate card' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch rate card', 500);
   }
 }

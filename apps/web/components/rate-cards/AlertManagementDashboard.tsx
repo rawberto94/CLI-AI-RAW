@@ -27,7 +27,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { AlertRuleForm, type AlertRuleFormValues } from './AlertRuleForm';
 
 type AlertRuleType = AlertRuleFormValues['ruleType'];

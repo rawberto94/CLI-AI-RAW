@@ -8,10 +8,12 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
 import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { UAParser } from 'ua-parser-js';
+import { auditTrailService } from 'data-orchestration/services';
 
 interface SessionInfo {
   id: string;
@@ -31,11 +33,12 @@ interface SessionInfo {
  * GET /api/auth/sessions - List all active sessions
  */
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     // Get current session token from cookie
@@ -72,13 +75,13 @@ export async function GET(request: NextRequest) {
       };
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       sessions: sessionInfos,
       totalSessions: sessionInfos.length,
     });
   } catch (error) {
     console.error('[Sessions List Error]:', error);
-    return NextResponse.json({ error: 'Failed to list sessions' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to list sessions', 500);
   }
 }
 
@@ -86,11 +89,12 @@ export async function GET(request: NextRequest) {
  * DELETE /api/auth/sessions - Revoke sessions
  */
 export async function DELETE(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     const body = await request.json().catch(() => ({}));
@@ -120,7 +124,7 @@ export async function DELETE(request: NextRequest) {
         ...getAuditContext(request),
       });
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         revokedCount: result.count,
       });
@@ -134,12 +138,12 @@ export async function DELETE(request: NextRequest) {
       });
       
       if (!targetSession) {
-        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Session not found', 404);
       }
       
       // Prevent revoking current session
       if (targetSession.token === currentSessionToken || targetSession.sessionToken === currentSessionToken) {
-        return NextResponse.json({ error: 'Cannot revoke current session' }, { status: 400 });
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot revoke current session', 400);
       }
       
       await prisma.userSession.delete({
@@ -154,13 +158,13 @@ export async function DELETE(request: NextRequest) {
         ...getAuditContext(request),
       });
       
-      return NextResponse.json({ success: true });
+      return createSuccessResponse(ctx, { success: true });
     } else {
-      return NextResponse.json({ error: 'sessionId or revokeAll required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'sessionId or revokeAll required', 400);
     }
   } catch (error) {
     console.error('[Session Revoke Error]:', error);
-    return NextResponse.json({ error: 'Failed to revoke session' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to revoke session', 500);
   }
 }
 

@@ -19,7 +19,7 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: 'linear-gradient(135deg, #06B6D4 0%, #3B82F6 100%)',
+          background: 'linear-gradient(135deg, #06B6D4 0%, #8B5CF6 100%)',
           borderRadius: 6,
         }}
       >
@@ -41,7 +41,7 @@ export default function Icon() {
           />
           <path
             d="M5 11H15M5 14H13"
-            stroke="#3B82F6"
+            stroke="#8B5CF6"
             strokeWidth="1.5"
             strokeLinecap="round"
           />

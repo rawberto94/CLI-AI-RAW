@@ -552,7 +552,7 @@ export function CategorySuggestions({
     <div className={`${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2 text-sm font-medium">
-          <Sparkles className="w-4 h-4 text-purple-400" />
+          <Sparkles className="w-4 h-4 text-violet-400" />
           AI Category Suggestions
         </div>
         <button
@@ -579,8 +579,8 @@ export function CategorySuggestions({
           <button
             onClick={handleCategorize}
             disabled={isCategorizing}
-            className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 
-                     text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors"
+            className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 
+                     text-violet-400 rounded-lg hover:bg-violet-500/30 transition-colors"
           >
             {isCategorizing ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -607,12 +607,12 @@ export function CategorySuggestions({
                 <div
                   className={`
                     p-2 rounded-lg
-                    ${index === 0 ? "bg-purple-500/20" : "bg-white/10"}
+                    ${index === 0 ? "bg-violet-500/20" : "bg-white/10"}
                   `}
                 >
                   <Tag
                     className={`w-4 h-4 ${
-                      index === 0 ? "text-purple-400" : "text-white/60"
+                      index === 0 ? "text-violet-400" : "text-white/60"
                     }`}
                   />
                 </div>
@@ -645,7 +645,7 @@ export function CategorySuggestions({
                   className={`
                     px-2 py-0.5 rounded text-xs
                     ${suggestion.method === "ai"
-                      ? "bg-purple-500/20 text-purple-400"
+                      ? "bg-violet-500/20 text-violet-400"
                       : "bg-violet-500/20 text-violet-400"
                     }
                   `}
@@ -711,8 +711,8 @@ export function CategoryOverview({
           {onRecategorize && (
             <button
               onClick={onRecategorize}
-              className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/20 
-                       text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors text-sm"
+              className="flex items-center gap-2 px-3 py-1.5 bg-violet-500/20 
+                       text-violet-400 rounded-lg hover:bg-violet-500/30 transition-colors text-sm"
             >
               <Sparkles className="w-4 h-4" />
               Categorize

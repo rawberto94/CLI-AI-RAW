@@ -207,6 +207,14 @@
     --warning-foreground: 0 0% 100%;
     --info: 262 83% 58%;
     --info-foreground: 0 0% 100%;
+
+    /* AI Feature Colors */
+    --ai-primary: 262 83% 58%;
+    --ai-secondary: 280 70% 55%;
+    --ai-accent: 250 95% 64%;
+    --ai-success: 142 76% 36%;
+    --ai-warning: 38 92% 50%;
+    --ai-danger: 0 84% 60%;
   }
 
   .dark {
@@ -229,6 +237,14 @@
     --border: 262 20% 17%;
     --input: 262 20% 17%;
     --ring: 262 83% 65%;
+
+    /* AI Feature Colors */
+    --ai-primary: 262 83% 65%;
+    --ai-secondary: 280 70% 60%;
+    --ai-accent: 250 95% 70%;
+    --ai-success: 142 76% 42%;
+    --ai-warning: 38 92% 55%;
+    --ai-danger: 0 84% 65%;
   }
 
   * {
@@ -449,8 +465,8 @@
   }
 
   .btn-primary {
-    @apply btn bg-blue-600 text-white;
-    @apply hover:bg-blue-700 focus:ring-blue-500;
+    @apply btn bg-violet-600 text-white;
+    @apply hover:bg-violet-700 focus:ring-violet-500;
   }
 
   .btn-secondary {
@@ -498,7 +514,7 @@
   }
 
   .badge-info {
-    @apply badge-base bg-blue-50 text-blue-700 border border-blue-200;
+    @apply badge-base bg-violet-50 text-violet-700 border border-violet-200;
   }
 
   .badge-neutral {
@@ -513,7 +529,7 @@
     @apply w-full px-3 py-2 text-sm;
     @apply bg-white border border-slate-300 rounded-md;
     @apply placeholder:text-slate-400;
-    @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    @apply focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-violet-500;
     @apply disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed;
   }
 
@@ -897,74 +913,6 @@
     animation: skeleton-shimmer 2s ease-in-out infinite;
   }
 
-  /* Page transition animations (P5: Polish) */
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-
-  @keyframes slide-up {
-    from {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes scale-in {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fade-in 0.3s ease-out;
-  }
-
-  .animate-slide-up {
-    animation: slide-up 0.4s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scale-in 0.2s ease-out;
-  }
-
-  /* Staggered children animations */
-  .stagger-children > * {
-    animation: slide-up 0.4s ease-out both;
-  }
-
-  .stagger-children > *:nth-child(1) {
-    animation-delay: 0ms;
-  }
-  .stagger-children > *:nth-child(2) {
-    animation-delay: 50ms;
-  }
-  .stagger-children > *:nth-child(3) {
-    animation-delay: 100ms;
-  }
-  .stagger-children > *:nth-child(4) {
-    animation-delay: 150ms;
-  }
-  .stagger-children > *:nth-child(5) {
-    animation-delay: 200ms;
-  }
-  .stagger-children > *:nth-child(6) {
-    animation-delay: 250ms;
-  }
-
   /* ========================
      TOUCH & MOBILE IMPROVEMENTS
      ======================== */
@@ -1029,11 +977,11 @@
 
   /* High contrast focus states */
   .focus-ring {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2;
   }
 
   .focus-ring-inset {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-inset;
   }
 
   /* Skip link styling is in layout */

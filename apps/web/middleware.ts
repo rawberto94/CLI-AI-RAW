@@ -16,6 +16,60 @@ export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
+import crypto from 'crypto';
+
+// CSRF constants (inline to avoid server-only import chain)
+const CSRF_TOKEN_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+
+// Safe HTTP methods that don't need CSRF validation
+const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+// API routes exempt from CSRF enforcement
+const CSRF_EXEMPT_PATHS = [
+  '/api/auth',      // NextAuth callbacks need to work without CSRF header
+  '/api/health',
+  '/api/monitoring/health',
+  '/api/webhooks',
+  '/api/csrf',
+  '/api/cron',
+];
+
+/**
+ * Verify CSRF token signature and expiry (inline implementation)
+ */
+function verifyCSRFToken(token: string, userId?: string): boolean {
+  try {
+    const secret = process.env.NEXTAUTH_SECRET || process.env.CSRF_SECRET;
+    if (!secret) return false;
+
+    const decoded = Buffer.from(token, 'base64').toString('utf-8');
+    const dotIndex = decoded.lastIndexOf('.');
+    if (dotIndex === -1) return false;
+
+    const data = decoded.substring(0, dotIndex);
+    const signature = decoded.substring(dotIndex + 1);
+    if (!data || !signature) return false;
+
+    const expectedSignature = crypto
+      .createHmac('sha256', secret)
+      .update(data)
+      .digest('hex');
+
+    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+      return false;
+    }
+
+    const payload = JSON.parse(data);
+    if (Date.now() - payload.timestamp > CSRF_TOKEN_EXPIRY) return false;
+    if (userId && payload.userId && payload.userId !== userId) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Generate a unique request ID for tracing
@@ -27,18 +81,124 @@ function generateRequestId(): string {
   return `req_${timestamp}_${random}`;
 }
 
-// Rate limiting configuration (in-memory for middleware)
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+// Rate limiting configuration
+// Uses Redis for multi-instance deployments; falls back to in-memory
+const RATE_LIMIT_WINDOW = 60; // 1 minute (seconds for Redis TTL)
 const RATE_LIMIT_MAX = 100; // requests per window for general users
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60 * 1000;
+const RATE_LIMIT_MAX_ENTRIES = 10000;
+
+// In-memory fallback store (used when Redis is unavailable)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = Date.now();
+function cleanupRateLimitStore() {
+  const now = Date.now();
+  if (now - lastCleanup < RATE_LIMIT_CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  for (const [key, entry] of rateLimitStore) {
+    if (entry.resetAt < now) rateLimitStore.delete(key);
+  }
+  if (rateLimitStore.size > RATE_LIMIT_MAX_ENTRIES) {
+    const excess = rateLimitStore.size - RATE_LIMIT_MAX_ENTRIES;
+    const keys = rateLimitStore.keys();
+    for (let i = 0; i < excess; i++) {
+      const { value } = keys.next();
+      if (value) rateLimitStore.delete(value);
+    }
+  }
+}
+
+// Redis rate limiter — lazy-initialized singleton
+let redisClient: import('ioredis').default | null = null;
+let redisUnavailable = false;
+
+async function getRedisClient(): Promise<import('ioredis').default | null> {
+  if (redisUnavailable) return null;
+  if (redisClient) return redisClient;
+
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    redisUnavailable = true;
+    return null;
+  }
+
+  try {
+    const Redis = (await import('ioredis')).default;
+    redisClient = new Redis(redisUrl, {
+      maxRetriesPerRequest: 1,
+      connectTimeout: 2000,
+      lazyConnect: true,
+      enableOfflineQueue: false,
+    });
+    await redisClient.connect();
+    redisClient.on('error', () => {
+      // Silently degrade to in-memory on connection loss
+      redisUnavailable = true;
+      redisClient = null;
+    });
+    return redisClient;
+  } catch {
+    redisUnavailable = true;
+    return null;
+  }
+}
+
+async function checkRateLimitRedis(
+  identifier: string,
+  maxRequests: number
+): Promise<{ allowed: boolean; remaining: number } | null> {
+  const redis = await getRedisClient();
+  if (!redis) return null; // Signal caller to use fallback
+
+  try {
+    const key = `rl:${identifier}`;
+    const current = await redis.incr(key);
+    if (current === 1) {
+      await redis.expire(key, RATE_LIMIT_WINDOW);
+    }
+    const allowed = current <= maxRequests;
+    return { allowed, remaining: Math.max(0, maxRequests - current) };
+  } catch {
+    return null; // Fallback to in-memory
+  }
+}
+
+function checkRateLimitMemory(identifier: string, maxRequests: number): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(identifier);
+  const limit = maxRequests || RATE_LIMIT_MAX;
+
+  if (!entry || entry.resetAt < now) {
+    rateLimitStore.set(identifier, { count: 1, resetAt: now + RATE_LIMIT_WINDOW * 1000 });
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  entry.count++;
+  if (entry.count > limit) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  return { allowed: true, remaining: limit - entry.count };
+}
+
+async function checkRateLimit(
+  identifier: string,
+  maxRequests?: number
+): Promise<{ allowed: boolean; remaining: number }> {
+  const limit = maxRequests || RATE_LIMIT_MAX;
+  // Try Redis first, fall back to in-memory
+  const redisResult = await checkRateLimitRedis(identifier, limit);
+  if (redisResult) return redisResult;
+  return checkRateLimitMemory(identifier, limit);
+}
 
 // Tiered rate limits by endpoint type and user role
 const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: number }> = {
-  'ai': { anonymous: 10, user: 50, admin: 200 },       // AI endpoints are expensive
-  'upload': { anonymous: 5, user: 20, admin: 100 },   // Upload endpoints
-  'export': { anonymous: 5, user: 30, admin: 100 },   // Export endpoints
-  'contracts': { anonymous: 50, user: 200, admin: 500 }, // Contract CRUD
-  'default': { anonymous: 50, user: 100, admin: 300 }, // Default limits
+  'ai': { anonymous: 10, user: 50, admin: 200 },
+  'upload': { anonymous: 5, user: 20, admin: 100 },
+  'export': { anonymous: 5, user: 30, admin: 100 },
+  'contracts': { anonymous: 50, user: 200, admin: 500 },
+  'default': { anonymous: 50, user: 100, admin: 300 },
 };
 
 function getEndpointCategory(pathname: string): string {
@@ -52,28 +212,10 @@ function getEndpointCategory(pathname: string): string {
 function getRateLimit(pathname: string, role?: string): number {
   const category = getEndpointCategory(pathname);
   const limits = RATE_LIMITS[category] ?? RATE_LIMITS.default;
-  
+
   if (role === 'admin' || role === 'owner') return limits?.admin ?? 300;
   if (role) return limits?.user ?? 100;
   return limits?.anonymous ?? 50;
-}
-
-function checkRateLimit(identifier: string, maxRequests?: number): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
-  const limit = maxRequests || RATE_LIMIT_MAX;
-  
-  if (!entry || entry.resetAt < now) {
-    rateLimitStore.set(identifier, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true, remaining: limit - 1 };
-  }
-  
-  entry.count++;
-  if (entry.count > limit) {
-    return { allowed: false, remaining: 0 };
-  }
-  
-  return { allowed: true, remaining: limit - entry.count };
 }
 
 // Paths that don't require authentication (only auth-related pages)
@@ -94,9 +236,7 @@ const publicPaths = [
 // API routes that don't require authentication (health checks only)
 const publicApiPaths = [
   "/api/health",
-  "/api/healthz",
-  "/api/ready",
-  "/api/web-health",
+  "/api/monitoring/health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
 ];
@@ -132,6 +272,9 @@ export default auth((req) => {
 
   // Rate limiting for API routes with tiered limits
   if (pathname.startsWith("/api/")) {
+    // Periodically prune expired entries
+    cleanupRateLimitStore();
+    
     const forwarded = req.headers.get('x-forwarded-for');
     const ip = forwarded?.split(',')[0] ?? 'unknown';
     const userId = req.auth?.user?.id;
@@ -146,7 +289,7 @@ export default auth((req) => {
     // Get dynamic rate limit based on endpoint and role
     const maxRequests = getRateLimit(pathname, userRole);
     
-    const rateLimit = checkRateLimit(identifier, maxRequests);
+    const rateLimit = await checkRateLimit(identifier, maxRequests);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: 'Too Many Requests', message: 'Rate limit exceeded', requestId },
@@ -199,6 +342,32 @@ export default auth((req) => {
     const signInUrl = new URL("/auth/signin", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // CSRF enforcement for state-changing API requests
+  if (
+    pathname.startsWith("/api/") &&
+    !CSRF_SAFE_METHODS.has(req.method) &&
+    !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path))
+  ) {
+    const headerToken = req.headers.get(CSRF_HEADER_NAME);
+    const cookieToken = req.cookies.get(CSRF_TOKEN_NAME)?.value;
+
+    if (!headerToken || !cookieToken || headerToken !== cookieToken) {
+      const response = NextResponse.json(
+        { error: "Forbidden", message: "CSRF validation failed", code: "CSRF_INVALID", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
+
+    if (!verifyCSRFToken(headerToken, req.auth?.user?.id)) {
+      const response = NextResponse.json(
+        { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_INVALID", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
   }
 
   // Check admin route access

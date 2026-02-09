@@ -166,7 +166,7 @@ export default function RateCardDashboardPage() {
         className="motion-reduce:transition-none"
       >
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 dark:text-slate-100">
-          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-purple-500 to-pink-500" aria-hidden="true" />
+          <span className="w-1.5 h-6 rounded-full bg-gradient-to-b from-violet-500 to-pink-500" aria-hidden="true" />
           Performance Indicators
         </h2>
         <PerformanceIndicators />

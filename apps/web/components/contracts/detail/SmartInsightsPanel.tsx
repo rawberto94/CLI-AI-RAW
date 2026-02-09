@@ -126,10 +126,10 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
         };
       case 'compliance':
         return {
-          bg: 'bg-purple-50 dark:bg-purple-950/30',
-          border: 'border-purple-200 dark:border-purple-800',
-          icon: 'text-purple-500',
-          badge: 'bg-purple-100 text-purple-700',
+          bg: 'bg-violet-50 dark:bg-violet-950/30',
+          border: 'border-violet-200 dark:border-violet-800',
+          icon: 'text-violet-500',
+          badge: 'bg-violet-100 text-violet-700',
         };
       case 'action':
         return {

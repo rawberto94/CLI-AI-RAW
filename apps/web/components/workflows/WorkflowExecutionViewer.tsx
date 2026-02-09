@@ -316,7 +316,7 @@ export function WorkflowExecutionViewer({
               <Button
                 onClick={() => handleAction('approve')}
                 disabled={actionLoading}
-                className="flex-1 bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700"
+                className="flex-1 bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-purple-700"
               >
                 {actionLoading && selectedAction === 'approve' ? (
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />

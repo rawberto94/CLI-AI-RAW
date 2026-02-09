@@ -6,14 +6,17 @@
  * Uses the ExpirationAlert table for tracking alert history
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
+// TODO: Migrate $queryRaw/$executeRaw calls to contractService when raw query support is added
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -202,9 +205,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
+    return createSuccessResponse(ctx, {
         alerts: data,
         stats: {
           total: Number(s.total || 0),
@@ -226,195 +227,143 @@ export async function GET(request: NextRequest) {
           offset,
           hasMore: data.length === limit,
         },
-      },
-      meta: {
-        source: 'database',
-        tenantId,
-        timestamp: new Date().toISOString(),
-        responseTime: `${Date.now() - startTime}ms`,
-      },
-    });
+      });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch alerts', details: String(error) },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const { action, alertId, contractId, data } = body;
-    const now = new Date();
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = await getServerTenantId();
+  const body = await request.json();
+  const { action, alertId, contractId, data } = body;
+  const now = new Date();
 
-    switch (action) {
-      case 'create':
-        // Create a new alert
-        if (!contractId || !data?.alertType) {
-          return NextResponse.json(
-            { success: false, error: 'Contract ID and alert type are required' },
-            { status: 400 }
-          );
-        }
+  switch (action) {
+    case 'create':
+      // Create a new alert
+      if (!contractId || !data?.alertType) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID and alert type are required', 400);
+      }
 
-        const id = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : now;
+      const id = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const scheduledFor = data.scheduledFor ? new Date(data.scheduledFor) : now;
 
-        await prisma.$executeRaw`
-          INSERT INTO expiration_alerts (
-            id, contract_id, tenant_id, alert_type, severity, title, message,
-            recipients, status, scheduled_for, days_before_expiry, created_at, updated_at
-          ) VALUES (
-            ${id}, ${contractId}, ${tenantId}, ${data.alertType}, ${data.severity || 'MEDIUM'},
-            ${data.title || 'Contract Expiration Alert'}, ${data.message || 'Contract is expiring soon'},
-            ${JSON.stringify(data.recipients || [])}::jsonb, 'PENDING', ${scheduledFor},
-            ${data.daysBeforeExpiry || 30}, ${now}, ${now}
-          )
+      await prisma.$executeRaw`
+        INSERT INTO expiration_alerts (
+          id, contract_id, tenant_id, alert_type, severity, title, message,
+          recipients, status, scheduled_for, days_before_expiry, created_at, updated_at
+        ) VALUES (
+          ${id}, ${contractId}, ${tenantId}, ${data.alertType}, ${data.severity || 'MEDIUM'},
+          ${data.title || 'Contract Expiration Alert'}, ${data.message || 'Contract is expiring soon'},
+          ${JSON.stringify(data.recipients || [])}::jsonb, 'PENDING', ${scheduledFor},
+          ${data.daysBeforeExpiry || 30}, ${now}, ${now}
+        )
+      `;
+
+      return createSuccessResponse(ctx, { id, contractId, scheduledFor: scheduledFor.toISOString(), message: 'Alert created' });
+
+    case 'send':
+      if (!alertId) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Alert ID is required', 400);
+      }
+
+      await prisma.$executeRaw`
+        UPDATE expiration_alerts 
+        SET status = 'SENT', sent_at = ${now}, sent_to = recipients, updated_at = ${now}
+        WHERE id = ${alertId} AND tenant_id = ${tenantId}
+      `;
+
+      return createSuccessResponse(ctx, { alertId, sentAt: now.toISOString(), message: 'Alert sent' });
+
+    case 'acknowledge':
+      if (!alertId) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Alert ID is required', 400);
+      }
+
+      await prisma.$executeRaw`
+        UPDATE expiration_alerts 
+        SET status = 'ACKNOWLEDGED', acknowledged_at = ${now}, 
+            acknowledged_by = ${data?.userId || 'system'},
+            acknowledged_action = ${data?.action || 'DISMISS'}, updated_at = ${now}
+        WHERE id = ${alertId} AND tenant_id = ${tenantId}
+      `;
+
+      return createSuccessResponse(ctx, { alertId, acknowledgedAt: now.toISOString(), message: 'Alert acknowledged' });
+
+    case 'snooze':
+      if (!alertId || !data?.snoozeUntil) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Alert ID and snooze date are required', 400);
+      }
+
+      const snoozeDate = new Date(data.snoozeUntil);
+
+      await prisma.$executeRaw`
+        UPDATE expiration_alerts 
+        SET status = 'ACKNOWLEDGED', acknowledged_at = ${now},
+            acknowledged_action = 'SNOOZE', snooze_until = ${snoozeDate}, updated_at = ${now}
+        WHERE id = ${alertId} AND tenant_id = ${tenantId}
+      `;
+
+      return createSuccessResponse(ctx, { alertId, snoozeUntil: snoozeDate.toISOString(), message: 'Alert snoozed' });
+
+    case 'generate-pending':
+      // Generate pending alerts for contracts expiring soon
+      const expirations = await prisma.$queryRaw<Array<{
+        contract_id: string;
+        contract_title: string;
+        expiration_date: Date;
+        days_until_expiry: number;
+        expiration_risk: string;
+      }>>`
+        SELECT contract_id, contract_title, expiration_date, days_until_expiry, expiration_risk
+        FROM contract_expirations
+        WHERE tenant_id = ${tenantId}
+          AND is_expired = false
+          AND days_until_expiry BETWEEN 0 AND 90
+          AND alerts_enabled = true
+      `;
+
+      let created = 0;
+      for (const exp of expirations) {
+        // Check if alert already exists
+        const existing = await prisma.$queryRaw<Array<{ id: string }>>`
+          SELECT id FROM expiration_alerts 
+          WHERE contract_id = ${exp.contract_id} 
+            AND tenant_id = ${tenantId}
+            AND days_before_expiry = ${exp.days_until_expiry}
+            AND status = 'PENDING'
         `;
 
-        return NextResponse.json({
-          success: true,
-          message: 'Alert created',
-          data: { id, contractId, scheduledFor: scheduledFor.toISOString() },
-        });
+        if (existing.length === 0) {
+          const alertType = exp.days_until_expiry <= 7 ? 'EXPIRATION_7_DAYS' :
+                            exp.days_until_expiry <= 30 ? 'EXPIRATION_30_DAYS' :
+                            exp.days_until_expiry <= 60 ? 'EXPIRATION_60_DAYS' : 'EXPIRATION_90_DAYS';
+          
+          const severity = exp.expiration_risk === 'CRITICAL' ? 'CRITICAL' :
+                          exp.expiration_risk === 'HIGH' ? 'HIGH' :
+                          exp.expiration_risk === 'MEDIUM' ? 'MEDIUM' : 'LOW';
 
-      case 'send':
-        if (!alertId) {
-          return NextResponse.json(
-            { success: false, error: 'Alert ID is required' },
-            { status: 400 }
-          );
-        }
+          const alertId = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-        await prisma.$executeRaw`
-          UPDATE expiration_alerts 
-          SET status = 'SENT', sent_at = ${now}, sent_to = recipients, updated_at = ${now}
-          WHERE id = ${alertId} AND tenant_id = ${tenantId}
-        `;
-
-        return NextResponse.json({
-          success: true,
-          message: 'Alert sent',
-          data: { alertId, sentAt: now.toISOString() },
-        });
-
-      case 'acknowledge':
-        if (!alertId) {
-          return NextResponse.json(
-            { success: false, error: 'Alert ID is required' },
-            { status: 400 }
-          );
-        }
-
-        await prisma.$executeRaw`
-          UPDATE expiration_alerts 
-          SET status = 'ACKNOWLEDGED', acknowledged_at = ${now}, 
-              acknowledged_by = ${data?.userId || 'system'},
-              acknowledged_action = ${data?.action || 'DISMISS'}, updated_at = ${now}
-          WHERE id = ${alertId} AND tenant_id = ${tenantId}
-        `;
-
-        return NextResponse.json({
-          success: true,
-          message: 'Alert acknowledged',
-          data: { alertId, acknowledgedAt: now.toISOString() },
-        });
-
-      case 'snooze':
-        if (!alertId || !data?.snoozeUntil) {
-          return NextResponse.json(
-            { success: false, error: 'Alert ID and snooze date are required' },
-            { status: 400 }
-          );
-        }
-
-        const snoozeDate = new Date(data.snoozeUntil);
-
-        await prisma.$executeRaw`
-          UPDATE expiration_alerts 
-          SET status = 'ACKNOWLEDGED', acknowledged_at = ${now},
-              acknowledged_action = 'SNOOZE', snooze_until = ${snoozeDate}, updated_at = ${now}
-          WHERE id = ${alertId} AND tenant_id = ${tenantId}
-        `;
-
-        return NextResponse.json({
-          success: true,
-          message: 'Alert snoozed',
-          data: { alertId, snoozeUntil: snoozeDate.toISOString() },
-        });
-
-      case 'generate-pending':
-        // Generate pending alerts for contracts expiring soon
-        const expirations = await prisma.$queryRaw<Array<{
-          contract_id: string;
-          contract_title: string;
-          expiration_date: Date;
-          days_until_expiry: number;
-          expiration_risk: string;
-        }>>`
-          SELECT contract_id, contract_title, expiration_date, days_until_expiry, expiration_risk
-          FROM contract_expirations
-          WHERE tenant_id = ${tenantId}
-            AND is_expired = false
-            AND days_until_expiry BETWEEN 0 AND 90
-            AND alerts_enabled = true
-        `;
-
-        let created = 0;
-        for (const exp of expirations) {
-          // Check if alert already exists
-          const existing = await prisma.$queryRaw<Array<{ id: string }>>`
-            SELECT id FROM expiration_alerts 
-            WHERE contract_id = ${exp.contract_id} 
-              AND tenant_id = ${tenantId}
-              AND days_before_expiry = ${exp.days_until_expiry}
-              AND status = 'PENDING'
+          await prisma.$executeRaw`
+            INSERT INTO expiration_alerts (
+              id, contract_id, tenant_id, alert_type, severity, title, message,
+              recipients, status, scheduled_for, days_before_expiry, created_at, updated_at
+            ) VALUES (
+              ${alertId}, ${exp.contract_id}, ${tenantId}, ${alertType}, ${severity},
+              ${`Contract "${exp.contract_title}" expires in ${exp.days_until_expiry} days`},
+              ${`Action required: Contract is expiring on ${exp.expiration_date.toLocaleDateString()}`},
+              '[]'::jsonb, 'PENDING', ${now}, ${exp.days_until_expiry}, ${now}, ${now}
+            )
           `;
-
-          if (existing.length === 0) {
-            const alertType = exp.days_until_expiry <= 7 ? 'EXPIRATION_7_DAYS' :
-                              exp.days_until_expiry <= 30 ? 'EXPIRATION_30_DAYS' :
-                              exp.days_until_expiry <= 60 ? 'EXPIRATION_60_DAYS' : 'EXPIRATION_90_DAYS';
-            
-            const severity = exp.expiration_risk === 'CRITICAL' ? 'CRITICAL' :
-                            exp.expiration_risk === 'HIGH' ? 'HIGH' :
-                            exp.expiration_risk === 'MEDIUM' ? 'MEDIUM' : 'LOW';
-
-            const alertId = `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-            await prisma.$executeRaw`
-              INSERT INTO expiration_alerts (
-                id, contract_id, tenant_id, alert_type, severity, title, message,
-                recipients, status, scheduled_for, days_before_expiry, created_at, updated_at
-              ) VALUES (
-                ${alertId}, ${exp.contract_id}, ${tenantId}, ${alertType}, ${severity},
-                ${`Contract "${exp.contract_title}" expires in ${exp.days_until_expiry} days`},
-                ${`Action required: Contract is expiring on ${exp.expiration_date.toLocaleDateString()}`},
-                '[]'::jsonb, 'PENDING', ${now}, ${exp.days_until_expiry}, ${now}, ${now}
-              )
-            `;
-            created++;
-          }
+          created++;
         }
+      }
 
-        return NextResponse.json({
-          success: true,
-          message: `Generated ${created} new alerts`,
-          data: { created, checked: expirations.length },
-        });
+      return createSuccessResponse(ctx, { created, checked: expirations.length, message: `Generated ${created} new alerts` });
 
-      default:
-        return NextResponse.json(
-          { success: false, error: 'Invalid action' },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to process action', details: String(error) },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
   }
-}
+});

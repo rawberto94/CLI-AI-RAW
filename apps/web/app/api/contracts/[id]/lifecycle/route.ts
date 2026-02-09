@@ -5,11 +5,13 @@
  * POST /api/contracts/[id]/lifecycle
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,6 +19,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getTenantIdFromRequest(request);
     const contractId = params.id;
@@ -27,26 +30,17 @@ export async function POST(
     // Validate documentRole
     const validRoles = ['NEW_CONTRACT', 'EXISTING', 'AMENDMENT', 'RENEWAL', null];
     if (documentRole && !validRoles.includes(documentRole)) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Invalid documentRole. Must be one of: ${validRoles.filter(r => r).join(', ')}` 
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid documentRole. Must be one of: ${validRoles.filter(r => r).join(', ')}`, 400);
     }
 
-    // Get contract
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
-    });
+    // Get contract via service layer
+    const contractResult = await contractService.getContract(contractId, tenantId!);
 
-    if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+    if (!contractResult.success || !contractResult.data) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
+
+    const contract = contractResult.data;
 
     // Prepare update data
     const updateData: any = {};
@@ -88,11 +82,9 @@ export async function POST(
       };
     }
 
-    // Update contract
-    const updatedContract = await prisma.contract.update({
-      where: { id: contractId },
-      data: updateData,
-    });
+    // Update contract via service layer
+    const updateResult = await contractService.updateContract(contractId, tenantId!, updateData);
+    const updatedContract = updateResult.data;
 
     // Determine new lifecycle and workflow requirement
     const lifecycle = getContractLifecycle(updatedContract);
@@ -105,7 +97,7 @@ export async function POST(
       reason: 'lifecycle/status updated',
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contract: {
         id: updatedContract.id,
@@ -118,11 +110,8 @@ export async function POST(
         ? 'Contract marked as new - approval workflow can now be initiated'
         : 'Contract marked as existing - no approval workflow required',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to update contract lifecycle' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -130,6 +119,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getTenantIdFromRequest(request);
     const contractId = params.id;
@@ -148,16 +138,13 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     const lifecycle = getContractLifecycle(contract);
     const requiresApproval = requiresApprovalWorkflow(contract);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contract: {
         id: contract.id,
@@ -168,10 +155,7 @@ export async function GET(
         metadata: contract.metadata,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch contract lifecycle' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

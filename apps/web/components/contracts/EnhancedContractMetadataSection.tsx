@@ -598,7 +598,7 @@ function PartyCard({
       className={cn(
         "relative p-5 rounded-2xl border-2 transition-all group",
         isEditing 
-          ? "bg-white border-indigo-300 shadow-xl shadow-purple-100/50 ring-2 ring-indigo-100" 
+          ? "bg-white border-indigo-300 shadow-xl shadow-violet-100/50 ring-2 ring-indigo-100" 
           : "bg-gradient-to-br from-white via-white to-violet-50/30 border-slate-200 hover:border-violet-300 hover:shadow-lg"
       )}
     >
@@ -613,11 +613,11 @@ function PartyCard({
         <div className="flex items-start gap-4 flex-1 min-w-0">
           <div className={cn(
             "p-3 rounded-xl shrink-0 transition-colors",
-            isEditing ? "bg-gradient-to-br from-purple-100 to-purple-100" : "bg-gradient-to-br from-violet-100 to-purple-100"
+            isEditing ? "bg-gradient-to-br from-violet-100 to-purple-100" : "bg-gradient-to-br from-violet-100 to-purple-100"
           )}>
             <Building2 className={cn(
               "h-6 w-6",
-              isEditing ? "text-purple-600" : "text-violet-600"
+              isEditing ? "text-violet-600" : "text-violet-600"
             )} />
           </div>
           
@@ -1324,7 +1324,7 @@ function MetadataField({
           <Switch
             checked={!!fieldValue}
             onCheckedChange={setFieldValue}
-            className="data-[state=checked]:bg-purple-600"
+            className="data-[state=checked]:bg-violet-600"
           />
           <span className="text-sm text-slate-600">{fieldValue ? 'Yes' : 'No'}</span>
         </div>
@@ -1458,7 +1458,7 @@ function MetadataField({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-purple-600" />
+            <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-violet-600" />
           </motion.button>
         )}
         
@@ -2036,7 +2036,7 @@ export function EnhancedContractMetadataSection({
             )}
           </AnimatePresence>
           <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-200/50">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/50">
               <FileCheck className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -2099,7 +2099,7 @@ export function EnhancedContractMetadataSection({
                 variant="outline"
                 onClick={handleAIExtraction}
                 disabled={isExtractingAI}
-                className="border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 rounded-xl px-4 h-10 font-medium shadow-sm"
+                className="border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 rounded-xl px-4 h-10 font-medium shadow-sm"
               >
                 {isExtractingAI ? (
                   <>
@@ -2138,7 +2138,7 @@ export function EnhancedContractMetadataSection({
               <Button 
                 size="sm" 
                 onClick={() => setIsEditing(true)}
-                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-purple-200/50"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-violet-200/50"
               >
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit Metadata

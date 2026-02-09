@@ -4,14 +4,16 @@
  * Compare rate card entry against baselines
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { baselineManagementService } from 'data-orchestration';
+import { NextRequest } from 'next/server';
+import { baselineManagementService } from 'data-orchestration/services';
 import { prisma } from "@/lib/prisma";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(req: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(req);
   try {
 
     const { rateCardId } = params;
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest, props: { params: Promise<{ rateCardI
     const service = new baselineManagementService(prisma);
     const comparisons = await service.compareAgainstBaselines(rateCardId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       rateCardId,
       comparisons,
@@ -32,12 +34,6 @@ export async function GET(req: NextRequest, props: { params: Promise<{ rateCardI
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to compare against baselines',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

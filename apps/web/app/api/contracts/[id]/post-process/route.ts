@@ -10,13 +10,14 @@
  * - Index for RAG search
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { runPostProcessingHooks as _runPostProcessingHooks } from "@/lib/post-processing-hooks";
 import { AutoPopulateService, type AutoPopulateConfig } from "@/lib/services/auto-populate.service";
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { triggerContractReindex } from "@/lib/rag/reindex-trigger";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -278,7 +279,7 @@ export async function POST(
     const hasErrors = Object.keys(errors).length > 0;
     const allFailed = Object.values(results).every(r => !r.success);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: !allFailed,
       contractId,
       hooks: hooks,
@@ -291,14 +292,7 @@ export async function POST(
           : "Post-processing completed successfully",
     }, { status: allFailed ? 500 : 200 });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Post-processing failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

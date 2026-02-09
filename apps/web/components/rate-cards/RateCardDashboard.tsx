@@ -194,11 +194,11 @@ export function RateCardDashboard() {
         </Card>
 
         {/* Market Position */}
-        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-violet-50 to-pink-50 border-violet-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Market Position</p>
+                <p className="text-sm font-medium text-violet-600">Market Position</p>
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.avgRateVsMarket > 0 ? '+' : ''}{stats.avgRateVsMarket.toFixed(1)}%
                 </h3>
@@ -206,7 +206,7 @@ export function RateCardDashboard() {
                   {stats.ratesAboveMarket} rates above market
                 </p>
               </div>
-              <div className="p-3 bg-purple-600 rounded-lg">
+              <div className="p-3 bg-violet-600 rounded-lg">
                 <Award className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -315,14 +315,14 @@ export function RateCardDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-purple-600" />
+            <Users className="w-5 h-5 text-violet-600" />
             Top Suppliers by Competitiveness
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {topSuppliers.map((supplier) => (
-              <Card key={supplier.id} className="bg-gradient-to-br from-purple-50 to-purple-50 border-indigo-200">
+              <Card key={supplier.id} className="bg-gradient-to-br from-violet-50 to-purple-50 border-indigo-200">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
@@ -401,7 +401,7 @@ export function RateCardDashboard() {
         
         <Card>
           <CardContent className="p-4 text-center">
-            <Award className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+            <Award className="w-8 h-8 text-violet-600 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900">
               {((stats.totalRateCards - stats.ratesAboveMarket) / stats.totalRateCards * 100).toFixed(0)}%
             </div>

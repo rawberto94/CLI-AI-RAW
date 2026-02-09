@@ -68,9 +68,9 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
 }: { summary: string; keyTerms?: string[] }) {
   return (
     <Card className="border-slate-200 overflow-hidden">
-      <CardHeader className="pb-2 bg-gradient-to-r from-purple-50 to-purple-50 border-b border-slate-100">
+      <CardHeader className="pb-2 bg-gradient-to-r from-violet-50 to-purple-50 border-b border-slate-100">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-purple-500" />
+          <Sparkles className="h-4 w-4 text-violet-500" />
           Executive Summary
         </CardTitle>
       </CardHeader>
@@ -133,17 +133,17 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
                 key={i}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border",
-                  isClient ? "bg-violet-50 border-violet-100" : "bg-purple-50 border-purple-100"
+                  isClient ? "bg-violet-50 border-violet-100" : "bg-violet-50 border-violet-100"
                 )}
               >
                 <div className={cn(
                   "w-9 h-9 rounded-full flex items-center justify-center shrink-0",
-                  isClient ? "bg-violet-100" : "bg-purple-100"
+                  isClient ? "bg-violet-100" : "bg-violet-100"
                 )}>
                   {isClient ? (
                     <Building className="h-4 w-4 text-violet-600" />
                   ) : (
-                    <Users className="h-4 w-4 text-purple-600" />
+                    <Users className="h-4 w-4 text-violet-600" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
@@ -151,7 +151,7 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
                   <div className="flex items-center gap-2">
                     <p className={cn(
                       "text-xs font-medium",
-                      isClient ? "text-violet-600" : "text-purple-600"
+                      isClient ? "text-violet-600" : "text-violet-600"
                     )}>
                       {party.role || 'Party'}
                     </p>

@@ -21,7 +21,7 @@ export default async function EmergingTrendsPage() {
         <Suspense fallback={
           <div className="flex items-center justify-center h-64">
             <div className="flex flex-col items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 animate-pulse shadow-lg" />
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 animate-pulse shadow-lg" />
               <p className="text-slate-600">Loading emerging trends...</p>
             </div>
           </div>

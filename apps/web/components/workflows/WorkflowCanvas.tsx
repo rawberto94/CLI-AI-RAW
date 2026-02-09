@@ -231,7 +231,7 @@ export function WorkflowCanvas({
         return 'bg-gradient-to-br from-amber-500 to-orange-600 text-white border-amber-600 shadow-amber-200 dark:shadow-amber-900/50';
       case 'step':
         return node.stepType === 'APPROVAL'
-          ? 'bg-white dark:bg-slate-800 border-indigo-300 dark:border-purple-600 text-slate-900 dark:text-slate-100 shadow-purple-100 dark:shadow-slate-900/50'
+          ? 'bg-white dark:bg-slate-800 border-indigo-300 dark:border-violet-600 text-slate-900 dark:text-slate-100 shadow-violet-100 dark:shadow-slate-900/50'
           : 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 dark:shadow-slate-900/50';
       default:
         return 'bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-600 text-slate-900 dark:text-slate-100 dark:shadow-slate-900/50';
@@ -248,7 +248,7 @@ export function WorkflowCanvas({
         return <GitBranch className="w-5 h-5" />;
       case 'step':
         return node.stepType === 'APPROVAL' ? (
-          <CheckCircle className="w-5 h-5 text-purple-600" />
+          <CheckCircle className="w-5 h-5 text-violet-600" />
         ) : (
           <Users className="w-5 h-5 text-slate-600" />
         );
@@ -395,9 +395,9 @@ export function WorkflowCanvas({
             className={cn(
               'absolute cursor-move rounded-lg border-2 shadow-lg transition-all duration-200',
               'hover:shadow-xl hover:scale-[1.02]',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2',
               getNodeStyle(node),
-              selectedNode === node.id && 'ring-4 ring-indigo-300 dark:ring-purple-600 ring-offset-2 scale-105',
+              selectedNode === node.id && 'ring-4 ring-indigo-300 dark:ring-violet-600 ring-offset-2 scale-105',
               draggingNode === node.id && 'opacity-70 scale-110',
               connectingFrom === node.id && 'ring-4 ring-green-400 dark:ring-green-600 animate-pulse'
             )}
@@ -524,7 +524,7 @@ export function WorkflowCanvas({
           {onSave && (
             <Button
               size="sm"
-              className="shadow-lg bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 transition-all duration-200 hover:shadow-xl hover:scale-105 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2"
+              className="shadow-lg bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 transition-all duration-200 hover:shadow-xl hover:scale-105 focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2"
               onClick={() => onSave(nodes, connections)}
               aria-label="Save workflow changes"
             >

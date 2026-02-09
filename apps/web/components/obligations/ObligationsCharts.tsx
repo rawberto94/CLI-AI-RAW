@@ -92,7 +92,7 @@ export function ObligationsStatusChart({ metrics, height = 300 }: MetricsChartPr
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Activity className="h-4 w-4 text-purple-600" />
+          <Activity className="h-4 w-4 text-violet-600" />
           Status Distribution
         </CardTitle>
       </CardHeader>
@@ -209,7 +209,7 @@ export function ObligationsTypeChart({ metrics, height = 300 }: MetricsChartProp
     <Card>
       <CardHeader className="pb-2">
         <CardTitle className="text-base flex items-center gap-2">
-          <Target className="h-4 w-4 text-blue-600" />
+          <Target className="h-4 w-4 text-violet-600" />
           By Type
         </CardTitle>
       </CardHeader>

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -61,6 +62,7 @@ import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
 import { VersionManager } from '@/components/contracts/VersionManager'
 import { useSplitPaneResize } from '@/hooks/use-split-pane-resize'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 
 // Import print styles
@@ -195,6 +197,7 @@ export default function ContractDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
+  const { data: session } = useSession()
   const { dataMode } = useDataMode()
   const wsContext = useWebSocket()
   const crossModule = useCrossModuleInvalidation()
@@ -271,6 +274,7 @@ export default function ContractDetailPage() {
   const [extractionConfidence, setExtractionConfidence] = useState<number | undefined>(undefined)
   
   // Split pane for PDF viewer
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const {
     containerRef: splitContainerRef,
     ratio: pdfSplitRatio,
@@ -689,7 +693,7 @@ export default function ContractDetailPage() {
                 <p className="text-sm text-slate-600 mb-6 max-w-[280px] mx-auto">{error}</p>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                   {!isNotFound && (
-                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-purple-500 to-purple-600">
+                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-violet-500 to-purple-600">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Retry
                     </Button>
@@ -785,8 +789,8 @@ export default function ContractDetailPage() {
       <div 
         ref={splitContainerRef}
         className={cn(
-          "flex",
-          showPdfViewer ? "h-[calc(100vh-4rem)]" : "",
+          showPdfViewer && !isMobile ? "flex h-[calc(100vh-4rem)]" : "",
+          showPdfViewer && isMobile ? "flex flex-col h-[calc(100vh-4rem)]" : "",
           isResizingPanel && "select-none"
         )}
       >
@@ -794,8 +798,11 @@ export default function ContractDetailPage() {
         {showPdfViewer && (
           <>
             <div 
-              className="h-full bg-slate-100 flex-shrink-0 relative"
-              style={{ width: `${pdfSplitRatio}%`, minWidth: '280px' }}
+              className={cn(
+                "bg-slate-100 flex-shrink-0 relative",
+                isMobile ? "w-full h-[50vh]" : "h-full"
+              )}
+              style={isMobile ? undefined : { width: `${pdfSplitRatio}%`, minWidth: '280px' }}
             >
               <RobustPDFViewer
                 contractId={params.id as string}
@@ -806,7 +813,8 @@ export default function ContractDetailPage() {
               />
             </div>
             
-            {/* Resize Handle */}
+            {/* Resize Handle - hidden on mobile */}
+            {!isMobile && (
             <div
               className={cn(
                 "w-1.5 cursor-col-resize bg-slate-300 hover:bg-violet-500 transition-colors flex-shrink-0",
@@ -833,6 +841,7 @@ export default function ContractDetailPage() {
             >
               <div className="w-0.5 h-8 bg-slate-400 group-hover:bg-white rounded-full" />
             </div>
+            )}
           </>
         )}
         
@@ -841,7 +850,7 @@ export default function ContractDetailPage() {
           id="main-content"
           tabIndex={-1}
           className={cn("overflow-auto", showPdfViewer ? "flex-1" : "w-full")} 
-          style={showPdfViewer ? { minWidth: '320px' } : undefined}
+          style={showPdfViewer && !isMobile ? { minWidth: '320px' } : undefined}
         >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             
@@ -1027,7 +1036,7 @@ export default function ContractDetailPage() {
                         size="sm"
                         onClick={() => setTab('ai')}
                         aria-label="Ask AI about this contract"
-                        className="h-8 px-2 text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                        className="h-8 px-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50"
                       >
                         <MessageSquare className="h-4 w-4 mr-1.5" />
                         <span className="text-xs font-medium hidden sm:inline">Ask AI</span>
@@ -1285,7 +1294,7 @@ export default function ContractDetailPage() {
                   <ContractNotes
                     contractId={params.id as string}
                     notes={notes}
-                    currentUserId="current-user" // Would come from auth context
+                    currentUserId={session?.user?.id ?? "anonymous"}
                     onAddNote={async (content) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes`, {
                         method: 'POST',

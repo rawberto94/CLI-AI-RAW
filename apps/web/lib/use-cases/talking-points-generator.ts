@@ -306,8 +306,8 @@ export const TalkingPointsUtils = {
   } {
     const styles: Record<string, { color: string; bgColor: string; label: string }> = {
       market: {
-        color: "text-blue-600",
-        bgColor: "bg-blue-50",
+        color: "text-violet-600",
+        bgColor: "bg-violet-50",
         label: "Market Data",
       },
       volume: {
@@ -341,7 +341,7 @@ export const TalkingPointsUtils = {
         label: "Trend",
       },
     };
-    const defaultStyle = { color: "text-blue-600", bgColor: "bg-blue-50", label: "Market Data" };
+    const defaultStyle = { color: "text-violet-600", bgColor: "bg-violet-50", label: "Market Data" };
     return styles[category as keyof typeof styles] ?? defaultStyle;
   },
 

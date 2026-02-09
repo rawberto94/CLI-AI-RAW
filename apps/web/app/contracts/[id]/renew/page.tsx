@@ -1590,7 +1590,7 @@ function ContentStep({
                             <Plus className="h-4 w-4 text-green-600" />
                           )}
                           {suggestion.type === 'tip' && (
-                            <Sparkles className="h-4 w-4 text-purple-600" />
+                            <Sparkles className="h-4 w-4 text-violet-600" />
                           )}
                         </div>
                         <div className="flex-1 min-w-0">

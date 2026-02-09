@@ -70,8 +70,8 @@ const AI_DASHBOARDS = [
     title: 'AI Decision Audit',
     description: 'Track AI decisions, governance compliance, and model accountability',
     icon: Shield,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     features: ['Decision Logging', 'Compliance Tracking', 'Risk Flags', 'Usage Analytics'],
   },
   {
@@ -192,10 +192,10 @@ export default function AICommandCenterPage() {
                 <p className="text-xs text-muted-foreground">Uptime</p>
               </CardContent>
             </Card>
-            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-purple-200/30 transition-all duration-300">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-violet-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <CardContent className="p-5 text-center relative">
-                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-purple-400 to-violet-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                   <Brain className="w-6 h-6" />
                 </div>
                 <p className="text-2xl font-bold mt-2">125K</p>
@@ -272,7 +272,7 @@ export default function AICommandCenterPage() {
           <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg overflow-hidden">
             <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-md">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md">
                   <BookOpen className="w-4 h-4" />
                 </div>
                 Getting Started with AI Features
@@ -291,14 +291,14 @@ export default function AICommandCenterPage() {
                     Set up your preferred AI models in the Model Registry for optimal performance.
                   </p>
                 </div>
-                <div className="group p-5 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50/50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-100/50 dark:border-purple-800/30 hover:shadow-lg hover:shadow-purple-200/30 transition-all duration-300">
+                <div className="group p-5 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-violet-950/30 border border-violet-100/50 dark:border-violet-800/30 hover:shadow-lg hover:shadow-violet-200/30 transition-all duration-300">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-violet-500 text-white shadow-md group-hover:scale-110 transition-transform">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-md group-hover:scale-110 transition-transform">
                       <Sparkles className="w-4 h-4" />
                     </div>
-                    <h4 className="font-semibold text-purple-900 dark:text-purple-100">2. Enable Extraction</h4>
+                    <h4 className="font-semibold text-violet-900 dark:text-violet-100">2. Enable Extraction</h4>
                   </div>
-                  <p className="text-sm text-purple-700/80 dark:text-purple-300/80">
+                  <p className="text-sm text-violet-700/80 dark:text-violet-300/80">
                     Upload contracts to automatically extract obligations, entities, and insights.
                   </p>
                 </div>

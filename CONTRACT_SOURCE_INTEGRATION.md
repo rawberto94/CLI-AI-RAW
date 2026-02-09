@@ -1,5 +1,9 @@
 # Contract Source Integration System v1.2.0
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for current integration documentation. Retained for historical reference only.
+
+---
+
 ## Overview
 
 The Contract Source Integration System provides a unified way to sync contracts from external storage systems into the Contigo platform. It supports multiple cloud storage providers and on-premise systems.

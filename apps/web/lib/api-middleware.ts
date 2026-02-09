@@ -2,7 +2,7 @@
  * API Middleware Utilities
  * 
  * Provides standardized request validation, error handling, and response formatting
- * for all contract API routes.
+ * for all API routes. Defense-in-depth: supplements edge middleware auth.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -19,6 +19,11 @@ export interface ApiContext {
   tenantId: string;
   startTime: number;
   dataMode: 'real' | 'mock';
+}
+
+export interface AuthenticatedApiContext extends ApiContext {
+  userId: string;
+  userRole?: string;
 }
 
 export interface ApiErrorResponse {
@@ -99,6 +104,29 @@ export function getApiContext(request: NextRequest): ApiContext {
   return {
     requestId: request.headers.get('x-request-id') || nanoid(),
     tenantId: request.headers.get('x-tenant-id') || 'demo',
+    startTime: Date.now(),
+    dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
+  };
+}
+
+/**
+ * Extract authenticated API context (defense-in-depth).
+ * Reads user identity from middleware-injected headers.
+ * Returns null if no user identity present.
+ */
+export function getAuthenticatedApiContext(request: NextRequest): AuthenticatedApiContext | null {
+  const userId = request.headers.get('x-user-id');
+  const tenantId = request.headers.get('x-tenant-id');
+
+  if (!userId) {
+    return null;
+  }
+
+  return {
+    requestId: request.headers.get('x-request-id') || nanoid(),
+    tenantId: tenantId || 'demo',
+    userId,
+    userRole: request.headers.get('x-user-role') || undefined,
     startTime: Date.now(),
     dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
   };
@@ -295,6 +323,62 @@ export function withApiHandler<T>(
   return async (request: NextRequest): Promise<NextResponse> => {
     const context = getApiContext(request);
     
+    try {
+      return await handler(request, context);
+    } catch (error) {
+      return handleApiError(context, error);
+    }
+  };
+}
+
+/**
+ * Wrapper for authenticated API route handlers.
+ * Combines defense-in-depth auth check + structured error handling + response formatting.
+ * Uses middleware-injected headers (x-user-id, x-tenant-id) for identity.
+ */
+export function withAuthApiHandler<T>(
+  handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse<T>>
+) {
+  return async (request: NextRequest): Promise<NextResponse> => {
+    const context = getAuthenticatedApiContext(request);
+
+    if (!context) {
+      const fallback = getApiContext(request);
+      return createErrorResponse(fallback, 'UNAUTHORIZED', 'Authentication required', 401, {
+        retryable: false,
+      });
+    }
+
+    try {
+      return await handler(request, context);
+    } catch (error) {
+      return handleApiError(context, error);
+    }
+  };
+}
+
+/**
+ * Wrapper for cron/internal route handlers.
+ * Validates CRON_SECRET or INTERNAL_API_SECRET from Authorization header.
+ */
+export function withCronHandler<T>(
+  handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse<T>>
+) {
+  return async (request: NextRequest): Promise<NextResponse> => {
+    const context = getApiContext(request);
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
+
+    if (!cronSecret) {
+      return createErrorResponse(context, 'CONFIG_ERROR', 'Cron secret not configured', 500);
+    }
+
+    if (!authHeader || authHeader !== `Bearer ${cronSecret}`) {
+      return createErrorResponse(context, 'UNAUTHORIZED', 'Invalid cron secret', 401, {
+        retryable: false,
+      });
+    }
+
     try {
       return await handler(request, context);
     } catch (error) {

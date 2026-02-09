@@ -1,79 +1,61 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
-    const contractId = searchParams.get('contractId');
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action');
+  const contractId = searchParams.get('contractId');
+  const tenantId = ctx.tenantId;
 
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
-    }
+  const renewalEngine = analyticalIntelligenceService.getRenewalEngine();
 
-    const renewalEngine = analyticalIntelligenceService.getRenewalEngine();
+  switch (action) {
+    case 'extract':
+      if (!contractId) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID required', 400);
+      }
+      const renewalData = await renewalEngine.extractRenewalData(contractId);
+      return createSuccessResponse(ctx, renewalData);
 
-    switch (action) {
-      case 'extract':
-        if (!contractId) {
-          return NextResponse.json({ error: 'Contract ID required' }, { status: 400 });
-        }
-        const renewalData = await renewalEngine.extractRenewalData(contractId);
-        return NextResponse.json(renewalData);
+    case 'calendar':
+      const filters = {
+        tenantId,
+        supplierId: searchParams.get('supplierId') || undefined,
+        category: searchParams.get('category') || undefined,
+        riskLevel: searchParams.get('riskLevel') as any || undefined,
+        daysUntilExpiry: searchParams.get('daysUntilExpiry') ? parseInt(searchParams.get('daysUntilExpiry')!) : undefined
+      };
+      const calendar = await renewalEngine.generateRenewalCalendar(filters);
+      return createSuccessResponse(ctx, calendar);
 
-      case 'calendar':
-        const filters = {
-          tenantId,
-          supplierId: searchParams.get('supplierId') || undefined,
-          category: searchParams.get('category') || undefined,
-          riskLevel: searchParams.get('riskLevel') as any || undefined,
-          daysUntilExpiry: searchParams.get('daysUntilExpiry') ? parseInt(searchParams.get('daysUntilExpiry')!) : undefined
-        };
-        const calendar = await renewalEngine.generateRenewalCalendar(filters);
-        return NextResponse.json(calendar);
-
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, contractId, renewalData } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const body = await request.json();
+  const { action, renewalData, contractId } = body;
 
-    const renewalEngine = analyticalIntelligenceService.getRenewalEngine();
+  const renewalEngine = analyticalIntelligenceService.getRenewalEngine();
 
-    switch (action) {
-      case 'schedule-alerts':
-        if (!renewalData || !contractId) {
-          return NextResponse.json({ error: 'Contract ID and renewal data required' }, { status: 400 });
-        }
-        await renewalEngine.scheduleAlerts(contractId, renewalData);
-        return NextResponse.json({ success: true });
+  switch (action) {
+    case 'schedule-alerts':
+      if (!renewalData || !contractId) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID and renewal data required', 400);
+      }
+      await renewalEngine.scheduleAlerts(contractId, renewalData);
+      return createSuccessResponse(ctx, { scheduled: true });
 
-      case 'trigger-rfx':
-        if (!contractId) {
-          return NextResponse.json({ error: 'Contract ID required' }, { status: 400 });
-        }
-        const rfxEvent = await renewalEngine.triggerRfxGeneration(contractId);
-        return NextResponse.json(rfxEvent);
+    case 'trigger-rfx':
+      if (!contractId) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID required', 400);
+      }
+      const rfxEvent = await renewalEngine.triggerRfxGeneration(contractId);
+      return createSuccessResponse(ctx, rfxEvent);
 
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
   }
-}
+});

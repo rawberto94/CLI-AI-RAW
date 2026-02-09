@@ -362,7 +362,7 @@ const StepTypeBadge = memo(function StepTypeBadge({ type }: { type: AgentStep['t
     thought: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
     action: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     observation: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    tool_call: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    tool_call: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
     critique: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
     decision: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   };
@@ -430,8 +430,8 @@ const AgentStepItem = memo(function AgentStepItem({
             </div>
             
             {step.toolId && (
-              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              <div className="p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mb-2">
                   Tool: {step.toolId}
                 </p>
                 {step.toolInput && (

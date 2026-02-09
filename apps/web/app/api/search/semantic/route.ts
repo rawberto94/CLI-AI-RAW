@@ -1,6 +1,8 @@
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { NextRequest, NextResponse } from 'next/server'
 import { hybridSearch, crossContractSearch } from '@/lib/rag/advanced-rag.service'
 import { getServerTenantId } from '@/lib/tenant-server'
+import { getServerSession } from '@/lib/auth'
 
 /**
  * Semantic Search API - Enhanced with Hybrid Search
@@ -9,86 +11,77 @@ import { getServerTenantId } from '@/lib/tenant-server'
  * Performs semantic/hybrid search across contracts using RAG embeddings
  * Supports both single-contract and cross-contract search
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { 
-      query, 
-      contractId, 
-      k = 6,
-      mode = 'hybrid',
-      rerank = true,
-      expandQuery = true,
-    } = body
-
-    if (!query) {
-      return NextResponse.json(
-        { error: 'Query is required' },
-        { status: 400 }
-      )
-    }
-
-    const tenantId = await getServerTenantId()
-
-    // Use advanced RAG with hybrid search
-    const results = contractId
-      ? await hybridSearch(query, {
-          mode,
-          k,
-          rerank,
-          expandQuery,
-          filters: { contractIds: [contractId], tenantId },
-        })
-      : await crossContractSearch(query, tenantId, {
-          mode,
-          k,
-          rerank,
-          expandQuery,
-        })
-
-    return NextResponse.json({
-      success: true,
-      query,
-      contractId,
-      mode,
-      results: results.map(r => ({
-        contractId: r.contractId,
-        contractName: r.contractName,
-        text: r.text,
-        score: r.score,
-        chunkIndex: r.chunkIndex,
-        matchType: r.matchType,
-        relevance: (r.score * 100).toFixed(1) + '%',
-        highlights: r.highlights,
-      })),
-      count: results.length,
-      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
-      features: {
-        hybridSearch: mode === 'hybrid',
-        reranking: rerank,
-        queryExpansion: expandQuery,
-        crossContract: !contractId,
-      },
-    })
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        success: false
-      },
-      { status: 500 }
-    )
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
+
+  const body = await request.json()
+  const { 
+    query, 
+    contractId, 
+    k = 6,
+    mode = 'hybrid',
+    rerank = true,
+    expandQuery = true,
+  } = body
+
+  if (!query) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Query is required', 400)
+  }
+
+  const tenantId = await getServerTenantId()
+
+  // Use advanced RAG with hybrid search
+  const results = contractId
+    ? await hybridSearch(query, {
+        mode,
+        k,
+        rerank,
+        expandQuery,
+        filters: { contractIds: [contractId], tenantId },
+      })
+    : await crossContractSearch(query, tenantId, {
+        mode,
+        k,
+        rerank,
+        expandQuery,
+      })
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    query,
+    contractId,
+    mode,
+    results: results.map(r => ({
+      contractId: r.contractId,
+      contractName: r.contractName,
+      text: r.text,
+      score: r.score,
+      chunkIndex: r.chunkIndex,
+      matchType: r.matchType,
+      relevance: (r.score * 100).toFixed(1) + '%',
+      highlights: r.highlights,
+    })),
+    count: results.length,
+    model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
+    features: {
+      hybridSearch: mode === 'hybrid',
+      reranking: rerank,
+      queryExpansion: expandQuery,
+      crossContract: !contractId,
+    },
+  })
+
+});
 
 /**
  * GET /api/search/semantic
  * 
  * Returns API documentation
  */
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  return createSuccessResponse(ctx, {
     endpoint: '/api/search/semantic',
     method: 'POST',
     description: 'State-of-the-art hybrid semantic search with RRF, reranking, and query expansion',
@@ -151,4 +144,4 @@ export async function GET() {
       }
     }
   })
-}
+});

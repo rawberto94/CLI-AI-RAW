@@ -333,7 +333,7 @@ const useCases: UseCase[] = [
 const categoryColors = {
   'quick-wins': 'bg-green-100 text-green-800 border-green-200',
   'scalable': 'bg-violet-100 text-violet-800 border-violet-200',
-  'differentiating': 'bg-purple-100 text-purple-800 border-purple-200',
+  'differentiating': 'bg-violet-100 text-violet-800 border-violet-200',
   'client-facing': 'bg-orange-100 text-orange-800 border-orange-200'
 }
 
@@ -552,8 +552,8 @@ export default function UseCasesSection() {
                       </Card>
                       <Card>
                         <CardContent className="p-4 text-center">
-                          <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                          <div className="text-xl font-bold text-purple-600">{selectedUseCase.roi}</div>
+                          <TrendingUp className="w-8 h-8 text-violet-600 mx-auto mb-2" />
+                          <div className="text-xl font-bold text-violet-600">{selectedUseCase.roi}</div>
                           <div className="text-sm text-gray-600">ROI</div>
                         </CardContent>
                       </Card>
@@ -673,10 +673,10 @@ export default function UseCasesSection() {
             </div>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-violet-600 mt-0.5" />
                 <div>
-                  <div className="font-semibold text-purple-800">Differentiating:</div>
-                  <div className="text-sm text-purple-700">Cross-client insights (with anonymization) are unique to Chain IQ&apos;s BPO model.</div>
+                  <div className="font-semibold text-violet-800">Differentiating:</div>
+                  <div className="text-sm text-violet-700">Cross-client insights (with anonymization) are unique to Chain IQ&apos;s BPO model.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">

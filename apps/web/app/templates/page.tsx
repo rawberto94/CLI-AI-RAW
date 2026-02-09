@@ -118,11 +118,11 @@ type ViewMode = 'grid' | 'list'
 // Category colors for visual distinction
 const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string; gradient?: string }> = {
   'Technology': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '💻', gradient: 'from-violet-400 to-purple-200' },
-  'Services': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🛠️', gradient: 'from-purple-400 to-purple-200' },
+  'Services': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '🛠️', gradient: 'from-violet-400 to-purple-200' },
   'Legal': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '⚖️', gradient: 'from-red-400 to-red-200' },
   'HR': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: '👥', gradient: 'from-violet-400 to-purple-200' },
   'Procurement': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: '📦', gradient: 'from-orange-400 to-orange-200' },
-  'Renewal': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-cyan-200', icon: '🔄', gradient: 'from-purple-400 to-purple-200' },
+  'Renewal': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-cyan-200', icon: '🔄', gradient: 'from-violet-400 to-purple-200' },
   'Finance': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '💰', gradient: 'from-violet-400 to-violet-200' },
   'Default': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: '📄', gradient: 'from-gray-400 to-gray-200' },
 }
@@ -1529,29 +1529,29 @@ export default function TemplatesPage() {
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer" onClick={() => setShowAnalytics(true)}>
-            <Card className="bg-gradient-to-br from-purple-50 to-violet-100/70 border-cyan-200/50 shadow-lg shadow-purple-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-100/70 border-cyan-200/50 shadow-lg shadow-violet-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-purple-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-md">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-700">{templateStats.totalUsage}</p>
-                  <p className="text-xs font-medium text-purple-600/80">Usage</p>
+                  <p className="text-2xl font-bold text-violet-700">{templateStats.totalUsage}</p>
+                  <p className="text-xs font-medium text-violet-600/80">Usage</p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer">
-            <Card className="bg-gradient-to-br from-purple-50 to-purple-100/70 border-indigo-200/50 shadow-lg shadow-purple-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-100/70 border-indigo-200/50 shadow-lg shadow-violet-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-purple-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-md">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                   <Gauge className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-purple-700">{templateStats.avgHealth}%</p>
-                  <p className="text-xs font-medium text-purple-600/80">Avg Health</p>
+                  <p className="text-2xl font-bold text-violet-700">{templateStats.avgHealth}%</p>
+                  <p className="text-xs font-medium text-violet-600/80">Avg Health</p>
                 </div>
               </CardContent>
             </Card>
@@ -1629,13 +1629,13 @@ export default function TemplatesPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="shadow-xl border-2 border-purple-200 bg-purple-50/80 backdrop-blur-sm">
+              <Card className="shadow-xl border-2 border-violet-200 bg-violet-50/80 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <CheckSquare className="h-5 w-5 text-purple-600" />
-                        <span className="font-medium text-purple-900">
+                        <CheckSquare className="h-5 w-5 text-violet-600" />
+                        <span className="font-medium text-violet-900">
                           {selectedTemplates.size} selected
                         </span>
                       </div>
@@ -1776,10 +1776,10 @@ export default function TemplatesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Usage</p>
-                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalUsage}</p>
-                    <p className="text-xs text-purple-500 mt-1">total uses</p>
+                    <p className="text-3xl font-bold text-violet-600 mt-1">{stats.totalUsage}</p>
+                    <p className="text-xs text-violet-500 mt-1">total uses</p>
                   </div>
-                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/30">
+                  <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg shadow-violet-500/30">
                     <TrendingUp className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -1863,8 +1863,8 @@ export default function TemplatesPage() {
                 {/* Search with suggestions */}
                 <div className="flex-1 min-w-[250px] relative">
                   <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity -m-1" />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-pink-500/10 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity -m-1" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-violet-500 transition-colors" />
                     <Input
                       placeholder="Search templates by name, description, or tags..."
                       value={searchQuery}
@@ -1877,7 +1877,7 @@ export default function TemplatesPage() {
                           setShowSearchSuggestions(false)
                         }
                       }}
-                      className="pl-12 pr-12 h-12 text-base rounded-xl border-gray-200 focus:border-purple-300 focus:ring-purple-200 transition-all"
+                      className="pl-12 pr-12 h-12 text-base rounded-xl border-gray-200 focus:border-violet-300 focus:ring-violet-200 transition-all"
                     />
                     {searchQuery && (
                       <button
@@ -1967,7 +1967,7 @@ export default function TemplatesPage() {
                       <Filter className="h-4 w-4 text-gray-500" />
                       <span className="text-gray-700">Category</span>
                       {categoryFilter !== 'all' && (
-                        <Badge className="ml-1 bg-purple-100 text-purple-700 border-purple-200">{categoryFilter}</Badge>
+                        <Badge className="ml-1 bg-violet-100 text-violet-700 border-violet-200">{categoryFilter}</Badge>
                       )}
                     </Button>
                   </DropdownMenuTrigger>
@@ -2057,7 +2057,7 @@ export default function TemplatesPage() {
                     onClick={() => setViewMode('grid')}
                     className={cn(
                       "rounded-none px-4 h-full",
-                      viewMode === 'grid' ? "bg-purple-600 hover:bg-purple-700" : "hover:bg-gray-50"
+                      viewMode === 'grid' ? "bg-violet-600 hover:bg-violet-700" : "hover:bg-gray-50"
                     )}
                   >
                     <Grid3X3 className="h-4 w-4" />
@@ -2068,7 +2068,7 @@ export default function TemplatesPage() {
                     onClick={() => setViewMode('list')}
                     className={cn(
                       "rounded-none px-4 h-full",
-                      viewMode === 'list' ? "bg-purple-600 hover:bg-purple-700" : "hover:bg-gray-50"
+                      viewMode === 'list' ? "bg-violet-600 hover:bg-violet-700" : "hover:bg-gray-50"
                     )}
                   >
                     <List className="h-4 w-4" />
@@ -2094,7 +2094,7 @@ export default function TemplatesPage() {
                   }}
                   className={cn(
                     "h-12 px-4 rounded-xl transition-all gap-2",
-                    bulkActionMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                    bulkActionMode ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                   )}
                 >
                   <CheckSquare className="h-4 w-4" />
@@ -2108,10 +2108,10 @@ export default function TemplatesPage() {
               <div className="flex gap-3 flex-wrap mt-5 pt-5 border-t border-gray-100 items-center">
                 <span className="text-sm text-gray-500 font-medium">Active filters:</span>
                 {categoryFilter !== 'all' && (
-                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 transition-colors cursor-default">
+                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200 transition-colors cursor-default">
                     <span>{getCategoryColor(categoryFilter).icon}</span>
                     {categoryFilter}
-                    <button onClick={() => setCategoryFilter('all')} className="ml-1 hover:bg-purple-300 rounded-full p-0.5">
+                    <button onClick={() => setCategoryFilter('all')} className="ml-1 hover:bg-violet-300 rounded-full p-0.5">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -2161,7 +2161,7 @@ export default function TemplatesPage() {
                 <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent z-10" />
                 <CardContent className="p-0">
                   <div>
-                    <div className="h-1.5 bg-gradient-to-r from-purple-200 via-pink-200 to-purple-200" />
+                    <div className="h-1.5 bg-gradient-to-r from-violet-200 via-pink-200 to-purple-200" />
                     <div className="p-5 space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2.5 flex-1">
@@ -2176,7 +2176,7 @@ export default function TemplatesPage() {
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div className="h-16 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl" />
-                        <div className="h-16 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl" />
+                        <div className="h-16 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl" />
                       </div>
                       <div className="flex gap-2 pt-2">
                         <div className="h-8 bg-gray-100 rounded flex-1" />
@@ -2286,7 +2286,7 @@ export default function TemplatesPage() {
                       >
                         <span className="text-lg">{icon}</span>
                         <span>{type}</span>
-                        <Sparkles className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-purple-500" />
+                        <Sparkles className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-violet-500" />
                       </Button>
                     ))}
                   </div>
@@ -2314,19 +2314,19 @@ export default function TemplatesPage() {
                   whileHover={{ y: -4 }}
                   className={cn(
                     "rounded-2xl",
-                    focusedTemplateIndex === filteredAndSortedTemplates.indexOf(template) && "ring-2 ring-purple-400 ring-offset-2"
+                    focusedTemplateIndex === filteredAndSortedTemplates.indexOf(template) && "ring-2 ring-violet-400 ring-offset-2"
                   )}
                 >
                   <Card
                     className={cn(
                       "relative overflow-hidden cursor-pointer rounded-2xl",
                       "bg-white/90 backdrop-blur-md border border-gray-100",
-                      "shadow-lg shadow-gray-200/50 hover:shadow-2xl hover:shadow-purple-200/40",
+                      "shadow-lg shadow-gray-200/50 hover:shadow-2xl hover:shadow-violet-200/40",
                       "transition-all duration-300",
                       compactMode && "shadow-md",
                       template.approvalStatus === 'pending' && "border-l-4 border-l-amber-400",
                       favorites.includes(template.id) && "ring-2 ring-amber-300/70 bg-amber-50/30",
-                      selectedTemplates.has(template.id) && "ring-2 ring-purple-500 bg-purple-50/80"
+                      selectedTemplates.has(template.id) && "ring-2 ring-violet-500 bg-violet-50/80"
                     )}
                     onContextMenu={(e) => handleContextMenu(e, template)}
                     onClick={() => !bulkActionMode && openPreviewSidebar(template)}
@@ -2349,14 +2349,14 @@ export default function TemplatesPage() {
                               initial={{ y: 20, opacity: 0 }}
                               animate={{ y: 0, opacity: 1 }}
                               transition={{ delay: 0, type: "spring", stiffness: 300, damping: 24 }}
-                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-purple-50 hover:scale-110 transition-all duration-200"
+                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-violet-50 hover:scale-110 transition-all duration-200"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openPreviewSidebar(template)
                               }}
                               title="Quick Preview"
                             >
-                              <Eye className="h-5 w-5 text-purple-600" />
+                              <Eye className="h-5 w-5 text-violet-600" />
                             </motion.button>
                             <motion.button
                               initial={{ y: 20, opacity: 0 }}
@@ -2455,9 +2455,9 @@ export default function TemplatesPage() {
                         className="absolute top-3 left-3 z-10"
                       >
                         {selectedTemplates.has(template.id) ? (
-                          <CheckSquare className="h-5 w-5 text-purple-600 fill-purple-100" />
+                          <CheckSquare className="h-5 w-5 text-violet-600 fill-violet-100" />
                         ) : (
-                          <Square className="h-5 w-5 text-gray-400 hover:text-purple-600" />
+                          <Square className="h-5 w-5 text-gray-400 hover:text-violet-600" />
                         )}
                       </button>
                     )}
@@ -2513,7 +2513,7 @@ export default function TemplatesPage() {
                             </Badge>
                           ))}
                           {template.tags.length > 3 && (
-                            <Badge variant="secondary" className="text-xs bg-purple-100/80 text-purple-600 px-2 py-0.5 rounded-md">
+                            <Badge variant="secondary" className="text-xs bg-violet-100/80 text-violet-600 px-2 py-0.5 rounded-md">
                               +{template.tags.length - 3} more
                             </Badge>
                           )}
@@ -2526,9 +2526,9 @@ export default function TemplatesPage() {
                             <p className="text-[10px] text-violet-600/70 font-semibold uppercase tracking-wider">Variables</p>
                             <p className="text-xl font-bold text-violet-700">{template.variables || 0}</p>
                           </div>
-                          <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl border border-purple-100">
-                            <p className="text-[10px] text-purple-600/70 font-semibold uppercase tracking-wider">Clauses</p>
-                            <p className="text-xl font-bold text-purple-700">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</p>
+                          <div className="p-3 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl border border-violet-100">
+                            <p className="text-[10px] text-violet-600/70 font-semibold uppercase tracking-wider">Clauses</p>
+                            <p className="text-xl font-bold text-violet-700">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</p>
                           </div>
                         </div>
                       )}
@@ -2540,7 +2540,7 @@ export default function TemplatesPage() {
                             <span className="font-medium">{template.variables || 0}</span>
                           </span>
                           <span className="flex items-center gap-1.5">
-                            <FileCode className="h-3.5 w-3.5 text-purple-500" />
+                            <FileCode className="h-3.5 w-3.5 text-violet-500" />
                             <span className="font-medium">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</span>
                           </span>
                           <span className="flex items-center gap-1.5">
@@ -2581,7 +2581,7 @@ export default function TemplatesPage() {
                             e.stopPropagation()
                             openPreview(template)
                           }}
-                          className="flex-1 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all"
+                          className="flex-1 rounded-lg hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 transition-all"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Preview
@@ -2614,7 +2614,7 @@ export default function TemplatesPage() {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => openVersionHistory(template)} className="gap-2 cursor-pointer">
-                              <History className="h-4 w-4 text-purple-500" />
+                              <History className="h-4 w-4 text-violet-500" />
                               Version History
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => loadAuditTrail(template)}>
@@ -2697,7 +2697,7 @@ export default function TemplatesPage() {
                               <Link href={`/templates/${template.id}`}>
                                 <Button 
                                   size="sm" 
-                                  className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg"
+                                  className="bg-violet-500 hover:bg-violet-600 text-white shadow-lg"
                                 >
                                   <Edit2 className="h-4 w-4 mr-1" />
                                   Edit
@@ -2723,7 +2723,7 @@ export default function TemplatesPage() {
                     <th className="py-3 px-4 w-10">
                       <button onClick={selectedTemplates.size === templates.length ? clearSelection : selectAllTemplates}>
                         {selectedTemplates.size === templates.length ? (
-                          <CheckSquare className="h-4 w-4 text-purple-600" />
+                          <CheckSquare className="h-4 w-4 text-violet-600" />
                         ) : (
                           <Square className="h-4 w-4 text-gray-400" />
                         )}
@@ -2745,14 +2745,14 @@ export default function TemplatesPage() {
                     key={template.id} 
                     className={cn(
                       "border-b hover:bg-gray-50 transition-colors",
-                      selectedTemplates.has(template.id) && "bg-purple-50"
+                      selectedTemplates.has(template.id) && "bg-violet-50"
                     )}
                   >
                     {bulkActionMode && (
                       <td className="py-3 px-4">
                         <button onClick={() => toggleTemplateSelection(template.id)}>
                           {selectedTemplates.has(template.id) ? (
-                            <CheckSquare className="h-4 w-4 text-purple-600" />
+                            <CheckSquare className="h-4 w-4 text-violet-600" />
                           ) : (
                             <Square className="h-4 w-4 text-gray-400" />
                           )}
@@ -2843,11 +2843,11 @@ export default function TemplatesPage() {
                 className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-bold">{previewTemplate.name}</h2>
-                      <p className="text-purple-100 text-sm mt-1">{previewTemplate.description}</p>
+                      <p className="text-violet-100 text-sm mt-1">{previewTemplate.description}</p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setShowPreviewModal(false)} className="text-white hover:bg-white/20">
                       <X className="h-5 w-5" />
@@ -2864,9 +2864,9 @@ export default function TemplatesPage() {
                       <p className="text-2xl font-bold text-violet-700">{previewTemplate.variables || 0}</p>
                       <p className="text-xs text-gray-600">Variables</p>
                     </div>
-                    <div className="p-4 bg-purple-50 rounded-xl text-center">
-                      <FileCode className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-purple-700">
+                    <div className="p-4 bg-violet-50 rounded-xl text-center">
+                      <FileCode className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-violet-700">
                         {Array.isArray(previewTemplate.clauses) ? previewTemplate.clauses.length : (previewTemplate.clauses || 0)}
                       </p>
                       <p className="text-xs text-gray-600">Clauses</p>
@@ -2932,7 +2932,7 @@ export default function TemplatesPage() {
                 <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowPreviewModal(false)}>Close</Button>
                   <Link href={`/templates/${previewTemplate.id}`}>
-                    <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                    <Button className="bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit Template
                     </Button>
@@ -2961,7 +2961,7 @@ export default function TemplatesPage() {
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 via-pink-500 to-rose-500 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-xl">
@@ -2969,7 +2969,7 @@ export default function TemplatesPage() {
                       </div>
                       <div>
                         <h2 className="text-lg font-bold">AI Template Suggestions</h2>
-                        <p className="text-purple-100 text-sm">Get smart recommendations for your templates</p>
+                        <p className="text-violet-100 text-sm">Get smart recommendations for your templates</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setShowAISuggestions(false)} className="text-white hover:bg-white/20">
@@ -3026,9 +3026,9 @@ export default function TemplatesPage() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
-                          className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100"
+                          className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg border border-violet-100"
                         >
-                          <Lightbulb className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                          <Lightbulb className="h-5 w-5 text-violet-500 mt-0.5 flex-shrink-0" />
                           <p className="text-sm text-gray-700">{suggestion}</p>
                         </motion.div>
                       ))}
@@ -3040,7 +3040,7 @@ export default function TemplatesPage() {
                 <div className="p-4 border-t bg-gray-50 flex justify-between">
                   <Button variant="outline" onClick={() => setShowAISuggestions(false)}>Close</Button>
                   <Link href="/templates/new">
-                    <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                    <Button className="bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                       <Plus className="h-4 w-4 mr-2" />
                       Create New Template
                     </Button>
@@ -3181,7 +3181,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <GitCompare className="h-6 w-6" />
@@ -3207,9 +3207,9 @@ export default function TemplatesPage() {
                             <p className="text-xs text-gray-500">Variables</p>
                             <p className="text-2xl font-bold text-violet-600">{template.variables || 0}</p>
                           </div>
-                          <div className="p-3 bg-purple-50 rounded-lg text-center">
+                          <div className="p-3 bg-violet-50 rounded-lg text-center">
                             <p className="text-xs text-gray-500">Clauses</p>
-                            <p className="text-2xl font-bold text-purple-600">
+                            <p className="text-2xl font-bold text-violet-600">
                               {Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}
                             </p>
                           </div>
@@ -3324,15 +3324,15 @@ export default function TemplatesPage() {
                   {/* Single Template Document Export */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileType className="h-4 w-4 text-purple-500" />
+                      <FileType className="h-4 w-4 text-violet-500" />
                       Export as Document
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Export a single template as Word or PDF document.</p>
                     
                     {exportingTemplate ? (
-                      <div className="p-4 bg-purple-50 rounded-lg space-y-3">
+                      <div className="p-4 bg-violet-50 rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-purple-800">{exportingTemplate.name}</span>
+                          <span className="font-medium text-violet-800">{exportingTemplate.name}</span>
                           <Button variant="ghost" size="sm" onClick={() => setExportingTemplate(null)}>
                             <X className="h-4 w-4" />
                           </Button>
@@ -3381,7 +3381,7 @@ export default function TemplatesPage() {
                   {/* Cloud Sync */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-purple-500" />
+                      <Cloud className="h-4 w-4 text-violet-500" />
                       Sync to Cloud Storage
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Upload templates to SharePoint, OneDrive, or Google Drive.</p>
@@ -3467,22 +3467,22 @@ export default function TemplatesPage() {
                   {/* Word Import */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileType className="h-4 w-4 text-purple-500" />
+                      <FileType className="h-4 w-4 text-violet-500" />
                       Import from Word Document
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Create a template from a Word document (.docx, .doc).</p>
                     
                     {!importPreview ? (
                       <label className="block">
-                        <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                        <div className="border-2 border-dashed border-violet-300 rounded-xl p-6 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
                           {isImporting ? (
                             <>
-                              <Loader2 className="h-8 w-8 text-purple-400 mx-auto mb-2 animate-spin" />
+                              <Loader2 className="h-8 w-8 text-violet-400 mx-auto mb-2 animate-spin" />
                               <p className="text-sm text-gray-600">Parsing document...</p>
                             </>
                           ) : (
                             <>
-                              <FileText className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+                              <FileText className="h-8 w-8 text-violet-400 mx-auto mb-2" />
                               <p className="text-sm text-gray-600 mb-1">Click to select Word document</p>
                               <p className="text-xs text-gray-400">.docx or .doc files</p>
                             </>
@@ -3503,9 +3503,9 @@ export default function TemplatesPage() {
                         </div>
                       </label>
                     ) : (
-                      <div className="bg-purple-50 rounded-xl p-4 space-y-4">
+                      <div className="bg-violet-50 rounded-xl p-4 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-purple-800">Preview</h4>
+                          <h4 className="font-medium text-violet-800">Preview</h4>
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -3531,20 +3531,20 @@ export default function TemplatesPage() {
                           {importPreview.variables && Array.isArray(importPreview.variables) && importPreview.variables.length > 0 && (
                             <div>
                               <span className="font-medium text-gray-700">Variables detected:</span>
-                              <span className="ml-2 text-purple-600">{importPreview.variables.length}</span>
+                              <span className="ml-2 text-violet-600">{importPreview.variables.length}</span>
                             </div>
                           )}
                           {importPreview.clauses && Array.isArray(importPreview.clauses) && importPreview.clauses.length > 0 && (
                             <div>
                               <span className="font-medium text-gray-700">Clauses detected:</span>
-                              <span className="ml-2 text-purple-600">{importPreview.clauses.length}</span>
+                              <span className="ml-2 text-violet-600">{importPreview.clauses.length}</span>
                             </div>
                           )}
                         </div>
                         
                         <div className="flex gap-2 pt-2">
                           <Button 
-                            className="flex-1 bg-purple-600 hover:bg-purple-700"
+                            className="flex-1 bg-violet-600 hover:bg-violet-700"
                             onClick={() => importedFile && handleWordImport(importedFile, true)}
                             disabled={isImporting}
                           >
@@ -3592,7 +3592,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Cloud className="h-6 w-6" />
@@ -3753,7 +3753,7 @@ export default function TemplatesPage() {
                     Cancel
                   </Button>
                   <Button 
-                    className="bg-gradient-to-r from-purple-500 to-purple-600"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600"
                     disabled={!cloudSyncTemplate || !cloudProvider || isSyncing || availableProviders.length === 0}
                     onClick={() => cloudSyncTemplate && syncToCloud(cloudSyncTemplate)}
                   >
@@ -3886,7 +3886,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Link2 className="h-6 w-6" />
@@ -3899,17 +3899,17 @@ export default function TemplatesPage() {
                 </div>
                 
                 <div className="p-6">
-                  <div className="p-4 bg-purple-50 rounded-lg mb-4">
-                    <p className="text-sm font-medium text-purple-700">Template</p>
+                  <div className="p-4 bg-violet-50 rounded-lg mb-4">
+                    <p className="text-sm font-medium text-violet-700">Template</p>
                     <p className="font-semibold text-indigo-900">{dependenciesTemplate.name}</p>
-                    <p className="text-sm text-purple-600 mt-1">
+                    <p className="text-sm text-violet-600 mt-1">
                       Used in {dependenciesTemplate.usageCount || 0} contracts
                     </p>
                   </div>
                   
                   {isLoadingDependencies ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+                      <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
                     </div>
                   ) : templateDependencies.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
@@ -4135,7 +4135,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Copy className="h-6 w-6" />
@@ -4148,9 +4148,9 @@ export default function TemplatesPage() {
                 </div>
                 
                 <div className="p-6 space-y-4">
-                  <div className="p-4 bg-purple-50 rounded-lg">
-                    <p className="text-sm text-purple-700">Duplicating:</p>
-                    <p className="font-semibold text-purple-900">{duplicateTemplate.name}</p>
+                  <div className="p-4 bg-violet-50 rounded-lg">
+                    <p className="text-sm text-violet-700">Duplicating:</p>
+                    <p className="font-semibold text-violet-900">{duplicateTemplate.name}</p>
                   </div>
                   
                   <div>
@@ -4179,7 +4179,7 @@ export default function TemplatesPage() {
                     Cancel
                   </Button>
                   <Button 
-                    className="bg-gradient-to-r from-purple-500 to-purple-600"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600"
                     onClick={performQuickDuplicate}
                     disabled={!duplicateName.trim()}
                   >
@@ -4283,7 +4283,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <BarChart3 className="h-6 w-6" />
@@ -4363,7 +4363,7 @@ export default function TemplatesPage() {
                     <Card className="shadow-lg">
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-purple-500" />
+                          <Zap className="h-4 w-4 text-violet-500" />
                           Status Distribution
                         </CardTitle>
                       </CardHeader>
@@ -4439,12 +4439,12 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-8 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 text-white text-center">
+                <div className="p-8 bg-gradient-to-br from-violet-500 via-pink-500 to-rose-500 text-white text-center">
                   <div className="inline-flex p-4 bg-white/20 rounded-2xl mb-4">
                     <FileText className="h-10 w-10" />
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Welcome to Templates!</h2>
-                  <p className="text-purple-100">Your central hub for managing contract templates</p>
+                  <p className="text-violet-100">Your central hub for managing contract templates</p>
                 </div>
                 
                 <div className="p-6 space-y-4">
@@ -4455,8 +4455,8 @@ export default function TemplatesPage() {
                     { icon: Wand2, title: 'AI Suggestions', desc: 'Get smart recommendations for your templates' },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <item.icon className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-violet-100 rounded-lg">
+                        <item.icon className="h-5 w-5 text-violet-600" />
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{item.title}</p>
@@ -4472,7 +4472,7 @@ export default function TemplatesPage() {
                   </Button>
                   <Button 
                     onClick={completeOnboarding}
-                    className="bg-gradient-to-r from-purple-500 to-pink-600 text-white"
+                    className="bg-gradient-to-r from-violet-500 to-pink-600 text-white"
                   >
                     Get Started
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -4505,7 +4505,7 @@ export default function TemplatesPage() {
                 className="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-pink-50">
+                <div className="p-4 border-b bg-gradient-to-r from-violet-50 to-pink-50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 mr-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -4537,10 +4537,10 @@ export default function TemplatesPage() {
                     </p>
                     <p className="text-xs text-green-600">Clauses</p>
                   </div>
-                  <div className="text-center p-2 bg-purple-50 rounded-lg">
-                    <TrendingUp className="h-5 w-5 mx-auto text-purple-600" />
-                    <p className="text-lg font-bold text-purple-700 mt-1">{sidebarTemplate.usageCount || 0}</p>
-                    <p className="text-xs text-purple-600">Uses</p>
+                  <div className="text-center p-2 bg-violet-50 rounded-lg">
+                    <TrendingUp className="h-5 w-5 mx-auto text-violet-600" />
+                    <p className="text-lg font-bold text-violet-700 mt-1">{sidebarTemplate.usageCount || 0}</p>
+                    <p className="text-xs text-violet-600">Uses</p>
                   </div>
                 </div>
                 
@@ -4599,7 +4599,7 @@ export default function TemplatesPage() {
                 
                 {/* Actions */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t flex gap-2">
-                  <Button asChild className="flex-1 bg-purple-600 hover:bg-purple-700">
+                  <Button asChild className="flex-1 bg-violet-600 hover:bg-violet-700">
                     <Link href={`/templates/${sidebarTemplate.id}/edit`}>
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit
@@ -4741,7 +4741,7 @@ export default function TemplatesPage() {
               >
                 <div className="p-4 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-purple-600" />
+                    <Activity className="h-5 w-5 text-violet-600" />
                     Recent Activity
                   </h3>
                   <Button variant="ghost" size="icon" onClick={() => setShowActivityPanel(false)}>
@@ -4765,7 +4765,7 @@ export default function TemplatesPage() {
                             activity.action === 'unfavorited' ? 'bg-gray-100 text-gray-600' :
                             activity.action === 'duplicated' ? 'bg-violet-100 text-violet-600' :
                             activity.action === 'deleted' ? 'bg-red-100 text-red-600' :
-                            'bg-purple-100 text-purple-600'
+                            'bg-violet-100 text-violet-600'
                           )}>
                             {activity.action === 'favorited' && <Star className="h-3.5 w-3.5 fill-current" />}
                             {activity.action === 'unfavorited' && <StarOff className="h-3.5 w-3.5" />}
@@ -4794,7 +4794,7 @@ export default function TemplatesPage() {
             <DropdownMenuTrigger asChild>
               <Button 
                 size="lg"
-                className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+                className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700"
               >
                 <Plus className="h-6 w-6" />
               </Button>

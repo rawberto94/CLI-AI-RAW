@@ -1,281 +1,242 @@
-# 🚀 Contract Intelligence Platform
+# ConTigo — AI-Powered Contract Lifecycle Management
 
-Enterprise contract management and intelligence platform with advanced RAG, analytics, and AI-powered insights.
+**Swiss-first CLM platform for privacy-conscious enterprises.**
+**100% Swiss data residency · Multi-agent AI · Rate card benchmarking**
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.7-blue)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15.1-black)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-336791)](https://www.postgresql.org/)
+[![License](https://img.shields.io/badge/License-Proprietary-red)](#license)
 
 ---
 
-## ⚡ **NEW: One-Command Complete Setup!**
+## What is ConTigo?
 
-### Run This Once and You're Done:
+ConTigo automates the entire contract lifecycle — upload, AI-powered extraction, risk assessment, obligation tracking, and renewal management — while guaranteeing Swiss FADP and EU GDPR compliance through 100% Swiss/EU data residency.
 
-```powershell
-# Windows (PowerShell)
-.\setup-complete.ps1
+**Key differentiators:**
 
-# Mac/Linux (Bash)
-chmod +x setup-complete.sh && ./setup-complete.sh
+- **Swiss-first architecture** — All data in Azure Switzerland North; no US cloud dependency
+- **Multi-agent AI** — Specialised agents for extraction, risk, compliance, rate analysis
+- **Rate card benchmarking** — Unique capability; no competitor offers this natively
+- **Sub-second semantic search** — RAG-powered with pgvector embeddings
+- **Enterprise CHF pricing** — Transparent, local-currency pricing for DACH market
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Framework** | Next.js 15.1, React 19, TypeScript 5.7 |
+| **API** | Next.js App Router API routes + Fastify |
+| **Database** | PostgreSQL 16 + pgvector (1536-dim embeddings) |
+| **ORM** | Prisma 5.22 (130+ models, 46 enums) |
+| **Cache & Queues** | Redis 7, BullMQ |
+| **AI** | Azure OpenAI (GPT-4o), Anthropic Claude, Mistral AI |
+| **Auth** | NextAuth v5, bcryptjs, TOTP MFA, CSRF |
+| **Real-time** | Socket.IO (WebSocket) |
+| **Storage** | MinIO (S3-compatible) |
+| **UI** | Radix UI, Tailwind CSS 3.4, Framer Motion, Recharts |
+| **State** | Zustand, React Query (TanStack) |
+| **Observability** | Sentry, OpenTelemetry, Prometheus, Pino |
+| **Testing** | Playwright (E2E), Vitest (unit), Testing Library |
+| **Infra** | Docker (node:22-alpine), PM2, Azure Container Apps |
+| **Monorepo** | pnpm 8.9 + Turborepo |
+
+---
+
+## Monorepo Structure
+
 ```
-
-**What it does**: Installs everything, configures database, sets up AI, and starts the server!
-
-**See**: `START_HERE.md` for details
-
----
-
-## ⚡ Quick Start (Alternative)
-This repository uses pnpm as its package manager. If you don't have pnpm installed, see https://pnpm.io/installation. Use `pnpm install` at the repo root to install dependencies.
-
-### Programmatic API Access (CLI/Integrations)
-
-By default, most `/api/*` routes require a NextAuth session. For non-browser clients, you can enable a service token:
-
-- Set `SERVICE_API_TOKEN` (see `.env.example`)
-- Call:
-  - `POST /api/contracts/upload`
-  - `GET /api/contracts/:id` (and read-only subroutes)
-
-Required headers:
-- `Authorization: Bearer <SERVICE_API_TOKEN>`
-- `x-tenant-id: <tenantId>`
-
-### Automated Setup (Recommended)
-
-```bash
-# Windows
-.\scripts\setup.ps1
-
-# Linux/Mac
-chmod +x scripts/setup.sh
-./scripts/setup.sh
-```
-
-This will:
-1. Install all dependencies
-2. Start Docker services (Chroma DB, MySQL)
-3. Configure environment
-4. Apply database migrations
-5. Seed example data
-6. Run health checks
-
-Then visit: **http://localhost:3000**
-
-### Manual Setup
-
-See [SETUP.md](SETUP.md) for detailed instructions.
-
----
-
-## 🎯 What You Get
-
-### Core Features
-- **Contract Management** - Upload, process, and analyze contracts
-- **AI-Powered Search** - Semantic search across all contracts
-- **Advanced Analytics** - Comprehensive reporting and insights
-- **Rate Intelligence** - Rate card analysis and benchmarking
-
-### RAG System (11 Services)
-- **Vector Search** - Semantic contract search
-- **Knowledge Graph** - Entity relationships and networks
-- **Multi-Modal** - Tables, images, and mixed content
-- **Cross-Contract Intelligence** - Pattern detection and risk correlation
-- **Analytics Integration** - Natural language analytics queries
-- **Federated Search** - Unified search across all sources
-- **Learning System** - Continuous improvement from feedback
-- **Observability** - Real-time monitoring and metrics
-- **Security** - Access control, rate limiting, audit logs
-
-### Dashboards
-- **Main App**: http://localhost:3000
-- **RAG Chat**: http://localhost:3000/rag/chat
-- **Intelligence**: http://localhost:3000/rag/intelligence
-- **Insights**: http://localhost:3000/rag/insights
-- **Observability**: http://localhost:3000/rag/observability
-- **Analytics**: http://localhost:3000/analytics
-
----
-
-## 🏗️ Architecture
-
-### Technology Stack
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
-- **Backend**: Node.js, Express, Prisma ORM
-- **Databases**: MySQL (main), Chroma DB (vector store)
-- **AI**: OpenAI GPT-4, LangChain
-- **Infrastructure**: Docker, Docker Compose
-
-### Project Structure
-```
+contigo/
 ├── apps/
-│   ├── web/              # Next.js web application
-│   ├── api/              # API services
-│   └── workers/          # Background workers
+│   └── web/                    # Next.js 15 application (60+ pages, 77+ API routes)
 ├── packages/
-│   ├── data-orchestration/  # Core services and RAG
-│   ├── clients/          # Database clients
-│   └── utils/            # Shared utilities
-├── scripts/              # Setup and utility scripts
-└── docs/                 # Documentation
+│   ├── agents/                 # Multi-agent AI orchestration
+│   ├── clients/
+│   │   ├── db/                 # Prisma client (5,300-line schema)
+│   │   ├── openai/             # Azure OpenAI + Anthropic + Mistral clients
+│   │   ├── queue/              # BullMQ job queue client
+│   │   ├── rag/                # RAG pipeline (pgvector embeddings)
+│   │   └── storage/            # MinIO S3-compatible storage client
+│   ├── data-orchestration/     # Core business logic & service layer
+│   ├── schemas/                # Zod validation schemas
+│   ├── utils/                  # Shared utilities (formatting, crypto, etc.)
+│   └── workers/                # Background job processors (PM2-managed)
+├── scripts/                    # CLI tools (create-user, backfill, check-artifacts, etc.)
+├── docs/                       # 34 documentation files (see docs/INDEX.md)
+├── infra/                      # Nginx, Prometheus configs
+├── k8s/                        # Kubernetes manifests
+├── helm/                       # Helm charts
+└── docker-compose.*.yml        # Dev, staging, production, RAG compose files
 ```
 
-See [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md) for detailed architecture.
-
 ---
 
-## 📊 Database
+## Quick Start
 
-### Tables (25+)
-- **Contracts** - Main contract data
-- **Artifacts** - Extracted contract artifacts
-- **RAG** - 18 tables for knowledge graph, learning, observability
-- **Analytics** - Intelligence and rate card data
-- **UX** - User preferences and metrics
+### Prerequisites
 
-### Migrations
-All migrations are in `packages/data-orchestration/prisma/migrations/`
+- **Node.js** ≥ 22
+- **pnpm** ≥ 8.9 ([install](https://pnpm.io/installation))
+- **Docker** & Docker Compose
+- **PostgreSQL** 16 (via Docker or native)
+- **Redis** 7 (via Docker or native)
 
----
-
-## 🧪 Testing
+### 1. Clone & install
 
 ```bash
-# Run all tests
-pnpm test
-
-# Run specific tests
-pnpm test -- rag-integration.test.ts
-
-# Run smoke tests
-pnpm exec node scripts/smoke-test.mjs
+git clone https://github.com/rawberto94/CLI-AI-RAW.git
+cd CLI-AI-RAW
+pnpm install
 ```
 
----
-
-## 🛠️ Development
-
-### Start Development Server
-```bash
-pnpm run -w dev
-```
-
-### Build for Production
-```bash
-pnpm run -w build
-```
-
-### Run Production Build
-```bash
-pnpm run -w start
-```
-
----
-
-## 📚 Documentation
-
-### Getting Started
-- **[SETUP.md](SETUP.md)** - Complete local setup guide
-- **[START_HERE.md](START_HERE.md)** - Quick start for beginners
-- **[SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)** - Architecture details
-
-### Cloud Deployment Guides 🚀
-- **[STEP_BY_STEP_CLOUD_DEPLOYMENT.md](STEP_BY_STEP_CLOUD_DEPLOYMENT.md)** - **Beginner-friendly step-by-step guide**
-- **[CLOUD_DEPLOYMENT_GUIDE.md](CLOUD_DEPLOYMENT_GUIDE.md)** - Detailed deployment with IaC
-- **[AZURE_DEPLOYMENT_CHECKLIST.md](AZURE_DEPLOYMENT_CHECKLIST.md)** - Azure-specific deployment
-- **[PRODUCTION_DEPLOYMENT.md](PRODUCTION_DEPLOYMENT.md)** - Production best practices
-- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)** - Pre-deployment verification
-
-### API & Integrations
-- **[API_REFERENCE.md](API_REFERENCE.md)** - API documentation
-- **[EXTERNAL_INTEGRATIONS.md](EXTERNAL_INTEGRATIONS.md)** - Third-party integrations
-- **[CONTRACT_SOURCE_INTEGRATION.md](CONTRACT_SOURCE_INTEGRATION.md)** - Contract source setup
-
----
-
-## 🔧 Configuration
-
-### Environment Variables
-Copy `.env.example` to `.env` and configure:
+### 2. Configure environment
 
 ```bash
-# OpenAI Configuration
-OPENAI_API_KEY=your-key-here
-
-# Database Configuration
-DATABASE_URL=mysql://user:pass@localhost:3306/db
-
-# Chroma DB Configuration
-CHROMA_URL=http://localhost:8000
-
-# Application Configuration
-NODE_ENV=development
-PORT=3000
+cp .env.example .env
+# Edit .env with your values:
+#   DATABASE_URL=postgresql://user:password@localhost:5432/contigo
+#   OPENAI_API_KEY=sk-...
+#   NEXTAUTH_SECRET=...
+#   REDIS_URL=redis://localhost:6379
 ```
 
----
+### 3. Start services
 
-## 🐳 Docker Services
-
-### Start Services
 ```bash
-# Chroma DB (Vector Store)
-docker run -d -p 8000:8000 --name chroma chromadb/chroma
+# Start PostgreSQL + Redis via Docker
+docker compose -f docker-compose.dev.yml up -d
 
-# MySQL (Main Database)
-docker run -d --name mysql-rag \
-  -e MYSQL_ROOT_PASSWORD=ragpassword \
-  -e MYSQL_DATABASE=rag_system \
-  -p 3306:3306 \
-  mysql:8.0
+# Generate Prisma client & run migrations
+pnpm db:generate
+pnpm db:migrate
+
+# Seed data (optional)
+pnpm db:seed
 ```
 
-### Stop Services
+### 4. Run
+
 ```bash
-docker stop chroma mysql-rag
+# Development (with Turbopack)
+pnpm dev
+
+# Or start everything (web + workers + websocket)
+pnpm dev:all
 ```
 
-### Remove Services
+Visit **http://localhost:3000**
+
+### Production Build
+
 ```bash
-docker rm chroma mysql-rag
+pnpm build
+pnpm start
+
+# Or use PM2 for process management
+pm2 start ecosystem.config.cjs
 ```
 
 ---
 
-## 💰 Cost Estimate
+## Docker
 
-### Local Infrastructure
-- **Docker**: Free
-- **Chroma DB**: Free
-- **MySQL**: Free
+```bash
+# Development
+docker compose -f docker-compose.dev.yml up
 
-### OpenAI API
-- **Per contract**: ~$0.01
-- **Per query**: ~$0.02-0.05
-- **Typical usage** (1K contracts, 5K queries): ~$30-50/month
+# Production (full stack)
+docker compose -f docker-compose.prod.yml up -d
 
----
+# With PgBouncer connection pooling
+docker compose -f docker-compose.pgbouncer.yml up -d
+```
 
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Run tests
-5. Submit a pull request
+The production Dockerfile uses a 3-stage multi-stage build (deps → build → runtime) on `node:22-alpine` for minimal image size.
 
 ---
 
-## 📝 License
+## Key Scripts
 
-[Your License Here]
+| Command | Description |
+|---|---|
+| `pnpm dev` | Start Next.js dev server with Turbopack |
+| `pnpm dev:all` | Start web + workers + websocket |
+| `pnpm build` | Production build |
+| `pnpm start` | Start production server |
+| `pnpm test` | Run unit tests (Vitest) |
+| `pnpm test:e2e` | Run E2E tests (Playwright) |
+| `pnpm lint` | ESLint check |
+| `pnpm typecheck` | TypeScript type checking |
+| `pnpm db:generate` | Generate Prisma client |
+| `pnpm db:migrate` | Apply database migrations |
+| `pnpm db:studio` | Open Prisma Studio |
+| `pnpm db:push` | Push schema changes (dev only) |
+| `pnpm verify` | Run production readiness checks |
 
 ---
 
-## 🆘 Support
+## Programmatic API Access
 
-For issues and questions:
-1. Check [SETUP.md](SETUP.md) for troubleshooting
-2. Review [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
-3. Open an issue on GitHub
+For CLI/integration clients (non-browser):
+
+```bash
+# Set SERVICE_API_TOKEN in .env, then:
+curl -X GET https://your-domain.com/api/contracts \
+  -H "Authorization: Bearer <SERVICE_API_TOKEN>" \
+  -H "x-tenant-id: <tenantId>"
+```
+
+Supported endpoints: `POST /api/contracts/upload`, `GET /api/contracts/:id`, and all read-only sub-routes. See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for the full API reference.
 
 ---
 
-**Built with ❤️ for intelligent contract management**
+## Documentation
+
+All documentation lives in the [`docs/`](docs/) folder. See [docs/INDEX.md](docs/INDEX.md) for a complete table of contents.
+
+### For Developers
+- [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) — Stack, API, DB, deployment
+- [Architecture](docs/ARCHITECTURE.md) — System design, ADRs, scalability
+- [Roadmap & Scaling](docs/ROADMAP_SCALING.md) — Product roadmap, infra scaling
+
+### For Users & Customers
+- [User Onboarding](docs/USER_ONBOARDING.md) — Getting started guide
+- [FAQ](docs/FAQ.md) — Frequently asked questions
+
+### Business & Legal
+- [Business Plan](docs/BUSINESS_PLAN.md) — Market, strategy, financials
+- [Revenue Model](docs/REVENUE_MODEL.md) — P&L, unit economics, scenarios
+- [Pricing Strategy](docs/PRICING_STRATEGY.md) — Plans, rate cards, discounts
+- [Founders' Agreement](docs/FOUNDERS_AGREEMENT.md) — GmbH founders' pact
+
+### Legal & Compliance (Swiss Law)
+- [Terms & Conditions (AGB)](docs/TERMS_AND_CONDITIONS.md) — Bilingual DE/EN
+- [Privacy Policy](docs/PRIVACY_POLICY.md) — nDSG + GDPR
+- [Data Processing Agreement (AVV)](docs/DATA_PROCESSING_AGREEMENT.md) — Art. 9 nDSG / Art. 28 GDPR
+- [Acceptable Use Policy](docs/ACCEPTABLE_USE_POLICY.md)
+- [Service Level Agreement](docs/SERVICE_LEVEL_AGREEMENT.md)
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on development workflow, code style, and pull request process.
+
+---
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for our responsible disclosure policy. To report a vulnerability, email **security@contigo-app.ch**.
+
+---
+
+## License
+
+Proprietary software. Copyright © 2025–2026 ConTigo GmbH, Zurich, Switzerland. All rights reserved. See [LICENSE](LICENSE) for details.
+
+---
+
+*ConTigo GmbH — Zurich, Switzerland · [contigo-app.ch](https://contigo-app.ch)*

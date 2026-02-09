@@ -151,8 +151,8 @@ export function generatePDFContent(
       color: #333;
     }
     h1 {
-      color: #2563eb;
-      border-bottom: 3px solid #2563eb;
+      color: #7c3aed;
+      border-bottom: 3px solid #7c3aed;
       padding-bottom: 10px;
     }
     h2 {
@@ -185,7 +185,7 @@ export function generatePDFContent(
       margin: 20px 0;
     }
     th {
-      background: #2563eb;
+      background: #7c3aed;
       color: white;
       padding: 12px;
       text-align: left;
@@ -207,7 +207,7 @@ export function generatePDFContent(
       font-weight: 600;
     }
     .below-market {
-      color: #2563eb;
+      color: #7c3aed;
       font-weight: 600;
     }
     .footer {

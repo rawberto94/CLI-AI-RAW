@@ -140,7 +140,7 @@ export function ExtractionInsightsDashboard({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="h-6 w-6 text-purple-600" />
+            <Brain className="h-6 w-6 text-violet-600" />
             AI Extraction Insights
           </h2>
           <p className="text-muted-foreground">Real-time performance metrics and recommendations</p>
@@ -252,8 +252,8 @@ export function ExtractionInsightsDashboard({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Clock className="h-5 w-5 text-purple-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Avg Processing Time</p>

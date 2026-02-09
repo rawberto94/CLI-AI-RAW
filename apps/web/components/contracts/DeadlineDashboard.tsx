@@ -245,11 +245,11 @@ export function DeadlineDashboard({
         </div>
 
         <div className="group relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
           <Card className="relative bg-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                   <CalendarDays className="h-6 w-6 text-white" />
                 </div>
               </div>

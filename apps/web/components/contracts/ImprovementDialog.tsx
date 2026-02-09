@@ -202,9 +202,9 @@ export function ImprovementDialog({
           )}
 
           {/* Tips Section */}
-          <div className="bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg p-4 border border-purple-200">
+          <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-4 border border-violet-200">
             <div className="flex items-start gap-3">
-              <ListChecks className="h-5 w-5 text-purple-600 flex-shrink-0 mt-0.5" />
+              <ListChecks className="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
               <div className="space-y-2">
                 <p className="text-sm font-semibold text-gray-900">Tips for better results:</p>
                 <ul className="text-xs text-gray-700 space-y-1">

@@ -373,7 +373,7 @@ export default function VersionComparePage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-500 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-500 mx-auto mb-4" />
           <p className="text-slate-600">Loading versions...</p>
         </div>
       </div>
@@ -446,7 +446,7 @@ export default function VersionComparePage() {
               </Button>
               <Separator orientation="vertical" className="h-6 hidden sm:block" />
               <div className="flex items-center gap-2">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                   <GitCompare className="h-4 w-4 text-white" />
                 </div>
                 <div>
@@ -606,7 +606,7 @@ export default function VersionComparePage() {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base flex items-center gap-2">
-                <FileText className="h-4 w-4 text-purple-500" />
+                <FileText className="h-4 w-4 text-violet-500" />
                 Changes
               </CardTitle>
               <div className="flex items-center gap-2">

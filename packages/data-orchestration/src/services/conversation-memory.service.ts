@@ -3,10 +3,9 @@
  * Provides multi-turn conversation support with context retention
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { Redis } from '@upstash/redis';
 
-const prisma = new PrismaClient();
 
 // Redis client for fast conversation access (optional fallback to DB)
 let redis: Redis | null = null;

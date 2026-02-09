@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BoxConnector } from '@/lib/integrations/connectors/box.connector';
+import { auditTrailService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

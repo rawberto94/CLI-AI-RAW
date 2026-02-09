@@ -94,9 +94,9 @@ const actionIcons: Record<string, React.ReactNode> = {
 const categoryColors: Record<string, string> = {
   access: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   modification: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  workflow: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  workflow: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   collaboration: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  analysis: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  analysis: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   security: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
 

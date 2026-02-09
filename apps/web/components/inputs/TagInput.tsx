@@ -48,12 +48,12 @@ const DEFAULT_COLORS = [
   'bg-green-100 text-green-700 border-green-200',
   'bg-violet-100 text-violet-700 border-violet-200',
   'bg-violet-100 text-violet-700 border-violet-200',
-  'bg-purple-100 text-purple-700 border-cyan-200',
+  'bg-violet-100 text-violet-700 border-cyan-200',
   'bg-sky-100 text-sky-700 border-sky-200',
   'bg-violet-100 text-violet-700 border-violet-200',
-  'bg-purple-100 text-purple-700 border-indigo-200',
+  'bg-violet-100 text-violet-700 border-indigo-200',
   'bg-violet-100 text-violet-700 border-violet-200',
-  'bg-purple-100 text-purple-700 border-purple-200',
+  'bg-violet-100 text-violet-700 border-violet-200',
   'bg-fuchsia-100 text-fuchsia-700 border-fuchsia-200',
   'bg-pink-100 text-pink-700 border-pink-200',
   'bg-rose-100 text-rose-700 border-rose-200',
@@ -77,7 +77,7 @@ function TagChip({ tag, onRemove, disabled }: TagChipProps) {
       exit={{ opacity: 0, scale: 0.8 }}
       className={cn(
         'inline-flex items-center gap-1 px-2.5 py-1 text-sm font-medium rounded-lg border',
-        tag.color || 'bg-purple-100 text-purple-700 border-indigo-200'
+        tag.color || 'bg-violet-100 text-violet-700 border-indigo-200'
       )}
     >
       {tag.label}
@@ -208,7 +208,7 @@ export function TagInput({
           'bg-white border rounded-xl transition-all',
           error
             ? 'border-red-300 focus-within:ring-2 focus-within:ring-red-500/20'
-            : 'border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-purple-500/20',
+            : 'border-slate-200 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-violet-500/20',
           disabled && 'bg-slate-50 cursor-not-allowed'
         )}
         onClick={() => inputRef.current?.focus()}
@@ -275,16 +275,16 @@ export function TagInput({
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 text-left text-sm',
                     'transition-colors',
-                    index === selectedIndex ? 'bg-purple-50' : 'hover:bg-slate-50'
+                    index === selectedIndex ? 'bg-violet-50' : 'hover:bg-slate-50'
                   )}
                 >
                   <div className={cn(
                     'w-3 h-3 rounded-full',
-                    suggestion.color?.split(' ')[0] || 'bg-purple-500'
+                    suggestion.color?.split(' ')[0] || 'bg-violet-500'
                   )} />
                   <span className="text-slate-700">{suggestion.label}</span>
                   {index === selectedIndex && (
-                    <Check className="w-4 h-4 text-purple-600 ml-auto" />
+                    <Check className="w-4 h-4 text-violet-600 ml-auto" />
                   )}
                 </button>
               ))}
@@ -298,10 +298,10 @@ export function TagInput({
                   className={cn(
                     'w-full flex items-center gap-2 px-3 py-2 text-left text-sm',
                     'transition-colors hover:bg-slate-50',
-                    filteredSuggestions.length === 0 && 'bg-purple-50'
+                    filteredSuggestions.length === 0 && 'bg-violet-50'
                   )}
                 >
-                  <Plus className="w-4 h-4 text-purple-600" />
+                  <Plus className="w-4 h-4 text-violet-600" />
                   <span className="text-slate-700">
                     Create &quot;<span className="font-medium">{inputValue.trim()}</span>&quot;
                   </span>

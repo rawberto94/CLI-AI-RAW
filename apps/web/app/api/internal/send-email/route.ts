@@ -4,8 +4,9 @@
  * Used by worker processes that don't have direct access to the email service
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import EmailService from '@/lib/services/email.service';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Internal API secret for authentication - MUST be set in production
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
@@ -14,22 +15,16 @@ if (process.env.NODE_ENV === 'production' && !INTERNAL_API_SECRET) {
   throw new Error('INTERNAL_API_SECRET must be set in production environment');
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   // Validate internal API secret
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return NextResponse.json(
-      { error: 'Unauthorized' },
-      { status: 401 }
-    );
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
   
   const token = authHeader.split(' ')[1];
   if (token !== INTERNAL_API_SECRET) {
-    return NextResponse.json(
-      { error: 'Invalid token' },
-      { status: 401 }
-    );
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid token', 401);
   }
 
   try {
@@ -38,17 +33,11 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!to || !subject) {
-      return NextResponse.json(
-        { error: 'Missing required fields: to, subject' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: to, subject', 400);
     }
 
     if (!html && !text && !template) {
-      return NextResponse.json(
-        { error: 'Must provide html, text, or template' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Must provide html, text, or template', 400);
     }
 
     let result;
@@ -58,10 +47,7 @@ export async function POST(request: NextRequest) {
       switch (template) {
         case 'contractExpiry':
           if (!templateData) {
-            return NextResponse.json(
-              { error: 'Template data required for contractExpiry' },
-              { status: 400 }
-            );
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Template data required for contractExpiry', 400);
           }
           result = await EmailService.sendContractExpiryAlert({
             to: Array.isArray(to) ? to[0] : to,
@@ -71,10 +57,7 @@ export async function POST(request: NextRequest) {
 
         case 'approvalRequest':
           if (!templateData) {
-            return NextResponse.json(
-              { error: 'Template data required for approvalRequest' },
-              { status: 400 }
-            );
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Template data required for approvalRequest', 400);
           }
           result = await EmailService.sendApprovalRequest({
             to: Array.isArray(to) ? to[0] : to,
@@ -84,10 +67,7 @@ export async function POST(request: NextRequest) {
 
         case 'weeklyDigest':
           if (!templateData) {
-            return NextResponse.json(
-              { error: 'Template data required for weeklyDigest' },
-              { status: 400 }
-            );
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Template data required for weeklyDigest', 400);
           }
           result = await EmailService.sendWeeklyDigest({
             to: Array.isArray(to) ? to[0] : to,
@@ -96,10 +76,7 @@ export async function POST(request: NextRequest) {
           break;
 
         default:
-          return NextResponse.json(
-            { error: `Unknown template: ${template}` },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown template: ${template}', 400);
       }
     } else {
       // Send raw email
@@ -112,33 +89,27 @@ export async function POST(request: NextRequest) {
     }
 
     if (result.success) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         messageId: result.messageId,
         provider: result.provider,
       });
     } else {
-      return NextResponse.json(
-        { error: result.error || 'Failed to send email' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error || 'Failed to send email', 500);
     }
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500);
   }
-}
+});
 
 // Health check
-export async function GET() {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   const info = EmailService.getProviderInfo();
   
-  return NextResponse.json({
+  return createSuccessResponse(ctx, {
     service: 'email',
     provider: info.provider,
     configured: info.configured,
     status: 'ok',
   });
-}
+});

@@ -1,44 +1,29 @@
 'use server';
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 /**
  * POST /api/reports/export-pdf
  * Generate a downloadable PDF from report data
  * Uses html2pdf-style approach for client-side, or returns structured data
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { reportData, filters, generatedAt } = body;
 
-    const body = await request.json();
-    const { reportData, filters, generatedAt } = body;
-
-    if (!reportData) {
-      return NextResponse.json({ error: 'Report data is required' }, { status: 400 });
-    }
-
-    // Format the report as HTML for PDF generation
-    const html = generateReportHTML(reportData, filters, generatedAt, session.user.name || 'User');
-
-    return NextResponse.json({ 
-      success: true,
-      html,
-      filename: `ConTigo_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`
-    });
-
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to generate PDF' },
-      { status: 500 }
-    );
+  if (!reportData) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Report data is required', 400);
   }
-}
+
+  // Format the report as HTML for PDF generation
+  const html = generateReportHTML(reportData, filters, generatedAt, 'User');
+
+  return createSuccessResponse(ctx, {
+    html,
+    filename: `ConTigo_AI_Report_${new Date().toISOString().split('T')[0]}.pdf`
+  });
+});
 
 function generateReportHTML(
   report: {
@@ -131,13 +116,13 @@ function generateReportHTML(
       align-items: flex-start;
       margin-bottom: 30px;
       padding-bottom: 20px;
-      border-bottom: 3px solid #3b82f6;
+      border-bottom: 3px solid #8b5cf6;
     }
     
     .logo {
       font-size: 28px;
       font-weight: 700;
-      color: #3b82f6;
+      color: #8b5cf6;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -146,7 +131,7 @@ function generateReportHTML(
     .logo-icon {
       width: 40px;
       height: 40px;
-      background: linear-gradient(135deg, #3b82f6, #6366f1);
+      background: linear-gradient(135deg, #8b5cf6, #6366f1);
       border-radius: 10px;
       display: flex;
       align-items: center;
@@ -192,7 +177,7 @@ function generateReportHTML(
       text-align: center;
     }
     
-    .summary-card.blue { border-left: 4px solid #3b82f6; }
+    .summary-card.blue { border-left: 4px solid #8b5cf6; }
     .summary-card.green { border-left: 4px solid #10b981; }
     .summary-card.purple { border-left: 4px solid #8b5cf6; }
     .summary-card.orange { border-left: 4px solid #f59e0b; }

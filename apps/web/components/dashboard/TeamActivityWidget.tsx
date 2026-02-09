@@ -96,8 +96,8 @@ const getActivityColor = (type: ActivityType) => {
     case 'approve': return 'text-green-500 bg-green-500/10';
     case 'edit': return 'text-violet-500 bg-violet-500/10';
     case 'comment': return 'text-yellow-500 bg-yellow-500/10';
-    case 'upload': return 'text-purple-500 bg-purple-500/10';
-    case 'create': return 'text-purple-500 bg-purple-500/10';
+    case 'upload': return 'text-violet-500 bg-violet-500/10';
+    case 'create': return 'text-violet-500 bg-violet-500/10';
     case 'share': return 'text-pink-500 bg-pink-500/10';
     default: return 'text-muted-foreground bg-muted';
   }

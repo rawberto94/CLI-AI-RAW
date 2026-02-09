@@ -1,5 +1,7 @@
 # ConTigo Platform - Technical Documentation
 
+> **DEPRECATED:** Superseded by [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md). Retained for historical reference only.
+
 > **Version:** 2.0.0  
 > **Last Updated:** January 2026  
 > **Platform:** AI-Powered Contract Intelligence System

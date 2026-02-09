@@ -798,7 +798,7 @@ function ModalsSection() {
 
         <button
           onClick={drawer.open}
-          className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600"
+          className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600"
         >
           Open Drawer
         </button>

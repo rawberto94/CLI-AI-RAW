@@ -50,8 +50,8 @@ const actions: QuickAction[] = [
     description: "Ask anything",
     href: "/ai/chat",
     color: "purple",
-    gradient: "from-purple-500 to-pink-500",
-    shadowColor: "shadow-purple-500/20"
+    gradient: "from-violet-500 to-pink-500",
+    shadowColor: "shadow-violet-500/20"
   },
   {
     icon: Search,
@@ -78,8 +78,8 @@ const actions: QuickAction[] = [
   //   description: "AI-powered insights",
   //   href: "/intelligence",
   //   color: "purple",
-  //   gradient: "from-purple-500 to-pink-500",
-  //   shadowColor: "shadow-purple-500/20",
+  //   gradient: "from-violet-500 to-pink-500",
+  //   shadowColor: "shadow-violet-500/20",
   //   isNew: true
   // },
   // {
@@ -179,7 +179,7 @@ export function QuickActions() {
                         className={`h-auto w-full flex flex-col items-center gap-2 py-5 transition-all relative group bg-white/80 dark:bg-slate-800/80 border-slate-200/60 dark:border-slate-700/60 hover:bg-violet-50/50 dark:hover:bg-violet-950/30 hover:border-violet-200 dark:hover:border-violet-700 hover:shadow-lg hover:shadow-violet-500/10 rounded-xl`}
                       >
                         {action.isNew && (
-                          <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] px-2 py-0.5 shadow-lg shadow-purple-500/30 border-0">
+                          <Badge className="absolute -top-2 -right-2 bg-gradient-to-r from-violet-500 to-pink-500 text-white text-[10px] px-2 py-0.5 shadow-lg shadow-violet-500/30 border-0">
                             NEW
                           </Badge>
                         )}

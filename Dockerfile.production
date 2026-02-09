@@ -1,10 +1,10 @@
 # Multi-stage build for Next.js application
 # Stage 1: Dependencies and Build
-FROM node:22-alpine AS builder
+FROM node:22.12-alpine AS builder
 RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
-# Install pnpm
+# Install pnpm (match version in package.json packageManager field)
 RUN npm install -g pnpm@8.9.0
 
 # Copy all package files for monorepo
@@ -17,8 +17,8 @@ COPY packages/workers/package.json ./packages/workers/
 COPY packages/agents/package.json ./packages/agents/
 COPY packages/schemas/package.json ./packages/schemas/
 
-# Install all dependencies
-RUN pnpm install --frozen-lockfile || pnpm install
+# Install all dependencies (frozen-lockfile ensures reproducible builds)
+RUN pnpm install --frozen-lockfile
 
 # Copy all source code
 COPY . .
@@ -26,10 +26,10 @@ COPY . .
 # Generate Prisma client
 RUN cd packages/clients/db && npx prisma generate
 
-# Build packages first
-RUN pnpm --filter @repo/utils build 2>/dev/null || true
-RUN pnpm --filter clients-db build 2>/dev/null || true
-RUN pnpm --filter @repo/data-orchestration build 2>/dev/null || true
+# Build packages first (fail the build if any package fails to compile)
+RUN pnpm --filter @repo/utils build
+RUN pnpm --filter clients-db build
+RUN pnpm --filter @repo/data-orchestration build
 
 # Build Next.js app with increased memory
 ENV NEXT_TELEMETRY_DISABLED=1
@@ -38,7 +38,7 @@ ENV NODE_OPTIONS="--max-old-space-size=8192"
 RUN cd apps/web && pnpm build
 
 # Stage 2: Runner (minimal production image)
-FROM node:22-alpine AS runner
+FROM node:22.12-alpine AS runner
 WORKDIR /app
 
 RUN apk add --no-cache openssl
@@ -65,5 +65,8 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 CMD ["node", "apps/web/server.js"]

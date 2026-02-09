@@ -4,14 +4,16 @@
  * Assign specific users/groups to specific contracts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { hasPermission } from '@/lib/permissions';
 import { auditLog, AuditAction } from '@/lib/security/audit';
 import { sendEmail } from '@/lib/email/email-service';
 import { emailTemplates } from '@/lib/email/templates';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 type AccessLevel = 'view' | 'edit' | 'manage' | 'admin';
 
@@ -22,12 +24,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const { id: contractId } = await params;
     
     if (!session?.user?.id || !session.user.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     // Verify contract belongs to tenant
@@ -37,7 +40,7 @@ export async function GET(
     });
     
     if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     // Get user access
@@ -63,7 +66,7 @@ export async function GET(
       },
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       contractId,
       users: userAccess.map(ua => ({
         id: ua.user.id,
@@ -85,8 +88,7 @@ export async function GET(
       })),
     });
   } catch (error) {
-    console.error('[Contract Access GET Error]:', error);
-    return NextResponse.json({ error: 'Failed to fetch access list' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 
@@ -97,12 +99,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const { id: contractId } = await params;
     
     if (!session?.user?.id || !session.user.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     // Check permission to manage contract access
@@ -110,27 +113,25 @@ export async function POST(
                       await hasContractAccess(session.user.id, contractId, 'manage');
     
     if (!canManage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
     
     const body = await request.json();
     const { userIds, groupIds, accessLevel = 'view', expiresAt, notify = true } = body;
     
     if ((!userIds || userIds.length === 0) && (!groupIds || groupIds.length === 0)) {
-      return NextResponse.json({ error: 'userIds or groupIds required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userIds or groupIds required', 400);
     }
     
     if (!['view', 'edit', 'manage', 'admin'].includes(accessLevel)) {
-      return NextResponse.json({ error: 'Invalid access level' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid access level', 400);
     }
     
-    // Verify contract belongs to tenant
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId: session.user.tenantId },
-    });
+    // Verify contract belongs to tenant via service layer
+    const contractResult = await contractService.getContract(contractId, session.user.tenantId);
     
-    if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    if (!contractResult.success || !contractResult.data) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     const results = { usersGranted: 0, groupsGranted: 0 };
@@ -246,10 +247,9 @@ export async function POST(
       }
     }
     
-    return NextResponse.json({ success: true, ...results });
+    return createSuccessResponse(ctx, { success: true, ...results });
   } catch (error) {
-    console.error('[Contract Access POST Error]:', error);
-    return NextResponse.json({ error: 'Failed to grant access' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 
@@ -260,19 +260,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const { id: contractId } = await params;
     
     if (!session?.user?.id || !session.user.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     const canManage = await hasPermission(session.user.id, 'contracts:manage') ||
                       await hasContractAccess(session.user.id, contractId, 'manage');
     
     if (!canManage) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
     
     const body = await request.json();
@@ -304,10 +305,9 @@ export async function DELETE(
       requestId: request.headers.get('x-request-id') || undefined,
     });
     
-    return NextResponse.json({ success: true, ...results });
+    return createSuccessResponse(ctx, { success: true, ...results });
   } catch (error) {
-    console.error('[Contract Access DELETE Error]:', error);
-    return NextResponse.json({ error: 'Failed to revoke access' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 

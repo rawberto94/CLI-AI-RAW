@@ -381,11 +381,11 @@ export const ContractSmartAlerts = memo(function ContractSmartAlerts({
         }
       default: // info
         return {
-          container: 'bg-blue-50 border-blue-200',
-          icon: 'text-blue-600 bg-blue-100',
-          title: 'text-blue-900',
-          message: 'text-blue-700',
-          button: 'text-blue-700 hover:text-blue-800 hover:bg-blue-100',
+          container: 'bg-violet-50 border-violet-200',
+          icon: 'text-violet-600 bg-violet-100',
+          title: 'text-violet-900',
+          message: 'text-violet-700',
+          button: 'text-violet-700 hover:text-violet-800 hover:bg-violet-100',
         }
     }
   }

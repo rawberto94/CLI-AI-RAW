@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 // Mock variables for templates
 const mockVariables = [
@@ -109,7 +111,9 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
+
     const { id: templateId } = await params;
 
     // Try to get variables from database
@@ -127,7 +131,7 @@ export async function GET(
         const variables = metadata?.variables as unknown[];
         
         if (variables && Array.isArray(variables) && variables.length > 0) {
-          return NextResponse.json({ 
+          return createSuccessResponse(ctx, { 
             variables,
             source: 'database'
           });
@@ -138,15 +142,12 @@ export async function GET(
     }
 
     // Return mock variables
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       variables: mockVariables,
       source: 'mock'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch template variables' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -155,7 +156,9 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
+
     const { id: templateId } = await params;
     const body = await request.json();
     const { variables } = body;
@@ -180,7 +183,7 @@ export async function PUT(
           },
         });
 
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           variables,
           source: 'database'
         });
@@ -189,15 +192,12 @@ export async function PUT(
       // Database update failed, fallback to mock
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       variables,
       source: 'mock'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update template variables' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -206,7 +206,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
+
     const { id: templateId } = await params;
     const body = await request.json();
     const { name, displayName, type, required = false, options, defaultValue, helpText } = body;
@@ -243,7 +245,7 @@ export async function POST(
           },
         });
 
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           variable: newVariable,
           source: 'database'
         });
@@ -252,14 +254,11 @@ export async function POST(
       // Database update failed, fallback to mock
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       variable: newVariable,
       source: 'mock'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to add template variable' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

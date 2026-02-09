@@ -3,19 +3,14 @@
  * Returns discovered opportunities for a tenant
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { opportunityDiscoveryEngine } from '@repo/workers/agents';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const minValue = parseInt(searchParams.get('minValue') || '0');
@@ -26,15 +21,10 @@ export async function GET(request: NextRequest) {
       const contract = await prisma.contract.findUnique({
         where: { id: contractId },
         include: {
-          artifacts: true,
-        },
-      });
+          artifacts: true } });
 
       if (!contract) {
-        return NextResponse.json(
-          { error: 'Contract not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
       }
 
       const result = await opportunityDiscoveryEngine.executeWithTracking({
@@ -44,25 +34,19 @@ export async function GET(request: NextRequest) {
         metadata: {
           triggeredBy: 'system',
           priority: 'medium',
-          timestamp: new Date(),
-        },
-      });
+          timestamp: new Date() } });
 
       if (!result.success) {
-        return NextResponse.json(
-          { error: result.reasoning || 'Opportunity discovery failed' },
-          { status: 500 }
-        );
+        return createErrorResponse(ctx, 'INTERNAL_ERROR', result.reasoning || 'Opportunity discovery failed', 500);
       }
 
       const opportunities = (result.data as any)?.opportunities || [];
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         opportunities,
         totalValue: opportunities.reduce(
           (sum: number, opp: any) => sum + (opp.potentialValue || 0),
           0
-        ) || 0,
-      });
+        ) || 0 });
     }
 
     // Otherwise, get all opportunities for tenant
@@ -73,15 +57,12 @@ export async function GET(request: NextRequest) {
         eventType: 'opportunity_discovered',
         timestamp: {
           gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
-        },
-      },
+        } },
       orderBy: { timestamp: 'desc' },
       select: {
         contractId: true,
         metadata: true,
-        timestamp: true,
-      },
-    });
+        timestamp: true } });
 
     // Extract opportunities from metadata
     const opportunities = events
@@ -90,8 +71,7 @@ export async function GET(request: NextRequest) {
         return (metadata?.opportunities || []).map((opp: any) => ({
           ...opp,
           contractId: event.contractId,
-          discoveredAt: event.timestamp,
-        }));
+          discoveredAt: event.timestamp }));
       })
       .filter((opp: any) => {
         // Apply filters
@@ -109,15 +89,8 @@ export async function GET(request: NextRequest) {
     // Sort by value descending
     opportunities.sort((a: any, b: any) => b.potentialValue - a.potentialValue);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       opportunities: opportunities.slice(0, 50), // Limit to 50
       totalValue,
-      count: opportunities.length,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+      count: opportunities.length });
+  });

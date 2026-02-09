@@ -25,6 +25,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorBoundary } from "@/components/error-boundary/ErrorBoundary";
 import { AdvancedSearchModal, type AdvancedSearchFilters } from "@/components/contracts/AdvancedSearchModal";
 import { ContractStatusBadge } from "@/components/contracts/ContractStatusBadge";
 import { AdvancedFilterPanel, type FilterState } from "@/components/contracts/AdvancedFilterPanel";
@@ -54,7 +55,7 @@ import {
   AlertCircle,
   Loader2,
   Calendar,
-  DollarSign,
+  Banknote,
   Shield,
   RefreshCw,
   Filter,
@@ -135,7 +136,7 @@ interface SignatureStatusBadgeProps {
 const SignatureStatusBadge = memo(function SignatureStatusBadge({ status }: SignatureStatusBadgeProps) {
   if (!status || status === 'unknown') {
     return (
-      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
         Pending
       </span>
     );
@@ -144,23 +145,23 @@ const SignatureStatusBadge = memo(function SignatureStatusBadge({ status }: Sign
   const config: Record<Exclude<SignatureStatus, 'unknown'>, { label: string; bgClass: string; textClass: string; borderClass: string; Icon: typeof CheckCircle2 }> = {
     signed: {
       label: 'Signed',
-      bgClass: 'bg-gradient-to-r from-green-50 to-emerald-50',
-      textClass: 'text-green-700',
-      borderClass: 'border-green-200',
+      bgClass: 'bg-green-50 dark:bg-green-950/30',
+      textClass: 'text-green-700 dark:text-green-400',
+      borderClass: 'border-green-200 dark:border-green-800',
       Icon: CheckCircle2,
     },
     partially_signed: {
       label: 'Partial',
-      bgClass: 'bg-gradient-to-r from-amber-50 to-yellow-50',
-      textClass: 'text-amber-700',
-      borderClass: 'border-amber-200',
+      bgClass: 'bg-amber-50 dark:bg-amber-950/30',
+      textClass: 'text-amber-700 dark:text-amber-400',
+      borderClass: 'border-amber-200 dark:border-amber-800',
       Icon: AlertCircle,
     },
     unsigned: {
       label: 'Unsigned',
-      bgClass: 'bg-gradient-to-r from-red-50 to-rose-50',
-      textClass: 'text-red-600',
-      borderClass: 'border-red-200',
+      bgClass: 'bg-red-50 dark:bg-red-950/30',
+      textClass: 'text-red-600 dark:text-red-400',
+      borderClass: 'border-red-200 dark:border-red-800',
       Icon: XCircle,
     },
   };
@@ -195,53 +196,53 @@ const DocumentTypeBadge = memo(function DocumentTypeBadge({ classification, show
   const config: Record<Exclude<DocumentClassification, 'contract'>, { label: string; bgClass: string; textClass: string }> = {
     purchase_order: {
       label: 'PO',
-      bgClass: 'bg-orange-50',
-      textClass: 'text-orange-700',
+      bgClass: 'bg-orange-50 dark:bg-orange-950/30',
+      textClass: 'text-orange-700 dark:text-orange-400',
     },
     invoice: {
       label: 'Invoice',
-      bgClass: 'bg-purple-50',
-      textClass: 'text-purple-700',
+      bgClass: 'bg-sky-50 dark:bg-sky-950/30',
+      textClass: 'text-sky-700 dark:text-sky-400',
     },
     quote: {
       label: 'Quote',
-      bgClass: 'bg-purple-50',
-      textClass: 'text-purple-700',
+      bgClass: 'bg-teal-50 dark:bg-teal-950/30',
+      textClass: 'text-teal-700 dark:text-teal-400',
     },
     proposal: {
       label: 'Proposal',
-      bgClass: 'bg-purple-50',
-      textClass: 'text-purple-700',
+      bgClass: 'bg-cyan-50 dark:bg-cyan-950/30',
+      textClass: 'text-cyan-700 dark:text-cyan-400',
     },
     work_order: {
       label: 'Work Order',
-      bgClass: 'bg-pink-50',
-      textClass: 'text-pink-700',
+      bgClass: 'bg-pink-50 dark:bg-pink-950/30',
+      textClass: 'text-pink-700 dark:text-pink-400',
     },
     letter_of_intent: {
       label: 'LOI',
-      bgClass: 'bg-yellow-50',
-      textClass: 'text-yellow-700',
+      bgClass: 'bg-yellow-50 dark:bg-yellow-950/30',
+      textClass: 'text-yellow-700 dark:text-yellow-400',
     },
     memorandum: {
       label: 'Memo',
-      bgClass: 'bg-slate-100',
-      textClass: 'text-slate-700',
+      bgClass: 'bg-slate-100 dark:bg-slate-800',
+      textClass: 'text-slate-700 dark:text-slate-300',
     },
     amendment: {
       label: 'Amendment',
-      bgClass: 'bg-violet-50',
-      textClass: 'text-violet-700',
+      bgClass: 'bg-slate-100 dark:bg-slate-800',
+      textClass: 'text-slate-700 dark:text-slate-300',
     },
     addendum: {
       label: 'Addendum',
-      bgClass: 'bg-violet-50',
-      textClass: 'text-violet-700',
+      bgClass: 'bg-slate-100 dark:bg-slate-800',
+      textClass: 'text-slate-700 dark:text-slate-300',
     },
     unknown: {
       label: 'Unknown',
-      bgClass: 'bg-slate-100',
-      textClass: 'text-slate-600',
+      bgClass: 'bg-slate-100 dark:bg-slate-800',
+      textClass: 'text-slate-600 dark:text-slate-400',
     },
   };
   
@@ -361,30 +362,23 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
       exit={{ opacity: 0, y: -10 }}
       className="mb-4"
     >
-      <Card className="bg-gradient-to-r from-violet-50 via-purple-50/80 to-purple-50 border-violet-200/60 shadow-lg shadow-violet-500/10 hover:shadow-xl hover:shadow-violet-500/15 transition-all duration-300 overflow-hidden relative">
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-10 -right-10 w-32 h-32 bg-violet-400/10 rounded-full blur-2xl" />
-          <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-purple-400/10 rounded-full blur-2xl" />
-        </div>
+      <Card className="bg-slate-50 border-slate-200 shadow-sm overflow-hidden relative">
         <CardContent className="py-5 px-6 relative">
           <div className="flex items-center gap-4 mb-5">
-            <motion.div 
-              className="relative w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30"
-              animate={{ scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+            <div 
+              className="relative w-10 h-10 bg-slate-800 rounded-lg flex items-center justify-center"
             >
-              <Activity className="h-6 w-6 text-white" />
-              <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-4 w-4 bg-violet-500 shadow-lg border-2 border-white"></span>
+              <Activity className="h-5 w-5 text-white" />
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-slate-600 border-2 border-white"></span>
               </span>
-            </motion.div>
+            </div>
             <div>
-              <span className="font-semibold text-violet-900 text-base">
+              <span className="font-semibold text-slate-900 text-sm">
                 Processing {processingContracts.length} contract{processingContracts.length > 1 ? 's' : ''}
               </span>
-              <p className="text-xs text-violet-600/80 mt-0.5">AI is analyzing your documents...</p>
+              <p className="text-xs text-slate-500 mt-0.5">AI is analyzing your documents...</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -392,29 +386,27 @@ const ProcessingContractTracker = memo(function ProcessingContractTracker({
               <div key={contract.id} className="flex items-center gap-3 text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="text-slate-700 truncate font-medium">{contract.title}</p>
-                  <p className="text-xs text-violet-600">
+                  <p className="text-xs text-slate-500">
                     {contract.processing?.currentStage || 'Initializing...'}
                   </p>
                 </div>
                 <div className="w-24">
-                  <div className="h-1.5 bg-violet-100 rounded-full overflow-hidden shadow-inner">
+                  <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden">
                     <motion.div
-                      className="h-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-600 relative"
+                      className="h-full bg-slate-700 rounded-full"
                       initial={{ width: 0 }}
                       animate={{ width: `${contract.processing?.progress || 0}%` }}
                       transition={{ duration: 0.5, ease: "easeInOut" }}
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent animate-[shimmer_1.5s_infinite]" />
-                    </motion.div>
+                    />
                   </div>
-                  <p className="text-[10px] text-violet-600 text-right mt-0.5">
+                  <p className="text-[10px] text-slate-500 text-right mt-0.5">
                     {contract.processing?.progress || 0}%
                   </p>
                 </div>
               </div>
             ))}
             {processingContracts.length > 3 && (
-              <p className="text-xs text-violet-600 text-center">
+              <p className="text-xs text-slate-500 text-center">
                 +{processingContracts.length - 3} more processing
               </p>
             )}
@@ -455,6 +447,7 @@ const CompactContractRow = memo(function CompactContractRow({
   formatCurrency,
   formatDate,
 }: CompactContractRowProps) {
+  const router = useRouter();
   const isExpiringSoon = contract.expirationDate && 
     new Date(contract.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const isNew = contract.createdAt && 
@@ -476,18 +469,17 @@ const CompactContractRow = memo(function CompactContractRow({
     <motion.div
       initial={{ opacity: 0, y: 5 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.02 }}
-      whileHover={{ x: 3, backgroundColor: "rgba(139, 92, 246, 0.04)" }}
+      transition={{ duration: 0.15, delay: index * 0.015 }}
       className={cn(
-        "flex items-center gap-2 px-4 py-3.5 cursor-pointer transition-all duration-200 group border-b border-slate-100/80 relative",
+        "flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative",
         isSelected 
-          ? "bg-gradient-to-r from-violet-50 via-purple-50/80 to-violet-50 shadow-sm ring-1 ring-violet-300/60" 
-          : "hover:bg-gradient-to-r hover:from-violet-50/40 hover:via-purple-50/30 hover:to-white",
+          ? "bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-300 dark:ring-slate-600" 
+          : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
         // Zebra striping for unselected rows
-        !isSelected && index % 2 === 0 && "bg-white",
-        !isSelected && index % 2 === 1 && "bg-slate-50/50",
-        isExpiringSoon && !isSelected && "bg-gradient-to-r from-amber-50/40 via-amber-50/20 to-white border-l-2 border-l-amber-400",
-        isExpired && !isSelected && "bg-gradient-to-r from-red-50/40 via-red-50/20 to-white border-l-2 border-l-red-400"
+        !isSelected && index % 2 === 0 && "bg-white dark:bg-slate-900",
+        !isSelected && index % 2 === 1 && "bg-slate-50/30 dark:bg-slate-800/30",
+        isExpiringSoon && !isSelected && "border-l-2 border-l-amber-400 bg-amber-50/30 dark:bg-amber-950/30",
+        isExpired && !isSelected && "border-l-2 border-l-red-400 bg-red-50/20 dark:bg-red-950/20"
       )}
       onClick={onView}
       role="link"
@@ -497,13 +489,7 @@ const CompactContractRow = memo(function CompactContractRow({
     >
       {/* Selection indicator line */}
       {isSelected && (
-        <motion.div
-          layoutId={`selected-indicator-${contract.id}`}
-          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-violet-500 to-purple-500 rounded-r-full"
-          initial={{ scaleY: 0 }}
-          animate={{ scaleY: 1 }}
-          transition={{ duration: 0.2 }}
-        />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-slate-800" />
       )}
       {/* Checkbox */}
       <div
@@ -515,7 +501,7 @@ const CompactContractRow = memo(function CompactContractRow({
           checked={isSelected}
           onCheckedChange={onSelect}
           aria-label={`Select ${contract.title}`}
-          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+          className="border-slate-300 h-4 w-4 data-[state=checked]:bg-slate-800 data-[state=checked]:border-slate-800"
         />
       </div>
 
@@ -530,34 +516,32 @@ const CompactContractRow = memo(function CompactContractRow({
         delay={500}
       >
         <div className="flex items-center gap-3">
-          <motion.div 
+          <div 
             className={cn(
-              "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 shadow-sm",
+              "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
               isExpired 
-                ? "bg-gradient-to-br from-red-100 to-red-50 group-hover:from-red-200 group-hover:to-red-100"
+                ? "bg-red-50 dark:bg-red-950/30"
                 : isExpiringSoon
-                  ? "bg-gradient-to-br from-amber-100 to-amber-50 group-hover:from-amber-200 group-hover:to-amber-100"
-                  : "bg-gradient-to-br from-slate-100 to-slate-50 group-hover:from-violet-100 group-hover:to-purple-50"
+                  ? "bg-amber-50 dark:bg-amber-950/30"
+                  : "bg-slate-100 dark:bg-slate-800"
             )}
-            whileHover={{ rotate: 3, scale: 1.08 }}
-            transition={{ type: "spring", stiffness: 400, damping: 12 }}
           >
             <FileText className={cn(
-              "h-4 w-4 transition-colors",
+              "h-4 w-4",
               isExpired 
-                ? "text-red-500" 
+                ? "text-red-500 dark:text-red-400" 
                 : isExpiringSoon 
-                  ? "text-amber-500" 
-                  : "text-slate-400 group-hover:text-violet-600"
+                  ? "text-amber-500 dark:text-amber-400" 
+                  : "text-slate-400 dark:text-slate-500"
             )} />
-          </motion.div>
+          </div>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
-              <p className="font-semibold text-slate-800 truncate group-hover:text-violet-700 transition-colors text-sm" title={contract.title}>
+              <p className="font-medium text-slate-800 truncate group-hover:text-slate-900 transition-colors text-sm" title={contract.title}>
                 <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
               </p>
               {isNew && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-sm flex-shrink-0">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-white flex-shrink-0">
                   New
                 </span>
               )}
@@ -585,7 +569,7 @@ const CompactContractRow = memo(function CompactContractRow({
             size="sm"
           />
         ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
             <Tag className="h-3 w-3" />
             Uncategorized
           </span>
@@ -595,11 +579,11 @@ const CompactContractRow = memo(function CompactContractRow({
       {/* Contract Type */}
       <div className="hidden lg:block w-[80px]">
         {contract.type && contract.type !== 'OTHER' ? (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 text-slate-600 truncate" title={contract.type}>
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate" title={contract.type}>
             {contract.type}
           </span>
         ) : (
-          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
             General
           </span>
         )}
@@ -617,7 +601,7 @@ const CompactContractRow = memo(function CompactContractRow({
             </span>
           </div>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
             <User className="h-3 w-3" />
             Add party
           </span>
@@ -627,14 +611,11 @@ const CompactContractRow = memo(function CompactContractRow({
       {/* Value */}
       <div className="hidden lg:block w-[90px] text-right">
         {contract.value ? (
-          <span className="text-[13px] font-semibold tabular-nums text-slate-800 bg-gradient-to-r from-green-50 to-emerald-50 px-2 py-0.5 rounded-md border border-green-100">
+          <span className="text-[13px] font-medium tabular-nums text-slate-800">
             {formatCurrency(contract.value)}
           </span>
         ) : (
-          <span className="inline-flex items-center justify-end gap-1 text-[11px] text-slate-400">
-            <DollarSign className="h-3 w-3" />
-            N/A
-          </span>
+          <span className="text-[11px] text-slate-400">—</span>
         )}
       </div>
 
@@ -644,23 +625,23 @@ const CompactContractRow = memo(function CompactContractRow({
           <div className="flex flex-col">
             <span className={cn(
               "text-[13px] tabular-nums",
-              isExpired ? "text-red-600 font-medium" : isExpiringSoon ? "text-amber-600 font-medium" : "text-slate-600"
+              isExpired ? "text-red-600 dark:text-red-400 font-medium" : isExpiringSoon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-slate-600 dark:text-slate-400"
             )}>
               {formatDate(contract.expirationDate)}
             </span>
             {isExpired && (
-              <span className="text-[10px] font-semibold text-red-500 mt-0.5 flex items-center gap-0.5">
+              <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 mt-0.5 flex items-center gap-0.5">
                 <AlertCircle className="h-3 w-3" /> Expired
               </span>
             )}
             {!isExpired && isExpiringSoon && (
-              <span className="text-[10px] font-semibold text-amber-500 mt-0.5 flex items-center gap-0.5">
+              <span className="text-[10px] font-semibold text-amber-500 dark:text-amber-400 mt-0.5 flex items-center gap-0.5">
                 <Clock className="h-3 w-3" /> Soon
               </span>
             )}
           </div>
         ) : (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 bg-slate-50 border border-dashed border-slate-200">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 border border-dashed border-slate-200 dark:border-slate-700">
             <CalendarOff className="h-3 w-3" />
             No expiry
           </span>
@@ -688,47 +669,47 @@ const CompactContractRow = memo(function CompactContractRow({
             <Button
               size="sm"
               variant="ghost"
-              className="h-8 w-8 p-0 rounded-lg hover:bg-violet-100 opacity-40 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 hover:scale-110 hover:shadow-md"
+              className="h-8 w-8 p-0 rounded-lg hover:bg-slate-100 opacity-40 group-hover:opacity-100 focus:opacity-100 transition-colors"
               onClick={() => {}}
             >
-              <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-violet-600" />
+              <MoreHorizontal className="h-4 w-4 text-slate-400 group-hover:text-slate-600" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52 p-1.5 shadow-xl border-slate-200/80 rounded-xl" onCloseAutoFocus={(e) => e.preventDefault()}>
-            <DropdownMenuItem onSelect={onView} className="text-sm rounded-lg cursor-pointer hover:bg-violet-50 focus:bg-violet-50">
-              <Eye className="h-4 w-4 mr-2.5 text-violet-500" /> View Details
+          <DropdownMenuContent align="end" className="w-52 p-1.5 shadow-lg border-slate-200 rounded-lg" onCloseAutoFocus={(e) => e.preventDefault()}>
+            <DropdownMenuItem onSelect={onView} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+              <Eye className="h-4 w-4 mr-2.5 text-slate-500" /> View Details
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm rounded-lg cursor-pointer hover:bg-purple-50 focus:bg-purple-50">
-              <Brain className="h-4 w-4 mr-2.5 text-purple-500" /> AI Analysis
+            <DropdownMenuItem onSelect={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+              <Brain className="h-4 w-4 mr-2.5 text-slate-500" /> AI Analysis
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1.5" />
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="text-sm rounded-lg cursor-pointer">
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onSelect={() => router.push(`/contracts/${contract.id}/legal-review`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Scale className="h-4 w-4 mr-2.5 text-slate-500" /> Legal Review
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.location.href = `/contracts/${contract.id}/redline`} className="text-sm rounded-lg cursor-pointer">
+            <DropdownMenuItem onSelect={() => router.push(`/contracts/${contract.id}/redline`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Edit3 className="h-4 w-4 mr-2.5 text-slate-500" /> Redline Editor
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1.5" />
-            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="text-sm rounded-lg cursor-pointer hover:bg-green-50 focus:bg-green-50">
-              <RefreshCw className="h-4 w-4 mr-2.5 text-green-500" /> Start Renewal
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onSelect={() => router.push(`/generate?create=renewal&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+              <RefreshCw className="h-4 w-4 mr-2.5 text-slate-500" /> Start Renewal
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="text-sm rounded-lg cursor-pointer hover:bg-blue-50 focus:bg-blue-50">
-              <GitBranch className="h-4 w-4 mr-2.5 text-blue-500" /> Create Amendment
+            <DropdownMenuItem onSelect={() => router.push(`/generate?create=amendment&from=${contract.id}`)} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
+              <GitBranch className="h-4 w-4 mr-2.5 text-slate-500" /> Create Amendment
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1.5" />
-            <DropdownMenuItem onSelect={onDownload} className="text-sm rounded-lg cursor-pointer">
+            <DropdownMenuSeparator className="my-1" />
+            <DropdownMenuItem onSelect={onDownload} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Download className="h-4 w-4 mr-2.5 text-slate-500" /> Download
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={onShare} className="text-sm rounded-lg cursor-pointer">
+            <DropdownMenuItem onSelect={onShare} className="text-sm rounded-md cursor-pointer hover:bg-slate-50 focus:bg-slate-50">
               <Share2 className="h-4 w-4 mr-2.5 text-slate-500" /> Share
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="my-1.5" />
+            <DropdownMenuSeparator className="my-1" />
             <DropdownMenuItem 
               onSelect={(e) => {
                 e.preventDefault();
                 onDelete();
               }}
-              className="text-sm rounded-lg cursor-pointer text-red-600 focus:text-red-600 hover:bg-red-50 focus:bg-red-50"
+              className="text-sm rounded-md cursor-pointer text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 focus:bg-red-50 dark:focus:bg-red-950/30"
             >
               <Trash2 className="h-4 w-4 mr-2.5" /> Delete Contract
             </DropdownMenuItem>
@@ -769,6 +750,7 @@ const ContractCard = memo(function ContractCard({
   formatDate,
   getRiskBadge,
 }: ContractCardProps) {
+  const router = useRouter();
   const isExpiringSoon = contract.expirationDate && 
     new Date(contract.expirationDate) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const isExpired = contract.expirationDate && new Date(contract.expirationDate) < new Date();
@@ -778,14 +760,14 @@ const ContractCard = memo(function ContractCard({
   return (
     <Card 
       className={cn(
-        "group cursor-pointer transition-all duration-300 bg-white/90 backdrop-blur-sm border-white/60 shadow-lg shadow-slate-200/60 hover:shadow-xl hover:shadow-slate-300/60 rounded-xl overflow-hidden",
-        isSelected && "ring-2 ring-violet-500 border-violet-300 shadow-violet-200/50",
-        isNew && "border-violet-200/50 shadow-violet-100/30"
+        "group cursor-pointer transition-colors bg-white border-slate-200 shadow-sm hover:shadow-md rounded-xl overflow-hidden",
+        isSelected && "ring-1 ring-slate-800 border-slate-300",
+        isNew && "border-slate-300"
       )}
       onClick={onView}
     >
-      {/* Top gradient bar */}
-      <div className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500" />
+      {/* Top bar */}
+      <div className="h-0.5 w-full bg-slate-200" />
       <CardContent className="p-5">
         {/* Header */}
         <div className="flex items-start justify-between gap-3 mb-4">
@@ -794,18 +776,18 @@ const ContractCard = memo(function ContractCard({
               <Checkbox
                 checked={isSelected}
                 onCheckedChange={onSelect}
-                className="mt-0.5 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600"
+                className="mt-0.5 data-[state=checked]:bg-slate-800 data-[state=checked]:border-slate-800"
               />
             </div>
-            <div className="relative p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
-              <FileText className="h-5 w-5 text-white" />
+            <div className="relative p-2.5 bg-slate-100 rounded-lg">
+              <FileText className="h-5 w-5 text-slate-600" />
               {isNew && (
-                <span className="absolute -top-1 -right-1 h-3 w-3 bg-violet-500 rounded-full border-2 border-white animate-pulse" />
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-slate-600 rounded-full border-2 border-white" />
               )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-slate-900 truncate group-hover:text-violet-600 transition-colors">
+                <h3 className="font-semibold text-slate-900 truncate group-hover:text-slate-800 transition-colors">
                   <HighlightText text={contract.title || 'Untitled Contract'} query={searchQuery} />
                 </h3>
               </div>
@@ -836,28 +818,28 @@ const ContractCard = memo(function ContractCard({
         <div className="space-y-3 mb-4">
           {contract.parties?.client && (
             <div className="flex items-center gap-3 text-sm p-2.5 bg-slate-50/80 rounded-lg border border-slate-100">
-              <div className="p-2 bg-gradient-to-br from-purple-50 to-purple-50 rounded-lg border border-cyan-100/50 shadow-sm">
-                <Building2 className="h-4 w-4 text-purple-600" />
+              <div className="p-1.5 bg-slate-50 rounded-lg border border-slate-100">
+                <Building2 className="h-4 w-4 text-slate-600" />
               </div>
               <span className="text-slate-700 truncate font-medium">{contract.parties.client}</span>
             </div>
           )}
           
           <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center gap-3 p-2.5 bg-violet-50/80 rounded-lg border border-violet-100/50">
-              <div className="p-2 bg-gradient-to-br from-violet-50 to-purple-50 rounded-lg border border-violet-100/50 shadow-sm">
-                <DollarSign className="h-4 w-4 text-violet-600" />
+            <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-lg border border-slate-100">
+              <div className="p-1.5 bg-slate-100 rounded-lg border border-slate-200">
+                <Banknote className="h-4 w-4 text-slate-600" />
               </div>
-              <span className={contract.value ? "font-bold text-violet-800" : "text-slate-400 italic"}>
+              <span className={contract.value ? "font-bold text-slate-800" : "text-slate-400 italic"}>
                 {formatCurrency(contract.value)}
               </span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-lg border border-slate-100">
+            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700">
               <Calendar className="h-4 w-4 text-slate-400" />
               <span className={cn(
                 "text-sm font-medium",
-                isExpired ? "text-red-600" : 
-                isExpiringSoon ? "text-amber-600" : "text-slate-600"
+                isExpired ? "text-red-600 dark:text-red-400" : 
+                isExpiringSoon ? "text-amber-600 dark:text-amber-400" : "text-slate-600 dark:text-slate-400"
               )}>
                 {isExpired ? 'Expired' : formatDate(contract.expirationDate)}
               </span>
@@ -869,7 +851,7 @@ const ContractCard = memo(function ContractCard({
         <div className="flex items-center justify-between mb-4">
           {getRiskBadge(contract.riskScore)}
           {contract.status === 'processing' && contract.processing && (
-            <div className="flex items-center gap-2 text-xs text-violet-600">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
               <Loader2 className="h-3 w-3 animate-spin" />
               {contract.processing.progress}%
             </div>
@@ -887,7 +869,7 @@ const ContractCard = memo(function ContractCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-9 w-9 p-0 rounded-lg hover:bg-violet-50 hover:text-violet-600 transition-all hover:shadow-sm" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-slate-50 transition-colors" 
                   onClick={onView}
                 >
                   <Eye className="h-4 w-4" />
@@ -900,10 +882,10 @@ const ContractCard = memo(function ContractCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-9 w-9 p-0 rounded-lg hover:bg-purple-50 transition-all hover:shadow-sm" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-slate-50 transition-colors" 
                   onClick={() => window.open(`/contracts/${contract.id}?tab=ai`, '_blank')}
                 >
-                  <Brain className="h-4 w-4 text-purple-600" />
+                  <Brain className="h-4 w-4 text-slate-500" />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>AI Analysis</TooltipContent>
@@ -913,7 +895,7 @@ const ContractCard = memo(function ContractCard({
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="h-9 w-9 p-0 rounded-lg hover:bg-green-50 hover:text-green-600 transition-all hover:shadow-sm" 
+                  className="h-9 w-9 p-0 rounded-lg hover:bg-slate-50 transition-colors" 
                   onClick={onShare}
                 >
                   <Share2 className="h-4 w-4" />
@@ -930,17 +912,17 @@ const ContractCard = memo(function ContractCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48 bg-white border-slate-200 shadow-lg rounded-lg">
-              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/legal-review`} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}/legal-review`)} className="cursor-pointer text-sm">
                 <Scale className="h-4 w-4 mr-2 text-slate-500" /> Legal Review
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = `/contracts/${contract.id}/redline`} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/contracts/${contract.id}/redline`)} className="cursor-pointer text-sm">
                 <Edit3 className="h-4 w-4 mr-2 text-slate-500" /> Redline Editor
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=renewal&from=${contract.id}`} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/generate?create=renewal&from=${contract.id}`)} className="cursor-pointer text-sm">
                 <RefreshCw className="h-4 w-4 mr-2 text-slate-500" /> Start Renewal
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => window.location.href = `/generate?create=amendment&from=${contract.id}`} className="cursor-pointer text-sm">
+              <DropdownMenuItem onClick={() => router.push(`/generate?create=amendment&from=${contract.id}`)} className="cursor-pointer text-sm">
                 <GitBranch className="h-4 w-4 mr-2 text-slate-500" /> Create Amendment
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -953,7 +935,7 @@ const ContractCard = memo(function ContractCard({
                   e.preventDefault();
                   onDelete();
                 }} 
-                className="text-red-600 focus:text-red-600 cursor-pointer text-sm"
+                className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400 cursor-pointer text-sm"
               >
                 <Trash2 className="h-4 w-4 mr-2" /> Delete
               </DropdownMenuItem>
@@ -1023,30 +1005,30 @@ const DATE_PRESETS = [
 
 // Expiration status options
 const EXPIRATION_FILTERS = [
-  { value: 'expired', label: 'Expired', icon: TimerOff, color: 'text-red-600' },
-  { value: 'expiring-7', label: 'Expiring in 7 days', icon: AlertTriangle, color: 'text-amber-600' },
-  { value: 'expiring-30', label: 'Expiring in 30 days', icon: CalendarClock, color: 'text-yellow-600' },
-  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-violet-600' },
-  { value: 'no-expiry', label: 'No Expiration', icon: CircleDot, color: 'text-slate-500' },
+  { value: 'expired', label: 'Expired', icon: TimerOff, color: 'text-red-600 dark:text-red-400' },
+  { value: 'expiring-7', label: 'Expiring in 7 days', icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400' },
+  { value: 'expiring-30', label: 'Expiring in 30 days', icon: CalendarClock, color: 'text-yellow-600 dark:text-yellow-400' },
+  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-slate-600 dark:text-slate-400' },
+  { value: 'no-expiry', label: 'No Expiration', icon: CircleDot, color: 'text-slate-500 dark:text-slate-400' },
 ];
 
 // Signature status filter options
 const SIGNATURE_FILTERS = [
-  { value: 'signed', label: 'Signed', icon: CheckCircle2, color: 'text-green-600' },
-  { value: 'partially_signed', label: 'Partially Signed', icon: AlertTriangle, color: 'text-amber-600' },
-  { value: 'unsigned', label: 'Unsigned', icon: XCircle, color: 'text-red-600' },
-  { value: 'unknown', label: 'Unknown', icon: CircleDot, color: 'text-slate-500' },
+  { value: 'signed', label: 'Signed', icon: CheckCircle2, color: 'text-green-600 dark:text-green-400' },
+  { value: 'partially_signed', label: 'Partially Signed', icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400' },
+  { value: 'unsigned', label: 'Unsigned', icon: XCircle, color: 'text-red-600 dark:text-red-400' },
+  { value: 'unknown', label: 'Unknown', icon: CircleDot, color: 'text-slate-500 dark:text-slate-400' },
 ];
 
 // Document type filter options
 const DOCUMENT_TYPE_FILTERS = [
-  { value: 'contract', label: 'Contract', icon: FileText, color: 'text-violet-600' },
-  { value: 'purchase_order', label: 'Purchase Order', icon: FileText, color: 'text-orange-600' },
-  { value: 'invoice', label: 'Invoice', icon: FileText, color: 'text-purple-600' },
-  { value: 'quote', label: 'Quote', icon: FileText, color: 'text-purple-600' },
-  { value: 'proposal', label: 'Proposal', icon: FileText, color: 'text-purple-600' },
-  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-violet-600' },
-  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-violet-600' },
+  { value: 'contract', label: 'Contract', icon: FileText, color: 'text-slate-700' },
+  { value: 'purchase_order', label: 'Purchase Order', icon: FileText, color: 'text-orange-600 dark:text-orange-400' },
+  { value: 'invoice', label: 'Invoice', icon: FileText, color: 'text-sky-600 dark:text-sky-400' },
+  { value: 'quote', label: 'Quote', icon: FileText, color: 'text-teal-600 dark:text-teal-400' },
+  { value: 'proposal', label: 'Proposal', icon: FileText, color: 'text-cyan-600 dark:text-cyan-400' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-slate-600 dark:text-slate-400' },
+  { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-slate-600 dark:text-slate-400' },
 ];
 
 // Pagination options
@@ -1067,16 +1049,37 @@ const QUICK_PRESETS: Array<{
     approval?: string;
   };
 }> = [
-  { id: 'high-value-expiring', label: 'High Value Expiring Soon', icon: Zap, color: 'text-amber-600',
+  { id: 'high-value-expiring', label: 'High Value Expiring Soon', icon: Zap, color: 'text-amber-600 dark:text-amber-400',
     filters: { minValue: 100000, expirationDays: 30 } },
-  { id: 'needs-attention', label: 'Needs Attention', icon: AlertTriangle, color: 'text-red-600',
+  { id: 'needs-attention', label: 'Needs Attention', icon: AlertTriangle, color: 'text-red-600 dark:text-red-400',
     filters: { status: 'failed', risk: 'high' } },
-  { id: 'recent-high-risk', label: 'Recent High Risk', icon: Shield, color: 'text-orange-600',
+  { id: 'recent-high-risk', label: 'Recent High Risk', icon: Shield, color: 'text-orange-600 dark:text-orange-400',
     filters: { createdDays: 30, risk: 'high' } },
   // Pending Approval - Hidden for now, will be enabled in future
   // { id: 'pending-approval', label: 'Pending Approval', icon: Clock, color: 'text-violet-600',
   //   filters: { approval: 'pending' } },
 ];
+
+// Stable utility functions — defined outside the component to avoid
+// re-creating references on every render (which would break memo() on child rows)
+function formatCurrency(value?: number) {
+  if (!value) return "—";
+  return new Intl.NumberFormat("de-CH", {
+    style: "currency",
+    currency: "CHF",
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function formatDate(dateString?: string) {
+  if (!dateString) return "—";
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
 
 export default function ContractsPage() {
   const router = useRouter();
@@ -1225,7 +1228,7 @@ export default function ContractsPage() {
     onNewContract: (count) => {
       setNewContractsCount(prev => prev + count);
       toast.success(`${count} new contract${count > 1 ? 's' : ''} added`, {
-        icon: <Sparkles className="h-4 w-4 text-violet-500" />,
+        icon: <Sparkles className="h-4 w-4 text-slate-600" />,
         action: {
           label: 'View',
           onClick: () => {
@@ -2326,15 +2329,15 @@ export default function ContractsPage() {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      completed: { label: "Active", color: "bg-gradient-to-r from-violet-100 to-violet-100 text-green-700", icon: CheckCircle },
-      processing: { label: "Processing", color: "bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700", icon: Loader2 },
-      failed: { label: "Failed", color: "bg-gradient-to-r from-red-100 to-rose-100 text-red-700", icon: AlertTriangle },
-      pending: { label: "Pending", color: "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700", icon: Clock },
+      completed: { label: "Active", color: "bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400", icon: CheckCircle },
+      processing: { label: "Processing", color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300", icon: Loader2 },
+      failed: { label: "Failed", color: "bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400", icon: AlertTriangle },
+      pending: { label: "Pending", color: "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400", icon: Clock },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
       label: status,
-      color: "bg-gradient-to-r from-gray-100 to-slate-100 text-gray-700",
+      color: "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
       icon: CircleDot,
     };
 
@@ -2353,44 +2356,26 @@ export default function ContractsPage() {
 
     if (riskScore < 30) {
       return (
-        <Badge className="bg-gradient-to-r from-violet-100 to-violet-100 text-green-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+        <Badge className="bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
           <Shield className="h-3.5 w-3.5" />
           Low Risk
         </Badge>
       );
     } else if (riskScore < 70) {
       return (
-        <Badge className="bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+        <Badge className="bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
           <Shield className="h-3.5 w-3.5" />
           Medium Risk
         </Badge>
       );
     } else {
       return (
-        <Badge className="bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-0 gap-1.5 px-3 py-1 rounded-full shadow-sm font-medium">
+        <Badge className="bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-0 gap-1.5 px-3 py-1 rounded-full font-medium">
           <AlertTriangle className="h-3.5 w-3.5" />
           High Risk
         </Badge>
       );
     }
-  };
-
-  const formatCurrency = (value?: number) => {
-    if (!value) return "—";
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return "—";
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}.${month}.${year}`;
   };
 
   if (loading) {
@@ -2456,7 +2441,7 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               className="fixed bottom-6 right-6 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-3 border border-slate-200"
             >
-              <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-slate-600" />
               <span className="text-sm text-slate-600">Loading contracts...</span>
             </motion.div>
           </div>
@@ -2522,67 +2507,47 @@ export default function ContractsPage() {
         <AnimatePresence>
           {selectedContracts.size > 0 && (
             <motion.div
-              initial={{ opacity: 0, y: -20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
-              transition={{ duration: 0.2, type: "spring", stiffness: 400, damping: 25 }}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.15 }}
             >
-              <Card className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 border-slate-700/30 shadow-2xl shadow-slate-900/40 rounded-2xl overflow-hidden">
-                {/* Animated gradient top line */}
-                <motion.div 
-                  className="h-1 w-full bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500"
-                  animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
-                  transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-                  style={{ backgroundSize: "200% 200%" }}
-                />
-                <CardContent className="py-4 px-6">
+              <Card className="bg-slate-900 border-slate-700/50 shadow-lg rounded-xl overflow-hidden">
+                <div className="h-px w-full bg-slate-700" />
+                <CardContent className="py-3 px-5">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-5">
-                      <motion.div
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                        className="flex items-center gap-3"
-                      >
-                        <div className="relative">
-                          <Badge className="bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 text-white font-black px-4 py-2 text-lg shadow-lg shadow-violet-500/30 rounded-xl">
-                            {selectedContracts.size}
-                          </Badge>
-                          <motion.div 
-                            className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 rounded-xl blur opacity-30"
-                            animate={{ opacity: [0.3, 0.5, 0.3] }}
-                            transition={{ duration: 2, repeat: Infinity }}
-                          />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-white text-sm">
-                            contract{selectedContracts.size !== 1 ? 's' : ''} selected
-                          </span>
-                          <span className="text-slate-400 text-xs">Ready for bulk actions</span>
-                        </div>
-                      </motion.div>
+                      <div className="flex items-center gap-3">
+                        <Badge className="bg-white/15 text-white font-semibold px-3 py-1.5 text-sm rounded-lg border border-white/10">
+                          {selectedContracts.size}
+                        </Badge>
+                        <span className="text-sm text-slate-300">
+                          contract{selectedContracts.size !== 1 ? 's' : ''} selected
+                        </span>
+                      </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-slate-400 hover:text-red-400 hover:bg-red-950/30 h-9 rounded-xl transition-all"
+                        className="text-slate-400 hover:text-red-400 hover:bg-red-950/30 h-8 rounded-lg transition-colors"
                         onClick={() => setSelectedContracts(new Set())}
                       >
-                        <X className="h-4 w-4 mr-1.5" />
-                        Clear selection
+                        <X className="h-3.5 w-3.5 mr-1" />
+                        Clear
                       </Button>
                     </div>
-                    <div className="flex items-center gap-2.5 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {/* Standard actions */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={() => performBulkAction('export')}
                             disabled={isProcessingBulk}
                           >
-                            {isProcessingBulk ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                            <span className="hidden sm:inline ml-2 font-medium">Export</span>
+                            {isProcessingBulk ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Export</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Export selected contracts</TooltipContent>
@@ -2593,12 +2558,12 @@ export default function ContractsPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={() => performBulkAction('analyze')}
                             disabled={isProcessingBulk}
                           >
-                            <Brain className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-2 font-medium">Analyze</span>
+                            <Brain className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Analyze</span>
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>Run AI analysis on selected</TooltipContent>
@@ -2608,30 +2573,30 @@ export default function ContractsPage() {
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-violet-600 to-violet-500 hover:from-violet-500 hover:to-violet-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-violet-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-slate-800 hover:bg-slate-700 text-white border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={() => setAiReportModalOpen(true)}
                             disabled={isProcessingBulk}
                           >
-                            <FileBarChart className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-2 font-medium">Report</span>
+                            <FileBarChart className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Report</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Generate comprehensive AI report for selected contracts</TooltipContent>
+                        <TooltipContent>Generate AI report</TooltipContent>
                       </Tooltip>
                       
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-purple-600 to-purple-500 hover:from-purple-500 hover:to-purple-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-purple-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={handleBulkCategorize}
                             disabled={isProcessingBulk || isBulkCategorizing}
                           >
-                            {isBulkCategorizing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Tag className="h-4 w-4" />}
-                            <span className="hidden sm:inline ml-2 font-medium">Categorize</span>
+                            {isBulkCategorizing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Categorize</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Auto-categorize selected contracts with AI</TooltipContent>
+                        <TooltipContent>Auto-categorize with AI</TooltipContent>
                       </Tooltip>
                       
                       {selectedContracts.size === 2 && (
@@ -2639,18 +2604,18 @@ export default function ContractsPage() {
                           <TooltipTrigger asChild>
                             <Button
                               size="sm"
-                              className="bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-indigo-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                              className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
                               onClick={() => {
                                 const ids = Array.from(selectedContracts);
                                 router.push(`/compare?contract1=${ids[0]}&contract2=${ids[1]}`);
                               }}
                               disabled={isProcessingBulk}
                             >
-                              <ArrowLeftRight className="h-4 w-4" />
-                              <span className="hidden sm:inline ml-2 font-medium">Compare</span>
+                              <ArrowLeftRight className="h-3.5 w-3.5" />
+                              <span className="hidden sm:inline ml-1.5 text-xs font-medium">Compare</span>
                             </Button>
                           </TooltipTrigger>
-                          <TooltipContent>Compare selected contracts side-by-side</TooltipContent>
+                          <TooltipContent>Compare side-by-side</TooltipContent>
                         </Tooltip>
                       )}
                       
@@ -2659,32 +2624,33 @@ export default function ContractsPage() {
                           <Button
                             variant="secondary"
                             size="sm"
-                            className="bg-slate-700/80 hover:bg-slate-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-slate-900/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={() => performBulkAction('share')}
                             disabled={isProcessingBulk}
                           >
-                            <Share2 className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-2 font-medium">Share</span>
+                            <Share2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Share</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Share selected contracts</TooltipContent>
+                        <TooltipContent>Share selected</TooltipContent>
                       </Tooltip>
                       
-                      <div className="w-px h-6 bg-slate-700 mx-1 hidden sm:block" />
+                      <div className="w-px h-5 bg-slate-700 mx-0.5 hidden sm:block" />
                       
+                      {/* Destructive action */}
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
                             size="sm"
-                            className="bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-600 text-white border-0 h-9 px-3.5 rounded-xl shadow-lg shadow-red-500/30 transition-all hover:shadow-xl hover:-translate-y-0.5"
+                            className="bg-red-600 hover:bg-red-500 text-white border-0 h-8 px-3 rounded-lg transition-colors"
                             onClick={handleBulkDeleteClick}
                             disabled={isProcessingBulk}
                           >
-                            <Trash2 className="h-4 w-4" />
-                            <span className="hidden sm:inline ml-2 font-medium">Delete</span>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline ml-1.5 text-xs font-medium">Delete</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Delete selected contracts</TooltipContent>
+                        <TooltipContent>Delete selected</TooltipContent>
                       </Tooltip>
                     </div>
                   </div>
@@ -2751,7 +2717,7 @@ export default function ContractsPage() {
             contracts={contracts} 
             onContractComplete={(id) => {
               toast.success('Contract processing completed!', {
-                icon: <CheckCircle className="h-4 w-4 text-violet-500" />,
+                icon: <CheckCircle className="h-4 w-4 text-green-500" />,
               });
               refetch();
             }}
@@ -2815,7 +2781,7 @@ export default function ContractsPage() {
               className={cn(
                 "transition-all duration-200 h-8 text-xs font-medium",
                 showVisualBuilder 
-                  ? "bg-violet-600 hover:bg-violet-700 text-white border-violet-600" 
+                  ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-800" 
                   : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
               )}
             >
@@ -2832,7 +2798,7 @@ export default function ContractsPage() {
               className={cn(
                 "transition-all duration-200 h-8 text-xs font-medium",
                 showAdvancedFilters 
-                  ? "bg-purple-600 hover:bg-purple-700 text-white border-purple-600" 
+                  ? "bg-slate-800 hover:bg-slate-700 text-white border-slate-800" 
                   : "border-slate-200 hover:bg-slate-50 hover:border-slate-300"
               )}
             >
@@ -2844,7 +2810,7 @@ export default function ContractsPage() {
                 filterState.isExpiring !== null) && (
                 <Badge className={cn(
                   "ml-1.5",
-                  showAdvancedFilters ? "bg-white text-purple-600" : "bg-purple-600 text-white"
+                  showAdvancedFilters ? "bg-white text-slate-800" : "bg-slate-800 text-white"
                 )} variant="secondary">
                   {filterState.statuses.length + filterState.documentRoles.length + 
                    filterState.categories.length + (filterState.hasDeadline !== null ? 1 : 0) + 
@@ -2863,7 +2829,7 @@ export default function ContractsPage() {
               </span>
               <span className="text-sm text-slate-500 font-medium">contracts</span>
               {hasActiveFilters && (
-                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-violet-100 text-violet-700 border-0 font-semibold">
+                <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-200 text-slate-700 border-0 font-semibold">
                   filtered
                 </Badge>
               )}
@@ -2875,36 +2841,31 @@ export default function ContractsPage() {
             {/* Sort */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <motion.button 
-                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 shadow-sm hover:shadow-md bg-white"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button 
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors bg-white"
                 >
                   <div className="p-1 rounded-md bg-slate-100">
-                    <motion.div
-                      animate={{ rotate: sortDirection === 'asc' ? 0 : 180 }}
-                      transition={{ duration: 0.3, ease: "easeInOut" }}
-                    >
-                      <ArrowUp className="h-3 w-3 text-slate-600" />
-                    </motion.div>
+                    <ArrowUp className={cn("h-3 w-3 text-slate-600 transition-transform", sortDirection === 'desc' && "rotate-180")} />
                   </div>
-                  <span className="text-slate-700 font-semibold">
+                  <span className="text-slate-700 font-medium">
                     {{
                       createdAt: 'Date',
                       title: 'Name',
                       value: 'Value',
                       expirationDate: 'Expires',
+                      status: 'Status',
                     }[sortField as string] || 'Sort'}
                   </span>
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
-                </motion.button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200 p-1">
+              <DropdownMenuContent align="end" className="w-44 bg-white shadow-lg border-slate-200 p-1">
                 {[
                   { field: 'createdAt' as SortField, label: 'Date Created' },
                   { field: 'title' as SortField, label: 'Name' },
                   { field: 'value' as SortField, label: 'Value' },
                   { field: 'expirationDate' as SortField, label: 'Expiration' },
+                  { field: 'status' as SortField, label: 'Status' },
                 ].map((option) => (
                   <DropdownMenuItem
                     key={option.field}
@@ -2923,8 +2884,8 @@ export default function ContractsPage() {
                   >
                     {sortField === option.field && (
                       sortDirection === 'asc' 
-                        ? <ArrowUp className="h-3.5 w-3.5 mr-2 text-violet-600" /> 
-                        : <ArrowDown className="h-3.5 w-3.5 mr-2 text-violet-600" />
+                        ? <ArrowUp className="h-3.5 w-3.5 mr-2 text-slate-700" /> 
+                        : <ArrowDown className="h-3.5 w-3.5 mr-2 text-slate-700" />
                     )}
                     {option.label}
                   </DropdownMenuItem>
@@ -2940,27 +2901,18 @@ export default function ContractsPage() {
               ].map((view, idx) => (
                 <Tooltip key={view.mode}>
                   <TooltipTrigger asChild>
-                    <motion.button
+                    <button
                       onClick={() => setViewMode(view.mode)}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
                       className={cn(
-                        "h-9 w-11 flex items-center justify-center transition-all duration-300 relative",
+                        "h-9 w-11 flex items-center justify-center transition-colors relative",
                         idx > 0 && "border-l border-slate-200",
                         viewMode === view.mode 
-                          ? "bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 text-white shadow-lg shadow-slate-900/20" 
+                          ? "bg-slate-800 text-white" 
                           : "bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700"
                       )}
                     >
-                      {viewMode === view.mode && (
-                        <motion.div
-                          layoutId="activeView"
-                          className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900"
-                          transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                        />
-                      )}
-                      <view.icon className="h-4 w-4 relative z-10" />
-                    </motion.button>
+                      <view.icon className="h-4 w-4" />
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent className="bg-slate-900 text-white border-0">{view.label} view</TooltipContent>
                 </Tooltip>
@@ -2970,23 +2922,21 @@ export default function ContractsPage() {
             {/* Export */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <motion.button 
-                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-xl hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-700 shadow-sm hover:shadow-md font-semibold bg-white"
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button 
+                  className="inline-flex items-center gap-2 px-3.5 py-2 text-xs border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-700 font-medium bg-white"
                 >
                   <div className="p-1 rounded-md bg-slate-100">
                     <Download className="h-3 w-3 text-slate-600" />
                   </div>
                   <span className="hidden sm:inline">Export</span>
-                </motion.button>
+                </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-44 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200 p-1">
+              <DropdownMenuContent align="end" className="w-44 bg-white shadow-lg border-slate-200 p-1">
                 <DropdownMenuItem onClick={() => handleExportFiltered('csv')} className="text-sm rounded-lg cursor-pointer">
-                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" /> Export as CSV
+                  <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600 dark:text-green-400" /> Export as CSV
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExportFiltered('json')} className="text-sm rounded-lg cursor-pointer">
-                  <FileDown className="h-4 w-4 mr-2 text-violet-600" /> Export as JSON
+                  <FileDown className="h-4 w-4 mr-2 text-slate-600" /> Export as JSON
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -2994,17 +2944,15 @@ export default function ContractsPage() {
             {/* Keyboard Shortcuts Hint */}
             <Tooltip>
               <TooltipTrigger asChild>
-                <motion.button
+                <button
                   onClick={() => {
                     // Dispatch keyboard shortcut help event
                     window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'));
                   }}
-                  whileHover={{ scale: 1.05, rotate: 5 }}
-                  whileTap={{ scale: 0.95 }}
-                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-all duration-200 text-slate-400 hover:text-slate-600 shadow-sm hover:shadow"
+                  className="h-8 w-8 flex items-center justify-center border border-slate-200 rounded-lg hover:bg-slate-50 hover:border-slate-300 transition-colors text-slate-400 hover:text-slate-600"
                 >
                   <kbd className="text-[10px] font-mono font-bold">?</kbd>
-                </motion.button>
+                </button>
               </TooltipTrigger>
               <TooltipContent>Keyboard shortcuts</TooltipContent>
             </Tooltip>
@@ -3025,7 +2973,7 @@ export default function ContractsPage() {
                   <motion.div
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 rounded-lg border border-violet-200/50"
+                    className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg border border-slate-200"
                   >
                     <CheckCircle className="h-4 w-4" />
                     <span className="text-sm font-bold">{selectedContracts.size}</span>
@@ -3035,62 +2983,11 @@ export default function ContractsPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setSelectedContracts(new Set())}
-                    className="h-8 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                    className="h-8 text-xs text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
                   >
                     <X className="h-3.5 w-3.5 mr-1" />
                     Clear
                   </Button>
-                  
-                  {/* Quick Bulk Actions - Always visible when items selected */}
-                  <div className="flex items-center gap-2 pl-3 border-l border-slate-200">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-3 text-xs border-slate-200 hover:bg-slate-50"
-                          onClick={() => performBulkAction('export')}
-                          disabled={isProcessingBulk}
-                        >
-                          <Download className="h-3.5 w-3.5 mr-1.5" />
-                          Export
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Export selected</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-3 text-xs border-violet-200 bg-violet-50 hover:bg-violet-100 text-violet-700"
-                          onClick={() => performBulkAction('analyze')}
-                          disabled={isProcessingBulk}
-                        >
-                          <Brain className="h-3.5 w-3.5 mr-1.5" />
-                          Analyze
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>AI analysis</TooltipContent>
-                    </Tooltip>
-                    
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          className="h-8 px-3 text-xs bg-red-600 hover:bg-red-700"
-                          onClick={handleBulkDeleteClick}
-                          disabled={isProcessingBulk}
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                          Delete
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Delete selected contracts</TooltipContent>
-                    </Tooltip>
-                  </div>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -3109,7 +3006,7 @@ export default function ContractsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-violet-50 hover:border-violet-300 disabled:opacity-40"
+                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -3123,7 +3020,7 @@ export default function ContractsPage() {
                   size="sm"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-violet-50 hover:border-violet-300 disabled:opacity-40"
+                  className="h-8 w-8 p-0 rounded-lg border-slate-200 hover:bg-slate-50 hover:border-slate-300 disabled:opacity-40"
                 >
                   <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -3175,10 +3072,10 @@ export default function ContractsPage() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Card className="overflow-hidden bg-white border-slate-200/60 shadow-xl shadow-slate-200/40 rounded-2xl hover:shadow-2xl transition-all duration-300">
+              <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl" role="table" aria-label="Contracts list">
                 {/* Table Header */}
-                <div className="flex items-center gap-2 px-5 py-4 bg-gradient-to-r from-slate-50 via-white to-slate-50 border-b border-slate-200/80 text-xs font-bold text-slate-600 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
-                  <div className="w-10 flex-shrink-0 flex items-center justify-center">
+                <div role="row" className="flex items-center gap-2 px-5 py-3 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                  <div role="columnheader" className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <div>
@@ -3192,82 +3089,51 @@ export default function ContractsPage() {
                               });
                             }}
                             aria-label="Select all on this page"
-                            className="border-slate-300 h-4 w-4 data-[state=checked]:bg-violet-600 data-[state=checked]:border-violet-600 transition-colors"
+                            className="border-slate-300 h-4 w-4 data-[state=checked]:bg-slate-800 data-[state=checked]:border-slate-800 transition-colors"
                           />
                         </div>
                       </TooltipTrigger>
                       <TooltipContent>Select all on this page</TooltipContent>
                     </Tooltip>
                   </div>
-                  <div className="flex-1 min-w-[200px] flex items-center gap-2">
-                    <div className="p-1.5 bg-violet-100 rounded-md">
-                      <FileText className="h-3.5 w-3.5 text-violet-600" />
-                    </div>
-                    <span>Contract</span>
-                  </div>
-                  <div className="hidden lg:flex w-[100px] items-center gap-2">
-                    <div className="p-1.5 bg-purple-100 rounded-md">
-                      <Tag className="h-3.5 w-3.5 text-purple-600" />
-                    </div>
-                    <span>Category</span>
-                  </div>
-                  <div className="hidden lg:flex w-[80px] items-center gap-2">
-                    <div className="p-1.5 bg-slate-100 rounded-md">
-                      <FileText className="h-3.5 w-3.5 text-slate-500" />
-                    </div>
-                    <span>Type</span>
-                  </div>
-                  <div className="hidden md:flex w-[120px] items-center gap-2">
-                    <div className="p-1.5 bg-blue-100 rounded-md">
-                      <Building2 className="h-3.5 w-3.5 text-blue-600" />
-                    </div>
-                    <span>Party</span>
-                  </div>
-                  <div className="hidden lg:flex w-[90px] items-center justify-end gap-2">
-                    <span>Value</span>
-                    <div className="p-1.5 bg-green-100 rounded-md">
-                      <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                    </div>
-                  </div>
-                  <div className="hidden md:flex w-[90px] items-center gap-2">
-                    <div className="p-1.5 bg-amber-100 rounded-md">
-                      <Calendar className="h-3.5 w-3.5 text-amber-600" />
-                    </div>
-                    <span>Expires</span>
-                  </div>
-                  <div className="hidden lg:flex w-[70px] items-center gap-2">
-                    <div className="p-1.5 bg-teal-100 rounded-md">
-                      <CheckCircle className="h-3.5 w-3.5 text-teal-600" />
-                    </div>
-                    <span>Signed</span>
-                  </div>
-                  <div className="w-[90px] flex items-center gap-2">
-                    <div className="p-1.5 bg-indigo-100 rounded-md">
-                      <Activity className="h-3.5 w-3.5 text-indigo-600" />
-                    </div>
-                    <span>Status</span>
-                  </div>
-                  <div className="w-10 flex-shrink-0"></div>
+                  <div role="columnheader" className="flex-1 min-w-[200px]">Contract</div>
+                  <div role="columnheader" className="hidden lg:block w-[100px]">Category</div>
+                  <div role="columnheader" className="hidden lg:block w-[80px]">Type</div>
+                  <div role="columnheader" className="hidden md:block w-[120px]">Party</div>
+                  <div role="columnheader" className="hidden lg:block w-[90px] text-right">Value</div>
+                  <div role="columnheader" className="hidden md:block w-[90px]">Expires</div>
+                  <div role="columnheader" className="hidden lg:block w-[70px]">Signed</div>
+                  <div role="columnheader" className="w-[90px]">Status</div>
+                  <div role="columnheader" className="w-10 flex-shrink-0"></div>
                 </div>
                 
                 {/* Table Body */}
-                <div data-testid="contracts-list">
+                <div role="rowgroup" data-testid="contracts-list">
                   {paginatedContracts.map((contract, index) => (
-                    <CompactContractRow
-                      key={contract.id}
-                      contract={contract}
-                      index={index}
-                      isSelected={selectedContracts.has(contract.id)}
-                      searchQuery={searchQuery}
-                      onSelect={() => toggleSelect(contract.id)}
-                      onView={() => pushToContract(contract.id)}
-                      onShare={() => handleShare(contract.id, contract.title || 'Contract')}
-                      onDelete={() => handleDeleteClick(contract.id, contract.title || 'Contract')}
-                      onDownload={() => handleDownload(contract.id)}
-                      onApproval={() => handleRequestApproval(contract.id, contract.title || 'Contract')}
-                      formatCurrency={formatCurrency}
-                      formatDate={formatDate}
-                    />
+                    <ErrorBoundary
+                      key={`eb-${contract.id}`}
+                      fallback={
+                        <div role="row" className="px-4 py-3 text-sm text-red-500 dark:text-red-400 bg-red-50/50 dark:bg-red-950/30 border-b border-red-100 dark:border-red-800">
+                          Failed to render contract row
+                        </div>
+                      }
+                    >
+                      <CompactContractRow
+                        key={contract.id}
+                        contract={contract}
+                        index={index}
+                        isSelected={selectedContracts.has(contract.id)}
+                        searchQuery={searchQuery}
+                        onSelect={() => toggleSelect(contract.id)}
+                        onView={() => pushToContract(contract.id)}
+                        onShare={() => handleShare(contract.id, contract.title || 'Contract')}
+                        onDelete={() => handleDeleteClick(contract.id, contract.title || 'Contract')}
+                        onDownload={() => handleDownload(contract.id)}
+                        onApproval={() => handleRequestApproval(contract.id, contract.title || 'Contract')}
+                        formatCurrency={formatCurrency}
+                        formatDate={formatDate}
+                      />
+                    </ErrorBoundary>
                   ))}
                 </div>
               </Card>
@@ -3288,10 +3154,9 @@ export default function ContractsPage() {
                 return (
                 <motion.div
                   key={contract.id}
-                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.3, delay: index * 0.04 }}
-                  whileHover={{ y: -6, scale: 1.01 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2, delay: index * 0.03 }}
                   className="transform-gpu"
                 >
                   <EnhancedContractCard
@@ -3340,9 +3205,8 @@ export default function ContractsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
           >
-            <Card className="bg-gradient-to-r from-white via-slate-50/30 to-white border-slate-200/60 shadow-lg shadow-slate-200/30 rounded-2xl overflow-hidden">
-              <div className="h-0.5 w-full bg-gradient-to-r from-violet-500/20 via-purple-500/30 to-violet-500/20" />
-              <CardContent className="py-5 px-6">
+            <Card className="bg-white border-slate-200 shadow-sm rounded-xl overflow-hidden">
+              <CardContent className="py-4 px-6">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
                   {/* Page Size Selector */}
                   <div className="flex items-center gap-3">
@@ -3353,7 +3217,8 @@ export default function ContractsPage() {
                         setPageSize(Number(e.target.value));
                         setCurrentPage(1);
                       }}
-                      className="px-4 py-2.5 text-sm border border-slate-200 rounded-xl bg-white text-slate-900 focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 cursor-pointer hover:border-violet-300 transition-all shadow-sm hover:shadow-md font-medium"
+                      aria-label="Contracts per page"
+                      className="px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white text-slate-900 focus:ring-2 focus:ring-slate-400/20 focus:border-slate-400 cursor-pointer hover:border-slate-300 transition-colors font-medium"
                     >
                       {PAGE_SIZE_OPTIONS.map((size) => (
                         <option key={size} value={size}>{size} per page</option>
@@ -3362,10 +3227,10 @@ export default function ContractsPage() {
                   </div>
                   
                   {/* Page Info */}
-                  <div className="text-sm text-slate-600 bg-gradient-to-r from-violet-50 to-purple-50 px-5 py-2.5 rounded-xl border border-violet-100/50 shadow-sm">
-                    <span className="font-bold text-violet-700 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
+                  <div className="text-sm text-slate-600 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+                    <span className="font-semibold text-slate-800 tabular-nums">{((currentPage - 1) * pageSize) + 1}–{Math.min(currentPage * pageSize, contractsData?.total ?? 0)}</span>
                     <span className="text-slate-400 mx-1.5"> of </span>
-                    <span className="font-bold text-slate-800 tabular-nums">{contractsData?.total ?? 0}</span>
+                    <span className="font-semibold text-slate-800 tabular-nums">{contractsData?.total ?? 0}</span>
                     <span className="text-slate-500 ml-1"> contracts</span>
                   </div>
                   
@@ -3374,16 +3239,16 @@ export default function ContractsPage() {
                     <button
                       onClick={() => setCurrentPage(1)}
                       disabled={currentPage === 1}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
-                      title="First page"
+                      className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      aria-label="First page"
                     >
                       <ChevronsLeft className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={currentPage === 1}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
-                      title="Previous page"
+                      className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      aria-label="Previous page"
                     >
                       <ChevronLeft className="w-4 h-4" />
                     </button>
@@ -3402,20 +3267,20 @@ export default function ContractsPage() {
                           pageNum = currentPage - 2 + i;
                         }
                         return (
-                          <motion.button
+                          <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
                             className={cn(
-                              "min-w-[36px] h-9 text-sm font-semibold rounded-xl transition-all shadow-sm",
+                              "min-w-[34px] h-8 text-sm font-medium rounded-lg transition-colors",
                               currentPage === pageNum
-                                ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-500/30'
-                                : 'border border-slate-200 bg-white hover:bg-violet-50 hover:border-violet-300 text-slate-700 hover:text-violet-700 hover:shadow-md'
+                                ? 'bg-slate-800 text-white'
+                                : 'border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 text-slate-700'
                             )}
+                            aria-label={`Page ${pageNum}`}
+                            aria-current={currentPage === pageNum ? 'page' : undefined}
                           >
                             {pageNum}
-                          </motion.button>
+                          </button>
                         );
                       })}
                     </div>
@@ -3423,16 +3288,16 @@ export default function ContractsPage() {
                     <button
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={currentPage === totalPages}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
-                      title="Next page"
+                      className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      aria-label="Next page"
                     >
                       <ChevronRight className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setCurrentPage(totalPages)}
                       disabled={currentPage === totalPages}
-                      className="p-2.5 rounded-xl border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-violet-50 hover:border-violet-300 hover:text-violet-600 transition-all shadow-sm hover:shadow-md"
-                      title="Last page"
+                      className="p-2 rounded-lg border border-slate-200 bg-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50 hover:border-slate-300 transition-colors"
+                      aria-label="Last page"
                     >
                       <ChevronsRight className="w-4 h-4" />
                     </button>

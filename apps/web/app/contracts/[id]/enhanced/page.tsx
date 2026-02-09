@@ -372,14 +372,14 @@ export default function EnhancedContractDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
-                <Zap className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-purple-900 mb-1">
+                <Zap className="w-8 h-8 text-violet-600 mx-auto mb-3" />
+                <div className="text-3xl font-bold text-violet-900 mb-1">
                   {contract.intelligence.insights}
                 </div>
-                <div className="text-sm text-purple-700">Insights Generated</div>
-                <div className="text-xs text-purple-600 mt-1">
+                <div className="text-sm text-violet-700">Insights Generated</div>
+                <div className="text-xs text-violet-600 mt-1">
                   Actionable recommendations
                 </div>
               </CardContent>
@@ -472,10 +472,10 @@ export default function EnhancedContractDetailPage() {
                         <div className="text-2xl font-bold text-red-900">{contract.summary.riskFactors}</div>
                         <div className="text-sm text-red-700">Risk Factors</div>
                       </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <Award className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                        <div className="text-2xl font-bold text-purple-900">{contract.summary.complianceIssues}</div>
-                        <div className="text-sm text-purple-700">Compliance Issues</div>
+                      <div className="text-center p-4 bg-violet-50 rounded-lg">
+                        <Award className="w-6 h-6 text-violet-600 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-violet-900">{contract.summary.complianceIssues}</div>
+                        <div className="text-sm text-violet-700">Compliance Issues</div>
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <DollarSign className="w-6 h-6 text-green-600 mx-auto mb-2" />

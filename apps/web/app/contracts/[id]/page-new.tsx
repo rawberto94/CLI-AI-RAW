@@ -313,14 +313,14 @@ export default function ContractDetailPage() {
 
           {/* Artifacts Count */}
           <div className="group relative">
-            <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
             <Card className="relative bg-white dark:bg-slate-800 shadow-xl border-0">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                  <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                     <Sparkles className="h-6 w-6 text-white" />
                   </div>
-                  <FileText className="h-5 w-5 text-purple-600" />
+                  <FileText className="h-5 w-5 text-violet-600" />
                 </div>
                 <p className="text-sm font-medium text-gray-600 dark:text-slate-400 uppercase tracking-wide">AI Artifacts</p>
                 <p className="text-3xl font-bold text-gray-900 dark:text-slate-100 mt-1">
@@ -346,7 +346,7 @@ export default function ContractDetailPage() {
                       {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
                         <Building className="h-5 w-5 text-violet-600" />
                       ) : (
-                        <Users className="h-5 w-5 text-purple-600" />
+                        <Users className="h-5 w-5 text-violet-600" />
                       )}
                     </div>
                     <div>
@@ -398,7 +398,7 @@ export default function ContractDetailPage() {
               <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
                 AI-Generated Artifacts
               </h2>
-              <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-4 py-2 shadow-md">
+              <Badge className="bg-gradient-to-r from-violet-500 to-pink-500 text-white px-4 py-2 shadow-md">
                 <Sparkles className="h-4 w-4 mr-2" />
                 {contract?.artifactCount || 0} Artifacts
               </Badge>
@@ -428,7 +428,7 @@ export default function ContractDetailPage() {
                     insight.color === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
                     insight.color === 'red' ? 'bg-red-50 border-red-500' :
                     insight.color === 'blue' ? 'bg-violet-50 border-violet-500' :
-                    'bg-purple-50 border-purple-500'
+                    'bg-violet-50 border-violet-500'
                   }`}>
                     <h3 className="font-bold text-gray-900 dark:text-slate-100 mb-2">{insight.title}</h3>
                     <p className="text-sm text-gray-700 dark:text-slate-300">{insight.description}</p>

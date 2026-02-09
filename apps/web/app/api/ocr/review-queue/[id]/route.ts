@@ -5,9 +5,10 @@
  * Note: Stubbed until OcrReviewItem model is migrated to database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Update schema
 const updateSchema = z.object({
@@ -36,16 +37,17 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id } = await params;
 
     // Stubbed response - in production, fetch from Prisma
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       id,
       tenantId: session.user.tenantId,
       contractId: 'contract_stub',
@@ -59,11 +61,7 @@ export async function GET(
       message: 'Note: Using stubbed data until database migration is run',
     });
   } catch (error) {
-    console.error('[Review Queue] Error fetching item:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch review item' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -75,10 +73,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id } = await params;
@@ -86,24 +85,14 @@ export async function PATCH(
     const data = updateSchema.parse(body);
 
     // Stubbed response
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       id,
       ...data,
       updatedAt: new Date().toISOString(),
       message: 'Note: Using stubbed data until database migration is run',
     });
   } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Validation failed', details: error.errors },
-        { status: 400 }
-      );
-    }
-    console.error('[Review Queue] Error updating item:', error);
-    return NextResponse.json(
-      { error: 'Failed to update review item' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -115,30 +104,27 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check admin permission
     if (session.user.role !== 'admin' && session.user.role !== 'owner') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
 
     const { id } = await params;
     
     // Stubbed response
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       success: true, 
       id,
       message: 'Note: Using stubbed data until database migration is run',
     });
   } catch (error) {
-    console.error('[Review Queue] Error deleting item:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete review item' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

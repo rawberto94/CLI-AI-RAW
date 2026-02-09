@@ -141,8 +141,8 @@ export default function OpportunitiesPage() {
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-1.5 bg-purple-100 rounded-lg">
-                      <Calendar className="h-5 w-5 text-purple-600" />
+                    <div className="p-1.5 bg-violet-100 rounded-lg">
+                      <Calendar className="h-5 w-5 text-violet-600" />
                     </div>
                     MSA Renewal Opportunities
                   </CardTitle>
@@ -173,9 +173,9 @@ export default function OpportunitiesPage() {
                 <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">8</div>
                 <div className="text-sm text-violet-700">Negotiation Due</div>
               </div>
-              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 border border-purple-100/50">
-                <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">3</div>
-                <div className="text-sm text-purple-700">MSA Renewals</div>
+              <div className="text-center p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 border border-violet-100/50">
+                <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">3</div>
+                <div className="text-sm text-violet-700">MSA Renewals</div>
               </div>
             </div>
           </CardContent>

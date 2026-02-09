@@ -131,7 +131,7 @@ const categoryIcons: Record<Obligation['category'], React.ReactNode> = {
 const categoryColors: Record<Obligation['category'], string> = {
   payment: 'text-green-600 bg-green-100',
   delivery: 'text-violet-600 bg-violet-100',
-  reporting: 'text-purple-600 bg-purple-100',
+  reporting: 'text-violet-600 bg-violet-100',
   compliance: 'text-amber-600 bg-amber-100',
   renewal: 'text-rose-600 bg-rose-100',
   other: 'text-slate-600 bg-slate-100',
@@ -245,7 +245,7 @@ function ObligationCard({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
                     {obligation.assignee.name.charAt(0).toUpperCase()}
                   </div>
                 </TooltipTrigger>

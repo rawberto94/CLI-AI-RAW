@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     // Get unique suppliers
     const suppliers = await db.rateCardSupplier.findMany({
       select: { name: true },
@@ -25,19 +25,9 @@ export async function GET(_request: NextRequest) {
 
     const roles = [...new Set(rateCardEntries.map((rc) => rc.roleStandardized || rc.roleOriginal))].sort();
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       suppliers: suppliers.map((s) => s.name),
       roles,
     });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch options',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

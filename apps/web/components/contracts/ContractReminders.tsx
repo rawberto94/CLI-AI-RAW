@@ -289,7 +289,7 @@ export function ContractReminders({
     switch (type) {
       case 'expiration': return 'text-red-600 bg-red-50';
       case 'renewal': return 'text-violet-600 bg-violet-50';
-      case 'review': return 'text-purple-600 bg-purple-50';
+      case 'review': return 'text-violet-600 bg-violet-50';
       default: return 'text-slate-600 bg-slate-50';
     }
   };

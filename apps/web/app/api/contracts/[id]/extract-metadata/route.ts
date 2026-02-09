@@ -8,7 +8,7 @@
  * - Re-extraction of low-confidence fields
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import type { Prisma } from '@prisma/client';
 import { 
@@ -20,6 +20,7 @@ import {
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface ExtractRequest {
   documentText?: string;
@@ -47,6 +48,7 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
+  const ctx = getApiContext(request);
   try {
     const body: ExtractRequest = await request.json();
     const tenantId = await getApiTenantId(request);
@@ -57,10 +59,7 @@ export async function POST(
     if (!documentText || body.useContractText) {
       const fetchedText = await getContractText(contractId);
       if (!fetchedText) {
-        return NextResponse.json(
-          { error: 'No document text available for extraction' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'No document text available for extraction', 400);
       }
       documentText = fetchedText;
     }
@@ -71,7 +70,7 @@ export async function POST(
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: generateMockExtraction(schema, documentText),
         message: 'Extraction completed using mock data (OpenAI not configured)'
@@ -116,19 +115,13 @@ export async function POST(
     // Save extraction results
     await saveExtractionResults(contractId, extractionResult);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: extractionResult
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to extract metadata',
-        details: (error as Error).message 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -140,28 +133,23 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
+  const ctx = getApiContext(request);
   const _tenantId = await getApiTenantId(request);
 
   try {
     const results = await getExtractionResults(contractId);
     
     if (!results) {
-      return NextResponse.json({
-        success: false,
-        message: 'No extraction results found for this contract'
-      }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'An error occurred', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: results
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to retrieve extraction results' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -173,6 +161,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
+  const ctx = getApiContext(request);
   const tenantId = await getApiTenantId(request);
 
   try {
@@ -185,10 +174,7 @@ export async function PUT(
     } = body;
 
     if (!fields || typeof fields !== 'object') {
-      return NextResponse.json(
-        { error: 'No fields provided to apply' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No fields provided to apply', 400);
     }
 
     // Filter by confidence if requested
@@ -216,7 +202,7 @@ export async function PUT(
       reason: 'metadata extraction applied',
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `Applied ${Object.keys(fieldsToApply).length} fields to contract`,
       data: {
@@ -226,11 +212,8 @@ export async function PUT(
       }
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to apply metadata' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 

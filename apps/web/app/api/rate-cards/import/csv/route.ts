@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardManagementService, rateCardEntryService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -28,22 +30,15 @@ interface CSVRow {
  * POST /api/rate-cards/import/csv
  * Bulk import rate cards from CSV
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const { tenantId, data: csvData, validateOnly = false } = await request.json();
 
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400)
     }
 
     if (!csvData || !Array.isArray(csvData) || csvData.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'CSV data is required and must be an array' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'CSV data is required and must be an array', 400)
     }
 
     const results = {
@@ -161,7 +156,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: results.invalid === 0 || results.imported > 0,
       validateOnly,
       summary: {
@@ -177,19 +172,13 @@ export async function POST(request: NextRequest) {
       imported_records: validateOnly ? [] : results.imported_records
     });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET /api/rate-cards/import/csv/template
  * Download CSV template
  */
-export async function GET() {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const template = `roleOriginal,roleStandardized,seniority,supplierName,supplierTier,dailyRateUSD,currency,country,region,lineOfService,effectiveDate,expiryDate,volumeCommitted,isNegotiated,notes
 Senior Software Engineer,Software Developer,SENIOR,TechConsult Inc,TIER_1,920,USD,United States,North America,Software Development,2025-01-01,2025-12-31,5,true,Sample entry
 Mid-Level Data Scientist,Data Scientist,MID,Analytics Corp,TIER_2,750,USD,United States,North America,Data & Analytics,2025-01-01,,3,false,
@@ -201,4 +190,4 @@ Junior Business Analyst,Business Analyst,JUNIOR,Consulting Partners,TIER_3,450,U
       'Content-Disposition': 'attachment; filename="rate-cards-template.csv"'
     }
   });
-}
+});

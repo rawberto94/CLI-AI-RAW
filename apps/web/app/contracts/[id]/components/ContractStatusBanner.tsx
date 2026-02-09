@@ -94,12 +94,12 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
       result.push({
         type: 'unsigned',
         icon: PenLine,
-        bgClass: 'bg-purple-50 border-purple-200',
-        textClass: 'text-purple-700',
+        bgClass: 'bg-violet-50 border-violet-200',
+        textClass: 'text-violet-700',
         title: 'Contract Not Signed',
         subtitle: 'This contract has not been executed. It may not be legally binding.',
         buttonText: 'Request Signature',
-        buttonClass: 'border-purple-300 text-purple-700 hover:bg-purple-100',
+        buttonClass: 'border-violet-300 text-violet-700 hover:bg-violet-100',
         priority: 90,
       })
     } else if (signatureStatus === 'partially_signed') {

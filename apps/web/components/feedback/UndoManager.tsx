@@ -296,7 +296,7 @@ function UndoBar({ action, onUndo, onDismiss, timeout }: UndoBarProps) {
         initial={{ width: '100%' }}
         animate={{ width: '0%' }}
         transition={{ duration: timeout / 1000, ease: 'linear' }}
-        className="absolute bottom-0 left-4 right-4 h-0.5 bg-purple-500 rounded-full"
+        className="absolute bottom-0 left-4 right-4 h-0.5 bg-violet-500 rounded-full"
       />
     </motion.div>
   );

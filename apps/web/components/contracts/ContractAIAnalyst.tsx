@@ -169,7 +169,7 @@ const QUERY_TEMPLATES: QueryTemplate[] = [
 const CATEGORY_COLORS = {
   risk: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   financial: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-  legal: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  legal: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
   compliance: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
   general: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400',
 };
@@ -193,7 +193,7 @@ const QueryButton: React.FC<{
           className={cn(
             'w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all',
             'bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700',
-            'hover:border-indigo-400 hover:bg-purple-50 hover:shadow-md hover:shadow-purple-500/10 dark:hover:border-purple-500 dark:hover:bg-purple-900/20',
+            'hover:border-indigo-400 hover:bg-violet-50 hover:shadow-md hover:shadow-violet-500/10 dark:hover:border-violet-500 dark:hover:bg-violet-900/20',
             'disabled:opacity-50 disabled:cursor-not-allowed',
             'group active:scale-[0.98]'
           )}
@@ -201,12 +201,12 @@ const QueryButton: React.FC<{
           <div className={cn(
             'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors',
             'bg-slate-100 dark:bg-slate-700/50',
-            'group-hover:bg-purple-100 dark:group-hover:bg-purple-900/40'
+            'group-hover:bg-violet-100 dark:group-hover:bg-violet-900/40'
           )}>
-            <Icon className="w-4 h-4 text-slate-500 group-hover:text-purple-600 dark:group-hover:text-indigo-400 transition-colors" />
+            <Icon className="w-4 h-4 text-slate-500 group-hover:text-violet-600 dark:group-hover:text-indigo-400 transition-colors" />
           </div>
           <div className="flex-1 text-left">
-            <span className="text-slate-700 dark:text-slate-200 group-hover:text-purple-700 dark:group-hover:text-indigo-300 transition-colors">
+            <span className="text-slate-700 dark:text-slate-200 group-hover:text-violet-700 dark:group-hover:text-indigo-300 transition-colors">
               {template.label}
             </span>
           </div>
@@ -232,11 +232,11 @@ const SourceCard: React.FC<{ source: SourceReference; index: number }> = ({ sour
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
-      className="text-xs p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-850 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-purple-600 transition-colors group"
+      className="text-xs p-3 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-850 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-indigo-300 dark:hover:border-violet-600 transition-colors group"
     >
       <div className="flex items-center gap-2 mb-2">
         {source.section && (
-          <Badge variant="secondary" className="text-xs font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-indigo-300">
+          <Badge variant="secondary" className="text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-indigo-300">
             {source.section}
           </Badge>
         )}
@@ -288,7 +288,7 @@ const MessageBubble: React.FC<{
     >
       {/* Avatar for assistant */}
       {!isUser && (
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
+        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
           <Sparkles className="w-4 h-4 text-white" />
         </div>
       )}
@@ -297,7 +297,7 @@ const MessageBubble: React.FC<{
         className={cn(
           'max-w-[85%] rounded-2xl shadow-sm',
           isUser
-            ? 'bg-gradient-to-br from-purple-600 to-purple-700 text-white px-4 py-3'
+            ? 'bg-gradient-to-br from-violet-600 to-purple-700 text-white px-4 py-3'
             : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 px-4 py-3 border border-slate-200 dark:border-slate-700'
         )}
       >
@@ -305,17 +305,17 @@ const MessageBubble: React.FC<{
           <div className="flex items-center gap-3 py-1">
             <div className="flex gap-1">
               <motion.div 
-                className="w-2 h-2 rounded-full bg-purple-400"
+                className="w-2 h-2 rounded-full bg-violet-400"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 0.8, delay: 0 }}
               />
               <motion.div 
-                className="w-2 h-2 rounded-full bg-purple-400"
+                className="w-2 h-2 rounded-full bg-violet-400"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 0.8, delay: 0.2 }}
               />
               <motion.div 
-                className="w-2 h-2 rounded-full bg-purple-400"
+                className="w-2 h-2 rounded-full bg-violet-400"
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ repeat: Infinity, duration: 0.8, delay: 0.4 }}
               />
@@ -340,7 +340,7 @@ const MessageBubble: React.FC<{
               <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                 <button 
                   onClick={() => setShowSources(!showSources)}
-                  className="flex items-center gap-2 text-xs font-medium text-purple-600 dark:text-indigo-400 hover:text-purple-700 dark:hover:text-indigo-300 transition-colors"
+                  className="flex items-center gap-2 text-xs font-medium text-violet-600 dark:text-indigo-400 hover:text-violet-700 dark:hover:text-indigo-300 transition-colors"
                 >
                   <BookOpen className="w-3.5 h-3.5" />
                   {showSources ? 'Hide' : 'Show'} {message.sources.length} source{message.sources.length > 1 ? 's' : ''}
@@ -374,7 +374,7 @@ const MessageBubble: React.FC<{
               <div className="mt-3 pt-2 flex items-center gap-2 border-t border-slate-100 dark:border-slate-700">
                 <button
                   onClick={handleCopy}
-                  className="text-xs text-slate-400 hover:text-purple-600 dark:hover:text-indigo-400 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                  className="text-xs text-slate-400 hover:text-violet-600 dark:hover:text-indigo-400 flex items-center gap-1 px-2 py-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
                 >
                   {copied ? (
                     <>
@@ -566,13 +566,13 @@ export function ContractAIAnalyst({
         className={cn('', className)}
       >
         <Card 
-          className="border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-purple-50 via-purple-50 to-pink-50 dark:from-purple-950/50 dark:via-purple-950/50 dark:to-pink-950/50 cursor-pointer hover:shadow-lg hover:border-indigo-300 dark:hover:border-purple-600 transition-all duration-300 group"
+          className="border-indigo-200 dark:border-indigo-800 bg-gradient-to-r from-violet-50 via-purple-50 to-pink-50 dark:from-violet-950/50 dark:via-purple-950/50 dark:to-pink-950/50 cursor-pointer hover:shadow-lg hover:border-indigo-300 dark:hover:border-violet-600 transition-all duration-300 group"
           onClick={() => setIsExpanded(true)}
         >
           <CardContent className="p-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25 group-hover:scale-105 transition-transform">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25 group-hover:scale-105 transition-transform">
                   <Sparkles className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -593,13 +593,13 @@ export function ContractAIAnalyst({
                     <DollarSign className="w-3 h-3 mr-1" />
                     Financial
                   </Badge>
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 text-xs">
+                  <Badge variant="secondary" className="bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400 text-xs">
                     <Scale className="w-3 h-3 mr-1" />
                     Legal
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" className="group-hover:bg-purple-100 dark:group-hover:bg-purple-900/30">
-                  <ChevronDown className="w-4 h-4 group-hover:text-purple-600 dark:group-hover:text-indigo-400" />
+                <Button variant="ghost" size="sm" className="group-hover:bg-violet-100 dark:group-hover:bg-violet-900/30">
+                  <ChevronDown className="w-4 h-4 group-hover:text-violet-600 dark:group-hover:text-indigo-400" />
                 </Button>
               </div>
             </div>
@@ -617,10 +617,10 @@ export function ContractAIAnalyst({
   // Expanded view
   const content = (
     <Card className={cn(
-      'border-indigo-200 dark:border-indigo-800 overflow-hidden shadow-xl shadow-purple-500/10',
+      'border-indigo-200 dark:border-indigo-800 overflow-hidden shadow-xl shadow-violet-500/10',
       isFullscreen && 'fixed inset-4 z-50 m-0 shadow-2xl'
     )}>
-      <CardHeader className="bg-gradient-to-r from-purple-600 via-purple-600 to-purple-600 text-white py-5 relative overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 text-white py-5 relative overflow-hidden">
         {/* Background pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -767,8 +767,8 @@ export function ContractAIAnalyst({
                   animate={{ opacity: 1, scale: 1 }}
                   className="flex flex-col items-center justify-center h-[280px] text-center"
                 >
-                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-100 to-purple-100 dark:from-purple-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4 shadow-lg shadow-purple-500/10">
-                    <MessageSquare className="w-10 h-10 text-purple-500 dark:text-indigo-400" />
+                  <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 flex items-center justify-center mb-4 shadow-lg shadow-violet-500/10">
+                    <MessageSquare className="w-10 h-10 text-violet-500 dark:text-indigo-400" />
                   </div>
                   <h4 className="text-lg font-medium text-slate-700 dark:text-slate-200 mb-2">
                     Your AI Contract Expert
@@ -815,7 +815,7 @@ export function ContractAIAnalyst({
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask about risks, terms, clauses, or any contract detail..."
-                  className="min-h-[52px] max-h-[140px] pr-12 resize-none rounded-xl border-slate-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/20 dark:focus:border-purple-500 transition-all shadow-sm"
+                  className="min-h-[52px] max-h-[140px] pr-12 resize-none rounded-xl border-slate-300 dark:border-slate-600 focus:border-indigo-400 focus:ring-indigo-400/20 dark:focus:border-violet-500 transition-all shadow-sm"
                   rows={1}
                 />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -834,8 +834,8 @@ export function ContractAIAnalyst({
                         className={cn(
                           "p-2 rounded-lg transition-all",
                           showTemplates
-                            ? "text-purple-600 bg-purple-100 dark:bg-purple-900/30"
-                            : "text-slate-400 hover:text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                            ? "text-violet-600 bg-violet-100 dark:bg-violet-900/30"
+                            : "text-slate-400 hover:text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-900/20"
                         )}
                       >
                         <Lightbulb className="w-4 h-4" />
@@ -852,7 +852,7 @@ export function ContractAIAnalyst({
                   <Button
                     onClick={() => handleSubmit(query)}
                     disabled={!query.trim() || isLoading}
-                    className="h-[52px] w-[52px] p-0 rounded-xl bg-gradient-to-br from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
+                    className="h-[52px] w-[52px] p-0 rounded-xl bg-gradient-to-br from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-105 disabled:opacity-50 disabled:hover:scale-100"
                   >
                     {isLoading ? (
                       <Loader2 className="w-5 h-5 animate-spin" />

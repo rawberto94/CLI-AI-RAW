@@ -293,11 +293,11 @@ export function WelcomeModal() {
                 <Button
                   onClick={handleStartTour}
                   size="lg"
-                  className="flex-1 bg-white text-purple-700 hover:bg-white/90 shadow-lg gap-2 h-12 text-base font-semibold"
+                  className="flex-1 bg-white text-violet-700 hover:bg-white/90 shadow-lg gap-2 h-12 text-base font-semibold"
                 >
                   <Play className="w-5 h-5" />
                   Take the Tour
-                  <span className="text-purple-500/70 text-sm font-normal ml-1">
+                  <span className="text-violet-500/70 text-sm font-normal ml-1">
                     ~2 min
                   </span>
                 </Button>
@@ -325,7 +325,7 @@ export function WelcomeModal() {
                   id="dont-show-again"
                   checked={dontShowAgain}
                   onChange={(e) => setDontShowAgain(e.target.checked)}
-                  className="w-4 h-4 rounded border-white/30 bg-white/10 text-purple-500 focus:ring-purple-400 focus:ring-offset-0"
+                  className="w-4 h-4 rounded border-white/30 bg-white/10 text-violet-500 focus:ring-violet-400 focus:ring-offset-0"
                 />
                 <label htmlFor="dont-show-again" className="text-sm text-white/70 cursor-pointer">
                   Don&apos;t show this again

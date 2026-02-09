@@ -147,11 +147,11 @@ export const ChatBubbleTrigger = memo(({
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               data-testid="chatbot-trigger"
-              className="relative p-4 bg-gradient-to-br from-purple-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              className="relative p-4 bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
             >
               {/* Pulse animation */}
               <motion.div
-                className="absolute inset-0 rounded-full bg-purple-500"
+                className="absolute inset-0 rounded-full bg-violet-500"
                 animate={{
                   scale: [1, 1.3, 1],
                   opacity: [0.5, 0, 0.5],

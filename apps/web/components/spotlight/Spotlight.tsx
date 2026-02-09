@@ -318,7 +318,7 @@ export function SpotlightTour({
           >
             <div className="bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden">
               {/* Header */}
-              <div className="px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+              <div className="px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold">{currentStepData.title}</h3>
                   <button
@@ -346,7 +346,7 @@ export function SpotlightTour({
                 <div className="px-4 pb-3">
                   <button
                     onClick={currentStepData.onAction}
-                    className="text-sm font-medium text-purple-600 hover:text-purple-700"
+                    className="text-sm font-medium text-violet-600 hover:text-violet-700"
                   >
                     {currentStepData.actionText} →
                   </button>
@@ -379,7 +379,7 @@ export function SpotlightTour({
                         setCurrentIndex(prev => prev + 1);
                       }
                     }}
-                    className="px-3 py-1.5 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors flex items-center gap-1"
+                    className="px-3 py-1.5 text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 rounded-lg transition-colors flex items-center gap-1"
                   >
                     {isLastStep ? (
                       <>
@@ -405,9 +405,9 @@ export function SpotlightTour({
                     className={cn(
                       'w-2 h-2 rounded-full transition-all',
                       index === currentIndex
-                        ? 'bg-purple-600 w-6'
+                        ? 'bg-violet-600 w-6'
                         : index < currentIndex
-                        ? 'bg-purple-300'
+                        ? 'bg-violet-300'
                         : 'bg-slate-200'
                     )}
                     aria-label={`Go to step ${index + 1}`}

@@ -5,8 +5,8 @@
  * real-time observability data.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // =============================================================================
 // TYPES
@@ -85,8 +85,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           timestamp: new Date(now - 115000).toISOString(),
           durationMs: 1200,
           confidence: 0.9,
-          tokens: 45,
-        },
+          tokens: 45 },
         {
           id: `step-${now}-2`,
           stepNumber: 2,
@@ -97,8 +96,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           toolId: 'clause-extractor',
           toolInput: { clauseTypes: ['termination', 'cancellation'] },
           toolOutput: { clauses: [{ type: 'termination', text: '30-day notice period' }] },
-          tokens: 120,
-        },
+          tokens: 120 },
         {
           id: `step-${now}-3`,
           stepNumber: 3,
@@ -106,8 +104,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           content: 'Found 3 termination clauses: 30-day notice, for-cause termination, and convenience termination.',
           timestamp: new Date(now - 110000).toISOString(),
           durationMs: 800,
-          tokens: 65,
-        },
+          tokens: 65 },
         {
           id: `step-${now}-4`,
           stepNumber: 4,
@@ -116,8 +113,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           timestamp: new Date(now - 108000).toISOString(),
           durationMs: 1100,
           confidence: 0.85,
-          tokens: 55,
-        },
+          tokens: 55 },
         {
           id: `step-${now}-5`,
           stepNumber: 5,
@@ -126,15 +122,13 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           timestamp: new Date(now - 35000).toISOString(),
           durationMs: 1800,
           confidence: 0.92,
-          tokens: 180,
-        },
+          tokens: 180 },
       ],
       tokensUsed: 465,
       estimatedCost: 0.0023,
       contractId: 'contract-abc',
       tenantId,
-      userId: 'user-1',
-    },
+      userId: 'user-1' },
     {
       id: `trace-${now}-2`,
       agentId: 'debate-agent',
@@ -152,8 +146,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           content: '[Primary Analyst] Analyzing liability cap structure...',
           timestamp: new Date(now - 55000).toISOString(),
           durationMs: 2000,
-          tokens: 150,
-        },
+          tokens: 150 },
         {
           id: `step-d-${now}-2`,
           stepNumber: 2,
@@ -162,8 +155,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           timestamp: new Date(now - 50000).toISOString(),
           durationMs: 1800,
           confidence: 0.75,
-          tokens: 180,
-        },
+          tokens: 180 },
         {
           id: `step-d-${now}-3`,
           stepNumber: 3,
@@ -172,15 +164,13 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           timestamp: new Date(now - 45000).toISOString(),
           durationMs: 1600,
           confidence: 0.68,
-          tokens: 165,
-        },
+          tokens: 165 },
       ],
       tokensUsed: 495,
       estimatedCost: 0.0025,
       contractId: 'contract-xyz',
       tenantId,
-      userId: 'user-1',
-    },
+      userId: 'user-1' },
     {
       id: `trace-${now}-3`,
       agentId: 'extraction-agent',
@@ -199,8 +189,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           content: 'Scanning document structure to identify payment-related sections',
           timestamp: new Date(now - 298000).toISOString(),
           durationMs: 3000,
-          tokens: 200,
-        },
+          tokens: 200 },
         {
           id: `step-e-${now}-2`,
           stepNumber: 2,
@@ -211,8 +200,7 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           toolId: 'table-extractor',
           toolInput: { pageRange: [12, 15], extractType: 'rate_card' },
           toolOutput: { tables: 3, rows: 45, confidence: 0.91 },
-          tokens: 350,
-        },
+          tokens: 350 },
         {
           id: `step-e-${now}-3`,
           stepNumber: 3,
@@ -220,15 +208,13 @@ function generateMockTraces(tenantId: string): AgentTrace[] {
           content: 'Successfully extracted 45 line items across 3 rate card tables',
           timestamp: new Date(now - 285000).toISOString(),
           durationMs: 500,
-          tokens: 50,
-        },
+          tokens: 50 },
       ],
       tokensUsed: 600,
       estimatedCost: 0.003,
       contractId: 'contract-def',
       tenantId,
-      userId: 'user-2',
-    },
+      userId: 'user-2' },
   ];
 }
 
@@ -257,23 +243,15 @@ function generateMockMetrics(_tenantId: string): AgentMetrics {
       { toolId: 'document-comparator', name: 'Document Comparator', usageCount: 34 },
     ],
     costToday: 12.45,
-    costTrend: -5.2,
-  };
+    costTrend: -5.2 };
 }
 
 // =============================================================================
 // GET - Fetch traces and metrics
 // =============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    // Authentication check
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') || 'all'; // 'traces', 'metrics', 'all'
     const status = searchParams.get('status'); // Filter by status
@@ -293,8 +271,7 @@ export async function GET(request: NextRequest) {
       topAgents: [],
       topTools: [],
       costToday: 0,
-      costTrend: 0,
-    };
+      costTrend: 0 };
 
     try {
       // Try to fetch from Redis first
@@ -327,39 +304,24 @@ export async function GET(request: NextRequest) {
 
     // Return based on type
     if (type === 'traces') {
-      return NextResponse.json({ traces });
+      return createSuccessResponse(ctx, { traces });
     }
     if (type === 'metrics') {
-      return NextResponse.json({ metrics });
+      return createSuccessResponse(ctx, { metrics });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       traces,
       metrics,
-      timestamp: new Date().toISOString(),
-    });
-  } catch (error) {
-    console.error('Error fetching observability data:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch observability data' },
-      { status: 500 }
-    );
-  }
-}
+      timestamp: new Date().toISOString() });
+  });
 
 // =============================================================================
 // POST - Record new trace or update existing
 // =============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    // Authentication check
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action, trace, step, traceId } = body;
 
@@ -374,11 +336,9 @@ export async function POST(request: NextRequest) {
           status: 'running',
           steps: [],
           tokensUsed: 0,
-          estimatedCost: 0,
-        };
+          estimatedCost: 0 };
 
-        return NextResponse.json({ 
-          success: true, 
+        return createSuccessResponse(ctx, { 
           traceId: newTrace.id,
           message: 'Trace created successfully' 
         });
@@ -386,70 +346,44 @@ export async function POST(request: NextRequest) {
 
       case 'add_step': {
         if (!traceId || !step) {
-          return NextResponse.json(
-            { error: 'traceId and step are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'traceId and step are required', 400);
         }
 
         // In production, update trace in database
         const newStep: AgentStep = {
           id: `step-${Date.now()}`,
           ...step,
-          timestamp: new Date().toISOString(),
-        };
+          timestamp: new Date().toISOString() };
 
-        return NextResponse.json({
-          success: true,
+        return createSuccessResponse(ctx, {
           stepId: newStep.id,
-          message: 'Step added successfully',
-        });
+          message: 'Step added successfully' });
       }
 
       case 'complete_trace': {
         if (!traceId) {
-          return NextResponse.json(
-            { error: 'traceId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'traceId is required', 400);
         }
 
         // In production, update trace status in database
-        return NextResponse.json({
-          success: true,
-          message: 'Trace completed successfully',
-        });
+        return createSuccessResponse(ctx, {
+          message: 'Trace completed successfully' });
       }
 
       case 'fail_trace': {
         if (!traceId) {
-          return NextResponse.json(
-            { error: 'traceId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'traceId is required', 400);
         }
 
         const { error: errorMessage } = body;
 
         // In production, update trace status in database
-        return NextResponse.json({
-          success: true,
+        return createSuccessResponse(ctx, {
           message: 'Trace marked as failed',
-          error: errorMessage,
-        });
+          error: errorMessage });
       }
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
-  } catch (error) {
-    console.error('Error processing observability request:', error);
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
-  }
-}
+  });

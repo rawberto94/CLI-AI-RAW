@@ -3,10 +3,10 @@
  * Track and retrieve system activity - Database persisted
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { auditTrailService } from 'data-orchestration/services';
 type ActivityType = 
   | 'contract_created'
   | 'contract_updated'
@@ -67,138 +67,119 @@ function transformActivity(dbActivity: any): ActivityResponse {
   };
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const contractId = searchParams.get('contractId');
-    const userId = searchParams.get('userId');
-    const type = searchParams.get('type');
-    const category = searchParams.get('category');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const tenantId = getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const contractId = searchParams.get('contractId');
+  const userId = searchParams.get('userId');
+  const type = searchParams.get('type');
+  const category = searchParams.get('category');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const offset = parseInt(searchParams.get('offset') || '0');
+  const tenantId = ctx.tenantId;
 
-    // Build where clause
-    const where: any = {};
+  // Build where clause
+  const where: any = {};
 
-    if (tenantId) {
-      where.tenantId = tenantId;
-    }
-
-    // Filter by contract
-    if (contractId) {
-      where.contractId = contractId;
-    }
-
-    // Filter by user
-    if (userId) {
-      where.userId = userId;
-    }
-
-    // Filter by type
-    if (type) {
-      where.type = type;
-    }
-
-    // Filter by category
-    if (category) {
-      const categoryTypes: Record<string, string[]> = {
-        contracts: ['contract_created', 'contract_updated', 'contract_deleted', 'contract_viewed', 'contract_downloaded', 'upload', 'edit'],
-        approvals: ['contract_approved', 'contract_rejected', 'approval', 'rejection'],
-        processing: ['processing_started', 'processing_completed', 'processing_failed'],
-        system: ['user_login', 'settings_changed', 'import_completed', 'export_completed'],
-        collaboration: ['comment_added', 'comment', 'share'],
-      };
-      const types = categoryTypes[category];
-      if (types) {
-        where.type = { in: types };
-      }
-    }
-
-    // Get total count
-    const total = await prisma.contractActivity.count({ where });
-
-    // Fetch activities from database
-    const dbActivities = await prisma.contractActivity.findMany({
-      where,
-      orderBy: { timestamp: 'desc' },
-      skip: offset,
-      take: limit,
-    });
-
-    const activities = dbActivities.map(transformActivity);
-
-    return NextResponse.json({
-      activities,
-      total,
-      limit,
-      offset,
-      hasMore: offset + limit < total,
-    });
-  } catch (error) {
-    console.error('Failed to fetch activities:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch activities' },
-      { status: 500 }
-    );
+  if (tenantId) {
+    where.tenantId = tenantId;
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const {
-      type,
-      title,
-      description,
+  // Filter by contract
+  if (contractId) {
+    where.contractId = contractId;
+  }
+
+  // Filter by user
+  if (userId) {
+    where.userId = userId;
+  }
+
+  // Filter by type
+  if (type) {
+    where.type = type;
+  }
+
+  // Filter by category
+  if (category) {
+    const categoryTypes: Record<string, string[]> = {
+      contracts: ['contract_created', 'contract_updated', 'contract_deleted', 'contract_viewed', 'contract_downloaded', 'upload', 'edit'],
+      approvals: ['contract_approved', 'contract_rejected', 'approval', 'rejection'],
+      processing: ['processing_started', 'processing_completed', 'processing_failed'],
+      system: ['user_login', 'settings_changed', 'import_completed', 'export_completed'],
+      collaboration: ['comment_added', 'comment', 'share'],
+    };
+    const types = categoryTypes[category];
+    if (types) {
+      where.type = { in: types };
+    }
+  }
+
+  // Get total count
+  const total = await prisma.contractActivity.count({ where });
+
+  // Fetch activities from database
+  const dbActivities = await prisma.contractActivity.findMany({
+    where,
+    orderBy: { timestamp: 'desc' },
+    skip: offset,
+    take: limit,
+  });
+
+  const activities = dbActivities.map(transformActivity);
+
+  return createSuccessResponse(ctx, {
+    activities,
+    total,
+    limit,
+    offset,
+    hasMore: offset + limit < total,
+  });
+});
+
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const {
+    type,
+    title,
+    description,
+    userId,
+    userName,
+    userEmail,
+    userAvatar,
+    metadata,
+    contractId,
+    contractName,
+  } = body;
+
+  const tenantId = ctx.tenantId || body.tenantId;
+
+  if (!type || !title || !userId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'type, title, and userId are required', 400);
+  }
+
+  // Create activity in database
+  const dbActivity = await prisma.contractActivity.create({
+    data: {
+      contractId: contractId || 'system',
+      tenantId,
       userId,
-      userName,
-      userEmail,
-      userAvatar,
-      metadata,
-      contractId,
-      contractName,
-    } = body;
-
-    const tenantId = getApiTenantId(request) || body.tenantId;
-
-    if (!type || !title || !userId) {
-      return NextResponse.json(
-        { error: 'type, title, and userId are required' },
-        { status: 400 }
-      );
-    }
-
-    // Create activity in database
-    const dbActivity = await prisma.contractActivity.create({
-      data: {
-        contractId: contractId || 'system',
-        tenantId,
-        userId,
-        type,
-        action: title,
-        details: description,
-        metadata: {
-          userName,
-          userEmail,
-          userAvatar,
-          contractName,
-          ...metadata,
-        },
+      type,
+      action: title,
+      details: description,
+      metadata: {
+        userName,
+        userEmail,
+        userAvatar,
+        contractName,
+        ...metadata,
       },
-    });
+    },
+  });
 
-    const activity = transformActivity(dbActivity);
+  const activity = transformActivity(dbActivity);
 
-    return NextResponse.json({ activity }, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create activity:', error);
-    return NextResponse.json(
-      { error: 'Failed to create activity' },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, { activity }, { status: 201 });
+});
 
 // Helper function to log activity (can be imported and used elsewhere)
 export async function logActivity(

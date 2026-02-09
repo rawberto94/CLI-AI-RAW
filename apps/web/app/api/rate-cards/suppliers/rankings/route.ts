@@ -10,18 +10,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
 import { prisma } from '@/lib/prisma';
 import { SupplierBenchmarkService, supplierIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
     const useIntelligence = searchParams.get('useIntelligence') !== 'false';
@@ -32,26 +25,20 @@ export async function GET(request: NextRequest) {
     if (useIntelligence) {
       // Use the new supplier intelligence service for comprehensive scoring
       rankings = await supplierIntelligenceService.getAllSupplierScores(
-        session.user.tenantId
+        ctx.tenantId
       );
     } else {
       // Fall back to legacy benchmark service
       const benchmarkService = new SupplierBenchmarkService(prisma);
       rankings = await benchmarkService.rankSuppliers(
-        session.user.tenantId,
+        ctx.tenantId,
         periodMonths
       );
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       rankings,
       count: rankings.length,
       generatedAt: new Date().toISOString()
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch supplier rankings' },
-      { status: 500 }
-    );
-  }
-}
+  });

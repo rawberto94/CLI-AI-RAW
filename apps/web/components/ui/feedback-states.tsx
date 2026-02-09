@@ -352,7 +352,7 @@ const errorConfig = {
     icon: <Lock />,
     title: 'Access denied',
     description: "You don't have permission to view this content. Contact your administrator if you think this is a mistake.",
-    color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-500',
+    color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-500',
   },
   server: {
     icon: <AlertCircle />,
@@ -602,20 +602,20 @@ export function ProFeatureTeaser({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-8"
+      className="relative overflow-hidden rounded-2xl border border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 to-pink-50 dark:from-violet-900/20 dark:to-pink-900/20 p-8"
     >
       {/* Decorative gradient orbs */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-400/20 rounded-full blur-3xl" />
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-violet-400/20 rounded-full blur-3xl" />
       <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-pink-400/20 rounded-full blur-3xl" />
 
       <div className="relative z-10 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white mb-6 shadow-lg shadow-purple-500/30">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 text-white mb-6 shadow-lg shadow-violet-500/30">
           <span className="w-8 h-8">{icon}</span>
         </div>
 
         <div className="inline-flex items-center gap-2 mb-4">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h3>
-          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-full">
             Pro
           </span>
         </div>
@@ -629,7 +629,7 @@ export function ProFeatureTeaser({
                 key={index}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/60 dark:bg-slate-800/60 text-sm text-slate-700 dark:text-slate-300"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-violet-500" />
                 {feature}
               </li>
             ))}
@@ -642,7 +642,7 @@ export function ProFeatureTeaser({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onUpgrade}
-              className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg shadow-purple-500/30"
+              className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white hover:from-violet-600 hover:to-pink-600 transition-all shadow-lg shadow-violet-500/30"
             >
               <Zap className="w-4 h-4" />
               Upgrade to Pro
@@ -651,7 +651,7 @@ export function ProFeatureTeaser({
           {onLearnMore && (
             <button
               onClick={onLearnMore}
-              className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline"
+              className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:underline"
             >
               Learn more
             </button>

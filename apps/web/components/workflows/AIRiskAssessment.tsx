@@ -363,7 +363,7 @@ export function AIRiskAssessment({
             <div>
               <h3 className={cn('font-bold text-lg flex items-center gap-2', config.color)}>
                 {config.label}
-                <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full font-medium flex items-center gap-1">
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full font-medium flex items-center gap-1">
                   <Sparkles className="w-3 h-3" />
                   AI-Powered
                 </span>
@@ -430,7 +430,7 @@ export function AIRiskAssessment({
                           <div className={cn('font-medium text-sm', factorConfig.color)}>
                             {factor.title}
                             {factor.autoDetected && (
-                              <span className="ml-2 text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded">
+                              <span className="ml-2 text-[10px] bg-violet-100 text-violet-600 px-1.5 py-0.5 rounded">
                                 Auto-detected
                               </span>
                             )}
@@ -468,7 +468,7 @@ export function AIRiskAssessment({
         {onViewDetails && (
           <button
             onClick={onViewDetails}
-            className="text-xs text-purple-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+            className="text-xs text-violet-600 hover:text-indigo-800 font-medium flex items-center gap-1"
           >
             View Full Analysis
             <ExternalLink className="w-3 h-3" />

@@ -181,10 +181,10 @@ const getEventStyle = (type: TimelineEvent['type']) => {
     case 'commented':
     case 'shared':
       return {
-        iconBg: 'bg-blue-100',
-        iconColor: 'text-blue-600',
-        dotColor: 'bg-blue-500',
-        lineColor: 'border-blue-200',
+        iconBg: 'bg-violet-100',
+        iconColor: 'text-violet-600',
+        dotColor: 'bg-violet-500',
+        lineColor: 'border-violet-200',
       }
     case 'archived':
     case 'locked':

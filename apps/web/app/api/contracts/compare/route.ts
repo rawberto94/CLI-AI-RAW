@@ -3,9 +3,11 @@
  * Compare multiple contracts and find differences
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import type { Prisma } from '@prisma/client';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,78 +36,59 @@ interface ComparisonResult {
   };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    let contractIds: string[];
-    
-    // Support both formats: { contractIds: [...] } or { contractId1, contractId2 }
-    if (body.contractId1 && body.contractId2) {
-      contractIds = [body.contractId1, body.contractId2];
-    } else if (body.contractIds && Array.isArray(body.contractIds)) {
-      contractIds = body.contractIds;
-    } else {
-      return NextResponse.json(
-        { error: 'Provide either contractIds array or contractId1 and contractId2' },
-        { status: 400 }
-      );
-    }
-
-    if (contractIds.length < 2) {
-      return NextResponse.json(
-        { error: 'At least 2 contractIds are required for comparison' },
-        { status: 400 }
-      );
-    }
-
-    if (contractIds.length > 5) {
-      return NextResponse.json(
-        { error: 'Maximum 5 contracts can be compared at once' },
-        { status: 400 }
-      );
-    }
-
-    // Fetch contracts with full data for comparison
-    const contracts = await prisma.contract.findMany({
-      where: { id: { in: contractIds } },
-      include: {
-        contractMetadata: true,
-        artifacts: {
-          select: {
-            id: true,
-            type: true,
-            data: true,
-            status: true,
-          },
-          take: 30,
-        },
-      },
-    });
-
-    if (contracts.length < 2) {
-      return NextResponse.json(
-        { error: 'Could not find all specified contracts' },
-        { status: 404 }
-      );
-    }
-
-    // If using new format (contractId1/contractId2), return enhanced comparison result
-    if (body.contractId1 && body.contractId2) {
-      const result = await compareContractsEnhanced(contracts[0], contracts[1]);
-      return NextResponse.json(result);
-    }
-
-    // Otherwise use existing comparison logic
-    const result = await compareContracts(contracts);
-
-    return NextResponse.json(result);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: (error as Error).message },
-      { status: 500 }
-    );
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  let contractIds: string[];
+  
+  // Support both formats: { contractIds: [...] } or { contractId1, contractId2 }
+  if (body.contractId1 && body.contractId2) {
+    contractIds = [body.contractId1, body.contractId2];
+  } else if (body.contractIds && Array.isArray(body.contractIds)) {
+    contractIds = body.contractIds;
+  } else {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Provide either contractIds array or contractId1 and contractId2', 400);
   }
-}
+
+  if (contractIds.length < 2) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'At least 2 contractIds are required for comparison', 400);
+  }
+
+  if (contractIds.length > 5) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Maximum 5 contracts can be compared at once', 400);
+  }
+
+  // Fetch contracts with full data for comparison
+  const contracts = await prisma.contract.findMany({
+    where: { id: { in: contractIds } },
+    include: {
+      contractMetadata: true,
+      artifacts: {
+        select: {
+          id: true,
+          type: true,
+          data: true,
+          status: true,
+        },
+        take: 30,
+      },
+    },
+  });
+
+  if (contracts.length < 2) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Could not find all specified contracts', 404);
+  }
+
+  // If using new format (contractId1/contractId2), return enhanced comparison result
+  if (body.contractId1 && body.contractId2) {
+    const result = await compareContractsEnhanced(contracts[0], contracts[1]);
+    return createSuccessResponse(ctx, result);
+  }
+
+  // Otherwise use existing comparison logic
+  const result = await compareContracts(contracts);
+
+  return createSuccessResponse(ctx, result);
+});
 
 /**
  * Contract data from database for comparison

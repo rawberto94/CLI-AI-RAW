@@ -431,8 +431,8 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
                 <div className="p-3 rounded-xl bg-violet-100">
                   <FileSpreadsheet className="h-6 w-6 text-violet-600" />
                 </div>
-                <div className="p-3 rounded-xl bg-purple-100">
-                  <FileJson className="h-6 w-6 text-purple-600" />
+                <div className="p-3 rounded-xl bg-violet-100">
+                  <FileJson className="h-6 w-6 text-violet-600" />
                 </div>
               </div>
               <p className="text-sm font-medium text-slate-700">

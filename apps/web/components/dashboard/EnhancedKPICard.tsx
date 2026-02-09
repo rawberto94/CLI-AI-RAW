@@ -82,11 +82,11 @@ const variantStyles = {
     hoverBg: 'group-hover:bg-red-50 dark:group-hover:bg-red-950/50',
   },
   info: {
-    border: 'border-purple-200 dark:border-purple-800',
-    iconBg: 'bg-purple-50 dark:bg-purple-950',
-    iconColor: 'text-purple-600 dark:text-purple-400',
+    border: 'border-violet-200 dark:border-violet-800',
+    iconBg: 'bg-violet-50 dark:bg-violet-950',
+    iconColor: 'text-violet-600 dark:text-violet-400',
     sparkline: '#8B5CF6',
-    hoverBg: 'group-hover:bg-purple-50 dark:group-hover:bg-purple-950/50',
+    hoverBg: 'group-hover:bg-violet-50 dark:group-hover:bg-violet-950/50',
   },
 };
 

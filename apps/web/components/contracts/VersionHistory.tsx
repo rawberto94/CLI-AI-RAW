@@ -264,8 +264,8 @@ export const VersionHistory = memo(function VersionHistory({
       <Card className={className}>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-purple-100">
-              <History className="h-5 w-5 text-purple-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <History className="h-5 w-5 text-violet-600" />
             </div>
             <div className="flex-1">
               <h3 className="font-semibold">Version History</h3>
@@ -313,7 +313,7 @@ export const VersionHistory = memo(function VersionHistory({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <History className="h-5 w-5 text-purple-600" />
+              <History className="h-5 w-5 text-violet-600" />
               Version History
             </CardTitle>
             <CardDescription>
@@ -346,7 +346,7 @@ export const VersionHistory = memo(function VersionHistory({
       <CardContent>
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-purple-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading versions...</span>
           </div>
         ) : versions.length === 0 ? (

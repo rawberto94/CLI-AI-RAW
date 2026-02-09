@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DropboxConnector } from '@/lib/integrations/connectors/dropbox.connector';
+import { auditTrailService } from 'data-orchestration/services';
 
 export async function GET(request: NextRequest) {
   try {

@@ -28,10 +28,10 @@ export default function SignInLoading() {
               <Shield className="h-4 w-4 text-violet-600" />
             </div>
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <Key className="h-4 w-4 text-purple-600" />
+              <Key className="h-4 w-4 text-violet-600" />
             </div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <User className="h-4 w-4 text-purple-600" />
+              <User className="h-4 w-4 text-violet-600" />
             </div>
           </motion.div>
         </div>

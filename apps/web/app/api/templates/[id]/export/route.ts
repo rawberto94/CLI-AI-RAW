@@ -6,7 +6,7 @@
  * Exports a template to the specified format.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import {
@@ -14,15 +14,18 @@ import {
   generatePDFDocument,
   type ContractTemplate,
 } from '@/lib/templates/document-service';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id } = await params;
@@ -35,12 +38,12 @@ export async function GET(
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Check tenant access
     if (template.tenantId !== session.user.tenantId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 
     // Parse clauses from JSON
@@ -116,10 +119,6 @@ export async function GET(
       });
     }
   } catch (error) {
-    console.error('Template export error:', error);
-    return NextResponse.json(
-      { error: 'Failed to export template', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

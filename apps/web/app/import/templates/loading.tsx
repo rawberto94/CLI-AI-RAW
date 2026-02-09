@@ -21,7 +21,7 @@ export default function TemplateImportLoading() {
         <div className="relative w-32 h-32">
           {/* Center icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-2xl">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-2xl">
               <FileStack className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -50,7 +50,7 @@ export default function TemplateImportLoading() {
                     top: `calc(50% + ${y}px - 16px)`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-purple-600" />
+                  <Icon className="w-4 h-4 text-violet-600" />
                 </motion.div>
               );
             })}
@@ -64,7 +64,7 @@ export default function TemplateImportLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Template Import
           </h2>
           <p className="mt-2 text-sm text-gray-500 flex items-center justify-center gap-1">

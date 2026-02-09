@@ -301,7 +301,7 @@ export function SearchSpotlight({
                               </kbd>
                             )}
                             {isSelected && (
-                              <ArrowRight className="h-4 w-4 text-purple-500" />
+                              <ArrowRight className="h-4 w-4 text-violet-500" />
                             )}
                           </button>
                         );

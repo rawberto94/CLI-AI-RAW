@@ -278,7 +278,7 @@ export function AIAnalysisPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-purple-500" />
+          <Sparkles className="h-5 w-5 text-violet-500" />
           <h3 className="font-semibold text-gray-900 dark:text-white">
             AI Contract Analysis
           </h3>
@@ -333,7 +333,7 @@ export function AIAnalysisPanel({
             className={cn(
               "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full",
               "bg-white dark:bg-gray-700 border",
-              "hover:bg-purple-50 hover:border-purple-300 dark:hover:bg-purple-900/20",
+              "hover:bg-violet-50 hover:border-violet-300 dark:hover:bg-violet-900/20",
               "transition-colors whitespace-nowrap",
               isLoading && "opacity-50 cursor-not-allowed"
             )}
@@ -376,8 +376,8 @@ export function AIAnalysisPanel({
                   className={cn(
                     "flex items-center gap-2 p-2 text-left text-sm rounded",
                     "bg-white dark:bg-gray-700 border",
-                    "hover:bg-purple-50 hover:border-purple-300",
-                    "dark:hover:bg-purple-900/20",
+                    "hover:bg-violet-50 hover:border-violet-300",
+                    "dark:hover:bg-violet-900/20",
                     "transition-colors",
                     isLoading && "opacity-50 cursor-not-allowed"
                   )}
@@ -399,7 +399,7 @@ export function AIAnalysisPanel({
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
         {conversation.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-8">
-            <Sparkles className="h-12 w-12 text-purple-300 mb-4" />
+            <Sparkles className="h-12 w-12 text-violet-300 mb-4" />
             <h4 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
               Ask anything about this contract
             </h4>
@@ -418,7 +418,7 @@ export function AIAnalysisPanel({
                   key={i}
                   onClick={() => handleSuggestedQuestion(suggestion)}
                   className="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 rounded-full 
-                           hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                           hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
                 >
                   {suggestion}
                 </button>
@@ -436,21 +436,21 @@ export function AIAnalysisPanel({
                 )}
               >
                 {message.role === 'assistant' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 
                                 flex items-center justify-center">
-                    <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                    <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
                   </div>
                 )}
                 <div className={cn(
                   "max-w-[80%] rounded-lg px-4 py-3",
                   message.role === 'user'
-                    ? "bg-purple-600 text-white"
+                    ? "bg-violet-600 text-white"
                     : "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
                 )}>
                   {message.template && (
                     <div className={cn(
                       "flex items-center gap-1 text-xs mb-2",
-                      message.role === 'user' ? "text-purple-200" : "text-gray-500"
+                      message.role === 'user' ? "text-violet-200" : "text-gray-500"
                     )}>
                       {TEMPLATE_ICONS[message.template]}
                       <span>
@@ -484,7 +484,7 @@ export function AIAnalysisPanel({
                   )}
                 </div>
                 {message.role === 'user' && (
-                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-600 
+                  <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-600 
                                 flex items-center justify-center text-white font-medium text-sm">
                     You
                   </div>
@@ -495,9 +495,9 @@ export function AIAnalysisPanel({
             {/* Loading indicator */}
             {isLoading && (
               <div className="flex gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/30 
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900/30 
                               flex items-center justify-center">
-                  <Loader2 className="h-4 w-4 text-purple-600 dark:text-purple-400 animate-spin" />
+                  <Loader2 className="h-4 w-4 text-violet-600 dark:text-violet-400 animate-spin" />
                 </div>
                 <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-3">
                   <div className="flex items-center gap-2 text-sm text-gray-500">
@@ -520,7 +520,7 @@ export function AIAnalysisPanel({
                       key={i}
                       onClick={() => handleSuggestedQuestion(question)}
                       className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded 
-                               hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                               hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors"
                     >
                       {question}
                     </button>
@@ -563,7 +563,7 @@ export function AIAnalysisPanel({
               rows={1}
               className={cn(
                 "w-full px-4 py-2 pr-10 border rounded-lg resize-none",
-                "focus:outline-none focus:ring-2 focus:ring-purple-500",
+                "focus:outline-none focus:ring-2 focus:ring-violet-500",
                 "bg-white dark:bg-gray-800",
                 "disabled:opacity-50 disabled:cursor-not-allowed"
               )}
@@ -572,7 +572,7 @@ export function AIAnalysisPanel({
             {/* Template selector in input */}
             {selectedTemplate && (
               <div className="absolute left-2 top-1/2 -translate-y-1/2 flex items-center gap-1 
-                            px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded text-xs">
+                            px-2 py-0.5 bg-violet-100 dark:bg-violet-900/30 rounded text-xs">
                 {TEMPLATE_ICONS[selectedTemplate]}
                 <span>{templates.find(t => t.id === selectedTemplate)?.name}</span>
                 <button
@@ -590,8 +590,8 @@ export function AIAnalysisPanel({
             disabled={isLoading || (!inputValue.trim() && !selectedTemplate)}
             className={cn(
               "px-4 py-2 rounded-lg flex items-center gap-2",
-              "bg-purple-600 text-white",
-              "hover:bg-purple-700",
+              "bg-violet-600 text-white",
+              "hover:bg-violet-700",
               "disabled:opacity-50 disabled:cursor-not-allowed",
               "transition-colors"
             )}

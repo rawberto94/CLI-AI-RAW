@@ -87,7 +87,7 @@ const statusConfig = {
 const planConfig = {
   free: { label: "Free", color: "bg-slate-100 text-slate-800" },
   starter: { label: "Starter", color: "bg-violet-100 text-violet-800" },
-  professional: { label: "Professional", color: "bg-purple-100 text-purple-800" },
+  professional: { label: "Professional", color: "bg-violet-100 text-violet-800" },
   enterprise: { label: "Enterprise", color: "bg-amber-100 text-amber-800" },
 };
 
@@ -294,8 +294,8 @@ export default function PlatformAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Users className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Users className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.totalUsers}</p>

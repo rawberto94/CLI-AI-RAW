@@ -403,10 +403,10 @@ function InsightCard({ type, title, description, priority, action }: InsightCard
       iconColor: 'text-amber-500'
     },
     action: {
-      bg: 'bg-purple-50',
+      bg: 'bg-violet-50',
       border: 'border-indigo-200',
       icon: Target,
-      iconColor: 'text-purple-500'
+      iconColor: 'text-violet-500'
     }
   }
 
@@ -684,7 +684,7 @@ export function ComprehensiveAIAnalysis({
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/25">
+          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
             <Brain className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -706,7 +706,7 @@ export function ComprehensiveAIAnalysis({
             <Button 
               size="sm" 
               variant="outline"
-              className="gap-2 border-purple-200 text-purple-700 hover:bg-purple-50"
+              className="gap-2 border-violet-200 text-violet-700 hover:bg-violet-50"
               onClick={runDeepAnalysis}
               disabled={isRunningDeepAnalysis}
             >
@@ -725,7 +725,7 @@ export function ComprehensiveAIAnalysis({
           )}
           <Button 
             size="sm" 
-            className="gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+            className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             onClick={() => handleRequestAnalysis('full contract')}
           >
             <RefreshCw className="h-4 w-4" />
@@ -826,7 +826,7 @@ export function ComprehensiveAIAnalysis({
               {/* Key Clauses */}
               <div className="p-4 rounded-xl border border-slate-200 bg-white">
                 <div className="flex items-center gap-2 mb-2">
-                  <FileCheck className="h-4 w-4 text-purple-500" />
+                  <FileCheck className="h-4 w-4 text-violet-500" />
                   <span className="text-xs font-medium text-slate-500">Clauses</span>
                 </div>
                 <p className="text-2xl font-bold text-slate-800">
@@ -955,23 +955,23 @@ export function ComprehensiveAIAnalysis({
 
             {/* Industry Benchmarks Comparison */}
             {deepAnalysisResult.industryBenchmarks && deepAnalysisResult.industryBenchmarks.comparisons.length > 0 && (
-              <Card className="bg-gradient-to-r from-purple-50 to-purple-50 border-indigo-200">
+              <Card className="bg-gradient-to-r from-violet-50 to-purple-50 border-indigo-200">
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-500 text-white">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white">
                       <BarChart3 className="h-4 w-4" />
                     </div>
                     <div>
                       <h4 className="font-semibold text-indigo-800">Industry Benchmark Comparison</h4>
-                      <p className="text-xs text-purple-600">How your contract terms compare to market standards</p>
+                      <p className="text-xs text-violet-600">How your contract terms compare to market standards</p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                     <div className="bg-white/60 rounded-lg p-2 text-center">
-                      <div className="text-lg font-bold text-purple-700">
+                      <div className="text-lg font-bold text-violet-700">
                         {deepAnalysisResult.industryBenchmarks.fieldsCompared}
                       </div>
-                      <div className="text-xs text-purple-600">Fields Compared</div>
+                      <div className="text-xs text-violet-600">Fields Compared</div>
                     </div>
                     <div className="bg-white/60 rounded-lg p-2 text-center">
                       <div className="text-lg font-bold text-violet-700">
@@ -1033,7 +1033,7 @@ export function ComprehensiveAIAnalysis({
                           <span className="text-xs font-medium">{comp.benchmark.benchmarks.median} {comp.benchmark.benchmarks.unit}</span>
                         </div>
                         {comp.recommendation && (
-                          <p className="text-xs text-purple-600 mt-1 flex items-start gap-1">
+                          <p className="text-xs text-violet-600 mt-1 flex items-start gap-1">
                             <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
                             {comp.recommendation}
                           </p>
@@ -1101,8 +1101,8 @@ export function ComprehensiveAIAnalysis({
               title="Discovered Information"
               description={`${deepAnalysisResult.discoveredFields.total} data points automatically extracted`}
               icon={Search}
-              iconColor="bg-gradient-to-br from-purple-500 to-pink-500"
-              bgGradient="bg-gradient-to-r from-purple-500 to-pink-500"
+              iconColor="bg-gradient-to-br from-violet-500 to-pink-500"
+              bgGradient="bg-gradient-to-r from-violet-500 to-pink-500"
               status="complete"
               badge={`${deepAnalysisResult.discoveredFields.highConfidence || 0} high confidence`}
             >
@@ -1387,8 +1387,8 @@ export function ComprehensiveAIAnalysis({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {data.overview.parties.map((party: any, i: number) => (
                       <div key={i} className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg">
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                          <Users className="h-4 w-4 text-purple-600" />
+                        <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+                          <Users className="h-4 w-4 text-violet-600" />
                         </div>
                         <div>
                           <p className="font-medium text-slate-800 text-sm">
@@ -1612,8 +1612,8 @@ export function ComprehensiveAIAnalysis({
           title="Key Clauses"
           description="Important contractual provisions and terms"
           icon={FileCheck}
-          iconColor="bg-gradient-to-br from-purple-500 to-purple-500"
-          bgGradient="bg-gradient-to-r from-purple-500 to-purple-500"
+          iconColor="bg-gradient-to-br from-violet-500 to-purple-500"
+          bgGradient="bg-gradient-to-r from-violet-500 to-purple-500"
           badge={`${stats.clauseCount} found`}
           status={data.clauses ? 'complete' : 'missing'}
         >
@@ -1750,8 +1750,8 @@ export function ComprehensiveAIAnalysis({
           title="Obligations & Milestones"
           description="Contractual obligations and key dates"
           icon={ListChecks}
-          iconColor="bg-gradient-to-br from-purple-500 to-fuchsia-500"
-          bgGradient="bg-gradient-to-r from-purple-500 to-fuchsia-500"
+          iconColor="bg-gradient-to-br from-violet-500 to-fuchsia-500"
+          bgGradient="bg-gradient-to-r from-violet-500 to-fuchsia-500"
           badge={stats.obligationCount > 0 ? `${stats.obligationCount} tracked` : undefined}
           status={data.obligations ? 'complete' : 'missing'}
           defaultExpanded={activeView === 'detailed'}
@@ -1874,10 +1874,10 @@ export function ComprehensiveAIAnalysis({
       </div>
 
       {/* AI Chat CTA */}
-      <Card className="border-indigo-200 bg-gradient-to-r from-purple-50 to-purple-50">
+      <Card className="border-indigo-200 bg-gradient-to-r from-violet-50 to-purple-50">
         <CardContent className="p-6">
           <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
               <MessageSquare className="h-7 w-7 text-white" />
             </div>
             <div className="flex-1 text-center sm:text-left">
@@ -1887,7 +1887,7 @@ export function ComprehensiveAIAnalysis({
               </p>
             </div>
             <Button 
-              className="gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+              className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               onClick={() => handleRequestAnalysis('any questions')}
             >
               <Sparkles className="h-4 w-4" />

@@ -84,12 +84,12 @@ interface SavingsTrackerWidgetProps {
 
 const formatCurrency = (amount: number): string => {
   if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
+    return `CHF ${(amount / 1000000).toFixed(1)}M`;
   }
   if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(0)}K`;
+    return `CHF ${(amount / 1000).toFixed(0)}K`;
   }
-  return `$${amount.toFixed(0)}`;
+  return `CHF ${amount.toFixed(0)}`;
 };
 
 const getConfidenceColor = (confidence: SavingsOpportunity['confidence']) => {

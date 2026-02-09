@@ -66,7 +66,7 @@ interface RenewalsCalendarProps {
 // Status colors
 const statusColors = {
   'upcoming': 'bg-violet-500',
-  'in-progress': 'bg-blue-500',
+  'in-progress': 'bg-violet-500',
   'completed': 'bg-green-500',
   'lapsed': 'bg-red-500',
   'terminated': 'bg-slate-500',
@@ -74,7 +74,7 @@ const statusColors = {
 
 const statusBadgeColors = {
   'upcoming': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
-  'in-progress': 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+  'in-progress': 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
   'completed': 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
   'lapsed': 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
   'terminated': 'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
@@ -84,7 +84,7 @@ const recommendationColors = {
   'renew': 'text-green-600 dark:text-green-400',
   'renegotiate': 'text-amber-600 dark:text-amber-400',
   'terminate': 'text-red-600 dark:text-red-400',
-  'review': 'text-blue-600 dark:text-blue-400',
+  'review': 'text-violet-600 dark:text-violet-400',
 };
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -532,7 +532,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
               <span className="text-slate-600 dark:text-slate-400">Upcoming</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <div className="w-2.5 h-2.5 rounded-full bg-violet-500" />
               <span className="text-slate-600 dark:text-slate-400">In Progress</span>
             </div>
             <div className="flex items-center gap-1.5">

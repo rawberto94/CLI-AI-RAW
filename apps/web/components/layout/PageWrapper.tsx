@@ -26,7 +26,7 @@ export function PageLoading({ message = 'Loading...', className }: PageLoadingPr
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
       >
-        <Loader2 className="h-8 w-8 text-purple-600" />
+        <Loader2 className="h-8 w-8 text-violet-600" />
       </motion.div>
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>

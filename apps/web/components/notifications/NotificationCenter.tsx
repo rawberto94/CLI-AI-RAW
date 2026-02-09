@@ -107,7 +107,7 @@ export function NotificationCenter({
       case 'success': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'warning': return <AlertTriangle className="h-4 w-4 text-amber-500" />;
       case 'error': return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case 'ai': return <Sparkles className="h-4 w-4 text-purple-500" />;
+      case 'ai': return <Sparkles className="h-4 w-4 text-violet-500" />;
       default: return <Info className="h-4 w-4 text-violet-500" />;
     }
   };

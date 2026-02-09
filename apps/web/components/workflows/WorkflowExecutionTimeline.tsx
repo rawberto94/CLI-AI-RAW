@@ -205,7 +205,7 @@ export function WorkflowExecutionTimeline({
             </div>
             <div className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-500 shadow-sm"
+                className="h-full bg-gradient-to-r from-violet-500 to-purple-600 transition-all duration-500 shadow-sm"
                 style={{ width: `${progress}%` }}
                 role="progressbar"
                 aria-valuenow={Math.round(progress)}
@@ -274,7 +274,7 @@ export function WorkflowExecutionTimeline({
                             <span className="font-semibold text-slate-900 dark:text-slate-100">{step.stepName}</span>
                             {getStatusBadge(step.status)}
                             {isCurrentStep && (
-                              <Badge className="bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-indigo-300 border-indigo-200 dark:border-purple-700 text-xs">
+                              <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-indigo-300 border-indigo-200 dark:border-violet-700 text-xs">
                                 Current
                               </Badge>
                             )}

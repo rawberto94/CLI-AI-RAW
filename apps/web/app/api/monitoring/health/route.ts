@@ -10,6 +10,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Redis } from '@upstash/redis';
 import { alerts } from '@/lib/alerting';
+import { monitoringService } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';
@@ -35,13 +37,13 @@ interface ComponentHealth {
 const MEMORY_WARNING_THRESHOLD = 0.85; // 85%
 const MEMORY_CRITICAL_THRESHOLD = 0.95; // 95%
 
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
   const startTime = Date.now();
   const probe = request.nextUrl.searchParams.get('probe');
 
   // Liveness probe - just check if process is alive
   if (probe === 'liveness') {
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       status: 'alive',
       timestamp: new Date().toISOString(),
     });
@@ -51,14 +53,15 @@ export async function GET(request: NextRequest) {
   if (probe === 'startup') {
     try {
       await prisma.$queryRaw`SELECT 1`;
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         status: 'started',
         timestamp: new Date().toISOString(),
       });
     } catch {
-      return NextResponse.json(
-        { status: 'starting', message: 'Database not ready' },
-        { status: 503 }
+      return createErrorResponse(
+        ctx, 'SERVICE_UNAVAILABLE',
+        'Database not ready',
+        503
       );
     }
   }
@@ -187,7 +190,12 @@ export async function GET(request: NextRequest) {
   // Determine HTTP status
   const httpStatus = health.status === 'unhealthy' ? 503 : 200;
 
-  return NextResponse.json(
+  if (httpStatus === 503) {
+    return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'System unhealthy', 503);
+  }
+
+  return createSuccessResponse(
+    ctx,
     {
       ...health,
       responseTimeMs: responseTime,
@@ -200,4 +208,4 @@ export async function GET(request: NextRequest) {
       },
     }
   );
-}
+});

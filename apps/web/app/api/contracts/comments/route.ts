@@ -3,9 +3,12 @@
  * CRUD operations for contract comments - Database persisted
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
+// TODO: Migrate contractComment/contractActivity operations to dedicated comment service
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Response type that maps to ContractComment model
 interface CommentResponse {
@@ -49,270 +52,211 @@ function transformComment(dbComment: any): CommentResponse {
   };
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const contractId = searchParams.get('contractId');
-    const filter = searchParams.get('filter') || 'all';
-    const tenantId = await getApiTenantId(request);
-    
-    if (!contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
-    }
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const contractId = searchParams.get('contractId');
+  const filter = searchParams.get('filter') || 'all';
+  const tenantId = await getApiTenantId(request);
+  
+  if (!contractId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId is required', 400);
+  }
 
-    // Build where clause
-    const where: any = {
+  // Build where clause
+  const where: any = {
+    contractId,
+    parentId: null, // Only fetch top-level comments, replies come via include
+  };
+
+  if (tenantId) {
+    where.tenantId = tenantId;
+  }
+
+  if (filter === 'unresolved') {
+    where.isResolved = false;
+  }
+  // Note: isPinned is not a database field - filtering handled at UI level
+
+  // Fetch from database with replies
+  const dbComments = await prisma.contractComment.findMany({
+    where,
+    include: {
+      replies: {
+        orderBy: { createdAt: 'asc' },
+      },
+    },
+    orderBy: [
+      { createdAt: 'desc' },
+    ],
+  });
+
+  const comments = dbComments.map(transformComment);
+
+  // Count unresolved
+  const unresolvedCount = await prisma.contractComment.count({
+    where: {
       contractId,
-      parentId: null, // Only fetch top-level comments, replies come via include
-    };
+      ...(tenantId ? { tenantId } : {}),
+      isResolved: false,
+    },
+  });
 
-    if (tenantId) {
-      where.tenantId = tenantId;
-    }
+  return createSuccessResponse(ctx, {
+    comments,
+    total: comments.length,
+    unresolved: unresolvedCount,
+  });
+});
 
-    if (filter === 'unresolved') {
-      where.isResolved = false;
-    }
-    // Note: isPinned is not a database field - filtering handled at UI level
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  const { 
+    contractId, 
+    content, 
+    authorId, 
+    authorName, 
+    authorEmail: _authorEmail,
+    parentId,
+    mentions,
+  } = body;
 
-    // Fetch from database with replies
-    const dbComments = await prisma.contractComment.findMany({
-      where,
-      include: {
-        replies: {
-          orderBy: { createdAt: 'asc' },
-        },
-      },
-      orderBy: [
-        { createdAt: 'desc' },
-      ],
-    });
+  const tenantId = await getApiTenantId(request) || body.tenantId;
 
-    const comments = dbComments.map(transformComment);
-
-    // Count unresolved
-    const unresolvedCount = await prisma.contractComment.count({
-      where: {
-        contractId,
-        ...(tenantId ? { tenantId } : {}),
-        isResolved: false,
-      },
-    });
-
-    return NextResponse.json({
-      comments,
-      total: comments.length,
-      unresolved: unresolvedCount,
-    });
-  } catch (error) {
-    console.error('Failed to fetch comments:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch comments' },
-      { status: 500 }
-    );
+  if (!contractId || !content || !authorId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId, content, and authorId are required', 400);
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { 
-      contractId, 
-      content, 
-      authorId, 
-      authorName, 
-      authorEmail: _authorEmail,
+  // Verify parent exists if provided
+  if (parentId) {
+    const parent = await prisma.contractComment.findUnique({
+      where: { id: parentId },
+    });
+    if (!parent) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Parent comment not found', 404);
+    }
+  }
+
+  // Create comment in database
+  const dbComment = await prisma.contractComment.create({
+    data: {
+      contractId,
+      tenantId,
+      userId: authorId,
+      content,
       parentId,
-      mentions,
-    } = body;
+      mentions: mentions || [],
+      reactions: [],
+      isResolved: false,
+    },
+    include: {
+      replies: true,
+    },
+  });
 
-    const tenantId = await getApiTenantId(request) || body.tenantId;
-
-    if (!contractId || !content || !authorId) {
-      return NextResponse.json(
-        { error: 'contractId, content, and authorId are required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify parent exists if provided
-    if (parentId) {
-      const parent = await prisma.contractComment.findUnique({
-        where: { id: parentId },
-      });
-      if (!parent) {
-        return NextResponse.json(
-          { error: 'Parent comment not found' },
-          { status: 404 }
-        );
-      }
-    }
-
-    // Create comment in database
-    const dbComment = await prisma.contractComment.create({
-      data: {
-        contractId,
-        tenantId,
-        userId: authorId,
-        content,
-        parentId,
-        mentions: mentions || [],
-        reactions: [],
-        isResolved: false,
+  // Also create activity log for comment
+  await prisma.contractActivity.create({
+    data: {
+      contractId,
+      tenantId,
+      userId: authorId,
+      type: 'comment',
+      action: `${authorName || 'User'} added a comment`,
+      details: content.substring(0, 200),
+      metadata: {
+        commentId: dbComment.id,
+        isReply: !!parentId,
       },
-      include: {
-        replies: true,
-      },
-    });
+    },
+  }).catch(err => console.error('Failed to create activity:', err));
 
-    // Also create activity log for comment
-    await prisma.contractActivity.create({
-      data: {
-        contractId,
-        tenantId,
-        userId: authorId,
-        type: 'comment',
-        action: `${authorName || 'User'} added a comment`,
-        details: content.substring(0, 200),
-        metadata: {
-          commentId: dbComment.id,
-          isReply: !!parentId,
-        },
-      },
-    }).catch(err => console.error('Failed to create activity:', err));
+  const comment = transformComment(dbComment);
 
-    const comment = transformComment(dbComment);
+  return createSuccessResponse(ctx, { comment }, { status: 201 });
+});
 
-    return NextResponse.json({ comment }, { status: 201 });
-  } catch (error) {
-    console.error('Failed to create comment:', error);
-    return NextResponse.json(
-      { error: 'Failed to create comment' },
-      { status: 500 }
-    );
+export const PUT = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  const { commentId, contractId: _contractId, content, isPinned, isResolved, resolvedBy } = body;
+  const tenantId = await getApiTenantId(request);
+
+  if (!commentId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'commentId is required', 400);
   }
-}
 
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { commentId, contractId: _contractId, content, isPinned, isResolved, resolvedBy } = body;
-    const tenantId = await getApiTenantId(request);
+  // Find the comment
+  const existing = await prisma.contractComment.findUnique({
+    where: { id: commentId },
+  });
 
-    if (!commentId) {
-      return NextResponse.json(
-        { error: 'commentId is required' },
-        { status: 400 }
-      );
-    }
-
-    // Find the comment
-    const existing = await prisma.contractComment.findUnique({
-      where: { id: commentId },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Comment not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify tenant access
-    if (tenantId && existing.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Comment not found' },
-        { status: 404 }
-      );
-    }
-
-    // Build update data
-    const updateData: any = {};
-    if (content !== undefined) {
-      updateData.content = content;
-    }
-    if (isPinned !== undefined) {
-      updateData.isPinned = isPinned;
-    }
-    if (isResolved !== undefined) {
-      updateData.isResolved = isResolved;
-      if (isResolved) {
-        updateData.resolvedBy = resolvedBy || null;
-        updateData.resolvedAt = new Date();
-      } else {
-        updateData.resolvedBy = null;
-        updateData.resolvedAt = null;
-      }
-    }
-
-    // Update in database
-    const dbComment = await prisma.contractComment.update({
-      where: { id: commentId },
-      data: updateData,
-      include: {
-        replies: true,
-      },
-    });
-
-    const comment = transformComment(dbComment);
-
-    return NextResponse.json({ comment });
-  } catch (error) {
-    console.error('Failed to update comment:', error);
-    return NextResponse.json(
-      { error: 'Failed to update comment' },
-      { status: 500 }
-    );
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Comment not found', 404);
   }
-}
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const commentId = searchParams.get('commentId');
-    const tenantId = await getApiTenantId(request);
-
-    if (!commentId) {
-      return NextResponse.json(
-        { error: 'commentId is required' },
-        { status: 400 }
-      );
-    }
-
-    // Find the comment
-    const existing = await prisma.contractComment.findUnique({
-      where: { id: commentId },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'Comment not found' },
-        { status: 404 }
-      );
-    }
-
-    // Verify tenant access
-    if (tenantId && existing.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Comment not found' },
-        { status: 404 }
-      );
-    }
-
-    // Delete comment (cascade will handle replies due to schema)
-    await prisma.contractComment.delete({
-      where: { id: commentId },
-    });
-
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error('Failed to delete comment:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete comment' },
-      { status: 500 }
-    );
+  // Verify tenant access
+  if (tenantId && existing.tenantId !== tenantId) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Comment not found', 404);
   }
-}
+
+  // Build update data
+  const updateData: any = {};
+  if (content !== undefined) {
+    updateData.content = content;
+  }
+  if (isPinned !== undefined) {
+    updateData.isPinned = isPinned;
+  }
+  if (isResolved !== undefined) {
+    updateData.isResolved = isResolved;
+    if (isResolved) {
+      updateData.resolvedBy = resolvedBy || null;
+      updateData.resolvedAt = new Date();
+    } else {
+      updateData.resolvedBy = null;
+      updateData.resolvedAt = null;
+    }
+  }
+
+  // Update in database
+  const dbComment = await prisma.contractComment.update({
+    where: { id: commentId },
+    data: updateData,
+    include: {
+      replies: true,
+    },
+  });
+
+  const comment = transformComment(dbComment);
+
+  return createSuccessResponse(ctx, { comment });
+});
+
+export const DELETE = withAuthApiHandler(async (request, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const commentId = searchParams.get('commentId');
+  const tenantId = await getApiTenantId(request);
+
+  if (!commentId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'commentId is required', 400);
+  }
+
+  // Find the comment
+  const existing = await prisma.contractComment.findUnique({
+    where: { id: commentId },
+  });
+
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Comment not found', 404);
+  }
+
+  // Verify tenant access
+  if (tenantId && existing.tenantId !== tenantId) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Comment not found', 404);
+  }
+
+  // Delete comment (cascade will handle replies due to schema)
+  await prisma.contractComment.delete({
+    where: { id: commentId },
+  });
+
+  return createSuccessResponse(ctx, { deleted: true });
+});

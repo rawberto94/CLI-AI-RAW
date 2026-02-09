@@ -423,7 +423,7 @@ export function NotificationCenter({
                             'flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center',
                             notification.type === 'message' && 'bg-violet-100 text-violet-500 dark:bg-violet-900/30',
                             notification.type === 'alert' && 'bg-amber-100 text-amber-500 dark:bg-amber-900/30',
-                            notification.type === 'update' && 'bg-purple-100 text-purple-500 dark:bg-purple-900/30',
+                            notification.type === 'update' && 'bg-violet-100 text-violet-500 dark:bg-violet-900/30',
                             notification.type === 'mention' && 'bg-green-100 text-green-500 dark:bg-green-900/30',
                             notification.type === 'system' && 'bg-slate-100 text-slate-500 dark:bg-slate-700'
                           )}>

@@ -209,7 +209,7 @@ export function StepIndicator({
                   backgroundColor: isCompleted 
                     ? '#22c55e' 
                     : isCurrent 
-                      ? '#3b82f6' 
+                      ? '#8b5cf6' 
                       : '#e5e7eb'
                 }}
                 className={cn(
@@ -292,7 +292,7 @@ export function CircularProgress({
   value,
   size = 48,
   strokeWidth = 4,
-  color = '#3b82f6',
+  color = '#8b5cf6',
   showValue = true,
   className
 }: CircularProgressProps) {
@@ -353,13 +353,13 @@ export function AIProcessingIndicator({
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <div className="relative">
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-500 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
           <Loader2 className="h-4 w-4 text-white animate-spin" />
         </div>
         <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.2, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="absolute inset-0 rounded-lg bg-gradient-to-br from-purple-500 to-purple-500"
+          className="absolute inset-0 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500"
         />
       </div>
       <div>

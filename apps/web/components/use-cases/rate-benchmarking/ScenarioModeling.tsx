@@ -212,7 +212,7 @@ export function ScenarioModeling({
                   <TrendingUp className="h-4 w-4 text-slate-400" />
                   Volume Commitment Increase
                 </label>
-                <span className="text-lg font-bold text-purple-600">+{selectedScenario.volumeIncrease}%</span>
+                <span className="text-lg font-bold text-violet-600">+{selectedScenario.volumeIncrease}%</span>
               </div>
               <Slider
                 value={[selectedScenario.volumeIncrease]}
@@ -256,9 +256,9 @@ export function ScenarioModeling({
                       <p className="text-xs text-violet-600 mb-1">Annual Savings</p>
                       <p className="text-xl font-bold text-violet-700">${(savings.totalSavingsPerYear / 1000).toFixed(0)}K</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-purple-50">
-                      <p className="text-xs text-purple-600 mb-1">Total Savings</p>
-                      <p className="text-xl font-bold text-purple-700">${(savings.totalSavings / 1000).toFixed(0)}K</p>
+                    <div className="p-3 rounded-lg bg-violet-50">
+                      <p className="text-xs text-violet-600 mb-1">Total Savings</p>
+                      <p className="text-xl font-bold text-violet-700">${(savings.totalSavings / 1000).toFixed(0)}K</p>
                     </div>
                     <div className="p-3 rounded-lg bg-amber-50">
                       <p className="text-xs text-amber-600 mb-1">Savings %</p>

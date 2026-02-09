@@ -8,10 +8,12 @@
  * 3. Historical accuracy from ExtractionCorrection feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface FieldConfidence {
   name: string
@@ -30,10 +32,7 @@ export async function GET(
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id: contractId } = await params
@@ -58,10 +57,7 @@ export async function GET(
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get extraction artifacts for confidence data
@@ -159,7 +155,7 @@ export async function GET(
     const lowConfidenceFields = fields.filter(f => f.confidence < 70).length
     const totalFeedback = corrections.length
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         contractId,
@@ -171,12 +167,9 @@ export async function GET(
           lastFeedback: corrections[0]?.createdAt || null,
         }
       }
-    })
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get extraction confidence' },
-      { status: 500 }
-    )
+    });
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 

@@ -7,13 +7,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/filter-options
  * Get unique values for all filterable fields
  */
-export async function GET(_request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getServerTenantId();
 
     // Get unique clients
@@ -49,16 +50,10 @@ export async function GET(_request: NextRequest) {
       ORDER BY "country"
     `;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       clients: clients.map(c => c.clientName),
       suppliers: suppliers.map(s => s.supplierName),
       linesOfService: linesOfService.map(l => l.lineOfService),
       countries: countries.map(c => c.country),
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch filter options' },
-      { status: 500 }
-    );
-  }
-}
+  });

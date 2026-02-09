@@ -309,7 +309,7 @@ function MainNavigation() {
         {/* Decorative gradient orbs */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute -top-20 -left-20 w-40 h-40 bg-gradient-to-br from-violet-400/20 to-purple-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-20 -right-10 w-32 h-32 bg-gradient-to-br from-purple-400/15 to-fuchsia-500/15 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 -right-10 w-32 h-32 bg-gradient-to-br from-violet-400/15 to-fuchsia-500/15 rounded-full blur-3xl" />
         </div>
 
         {/* Logo */}
@@ -317,20 +317,19 @@ function MainNavigation() {
           <div className="flex items-center gap-2.5">
             <motion.div 
               whileHover={{ scale: 1.05, rotate: 2 }}
-              className="p-2 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/25"
             >
               {/* Contigo Stacked Bars Icon */}
-              <svg width="20" height="20" viewBox="0 0 48 48" fill="none" className="text-white">
-                <g transform="translate(8, 10)">
-                  <rect x="0" y="0" width="32" height="8" rx="4" fill="currentColor"/>
-                  <rect x="0" y="12" width="32" height="8" rx="4" fill="currentColor" fillOpacity="0.8"/>
-                  <rect x="0" y="24" width="32" height="8" rx="4" fill="currentColor" fillOpacity="0.6"/>
+              <svg width="32" height="32" viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                <g transform="translate(4, 8)">
+                  <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9"/>
+                  <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6"/>
+                  <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD"/>
                 </g>
               </svg>
             </motion.div>
             <div className="flex items-center">
-              <span className="font-bold text-base text-violet-600">con</span>
-              <span className="font-bold text-base text-gray-900">tigo</span>
+              <span className="font-bold text-base text-violet-700">con</span>
+              <span className="font-light text-base text-slate-900">tigo</span>
             </div>
           </div>
           <ApprovalNotificationBell />
@@ -415,17 +414,17 @@ function MainNavigation() {
                                   isActive(child.href)
                                     ? 'bg-gradient-to-r from-violet-50 to-purple-50 text-violet-700 font-medium border border-violet-100/50'
                                     : child.isPremium
-                                    ? 'text-purple-600 hover:bg-purple-50 hover:text-purple-700'
+                                    ? 'text-violet-600 hover:bg-violet-50 hover:text-violet-700'
                                     : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
                                 )}
                               >
                                 <child.icon className={cn(
                                   'h-3.5 w-3.5 flex-shrink-0 transition-colors',
-                                  isActive(child.href) ? 'text-violet-600' : child.isPremium ? 'text-purple-500' : 'text-slate-400 group-hover:text-slate-600'
+                                  isActive(child.href) ? 'text-violet-600' : child.isPremium ? 'text-violet-500' : 'text-slate-400 group-hover:text-slate-600'
                                 )} />
                                 <span>{child.name}</span>
                                 {child.isPremium && (
-                                  <Badge className="ml-auto text-[10px] px-1 py-0 bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+                                  <Badge className="ml-auto text-[10px] px-1 py-0 bg-gradient-to-r from-violet-500 to-pink-500 text-white border-0">
                                     AI
                                   </Badge>
                                 )}
@@ -451,7 +450,7 @@ function MainNavigation() {
                       isItemActive
                         ? 'bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-purple-500/10 text-violet-700 shadow-sm border border-violet-200/50'
                         : item.isPremium
-                        ? 'text-purple-700 hover:bg-purple-50 hover:text-purple-900 border border-purple-100/50'
+                        ? 'text-violet-700 hover:bg-violet-50 hover:text-violet-900 border border-violet-100/50'
                         : 'text-slate-600 hover:bg-slate-100/80 hover:text-slate-900'
                     )}
                   >
@@ -460,7 +459,7 @@ function MainNavigation() {
                       isItemActive
                         ? 'bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/30'
                         : item.isPremium
-                        ? 'bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/30'
+                        ? 'bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-md shadow-violet-500/30'
                         : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200 group-hover:text-slate-700'
                     )}>
                       <item.icon className="h-4 w-4 flex-shrink-0" />

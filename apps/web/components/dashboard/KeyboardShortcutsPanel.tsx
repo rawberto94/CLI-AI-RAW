@@ -68,9 +68,9 @@ const categoryConfig: Record<ShortcutCategory, { icon: React.ElementType; label:
   navigation: { icon: Navigation, label: 'Navigation', color: 'text-violet-500' },
   contracts: { icon: FileText, label: 'Contracts', color: 'text-violet-500' },
   editing: { icon: Edit, label: 'Editing', color: 'text-orange-500' },
-  view: { icon: Eye, label: 'View', color: 'text-purple-500' },
+  view: { icon: Eye, label: 'View', color: 'text-violet-500' },
   actions: { icon: Command, label: 'Actions', color: 'text-red-500' },
-  search: { icon: Search, label: 'Search', color: 'text-purple-500' },
+  search: { icon: Search, label: 'Search', color: 'text-violet-500' },
   general: { icon: Settings, label: 'General', color: 'text-slate-500' },
 };
 

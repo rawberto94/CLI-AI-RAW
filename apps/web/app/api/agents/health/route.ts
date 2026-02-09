@@ -6,25 +6,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { contractHealthMonitor } from '@repo/workers/agents';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const forceRefresh = searchParams.get('refresh') === 'true';
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
     }
 
     // Check for cached health report (< 1 hour old)
@@ -36,21 +28,17 @@ export async function GET(request: NextRequest) {
           eventType: 'health_assessment',
           timestamp: {
             gte: new Date(Date.now() - 60 * 60 * 1000), // 1 hour
-          },
-        },
+          } },
         orderBy: { timestamp: 'desc' },
         select: {
           metadata: true,
-          timestamp: true,
-        },
-      });
+          timestamp: true } });
 
       if (cachedReport) {
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           health: cachedReport.metadata,
           cached: true,
-          timestamp: cachedReport.timestamp,
-        });
+          timestamp: cachedReport.timestamp });
       }
     }
 
@@ -58,15 +46,10 @@ export async function GET(request: NextRequest) {
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
       include: {
-        artifacts: true,
-      },
-    });
+        artifacts: true } });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Execute health monitor
@@ -77,26 +60,18 @@ export async function GET(request: NextRequest) {
       metadata: {
         triggeredBy: 'system',
         priority: 'medium',
-        timestamp: new Date(),
-      },
-    });
+        timestamp: new Date() } });
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.reasoning || 'Health assessment failed' },
-        { status: 500 }
+      return createErrorResponse(
+        ctx, 'INTERNAL_ERROR',
+        result.reasoning || 'Health assessment failed',
+        500
       );
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       health: result.data,
       cached: false,
-      timestamp: new Date(),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+      timestamp: new Date() });
+  });

@@ -14,7 +14,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Loader2, Save, X, AlertCircle, CheckCircle, Sparkles, RefreshCw, TrendingUp } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useCurrencyConverter } from '@/lib/services/currency.service';
 
 interface RateCardFormData {

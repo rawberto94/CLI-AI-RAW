@@ -5,11 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     // Get rate changes from last 24 hours
     const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
@@ -90,7 +90,7 @@ export async function GET(_request: NextRequest) {
       },
     ];
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         recentChanges,
@@ -103,14 +103,4 @@ export async function GET(_request: NextRequest) {
         alerts,
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch monitoring data',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

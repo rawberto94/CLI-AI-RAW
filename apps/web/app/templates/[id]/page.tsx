@@ -311,7 +311,7 @@ export default function TemplateEditorPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30 p-6 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto mb-4" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading template...</p>
         </div>
       </div>
@@ -353,7 +353,7 @@ export default function TemplateEditorPage() {
             </Link>
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                   <FileText className="h-7 w-7 text-white" />
                 </div>
                 <h1 className="text-4xl font-bold text-gray-900">
@@ -378,7 +378,7 @@ export default function TemplateEditorPage() {
             <Button
               onClick={handleSave}
               disabled={saving || !templateName}
-              className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white shadow-lg"
+              className="bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 text-white shadow-lg"
               size="lg"
             >
               {saving ? (
@@ -497,7 +497,7 @@ export default function TemplateEditorPage() {
                     <div key={index} className="p-3 bg-gray-50 rounded-lg border border-gray-200">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 space-y-2">
-                          <code className="text-xs font-mono text-purple-600">
+                          <code className="text-xs font-mono text-violet-600">
                             {'{{' + variable.name + '}}'}
                           </code>
                           <p className="text-sm font-medium text-gray-900">{variable.label}</p>

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -8,14 +8,8 @@ export const maxDuration = 120;
  * GET /api/ai/predictions
  * Get predictions for contracts or portfolio
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'contract';
     const contractId = searchParams.get('contractId');
@@ -23,14 +17,11 @@ export async function GET(request: NextRequest) {
     const horizon = searchParams.get('horizon') || 'medium'; // short, medium, long
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const predictionEngine = (services as any).predictiveAnalyticsEngine;
 
     if (!predictionEngine) {
-      return NextResponse.json(
-        { error: 'Predictive Analytics Engine not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Predictive Analytics Engine not available', 503);
     }
 
     let result;
@@ -38,10 +29,7 @@ export async function GET(request: NextRequest) {
     switch (action) {
       case 'contract':
         if (!contractId) {
-          return NextResponse.json(
-            { error: 'contractId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
         }
         
         if (predictionType) {
@@ -58,40 +46,28 @@ export async function GET(request: NextRequest) {
 
       case 'renewal-probability':
         if (!contractId) {
-          return NextResponse.json(
-            { error: 'contractId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
         }
         result = await predictionEngine.predictRenewalProbability(contractId);
         break;
 
       case 'risk-forecast':
         if (!contractId) {
-          return NextResponse.json(
-            { error: 'contractId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
         }
         result = await predictionEngine.forecastRiskTrend(contractId, horizon);
         break;
 
       case 'cost-projection':
         if (!contractId) {
-          return NextResponse.json(
-            { error: 'contractId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
         }
         result = await predictionEngine.projectCosts(contractId, horizon);
         break;
 
       case 'value-optimization':
         if (!contractId) {
-          return NextResponse.json(
-            { error: 'contractId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
         }
         result = await predictionEngine.optimizeValue(contractId);
         break;
@@ -105,48 +81,29 @@ export async function GET(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to generate predictions', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });
 
 /**
  * POST /api/ai/predictions
  * Generate or update predictions
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action = 'generate', ...data } = body;
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const predictionEngine = (services as any).predictiveAnalyticsEngine;
 
     if (!predictionEngine) {
-      return NextResponse.json(
-        { error: 'Predictive Analytics Engine not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Predictive Analytics Engine not available', 503);
     }
 
     let result;
@@ -156,10 +113,7 @@ export async function POST(request: NextRequest) {
         const { contractId, contractFeatures, horizon = 'medium' } = data;
 
         if (!contractId || !contractFeatures) {
-          return NextResponse.json(
-            { error: 'contractId and contractFeatures are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and contractFeatures are required', 400);
         }
 
         result = await predictionEngine.generatePredictions(
@@ -173,10 +127,7 @@ export async function POST(request: NextRequest) {
         const { contracts } = data;
 
         if (!contracts || !Array.isArray(contracts) || contracts.length === 0) {
-          return NextResponse.json(
-            { error: 'contracts array is required with at least one contract' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contracts array is required with at least one contract', 400);
         }
 
         const results = [];
@@ -207,10 +158,7 @@ export async function POST(request: NextRequest) {
         const { contractId: updateContractId, features } = data;
 
         if (!updateContractId || !features) {
-          return NextResponse.json(
-            { error: 'contractId and features are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and features are required', 400);
         }
 
         result = await predictionEngine.updateContractFeatures(
@@ -227,10 +175,7 @@ export async function POST(request: NextRequest) {
         } = data;
 
         if (!predictionId || actualOutcome === undefined) {
-          return NextResponse.json(
-            { error: 'predictionId and actualOutcome are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'predictionId and actualOutcome are required', 400);
         }
 
         result = await predictionEngine.recordActualOutcome(
@@ -244,10 +189,7 @@ export async function POST(request: NextRequest) {
         const { tenantId } = data;
 
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for calibration' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for calibration', 400);
         }
 
         result = await predictionEngine.calibrateModels(tenantId);
@@ -261,10 +203,7 @@ export async function POST(request: NextRequest) {
         } = data;
 
         if (!scenarioContractId || !scenarioName || !modifications) {
-          return NextResponse.json(
-            { error: 'contractId, scenarioName, and modifications are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId, scenarioName, and modifications are required', 400);
         }
 
         result = await predictionEngine.runScenario(
@@ -275,21 +214,10 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to generate predictions', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });

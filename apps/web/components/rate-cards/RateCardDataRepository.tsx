@@ -338,7 +338,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
 
   const getTierBadge = (tier: string) => {
     const colors = {
-      TIER_1: 'bg-purple-100 text-purple-800',
+      TIER_1: 'bg-violet-100 text-violet-800',
       TIER_2: 'bg-violet-100 text-violet-800',
       TIER_3: 'bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300',
       TIER_4: 'bg-slate-100 text-slate-800',

@@ -41,7 +41,7 @@ interface QuotaWidgetProps {
 const TIER_CONFIG: Record<string, { label: string; color: string }> = {
   free: { label: 'Free', color: 'bg-slate-500' },
   starter: { label: 'Starter', color: 'bg-violet-500' },
-  professional: { label: 'Professional', color: 'bg-purple-500' },
+  professional: { label: 'Professional', color: 'bg-violet-500' },
   enterprise: { label: 'Enterprise', color: 'bg-amber-500' },
 };
 

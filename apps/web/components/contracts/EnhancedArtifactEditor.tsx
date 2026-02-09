@@ -914,9 +914,9 @@ function getArtifactColor(type: string): string {
     case 'overview': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'parties': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'financial': return 'bg-gradient-to-br from-violet-500 to-violet-600';
-    case 'obligations': return 'bg-gradient-to-br from-purple-500 to-purple-600';
+    case 'obligations': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'risks': return 'bg-gradient-to-br from-red-500 to-red-600';
-    case 'clauses': return 'bg-gradient-to-br from-purple-500 to-purple-600';
+    case 'clauses': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'rates': return 'bg-gradient-to-br from-amber-500 to-amber-600';
     default: return 'bg-gradient-to-br from-gray-500 to-gray-600';
   }

@@ -141,11 +141,11 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
       case 'edit':
         return <Edit3 className="h-4 w-4 text-violet-600" />;
       case 'comment':
-        return <MessageSquare className="h-4 w-4 text-purple-600" />;
+        return <MessageSquare className="h-4 w-4 text-violet-600" />;
       case 'approve':
         return <CheckCircle2 className="h-4 w-4 text-green-600" />;
       case 'sign':
-        return <FileSignature className="h-4 w-4 text-purple-600" />;
+        return <FileSignature className="h-4 w-4 text-violet-600" />;
       case 'view':
         return <Eye className="h-4 w-4 text-gray-600" />;
     }
@@ -218,7 +218,7 @@ export function RealTimeCollaboration({ contractId, tenantId }: RealTimeCollabor
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-purple-600" />
+            <Activity className="h-5 w-5 text-violet-600" />
             Live Activity Feed
           </CardTitle>
         </CardHeader>

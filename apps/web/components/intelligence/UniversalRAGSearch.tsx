@@ -223,7 +223,7 @@ const getResultTypeConfig = (type: SearchResult['type']) => {
     case 'contract':
       return { icon: FileText, color: 'bg-violet-100 text-violet-600', label: 'Contract' };
     case 'clause':
-      return { icon: BookOpen, color: 'bg-purple-100 text-purple-600', label: 'Clause' };
+      return { icon: BookOpen, color: 'bg-violet-100 text-violet-600', label: 'Clause' };
     case 'obligation':
       return { icon: Calendar, color: 'bg-green-100 text-green-600', label: 'Obligation' };
     case 'supplier':

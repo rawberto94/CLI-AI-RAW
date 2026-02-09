@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 // ============================================
 
 const fileTypeIcons: Record<string, React.ReactNode> = {
-  image: <ImageIcon className="w-5 h-5 text-purple-500" />,
+  image: <ImageIcon className="w-5 h-5 text-violet-500" />,
   video: <Film className="w-5 h-5 text-pink-500" />,
   audio: <Music className="w-5 h-5 text-green-500" />,
   pdf: <FileText className="w-5 h-5 text-red-500" />,
@@ -373,7 +373,7 @@ export function Dropzone({
         onDrop={handleDrop}
         animate={{
           scale: isDragOver ? 1.02 : 1,
-          borderColor: isDragOver ? '#3b82f6' : undefined,
+          borderColor: isDragOver ? '#8b5cf6' : undefined,
         }}
         className={cn(
           'relative flex flex-col items-center justify-center p-8 rounded-2xl border-2 border-dashed cursor-pointer transition-colors',

@@ -82,21 +82,21 @@ export function WorkflowProgressStepper({
         'w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 border-2 transition-all duration-300',
         isCompleted && 'bg-gradient-to-br from-violet-400 to-violet-500 border-green-400 text-white shadow-md shadow-green-200',
         isRejected && 'bg-gradient-to-br from-red-400 to-rose-500 border-red-400 text-white shadow-md shadow-red-200',
-        isInProgress && 'bg-gradient-to-br from-purple-400 to-purple-500 border-indigo-400 text-white shadow-md shadow-purple-200 ring-4 ring-indigo-100 animate-pulse',
+        isInProgress && 'bg-gradient-to-br from-violet-400 to-purple-500 border-indigo-400 text-white shadow-md shadow-violet-200 ring-4 ring-indigo-100 animate-pulse',
         isPending && 'bg-slate-100 border-slate-300 text-slate-400'
       ),
       label: cn(
         'text-sm font-medium transition-colors',
         isCompleted && 'text-green-700',
         isRejected && 'text-red-700',
-        isInProgress && 'text-purple-700',
+        isInProgress && 'text-violet-700',
         isPending && 'text-slate-500'
       ),
       connector: cn(
         'flex-1 h-0.5 transition-all duration-500',
         isCompleted && 'bg-gradient-to-r from-violet-400 to-purple-500',
         isRejected && 'bg-gradient-to-r from-red-400 to-red-300',
-        isInProgress && 'bg-gradient-to-r from-purple-400 to-slate-200',
+        isInProgress && 'bg-gradient-to-r from-violet-400 to-slate-200',
         isPending && 'bg-slate-200'
       ),
     };
@@ -192,7 +192,7 @@ export function WorkflowProgressStepper({
           <span className="text-slate-500">
             Step {currentStep + 1} of {steps.length}
           </span>
-          <span className="text-purple-600 font-medium" aria-hidden="true">
+          <span className="text-violet-600 font-medium" aria-hidden="true">
             {Math.round(((currentStep + 1) / steps.length) * 100)}% Complete
           </span>
         </div>
@@ -312,14 +312,14 @@ export function WorkflowProgressBar({
   
   const statusColors = {
     pending: 'from-amber-400 to-amber-500',
-    in_progress: 'from-purple-400 to-purple-500',
+    in_progress: 'from-violet-400 to-purple-500',
     completed: 'from-violet-400 to-violet-500',
     rejected: 'from-red-400 to-rose-500',
   };
   
   const bgColors = {
     pending: 'bg-amber-100',
-    in_progress: 'bg-purple-100',
+    in_progress: 'bg-violet-100',
     completed: 'bg-green-100',
     rejected: 'bg-red-100',
   };
@@ -341,7 +341,7 @@ export function WorkflowProgressBar({
           'text-xs font-bold',
           status === 'completed' && 'text-green-600',
           status === 'rejected' && 'text-red-600',
-          status === 'in_progress' && 'text-purple-600',
+          status === 'in_progress' && 'text-violet-600',
           status === 'pending' && 'text-amber-600'
         )}>
           {progress}%

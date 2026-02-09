@@ -49,8 +49,8 @@ module.exports = {
       merge_logs: true,
       
       // Graceful shutdown
-      kill_timeout: 10000, // Wait 10s before force kill
-      wait_ready: true, // Wait for process.send('ready')
+      kill_timeout: 35000, // Wait 35s before force kill (must exceed app's 30s shutdown timeout)
+      wait_ready: false, // Next.js standalone doesn't call process.send('ready')
       listen_timeout: 30000, // Max time to wait for ready signal
       
       // Health monitoring

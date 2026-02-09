@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -7,8 +8,7 @@ export const maxDuration = 60;
  * POST /api/ai/validate
  * Validate extracted fields with AI-powered semantic validation
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { 
       fields, 
@@ -18,21 +18,15 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!fields || typeof fields !== 'object') {
-      return NextResponse.json(
-        { error: 'fields object is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'fields object is required', 400);
     }
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const validationService = (services as any).smartFieldValidationService;
 
     if (!validationService) {
-      return NextResponse.json(
-        { error: 'Smart field validation service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Smart field validation service not available', 503);
     }
 
     // Register custom field definitions if provided
@@ -52,32 +46,20 @@ export async function POST(request: NextRequest) {
     // Validate all fields
     const result = await validationService.validateFields(fields, config);
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to validate fields', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, {
+      ...result });
+  });
 
 /**
  * GET /api/ai/validate
  * Get available field types and validation rules
  */
-export async function GET() {
-  try {
-    const services = await import('@repo/data-orchestration/services');
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+    const services = await import('data-orchestration/services');
     const validationService = (services as any).smartFieldValidationService;
 
     if (!validationService) {
-      return NextResponse.json(
-        { error: 'Smart field validation service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Smart field validation service not available', 503);
     }
 
     const definitions = validationService.getFieldDefinitions();
@@ -88,23 +70,14 @@ export async function GET() {
       'phone', 'url', 'currency', 'percentage', 'duration', 'address'
     ];
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       fieldTypes,
       registeredFields: definitions.map((d: any) => ({
         name: d.name,
         type: d.type,
-        required: d.required,
-      })),
+        required: d.required })),
       crossFieldRules: rules.map((r: any) => ({
         name: r.name,
         description: r.description,
-        fields: r.fields,
-      })),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to get validation options' },
-      { status: 500 }
-    );
-  }
-}
+        fields: r.fields })) });
+  });

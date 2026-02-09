@@ -1,10 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
 
 /**
  * Generate Daily Contract Intelligence Report
@@ -50,21 +50,10 @@ interface DailyReportData {
   };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization');
-    const providedSecret = authHeader?.replace('Bearer ', '') || request.nextUrl.searchParams.get('secret');
-    
-    if (providedSecret !== CRON_SECRET) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     const tenantId = request.headers.get('x-tenant-id');
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const now = new Date();
@@ -182,31 +171,9 @@ export async function POST(request: NextRequest) {
     // 3. Post to Slack/Teams
     // 4. Update dashboard cache
 
-    return NextResponse.json({
-      success: true,
-      data: report,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Report generation failed',
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { data: report });
+});
 
-export async function GET(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get('secret');
-  
-  if (secret !== CRON_SECRET) {
-    return NextResponse.json({
-      success: true,
-      message: 'Daily report cron endpoint is active',
-      schedule: 'Daily at 6 AM recommended',
-    });
-  }
-
+export const GET = withCronHandler(async (request, ctx) => {
   return POST(request);
-}
+});

@@ -40,7 +40,7 @@ const categoryConfig: Record<string, { icon: React.ElementType; color: string; b
   contract: { icon: FileText, color: 'text-green-600', bgColor: 'bg-green-100' },
   system: { icon: Settings, color: 'text-slate-600', bgColor: 'bg-slate-100' },
   security: { icon: Shield, color: 'text-red-600', bgColor: 'bg-red-100' },
-  data: { icon: Database, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  data: { icon: Database, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   integration: { icon: Zap, color: 'text-orange-600', bgColor: 'bg-orange-100' },
 };
 

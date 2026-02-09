@@ -8,6 +8,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // Types
@@ -124,8 +125,7 @@ const DEFAULT_SETTINGS: OCRSettings = {
 // GET - Get OCR Configuration
 // ============================================================================
 
-export async function GET() {
-  try {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     // Get available providers from eu-compliant-ocr
     const providers = getAvailableProviders();
 
@@ -187,7 +187,7 @@ export async function GET() {
     // Get recommendations based on configuration
     const recommendations = generateRecommendations(enrichedProviders, settings);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         providers: enrichedProviders,
@@ -205,32 +205,22 @@ export async function GET() {
         },
       },
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get OCR settings' },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // ============================================================================
 // POST - Update OCR Settings
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { settings } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { settings } = body;
 
     // Validate settings
     if (settings.defaultProvider) {
       const providers = getAvailableProviders();
       const validProviders = [...providers.map(p => p.provider), 'gpt4', 'mistral'];
       if (!validProviders.includes(settings.defaultProvider)) {
-        return NextResponse.json(
-          { success: false, error: `Invalid provider: ${settings.defaultProvider}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid provider: ${settings.defaultProvider}`, 400);
       }
     }
 
@@ -241,50 +231,34 @@ export async function POST(request: NextRequest) {
       ...settings,
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'OCR settings updated successfully',
       data: updatedSettings,
       note: 'Settings are applied for this session. For persistent settings, update environment variables.',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to update OCR settings' },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // ============================================================================
 // PUT - Test Provider Connection
 // ============================================================================
 
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { provider } = body;
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { provider } = body;
 
-    if (!provider) {
-      return NextResponse.json(
-        { success: false, error: 'Provider is required' },
-        { status: 400 }
-      );
-    }
-
-    // Test the provider connection
-    const testResult = await testProviderConnection(provider);
-
-    return NextResponse.json({
-      success: testResult.success,
-      data: testResult,
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to test provider connection' },
-      { status: 500 }
-    );
+  if (!provider) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Provider is required', 400);
   }
-}
+
+  // Test the provider connection
+  const testResult = await testProviderConnection(provider);
+
+  return createSuccessResponse(ctx, {
+    success: testResult.success,
+    data: testResult,
+  });
+});
 
 // ============================================================================
 // Helper Functions

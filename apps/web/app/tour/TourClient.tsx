@@ -149,7 +149,7 @@ const tourSteps: TourStep[] = [
       { text: 'Bulk actions & exports', icon: FileSearch },
     ],
     action: { label: 'Browse Contracts', href: '/contracts' },
-    gradient: 'from-purple-500 via-purple-500 to-purple-500',
+    gradient: 'from-violet-500 via-violet-500 to-purple-500',
     accentColor: 'cyan',
     duration: '3 min',
   },
@@ -200,7 +200,7 @@ const tourSteps: TourStep[] = [
       { text: 'Export comparison reports', icon: FileText },
     ],
     action: { label: 'Compare Contracts', href: '/compare' },
-    gradient: 'from-purple-500 via-violet-500 to-purple-500',
+    gradient: 'from-violet-500 via-purple-500 to-violet-500',
     accentColor: 'purple',
     duration: '2 min',
   },
@@ -611,14 +611,14 @@ function LearningCenter() {
     switch (level) {
       case 'beginner': return 'bg-violet-100 text-violet-700';
       case 'intermediate': return 'bg-amber-100 text-amber-700';
-      case 'advanced': return 'bg-purple-100 text-purple-700';
+      case 'advanced': return 'bg-violet-100 text-violet-700';
     }
   };
 
   return (
     <div className="space-y-8">
       <div className="flex items-center gap-4">
-        <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-500 text-white shadow-lg">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-lg">
           <GraduationCap className="h-6 w-6" />
         </div>
         <div>
@@ -728,7 +728,7 @@ function FeatureGuides() {
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium text-slate-900 truncate">{guide.title}</h4>
                                 {guide.isNew && (
-                                  <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] px-1.5">
+                                  <Badge className="bg-gradient-to-r from-violet-500 to-pink-500 text-white text-[10px] px-1.5">
                                     NEW
                                   </Badge>
                                 )}
@@ -794,7 +794,7 @@ export default function TourClient() {
         >
           {[
             { label: 'Tour Steps', value: tourSteps.length, icon: PlayCircle, color: 'from-violet-500 to-purple-500' },
-            { label: 'Learning Modules', value: learningModules.length, icon: GraduationCap, color: 'from-purple-500 to-purple-500' },
+            { label: 'Learning Modules', value: learningModules.length, icon: GraduationCap, color: 'from-violet-500 to-purple-500' },
             { label: 'Feature Guides', value: featureGuides.length, icon: BookOpen, color: 'from-violet-500 to-violet-500' },
             { label: 'Total Duration', value: '~2hrs', icon: Clock, color: 'from-amber-500 to-orange-500' },
           ].map((stat, i) => {
@@ -869,7 +869,7 @@ export default function TourClient() {
               </p>
               <div className="flex items-center justify-center gap-4">
                 <Link href="/upload">
-                  <Button size="lg" className="bg-white text-purple-700 hover:bg-slate-100 gap-2">
+                  <Button size="lg" className="bg-white text-violet-700 hover:bg-slate-100 gap-2">
                     <Upload className="h-5 w-5" />
                     Upload First Contract
                   </Button>

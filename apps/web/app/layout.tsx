@@ -7,6 +7,7 @@ import { HealthBanner } from "./health-banner";
 import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { Toaster } from "sonner";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
 import { ModuleProvider } from "@/contexts/ModuleContext";
@@ -77,6 +78,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <GlobalErrorBoundary>
+          <Toaster position="top-right" richColors closeButton />
           <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
             <AuthProvider>
               <CSRFProvider>

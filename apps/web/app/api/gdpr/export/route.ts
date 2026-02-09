@@ -8,18 +8,26 @@
  */
 
 import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { 
   requestDataExport, 
   getExportStatus,
   requestAccountDeletion as _requestAccountDeletion,
   cancelAccountDeletion as _cancelAccountDeletion,
 } from '@/lib/gdpr/data-rights';
-
 // Data Export
-export async function POST(request: NextRequest) {
-  return requestDataExport(request);
-}
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
 
-export async function GET(request: NextRequest) {
+  return requestDataExport(request);
+});
+
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
   return getExportStatus(request);
-}
+});

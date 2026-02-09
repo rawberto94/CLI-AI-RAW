@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 // Helper to transform Prisma template to UI-expected format
 function transformTemplate(template: Record<string, unknown>) {
@@ -37,13 +39,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
 
     // Handle "new" route - return empty template structure
     if (id === 'new') {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         template: null,
         isNew: true,
@@ -58,22 +61,15 @@ export async function GET(
     });
 
     if (!template) {
-      return NextResponse.json(
-        { success: false, error: 'Template not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       template: transformTemplate(template as unknown as Record<string, unknown>),
     });
   } catch (error) {
-    console.error('Failed to fetch template:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch template' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -82,6 +78,7 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const tenantId = await getApiTenantId(request);
@@ -111,10 +108,7 @@ export async function PUT(
     });
 
     if (!existingTemplate) {
-      return NextResponse.json(
-        { success: false, error: 'Template not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Build update data
@@ -147,16 +141,12 @@ export async function PUT(
       data: updateData,
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       template: transformTemplate(template as unknown as Record<string, unknown>),
     });
   } catch (error) {
-    console.error('Failed to update template:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update template' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -165,6 +155,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -178,10 +169,7 @@ export async function DELETE(
     });
 
     if (!existingTemplate) {
-      return NextResponse.json(
-        { success: false, error: 'Template not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Delete the template
@@ -189,15 +177,11 @@ export async function DELETE(
       where: { id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Template deleted successfully',
     });
   } catch (error) {
-    console.error('Failed to delete template:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete template' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

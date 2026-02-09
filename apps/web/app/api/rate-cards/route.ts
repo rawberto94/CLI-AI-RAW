@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 // NOTE: Using direct Prisma queries instead of data-orchestration services
 // The data-orchestration package has 60+ TypeScript errors that need extensive refactoring
@@ -263,7 +264,8 @@ function returnMockRateCards(searchParams: URLSearchParams) {
  * Supports both simple filters and advanced filter objects
  * Supports mock data mode via x-data-mode header
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const ctx = getApiContext(request);
   try {
     const searchParams = request.nextUrl.searchParams;
     
@@ -277,15 +279,11 @@ export async function GET(request: NextRequest) {
     
     // ===== REAL DATA MODE: Direct Prisma Queries =====
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required. Please authenticate or provide x-tenant-id header.', 400);
     }
     
     // Build where clause from filters - using any to avoid complex Prisma typing
@@ -365,7 +363,7 @@ export async function GET(request: NextRequest) {
       return acc;
     }, []);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       data: deduplicatedData,
       total: deduplicatedData.length,
       originalTotal: total,
@@ -374,34 +372,26 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to list rate cards', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 /**
  * POST /api/rate-cards
  * Create a new rate card entry
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required. Please authenticate or provide x-tenant-id header.', 400);
     }
     
-    const userId = session?.user?.id || body.userId || 'system';
+    const userId = ctx.userId || body.userId || 'system';
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {
@@ -421,11 +411,5 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(entry, { status: 201 });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to create rate card', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, entry, { status: 201 });
+  });

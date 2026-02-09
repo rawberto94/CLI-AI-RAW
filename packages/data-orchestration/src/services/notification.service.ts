@@ -1,6 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 // Dynamic import for email service (apps/web)
 // For use in workers package, we create a simple HTTP-based sender

@@ -12,11 +12,10 @@
  * @version 1.0.0
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 
-const prisma = new PrismaClient();
 
 // ============================================================================
 // TYPES

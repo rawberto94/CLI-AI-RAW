@@ -5,9 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
 import * as crypto from 'crypto';
+import { auditTrailService } from 'data-orchestration/services';
 
 // Generate a base32 secret for TOTP
 function generateSecret(): string {
@@ -27,11 +29,11 @@ function generateOTPAuthURL(secret: string, email: string, issuer: string = 'Con
   return `otpauth://totp/${encodedIssuer}:${encodedEmail}?secret=${secret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
 }
 
-export async function POST(_request: NextRequest) {
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const user = await prisma.user.findUnique({
@@ -40,7 +42,7 @@ export async function POST(_request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);
     }
 
     // Generate new secret
@@ -70,13 +72,13 @@ export async function POST(_request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       secret,
       qrCode: qrCodeUrl,
       otpauthUrl,
     });
   } catch (error) {
     console.error('Failed to setup MFA:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Internal server error', 500);
   }
-}
+});

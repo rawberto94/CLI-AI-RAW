@@ -180,7 +180,7 @@ export function Checklist({
           className={cn(
             'w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
             item.checked
-              ? 'bg-purple-600 border-purple-600'
+              ? 'bg-violet-600 border-violet-600'
               : 'border-slate-300 hover:border-indigo-400'
           )}
         >
@@ -247,7 +247,7 @@ export function Checklist({
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               onClick={handleAdd}
-              className="p-1 bg-purple-600 text-white rounded-lg"
+              className="p-1 bg-violet-600 text-white rounded-lg"
             >
               <Plus className="w-4 h-4" />
             </motion.button>

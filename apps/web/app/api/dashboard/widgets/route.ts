@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 /**
  * Dashboard Widgets API
@@ -8,38 +9,27 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(_request: NextRequest) {
-  try {
-    // In production, these would be parallel database queries
-    // For now, we aggregate mock data from different sources
-    
-    const [approvals, renewals, intelligence, governance] = await Promise.all([
-      getApprovalsStats(),
-      getRenewalsStats(),
-      getIntelligenceStats(),
-      getGovernanceStats(),
-    ]);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  // In production, these would be parallel database queries
+  // For now, we aggregate mock data from different sources
+  
+  const [approvals, renewals, intelligence, governance] = await Promise.all([
+    getApprovalsStats(),
+    getRenewalsStats(),
+    getIntelligenceStats(),
+    getGovernanceStats(),
+  ]);
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        approvals,
-        renewals,
-        intelligence,
-        governance,
-        lastUpdated: new Date().toISOString(),
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch widget stats' },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, {
+    approvals,
+    renewals,
+    intelligence,
+    governance,
+    lastUpdated: new Date().toISOString(),
+  });
+});
 
 async function getApprovalsStats() {
-  // Mock data - in production, query from database
   return {
     pending: 4,
     urgent: 2,
@@ -67,7 +57,6 @@ async function getApprovalsStats() {
 }
 
 async function getRenewalsStats() {
-  // Mock data - in production, query from database
   const _now = new Date();
   return {
     total: 5,
@@ -105,7 +94,6 @@ async function getRenewalsStats() {
 }
 
 async function getIntelligenceStats() {
-  // Mock data - in production, query from database
   return {
     avgScore: 72,
     healthy: 18,
@@ -131,7 +119,6 @@ async function getIntelligenceStats() {
 }
 
 async function getGovernanceStats() {
-  // Mock data - in production, query from database
   return {
     complianceScore: 94,
     activePolicies: 12,

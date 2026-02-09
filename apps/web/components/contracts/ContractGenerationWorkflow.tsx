@@ -158,7 +158,7 @@ const TemplateCard: React.FC<{
       whileTap={{ scale: 0.98 }}
       className={`relative p-4 rounded-xl border-2 text-left transition-all ${
         isSelected
-          ? 'border-purple-500 bg-purple-50 shadow-lg shadow-purple-100'
+          ? 'border-violet-500 bg-violet-50 shadow-lg shadow-violet-100'
           : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-md'
       }`}
     >
@@ -166,13 +166,13 @@ const TemplateCard: React.FC<{
         <motion.div
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
-          className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center"
+          className="absolute top-3 right-3 w-6 h-6 rounded-full bg-violet-500 flex items-center justify-center"
         >
           <Check className="w-4 h-4 text-white" />
         </motion.div>
       )}
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${
-        isSelected ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-600'
+        isSelected ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-600'
       }`}>
         <Icon className="w-5 h-5" />
       </div>
@@ -225,7 +225,7 @@ const GenerationProgress: React.FC<{ steps: GenerationStep[]; currentStep: numbe
           step.isComplete
             ? 'bg-green-500 text-white'
             : index === currentStep
-              ? 'bg-purple-500 text-white animate-pulse'
+              ? 'bg-violet-500 text-white animate-pulse'
               : 'bg-slate-200 text-slate-400'
         }`}>
           {step.isComplete ? (
@@ -237,7 +237,7 @@ const GenerationProgress: React.FC<{ steps: GenerationStep[]; currentStep: numbe
           )}
         </div>
         <div className="flex-1 pt-1">
-          <div className={`font-medium ${step.isComplete ? 'text-green-600' : index === currentStep ? 'text-purple-600' : 'text-slate-400'}`}>
+          <div className={`font-medium ${step.isComplete ? 'text-green-600' : index === currentStep ? 'text-violet-600' : 'text-slate-400'}`}>
             {step.title}
           </div>
           <div className="text-sm text-slate-500">{step.description}</div>
@@ -366,7 +366,7 @@ export const ContractGenerationWorkflow: React.FC<{
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
       {/* Header */}
-      <div className="px-6 py-4 bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+      <div className="px-6 py-4 bg-gradient-to-r from-violet-500 to-purple-600 text-white">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-white/20 rounded-lg">
@@ -400,9 +400,9 @@ export const ContractGenerationWorkflow: React.FC<{
               <div className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium transition-all ${
                   step > num
-                    ? 'bg-white text-purple-600'
+                    ? 'bg-white text-violet-600'
                     : step === num
-                      ? 'bg-white/90 text-purple-600'
+                      ? 'bg-white/90 text-violet-600'
                       : 'bg-white/20 text-white/60'
                 }`}>
                   {step > num ? <Check className="w-4 h-4" /> : num}
@@ -464,7 +464,7 @@ export const ContractGenerationWorkflow: React.FC<{
               {/* Counterparty Information */}
               <div className="bg-slate-50 rounded-xl p-5 space-y-4">
                 <h4 className="font-medium text-slate-900 flex items-center gap-2">
-                  <Building2 className="w-5 h-5 text-purple-500" />
+                  <Building2 className="w-5 h-5 text-violet-500" />
                   Counterparty Information
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -474,7 +474,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       value={formData.counterparty}
                       onChange={(e) => updateFormData('counterparty', e.target.value)}
                       placeholder="Enter counterparty name"
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     />
                   </FormField>
                   <FormField label="Contact Person">
@@ -483,7 +483,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       value={formData.counterpartyContact}
                       onChange={(e) => updateFormData('counterpartyContact', e.target.value)}
                       placeholder="Contact name"
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     />
                   </FormField>
                   <FormField label="Email">
@@ -492,7 +492,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       value={formData.counterpartyEmail}
                       onChange={(e) => updateFormData('counterpartyEmail', e.target.value)}
                       placeholder="email@company.com"
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     />
                   </FormField>
                 </div>
@@ -501,7 +501,7 @@ export const ContractGenerationWorkflow: React.FC<{
               {/* Dates & Duration */}
               <div className="bg-slate-50 rounded-xl p-5 space-y-4">
                 <h4 className="font-medium text-slate-900 flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-purple-500" />
+                  <Calendar className="w-5 h-5 text-violet-500" />
                   Dates & Duration
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -510,7 +510,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => updateFormData('startDate', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     />
                   </FormField>
                   <FormField label="End Date">
@@ -518,7 +518,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => updateFormData('endDate', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     />
                   </FormField>
                   <FormField label="Auto-Renewal">
@@ -530,7 +530,7 @@ export const ContractGenerationWorkflow: React.FC<{
                           onChange={(e) => updateFormData('autoRenew', e.target.checked)}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                       </label>
                       <span className="text-sm text-slate-600">{formData.autoRenew ? 'Enabled' : 'Disabled'}</span>
                     </div>
@@ -541,7 +541,7 @@ export const ContractGenerationWorkflow: React.FC<{
               {/* Financial Terms */}
               <div className="bg-slate-50 rounded-xl p-5 space-y-4">
                 <h4 className="font-medium text-slate-900 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5 text-purple-500" />
+                  <DollarSign className="w-5 h-5 text-violet-500" />
                   Financial Terms
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -550,7 +550,7 @@ export const ContractGenerationWorkflow: React.FC<{
                       <select
                         value={formData.currency}
                         onChange={(e) => updateFormData('currency', e.target.value)}
-                        className="px-3 py-2.5 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-slate-700 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                        className="px-3 py-2.5 rounded-l-lg border border-r-0 border-slate-300 bg-slate-100 text-slate-700 focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                       >
                         {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
@@ -559,7 +559,7 @@ export const ContractGenerationWorkflow: React.FC<{
                         value={formData.totalValue}
                         onChange={(e) => updateFormData('totalValue', e.target.value)}
                         placeholder="0.00"
-                        className="flex-1 px-4 py-2.5 rounded-r-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                        className="flex-1 px-4 py-2.5 rounded-r-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                       />
                     </div>
                   </FormField>
@@ -567,7 +567,7 @@ export const ContractGenerationWorkflow: React.FC<{
                     <select
                       value={formData.paymentTerms}
                       onChange={(e) => updateFormData('paymentTerms', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     >
                       {PAYMENT_TERMS.map(term => <option key={term} value={term}>{term}</option>)}
                     </select>
@@ -576,7 +576,7 @@ export const ContractGenerationWorkflow: React.FC<{
                     <select
                       value={formData.jurisdiction}
                       onChange={(e) => updateFormData('jurisdiction', e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all"
+                      className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all"
                     >
                       {JURISDICTIONS.map(j => <option key={j} value={j}>{j}</option>)}
                     </select>
@@ -592,7 +592,7 @@ export const ContractGenerationWorkflow: React.FC<{
                     onChange={(e) => updateFormData('description', e.target.value)}
                     placeholder="Describe the scope of work, deliverables, or purpose of this contract..."
                     rows={3}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all resize-none"
                   />
                 </FormField>
                 <FormField label="Special Terms or Conditions">
@@ -601,7 +601,7 @@ export const ContractGenerationWorkflow: React.FC<{
                     onChange={(e) => updateFormData('specialTerms', e.target.value)}
                     placeholder="Any special clauses, conditions, or requirements..."
                     rows={2}
-                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-all resize-none"
+                    className="w-full px-4 py-2.5 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-all resize-none"
                   />
                 </FormField>
               </div>
@@ -624,13 +624,13 @@ export const ContractGenerationWorkflow: React.FC<{
                 <div className="bg-slate-50 rounded-xl p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {selectedTemplate && <selectedTemplate.icon className="w-6 h-6 text-purple-600" />}
+                      {selectedTemplate && <selectedTemplate.icon className="w-6 h-6 text-violet-600" />}
                       <div>
                         <div className="font-medium text-slate-900">{selectedTemplate?.name}</div>
                         <div className="text-sm text-slate-500">{selectedTemplate?.category}</div>
                       </div>
                     </div>
-                    <button onClick={() => setStep(1)} className="text-sm text-purple-600 hover:text-purple-700 font-medium">
+                    <button onClick={() => setStep(1)} className="text-sm text-violet-600 hover:text-violet-700 font-medium">
                       Change
                     </button>
                   </div>
@@ -693,12 +693,12 @@ export const ContractGenerationWorkflow: React.FC<{
                 )}
 
                 {/* AI Preview */}
-                <div className="bg-gradient-to-br from-purple-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
+                <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-4 border border-indigo-200">
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-purple-600" />
+                    <Sparkles className="w-5 h-5 text-violet-600" />
                     <span className="font-medium text-indigo-900">AI Generation Preview</span>
                   </div>
-                  <ul className="text-sm text-purple-700 space-y-1.5">
+                  <ul className="text-sm text-violet-700 space-y-1.5">
                     <li className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-green-500" />
                       Standard {selectedTemplate?.name} clauses will be included
@@ -732,7 +732,7 @@ export const ContractGenerationWorkflow: React.FC<{
               exit={{ opacity: 0, x: -20 }}
               className="text-center py-8"
             >
-              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
                 <Sparkles className="w-10 h-10 text-white animate-pulse" />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">Generating Your Contract</h3>
@@ -845,7 +845,7 @@ export const ContractGenerationWorkflow: React.FC<{
                   </button>
                   <button
                     onClick={handleSubmitForApproval}
-                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-purple-200 transition-all"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-violet-200 transition-all"
                   >
                     <Send className="w-4 h-4" />
                     Submit for Approval
@@ -871,7 +871,7 @@ export const ContractGenerationWorkflow: React.FC<{
           {step < 3 ? (
             <button
               onClick={handleNext}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-purple-200 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-violet-200 transition-all"
             >
               Continue
               <ChevronRight className="w-4 h-4" />
@@ -879,7 +879,7 @@ export const ContractGenerationWorkflow: React.FC<{
           ) : (
             <button
               onClick={handleGenerate}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-purple-200 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium hover:shadow-lg hover:shadow-violet-200 transition-all"
             >
               <Sparkles className="w-4 h-4" />
               Generate Contract

@@ -142,8 +142,8 @@ function StageIndicator({
       ring: 'ring-violet-200'
     };
     if (isActive) return {
-      bg: 'bg-purple-100',
-      icon: 'text-purple-600',
+      bg: 'bg-violet-100',
+      icon: 'text-violet-600',
       ring: 'ring-indigo-300 ring-2'
     };
     return {
@@ -184,7 +184,7 @@ function StageIndicator({
         {/* Pulse effect for active */}
         {isActive && (
           <motion.div
-            className="absolute inset-0 rounded-2xl bg-purple-400"
+            className="absolute inset-0 rounded-2xl bg-violet-400"
             initial={{ opacity: 0.5, scale: 1 }}
             animate={{ opacity: 0, scale: 1.4 }}
             transition={{ duration: 1.5, repeat: Infinity }}
@@ -224,7 +224,7 @@ function ArtifactBubble({
         };
       case 'generating':
         return {
-          bg: 'bg-gradient-to-br from-purple-500 to-purple-600',
+          bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
           ring: 'ring-indigo-300 ring-2',
           text: 'text-white'
         };
@@ -309,7 +309,7 @@ function ArtifactBubble({
       <span className={cn(
         "text-xs font-medium",
         artifact.status === 'completed' ? "text-violet-600" :
-        artifact.status === 'generating' ? "text-purple-600" :
+        artifact.status === 'generating' ? "text-violet-600" :
         artifact.status === 'error' ? "text-rose-600" :
         "text-slate-400"
       )}>
@@ -391,7 +391,7 @@ export function GenerationFlowVisualization({
                   ? "bg-gradient-to-br from-violet-500 to-purple-600"
                   : isError
                   ? "bg-gradient-to-br from-rose-500 to-red-600"
-                  : "bg-gradient-to-br from-purple-500 to-purple-600"
+                  : "bg-gradient-to-br from-violet-500 to-purple-600"
               )}>
                 {isComplete ? (
                   <CheckCircle2 className="h-6 w-6 text-white" />
@@ -469,7 +469,7 @@ export function GenerationFlowVisualization({
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-gradient-to-r from-purple-500 to-purple-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
                   transition={{ duration: 0.5 }}
@@ -586,7 +586,7 @@ export function CompactGenerationFlow({
           ? "bg-violet-100"
           : isError
           ? "bg-rose-100"
-          : "bg-purple-100"
+          : "bg-violet-100"
       )}>
         {isComplete ? (
           <CheckCircle2 className="h-5 w-5 text-violet-600" />
@@ -597,7 +597,7 @@ export function CompactGenerationFlow({
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
           >
-            <Loader2 className="h-5 w-5 text-purple-600" />
+            <Loader2 className="h-5 w-5 text-violet-600" />
           </motion.div>
         )}
       </div>
@@ -621,7 +621,7 @@ export function CompactGenerationFlow({
                 ? "bg-violet-500"
                 : isError
                 ? "bg-rose-500"
-                : "bg-purple-500"
+                : "bg-violet-500"
             )}
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}

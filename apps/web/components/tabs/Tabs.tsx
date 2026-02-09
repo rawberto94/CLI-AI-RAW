@@ -264,7 +264,7 @@ export function VerticalTabs({
               'flex items-center gap-3 px-4 py-3 text-left text-sm font-medium rounded-xl',
               'transition-all duration-200',
               isActive
-                ? 'bg-purple-100 text-purple-700'
+                ? 'bg-violet-100 text-violet-700'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
               tab.disabled && 'opacity-50 cursor-not-allowed'
             )}
@@ -273,7 +273,7 @@ export function VerticalTabs({
               <Icon
                 className={cn(
                   'w-5 h-5',
-                  isActive ? 'text-purple-600' : 'text-slate-400'
+                  isActive ? 'text-violet-600' : 'text-slate-400'
                 )}
               />
             )}
@@ -283,7 +283,7 @@ export function VerticalTabs({
                 className={cn(
                   'px-2 py-0.5 text-xs font-semibold rounded-full',
                   isActive
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-violet-600 text-white'
                     : 'bg-slate-200 text-slate-600'
                 )}
               >

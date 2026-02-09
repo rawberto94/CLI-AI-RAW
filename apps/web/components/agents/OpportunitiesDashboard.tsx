@@ -73,7 +73,7 @@ export function OpportunitiesDashboard({ opportunities, onAccept, onDismiss }: O
     switch (type) {
       case 'cost_savings': return 'text-green-600 bg-green-100';
       case 'consolidation': return 'text-violet-600 bg-violet-100';
-      case 'renegotiation': return 'text-purple-600 bg-purple-100';
+      case 'renegotiation': return 'text-violet-600 bg-violet-100';
       case 'optimization': return 'text-orange-600 bg-orange-100';
       case 'risk_reduction': return 'text-red-600 bg-red-100';
       default: return 'text-gray-600 bg-gray-100';

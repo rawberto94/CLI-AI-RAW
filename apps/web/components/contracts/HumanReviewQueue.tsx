@@ -140,7 +140,7 @@ const PriorityBadge: React.FC<{ priority: ReviewPriority }> = ({ priority }) => 
       label: 'Medium',
     },
     low: {
-      color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+      color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
       icon: CheckCircle2,
       label: 'Low',
     },
@@ -167,7 +167,7 @@ const StatusBadge: React.FC<{ status: ReviewStatus }> = ({ status }) => {
       label: 'Pending',
     },
     in_progress: {
-      color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+      color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
       label: 'In Progress',
     },
     completed: {
@@ -179,7 +179,7 @@ const StatusBadge: React.FC<{ status: ReviewStatus }> = ({ status }) => {
       label: 'Rejected',
     },
     escalated: {
-      color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+      color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
       label: 'Escalated',
     },
   };
@@ -245,8 +245,8 @@ const StatsCards: React.FC<{ stats: ReviewQueueStats }> = ({ stats }) => {
               <p className="text-sm text-muted-foreground">Avg. Time</p>
               <p className="text-2xl font-bold">{stats.avgTimeToComplete.toFixed(1)}h</p>
             </div>
-            <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+            <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
+              <BarChart3 className="h-5 w-5 text-violet-600" />
             </div>
           </div>
         </CardContent>
@@ -283,7 +283,7 @@ const ReviewItemRow: React.FC<ReviewItemRowProps> = ({
         'p-4 border rounded-lg cursor-pointer transition-all hover:shadow-md',
         item.priority === 'critical' && 'border-red-200 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20',
         item.priority === 'high' && 'border-orange-200 bg-orange-50/30 dark:border-orange-900 dark:bg-orange-950/10',
-        item.status === 'in_progress' && 'ring-2 ring-blue-500 ring-offset-2'
+        item.status === 'in_progress' && 'ring-2 ring-violet-500 ring-offset-2'
       )}
       onClick={onSelect}
     >
@@ -516,7 +516,7 @@ const ReviewDetailDialog: React.FC<ReviewDetailDialogProps> = ({
                             defaultValue={region.text}
                             onChange={(e) => handleCorrectionChange(index, e.target.value)}
                             className={cn(
-                              corrections.has(index) && 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                              corrections.has(index) && 'border-violet-500 bg-violet-50 dark:bg-violet-950/20'
                             )}
                           />
                         </div>

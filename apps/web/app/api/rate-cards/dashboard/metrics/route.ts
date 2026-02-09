@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Get total rate cards tracked
@@ -37,7 +35,7 @@ export async function GET(request: NextRequest) {
       distinct: ['lineOfService'],
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       totalRateCards,
       totalSuppliers,
       geographicCoverage: geographicCoverage.length,
@@ -45,10 +43,4 @@ export async function GET(request: NextRequest) {
       countries: geographicCoverage.map(g => g.country).filter(Boolean),
       serviceLines: serviceLineCoverage.map(s => s.lineOfService).filter(Boolean),
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch dashboard metrics' },
-      { status: 500 }
-    );
-  }
-}
+  });

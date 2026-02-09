@@ -3,83 +3,55 @@
  * Revoke invitations
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest } from 'next/server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { auditTrailService } from 'data-orchestration/services';
 
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ invitationId: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
-    const session = await auth();
     const { invitationId } = await params;
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin or owner
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (!currentUser || !["owner", "admin"].includes(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
 
     // Get invitation
     const invitation = await prisma.teamInvitation.findFirst({
       where: { 
         id: invitationId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
     });
 
     if (!invitation) {
-      return NextResponse.json(
-        { error: "Invitation not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Invitation not found', 404);
     }
 
-    if (invitation.status !== "PENDING") {
-      return NextResponse.json(
-        { error: "Can only revoke pending invitations" },
-        { status: 400 }
-      );
+    if (invitation.status !== 'PENDING') {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Can only revoke pending invitations', 400);
     }
 
     await prisma.teamInvitation.update({
       where: { id: invitationId },
-      data: { status: "REVOKED" },
+      data: { status: 'REVOKED' },
     });
 
     // Audit log
     await prisma.auditLog.create({
       data: {
-        tenantId: session.user.tenantId,
-        userId: session.user.id,
-        action: "INVITATION_REVOKED",
-        entityType: "INVITATION",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: 'INVITATION_REVOKED',
+        entityType: 'INVITATION',
         entityId: invitationId,
         metadata: { email: invitation.email },
       },
     });
 
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to revoke invitation" },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, {});
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -87,48 +59,25 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ invitationId: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
-    const session = await auth();
     const { invitationId } = await params;
     const body = await request.json();
     const { action } = body;
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin or owner
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (!currentUser || !["owner", "admin"].includes(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
 
     // Get invitation
     const invitation = await prisma.teamInvitation.findFirst({
       where: { 
         id: invitationId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
     });
 
     if (!invitation) {
-      return NextResponse.json(
-        { error: "Invitation not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Invitation not found', 404);
     }
 
-    if (action === "resend") {
+    if (action === 'resend') {
       // Update expiration date
       const newExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
       
@@ -136,7 +85,7 @@ export async function POST(
         where: { id: invitationId },
         data: { 
           expiresAt: newExpiresAt,
-          status: "PENDING",
+          status: 'PENDING',
         },
       });
 
@@ -145,7 +94,7 @@ export async function POST(
       const { emailTemplates } = await import('@/lib/email/templates');
 
       const tenant = await prisma.tenant.findUnique({
-        where: { id: session.user.tenantId },
+        where: { id: ctx.tenantId },
         select: { name: true },
       });
       
@@ -162,20 +111,11 @@ export async function POST(
         html: template.html,
       });
 
-      return NextResponse.json({ 
-        success: true,
-        message: "Invitation resent",
-      });
+      return createSuccessResponse(ctx, { message: 'Invitation resent' });
     }
 
-    return NextResponse.json(
-      { error: "Invalid action" },
-      { status: 400 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to process invitation action" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

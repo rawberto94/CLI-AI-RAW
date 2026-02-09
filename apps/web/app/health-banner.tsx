@@ -12,17 +12,13 @@ export function HealthBanner() {
     setTenant(localStorage.getItem('x-tenant-id') || '—')
     const check = async () => {
       try { 
-        const r = await fetch('/api/healthz', { headers: tenantHeaders() }); 
+        const r = await fetch('/api/health', { headers: tenantHeaders() }); 
         setApi(r.ok ? 'ok' : 'down');
       } catch { 
         setApi('down');
       }
-      try { 
-        const r2 = await fetch('/api/web-health'); 
-        setWeb(r2.ok ? 'ok' : 'down');
-      } catch { 
-        setWeb('down');
-      }
+      // Web is OK if this client-side code is running
+      setWeb('ok');
     }
     check()
     const t = setInterval(check, 15000)

@@ -215,9 +215,9 @@ export function SwipeableApprovalCard({
 
             {/* AI Suggestion preview */}
             {item.aiSuggestion && (
-              <div className="flex items-center gap-2 p-2 rounded-md bg-purple-50 dark:bg-purple-900/20 mb-3">
-                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
-                <span className="text-xs text-purple-700 dark:text-purple-300">
+              <div className="flex items-center gap-2 p-2 rounded-md bg-violet-50 dark:bg-violet-900/20 mb-3">
+                <Sparkles size={14} className="text-violet-600 dark:text-violet-400" />
+                <span className="text-xs text-violet-700 dark:text-violet-300">
                   AI suggests: <span className="font-medium capitalize">{item.aiSuggestion}</span>
                   {item.aiConfidence && ` (${item.aiConfidence}%)`}
                 </span>

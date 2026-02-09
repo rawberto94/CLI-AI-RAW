@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * Export data types
@@ -55,7 +57,7 @@ interface RiskItem {
 
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
-  return request.headers.get('x-tenant-id');
+  return ctx.tenantId;
 }
 
 // Simple XLSX generator (no external dependencies)
@@ -319,6 +321,7 @@ function formatRisks(data: string | RiskItem[] | Record<string, unknown> | unkno
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const format = request.nextUrl.searchParams.get('format') || 'json'
     const includeArtifacts = request.nextUrl.searchParams.get('includeArtifacts') !== 'false'
@@ -326,10 +329,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     // Fetch contract with artifacts - scoped to tenant
@@ -342,10 +342,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     switch (format) {
@@ -383,15 +380,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         })
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid format. Supported formats: json, pdf, html, excel, csv' },
-          { status: 400 }
-        )
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid format. Supported formats: json, pdf, html, excel, csv', 400);
     }
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Export failed', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    return handleApiError(ctx, error);
   }
 }

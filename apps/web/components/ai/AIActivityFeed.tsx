@@ -101,8 +101,8 @@ const activityConfig: Record<AIActivityType, {
   },
   gap_filling: {
     icon: Brain,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     label: 'Gap Filling',
   },
   workflow_suggestion: {
@@ -125,8 +125,8 @@ const activityConfig: Record<AIActivityType, {
   },
   health_check: {
     icon: Activity,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     label: 'Health Check',
   },
   opportunity_discovery: {
@@ -137,8 +137,8 @@ const activityConfig: Record<AIActivityType, {
   },
   search: {
     icon: FileSearch,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     label: 'Search',
   },
   learning: {
@@ -363,7 +363,7 @@ export function AIActivityFeed({
       {!compact && (
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
               <Bot className="w-4 h-4 text-white" />
             </div>
             <div>
@@ -523,7 +523,7 @@ export function AIActivityFeed({
         <div className="px-4 py-2 border-t border-gray-100 bg-gray-50/50">
           <div className="flex items-center justify-between text-xs text-gray-500">
             <span>{activities.length} total activities</span>
-            <Link href="/ai" className="flex items-center gap-1 hover:text-purple-600 transition-colors">
+            <Link href="/ai" className="flex items-center gap-1 hover:text-violet-600 transition-colors">
               View AI Dashboard
               <ChevronRight className="w-3 h-3" />
             </Link>

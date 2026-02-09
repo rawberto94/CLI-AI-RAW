@@ -5,11 +5,10 @@
  * to maximize cost savings and operational efficiency.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { RateCardCluster } from './rate-card-clustering.service';
 import { similarityCalculatorService } from './similarity-calculator.service';
 
-const prisma = new PrismaClient();
 
 export interface ConsolidationOpportunity {
   id: string;

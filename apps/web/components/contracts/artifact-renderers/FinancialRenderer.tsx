@@ -33,12 +33,12 @@ export const FinancialRenderer = memo(function FinancialRenderer({ data }: Finan
       </div>
       
       {finData.paymentTerms && finData.paymentTerms.length > 0 && (
-        <div className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/50 dark:to-pink-950/50 rounded-xl border-2 border-purple-200 dark:border-purple-800 shadow-sm">
-          <h4 className="font-bold text-base mb-4 text-purple-900 dark:text-purple-100">Payment Terms</h4>
+        <div className="p-6 bg-gradient-to-br from-violet-50 to-pink-50 dark:from-violet-950/50 dark:to-pink-950/50 rounded-xl border-2 border-violet-200 dark:border-violet-800 shadow-sm">
+          <h4 className="font-bold text-base mb-4 text-violet-900 dark:text-violet-100">Payment Terms</h4>
           <ul className="space-y-2">
             {finData.paymentTerms.map((term, i) => (
-              <li key={i} className="text-base text-purple-900/90 dark:text-purple-100/90 flex items-start gap-2">
-                <span className="text-purple-600 dark:text-purple-400 mt-1">●</span>
+              <li key={i} className="text-base text-violet-900/90 dark:text-violet-100/90 flex items-start gap-2">
+                <span className="text-violet-600 dark:text-violet-400 mt-1">●</span>
                 <span>{term}</span>
               </li>
             ))}

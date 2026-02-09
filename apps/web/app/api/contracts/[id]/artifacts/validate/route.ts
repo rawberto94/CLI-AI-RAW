@@ -4,8 +4,9 @@
  * Validates contract artifacts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { artifactValidationService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Type for the validation service (mirrors artifact-validation.service.ts)
 interface ValidationResult {
@@ -23,16 +24,14 @@ interface ValidationResult {
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const contractId = params.id;
     const body = await request.json();
     const { artifactType, artifactData, validateAll } = body;
 
     if (!artifactData && !validateAll) {
-      return NextResponse.json(
-        { error: 'Either artifactData or validateAll must be provided' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Either artifactData or validateAll must be provided', 400);
     }
 
     if (artifactType && artifactData) {
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
         );
       }
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         contractId,
         artifactType,
@@ -64,19 +63,13 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     }
 
     // Validate all artifacts (would fetch from database in production)
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       message: 'All artifacts validation would be performed here',
       validationResults: {}
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Validation failed',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

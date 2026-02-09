@@ -10,14 +10,14 @@
  * - Compliance gaps
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { aiInsightsGeneratorService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 interface Insight {
   id: string;
@@ -31,11 +31,11 @@ interface Insight {
   data?: Record<string, any>;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
   const startTime = Date.now();
 
   try {
-    const tenantId = await getServerTenantId();
     const { searchParams } = new URL(request.url);
     
     const insightType = searchParams.get('type'); // risk, opportunity, compliance, all
@@ -53,8 +53,7 @@ export async function GET(request: NextRequest) {
     ] = await Promise.all([
       // Total contracts
       prisma.contract.count({
-        where: { tenantId, status: { in: ['COMPLETED', 'ACTIVE'] } },
-      }),
+        where: { tenantId, status: { in: ['COMPLETED', 'ACTIVE'] } } }),
       
       // Expiring in next 90 days
       prisma.contract.count({
@@ -63,45 +62,36 @@ export async function GET(request: NextRequest) {
           status: { in: ['COMPLETED', 'ACTIVE'] },
           expirationDate: {
             gte: new Date(),
-            lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-          },
-        },
-      }),
+            lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) } } }),
       
       // Recent contracts (last 30 days)
       prisma.contract.count({
         where: {
           tenantId,
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
-      }),
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } }),
       
       // By status
       prisma.contract.groupBy({
         by: ['status'],
         where: { tenantId },
-        _count: true,
-      }),
+        _count: true }),
       
       // Total value
       prisma.contract.aggregate({
         where: { tenantId, totalValue: { not: null } },
-        _sum: { totalValue: true },
-      }),
+        _sum: { totalValue: true } }),
       
       // Risk artifacts
       prisma.artifact.findMany({
         where: { tenantId, type: 'RISK' },
         select: { id: true, data: true, contractId: true },
-        take: 50,
-      }),
+        take: 50 }),
       
       // Compliance artifacts
       prisma.artifact.findMany({
         where: { tenantId, type: 'COMPLIANCE' },
         select: { id: true, data: true, contractId: true },
-        take: 50,
-      }),
+        take: 50 }),
     ]);
 
     const insights: Insight[] = [];
@@ -116,8 +106,7 @@ export async function GET(request: NextRequest) {
         description: `You have ${expiringContracts} contracts expiring in the next 90 days that require attention.`,
         impact: 'Service continuity risk if not renewed',
         affectedContracts: expiringContracts,
-        recommendation: 'Review expiring contracts and initiate renewal discussions',
-      });
+        recommendation: 'Review expiring contracts and initiate renewal discussions' });
     }
 
     // 2. Contract Volume Insight
@@ -128,8 +117,7 @@ export async function GET(request: NextRequest) {
         severity: 'info',
         title: `${recentContracts} New Contracts This Month`,
         description: `Your contract portfolio has grown with ${recentContracts} new contracts in the last 30 days.`,
-        data: { recentContracts, totalContracts },
-      });
+        data: { recentContracts, totalContracts } });
     }
 
     // 3. Value Analysis
@@ -141,8 +129,7 @@ export async function GET(request: NextRequest) {
         severity: 'info',
         title: `$${(totalValueNum / 1000000).toFixed(1)}M Total Contract Value`,
         description: `Your managed contract portfolio has a total value of $${totalValueNum.toLocaleString()}.`,
-        data: { totalValue: totalValueNum },
-      });
+        data: { totalValue: totalValueNum } });
     }
 
     // 4. Aggregate Risk Insights from Artifacts
@@ -173,8 +160,7 @@ export async function GET(request: NextRequest) {
         description: `AI analysis found ${highRiskCount} contracts with significant risk factors requiring review.`,
         affectedContracts: highRiskCount,
         recommendation: 'Prioritize legal review for high-risk contracts',
-        data: { highRiskCount, mediumRiskCount, riskCategories: Object.fromEntries(riskCategories) },
-      });
+        data: { highRiskCount, mediumRiskCount, riskCategories: Object.fromEntries(riskCategories) } });
     }
 
     // 5. Compliance Insights
@@ -194,17 +180,14 @@ export async function GET(request: NextRequest) {
         title: `${nonCompliantCount} Contracts Below Compliance Threshold`,
         description: `${nonCompliantCount} contracts scored below 70% on compliance checks.`,
         affectedContracts: nonCompliantCount,
-        recommendation: 'Review compliance gaps and update contract terms',
-      });
+        recommendation: 'Review compliance gaps and update contract terms' });
     }
 
     // 6. RAG Coverage Insight
     const contractsWithEmbeddings = await prisma.contract.count({
       where: { 
         tenantId,
-        contractEmbeddings: { some: {} },
-      },
-    });
+        contractEmbeddings: { some: {} } } });
 
     const ragCoverage = totalContracts > 0 
       ? Math.round((contractsWithEmbeddings / totalContracts) * 100)
@@ -219,8 +202,7 @@ export async function GET(request: NextRequest) {
         description: `Only ${ragCoverage}% of your contracts are indexed for AI-powered search. Process remaining contracts to improve search accuracy.`,
         affectedContracts: totalContracts - contractsWithEmbeddings,
         recommendation: 'Run batch RAG processing to index all contracts',
-        data: { indexed: contractsWithEmbeddings, total: totalContracts, coverage: ragCoverage },
-      });
+        data: { indexed: contractsWithEmbeddings, total: totalContracts, coverage: ragCoverage } });
     }
 
     // 7. Use OpenAI for deeper insights (if enabled and enough data)
@@ -231,8 +213,7 @@ export async function GET(request: NextRequest) {
           expiringContracts,
           highRiskCount,
           totalValue: totalValueNum,
-          riskCategories: Object.fromEntries(riskCategories),
-        });
+          riskCategories: Object.fromEntries(riskCategories) });
         
         if (aiInsight) {
           insights.push(aiInsight);
@@ -251,7 +232,7 @@ export async function GET(request: NextRequest) {
     const severityOrder = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
     filteredInsights.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       insights: filteredInsights,
       summary: {
         totalInsights: filteredInsights.length,
@@ -263,20 +244,14 @@ export async function GET(request: NextRequest) {
           expiringContracts,
           recentContracts,
           totalValue: totalValueNum,
-          ragCoverage,
-        },
-      },
+          ragCoverage } },
       generatedAt: new Date().toISOString(),
-      processingTime: Date.now() - startTime,
-    });
+      processingTime: Date.now() - startTime });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate insights' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to generate insights', 500);
   }
-}
+});
 
 async function generateAIInsight(
   tenantId: string,
@@ -293,8 +268,7 @@ async function generateAIInsight(
     messages: [
       {
         role: 'system',
-        content: `You are a contract management AI analyst. Generate a single actionable insight based on portfolio statistics. Return JSON with: title (string), description (string), recommendation (string), severity (critical|high|medium|low).`,
-      },
+        content: `You are a contract management AI analyst. Generate a single actionable insight based on portfolio statistics. Return JSON with: title (string), description (string), recommendation (string), severity (critical|high|medium|low).` },
       {
         role: 'user',
         content: `Contract portfolio stats:
@@ -304,13 +278,11 @@ async function generateAIInsight(
 - Total value: $${stats.totalValue.toLocaleString()}
 - Risk categories: ${JSON.stringify(stats.riskCategories)}
 
-Generate one strategic insight about this portfolio.`,
-      },
+Generate one strategic insight about this portfolio.` },
     ],
     temperature: 0.5,
     max_tokens: 300,
-    response_format: { type: 'json_object' },
-  });
+    response_format: { type: 'json_object' } });
 
   try {
     const content = JSON.parse(completion.choices[0]?.message?.content || '{}');
@@ -320,8 +292,7 @@ Generate one strategic insight about this portfolio.`,
       severity: content.severity || 'medium',
       title: content.title || 'AI Portfolio Analysis',
       description: content.description || 'AI analysis of your contract portfolio.',
-      recommendation: content.recommendation,
-    };
+      recommendation: content.recommendation };
   } catch {
     return null;
   }

@@ -256,16 +256,16 @@ const StatCard = memo(function StatCard({
       ring: 'ring-red-500/20',
     },
     purple: {
-      bg: 'bg-gradient-to-br from-purple-500 to-purple-600',
-      light: 'bg-purple-50',
-      text: 'text-purple-600',
-      ring: 'ring-purple-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
     cyan: {
-      bg: 'bg-gradient-to-br from-purple-500 to-purple-600',
-      light: 'bg-purple-50',
-      text: 'text-purple-600',
-      ring: 'ring-purple-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
   };
 
@@ -441,8 +441,8 @@ const QuickAction = memo(function QuickAction({
 }: QuickActionProps) {
   const colorStyles = {
     blue: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
-    purple: 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/25',
-    cyan: 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/25',
+    purple: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
+    cyan: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
   };
 
   const content = (
@@ -551,7 +551,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.1),transparent_50%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(74,144,226,0.1),transparent_50%)]" />
@@ -598,7 +598,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             <Link href="/contracts/generate">
               <Button 
                 onClick={onGenerateClick}
-                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-purple-500 hover:from-purple-600 hover:to-purple-600 text-white shadow-lg shadow-purple-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
+                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Generate</span>
@@ -606,7 +606,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             </Link>
             <Button 
               onClick={onAskAIClick}
-              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-purple-500 to-purple-500 hover:from-purple-600 hover:to-purple-600 text-white shadow-lg shadow-purple-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
+              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
             >
               <Target className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Ask AI</span>
@@ -752,19 +752,19 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
           >
             {/* Background glow effect */}
-            <div className="absolute -inset-px bg-gradient-to-r from-purple-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <Zap className="w-full h-full text-white" />
             </div>
             <div className="relative">
               <div className="flex items-start justify-between mb-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 shadow-lg shadow-purple-500/30">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
                   <Zap className="h-5 w-5 text-white" />
                 </div>
                 {(stats.recentlyAdded ?? 0) > 0 && (
-                  <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-500/20 text-purple-300 backdrop-blur-sm">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-300 backdrop-blur-sm">
                     <motion.span 
-                      className="w-2 h-2 rounded-full bg-purple-400"
+                      className="w-2 h-2 rounded-full bg-violet-400"
                       animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity }}
                     />

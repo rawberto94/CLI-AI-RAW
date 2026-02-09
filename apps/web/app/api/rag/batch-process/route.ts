@@ -5,10 +5,11 @@
  * GET /api/rag/batch-process - Get batch processing status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
 
 // Track batch processing status
 const batchStatus = new Map<string, {
@@ -21,12 +22,10 @@ const batchStatus = new Map<string, {
   results: Array<{ contractId: string; success: boolean; error?: string }>;
 }>();
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { contractIds, limit = 50, forceReprocess = false } = body;
-
-    const tenantId = await getServerTenantId();
 
     // Find contracts to process
     const whereClause: Record<string, unknown> = { tenantId };
@@ -46,31 +45,25 @@ export async function POST(request: NextRequest) {
         id: true,
         fileName: true,
         rawText: true,
-        _count: { select: { embeddings: true } },
-      },
+        _count: { select: { embeddings: true } } },
       take: limit,
-      orderBy: { createdAt: 'desc' },
-    });
+      orderBy: { createdAt: 'desc' } });
 
     if (contracts.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'No contracts to process',
         processed: 0,
-        skipped: 0,
-      });
+        skipped: 0 });
     }
 
     // Filter to contracts with text
     const contractsWithText = contracts.filter(c => c.rawText && c.rawText.length > 100);
     
     if (contractsWithText.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'No contracts with extractable text found',
         processed: 0,
-        skipped: contracts.length,
-      });
+        skipped: contracts.length });
     }
 
     // Create batch ID
@@ -83,33 +76,21 @@ export async function POST(request: NextRequest) {
       processed: 0,
       failed: 0,
       startTime: Date.now(),
-      results: [],
-    });
+      results: [] });
 
     // Process contracts in background (don't await)
     processBatch(batchId, contractsWithText).catch(() => {
       // Background processing error - status tracked in batchStatus map
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       batchId,
       message: `Started processing ${contractsWithText.length} contracts`,
       total: contractsWithText.length,
       skipped: contracts.length - contractsWithText.length,
-      statusUrl: `/api/rag/batch-process?batchId=${batchId}`,
-    });
+      statusUrl: `/api/rag/batch-process?batchId=${batchId}` });
 
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 async function processBatch(
   batchId: string,
@@ -124,8 +105,7 @@ async function processBatch(
         status.results.push({
           contractId: contract.id,
           success: false,
-          error: 'No text content',
-        });
+          error: 'No text content' });
         status.failed++;
         continue;
       }
@@ -135,22 +115,19 @@ async function processBatch(
         contract.rawText,
         {
           apiKey: process.env.OPENAI_API_KEY,
-          model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
-        }
+          model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small' }
       );
 
       status.results.push({
         contractId: contract.id,
-        success: true,
-      });
+        success: true });
       status.processed++;
       
     } catch (error) {
       status.results.push({
         contractId: contract.id,
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+        error: error instanceof Error ? error.message : 'Unknown error' });
       status.failed++;
     }
   }
@@ -159,7 +136,7 @@ async function processBatch(
   status.endTime = Date.now();
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const { searchParams } = new URL(request.url);
   const batchId = searchParams.get('batchId');
 
@@ -167,19 +144,15 @@ export async function GET(request: NextRequest) {
     const status = batchStatus.get(batchId);
     
     if (!status) {
-      return NextResponse.json(
-        { error: 'Batch not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Batch not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       batchId,
       ...status,
       processingTime: status.endTime 
         ? status.endTime - status.startTime 
-        : Date.now() - status.startTime,
-    });
+        : Date.now() - status.startTime });
   }
 
   // Return all batch statuses
@@ -190,11 +163,9 @@ export async function GET(request: NextRequest) {
     processed: s.processed,
     failed: s.failed,
     startTime: new Date(s.startTime).toISOString(),
-    endTime: s.endTime ? new Date(s.endTime).toISOString() : undefined,
-  }));
+    endTime: s.endTime ? new Date(s.endTime).toISOString() : undefined }));
 
-  return NextResponse.json({
+  return createSuccessResponse(ctx, {
     batches: allBatches.slice(-10), // Last 10 batches
-    activeBatches: allBatches.filter(b => b.status === 'running').length,
-  });
-}
+    activeBatches: allBatches.filter(b => b.status === 'running').length });
+});

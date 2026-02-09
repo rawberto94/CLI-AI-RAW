@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { analyticalIntelligenceService } from 'data-orchestration/services';
 
 /**
  * Intelligence Hub API
@@ -194,103 +196,86 @@ async function getRecentActivity(tenantId: string, limit = 10) {
   });
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getTenantIdFromRequest(request);
-    const { searchParams } = new URL(request.url);
-    const section = searchParams.get('section');
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await getTenantIdFromRequest(request);
+  const { searchParams } = new URL(request.url);
+  const section = searchParams.get('section');
 
-    let data: Record<string, unknown> = {};
+  let data: Record<string, unknown> = {};
 
-    if (section === 'health') {
-      data = { healthScores: await getHealthScores(tenantId) };
-    } else if (section === 'insights') {
-      data = { insights: await getInsights(tenantId) };
-    } else if (section === 'activity') {
-      data = { recentActivity: await getRecentActivity(tenantId) };
-    } else {
-      // Return all sections
-      const [healthScores, insights, recentActivity] = await Promise.all([
-        getHealthScores(tenantId),
-        getInsights(tenantId),
-        getRecentActivity(tenantId),
-      ]);
+  if (section === 'health') {
+    data = { healthScores: await getHealthScores(tenantId) };
+  } else if (section === 'insights') {
+    data = { insights: await getInsights(tenantId) };
+  } else if (section === 'activity') {
+    data = { recentActivity: await getRecentActivity(tenantId) };
+  } else {
+    // Return all sections
+    const [healthScores, insights, recentActivity] = await Promise.all([
+      getHealthScores(tenantId),
+      getInsights(tenantId),
+      getRecentActivity(tenantId),
+    ]);
 
-      data = {
-        healthScores,
-        insights,
-        recentActivity,
-        aiCapabilities: {
-          searchEnabled: true,
-          healthScoresEnabled: true,
-          negotiationCopilotEnabled: true,
-          knowledgeGraphEnabled: true,
-          lastModelUpdate: new Date().toISOString().split('T')[0],
-          processingQueue: 0,
-        },
-      };
-    }
+    data = {
+      healthScores,
+      insights,
+      recentActivity,
+      aiCapabilities: {
+        searchEnabled: true,
+        healthScoresEnabled: true,
+        negotiationCopilotEnabled: true,
+        knowledgeGraphEnabled: true,
+        lastModelUpdate: new Date().toISOString().split('T')[0],
+        processingQueue: 0,
+      },
+    };
+  }
 
-    return NextResponse.json({
+  return createSuccessResponse(ctx, {
+    success: true,
+    data,
+  });
+});
+
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action } = body;
+
+  if (action === 'refresh-scores') {
+    return createSuccessResponse(ctx, {
       success: true,
-      data,
+      message: 'Health scores refresh initiated',
+      data: {
+        jobId: `refresh-${Date.now()}`,
+        status: 'processing',
+        estimatedTime: '30 seconds',
+      },
     });
-  } catch {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to fetch intelligence data',
-    }, { status: 500 });
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action } = body;
-
-    if (action === 'refresh-scores') {
-      return NextResponse.json({
-        success: true,
-        message: 'Health scores refresh initiated',
-        data: {
-          jobId: `refresh-${Date.now()}`,
-          status: 'processing',
-          estimatedTime: '30 seconds',
-        },
-      });
-    }
-
-    if (action === 'dismiss-insight') {
-      return NextResponse.json({
-        success: true,
-        message: 'Insight dismissed',
-        data: {
-          insightId: body.insightId,
-          dismissedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'act-on-insight') {
-      return NextResponse.json({
-        success: true,
-        message: 'Action recorded',
-        data: {
-          insightId: body.insightId,
-          actionTaken: body.actionType,
-          actedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
+  if (action === 'dismiss-insight') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Insight dismissed',
+      data: {
+        insightId: body.insightId,
+        dismissedAt: new Date().toISOString(),
+      },
+    });
   }
-}
+
+  if (action === 'act-on-insight') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Action recorded',
+      data: {
+        insightId: body.insightId,
+        actionTaken: body.actionType,
+        actedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});

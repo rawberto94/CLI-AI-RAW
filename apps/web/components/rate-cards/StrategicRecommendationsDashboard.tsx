@@ -46,7 +46,7 @@ function getCategoryColor(category: StrategicRecommendation['category']): string
     case 'SUPPLIER_OPTIMIZATION':
       return 'text-violet-600 bg-violet-50';
     case 'MARKET_POSITIONING':
-      return 'text-purple-600 bg-purple-50';
+      return 'text-violet-600 bg-violet-50';
     case 'RISK_MITIGATION':
       return 'text-red-600 bg-red-50';
     case 'PROCESS_IMPROVEMENT':

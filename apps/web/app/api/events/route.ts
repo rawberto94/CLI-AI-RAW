@@ -6,8 +6,9 @@
  * with data-orchestration package. Event bus implemented inline.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { EventEmitter } from 'events';
+import { withAuthApiHandler } from '@/lib/api-middleware';
 
 // Inline event bus to avoid any data-orchestration imports
 enum Events {
@@ -101,7 +102,7 @@ const healthCheckService = {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
   const searchParams = request.nextUrl.searchParams;
   // EventSource cannot reliably set custom headers, so support tenantId via query param.
   // Priority: x-tenant-id header > tenantId query param > demo (dev only)
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     (process.env.NODE_ENV === 'production' ? null : 'demo');
 
   if (!tenantId) {
-    return new Response('Tenant ID is required', { status: 400 });
+    return new NextResponse('Tenant ID is required', { status: 400 });
   }
 
   const userId = searchParams.get('userId') || undefined;
@@ -203,7 +204,7 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -211,7 +212,7 @@ export async function GET(request: NextRequest) {
       'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   });
-}
+});
 
 /**
  * SSE event payload types

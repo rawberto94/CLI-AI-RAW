@@ -73,15 +73,15 @@ const documentTypeConfig: Record<string, {
   quote: {
     label: 'Quotes',
     icon: FileQuestion,
-    color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   proposal: {
     label: 'Proposals',
     icon: FileType2,
-    color: 'text-purple-600 dark:text-indigo-400',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-600 dark:text-indigo-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   work_order: {
@@ -108,8 +108,8 @@ const documentTypeConfig: Record<string, {
   amendment: {
     label: 'Amendments',
     icon: Pen,
-    color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: true,
   },
   addendum: {

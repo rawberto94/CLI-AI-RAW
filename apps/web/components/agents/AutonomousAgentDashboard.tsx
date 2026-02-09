@@ -157,7 +157,7 @@ const StatusBadge: React.FC<{ status: AgentGoal['status'] }> = ({ status }) => {
     pending: { color: 'bg-gray-100 text-gray-800', label: 'Pending' },
     planning: { color: 'bg-violet-100 text-violet-800', label: 'Planning' },
     executing: { color: 'bg-yellow-100 text-yellow-800', label: 'Executing' },
-    awaiting_approval: { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Approval' },
+    awaiting_approval: { color: 'bg-violet-100 text-violet-800', label: 'Awaiting Approval' },
     completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
     failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
     cancelled: { color: 'bg-gray-100 text-gray-600', label: 'Cancelled' },
@@ -741,8 +741,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Zap className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <Zap className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Active Triggers</p>

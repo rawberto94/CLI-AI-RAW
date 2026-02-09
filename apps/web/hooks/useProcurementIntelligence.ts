@@ -159,7 +159,7 @@ export function useRenewalRadar(filters?: RenewalRadarFilters, mode: DataMode = 
         if (filters?.riskLevel) params.append('riskLevel', filters.riskLevel);
         params.append('mode', mode);
 
-        const response = await fetch(`/api/analytics/renewals?${params}`);
+        const response = await fetch(`/api/renewals?${params}`);
         
         if (!response.ok) throw new Error('Failed to fetch renewal data');
         

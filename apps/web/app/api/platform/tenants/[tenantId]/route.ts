@@ -4,24 +4,24 @@
  * Allows platform owners to view, update, or switch context to a specific tenant
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
 
 // GET - Get tenant details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check admin access
@@ -32,10 +32,7 @@ export async function GET(
 
     const isAdmin = user?.role === 'owner' || user?.role === 'admin';
     if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
 
     // Get tenant with full details
@@ -66,10 +63,7 @@ export async function GET(
     });
 
     if (!tenant) {
-      return NextResponse.json(
-        { error: 'Tenant not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     // Get contract count excluding DELETED
@@ -80,7 +74,7 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       tenant: {
         id: tenant.id,
@@ -95,11 +89,8 @@ export async function GET(
         users: tenant.users,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -108,15 +99,13 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check admin access
@@ -127,10 +116,7 @@ export async function PATCH(
 
     const isAdmin = user?.role === 'owner' || user?.role === 'admin';
     if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
 
     const body = await request.json();
@@ -144,15 +130,12 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       tenant,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -161,15 +144,13 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check admin access
@@ -180,10 +161,7 @@ export async function DELETE(
 
     const isAdmin = user?.role === 'owner' || user?.role === 'admin';
     if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
     }
 
     // Soft delete - set status to SUSPENDED
@@ -192,15 +170,12 @@ export async function DELETE(
       data: { status: 'SUSPENDED' },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Tenant suspended successfully',
       tenant,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

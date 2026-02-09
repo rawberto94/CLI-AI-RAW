@@ -28,7 +28,7 @@ export function DataModeToggle({
         onClick={toggle}
         className={`flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all ${
           isMockData 
-            ? 'bg-purple-100 text-purple-700 hover:bg-purple-200' 
+            ? 'bg-violet-100 text-violet-700 hover:bg-violet-200' 
             : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
         } ${className}`}
         title={isMockData ? 'Using demo data - Click for real data' : 'Using real data - Click for demo data'}
@@ -66,9 +66,9 @@ export function DataModeToggle({
     <div className={`bg-white rounded-xl border border-slate-200 p-4 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${isMockData ? 'bg-purple-100' : 'bg-violet-100'}`}>
+          <div className={`p-2 rounded-lg ${isMockData ? 'bg-violet-100' : 'bg-violet-100'}`}>
             {isMockData ? (
-              <Sparkles className="w-5 h-5 text-purple-600" />
+              <Sparkles className="w-5 h-5 text-violet-600" />
             ) : (
               <Database className="w-5 h-5 text-violet-600" />
             )}
@@ -87,7 +87,7 @@ export function DataModeToggle({
         
         <button
           onClick={toggle}
-          className="relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+          className="relative w-14 h-7 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
           style={{ backgroundColor: isMockData ? '#8b5cf6' : '#cbd5e1' }}
         >
           <motion.div
@@ -105,7 +105,7 @@ export function DataModeToggle({
           exit={{ opacity: 0, height: 0 }}
           className="mt-3 pt-3 border-t border-slate-100"
         >
-          <div className="flex items-center gap-2 text-xs text-purple-600 bg-purple-50 px-3 py-2 rounded-lg">
+          <div className="flex items-center gap-2 text-xs text-violet-600 bg-violet-50 px-3 py-2 rounded-lg">
             <Sparkles className="w-3 h-3" />
             <span>All modules populated with rich demo data for showcasing</span>
           </div>
@@ -128,7 +128,7 @@ export function FloatingDataModeToggle() {
       onClick={() => setDataMode(isMockData ? 'real' : 'mock')}
       className={`fixed bottom-20 right-6 z-40 p-3 rounded-full shadow-lg transition-colors ${
         isMockData 
-          ? 'bg-purple-500 text-white hover:bg-purple-600' 
+          ? 'bg-violet-500 text-white hover:bg-violet-600' 
           : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
       }`}
       title={isMockData ? 'Demo Mode - Click for Live Data' : 'Live Data - Click for Demo Mode'}

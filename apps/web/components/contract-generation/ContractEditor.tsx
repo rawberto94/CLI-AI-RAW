@@ -313,7 +313,7 @@ function ClauseBlock({
               </Badge>
             )}
             {clause.status === 'NEGOTIATING' && (
-              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+              <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
                 Negotiating
               </Badge>
             )}

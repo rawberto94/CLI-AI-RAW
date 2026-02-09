@@ -30,6 +30,7 @@
     "setup": "bash .devcontainer/setup.sh",
     "verify": "bash scripts/verify-production-readiness.sh",
     "typecheck": "pnpm typecheck:web && pnpm typecheck:workers",
+    "lint": "pnpm -C apps/web exec next lint",
     "typecheck:web": "pnpm -C apps/web exec tsc --noEmit --pretty false",
     "typecheck:workers": "pnpm -C packages/workers run typecheck",
     "db:migrate": "npx prisma migrate deploy --schema packages/clients/db/schema.prisma",
@@ -38,24 +39,9 @@
     "db:push": "npx prisma db push --schema packages/clients/db/schema.prisma",
     "db:seed": "npx prisma db seed --schema packages/clients/db/schema.prisma"
   },
-  "dependencies": {
-    "@sendgrid/mail": "^8.1.6",
-    "@types/jspdf": "^2.0.0",
-    "cors": "^2.8.5",
-    "express": "^4.18.0",
-    "express-ws": "^5.0.0",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.0.0",
-    "langsmith": "^0.3.78",
-    "mammoth": "^1.5.1",
-    "multer": "^2.0.2",
-    "node-cron": "^3.0.2",
-    "pdf-parse": "^1.1.1",
-    "pgvector": "^0.1.8",
-    "pptxgenjs": "^4.0.1",
-    "uuid": "^13.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
+    "@types/jspdf": "^2.0.0",
     "dotenv-cli": "^10.0.0",
     "nodemon": "^3.0.0",
     "turbo": "^2.7.2"

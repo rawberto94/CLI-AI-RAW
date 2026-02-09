@@ -187,7 +187,7 @@ export function IntegrationsSettings({ compact = false, onSettingsChange }: Inte
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-purple-600" />
+        <Loader2 className="h-6 w-6 animate-spin text-violet-600" />
       </div>
     );
   }
@@ -212,7 +212,7 @@ export function IntegrationsSettings({ compact = false, onSettingsChange }: Inte
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-purple-600" />
+              <MessageSquare className="h-5 w-5 text-violet-600" />
               Slack & Teams Integration
             </DialogTitle>
             <DialogDescription>
@@ -244,7 +244,7 @@ export function IntegrationsSettings({ compact = false, onSettingsChange }: Inte
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
             >
               {saving ? (
                 <>
@@ -269,7 +269,7 @@ export function IntegrationsSettings({ compact = false, onSettingsChange }: Inte
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5 text-purple-600" />
+          <MessageSquare className="h-5 w-5 text-violet-600" />
           Slack & Teams Integration
         </CardTitle>
         <CardDescription>
@@ -298,7 +298,7 @@ export function IntegrationsSettings({ compact = false, onSettingsChange }: Inte
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
           >
             {saving ? (
               <>
@@ -355,7 +355,7 @@ function IntegrationContent({
       {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between p-4 border rounded-lg">
         <div className="flex items-center gap-3">
-          <Bell className="h-5 w-5 text-purple-600" />
+          <Bell className="h-5 w-5 text-violet-600" />
           <div>
             <p className="font-medium">Enable Notifications</p>
             <p className="text-sm text-slate-500">
@@ -400,7 +400,7 @@ function IntegrationContent({
                 href="https://api.slack.com/messaging/webhooks"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-purple-600 hover:underline ml-2"
+                className="inline-flex items-center gap-1 text-violet-600 hover:underline ml-2"
               >
                 Learn more <ExternalLink className="h-3 w-3" />
               </a>
@@ -474,7 +474,7 @@ function IntegrationContent({
                 href="https://learn.microsoft.com/en-us/microsoftteams/platform/webhooks-and-connectors/how-to/add-incoming-webhook"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-purple-600 hover:underline ml-2"
+                className="inline-flex items-center gap-1 text-violet-600 hover:underline ml-2"
               >
                 Learn more <ExternalLink className="h-3 w-3" />
               </a>
@@ -560,7 +560,7 @@ function IntegrationContent({
           </div>
           <div className="flex items-center justify-between p-3 border rounded-lg">
             <div className="flex items-center gap-2">
-              <RefreshCw className="h-4 w-4 text-purple-500" />
+              <RefreshCw className="h-4 w-4 text-violet-500" />
               <span className="text-sm">Daily Digest</span>
             </div>
             <Badge variant="secondary" className="text-xs">8:00 AM</Badge>

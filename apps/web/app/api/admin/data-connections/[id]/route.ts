@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 
 /**
  * DELETE /api/admin/data-connections/[id]
@@ -10,29 +11,17 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const tenantId = session.user.tenantId;
-    const userRole = session.user.role;
-    
-    if (!tenantId || !['admin', 'owner'].includes(userRole || '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const { id } = await params;
 
     // Get existing settings
     const settings = await prisma.tenantSettings.findFirst({
-      where: { tenantId },
+      where: { tenantId: ctx.tenantId },
     });
 
     if (!settings?.customFields) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Connection not found', 404);
     }
 
     const customFields = typeof settings.customFields === 'string' 
@@ -43,7 +32,7 @@ export async function DELETE(
     const updatedConnections = existingConnections.filter((c: { id: string }) => c.id !== id);
 
     if (existingConnections.length === updatedConnections.length) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Connection not found', 404);
     }
 
     // Update settings
@@ -57,12 +46,8 @@ export async function DELETE(
       },
     });
 
-    return NextResponse.json({ success: true });
-
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete connection' },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, {});
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

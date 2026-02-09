@@ -41,11 +41,11 @@ function SearchPage() {
         transition={{ duration: 0.5 }}
       >
         <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 via-violet-500 to-purple-600 text-white shadow-xl shadow-purple-500/30">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-violet-600 text-white shadow-xl shadow-violet-500/30">
             <Search className="h-8 w-8" />
           </div>
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-violet-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 bg-clip-text text-transparent">
               Smart Search
             </h1>
             <p className="text-muted-foreground text-lg mt-1">
@@ -63,11 +63,11 @@ function SearchPage() {
         animate="visible"
       >
         <motion.div variants={itemVariants}>
-          <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:shadow-purple-500/10 transition-all duration-300">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl hover:shadow-2xl hover:shadow-violet-500/10 transition-all duration-300">
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             <CardContent className="p-5 relative">
               <div className="flex items-start gap-3">
-                <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-violet-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                   <Sparkles className="h-5 w-5" />
                 </div>
                 <div>

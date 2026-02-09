@@ -1,16 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
 import { prisma } from '@/lib/prisma';
 import { supplierBenchmarkService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const roleCategory = searchParams.get('roleCategory') || undefined;
     const country = searchParams.get('country') || undefined;
@@ -19,7 +12,7 @@ export async function GET(request: NextRequest) {
     const benchmarkService = new supplierBenchmarkService(prisma);
 
     const bestValue = await benchmarkService.findBestValueSuppliers(
-      session.user.tenantId,
+      ctx.tenantId,
       {
         roleCategory,
         country,
@@ -27,11 +20,5 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    return NextResponse.json({ suppliers: bestValue });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch best value suppliers' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { suppliers: bestValue });
+  });

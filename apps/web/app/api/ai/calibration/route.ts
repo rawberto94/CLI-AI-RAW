@@ -7,51 +7,41 @@
  * - View calibration curves and diagnostics
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Dynamic import helper with proper typing
 async function getConfidenceCalibrationService() {
-  const services = await import('@repo/data-orchestration/services');
+  const services = await import('data-orchestration/services');
   return (services as any).confidenceCalibrationService;
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'report';
     const artifactType = searchParams.get('artifactType');
 
     if (!artifactType) {
-      return NextResponse.json(
-        { error: 'artifactType is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
     }
 
     switch (action) {
       case 'report': {
         const report = confidenceCalibrationService.getCalibrationReport(artifactType, tenantId);
-        return NextResponse.json(report);
+        return createSuccessResponse(ctx, report);
       }
 
       case 'status': {
         const isCalibrated = confidenceCalibrationService.isCalibrated(artifactType, tenantId);
         const sampleCount = confidenceCalibrationService.getSampleCount(artifactType, tenantId);
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           artifactType,
           tenantId,
           isCalibrated,
           sampleCount,
-          minRequired: 50,
-        });
+          minRequired: 50 });
       }
 
       case 'calibrate': {
@@ -61,7 +51,7 @@ export async function GET(request: NextRequest) {
           artifactType,
           tenantId
         );
-        return NextResponse.json(calibrated);
+        return createSuccessResponse(ctx, calibrated);
       }
 
       case 'field-calibration': {
@@ -69,31 +59,16 @@ export async function GET(request: NextRequest) {
           artifactType,
           tenantId
         );
-        return NextResponse.json(fieldCalibration);
+        return createSuccessResponse(ctx, fieldCalibration);
       }
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: report, status, calibrate, field-calibration' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: report, status, calibrate, field-calibration', 400);
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const confidenceCalibrationService = await getConfidenceCalibrationService();
     const body = await request.json();
     const { action } = body;
@@ -102,10 +77,7 @@ export async function POST(request: NextRequest) {
       case 'record': {
         const { artifactType, predictedConfidence, wasCorrect, fieldName } = body;
         if (!artifactType || predictedConfidence === undefined || wasCorrect === undefined) {
-          return NextResponse.json(
-            { error: 'artifactType, predictedConfidence, and wasCorrect are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType, predictedConfidence, and wasCorrect are required', 400);
         }
         await confidenceCalibrationService.recordPrediction(
           artifactType,
@@ -114,55 +86,34 @@ export async function POST(request: NextRequest) {
           wasCorrect,
           fieldName
         );
-        return NextResponse.json({ success: true });
+        return createSuccessResponse(ctx, {});
       }
 
       case 'record-batch': {
         const { predictions } = body;
         if (!predictions || !Array.isArray(predictions)) {
-          return NextResponse.json(
-            { error: 'predictions array is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'predictions array is required', 400);
         }
         await confidenceCalibrationService.recordBatchPredictions(predictions);
-        return NextResponse.json({ 
-          success: true, 
-          recordedCount: predictions.length 
-        });
+        return createSuccessResponse(ctx, { recordedCount: predictions.length });
       }
 
       case 'recalculate': {
         const { artifactType, tenantId = 'default' } = body;
         if (!artifactType) {
-          return NextResponse.json(
-            { error: 'artifactType is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
         }
         const curve = await confidenceCalibrationService.recalculateCalibration(
           artifactType,
           tenantId
         );
         if (!curve) {
-          return NextResponse.json(
-            { error: 'Not enough samples to calculate calibration (min: 50)' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Not enough samples to calculate calibration (min: 50)', 400);
         }
-        return NextResponse.json(curve);
+        return createSuccessResponse(ctx, curve);
       }
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: record, record-batch, recalculate' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: record, record-batch, recalculate', 400);
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
-  }
-}
+  });

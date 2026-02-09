@@ -121,7 +121,7 @@ function TimelineNode({
                 "rounded-full border-2 flex items-center justify-center transition-all",
                 compact ? "w-8 h-8" : "w-12 h-12",
                 colorClass,
-                isSelected && "ring-2 ring-offset-2 ring-purple-500"
+                isSelected && "ring-2 ring-offset-2 ring-violet-500"
               )}
             >
               <span className={cn(
@@ -163,7 +163,7 @@ function TimelineNode({
                   onCompare()
                 }}
                 className={cn(
-                  "bg-purple-500 rounded-full p-0.5 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity",
+                  "bg-violet-500 rounded-full p-0.5 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity",
                   compact ? "hidden" : ""
                 )}
               >
@@ -388,9 +388,9 @@ export function VersionTimeline({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="bg-purple-50 border border-indigo-200 rounded-lg px-4 py-2 flex items-center justify-between"
+          className="bg-violet-50 border border-indigo-200 rounded-lg px-4 py-2 flex items-center justify-between"
         >
-          <div className="flex items-center gap-2 text-sm text-purple-700">
+          <div className="flex items-center gap-2 text-sm text-violet-700">
             <GitCompare className="h-4 w-4" />
             <span>
               {compareVersions.length === 0 
@@ -408,7 +408,7 @@ export function VersionTimeline({
               setCompareMode(false)
               setCompareVersions([])
             }}
-            className="text-purple-600 hover:text-indigo-800"
+            className="text-violet-600 hover:text-indigo-800"
           >
             Cancel
           </Button>
@@ -457,7 +457,7 @@ export function VersionTimeline({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-purple-500 transition-colors">
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-violet-500 transition-colors">
                       <Plus className="h-5 w-5" />
                     </div>
                     <span className="mt-2 text-[10px] text-slate-400 whitespace-nowrap">

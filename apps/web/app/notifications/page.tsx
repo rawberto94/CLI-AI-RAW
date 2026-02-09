@@ -96,7 +96,7 @@ const TYPE_CONFIG = {
   risk: { color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
   savings: { color: "text-green-500", bg: "bg-green-100 dark:bg-green-900/30" },
   deadline: { color: "text-violet-500", bg: "bg-violet-100 dark:bg-violet-900/30" },
-  system: { color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" },
+  system: { color: "text-violet-500", bg: "bg-violet-100 dark:bg-violet-900/30" },
   contract: { color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800" },
 };
 
@@ -385,7 +385,7 @@ export default function NotificationsPage() {
               <TabsTrigger value="unread" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 transition-all duration-300">
                 Unread {unreadCount > 0 && <Badge variant="secondary" className="ml-1.5 px-2 py-0.5">{unreadCount}</Badge>}
               </TabsTrigger>
-              <TabsTrigger value="starred" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/30 transition-all duration-300">Starred</TabsTrigger>
+              <TabsTrigger value="starred" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Starred</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

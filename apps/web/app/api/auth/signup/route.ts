@@ -7,18 +7,26 @@ import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { auditTrailService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   organizationName: z.string().optional(),
   organizationSlug: z.string().optional(),
   inviteToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const body = await request.json();
     const validated = signupSchema.parse(body);
@@ -29,9 +37,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+      return createErrorResponse(
+        ctx, 'CONFLICT',
+        "An account with this email already exists",
+        409
       );
     }
 
@@ -51,9 +60,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (!invitation) {
-        return NextResponse.json(
-          { error: "Invalid or expired invitation" },
-          { status: 400 }
+        return createErrorResponse(
+          ctx, 'BAD_REQUEST',
+          "Invalid or expired invitation",
+          400
         );
       }
 
@@ -77,9 +87,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingTenant) {
-        return NextResponse.json(
-          { error: "An organization with this name or URL already exists" },
-          { status: 409 }
+        return createErrorResponse(
+          ctx, 'CONFLICT',
+          "An organization with this name or URL already exists",
+          409
         );
       }
 
@@ -116,9 +127,10 @@ export async function POST(request: NextRequest) {
       tenantId = tenant.id;
       userRole = "owner"; // Creator becomes owner
     } else {
-      return NextResponse.json(
-        { error: "Organization name and URL are required, or provide an invite token" },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'BAD_REQUEST',
+        "Organization name and URL are required, or provide an invite token",
+        400
       );
     }
 
@@ -178,7 +190,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: "Account created successfully",
       user: {
@@ -191,15 +203,17 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as { errors?: Array<{ message?: string }> };
-      return NextResponse.json(
-        { error: zodError.errors?.[0]?.message || "Invalid input" },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'VALIDATION_ERROR',
+        zodError.errors?.[0]?.message || "Invalid input",
+        400
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to create account" },
-      { status: 500 }
+    return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
+      "Failed to create account",
+      500
     );
   }
 }

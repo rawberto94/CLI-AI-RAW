@@ -8,7 +8,6 @@
  * - Consistent error handling
  */
 
-import { NextResponse } from "next/server";
 import { unlink } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
@@ -19,6 +18,7 @@ import { safeDeleteContract } from "@/lib/services/contract-deletion.service";
 import { contractUpdateSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -136,6 +136,7 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   const params = await context.params;
   const startTime = Date.now();
 
@@ -143,10 +144,7 @@ export async function GET(
     const contractId = params.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     const tenantId = await getServerTenantId();
@@ -231,10 +229,7 @@ export async function GET(
     }
 
     if (!contract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get artifacts directly from database
@@ -461,7 +456,7 @@ export async function GET(
 
     const responseTime = Date.now() - startTime;
 
-    return NextResponse.json(enrichedData, {
+    return createSuccessResponse(ctx, enrichedData, {
       headers: {
         "X-Response-Time": `${responseTime}ms`,
         "X-Data-Source": "data-orchestration",
@@ -469,13 +464,7 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to fetch contract details",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -500,6 +489,7 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   const params = await context.params;
   try {
     const contractId = params.id;
@@ -509,31 +499,16 @@ export async function PUT(
     try {
       updates = contractUpdateSchema.parse(body);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return NextResponse.json(
-          {
-            error: "Validation failed",
-            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
-          },
-          { status: 400 }
-        );
-      }
-      throw error;
+      return handleApiError(ctx, error);
     }
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get tenant ID for isolation
     const tenantId = await getServerTenantId();
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
     // Verify contract exists and belongs to tenant
@@ -542,10 +517,7 @@ export async function PUT(
     });
 
     if (!existingContract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Map allowed fields to Prisma schema fields
@@ -595,18 +567,12 @@ export async function PUT(
       console.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: updatedContract,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to update contract",
-        details: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -615,34 +581,26 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   const params = await context.params;
   try {
     const contractId = params.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get tenant ID for isolation
     const tenantId = await getServerTenantId();
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
     // Use safe deletion service with cascade cleanup
     const result = await safeDeleteContract(contractId, tenantId);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || "Failed to delete contract" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', result.error, 400);
     }
 
     // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
@@ -665,18 +623,12 @@ export async function DELETE(
       // Legacy file cleanup is optional
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       message: "Contract deleted successfully",
       deletedRecords: result.deletedRecords
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to delete contract",
-        details: getErrorMessage(error)
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

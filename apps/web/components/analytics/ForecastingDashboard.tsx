@@ -243,7 +243,7 @@ interface OpportunityCardProps {
 
 const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity }) => {
   const typeConfig = {
-    consolidation: { icon: Target, color: 'bg-purple-100 text-purple-700', label: 'Consolidation' },
+    consolidation: { icon: Target, color: 'bg-violet-100 text-violet-700', label: 'Consolidation' },
     renegotiation: { icon: RefreshCw, color: 'bg-violet-100 text-violet-700', label: 'Renegotiation' },
     termination: { icon: AlertTriangle, color: 'bg-red-100 text-red-700', label: 'Termination' },
     optimization: { icon: Zap, color: 'bg-green-100 text-green-700', label: 'Optimization' },
@@ -516,11 +516,11 @@ export const ForecastingDashboard: React.FC = () => {
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-200">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-              <Lightbulb className="w-5 h-5 text-purple-600" />
+            <div className="w-10 h-10 bg-violet-100 rounded-lg flex items-center justify-center">
+              <Lightbulb className="w-5 h-5 text-violet-600" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-purple-600">{stats.totalOpportunities}</div>
+              <div className="text-2xl font-bold text-violet-600">{stats.totalOpportunities}</div>
               <div className="text-sm text-slate-500">Opportunities</div>
             </div>
           </div>

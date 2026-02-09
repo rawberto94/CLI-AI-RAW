@@ -472,7 +472,7 @@ export const SLAComplianceVisualization: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <Target className="w-7 h-7 text-purple-600" />
+            <Target className="w-7 h-7 text-violet-600" />
             SLA Compliance
           </h2>
           <p className="text-slate-500 mt-1">Monitor service level agreement performance</p>
@@ -486,7 +486,7 @@ export const SLAComplianceVisualization: React.FC = () => {
                 onClick={() => setTimeRange(range)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   timeRange === range
-                    ? 'bg-white text-purple-600 shadow-sm'
+                    ? 'bg-white text-violet-600 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -580,7 +580,7 @@ export const SLAComplianceVisualization: React.FC = () => {
       {/* SLA Metrics by Type */}
       <div>
         <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <BarChart3 className="w-5 h-5 text-purple-500" />
+          <BarChart3 className="w-5 h-5 text-violet-500" />
           SLA Performance by Type
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -591,9 +591,9 @@ export const SLAComplianceVisualization: React.FC = () => {
       </div>
 
       {/* Recommendations */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-50 rounded-xl border border-indigo-200 p-5">
+      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-indigo-200 p-5">
         <h3 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-          <Info className="w-5 h-5 text-purple-600" />
+          <Info className="w-5 h-5 text-violet-600" />
           AI Recommendations to Improve SLA Compliance
         </h3>
         <div className="space-y-3">

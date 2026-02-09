@@ -286,8 +286,8 @@ export function FeatureSpotlight({
               exit={{ scale: 0.8, opacity: 0 }}
               className="absolute -inset-1 rounded-lg pointer-events-none"
             >
-              <div className="absolute inset-0 rounded-lg bg-purple-500/20 animate-pulse" />
-              <div className="absolute inset-0 rounded-lg border-2 border-purple-500/50 animate-ping" />
+              <div className="absolute inset-0 rounded-lg bg-violet-500/20 animate-pulse" />
+              <div className="absolute inset-0 rounded-lg border-2 border-violet-500/50 animate-ping" />
             </motion.div>
 
             {/* Tooltip */}
@@ -297,7 +297,7 @@ export function FeatureSpotlight({
               exit={{ opacity: 0, y: 10 }}
               className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50"
             >
-              <div className="bg-gradient-to-r from-purple-600 to-purple-600 rounded-lg shadow-xl p-4 max-w-xs">
+              <div className="bg-gradient-to-r from-violet-600 to-purple-600 rounded-lg shadow-xl p-4 max-w-xs">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex items-center gap-2">
                     <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase bg-white/20 rounded">
@@ -321,7 +321,7 @@ export function FeatureSpotlight({
                 </button>
               </div>
               {/* Arrow */}
-              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-purple-600" />
+              <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-violet-600" />
             </motion.div>
           </>
         )}

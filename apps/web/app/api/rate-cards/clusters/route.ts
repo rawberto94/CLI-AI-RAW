@@ -7,14 +7,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardClusteringService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     // Fetch all clusters with their members and opportunities
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       0
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       clusters: clusters.map((cluster) => ({
         ...cluster,
@@ -82,10 +83,4 @@ export async function GET(request: NextRequest) {
           consolidationOpportunities.length + arbitrageOpportunities.length,
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch clusters' },
-      { status: 500 }
-    );
-  }
-}
+  });

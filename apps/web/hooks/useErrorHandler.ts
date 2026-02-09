@@ -6,7 +6,7 @@
 'use client';
 
 import { useCallback } from 'react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { handleError, type ErrorContext } from '@/lib/error-handler';
 
 export interface UseErrorHandlerOptions {
@@ -31,7 +31,6 @@ export function useErrorHandler(options: UseErrorHandlerOptions = {}) {
       if (showToast) {
         toast.error(errorResponse.userMessage, {
           duration: 6000,
-          position: 'top-right',
         });
       }
 

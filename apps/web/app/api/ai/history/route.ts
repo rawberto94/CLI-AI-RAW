@@ -10,9 +10,10 @@
  * - Improve AI responses over time
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { aiCopilotService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export type AIQueryType = 
   | 'chat' 
@@ -40,9 +41,8 @@ interface LogQueryRequest {
 /**
  * POST - Log an AI query
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body: LogQueryRequest = await request.json();
 
     const {
@@ -57,8 +57,7 @@ export async function POST(request: NextRequest) {
       errorMessage,
       ragResults,
       userFeedback,
-      metadata,
-    } = body;
+      metadata } = body;
 
     // Store in AuditLog with AI-specific action type
     const auditEntry = await prisma.auditLog.create({
@@ -81,33 +80,19 @@ export async function POST(request: NextRequest) {
           errorMessage,
           ragResults,
           userFeedback,
-          ...metadata,
-        },
-      },
-    });
+          ...metadata } } });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       id: auditEntry.id,
-      logged: true,
-    });
+      logged: true });
 
-  } catch (error: unknown) {
-    // Don't fail the request - logging is non-critical
-    return NextResponse.json({
-      success: false,
-      logged: false,
-      error: error instanceof Error ? error.message : 'Failed to log query',
-    });
-  }
-}
+  });
 
 /**
  * GET - Get AI query history and analytics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     
     const queryType = searchParams.get('queryType') as AIQueryType | null;
@@ -122,8 +107,7 @@ export async function GET(request: NextRequest) {
     const whereClause: Record<string, unknown> = {
       tenantId,
       action: queryType ? `ai.${queryType}` : { startsWith: 'ai.' },
-      createdAt: { gte: startDate },
-    };
+      createdAt: { gte: startDate } };
 
     // Get paginated history
     const [history, totalCount, analytics] = await Promise.all([
@@ -137,9 +121,7 @@ export async function GET(request: NextRequest) {
           action: true,
           resource: true,
           createdAt: true,
-          metadata: true,
-        },
-      }),
+          metadata: true } }),
       prisma.auditLog.count({ where: whereClause }),
       // Get aggregated analytics
       prisma.auditLog.groupBy({
@@ -147,10 +129,8 @@ export async function GET(request: NextRequest) {
         where: { 
           tenantId, 
           action: { startsWith: 'ai.' },
-          createdAt: { gte: startDate },
-        },
-        _count: true,
-      }),
+          createdAt: { gte: startDate } },
+        _count: true }),
     ]);
 
     // Calculate analytics
@@ -166,41 +146,28 @@ export async function GET(request: NextRequest) {
         ...whereClause,
         metadata: {
           path: ['success'],
-          equals: true,
-        },
-      },
-    });
+          equals: true } } });
 
     const successRate = totalCount > 0 
       ? Math.round((successfulQueries / totalCount) * 100) 
       : 100;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       history: history.map(h => ({
         id: h.id,
         queryType: h.action.replace('ai.', ''),
         query: h.resource,
         timestamp: h.createdAt,
-        ...(h.metadata as any),
-      })),
+        ...(h.metadata as any) })),
       pagination: {
         page,
         limit,
         total: totalCount,
-        totalPages: Math.ceil(totalCount / limit),
-      },
+        totalPages: Math.ceil(totalCount / limit) },
       analytics: {
         totalQueries: totalCount,
         queryTypeBreakdown,
         successRate,
-        period: `Last ${days} days`,
-      },
-    });
+        period: `Last ${days} days` } });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch history' },
-      { status: 500 }
-    );
-  }
-}
+  });

@@ -63,7 +63,7 @@ function StatusBadge({ status }: { status: AgentGoal['status'] }) {
     PENDING: { color: 'bg-gray-100 text-gray-800', icon: <Clock className="h-3 w-3" />, label: 'Pending' },
     PLANNING: { color: 'bg-violet-100 text-violet-800', icon: <Target className="h-3 w-3" />, label: 'Planning' },
     AWAITING_APPROVAL: { color: 'bg-yellow-100 text-yellow-800', icon: <AlertTriangle className="h-3 w-3" />, label: 'Awaiting Approval' },
-    EXECUTING: { color: 'bg-purple-100 text-indigo-800', icon: <Play className="h-3 w-3" />, label: 'Executing' },
+    EXECUTING: { color: 'bg-violet-100 text-indigo-800', icon: <Play className="h-3 w-3" />, label: 'Executing' },
     PAUSED: { color: 'bg-orange-100 text-orange-800', icon: <Pause className="h-3 w-3" />, label: 'Paused' },
     COMPLETED: { color: 'bg-green-100 text-green-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Completed' },
     FAILED: { color: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" />, label: 'Failed' },
@@ -199,7 +199,7 @@ function GoalCard({
         {goal.progress > 0 && (
           <div className="mt-3 w-full bg-gray-200 rounded-full h-1.5">
             <div
-              className="bg-purple-600 h-1.5 rounded-full transition-all"
+              className="bg-violet-600 h-1.5 rounded-full transition-all"
               style={{ width: `${goal.progress}%` }}
             />
           </div>
@@ -248,7 +248,7 @@ function GoalCard({
               placeholder={feedbackAction === 'reject' 
                 ? 'Explain why this goal is being rejected...' 
                 : 'Describe what changes are needed...'}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-purple-500"
+              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-violet-500"
               rows={3}
             />
             <div className="mt-2 flex justify-end gap-2">
@@ -261,7 +261,7 @@ function GoalCard({
               <button
                 onClick={handleSubmitFeedback}
                 disabled={!feedback.trim()}
-                className="px-3 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Submit
               </button>

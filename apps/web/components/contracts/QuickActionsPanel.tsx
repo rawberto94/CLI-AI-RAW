@@ -302,8 +302,8 @@ export function QuickActionsPanel({
       id: 'copy-link',
       label: 'Copy Link',
       icon: Copy,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50 hover:bg-purple-100',
+      color: 'text-violet-600',
+      bgColor: 'bg-violet-50 hover:bg-violet-100',
       onClick: () => {
         navigator.clipboard.writeText(window.location.href);
         toast.success('Link copied to clipboard');
@@ -316,7 +316,7 @@ export function QuickActionsPanel({
       <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-white">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
               <Zap className="w-4 h-4 text-white" />
             </div>
             Quick Actions
@@ -471,14 +471,14 @@ export function AIInsightsCard({
 
   return (
     <Card className={cn("shadow-sm border-slate-200/50 overflow-hidden", className)}>
-      <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-purple-50">
+      <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-purple-50">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
               <Brain className="w-4 h-4 text-white" />
             </div>
             AI Insights
-            <Badge className="bg-purple-100 text-purple-700 text-xs">
+            <Badge className="bg-violet-100 text-violet-700 text-xs">
               {displayInsights.length}
             </Badge>
           </CardTitle>
@@ -490,9 +490,9 @@ export function AIInsightsCard({
             className="h-8 w-8 p-0"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+              <Loader2 className="w-4 h-4 animate-spin text-violet-600" />
             ) : (
-              <Sparkles className="w-4 h-4 text-purple-600" />
+              <Sparkles className="w-4 h-4 text-violet-600" />
             )}
           </Button>
         </div>

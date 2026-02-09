@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
 import { prisma } from '@/lib/prisma';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 /**
  * DELETE /api/rate-cards/filters/[id]
@@ -15,22 +15,18 @@ import { prisma } from '@/lib/prisma';
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const ctx = getApiContext(request);
+try {
     const filterId = params.id;
 
     // Verify ownership
     const filter = await prisma.$queryRaw<any[]>`
       SELECT * FROM "rate_card_filter_presets"
-      WHERE "id" = ${filterId} AND "userId" = ${session.user.id}
+      WHERE "id" = ${filterId} AND "userId" = ${ctx.userId}
     `;
 
     if (filter.length === 0) {
-      return NextResponse.json({ error: 'Filter not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Filter not found', 404);
     }
 
     await prisma.$executeRaw`
@@ -38,12 +34,9 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
       WHERE "id" = ${filterId}
     `;
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { success: true });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete saved filter' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete saved filter', 500);
   }
 }
 
@@ -53,12 +46,8 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
  */
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const ctx = getApiContext(request);
+try {
     const filterId = params.id;
     const body = await request.json();
     const { name, description, filters } = body;
@@ -66,11 +55,11 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     // Verify ownership
     const existingFilter = await prisma.$queryRaw<any[]>`
       SELECT * FROM "rate_card_filter_presets"
-      WHERE "id" = ${filterId} AND "userId" = ${session.user.id}
+      WHERE "id" = ${filterId} AND "userId" = ${ctx.userId}
     `;
 
     if (existingFilter.length === 0) {
-      return NextResponse.json({ error: 'Filter not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Filter not found', 404);
     }
 
     const updatedFilter = await prisma.$queryRaw<any>`
@@ -84,11 +73,8 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       RETURNING *
     `;
 
-    return NextResponse.json({ filter: updatedFilter[0] });
+    return createSuccessResponse(ctx, { filter: updatedFilter[0] });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to update saved filter' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update saved filter', 500);
   }
 }

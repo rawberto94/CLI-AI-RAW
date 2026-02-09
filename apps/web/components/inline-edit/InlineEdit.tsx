@@ -174,7 +174,7 @@ export function InlineEdit({
                 rows={multiline ? rows : undefined}
                 className={cn(
                   'flex-1 px-3 py-2 text-sm border rounded-lg transition-colors',
-                  'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
+                  'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent',
                   error ? 'border-red-300 bg-red-50' : 'border-slate-300',
                   isLoading && 'opacity-50',
                   inputClassName
@@ -386,7 +386,7 @@ export function InlineEditSelect({
               disabled={isLoading}
               className={cn(
                 'w-full px-3 py-2 text-sm border border-slate-300 rounded-lg',
-                'focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent',
+                'focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent',
                 isLoading && 'opacity-50'
               )}
             >
@@ -525,7 +525,7 @@ export function InlineEditTags({
                   initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.8, opacity: 0 }}
-                  className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-700 text-sm rounded-md"
+                  className="inline-flex items-center gap-1 px-2 py-1 bg-violet-100 text-violet-700 text-sm rounded-md"
                 >
                   {tag}
                   <button

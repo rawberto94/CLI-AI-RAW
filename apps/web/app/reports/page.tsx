@@ -52,7 +52,7 @@ const REPORT_TEMPLATES: ReportTemplate[] = [
     title: 'Compliance Status Report',
     description: 'Evaluate contract compliance, identify gaps, and ensure regulatory adherence',
     icon: <Shield className="h-8 w-8" />,
-    color: 'text-purple-500',
+    color: 'text-violet-500',
   },
   {
     type: 'supplier',
@@ -161,7 +161,7 @@ export default function ReportDashboard() {
       <div className="container mx-auto py-8 space-y-8">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 text-white shadow-xl shadow-purple-500/30">
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 text-white shadow-xl shadow-violet-500/30">
             <FileText className="h-8 w-8" />
           </div>
           <div>
@@ -178,7 +178,7 @@ export default function ReportDashboard() {
             <Card
               key={template.type}
               className={`group cursor-pointer transition-all duration-300 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 hover:shadow-2xl hover:-translate-y-1 ${
-                selectedReport === template.type ? 'ring-2 ring-primary shadow-xl shadow-primary/20' : 'hover:shadow-purple-200/40'
+                selectedReport === template.type ? 'ring-2 ring-primary shadow-xl shadow-primary/20' : 'hover:shadow-violet-200/40'
               }`}
               onClick={() => setSelectedReport(template.type)}
             >
@@ -188,7 +188,7 @@ export default function ReportDashboard() {
                     template.color === 'text-violet-500' ? 'from-violet-400 to-purple-600' :
                     template.color === 'text-green-500' ? 'from-violet-400 to-violet-600' :
                     template.color === 'text-red-500' ? 'from-red-400 to-rose-600' :
-                    template.color === 'text-purple-500' ? 'from-purple-400 to-violet-600' :
+                    template.color === 'text-violet-500' ? 'from-violet-400 to-purple-600' :
                     'from-orange-400 to-amber-600'
                   } text-white shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     {template.icon}
@@ -209,7 +209,7 @@ export default function ReportDashboard() {
       <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-400 to-purple-600 text-white shadow-lg shadow-purple-500/30">
+            <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
               <FileText className="h-5 w-5" />
             </div>
             <div>
@@ -225,7 +225,7 @@ export default function ReportDashboard() {
                 <BarChart3 className="mr-2 h-4 w-4" />
                 AI Templates
               </TabsTrigger>
-              <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/30 transition-all duration-300">
+              <TabsTrigger value="custom" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">
                 <Settings className="mr-2 h-4 w-4" />
                 Custom Fields
               </TabsTrigger>
@@ -307,7 +307,7 @@ export default function ReportDashboard() {
                 selectedTemplate?.color === 'text-violet-500' ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400' :
                 selectedTemplate?.color === 'text-green-500' ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' :
                 selectedTemplate?.color === 'text-red-500' ? 'bg-red-100 text-red-600 dark:bg-red-900/50 dark:text-red-400' :
-                selectedTemplate?.color === 'text-purple-500' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/50 dark:text-purple-400' :
+                selectedTemplate?.color === 'text-violet-500' ? 'bg-violet-100 text-violet-600 dark:bg-violet-900/50 dark:text-violet-400' :
                 'bg-orange-100 text-orange-600 dark:bg-orange-900/50 dark:text-orange-400'
               }`}>{selectedTemplate?.icon}</div>
               {selectedTemplate?.title}
@@ -316,7 +316,7 @@ export default function ReportDashboard() {
           </div>
 
           {/* Generate Button */}
-          <Button onClick={handleGenerateReport} disabled={loading} className="w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-600 hover:from-violet-600 hover:via-purple-600 hover:to-purple-700 text-white shadow-lg shadow-purple-500/30 hover:shadow-xl hover:shadow-purple-500/40 transition-all duration-300" size="lg">
+          <Button onClick={handleGenerateReport} disabled={loading} className="w-full bg-gradient-to-r from-violet-500 via-purple-500 to-purple-600 hover:from-violet-600 hover:via-purple-600 hover:to-purple-700 text-white shadow-lg shadow-violet-500/30 hover:shadow-xl hover:shadow-violet-500/40 transition-all duration-300" size="lg">
             <Download className="mr-2 h-4 w-4" />
             {loading ? 'Generating Report...' : 'Generate Report'}
           </Button>
@@ -337,12 +337,12 @@ export default function ReportDashboard() {
               <p className="text-sm font-medium text-violet-900 dark:text-violet-100">Visual Charts</p>
               <p className="text-xs text-violet-700 dark:text-violet-300">Interactive data visualizations</p>
             </div>
-            <div className="group space-y-2 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200/50 dark:border-purple-800/50 hover:shadow-lg hover:shadow-purple-200/30 transition-all duration-300">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 text-white w-fit shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+            <div className="group space-y-2 p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-violet-950/30 border border-violet-200/50 dark:border-violet-800/50 hover:shadow-lg hover:shadow-violet-200/30 transition-all duration-300">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-violet-400 to-purple-600 text-white w-fit shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                 <FileText className="h-4 w-4" />
               </div>
-              <p className="text-sm font-medium text-purple-900 dark:text-purple-100">Multiple Formats</p>
-              <p className="text-xs text-purple-700 dark:text-purple-300">Export to PDF, Excel, or JSON</p>
+              <p className="text-sm font-medium text-violet-900 dark:text-violet-100">Multiple Formats</p>
+              <p className="text-xs text-violet-700 dark:text-violet-300">Export to PDF, Excel, or JSON</p>
             </div>
           </div>
         </CardContent>
@@ -377,18 +377,18 @@ export default function ReportDashboard() {
                 <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>Compliance status tracking</li>
               </ul>
             </div>
-            <div className="space-y-3 p-4 rounded-xl bg-gradient-to-br from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30 border border-purple-200/50 dark:border-purple-800/50">
+            <div className="space-y-3 p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-violet-950/30 border border-violet-200/50 dark:border-violet-800/50">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-lg bg-gradient-to-br from-purple-400 to-violet-600 text-white">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-400 to-purple-600 text-white">
                   <Sparkles className="h-4 w-4" />
                 </div>
-                <h4 className="font-medium text-purple-900 dark:text-purple-100">AI-Generated Content</h4>
+                <h4 className="font-medium text-violet-900 dark:text-violet-100">AI-Generated Content</h4>
               </div>
-              <ul className="text-sm text-purple-700 dark:text-purple-300 space-y-2">
-                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>Executive summary narratives</li>
-                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>Key insights and trends</li>
-                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>Actionable recommendations</li>
-                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-purple-500"></span>Cost optimization opportunities</li>
+              <ul className="text-sm text-violet-700 dark:text-violet-300 space-y-2">
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>Executive summary narratives</li>
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>Key insights and trends</li>
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>Actionable recommendations</li>
+                <li className="flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-violet-500"></span>Cost optimization opportunities</li>
               </ul>
             </div>
           </div>

@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 /**
  * OpenAPI Specification for Contract Intelligence Platform
  * Auto-generated documentation for API endpoints
@@ -5,7 +6,7 @@
  * @endpoint GET /api/docs/openapi
  */
 
-import { NextResponse } from 'next/server';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const openApiSpec = {
   openapi: '3.0.3',
@@ -456,11 +457,11 @@ All errors follow the format:
   },
 };
 
-export async function GET() {
-  return NextResponse.json(openApiSpec, {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+  return createSuccessResponse(ctx, openApiSpec, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=3600',
     },
   });
-}
+});

@@ -46,7 +46,7 @@ export function ActiveFilterChips({
   if (!hasActiveFilters) return null;
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg border border-indigo-100">
+    <div className="flex flex-wrap items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-indigo-100">
       <span className="text-xs font-semibold text-slate-700 mr-1">Active Filters:</span>
 
       {/* Search Query Chip */}
@@ -155,8 +155,8 @@ interface FilterChipProps {
 function FilterChip({ icon, label, onRemove, color }: FilterChipProps) {
   const colorClasses = {
     blue: 'bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200',
-    indigo: 'bg-purple-100 text-purple-700 border-indigo-200 hover:bg-purple-200',
-    purple: 'bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200',
+    indigo: 'bg-violet-100 text-violet-700 border-indigo-200 hover:bg-violet-200',
+    purple: 'bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200',
     green: 'bg-green-100 text-green-700 border-green-200 hover:bg-green-200',
     amber: 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200',
     orange: 'bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200',

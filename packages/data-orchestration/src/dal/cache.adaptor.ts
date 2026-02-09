@@ -1,18 +1,23 @@
-import { createClient, RedisClientType } from "redis";
+import Redis from "ioredis";
 import { createLogger } from "../utils/logger";
 
 const logger = createLogger("cache-adaptor");
 
 export class CacheAdaptor {
-  private client: RedisClientType;
+  private client: Redis;
   private static instance: CacheAdaptor;
-  private connected: boolean = false;
 
   private constructor(redisUrl: string) {
-    this.client = createClient({ url: redisUrl }) as RedisClientType;
+    this.client = new Redis(redisUrl, {
+      maxRetriesPerRequest: 3,
+      retryStrategy(times) {
+        return Math.min(times * 200, 5000);
+      },
+      lazyConnect: false,
+    });
     this.client.on("error", (err) => logger.error({ err }, "Redis error"));
     this.client.on("connect", () => logger.info("Redis connected"));
-    this.client.on("disconnect", () => logger.info("Redis disconnected"));
+    this.client.on("close", () => logger.info("Redis disconnected"));
   }
 
   static getInstance(redisUrl?: string): CacheAdaptor {
@@ -23,16 +28,8 @@ export class CacheAdaptor {
     return CacheAdaptor.instance;
   }
 
-  async connect(): Promise<void> {
-    if (!this.connected) {
-      await this.client.connect();
-      this.connected = true;
-    }
-  }
-
   async get<T>(key: string): Promise<T | null> {
     try {
-      if (!this.connected) await this.connect();
       const value = await this.client.get(key);
       return value ? JSON.parse(value) : null;
     } catch (error) {
@@ -43,10 +40,9 @@ export class CacheAdaptor {
 
   async set(key: string, value: unknown, ttl?: number): Promise<void> {
     try {
-      if (!this.connected) await this.connect();
       const serialized = JSON.stringify(value);
       if (ttl) {
-        await this.client.setEx(key, ttl, serialized);
+        await this.client.set(key, serialized, "EX", ttl);
       } else {
         await this.client.set(key, serialized);
       }
@@ -58,7 +54,6 @@ export class CacheAdaptor {
 
   async delete(key: string): Promise<void> {
     try {
-      if (!this.connected) await this.connect();
       await this.client.del(key);
       logger.debug({ key }, "Cache delete");
     } catch (error) {
@@ -73,10 +68,9 @@ export class CacheAdaptor {
 
   async invalidatePattern(pattern: string): Promise<void> {
     try {
-      if (!this.connected) await this.connect();
       const keys = await this.client.keys(pattern);
       if (keys.length > 0) {
-        await this.client.del(keys);
+        await this.client.del(...keys);
         logger.info({ pattern, count: keys.length }, "Cache invalidated");
       }
     } catch (error) {
@@ -86,7 +80,6 @@ export class CacheAdaptor {
 
   async healthCheck(): Promise<boolean> {
     try {
-      if (!this.connected) await this.connect();
       const result = await this.client.ping();
       return result === "PONG";
     } catch (error) {
@@ -96,14 +89,11 @@ export class CacheAdaptor {
   }
 
   async disconnect(): Promise<void> {
-    if (this.connected) {
-      await this.client.quit();
-      this.connected = false;
-    }
+    await this.client.quit();
   }
 
   // Get raw client for advanced operations
-  getClient(): RedisClientType {
+  getClient(): Redis {
     return this.client;
   }
 }

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/comparisons/[id]/export
@@ -8,10 +10,11 @@ import { getApiTenantId } from '@/lib/security/tenant';
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -26,16 +29,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!comparison) {
-      return NextResponse.json(
-        { error: 'Comparison not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
     }
 
     // For now, return JSON data that can be used by client-side PDF generation
     // In production, you might want to use a library like puppeteer or pdfkit
     if (format === 'json') {
-      return NextResponse.json({ comparison });
+      return createSuccessResponse(ctx, { comparison });
     }
 
     // Generate CSV format
@@ -89,15 +89,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     }
 
     // For PDF, return the data that can be used by client-side PDF generation
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       comparison,
       message: 'Use client-side PDF generation with this data',
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to export comparison', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to export comparison', details: error instanceof Error ? error.message : String(error), 500);
   }
 }

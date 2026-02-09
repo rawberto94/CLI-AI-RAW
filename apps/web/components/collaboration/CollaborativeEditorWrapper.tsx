@@ -533,7 +533,7 @@ export function CollaborativeEditorWrapper({
                     </div>
                   </div>
                   <div className="flex items-start gap-2 text-slate-600">
-                    <Users className="mt-0.5 h-4 w-4 text-purple-500" />
+                    <Users className="mt-0.5 h-4 w-4 text-violet-500" />
                     <div>
                       <p>
                         <span className="font-medium">Mike</span> joined the session

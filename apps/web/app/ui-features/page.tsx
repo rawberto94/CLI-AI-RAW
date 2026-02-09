@@ -28,7 +28,7 @@ import {
   Save,
   History,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 export default function UIFeaturesShowcase() {
   // Demo states
@@ -252,7 +252,7 @@ export default function UIFeaturesShowcase() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-purple-600" />
+                <Filter className="h-5 w-5 text-violet-600" />
                 <CardTitle>Filter Chips</CardTitle>
               </div>
               <CardDescription>
@@ -333,7 +333,7 @@ export default function UIFeaturesShowcase() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-purple-600" />
+                <History className="h-5 w-5 text-violet-600" />
                 <CardTitle>Recently Viewed</CardTitle>
               </div>
               <CardDescription>

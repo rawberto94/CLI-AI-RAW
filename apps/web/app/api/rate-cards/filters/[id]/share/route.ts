@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
 import { prisma } from '@/lib/prisma';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 /**
  * POST /api/rate-cards/filters/[id]/share
@@ -15,22 +15,18 @@ import { prisma } from '@/lib/prisma';
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+    const ctx = getApiContext(request);
+try {
     const filterId = params.id;
 
     // Verify ownership
     const filter = await prisma.$queryRaw<any[]>`
       SELECT * FROM "rate_card_filter_presets"
-      WHERE "id" = ${filterId} AND "userId" = ${session.user.id}
+      WHERE "id" = ${filterId} AND "userId" = ${ctx.userId}
     `;
 
     if (filter.length === 0) {
-      return NextResponse.json({ error: 'Filter not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Filter not found', 404);
     }
 
     // Toggle share status
@@ -43,11 +39,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       RETURNING *
     `;
 
-    return NextResponse.json({ filter: updatedFilter[0] });
+    return createSuccessResponse(ctx, { filter: updatedFilter[0] });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to update filter share status' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update filter share status', 500);
   }
 }

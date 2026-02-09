@@ -154,8 +154,8 @@ function MetricCard({ title, value, subtitle, icon, trend, color = 'blue', class
     green: 'bg-green-50 text-green-600',
     amber: 'bg-amber-50 text-amber-600',
     red: 'bg-red-50 text-red-600',
-    purple: 'bg-purple-50 text-purple-600',
-    cyan: 'bg-purple-50 text-purple-600',
+    purple: 'bg-violet-50 text-violet-600',
+    cyan: 'bg-violet-50 text-violet-600',
   };
 
   return (

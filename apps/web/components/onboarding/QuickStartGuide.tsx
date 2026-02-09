@@ -72,7 +72,7 @@ const steps: QuickStartStep[] = [
       'Star important contracts for quick access'
     ],
     shortcut: '⌘⇧C',
-    color: 'from-purple-500 to-purple-500'
+    color: 'from-violet-500 to-purple-500'
   },
   {
     id: 'ai',
@@ -86,7 +86,7 @@ const steps: QuickStartStep[] = [
       'Request risk analysis or compliance checks'
     ],
     shortcut: '⌘/',
-    color: 'from-purple-500 to-pink-500'
+    color: 'from-violet-500 to-pink-500'
   },
   {
     id: 'search',

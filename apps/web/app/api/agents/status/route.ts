@@ -3,45 +3,29 @@
  * Returns agent events and recommendations for a contract
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    // Authentication check
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
     const limit = parseInt(searchParams.get('limit') || '50');
     const agentName = searchParams.get('agentName');
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
     }
 
     // Verify contract belongs to tenant before proceeding
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
-      select: { id: true },
-    });
+      select: { id: true } });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found or access denied', 404);
     }
 
     // Build filter
@@ -63,16 +47,13 @@ export async function GET(request: NextRequest) {
         outcome: true,
         metadata: true,
         reasoning: true,
-        confidence: true,
-      },
-    });
+        confidence: true } });
 
     // Fetch active recommendations
     const recommendations = await prisma.agentRecommendation.findMany({
       where: {
         contractId,
-        status: { in: ['pending', 'in_progress'] },
-      },
+        status: { in: ['pending', 'in_progress'] } },
       orderBy: [
         { priority: 'desc' },
         { createdAt: 'desc' },
@@ -89,24 +70,13 @@ export async function GET(request: NextRequest) {
         potentialValue: true,
         confidence: true,
         status: true,
-        createdAt: true,
-      },
-    });
+        createdAt: true } });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       events: events.map(event => ({
         ...event,
-        metadata: event.metadata as any,
-      })),
+        metadata: event.metadata as any })),
       recommendations: recommendations.map(rec => ({
         ...rec,
-        estimatedImpact: rec.estimatedImpact as any,
-      })),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+        estimatedImpact: rec.estimatedImpact as any })) });
+  });

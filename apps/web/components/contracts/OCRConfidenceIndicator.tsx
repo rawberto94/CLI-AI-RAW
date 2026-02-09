@@ -86,8 +86,8 @@ function getConfidenceLevel(confidence: number): {
   if (confidence >= 0.7) {
     return {
       label: 'Good Confidence',
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+      color: 'text-violet-600 dark:text-violet-400',
+      bgColor: 'bg-violet-100 dark:bg-violet-900/30',
       icon: <Info className="h-4 w-4" />,
     };
   }

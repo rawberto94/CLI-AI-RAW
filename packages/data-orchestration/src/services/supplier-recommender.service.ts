@@ -7,11 +7,10 @@
  * Requirements: 4.4
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { SupplierScore, supplierIntelligenceService } from './supplier-intelligence.service';
 import { SimilarityScore, similarityCalculatorService } from './similarity-calculator.service';
 
-const prisma = new PrismaClient();
 
 export interface SupplierRecommendation {
   supplierId: string;

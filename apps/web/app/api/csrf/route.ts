@@ -5,13 +5,14 @@
  * Tokens are set as cookies and must be included in request headers.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { setCSRFCookie } from '@/lib/csrf';
+import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     const userId = session?.user?.id;
@@ -19,10 +20,10 @@ export async function GET() {
     // Generate and set CSRF token
     const _token = await setCSRFCookie(userId);
     
-    return NextResponse.json(
+    return createSuccessResponse(
+      ctx,
       { success: true, message: 'CSRF token set' },
       { 
-        status: 200,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
         },
@@ -30,9 +31,6 @@ export async function GET() {
     );
   } catch (error) {
     console.error('CSRF token generation failed:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate CSRF token' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate CSRF token', 500);
   }
-}
+});

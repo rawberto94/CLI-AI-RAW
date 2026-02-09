@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Calculate total annual spend on rates
@@ -70,7 +68,7 @@ export async function GET(request: NextRequest) {
       avgRateVsMarket = totalDiff / benchmarks.length;
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       totalAnnualSpend,
       totalSavingsIdentified,
       totalSavingsRealized,
@@ -79,10 +77,4 @@ export async function GET(request: NextRequest) {
         ? (totalSavingsRealized / totalSavingsIdentified) * 100 
         : 0,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch financial metrics' },
-      { status: 500 }
-    );
-  }
-}
+  });

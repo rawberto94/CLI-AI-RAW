@@ -203,7 +203,7 @@ export function ProgressSteps({
                   'font-medium transition-colors',
                   sizeStyles.text,
                   status === 'completed' && 'text-slate-900',
-                  status === 'current' && 'text-purple-600',
+                  status === 'current' && 'text-violet-600',
                   status === 'pending' && 'text-slate-400',
                   status === 'error' && 'text-red-600'
                 )}>
@@ -228,7 +228,7 @@ export function ProgressSteps({
                     initial={{ scaleX: 0 }}
                     animate={{ scaleX: status === 'completed' ? 1 : 0 }}
                     transition={{ duration: 0.3, delay: 0.1 }}
-                    className="absolute inset-0 bg-purple-600 origin-left"
+                    className="absolute inset-0 bg-violet-600 origin-left"
                   />
                 </div>
               </div>
@@ -269,7 +269,7 @@ export function ProgressBarSteps({ steps, currentStep, className }: ProgressBarS
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3 }}
-          className="h-full bg-gradient-to-r from-purple-500 to-purple-500 rounded-full"
+          className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
         />
       </div>
       
@@ -280,7 +280,7 @@ export function ProgressBarSteps({ steps, currentStep, className }: ProgressBarS
             key={index}
             className={cn(
               'w-2 h-2 rounded-full transition-colors',
-              index <= currentStep ? 'bg-purple-600' : 'bg-slate-200'
+              index <= currentStep ? 'bg-violet-600' : 'bg-slate-200'
             )}
           />
         ))}

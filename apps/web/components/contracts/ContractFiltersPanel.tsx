@@ -246,7 +246,7 @@ export function ContractFiltersPanel({
                   onClick={() => toggleSupplier(supplier)}
                   className={`cursor-pointer transition-all ${
                     filters.suppliers?.includes(supplier)
-                      ? 'bg-purple-600 text-white hover:bg-purple-700'
+                      ? 'bg-violet-600 text-white hover:bg-violet-700'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >

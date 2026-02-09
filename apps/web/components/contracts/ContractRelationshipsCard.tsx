@@ -200,7 +200,7 @@ function ContractLinkCard({
       <div className={cn(
         "flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
         direction === 'parent' 
-          ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white" 
+          ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white" 
           : "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
       )}>
         {direction === 'parent' ? <ArrowUp className="h-5 w-5" /> : <ArrowDown className="h-5 w-5" />}
@@ -225,7 +225,7 @@ function ContractLinkCard({
             </Badge>
           )}
           {(isChild ? childContract.relationshipType : relationshipType) && (
-            <Badge variant="secondary" className="text-xs bg-purple-100 text-purple-700 border-purple-200">
+            <Badge variant="secondary" className="text-xs bg-violet-100 text-violet-700 border-violet-200">
               {getRelationshipLabel(isChild ? childContract.relationshipType : relationshipType)}
             </Badge>
           )}
@@ -681,7 +681,7 @@ export function ContractRelationshipsCard({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <GitBranch className="h-5 w-5 text-purple-600" />
+              <GitBranch className="h-5 w-5 text-violet-600" />
               Contract Relationships
             </CardTitle>
             <CardDescription className="mt-1">
@@ -721,7 +721,7 @@ export function ContractRelationshipsCard({
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowLinkDialog(true)}
-                className="border-purple-200 text-purple-700 hover:bg-purple-50"
+                className="border-violet-200 text-violet-700 hover:bg-violet-50"
               >
                 <Plus className="h-4 w-4 mr-1.5" />
                 Link Parent
@@ -737,7 +737,7 @@ export function ContractRelationshipsCard({
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-purple-200 to-transparent" />
-              <span className="text-xs font-medium text-purple-600 flex items-center gap-1.5">
+              <span className="text-xs font-medium text-violet-600 flex items-center gap-1.5">
                 <Brain className="h-3.5 w-3.5" />
                 AI Suggested Parents
               </span>
@@ -762,7 +762,7 @@ export function ContractRelationshipsCard({
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label className="text-xs uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
-                <ArrowUp className="h-3.5 w-3.5 text-purple-500" />
+                <ArrowUp className="h-3.5 w-3.5 text-violet-500" />
                 Parent Contract
               </Label>
             </div>

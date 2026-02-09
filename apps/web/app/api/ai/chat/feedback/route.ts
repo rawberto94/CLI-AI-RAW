@@ -7,11 +7,11 @@
  * Persisted to database using ChatMessage and AuditLog models.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { aiCopilotService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 interface ChatFeedbackPayload {
   messageId?: string;
@@ -24,12 +24,9 @@ interface ChatFeedbackPayload {
   context?: Record<string, unknown>;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    const tenantId = await getServerTenantId();
-    const userId = session?.user?.id || 'anonymous';
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
     const body: ChatFeedbackPayload = await request.json();
     
     const {
@@ -38,14 +35,10 @@ export async function POST(request: NextRequest) {
       rating,
       category,
       correction,
-      messageContent,
-    } = body;
+      messageContent } = body;
 
     if (!rating) {
-      return NextResponse.json(
-        { error: 'Rating is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Rating is required', 400);
     }
 
     // Generate feedback ID for tracking
@@ -58,9 +51,7 @@ export async function POST(request: NextRequest) {
           where: { id: messageId },
           data: {
             feedback: rating === 'like' ? 'positive' : 'negative',
-            feedbackNote: correction || category || null,
-          },
-        });
+            feedbackNote: correction || category || null } });
       } catch (err) {
         console.error('[Chat Feedback] Failed to update message:', err);
         // Continue even if message not found - still log the feedback
@@ -81,8 +72,7 @@ export async function POST(request: NextRequest) {
           category,
           hasCorrection: !!correction,
           correctionLength: correction?.length || 0,
-          contentLength: messageContent?.length || 0,
-        } as Prisma.InputJsonValue,
+          contentLength: messageContent?.length || 0 } as Prisma.InputJsonValue,
         metadata: {
           feedbackId,
           conversationId,
@@ -91,10 +81,7 @@ export async function POST(request: NextRequest) {
           category,
           correction,
           expectedResponse: body.expectedResponse,
-          context: body.context ? JSON.stringify(body.context) : undefined,
-        } as Prisma.InputJsonValue,
-      },
-    }).catch(err => {
+          context: body.context ? JSON.stringify(body.context) : undefined } as Prisma.InputJsonValue } }).catch(err => {
       console.error('[Chat Feedback] Failed to create audit log:', err);
     });
 
@@ -108,8 +95,7 @@ export async function POST(request: NextRequest) {
         hasCorrection: !!correction,
         messageId,
         conversationId,
-        contentLength: messageContent?.length || 0,
-      });
+        contentLength: messageContent?.length || 0 });
     }
 
     // If negative feedback with correction, could trigger learning pipeline
@@ -117,40 +103,18 @@ export async function POST(request: NextRequest) {
       console.warn('[Chat Feedback] Learning opportunity:', {
         feedbackId,
         category,
-        correctionLength: correction.length,
-      });
+        correctionLength: correction.length });
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       feedbackId,
-      message: 'Thank you for your feedback!',
-    });
+      message: 'Thank you for your feedback!' });
 
-  } catch (error) {
-    console.error('[Chat Feedback] Error:', error);
-    
-    // Return success even on error to not block user experience
-    return NextResponse.json({
-      success: true,
-      message: 'Feedback received',
-    });
-  }
-}
+  });
 
 // GET - Get feedback statistics (admin only)
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    const tenantId = await getServerTenantId();
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const searchParams = request.nextUrl.searchParams;
     const days = parseInt(searchParams.get('days') || '30', 10);
     const startDate = new Date();
@@ -162,10 +126,8 @@ export async function GET(request: NextRequest) {
         tenantId,
         action: 'ai_feedback',
         entityType: 'ai_feedback',
-        createdAt: { gte: startDate },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        createdAt: { gte: startDate } },
+      orderBy: { createdAt: 'desc' } });
 
     // Calculate statistics
     const positiveFeedback = feedbackLogs.filter(f => {
@@ -201,16 +163,13 @@ export async function GET(request: NextRequest) {
         feedback: { not: null },
         createdAt: { gte: startDate },
         conversation: {
-          tenantId: tenantId || undefined,
-        },
-      },
-      _count: true,
-    });
+          tenantId: tenantId || undefined } },
+      _count: true });
 
     const messagePositive = messageStats.find(s => s.feedback === 'positive')?._count || 0;
     const messageNegative = messageStats.find(s => s.feedback === 'negative')?._count || 0;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       period: `${days} days`,
       totalFeedback: totalFeedback + messagePositive + messageNegative,
       positiveFeedback: positiveFeedback + messagePositive,
@@ -218,22 +177,11 @@ export async function GET(request: NextRequest) {
       satisfactionRate,
       categoryBreakdown: Object.entries(categoryBreakdown).map(([category, count]) => ({
         category,
-        count,
-      })),
+        count })),
       trends: {
-        improving: satisfactionRate >= 80,
-      },
+        improving: satisfactionRate >= 80 },
       sources: {
         auditLogs: totalFeedback,
-        chatMessages: messagePositive + messageNegative,
-      },
-    });
+        chatMessages: messagePositive + messageNegative } });
 
-  } catch (error) {
-    console.error('[Chat Feedback] Error fetching stats:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch feedback statistics' },
-      { status: 500 }
-    );
-  }
-}
+  });

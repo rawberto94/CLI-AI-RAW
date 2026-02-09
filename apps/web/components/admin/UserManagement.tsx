@@ -93,7 +93,7 @@ const roleConfig: Record<string, { color: string; label: string; permissions: st
     permissions: ['contracts:*', 'users:read', 'settings:read', 'api:read']
   },
   analyst: { 
-    color: 'bg-purple-100 text-purple-700', 
+    color: 'bg-violet-100 text-violet-700', 
     label: 'Analyst',
     permissions: ['contracts:read', 'contracts:write', 'ai:analyze']
   },

@@ -1,11 +1,8 @@
 <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Three Stacked Bars Icon - White version for dark backgrounds -->
-  <g transform="translate(8, 10)">
-    <!-- Top Bar -->
-    <rect x="0" y="0" width="32" height="8" rx="4" fill="#FFFFFF"/>
-    <!-- Middle Bar -->
-    <rect x="0" y="12" width="32" height="8" rx="4" fill="rgba(255,255,255,0.8)"/>
-    <!-- Bottom Bar -->
-    <rect x="0" y="24" width="32" height="8" rx="4" fill="rgba(255,255,255,0.6)"/>
+  <!-- Three Stacked Bars Icon - White for dark backgrounds -->
+  <g transform="translate(4, 8)">
+    <rect x="0" y="0" width="40" height="9" rx="4.5" fill="white"/>
+    <rect x="0" y="13" width="40" height="9" rx="4.5" fill="white" fill-opacity="0.65"/>
+    <rect x="0" y="26" width="40" height="9" rx="4.5" fill="white" fill-opacity="0.35"/>
   </g>
 </svg>

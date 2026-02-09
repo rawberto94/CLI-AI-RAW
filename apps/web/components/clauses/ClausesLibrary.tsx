@@ -119,10 +119,10 @@ const categoryConfig: Record<ClauseCategory, { label: string; icon: React.Elemen
   confidentiality: { label: 'Confidentiality', icon: Shield, color: 'bg-violet-100 text-violet-700' },
   termination: { label: 'Termination', icon: Clock, color: 'bg-red-100 text-red-700' },
   payment: { label: 'Payment', icon: FileText, color: 'bg-green-100 text-green-700' },
-  intellectual_property: { label: 'IP', icon: FileText, color: 'bg-purple-100 text-purple-700' },
+  intellectual_property: { label: 'IP', icon: FileText, color: 'bg-violet-100 text-violet-700' },
   indemnification: { label: 'Indemnification', icon: Shield, color: 'bg-yellow-100 text-yellow-700' },
-  force_majeure: { label: 'Force Majeure', icon: AlertTriangle, color: 'bg-purple-100 text-purple-700' },
-  dispute_resolution: { label: 'Disputes', icon: Scale, color: 'bg-purple-100 text-purple-700' },
+  force_majeure: { label: 'Force Majeure', icon: AlertTriangle, color: 'bg-violet-100 text-violet-700' },
+  dispute_resolution: { label: 'Disputes', icon: Scale, color: 'bg-violet-100 text-violet-700' },
   compliance: { label: 'Compliance', icon: Shield, color: 'bg-pink-100 text-pink-700' },
 };
 

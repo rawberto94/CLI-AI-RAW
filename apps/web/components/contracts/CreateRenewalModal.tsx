@@ -226,9 +226,9 @@ export function CreateRenewalModal({
 
   const formatCurrency = (value: number | null | undefined) => {
     if (!value) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('de-CH', {
       style: 'currency',
-      currency: contract.currency || 'USD',
+      currency: contract.currency || 'CHF',
       maximumFractionDigits: 0,
     }).format(value);
   };

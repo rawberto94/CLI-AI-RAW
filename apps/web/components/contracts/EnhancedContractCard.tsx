@@ -159,8 +159,8 @@ export interface EnhancedContractCardProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+function formatCurrency(value: number, currency: string = "CHF"): string {
+  return new Intl.NumberFormat("de-CH", {
     style: "currency",
     currency,
     notation: value >= 1000000 ? "compact" : "standard",
@@ -275,7 +275,7 @@ const PartyAvatar = memo(function PartyAvatar({ party, size = "md" }: PartyAvata
 
   const roleColors = {
     client: "bg-violet-100 text-violet-700 ring-violet-200",
-    vendor: "bg-purple-100 text-purple-700 ring-purple-200",
+    vendor: "bg-violet-100 text-violet-700 ring-violet-200",
     partner: "bg-violet-100 text-violet-700 ring-violet-200",
     other: "bg-gray-100 text-gray-700 ring-gray-200",
   };
@@ -545,7 +545,7 @@ const HierarchyBadge = memo(function HierarchyBadge({ contract }: HierarchyBadge
           <span
             className={cn(
               "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
-              hasParent ? "bg-purple-100 text-purple-700" : "bg-purple-100 text-purple-700"
+              hasParent ? "bg-violet-100 text-violet-700" : "bg-violet-100 text-violet-700"
             )}
           >
             {hasParent ? (

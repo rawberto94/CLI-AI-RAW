@@ -559,11 +559,11 @@ export function QuickStatsGrid({ stats }: {
         <div className="text-sm text-violet-700">Avg Days to Close</div>
       </div>
       
-      <div className="text-center p-4 bg-purple-50 rounded-lg border border-purple-200">
-        <div className="text-2xl font-bold text-purple-600">
+      <div className="text-center p-4 bg-violet-50 rounded-lg border border-violet-200">
+        <div className="text-2xl font-bold text-violet-600">
           +{stats.complianceImprovement}%
         </div>
-        <div className="text-sm text-purple-700">Compliance Improvement</div>
+        <div className="text-sm text-violet-700">Compliance Improvement</div>
       </div>
       
       <div className="text-center p-4 bg-orange-50 rounded-lg border border-orange-200">
@@ -580,11 +580,11 @@ export function QuickStatsGrid({ stats }: {
         <div className="text-sm text-violet-700">Renewal Success</div>
       </div>
       
-      <div className="text-center p-4 bg-purple-50 rounded-lg border border-indigo-200">
-        <div className="text-2xl font-bold text-purple-600">
+      <div className="text-center p-4 bg-violet-50 rounded-lg border border-indigo-200">
+        <div className="text-2xl font-bold text-violet-600">
           {stats.queryAccuracy}%
         </div>
-        <div className="text-sm text-purple-700">Query Accuracy</div>
+        <div className="text-sm text-violet-700">Query Accuracy</div>
       </div>
     </div>
   )

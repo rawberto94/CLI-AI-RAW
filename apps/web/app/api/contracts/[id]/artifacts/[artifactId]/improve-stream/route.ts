@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
 import { dbAdaptor } from 'data-orchestration';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/improve-stream
@@ -13,7 +14,8 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const tenantId = request.headers.get('x-tenant-id');
+  const ctx = getApiContext(request);
+  const tenantId = ctx.tenantId;
   if (!tenantId) {
     return new Response(
       JSON.stringify({ error: 'Tenant ID is required' }),

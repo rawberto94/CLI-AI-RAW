@@ -9,11 +9,10 @@
  * Requirements: 4.2
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { supplierTrendAnalyzerService, getSupplierTrendAnalyzerService } from './supplier-trend-analyzer.service';
 import { supplierIntelligenceService } from './supplier-intelligence.service';
 
-const prisma = new PrismaClient();
 const trendAnalyzer = getSupplierTrendAnalyzerService(prisma);
 
 export interface SupplierAlert {

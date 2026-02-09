@@ -17,7 +17,7 @@ export default function SettingsLoading() {
           <motion.div
             animate={{ rotate: [0, 360] }}
             transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-purple-500/30"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600 flex items-center justify-center shadow-2xl shadow-violet-500/30"
           >
             <Settings className="w-10 h-10 text-white" />
           </motion.div>
@@ -31,7 +31,7 @@ export default function SettingsLoading() {
               style={{ transform: `rotate(${i * 90}deg)` }}
             >
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-                <Icon className="h-4 w-4 text-purple-500" />
+                <Icon className="h-4 w-4 text-violet-500" />
               </div>
             </motion.div>
           ))}

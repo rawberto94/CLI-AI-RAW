@@ -53,7 +53,7 @@ export function TopOpportunitiesWidget() {
     const colors: Record<string, string> = {
       HIGH_RATE: 'bg-red-100 text-red-800',
       VOLUME_DISCOUNT: 'bg-violet-100 text-violet-800',
-      GEOGRAPHIC_ARBITRAGE: 'bg-purple-100 text-purple-800',
+      GEOGRAPHIC_ARBITRAGE: 'bg-violet-100 text-violet-800',
       SUPPLIER_CONSOLIDATION: 'bg-green-100 text-green-800',
     };
     return colors[category] || 'bg-gray-100 text-gray-800';

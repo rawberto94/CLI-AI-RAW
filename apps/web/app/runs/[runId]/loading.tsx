@@ -41,7 +41,7 @@ function OrbitingIcon({ icon: Icon, delay, radius, colorClass }: OrbitingIconPro
 export default function RunDetailsLoading() {
   const orbitingIcons: OrbitingIconProps[] = [
     { icon: Clock, delay: 0, radius: 80, colorClass: 'bg-violet-500/90' },
-    { icon: CheckCircle, delay: 2.67, radius: 80, colorClass: 'bg-purple-500/90' },
+    { icon: CheckCircle, delay: 2.67, radius: 80, colorClass: 'bg-violet-500/90' },
     { icon: History, delay: 5.33, radius: 80, colorClass: 'bg-violet-600/90' },
   ];
 

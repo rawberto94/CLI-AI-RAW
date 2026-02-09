@@ -570,7 +570,7 @@ export async function generatePDFDocument(
       // Title
       doc.moveDown(2)
         .fontSize(28)
-        .fillColor('#2563EB')
+        .fillColor('#7C3AED')
         .text(template.name, { align: 'center' });
 
       // Category and Status

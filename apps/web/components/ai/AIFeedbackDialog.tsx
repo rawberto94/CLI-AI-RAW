@@ -140,7 +140,7 @@ export function AIFeedbackDialog({
       <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-500" />
+            <Sparkles className="w-5 h-5 text-violet-500" />
             Help ConTigo Learn
           </DialogTitle>
           <DialogDescription>
@@ -228,8 +228,8 @@ export function AIFeedbackDialog({
                           variant={category === cat.value ? "default" : "outline"}
                           className={`cursor-pointer transition-all ${
                             category === cat.value
-                              ? "bg-purple-500 text-white border-purple-500"
-                              : "hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950"
+                              ? "bg-violet-500 text-white border-violet-500"
+                              : "hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950"
                           }`}
                           onClick={() => setCategory(category === cat.value ? null : cat.value)}
                         >
@@ -302,7 +302,7 @@ export function AIFeedbackDialog({
             <Button
               onClick={handleSubmit}
               disabled={!rating || isSubmitting}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
             >
               {isSubmitting ? (
                 <>

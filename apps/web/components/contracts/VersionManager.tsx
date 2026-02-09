@@ -452,7 +452,7 @@ export function VersionManager({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
               <History className="h-4 w-4 text-white" />
             </div>
             <div>
@@ -602,7 +602,7 @@ export function VersionManager({
         <DialogContent>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Camera className="h-5 w-5 text-purple-500" />
+              <Camera className="h-5 w-5 text-violet-500" />
               Create Snapshot
             </DialogTitle>
             <DialogDescription>
@@ -649,7 +649,7 @@ export function VersionManager({
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <GitCompare className="h-5 w-5 text-purple-500" />
+              <GitCompare className="h-5 w-5 text-violet-500" />
               Compare Versions
             </DialogTitle>
             <DialogDescription>

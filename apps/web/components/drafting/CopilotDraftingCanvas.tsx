@@ -419,7 +419,7 @@ export function CopilotDraftingCanvas({
     switch (type) {
       case 'risk_warning': return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'compliance': return <Shield className="h-4 w-4 text-violet-500" />;
-      case 'clause_improvement': return <Sparkles className="h-4 w-4 text-purple-500" />;
+      case 'clause_improvement': return <Sparkles className="h-4 w-4 text-violet-500" />;
       case 'auto_complete': return <Zap className="h-4 w-4 text-yellow-500" />;
       case 'negotiation': return <Scale className="h-4 w-4 text-green-500" />;
       default: return <Lightbulb className="h-4 w-4 text-gray-500 dark:text-slate-400" />;
@@ -448,7 +448,7 @@ export function CopilotDraftingCanvas({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <Brain className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                <Brain className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                 <div>
                   <h1 className="font-semibold text-gray-900 dark:text-slate-100 dark:text-slate-100">AI Copilot Editor</h1>
                   <p className="text-xs text-gray-500 dark:text-slate-400 dark:text-slate-400">{contractType} • Real-time AI assistance</p>
@@ -527,7 +527,7 @@ export function CopilotDraftingCanvas({
               {onLegalReview && (
                 <button
                   onClick={onLegalReview}
-                  className="flex items-center gap-2 px-3 py-2 border border-purple-200 text-purple-700 rounded-lg hover:bg-purple-50 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 border border-violet-200 text-violet-700 rounded-lg hover:bg-violet-50 transition-colors"
                 >
                   <FileCheck className="h-4 w-4" />
                   Legal Review
@@ -590,7 +590,7 @@ export function CopilotDraftingCanvas({
               {/* Copilot Status */}
               <div className="flex items-center gap-2 mr-2">
                 {isLoadingSuggestions && (
-                  <span className="flex items-center gap-1 text-xs text-purple-600">
+                  <span className="flex items-center gap-1 text-xs text-violet-600">
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Analyzing...
                   </span>
@@ -602,7 +602,7 @@ export function CopilotDraftingCanvas({
 
               <button
                 onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-500 text-white rounded-lg hover:from-purple-600 hover:to-purple-600 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg hover:from-violet-600 hover:to-purple-600 transition-colors text-sm"
               >
                 <Wand2 className="h-4 w-4" />
                 AI Assist
@@ -626,10 +626,10 @@ export function CopilotDraftingCanvas({
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-6 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-50 dark:from-purple-950/50 dark:to-purple-950/50 rounded-xl p-4 border border-purple-100 dark:border-purple-800">
+                  <div className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 rounded-xl p-4 border border-violet-100 dark:border-violet-800">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
-                        <Brain className="h-5 w-5 text-purple-500 dark:text-purple-400" />
+                        <Brain className="h-5 w-5 text-violet-500 dark:text-violet-400" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900 dark:text-slate-100 dark:text-slate-100 mb-2">AI Copilot Assistant</h3>
@@ -641,12 +641,12 @@ export function CopilotDraftingCanvas({
                             onKeyDown={(e) => e.key === 'Enter' && handleAIAssist()}
                             placeholder="Ask AI to help... (e.g., 'Strengthen the liability clause', 'Add GDPR compliance language')"
                             aria-label="AI prompt input"
-                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="flex-1 px-4 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                           />
                           <button
                             onClick={handleAIAssist}
                             disabled={isGenerating || !aiPrompt.trim()}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors disabled:opacity-50"
                           >
                             {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Generate'}
                           </button>
@@ -663,7 +663,7 @@ export function CopilotDraftingCanvas({
                             <button
                               key={suggestion}
                               onClick={() => setAiPrompt(suggestion)}
-                              className="px-3 py-1 text-sm bg-white dark:bg-slate-800 text-purple-700 dark:text-purple-300 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/50 transition-colors border border-purple-200 dark:border-purple-700"
+                              className="px-3 py-1 text-sm bg-white dark:bg-slate-800 text-violet-700 dark:text-violet-300 rounded-full hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-colors border border-violet-200 dark:border-violet-700"
                             >
                               {suggestion}
                             </button>
@@ -743,7 +743,7 @@ export function CopilotDraftingCanvas({
                         >
                           <div className="flex items-start gap-3">
                             <div className={`mt-1 px-1.5 py-0.5 rounded text-xs ${
-                              completion.source === 'library' ? 'bg-purple-100 text-purple-700' :
+                              completion.source === 'library' ? 'bg-violet-100 text-violet-700' :
                               completion.source === 'historical' ? 'bg-violet-100 text-violet-700' :
                               'bg-gray-100 text-gray-700'
                             }`}>
@@ -787,14 +787,14 @@ export function CopilotDraftingCanvas({
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === tab.id
-                    ? 'text-purple-600 border-purple-600'
+                    ? 'text-violet-600 border-violet-600'
                     : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.count !== null && tab.count > 0 && (
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    activeTab === tab.id ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                    activeTab === tab.id ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-600'
                   }`}>
                     {tab.count}
                   </span>
@@ -837,7 +837,7 @@ export function CopilotDraftingCanvas({
                     <button
                       onClick={() => fetchSuggestions()}
                       aria-label="Refresh AI suggestions"
-                      className="flex items-center gap-1 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                      className="flex items-center gap-1 text-xs text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
                     >
                       <RefreshCw className="h-3 w-3" />
                       Refresh
@@ -846,7 +846,7 @@ export function CopilotDraftingCanvas({
 
                   {isLoadingSuggestions && suggestions.length === 0 ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-6 w-6 animate-spin text-purple-500" />
+                      <Loader2 className="h-6 w-6 animate-spin text-violet-500" />
                     </div>
                   ) : suggestions.length === 0 ? (
                     <div className="text-center py-8 text-gray-500 dark:text-slate-400 dark:text-slate-400">
@@ -863,7 +863,7 @@ export function CopilotDraftingCanvas({
                           animate={{ opacity: 1, x: 0 }}
                           className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                             selectedSuggestion === suggestion.id
-                              ? 'border-purple-300 dark:border-purple-600 bg-purple-50 dark:bg-purple-900/30'
+                              ? 'border-violet-300 dark:border-violet-600 bg-violet-50 dark:bg-violet-900/30'
                               : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
                           }`}
                           onClick={() => setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
@@ -875,7 +875,7 @@ export function CopilotDraftingCanvas({
                               <div className="flex items-center gap-2 mt-1">
                                 <span className={`text-xs px-1.5 py-0.5 rounded ${
                                   suggestion.source.type === 'playbook' ? 'bg-green-100 text-green-700' :
-                                  suggestion.source.type === 'clause_library' ? 'bg-purple-100 text-purple-700' :
+                                  suggestion.source.type === 'clause_library' ? 'bg-violet-100 text-violet-700' :
                                   suggestion.source.type === 'historical' ? 'bg-violet-100 text-violet-700' :
                                   'bg-gray-100 text-gray-700'
                                 }`}>
@@ -908,7 +908,7 @@ export function CopilotDraftingCanvas({
                                           e.stopPropagation();
                                           applySuggestion(suggestion);
                                         }}
-                                        className="flex-1 px-3 py-1.5 bg-purple-600 text-white text-xs rounded-lg hover:bg-purple-700"
+                                        className="flex-1 px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700"
                                       >
                                         Apply
                                       </button>
@@ -974,9 +974,9 @@ export function CopilotDraftingCanvas({
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Add a comment..."
                     aria-label="Add a comment"
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
-                  <button className="p-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700" aria-label="Submit comment">
+                  <button className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700" aria-label="Submit comment">
                     <Send className="h-4 w-4" />
                   </button>
                 </div>
@@ -990,7 +990,7 @@ export function CopilotDraftingCanvas({
                   comments.map((comment) => (
                     <div key={comment.id} className="p-3 rounded-lg border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800">
                       <div className="flex items-start gap-2">
-                        <div className="h-8 w-8 rounded-full bg-purple-500 flex items-center justify-center text-white text-sm font-medium">
+                        <div className="h-8 w-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-medium">
                           {comment.author.split(' ').map(n => n[0]).join('')}
                         </div>
                         <div className="flex-1">
@@ -1011,7 +1011,7 @@ export function CopilotDraftingCanvas({
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-medium text-gray-900 dark:text-slate-100 dark:text-slate-100">Version History</h3>
-                  <button className="flex items-center gap-1 text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300" aria-label="Compare versions">
+                  <button className="flex items-center gap-1 text-sm text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300" aria-label="Compare versions">
                     <GitBranch className="h-4 w-4" />
                     Compare
                   </button>
@@ -1027,7 +1027,7 @@ export function CopilotDraftingCanvas({
                     <div
                       key={version.id}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        index === 0 ? 'border-purple-200 dark:border-purple-700 bg-purple-50 dark:bg-purple-900/30' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
+                        index === 0 ? 'border-violet-200 dark:border-violet-700 bg-violet-50 dark:bg-violet-900/30' : 'border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 bg-white dark:bg-slate-800'
                       }`}
                     >
                       <div className="flex items-start justify-between">

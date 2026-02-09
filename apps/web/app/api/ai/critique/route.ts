@@ -5,17 +5,12 @@
  * using the SelfCritiqueService
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSelfCritiqueService } from '@repo/data-orchestration';
+import { NextRequest } from 'next/server';
+import { getSelfCritiqueService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { 
       response,
@@ -23,14 +18,10 @@ export async function POST(request: NextRequest) {
       contractId,
       contractText = '',
       artifactType = 'general',
-      options = {},
-    } = body;
+      options = {} } = body;
 
     if (!response) {
-      return NextResponse.json(
-        { error: 'Response text is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Response text is required', 400);
     }
 
     const critiqueService = getSelfCritiqueService();
@@ -40,8 +31,7 @@ export async function POST(request: NextRequest) {
       contractId: contractId || '',
       contractText,
       artifactType,
-      tenantId,
-    };
+      tenantId };
 
     // Build checks array based on options
     const checks: Array<'hallucination' | 'consistency' | 'completeness' | 'formatting' | 'factual' | 'citation' | 'tone' | 'relevance'> = [];
@@ -58,28 +48,12 @@ export async function POST(request: NextRequest) {
       maxRevisionAttempts: options.maxRevisions ?? 2,
       checks,
       model: 'gpt-4o-mini',
-      temperature: 0.2,
-    });
+      temperature: 0.2 });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       approved: result.passed,
       score: result.score,
       revisedResponse: result.revisedOutput,
       issues: result.issues,
-      suggestions: result.suggestions,
-    });
-  } catch (error) {
-    console.error('Critique error:', error);
-    
-    // Return pass-through on error to not block responses
-    return NextResponse.json({
-      success: true,
-      approved: true,
-      score: 1.0,
-      revisedResponse: request.body ? (await request.json()).response : '',
-      issues: [],
-      error: 'Critique service unavailable, passed through',
-    });
-  }
-}
+      suggestions: result.suggestions });
+  });

@@ -9,7 +9,8 @@
     "./agents": "./src/agents/index.ts"
   },
   "scripts": {
-    "build": "tsc --noEmit",
+    "build": "tsup",
+    "build:check": "tsc --noEmit",
     "build:bundle": "tsup",
     "dev": "NODE_OPTIONS=\"--max-old-space-size=8192\" tsx watch src/index.ts",
     "start": "NODE_OPTIONS=\"--max-old-space-size=8192\" tsx src/index.ts",

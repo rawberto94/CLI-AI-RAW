@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse as _NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Bulletproof constants
 const POLL_INTERVAL_MS = 1000; // Poll every 1 second
@@ -23,6 +25,7 @@ const MAX_CONSECUTIVE_ERRORS = 5;
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   const contractId = params.id;
   
   // EventSource can't send headers, so we also check query param for tenant ID

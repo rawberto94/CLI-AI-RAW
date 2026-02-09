@@ -338,7 +338,7 @@ export const DashboardOverview = memo(function DashboardOverview({
                 const actionColors: Record<string, string> = {
                   Created: 'bg-green-100 text-green-700',
                   Processed: 'bg-violet-100 text-violet-700',
-                  Analyzed: 'bg-purple-100 text-purple-700',
+                  Analyzed: 'bg-violet-100 text-violet-700',
                   Exported: 'bg-orange-100 text-orange-700',
                   Updated: 'bg-slate-100 text-slate-700',
                 };

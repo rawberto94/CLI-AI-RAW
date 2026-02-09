@@ -171,9 +171,9 @@ export const NoContracts = memo(function NoContracts({
           <Button 
             variant="outline" 
             size="lg"
-            className="h-12 px-8 border-2 border-slate-200 hover:border-purple-300 hover:bg-purple-50 text-base font-semibold gap-3"
+            className="h-12 px-8 border-2 border-slate-200 hover:border-violet-300 hover:bg-violet-50 text-base font-semibold gap-3"
           >
-            <Sparkles className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-violet-600" />
             Generate with AI
           </Button>
         </Link>
@@ -290,7 +290,7 @@ export const NoResults = memo(function NoResults({
           <Button 
             variant="outline" 
             onClick={onClearFilters}
-            className="gap-2 border-2 hover:border-purple-300 hover:bg-purple-50"
+            className="gap-2 border-2 hover:border-violet-300 hover:bg-violet-50"
           >
             <Filter className="h-4 w-4" />
             Clear all filters

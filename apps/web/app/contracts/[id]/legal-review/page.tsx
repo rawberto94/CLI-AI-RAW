@@ -332,8 +332,8 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-indigo-200 dark:border-indigo-800 border-t-purple-600 dark:border-t-indigo-400 rounded-full animate-spin" />
-            <Scale className="w-6 h-6 text-purple-600 dark:text-indigo-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-indigo-200 dark:border-violet-800 border-t-violet-600 dark:border-t-indigo-400 rounded-full animate-spin" />
+            <Scale className="w-6 h-6 text-violet-600 dark:text-violet-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 dark:text-slate-300 font-medium">Loading legal review...</p>
         </motion.div>
@@ -344,7 +344,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/30 dark:to-purple-950/20 flex flex-col">
       {/* Header */}
-      <div className="flex-none bg-gradient-to-r from-purple-600 via-purple-600 to-violet-600 shadow-xl">
+      <div className="flex-none bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 shadow-xl">
         <div className="max-w-[1800px] mx-auto px-6 py-4">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -389,7 +389,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
               <Button
                 onClick={runAnalysis}
                 disabled={analyzing || !contract?.rawText}
-                className="bg-white text-purple-600 hover:bg-white/90 gap-2"
+                className="bg-white text-violet-600 hover:bg-white/90 gap-2"
               >
                 {analyzing ? (
                   <>
@@ -414,7 +414,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
           // No review yet
           <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
             <CardContent className="py-16 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-500 mb-6 shadow-xl shadow-purple-500/30 dark:shadow-purple-500/20">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 mb-6 shadow-xl shadow-violet-500/30 dark:shadow-violet-500/20">
                 <Scale className="w-10 h-10 text-white" />
               </div>
               <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-3">AI-Powered Legal Review</h2>
@@ -426,7 +426,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                 onClick={runAnalysis}
                 disabled={analyzing || !contract?.rawText}
                 size="lg"
-                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 gap-2 shadow-lg shadow-purple-500/30"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 gap-2 shadow-lg shadow-violet-500/30"
               >
                 {analyzing ? (
                   <>
@@ -467,8 +467,8 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                   <p className="text-sm text-slate-600 dark:text-slate-400">AI suggests specific language changes to improve contract terms.</p>
                 </div>
                 <div className="p-5 bg-slate-50 dark:bg-slate-700/50 rounded-xl text-left">
-                  <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg w-fit mb-3">
-                    <BookOpen className="w-5 h-5 text-purple-600 dark:text-indigo-400" />
+                  <div className="p-2 bg-violet-100 dark:bg-violet-900/50 rounded-lg w-fit mb-3">
+                    <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                   </div>
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Playbook Comparison</h4>
                   <p className="text-sm text-slate-600 dark:text-slate-400">Compare against your organization&apos;s standard positions and fallback language.</p>
@@ -542,7 +542,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                   <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 h-full">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                        <Shield className="w-5 h-5 text-purple-500 dark:text-indigo-400" />
+                        <Shield className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                         Overall Risk Assessment
                       </CardTitle>
                     </CardHeader>
@@ -636,7 +636,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                   <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 h-full">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                        <Edit3 className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+                        <Edit3 className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                         Redline Summary
                       </CardTitle>
                     </CardHeader>
@@ -685,8 +685,8 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                   <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                     <CardContent className="p-4">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                          <BookOpen className="w-5 h-5 text-purple-600 dark:text-indigo-400" />
+                        <div className="p-2 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
+                          <BookOpen className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                         </div>
                         <div>
                           <p className="font-medium text-slate-900 dark:text-slate-100">Analyzed using: {review.playbook.name}</p>
@@ -775,7 +775,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                               {clause.suggestions.length > 0 && (
                                 <div>
                                   <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-2">
-                                    <Sparkles className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                                    <Sparkles className="w-4 h-4 text-violet-500 dark:text-violet-400" />
                                     Suggestions
                                   </h4>
                                   <ul className="space-y-1">
@@ -791,15 +791,15 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
 
                               {/* Playbook Match */}
                               {clause.playbookMatch && (
-                                <div className="bg-purple-50 dark:bg-purple-950/30 rounded-lg p-4">
-                                  <h4 className="text-sm font-medium text-purple-700 dark:text-indigo-300 mb-3 flex items-center gap-2">
+                                <div className="bg-violet-50 dark:bg-violet-950/30 rounded-lg p-4">
+                                  <h4 className="text-sm font-medium text-violet-700 dark:text-violet-300 mb-3 flex items-center gap-2">
                                     <BookOpen className="w-4 h-4" />
                                     Playbook Reference
                                   </h4>
                                   <div className="space-y-3">
                                     {clause.playbookMatch.preferredText && (
                                       <div>
-                                        <p className="text-xs font-medium text-purple-600 dark:text-indigo-400 mb-1">Preferred Language</p>
+                                        <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Preferred Language</p>
                                         <p className="text-sm text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-700/50 rounded p-2">
                                           {clause.playbookMatch.preferredText}
                                         </p>
@@ -807,7 +807,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                                     )}
                                     {clause.playbookMatch.minimumAcceptable && (
                                       <div>
-                                        <p className="text-xs font-medium text-purple-600 dark:text-indigo-400 mb-1">Minimum Acceptable</p>
+                                        <p className="text-xs font-medium text-violet-600 dark:text-violet-400 mb-1">Minimum Acceptable</p>
                                         <p className="text-sm text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-700/50 rounded p-2">
                                           {clause.playbookMatch.minimumAcceptable}
                                         </p>
@@ -863,7 +863,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
                           redline.status === 'accepted' ? 'border-l-green-500' :
                           redline.status === 'rejected' ? 'border-l-red-500' :
                           redline.status === 'negotiating' ? 'border-l-amber-500' :
-                          'border-l-purple-500'
+                          'border-l-violet-500'
                         }`}>
                           <CardContent className="p-4">
                             <div className="flex items-start justify-between gap-4 mb-4">
@@ -983,7 +983,7 @@ export default function LegalReviewPage({ params }: { params: Promise<{ id: stri
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <MessageSquare className="w-5 h-5 text-purple-500" />
+              <MessageSquare className="w-5 h-5 text-violet-500" />
               Propose Counter-Language
             </DialogTitle>
             <DialogDescription>

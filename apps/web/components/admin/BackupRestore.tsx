@@ -84,7 +84,7 @@ const locationConfig: Record<string, { icon: React.ElementType; label: string; c
   local: { icon: HardDrive, label: 'Local Storage', color: 'text-slate-600' },
   s3: { icon: Cloud, label: 'Amazon S3', color: 'text-orange-600' },
   gcs: { icon: Cloud, label: 'Google Cloud', color: 'text-violet-600' },
-  azure: { icon: Cloud, label: 'Azure Blob', color: 'text-purple-600' },
+  azure: { icon: Cloud, label: 'Azure Blob', color: 'text-violet-600' },
 };
 
 const typeLabels: Record<string, string> = {

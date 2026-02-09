@@ -181,7 +181,7 @@ export function SmartSearch() {
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'contract': return 'bg-violet-100 text-violet-700'
-      case 'artifact': return 'bg-purple-100 text-purple-700'
+      case 'artifact': return 'bg-violet-100 text-violet-700'
       case 'supplier': return 'bg-green-100 text-green-700'
       default: return 'bg-gray-100 text-gray-700'
     }

@@ -75,7 +75,7 @@ export function AdvancedSearchModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="clientName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-purple-500" />
+                <Building2 className="h-4 w-4 text-violet-500" />
                 Client Name
               </Label>
               <Input
@@ -83,7 +83,7 @@ export function AdvancedSearchModal({
                 placeholder="Filter by client..."
                 value={filters.clientName || ''}
                 onChange={(e) => setFilters({ ...filters, clientName: e.target.value })}
-                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 bg-white"
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white"
               />
             </div>
             <div className="space-y-2">

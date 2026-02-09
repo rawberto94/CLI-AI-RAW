@@ -111,8 +111,8 @@ export function ContractCard({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatCurrency = (value: number, currency: string = "USD") => {
-    return new Intl.NumberFormat("en-US", {
+  const formatCurrency = (value: number, currency: string = "CHF") => {
+    return new Intl.NumberFormat("de-CH", {
       style: "currency",
       currency,
       minimumFractionDigits: 0,

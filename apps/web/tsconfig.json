@@ -4,6 +4,7 @@
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "strict": false,
+    "strictNullChecks": true,
     "noUncheckedIndexedAccess": false,
     "noImplicitOverride": false,
     "noEmit": true,

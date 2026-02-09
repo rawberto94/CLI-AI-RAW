@@ -104,7 +104,7 @@ const stepTypeConfig: Record<StepType, { label: string; icon: React.ReactNode; c
   TASK: { 
     label: 'Task', 
     icon: <Edit3 className="h-4 w-4" />, 
-    color: 'bg-purple-500',
+    color: 'bg-violet-500',
     description: 'Assign a task to be completed',
   },
   NOTIFICATION: { 
@@ -122,7 +122,7 @@ const stepTypeConfig: Record<StepType, { label: string; icon: React.ReactNode; c
   PARALLEL: { 
     label: 'Parallel', 
     icon: <Workflow className="h-4 w-4" />, 
-    color: 'bg-purple-500',
+    color: 'bg-violet-500',
     description: 'Execute multiple steps in parallel',
   },
   DELAY: { 
@@ -146,7 +146,7 @@ const stepTypeConfig: Record<StepType, { label: string; icon: React.ReactNode; c
   SIGNATURE: { 
     label: 'Signature', 
     icon: <FileSignature className="h-4 w-4" />, 
-    color: 'bg-purple-500',
+    color: 'bg-violet-500',
     description: 'Request electronic signature',
   },
 };

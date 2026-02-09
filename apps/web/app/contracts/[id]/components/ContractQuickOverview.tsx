@@ -102,12 +102,12 @@ const PartiesSection = memo(function PartiesSection({
               <div key={idx} className="flex items-center gap-2">
                 <div className={cn(
                   "w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0",
-                  isClient ? "bg-violet-100" : "bg-purple-100"
+                  isClient ? "bg-violet-100" : "bg-violet-100"
                 )}>
                   {isClient ? (
                     <Building className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-violet-600" />
                   ) : (
-                    <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-600" />
+                    <Users className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-violet-600" />
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
@@ -115,7 +115,7 @@ const PartiesSection = memo(function PartiesSection({
                   {party.role && (
                     <p className={cn(
                       "text-[10px] sm:text-xs",
-                      isClient ? "text-violet-600" : "text-purple-600"
+                      isClient ? "text-violet-600" : "text-violet-600"
                     )}>
                       {party.role}
                     </p>
@@ -155,8 +155,8 @@ const DurationSection = memo(function DurationSection({
   return (
     <div className="p-4 sm:p-5 border-b sm:border-b-0 sm:border-r border-slate-100">
       <div className="flex items-center gap-2 mb-2 sm:mb-3">
-        <div className="p-1.5 rounded-lg bg-purple-100">
-          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-purple-600" />
+        <div className="p-1.5 rounded-lg bg-violet-100">
+          <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-violet-600" />
         </div>
         <span className="text-[10px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">Duration</span>
       </div>

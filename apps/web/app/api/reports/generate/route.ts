@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 interface ReportGenerationRequest {
   type: "supplier" | "rate-card" | "contract" | "performance" | "financial";
@@ -8,51 +9,37 @@ interface ReportGenerationRequest {
   groupBy?: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: ReportGenerationRequest = await request.json();
-    const { type, fields, filters = {}, groupBy: _groupBy } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body: ReportGenerationRequest = await request.json();
+  const { type, fields, filters = {}, groupBy: _groupBy } = body;
 
-    let data: any[] = [];
-    let rows = 0;
+  let data: any[] = [];
+  let rows = 0;
 
-    switch (type) {
-      case "supplier":
-        data = await generateSupplierReport(fields, filters);
-        break;
-      case "rate-card":
-        data = await generateRateCardReport(fields, filters);
-        break;
-      case "contract":
-        data = await generateContractReport(fields, filters);
-        break;
-      case "performance":
-        data = await generatePerformanceReport(fields, filters);
-        break;
-      case "financial":
-        data = await generateFinancialReport(fields, filters);
-        break;
-      default:
-        return NextResponse.json(
-          { error: "Invalid report type" },
-          { status: 400 }
-        );
-    }
-
-    rows = data.length;
-
-    return NextResponse.json({
-      success: true,
-      rows,
-      data,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to generate report" },
-      { status: 500 }
-    );
+  switch (type) {
+    case "supplier":
+      data = await generateSupplierReport(fields, filters);
+      break;
+    case "rate-card":
+      data = await generateRateCardReport(fields, filters);
+      break;
+    case "contract":
+      data = await generateContractReport(fields, filters);
+      break;
+    case "performance":
+      data = await generatePerformanceReport(fields, filters);
+      break;
+    case "financial":
+      data = await generateFinancialReport(fields, filters);
+      break;
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid report type', 400);
   }
-}
+
+  rows = data.length;
+
+  return createSuccessResponse(ctx, { rows, data });
+});
 
 async function generateSupplierReport(
   fields: string[],

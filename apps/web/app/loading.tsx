@@ -13,33 +13,19 @@ export default function Loading() {
             className="relative z-10"
             aria-hidden="true"
           >
-            <defs>
-              <linearGradient id="barGrad1" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#7C3AED" />
-                <stop offset="100%" stopColor="#8B5CF6" />
-              </linearGradient>
-              <linearGradient id="barGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#8B5CF6" />
-                <stop offset="100%" stopColor="#A78BFA" />
-              </linearGradient>
-              <linearGradient id="barGrad3" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#A78BFA" />
-                <stop offset="100%" stopColor="#C4B5FD" />
-              </linearGradient>
-            </defs>
-            <g transform="translate(8, 10)">
-              <rect x="0" y="0" width="32" height="8" rx="4" fill="url(#barGrad1)" />
-              <rect x="0" y="12" width="32" height="8" rx="4" fill="url(#barGrad2)" />
-              <rect x="0" y="24" width="32" height="8" rx="4" fill="url(#barGrad3)" />
+            <g transform="translate(4, 8)">
+              <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9" />
+              <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6" />
+              <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD" />
             </g>
           </svg>
         </div>
         
         {/* ConTigo Text */}
         <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight">
-            <span className="text-violet-600 dark:text-violet-400">con</span>
-            <span className="text-slate-800 dark:text-slate-200">tigo</span>
+          <h1 className="text-3xl tracking-tight">
+            <span className="font-bold text-violet-700 dark:text-violet-400">con</span>
+            <span className="font-light text-slate-800 dark:text-slate-200">tigo</span>
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Loading your contract intelligence...</p>
         </div>

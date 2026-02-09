@@ -230,7 +230,7 @@ function ComparisonBar({
             <div 
               className={cn(
                 "h-full rounded-r-md transition-all",
-                winner === 'group2' ? "bg-purple-500" : "bg-purple-300"
+                winner === 'group2' ? "bg-violet-500" : "bg-violet-300"
               )}
               style={{ width: `${pct2}%` }}
             />
@@ -239,7 +239,7 @@ function ComparisonBar({
         <div className="w-20">
           <span className={cn(
             "text-sm font-semibold",
-            winner === 'group2' ? "text-purple-600" : "text-gray-600"
+            winner === 'group2' ? "text-violet-600" : "text-gray-600"
           )}>
             {formatValue(value2)}
           </span>
@@ -266,7 +266,7 @@ function RiskGauge({ score, label, color }: { score: number; label: string; colo
   return (
     <div className={cn(
       "p-4 rounded-xl border",
-      color === 'blue' ? "bg-violet-50 border-violet-200" : "bg-purple-50 border-purple-200"
+      color === 'blue' ? "bg-violet-50 border-violet-200" : "bg-violet-50 border-violet-200"
     )}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-gray-600">{label}</span>
@@ -988,7 +988,7 @@ export default function ContractComparisonPage() {
 
               <ContractGroupSelector
                 label="Group B"
-                colorClass="border-purple-300"
+                colorClass="border-violet-300"
                 contracts={contracts}
                 selectedContracts={group2Contracts}
                 onSelectionChange={setGroup2Contracts}
@@ -1064,14 +1064,14 @@ export default function ContractComparisonPage() {
                 </CardContent>
               </Card>
               
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-white">
+              <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-white">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-purple-100 rounded-lg">
-                      <DollarSign className="h-4 w-4 text-purple-600" />
+                    <div className="p-2.5 bg-violet-100 rounded-lg">
+                      <DollarSign className="h-4 w-4 text-violet-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-purple-600 font-medium">{comparison.group2.name}</p>
+                      <p className="text-xs text-violet-600 font-medium">{comparison.group2.name}</p>
                       <p className="text-xl font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
                     </div>
                   </div>
@@ -1133,15 +1133,15 @@ export default function ContractComparisonPage() {
 
             {/* AI Analysis Section */}
             {(aiAnalysis || isAiAnalyzing) && (
-              <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-50 overflow-hidden">
-                <CardHeader className="border-b border-purple-100">
+              <Card className="border-violet-200 bg-gradient-to-br from-violet-50 to-purple-50 overflow-hidden">
+                <CardHeader className="border-b border-violet-100">
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                    <div className="p-1.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                       <Sparkles className="w-4 h-4 text-white" />
                     </div>
                     AI-Powered Analysis
                     {isAiAnalyzing && (
-                      <Loader2 className="w-4 h-4 animate-spin text-purple-600 ml-2" />
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-600 ml-2" />
                     )}
                   </CardTitle>
                   <CardDescription>
@@ -1152,7 +1152,7 @@ export default function ContractComparisonPage() {
                   {isAiAnalyzing ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="text-center">
-                        <Loader2 className="w-6 h-6 animate-spin text-purple-500 mx-auto mb-3" />
+                        <Loader2 className="w-6 h-6 animate-spin text-violet-500 mx-auto mb-3" />
                         <p className="text-sm text-gray-500">Generating AI analysis...</p>
                       </div>
                     </div>
@@ -1206,7 +1206,7 @@ export default function ContractComparisonPage() {
                         </div>
                         <span className="text-gray-400">vs</span>
                         <div className="flex items-center gap-2">
-                          <div className="w-4 h-4 rounded-full bg-purple-500" />
+                          <div className="w-4 h-4 rounded-full bg-violet-500" />
                           <span className="text-sm font-medium">{comparison.group2.name}</span>
                         </div>
                       </div>
@@ -1276,21 +1276,21 @@ export default function ContractComparisonPage() {
                       </CardContent>
                     </Card>
 
-                    <Card className="border-purple-200">
+                    <Card className="border-violet-200">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-base text-purple-800 flex items-center gap-2">
+                        <CardTitle className="text-base text-violet-800 flex items-center gap-2">
                           <Building2 className="w-4 h-4" />
                           {comparison.group2.name}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4">
-                          <div className="p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs text-purple-600 mb-1">Total Value</p>
+                          <div className="p-3 bg-violet-50 rounded-lg">
+                            <p className="text-xs text-violet-600 mb-1">Total Value</p>
                             <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.totalValue)}</p>
                           </div>
-                          <div className="p-3 bg-purple-50 rounded-lg">
-                            <p className="text-xs text-purple-600 mb-1">Avg Contract</p>
+                          <div className="p-3 bg-violet-50 rounded-lg">
+                            <p className="text-xs text-violet-600 mb-1">Avg Contract</p>
                             <p className="text-lg font-bold text-gray-900">{formatCurrency(comparison.group2.avgValue)}</p>
                           </div>
                         </div>
@@ -1343,7 +1343,7 @@ export default function ContractComparisonPage() {
                         </div>
                         
                         <div className="space-y-4">
-                          <h4 className="font-medium text-purple-800">{comparison.group2.name}</h4>
+                          <h4 className="font-medium text-violet-800">{comparison.group2.name}</h4>
                           <RiskGauge 
                             score={comparison.metrics.riskScore2} 
                             label="Risk Score"
@@ -1354,12 +1354,12 @@ export default function ContractComparisonPage() {
                               <p className="text-2xl font-bold text-orange-600">{comparison.metrics.expiringCount2}</p>
                               <p className="text-xs text-orange-700">Expiring (90d)</p>
                             </div>
-                            <div className="p-3 bg-purple-50 rounded-lg text-center">
-                              <p className="text-2xl font-bold text-purple-600">
+                            <div className="p-3 bg-violet-50 rounded-lg text-center">
+                              <p className="text-2xl font-bold text-violet-600">
                                 {comparison.metrics.supplierConcentration2 > 2500 ? 'High' : 
                                  comparison.metrics.supplierConcentration2 > 1500 ? 'Med' : 'Low'}
                               </p>
-                              <p className="text-xs text-purple-700">Concentration</p>
+                              <p className="text-xs text-violet-700">Concentration</p>
                             </div>
                           </div>
                         </div>
@@ -1408,8 +1408,8 @@ export default function ContractComparisonPage() {
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-medium text-purple-800 mb-3 flex items-center gap-2">
-                            <div className="w-3 h-3 rounded-full bg-purple-500" />
+                          <h4 className="font-medium text-violet-800 mb-3 flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-violet-500" />
                             {comparison.group2.name}
                             <Badge variant="outline" className="ml-auto">{comparison.group2.contracts.length}</Badge>
                           </h4>
@@ -1418,10 +1418,10 @@ export default function ContractComparisonPage() {
                               <Link 
                                 key={c.id} 
                                 href={`/contracts/${c.id}`}
-                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-purple-200 hover:bg-purple-50 transition-colors group"
+                                className="flex items-center justify-between p-2.5 rounded-lg border border-gray-100 hover:border-violet-200 hover:bg-violet-50 transition-colors group"
                               >
                                 <div className="min-w-0 flex-1">
-                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-purple-700">{c.contractTitle}</p>
+                                  <p className="text-sm font-medium text-gray-900 truncate group-hover:text-violet-700">{c.contractTitle}</p>
                                   <p className="text-xs text-gray-500">{c.supplierName}</p>
                                 </div>
                                 <div className="text-right ml-2">
@@ -1510,12 +1510,12 @@ export default function ContractComparisonPage() {
         {!comparison && !isComparing && (
           <div className="text-center py-16">
             <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Brain className="w-10 h-10 text-purple-500" />
+              <Brain className="w-10 h-10 text-violet-500" />
             </div>
             <h3 className="text-xl font-bold text-gray-900 mb-3">AI-Powered Contract Comparison</h3>
             <p className="text-gray-600 max-w-lg mx-auto mb-6">
               Select contracts in Group A and Group B above, then click 
-              <span className="font-semibold text-purple-600"> &quot;Compare Groups with AI Analysis&quot; </span>
+              <span className="font-semibold text-violet-600"> &quot;Compare Groups with AI Analysis&quot; </span>
               to get intelligent insights comparing values, terms, and identifying optimization opportunities.
             </p>
             <div className="flex justify-center gap-4 text-sm text-gray-500">
@@ -1524,7 +1524,7 @@ export default function ContractComparisonPage() {
                 <span>Group A (Blue)</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-purple-400"></div>
+                <div className="w-3 h-3 rounded-full bg-violet-400"></div>
                 <span>Group B (Purple)</span>
               </div>
             </div>

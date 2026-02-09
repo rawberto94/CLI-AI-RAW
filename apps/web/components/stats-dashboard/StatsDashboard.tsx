@@ -90,7 +90,7 @@ export function StatCard({
     green: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400',
     red: 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400',
     yellow: 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600 dark:text-yellow-400',
-    purple: 'bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400',
+    purple: 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400',
     gray: 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
   };
 

@@ -48,8 +48,8 @@ const STATE_STYLES: Record<InputState, {
   text: string;
 }> = {
   default: {
-    border: 'border-slate-200 dark:border-slate-600 focus:border-indigo-400 dark:focus:border-purple-500',
-    ring: 'focus:ring-purple-500/20',
+    border: 'border-slate-200 dark:border-slate-600 focus:border-indigo-400 dark:focus:border-violet-500',
+    ring: 'focus:ring-violet-500/20',
     icon: 'text-slate-400 dark:text-slate-500',
     text: 'text-slate-600 dark:text-slate-400',
   },
@@ -512,9 +512,9 @@ export const Checkbox = forwardRef<HTMLInputElement, CheckboxProps>(({
             className={cn(
               'w-5 h-5 rounded border-2 appearance-none cursor-pointer',
               'transition-all duration-200',
-              'checked:bg-purple-600 checked:border-purple-600',
+              'checked:bg-violet-600 checked:border-violet-600',
               error ? 'border-red-300 dark:border-red-700' : 'border-slate-300 dark:border-slate-600',
-              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500/30'
+              'focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500/30'
             )}
             {...props}
           />

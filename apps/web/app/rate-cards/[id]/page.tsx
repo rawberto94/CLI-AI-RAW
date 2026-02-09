@@ -188,7 +188,7 @@ export default function RateCardDetailPage() {
                 <div className="text-sm text-muted-foreground">Status</div>
                 <div className="flex gap-1 flex-wrap">
                   {rateCard.isBaseline && (
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-700">
                       ⭐ Baseline
                     </Badge>
                   )}

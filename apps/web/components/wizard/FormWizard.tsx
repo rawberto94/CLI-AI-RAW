@@ -568,7 +568,7 @@ export function WizardSuccess({ title, message, action, className }: WizardSucce
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
           onClick={action.onClick}
-          className="px-6 py-3 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+          className="px-6 py-3 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-colors"
         >
           {action.label}
         </motion.button>

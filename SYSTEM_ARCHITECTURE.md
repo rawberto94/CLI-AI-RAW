@@ -1,5 +1,9 @@
 # Contract Intelligence System - Architecture & Setup
 
+> **DEPRECATED:** Superseded by [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Retained for historical reference only.
+
+---
+
 ## 🎯 System Overview
 
 This is a full-stack contract intelligence platform with AI-powered analysis, built using:

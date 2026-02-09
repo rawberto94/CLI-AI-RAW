@@ -114,11 +114,11 @@ const OBLIGATION_TYPE_CONFIG: Record<ObligationType, {
 }> = {
   payment: { icon: DollarSign, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Payment' },
   delivery: { icon: Target, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Delivery' },
-  reporting: { icon: FileText, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Reporting' },
-  compliance: { icon: Shield, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Compliance' },
+  reporting: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Reporting' },
+  compliance: { icon: Shield, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Compliance' },
   confidentiality: { icon: Shield, color: 'text-slate-600', bgColor: 'bg-slate-100', label: 'Confidentiality' },
   indemnification: { icon: Scale, color: 'text-amber-600', bgColor: 'bg-amber-100', label: 'Indemnification' },
-  insurance: { icon: Shield, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Insurance' },
+  insurance: { icon: Shield, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Insurance' },
   warranty: { icon: CheckCircle2, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Warranty' },
   termination_notice: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100', label: 'Termination Notice' },
   renewal_notice: { icon: RefreshCw, color: 'text-orange-600', bgColor: 'bg-orange-100', label: 'Renewal Notice' },
@@ -316,7 +316,7 @@ function StatCard({
     green: 'from-violet-500 to-violet-500 text-green-600 bg-green-50',
     amber: 'from-amber-500 to-orange-500 text-amber-600 bg-amber-50',
     red: 'from-red-500 to-rose-500 text-red-600 bg-red-50',
-    purple: 'from-purple-500 to-violet-500 text-purple-600 bg-purple-50',
+    purple: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
   };
 
   return (

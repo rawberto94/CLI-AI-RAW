@@ -5,14 +5,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
+import { auditTrailService } from 'data-orchestration/services';
 
-export async function POST(_request: NextRequest) {
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check if user has MFA enabled
@@ -22,7 +24,7 @@ export async function POST(_request: NextRequest) {
     });
 
     if (!user?.mfaEnabled) {
-      return NextResponse.json({ error: 'MFA not enabled' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'MFA not enabled', 400);
     }
 
     // Disable MFA
@@ -50,9 +52,9 @@ export async function POST(_request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { success: true });
   } catch (error) {
     console.error('Failed to disable MFA:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Internal server error', 500);
   }
-}
+});

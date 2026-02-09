@@ -82,7 +82,7 @@ interface DeadlineTrackerProps {
 const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
   expiration: { icon: CalendarClock, color: 'text-red-600', bg: 'bg-red-100', label: 'Expiration' },
   renewal: { icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Renewal' },
-  review: { icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Review' },
+  review: { icon: CheckCircle2, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Review' },
   milestone: { icon: Calendar, color: 'text-green-600', bg: 'bg-green-100', label: 'Milestone' },
   payment: { icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-100', label: 'Payment' },
   custom: { icon: CalendarDays, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Custom' },

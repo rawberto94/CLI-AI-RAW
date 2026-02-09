@@ -120,7 +120,7 @@ const findSendButton = (): HTMLElement | null => {
   const buttons = screen.getAllByRole('button');
   for (const btn of buttons) {
     // The send button should be near the input area and not disabled by default
-    if (btn.classList.contains('bg-purple-600') || btn.classList.contains('hover:bg-purple-700')) {
+    if (btn.classList.contains('bg-violet-600') || btn.classList.contains('hover:bg-violet-700')) {
       return btn;
     }
   }

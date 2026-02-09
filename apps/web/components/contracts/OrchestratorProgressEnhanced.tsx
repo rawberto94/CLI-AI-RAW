@@ -141,9 +141,9 @@ export function OrchestratorProgress({
   return (
     <div className={cn('space-y-4', className)}>
       {/* Main Status Card */}
-      <Card className="border-2 border-purple-100 dark:border-purple-900/50 shadow-lg overflow-hidden">
+      <Card className="border-2 border-violet-100 dark:border-violet-900/50 shadow-lg overflow-hidden">
         {/* Header with gradient */}
-        <div className="bg-gradient-to-r from-purple-600 via-purple-600 to-purple-600 p-4">
+        <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 p-4">
           <div className="flex items-start justify-between">
             <div className="flex items-start gap-3 flex-1">
               <div className="p-2 bg-white/20 backdrop-blur-sm rounded-lg">
@@ -151,7 +151,7 @@ export function OrchestratorProgress({
               </div>
               <div className="flex-1">
                 <h3 className="text-white font-semibold text-lg">AI Processing Status</h3>
-                <p className="text-purple-100 text-sm mt-0.5">Real-time orchestrator activity</p>
+                <p className="text-violet-100 text-sm mt-0.5">Real-time orchestrator activity</p>
               </div>
             </div>
             
@@ -233,7 +233,7 @@ export function OrchestratorProgress({
             >
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground font-medium">Overall Progress</span>
-                <span className="font-bold text-purple-600 dark:text-purple-400">
+                <span className="font-bold text-violet-600 dark:text-violet-400">
                   {Math.round(overallProgress)}%
                 </span>
               </div>
@@ -258,7 +258,7 @@ export function OrchestratorProgress({
                 className="flex items-center justify-between w-full p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               >
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-                  <Zap className="h-4 w-4 text-purple-600" />
+                  <Zap className="h-4 w-4 text-violet-600" />
                   Processing Steps ({Object.keys(progress.steps).length})
                 </h4>
                 {expanded ? (
@@ -334,10 +334,10 @@ export function OrchestratorProgress({
 
           {/* Artifacts Progress Card */}
           {progress.artifacts && (
-            <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50 dark:from-purple-950/30 dark:via-pink-950/30 dark:to-purple-950/30 border-2 border-purple-200 dark:border-purple-800 shadow-md">
+            <div className="p-4 rounded-xl bg-gradient-to-br from-violet-50 via-pink-50 to-purple-50 dark:from-violet-950/30 dark:via-pink-950/30 dark:to-purple-950/30 border-2 border-violet-200 dark:border-violet-800 shadow-md">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-purple-600 rounded-lg">
+                  <div className="p-1.5 bg-violet-600 rounded-lg">
                     <FileText className="h-4 w-4 text-white" />
                   </div>
                   <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100">
@@ -345,7 +345,7 @@ export function OrchestratorProgress({
                   </h4>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-pink-600">
+                  <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-pink-600">
                     {progress.artifacts.completed}
                     <span className="text-xl text-gray-500 dark:text-gray-400">
                       /{progress.artifacts.total}
@@ -357,12 +357,12 @@ export function OrchestratorProgress({
                 </div>
               </div>
               
-              <div className="relative h-3 bg-purple-200 dark:bg-purple-900 rounded-full overflow-hidden">
+              <div className="relative h-3 bg-violet-200 dark:bg-violet-900 rounded-full overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${artifactCompletionPercent}%` }}
                   transition={{ duration: 0.5, ease: 'easeOut' }}
-                  className="h-full bg-gradient-to-r from-purple-500 to-pink-600 rounded-full"
+                  className="h-full bg-gradient-to-r from-violet-500 to-pink-600 rounded-full"
                 />
               </div>
               
@@ -430,7 +430,7 @@ export function OrchestratorProgress({
               disabled={triggering}
               variant="outline"
               size="sm"
-              className="w-full border-2 border-purple-200 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/30"
+              className="w-full border-2 border-violet-200 hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950/30"
             >
               {triggering ? (
                 <>

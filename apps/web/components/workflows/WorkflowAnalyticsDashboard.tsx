@@ -368,7 +368,7 @@ const StepMetricsTable: React.FC<{ steps: StepMetrics[] }> = ({ steps }) => (
   <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
     <div className="px-5 py-4 border-b border-slate-200">
       <h3 className="font-semibold text-slate-900 flex items-center gap-2">
-        <Layers className="w-5 h-5 text-purple-500" />
+        <Layers className="w-5 h-5 text-violet-500" />
         Step-by-Step Analysis
       </h3>
       <p className="text-sm text-slate-500 mt-1">Detailed metrics for each workflow step</p>
@@ -400,7 +400,7 @@ const StepMetricsTable: React.FC<{ steps: StepMetrics[] }> = ({ steps }) => (
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                      isBottleneck ? 'bg-amber-100 text-amber-700' : 'bg-purple-100 text-purple-700'
+                      isBottleneck ? 'bg-amber-100 text-amber-700' : 'bg-violet-100 text-violet-700'
                     }`}>
                       {index + 1}
                     </div>
@@ -460,7 +460,7 @@ const StepMetricsTable: React.FC<{ steps: StepMetrics[] }> = ({ steps }) => (
                 <td className="px-5 py-4">
                   {step.topApprover ? (
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center text-white text-xs font-medium">
                         {step.topApprover.charAt(0)}
                       </div>
                       <span className="text-sm text-slate-700">{step.topApprover}</span>
@@ -516,7 +516,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <BarChart3 className="w-7 h-7 text-purple-600" />
+            <BarChart3 className="w-7 h-7 text-violet-600" />
             Workflow Analytics
           </h2>
           <p className="text-slate-500 mt-1">Monitor workflow performance and identify bottlenecks</p>
@@ -530,7 +530,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
                 onClick={() => setTimeRange(range.value)}
                 className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                   timeRange === range.value
-                    ? 'bg-white text-purple-600 shadow-sm'
+                    ? 'bg-white text-violet-600 shadow-sm'
                     : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
@@ -559,7 +559,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
           title="Total Workflows"
           value={stats.totalExecutions}
           icon={Activity}
-          color="bg-purple-500"
+          color="bg-violet-500"
           trend={{ value: 12, isPositive: true }}
         />
         <StatCard
@@ -580,7 +580,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
           title="SLA Compliance"
           value={`${stats.avgSlaCompliance}%`}
           icon={Target}
-          color="bg-purple-500"
+          color="bg-violet-500"
           trend={{ value: 2, isPositive: true }}
         />
         <StatCard
@@ -613,9 +613,9 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
       <StepMetricsTable steps={stepMetrics} />
 
       {/* Recommendations */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-50 rounded-xl border border-indigo-200 p-6">
+      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border border-indigo-200 p-6">
         <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <Zap className="w-5 h-5 text-purple-600" />
+          <Zap className="w-5 h-5 text-violet-600" />
           AI Recommendations
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -629,7 +629,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
                 <p className="text-sm text-slate-600 mt-1">
                   Legal Review step is averaging 36h - consider adding parallel reviewers or implementing tiered review based on contract value.
                 </p>
-                <button className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1">
+                <button className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
                   View suggestions <ArrowRight className="w-4 h-4" />
                 </button>
               </div>
@@ -645,7 +645,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
                 <p className="text-sm text-slate-600 mt-1">
                   NDA Fast Track and Express workflows show 98%+ SLA compliance. Consider routing more low-value contracts through these paths.
                 </p>
-                <button className="mt-2 text-sm text-purple-600 font-medium hover:text-purple-700 flex items-center gap-1">
+                <button className="mt-2 text-sm text-violet-600 font-medium hover:text-violet-700 flex items-center gap-1">
                   Optimize routing <ArrowRight className="w-4 h-4" />
                 </button>
               </div>

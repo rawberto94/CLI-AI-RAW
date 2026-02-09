@@ -12,32 +12,14 @@
  * Protected by CRON_SECRET
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse } from '@/lib/api-middleware';
 import { runScheduledCleanup } from '@/lib/storage/cleanup-service';
 import { goalPersistenceService } from '@repo/workers/agents/goal-persistence-service';
 
 export const maxDuration = 300; // 5 minutes max
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-
-    if (!cronSecret) {
-      return NextResponse.json(
-        { error: 'CRON_SECRET not configured' },
-        { status: 500 }
-      );
-    }
-
-    if (authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     // Parse options from request body
     const body = await request.json().catch(() => ({}));
     const dryRun = body.dryRun === true;
@@ -53,8 +35,7 @@ export async function POST(request: NextRequest) {
       // Goal cleanup is optional, continue if it fails
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       dryRun,
       storage: {
         orphanFilesDeleted: storageResult.orphanFilesDeleted,
@@ -68,35 +49,14 @@ export async function POST(request: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     });
-
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Storage cleanup cron failed:', message);
-    
-    return NextResponse.json(
-      { 
-        error: 'Cleanup failed', 
-        message,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // Also allow GET for health checks
-export async function GET(request: NextRequest) {
-  const cronSecret = process.env.CRON_SECRET;
-  const authHeader = request.headers.get('authorization');
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ status: 'unauthorized' }, { status: 401 });
-  }
-
-  return NextResponse.json({
+export const GET = withCronHandler(async (request, ctx) => {
+  return createSuccessResponse(ctx, {
     status: 'ok',
     job: 'storage-cleanup',
     schedule: 'daily',
     lastRun: null, // Could track this in KV/Redis
   });
-}
+});

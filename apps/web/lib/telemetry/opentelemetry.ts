@@ -99,13 +99,9 @@ export function initTelemetry(): NodeSDK | null {
   // Start the SDK
   sdk.start();
 
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    sdk.shutdown()
-      .then(() => console.log('OpenTelemetry shut down successfully'))
-      .catch((error) => console.error('Error shutting down OpenTelemetry', error))
-      .finally(() => process.exit(0));
-  });
+  // NOTE: Do NOT register process.on('SIGTERM') here.
+  // Shutdown is managed by instrumentation.ts's graceful shutdown handler
+  // which calls sdk.shutdown() before process.exit().
 
   console.log(`OpenTelemetry initialized for ${SERVICE_NAME} (${ENVIRONMENT})`);
   return sdk;

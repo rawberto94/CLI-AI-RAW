@@ -6,7 +6,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardExtractionService } from 'data-orchestration/services';
 
 interface SaveRateCardRequest {
   rates: Array<{
@@ -42,13 +43,9 @@ interface SaveRateCardRequest {
 
 export async function POST(_request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+    const ctx = getApiContext(request);
+try {    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     const { contractId } = params;
 
     const body: SaveRateCardRequest = await _request.json();
@@ -60,10 +57,7 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get or create supplier
@@ -212,7 +206,7 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
       );
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       saved: savedRateCards.length,
       failed: errors.length,
@@ -223,12 +217,7 @@ export async function POST(_request: NextRequest, props: { params: Promise<{ con
       }`,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to save rate cards',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to save rate cards',
+        message: error instanceof Error ? error.message : 'Unknown error',, 500);
   }
 }

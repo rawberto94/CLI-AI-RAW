@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { Prisma } from '@prisma/client';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,14 +24,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const contractId = params.id;
@@ -41,7 +41,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get workflow execution for this contract
@@ -103,7 +103,7 @@ export async function GET(
       };
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contract: {
         id: contract.id,
@@ -111,11 +111,8 @@ export async function GET(
       },
       workflow: workflowData,
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch workflow' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -123,14 +120,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const contractId = params.id;
@@ -151,21 +146,13 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Only allow workflow execution for NEW contracts
     if (!requiresApprovalWorkflow(contract)) {
       const lifecycle = getContractLifecycle(contract);
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Workflows are only applicable for new contracts or amendments. This appears to be an ${lifecycle.toLowerCase()} contract.`,
-          lifecycle,
-          hint: 'Set status=DRAFT or documentRole=NEW_CONTRACT to enable workflow',
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Workflows are only applicable for new contracts or amendments. This appears to be an ${lifecycle.toLowerCase()} contract.`, 400);
     }
 
     // Check if workflow execution already exists for this contract
@@ -174,10 +161,7 @@ export async function POST(
     });
 
     if (existingExecution) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow already exists for this contract. Use PUT to update.' },
-        { status: 409 }
-      );
+      return createErrorResponse(ctx, 'CONFLICT', 'Workflow already exists for this contract. Use PUT to update.', 409);
     }
 
     // Create workflow
@@ -239,7 +223,7 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       workflow: {
         id: workflow.id,
@@ -264,11 +248,8 @@ export async function POST(
       },
       message: 'Workflow created successfully',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to create workflow' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -276,14 +257,12 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const contractId = params.id;
@@ -371,7 +350,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       workflow: {
         id: workflow.id,
@@ -395,11 +374,8 @@ export async function PUT(
       },
       message: 'Workflow updated successfully',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to update workflow' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -407,14 +383,12 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const contractId = params.id;
@@ -426,7 +400,7 @@ export async function DELETE(
     });
 
     if (!existingExecution?.workflow) {
-      return NextResponse.json({ error: 'Workflow not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
     }
 
     // Delete the workflow (cascade will delete steps and executions)
@@ -434,14 +408,11 @@ export async function DELETE(
       where: { id: existingExecution.workflow.id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Workflow deleted successfully',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete workflow' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

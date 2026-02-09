@@ -94,9 +94,9 @@ const getStatusConfig = (status: FavoriteContract['status']) => {
 }
 
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CHF',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value)
@@ -158,7 +158,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
           <Link 
             href={`/contracts/${contract.id}`}
             className={cn(
-              "font-medium text-slate-900 hover:text-purple-600 truncate",
+              "font-medium text-slate-900 hover:text-violet-600 truncate",
               isCompact ? "text-xs" : "text-sm"
             )}
           >
@@ -245,7 +245,7 @@ function FavoriteItem({ contract, onRemove, showQuickActions, isDragging, varian
         href={`/contracts/${contract.id}`}
         className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
       >
-        <ExternalLink className="h-4 w-4 text-slate-400 hover:text-purple-500" />
+        <ExternalLink className="h-4 w-4 text-slate-400 hover:text-violet-500" />
       </Link>
     </motion.div>
   )

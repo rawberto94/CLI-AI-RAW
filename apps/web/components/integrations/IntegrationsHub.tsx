@@ -368,15 +368,15 @@ export const IntegrationsHub = memo(function IntegrationsHub({
       'aws': <Cloud className="h-6 w-6 text-orange-500" />,
       'salesforce': <Building className="h-6 w-6 text-violet-600" />,
       'hubspot': <Building className="h-6 w-6 text-orange-600" />,
-      'slack': <MessageSquare className="h-6 w-6 text-purple-600" />,
-      'teams': <MessageSquare className="h-6 w-6 text-purple-600" />,
+      'slack': <MessageSquare className="h-6 w-6 text-violet-600" />,
+      'teams': <MessageSquare className="h-6 w-6 text-violet-600" />,
       'gmail': <Mail className="h-6 w-6 text-red-500" />,
       'docusign': <FileText className="h-6 w-6 text-yellow-600" />,
       'google-calendar': <Calendar className="h-6 w-6 text-violet-600" />,
       'jira': <FileText className="h-6 w-6 text-violet-500" />,
       'okta': <Shield className="h-6 w-6 text-violet-600" />,
       'azure': <Shield className="h-6 w-6 text-violet-500" />,
-      'snowflake': <Database className="h-6 w-6 text-purple-500" />,
+      'snowflake': <Database className="h-6 w-6 text-violet-500" />,
     };
     return iconMap[iconName] || <Plug className="h-6 w-6 text-slate-400" />;
   };
@@ -461,7 +461,7 @@ export const IntegrationsHub = memo(function IntegrationsHub({
                           </Badge>
                         )}
                         {integration.enterprise && (
-                          <Badge className="bg-purple-100 text-purple-700 text-[10px] py-0">
+                          <Badge className="bg-violet-100 text-violet-700 text-[10px] py-0">
                             Enterprise
                           </Badge>
                         )}
@@ -641,12 +641,12 @@ export const IntegrationsHub = memo(function IntegrationsHub({
                   </div>
 
                   {selectedIntegration.enterprise && (
-                    <div className="p-4 bg-purple-50 rounded-lg">
-                      <p className="font-medium text-purple-700 flex items-center gap-2">
+                    <div className="p-4 bg-violet-50 rounded-lg">
+                      <p className="font-medium text-violet-700 flex items-center gap-2">
                         <Shield className="h-4 w-4" />
                         Enterprise Feature
                       </p>
-                      <p className="text-sm text-purple-600 mt-1">
+                      <p className="text-sm text-violet-600 mt-1">
                         This integration may require an enterprise plan.
                       </p>
                     </div>

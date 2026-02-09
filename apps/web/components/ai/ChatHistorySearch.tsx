@@ -434,8 +434,8 @@ function SearchResultCard({
       onClick={onClick}
     >
       <div className="flex items-start gap-3">
-        <div className={`p-1.5 rounded-md ${isUser ? 'bg-violet-100' : 'bg-purple-100'}`}>
-          <Icon className={`w-4 h-4 ${isUser ? 'text-violet-600' : 'text-purple-600'}`} />
+        <div className={`p-1.5 rounded-md ${isUser ? 'bg-violet-100' : 'bg-violet-100'}`}>
+          <Icon className={`w-4 h-4 ${isUser ? 'text-violet-600' : 'text-violet-600'}`} />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -465,7 +465,7 @@ function SearchResultCard({
 
           {/* Actions */}
           <div className="flex items-center justify-between mt-2">
-            <span className={`text-xs ${isUser ? 'text-violet-600' : 'text-purple-600'}`}>
+            <span className={`text-xs ${isUser ? 'text-violet-600' : 'text-violet-600'}`}>
               {isUser ? 'You' : 'AI Assistant'}
             </span>
             <button

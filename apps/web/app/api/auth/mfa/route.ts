@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import {
   initializeMFASetup,
@@ -25,34 +26,34 @@ import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 /**
  * GET /api/auth/mfa/status - Check MFA status
  */
-export async function GET(_request: NextRequest) {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     const enabled = await isMFAEnabled(session.user.id);
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       mfaEnabled: enabled,
     });
   } catch (error) {
     console.error('[MFA Status Error]:', error);
-    return NextResponse.json({ error: 'Failed to get MFA status' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to get MFA status', 500);
   }
-}
+});
 
 /**
  * POST /api/auth/mfa - Handle various MFA operations
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     const body = await request.json();
@@ -71,7 +72,7 @@ export async function POST(request: NextRequest) {
           ...getAuditContext(request),
         });
         
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           qrCodeUri: result.qrCodeUri,
           secret: result.secret, // For manual entry
           backupCodes: result.backupCodes,
@@ -81,7 +82,7 @@ export async function POST(request: NextRequest) {
       case 'verify-setup': {
         // Complete MFA setup by verifying first token
         if (!token) {
-          return NextResponse.json({ error: 'Token required' }, { status: 400 });
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Token required', 400);
         }
         
         const success = await completeMFASetup(session.user.id, token);
@@ -95,16 +96,16 @@ export async function POST(request: NextRequest) {
             ...getAuditContext(request),
           });
           
-          return NextResponse.json({ success: true });
+          return createSuccessResponse(ctx, { success: true });
         } else {
-          return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid token', 400);
         }
       }
       
       case 'verify': {
         // Verify MFA token during login
         if (!token) {
-          return NextResponse.json({ error: 'Token required' }, { status: 400 });
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Token required', 400);
         }
         
         const success = await verifyMFAToken(session.user.id, token);
@@ -118,7 +119,7 @@ export async function POST(request: NextRequest) {
             ...getAuditContext(request),
           });
           
-          return NextResponse.json({ success: true });
+          return createSuccessResponse(ctx, { success: true });
         } else {
           await auditLog({
             action: AuditAction.MFA_FAILED,
@@ -128,7 +129,7 @@ export async function POST(request: NextRequest) {
             ...getAuditContext(request),
           });
           
-          return NextResponse.json({ error: 'Invalid token' }, { status: 400 });
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid token', 400);
         }
       }
       
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
           ...getAuditContext(request),
         });
         
-        return NextResponse.json({ success: true });
+        return createSuccessResponse(ctx, { success: true });
       }
       
       case 'regenerate-backup-codes': {
@@ -159,17 +160,19 @@ export async function POST(request: NextRequest) {
           ...getAuditContext(request),
         });
         
-        return NextResponse.json({ backupCodes: codes });
+        return createSuccessResponse(ctx, { backupCodes: codes });
       }
       
       default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
     }
   } catch (error) {
     console.error('[MFA Error]:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'MFA operation failed' },
-      { status: 500 }
+    return createErrorResponse(
+      ctx,
+      'INTERNAL_ERROR',
+      error instanceof Error ? error.message : 'MFA operation failed',
+      500
     );
   }
-}
+});

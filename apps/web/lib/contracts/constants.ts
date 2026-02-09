@@ -41,7 +41,7 @@ import type {
 export const CONTRACT_STATUSES = [
   { value: 'all', label: 'All Contracts', color: 'text-slate-600', bgColor: 'bg-slate-100' },
   { value: 'completed', label: 'Active', color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
-  { value: 'processing', label: 'Processing', color: 'text-blue-700', bgColor: 'bg-blue-50' },
+  { value: 'processing', label: 'Processing', color: 'text-violet-700', bgColor: 'bg-violet-50' },
   { value: 'failed', label: 'Failed', color: 'text-red-700', bgColor: 'bg-red-50' },
   { value: 'pending', label: 'Pending', color: 'text-amber-700', bgColor: 'bg-amber-50' },
 ] as const;
@@ -133,7 +133,7 @@ export const EXPIRATION_FILTERS: ExpirationFilterConfig[] = [
   { value: 'expired', label: 'Expired', icon: TimerOff, color: 'text-red-600' },
   { value: 'expiring-7', label: 'Expiring in 7 days', icon: AlertTriangle, color: 'text-amber-600' },
   { value: 'expiring-30', label: 'Expiring in 30 days', icon: CalendarClock, color: 'text-yellow-600' },
-  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-blue-600' },
+  { value: 'expiring-90', label: 'Expiring in 90 days', icon: Calendar, color: 'text-violet-600' },
   { value: 'expiring-year', label: 'Expiring in 1 year', icon: Calendar, color: 'text-slate-600' },
   { value: 'no-expiry', label: 'No Expiration', icon: CircleDot, color: 'text-slate-500' },
 ];
@@ -185,7 +185,7 @@ export const QUICK_PRESETS: QuickPresetConfig[] = [
     label: 'Pending Approval', 
     description: 'Contracts awaiting approval',
     icon: Clock, 
-    color: 'text-blue-600',
+    color: 'text-violet-600',
     filters: { approval: 'pending' } 
   },
   { 

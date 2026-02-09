@@ -6,10 +6,12 @@
  * to intelligently categorize contracts into the tenant's taxonomy.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { categorizeContract } from "@/lib/categorization-service";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -35,9 +37,9 @@ export async function POST(
 ): Promise<NextResponse> {
   try {
     const { id: contractId } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     // Get optional body parameters
@@ -56,10 +58,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Run AI categorization
@@ -70,7 +69,7 @@ export async function POST(
     });
 
     if (result.success) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         contractId,
         previousCategory: contract.category,
@@ -83,23 +82,10 @@ export async function POST(
         message: `Contract categorized as "${result.category}" with ${result.confidence}% confidence`,
       });
     } else {
-      return NextResponse.json({
-        success: false,
-        contractId,
-        currentCategory: contract.category,
-        error: result.error,
-        message: "Could not categorize contract",
-      }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', result.error, 400);
     }
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Categorization failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -126,10 +112,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get available categories
@@ -145,7 +128,7 @@ export async function GET(
       orderBy: [{ level: "asc" }, { sortOrder: "asc" }],
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       currentCategory: contract.category,
@@ -158,10 +141,7 @@ export async function GET(
       },
       availableCategories: categories,
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: "Failed to get category" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

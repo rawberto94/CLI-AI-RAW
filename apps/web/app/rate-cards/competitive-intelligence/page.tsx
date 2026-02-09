@@ -36,8 +36,8 @@ export default function CompetitiveIntelligencePage() {
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-purple-500/20 blur-2xl rounded-full" />
-            <div className="relative p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 blur-2xl rounded-full" />
+            <div className="relative p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg">
               <Loader2 className="h-8 w-8 animate-spin text-white" />
             </div>
           </div>
@@ -79,7 +79,7 @@ export default function CompetitiveIntelligencePage() {
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4"
         >
-          <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
             <Target className="w-7 h-7 text-white" />
           </div>
           <div>
@@ -119,7 +119,7 @@ export default function CompetitiveIntelligencePage() {
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm text-slate-500">Percentile Rank</span>
-                      <span className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-transparent">
+                      <span className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                         {metrics.marketPosition.percentile}th
                       </span>
                     </div>
@@ -128,7 +128,7 @@ export default function CompetitiveIntelligencePage() {
                         initial={{ width: 0 }}
                         animate={{ width: `${metrics.marketPosition.percentile}%` }}
                         transition={{ duration: 1, ease: "easeOut" }}
-                        className="bg-gradient-to-r from-purple-500 to-purple-600 h-2.5 rounded-full"
+                        className="bg-gradient-to-r from-violet-500 to-purple-600 h-2.5 rounded-full"
                       />
                     </div>
                   </div>

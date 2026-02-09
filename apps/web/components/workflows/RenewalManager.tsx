@@ -221,7 +221,7 @@ const getRecommendationConfig = (rec: RenewalContract['recommendation']) => {
     case 'renew': return { color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle2, label: 'Renew' };
     case 'renegotiate': return { color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Edit, label: 'Renegotiate' };
     case 'terminate': return { color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle, label: 'Terminate' };
-    case 'review': return { color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Eye, label: 'Review' };
+    case 'review': return { color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Eye, label: 'Review' };
     default: return { color: 'bg-slate-100 text-slate-700 border-slate-200', icon: Eye, label: 'Unknown' };
   }
 };
@@ -304,7 +304,7 @@ const RenewalCard: React.FC<RenewalCardProps> = ({ renewal, isSelected, onSelect
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             {renewal.autoRenewal && (
-              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium flex items-center gap-1">
+              <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded text-xs font-medium flex items-center gap-1">
                 <RefreshCw className="w-3 h-3" />
                 Auto-Renew
               </span>
@@ -653,7 +653,7 @@ export const RenewalManager: React.FC = () => {
             </button>
             <button 
               onClick={handleInitiateRenewal}
-              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-violet-700 shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 font-medium flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-200 font-medium flex items-center gap-2"
             >
               <Play className="w-4 h-4" />
               Initiate Renewal
@@ -671,9 +671,9 @@ export const RenewalManager: React.FC = () => {
             <div className="text-xl font-bold text-red-600">{stats.urgent}</div>
             <div className="text-xs text-red-600 font-medium">Due in 30 Days</div>
           </div>
-          <div className="group p-3 bg-gradient-to-br from-purple-50 to-violet-100/70 rounded-xl text-center border border-purple-200/50 shadow-md hover:shadow-lg hover:shadow-purple-200/50 transition-all duration-300">
-            <div className="text-xl font-bold text-purple-600">{stats.autoRenewal}</div>
-            <div className="text-xs text-purple-600 font-medium">Auto-Renewal</div>
+          <div className="group p-3 bg-gradient-to-br from-violet-50 to-purple-100/70 rounded-xl text-center border border-violet-200/50 shadow-md hover:shadow-lg hover:shadow-violet-200/50 transition-all duration-300">
+            <div className="text-xl font-bold text-violet-600">{stats.autoRenewal}</div>
+            <div className="text-xs text-violet-600 font-medium">Auto-Renewal</div>
           </div>
           <div className="group p-3 bg-gradient-to-br from-amber-50 to-orange-100/70 rounded-xl text-center border border-amber-200/50 shadow-md hover:shadow-lg hover:shadow-amber-200/50 transition-all duration-300">
             <div className="text-xl font-bold text-amber-600">{stats.atRisk}</div>

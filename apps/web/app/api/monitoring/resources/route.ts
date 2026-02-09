@@ -3,8 +3,9 @@
  * Provides endpoints for monitoring system resources (memory, CPU, connections)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { resourceMonitor } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,94 +14,68 @@ export const dynamic = 'force-dynamic';
  * GET /api/monitoring/resources
  * Get resource metrics and statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const action = searchParams.get('action');
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const searchParams = request.nextUrl.searchParams;
+  const action = searchParams.get('action');
 
-    switch (action) {
-      case 'current':
-        return getCurrentMetrics();
-      
-      case 'history':
-        return getMetricsHistory(searchParams);
-      
-      case 'summary':
-        return getMetricsSummary(searchParams);
-      
-      case 'collect':
-        return collectMetrics();
-      
-      default:
-        return getCurrentMetrics();
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to get resource data',
-        },
-      },
-      { status: 500 }
-    );
+  switch (action) {
+    case 'current':
+      return getCurrentMetrics(ctx);
+
+    case 'history':
+      return getMetricsHistory(ctx, searchParams);
+
+    case 'summary':
+      return getMetricsSummary(ctx, searchParams);
+
+    case 'collect':
+      return collectMetrics(ctx);
+
+    default:
+      return getCurrentMetrics(ctx);
   }
-}
+});
 
 /**
  * Get current resource metrics
  */
-async function getCurrentMetrics() {
+async function getCurrentMetrics(ctx: ApiContext) {
   const metrics = resourceMonitor.getCurrentMetrics();
   
   if (!metrics) {
     // Collect metrics if none available
     const freshMetrics = await resourceMonitor.collectMetrics();
-    return NextResponse.json({
-      success: true,
-      data: formatMetrics(freshMetrics),
-      timestamp: new Date().toISOString(),
-    });
+    return createSuccessResponse(ctx, formatMetrics(freshMetrics));
   }
 
-  return NextResponse.json({
-    success: true,
-    data: formatMetrics(metrics),
-    timestamp: new Date().toISOString(),
-  });
+  return createSuccessResponse(ctx, formatMetrics(metrics));
 }
 
 /**
  * Get metrics history
  */
-function getMetricsHistory(searchParams: URLSearchParams) {
+function getMetricsHistory(ctx: ApiContext, searchParams: URLSearchParams) {
   const limitParam = searchParams.get('limit');
   const limit = limitParam ? parseInt(limitParam, 10) : undefined;
 
   const history = resourceMonitor.getMetricsHistory(limit);
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       count: history.length,
       metrics: history.map(formatMetrics),
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Get metrics summary
  */
-function getMetricsSummary(searchParams: URLSearchParams) {
+function getMetricsSummary(ctx: ApiContext, searchParams: URLSearchParams) {
   const durationParam = searchParams.get('duration');
   const duration = durationParam ? parseInt(durationParam, 10) : 3600000; // Default 1 hour
 
   const summary = resourceMonitor.getMetricsSummary(duration);
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       duration,
       durationFormatted: formatDuration(duration),
       summary: {
@@ -120,22 +95,16 @@ function getMetricsSummary(searchParams: URLSearchParams) {
           max: summary.connections.max,
         },
       },
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Collect fresh metrics
  */
-async function collectMetrics() {
+async function collectMetrics(ctx: ApiContext) {
   const metrics = await resourceMonitor.collectMetrics();
   
-  return NextResponse.json({
-    success: true,
-    data: formatMetrics(metrics),
-    timestamp: new Date().toISOString(),
-  });
+  return createSuccessResponse(ctx, formatMetrics(metrics));
 }
 
 interface MetricsData {

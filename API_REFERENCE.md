@@ -1,5 +1,9 @@
 # Backend API Reference
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §5 (API Reference) and [docs/CONTRACTS_API_REFERENCE.md](docs/CONTRACTS_API_REFERENCE.md) for current API documentation. Retained for historical reference only.
+
+---
+
 ## Overview
 All APIs return JSON with a consistent structure:
 ```json

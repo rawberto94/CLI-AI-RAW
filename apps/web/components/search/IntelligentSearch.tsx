@@ -269,7 +269,7 @@ export function IntelligentSearch() {
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
                         suggestion.type === 'ai_suggestion' 
-                          ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+                          ? "bg-gradient-to-br from-violet-500 to-pink-500 text-white"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       )}>
                         <Icon className="h-4 w-4" />

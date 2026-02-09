@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
 // Mock data for when table doesn't exist
 const mockNegotiationMetrics = {
@@ -21,16 +23,12 @@ const mockNegotiationMetrics = {
  * GET /api/rate-cards/dashboard/negotiation-metrics
  * Get negotiation status metrics for dashboard
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Try to get data from database
@@ -45,7 +43,7 @@ export async function GET(request: NextRequest) {
 
       // If we got this far with 0 results, return mock data for demo
       if (totalNegotiated === 0) {
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           ...mockNegotiationMetrics,
           source: 'mock',
         });
@@ -117,7 +115,7 @@ export async function GET(request: NextRequest) {
 
       const opportunitiesCount = Math.floor(totalNegotiated * 0.15);
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         totalNegotiated,
         successRate,
         upcomingRenewals,
@@ -127,15 +125,9 @@ export async function GET(request: NextRequest) {
       });
     } catch {
       // Table doesn't exist or other DB error - return mock data
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         ...mockNegotiationMetrics,
         source: 'mock',
       });
     }
-  } catch {
-    return NextResponse.json({
-      ...mockNegotiationMetrics,
-      source: 'mock-fallback',
-    });
-  }
-}
+  });

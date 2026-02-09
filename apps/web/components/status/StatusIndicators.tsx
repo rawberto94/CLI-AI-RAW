@@ -363,32 +363,32 @@ export function ProcessingStatus({ isProcessing, message, progress, onCancel }: 
           exit={{ height: 0, opacity: 0 }}
           className="overflow-hidden"
         >
-          <div className="bg-purple-50 dark:bg-purple-900/20 border-b border-indigo-100 dark:border-indigo-800 px-4 py-2">
+          <div className="bg-violet-50 dark:bg-violet-900/20 border-b border-indigo-100 dark:border-indigo-800 px-4 py-2">
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <div className="flex items-center gap-3">
-                <RefreshCw className="h-4 w-4 text-purple-600 dark:text-indigo-400 animate-spin" />
-                <span className="text-sm text-purple-700 dark:text-indigo-300">
+                <RefreshCw className="h-4 w-4 text-violet-600 dark:text-indigo-400 animate-spin" />
+                <span className="text-sm text-violet-700 dark:text-indigo-300">
                   {message || 'Processing...'}
                 </span>
                 {progress !== undefined && (
-                  <span className="text-xs text-purple-500">{progress}%</span>
+                  <span className="text-xs text-violet-500">{progress}%</span>
                 )}
               </div>
               {onCancel && (
                 <button
                   onClick={onCancel}
-                  className="text-xs text-purple-600 dark:text-indigo-400 hover:text-purple-700 dark:hover:text-indigo-300 font-medium"
+                  className="text-xs text-violet-600 dark:text-indigo-400 hover:text-violet-700 dark:hover:text-indigo-300 font-medium"
                 >
                   Cancel
                 </button>
               )}
             </div>
             {progress !== undefined && (
-              <div className="mt-2 h-1 bg-purple-100 dark:bg-purple-800 rounded-full max-w-7xl mx-auto overflow-hidden">
+              <div className="mt-2 h-1 bg-violet-100 dark:bg-violet-800 rounded-full max-w-7xl mx-auto overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}
-                  className="h-full bg-purple-500 rounded-full"
+                  className="h-full bg-violet-500 rounded-full"
                 />
               </div>
             )}

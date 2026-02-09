@@ -7,7 +7,7 @@
  * Requirements: 6.5 - THE System SHALL provide audit trails for all data modifications
  */
 
-import { PrismaClient } from 'clients-db';
+import { prisma, PrismaClient } from '../lib/prisma';
 import { monitoringService } from './monitoring.service';
 import { auditTrailService, AuditContext } from './audit-trail.service';
 
@@ -45,7 +45,7 @@ class DataConsistencyAuditService {
   private db: PrismaClient;
 
   constructor() {
-    this.db = new PrismaClient();
+    this.db = prisma;
   }
 
   /**

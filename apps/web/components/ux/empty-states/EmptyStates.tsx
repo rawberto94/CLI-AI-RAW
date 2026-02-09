@@ -156,7 +156,7 @@ const typeConfigs: Record<
     icon: BarChart3,
     title: 'No analytics data',
     description: 'Analytics will appear once you have active contracts.',
-    gradient: 'from-purple-500 to-purple-500',
+    gradient: 'from-violet-500 to-purple-500',
   },
   'coming-soon': {
     icon: Zap,

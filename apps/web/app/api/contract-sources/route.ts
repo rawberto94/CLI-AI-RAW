@@ -10,12 +10,13 @@
  * DELETE /api/contract-sources - Delete source
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId, getTenantContext } from '@/lib/tenant-server';
 import { ContractSourceProvider, SyncMode } from '@prisma/client';
 import { z } from 'zod';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 // Validation schemas
 const createSourceSchema = z.object({
   name: z.string().min(1).max(100),
@@ -44,288 +45,245 @@ const updateSourceSchema = z.object({
   syncEnabled: z.boolean().optional(),
 });
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    const sourceId = searchParams.get('id');
-
-    if (sourceId) {
-      // Get single source
-      const source = await prisma.contractSource.findFirst({
-        where: { id: sourceId, tenantId },
-        include: {
-          syncedFiles: {
-            orderBy: { lastSyncedAt: 'desc' },
-            take: 10,
-            select: {
-              id: true,
-              fileName: true,
-              fileSize: true,
-              processingStatus: true,
-              contractId: true,
-              lastSyncedAt: true,
-              errorMessage: true,
-            },
-          },
-          sourceSyncs: {
-            orderBy: { startedAt: 'desc' },
-            take: 5,
-            select: {
-              id: true,
-              status: true,
-              syncMode: true,
-              triggeredBy: true,
-              filesFound: true,
-              filesProcessed: true,
-              filesFailed: true,
-              startedAt: true,
-              completedAt: true,
-              duration: true,
-              errorMessage: true,
-            },
-          },
-          _count: {
-            select: {
-              syncedFiles: true,
-            },
-          },
-        },
-      });
-
-      if (!source) {
-        return NextResponse.json(
-          { success: false, error: 'Source not found' },
-          { status: 404 }
-        );
-      }
-
-      // Remove sensitive credentials from response
-      const { credentials: _credentials, accessToken, refreshToken: _refreshToken, ...safeSource } = source;
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...safeSource,
-          hasCredentials: !!_credentials,
-          isOAuthConnected: !!accessToken,
-        },
-      });
-    }
-
-    // List all sources
-    const sources = await prisma.contractSource.findMany({
-      where: { tenantId },
-      include: {
-        _count: {
-          select: { syncedFiles: true },
-        },
-      },
-      orderBy: { name: 'asc' },
-    });
-
-    // Remove sensitive data
-    const safeSources = sources.map(({ credentials: _creds, accessToken, refreshToken: _refreshToken, ...source }) => ({
-      ...source,
-      hasCredentials: !!_creds,
-      isOAuthConnected: !!accessToken,
-    }));
-
-    // Calculate stats
-    const stats = {
-      total: sources.length,
-      connected: sources.filter(s => s.status === 'CONNECTED').length,
-      syncing: sources.filter(s => s.status === 'SYNCING').length,
-      errors: sources.filter(s => s.status === 'ERROR').length,
-      totalFilesSynced: sources.reduce((sum, s) => sum + s.totalFilesSynced, 0),
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        sources: safeSources,
-        stats,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching contract sources:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch contract sources' },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const { tenantId, userId } = await getTenantContext();
+  const tenantId = await ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+  const sourceId = searchParams.get('id');
 
-    if (!tenantId || !userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const parsed = createSourceSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid request', details: parsed.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const data = parsed.data;
-
-    // Check for duplicate
-    const existing = await prisma.contractSource.findFirst({
-      where: {
-        tenantId,
-        provider: data.provider,
-        syncFolder: data.syncFolder,
-      },
-    });
-
-    if (existing) {
-      return NextResponse.json(
-        { success: false, error: 'A source with this provider and folder already exists' },
-        { status: 409 }
-      );
-    }
-
-    // Create the source
-    const source = await prisma.contractSource.create({
-      data: {
-        tenantId,
-        name: data.name,
-        description: data.description,
-        provider: data.provider,
-        credentials: JSON.parse(JSON.stringify(data.credentials)),
-        syncFolder: data.syncFolder,
-        filePatterns: data.filePatterns,
-        syncInterval: data.syncInterval,
-        syncMode: data.syncMode,
-        autoProcess: data.autoProcess,
-        maxFileSizeMb: data.maxFileSizeMb,
-        status: 'DISCONNECTED',
-        createdBy: userId,
-      },
-    });
-
-    // Remove credentials from response
-    const { credentials: _credentials, ...safeSource } = source;
-
-    return NextResponse.json({
-      success: true,
-      data: safeSource,
-    });
-  } catch (error) {
-    console.error('Error creating contract source:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create contract source' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const { tenantId, userId } = await getTenantContext();
-
-    if (!tenantId || !userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const parsed = updateSourceSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid request', details: parsed.error.errors },
-        { status: 400 }
-      );
-    }
-
-    const { id, ...updateData } = parsed.data;
-
-    // Verify ownership
-    const existing = await prisma.contractSource.findFirst({
-      where: { id, tenantId },
-    });
-
-    if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Source not found' },
-        { status: 404 }
-      );
-    }
-
-    // Update the source
-    const source = await prisma.contractSource.update({
-      where: { id },
-      data: updateData,
-    });
-
-    // Remove credentials from response
-    const { credentials: _c, accessToken: _a, refreshToken: _r, ...safeSource } = source;
-
-    return NextResponse.json({
-      success: true,
-      data: safeSource,
-    });
-  } catch (error) {
-    console.error('Error updating contract source:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update contract source' },
-      { status: 500 }
-    );
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    const sourceId = searchParams.get('id');
-
-    if (!sourceId) {
-      return NextResponse.json(
-        { success: false, error: 'Source ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Verify ownership
-    const existing = await prisma.contractSource.findFirst({
+  if (sourceId) {
+    // Get single source
+    const source = await prisma.contractSource.findFirst({
       where: { id: sourceId, tenantId },
+      include: {
+        syncedFiles: {
+          orderBy: { lastSyncedAt: 'desc' },
+          take: 10,
+          select: {
+            id: true,
+            fileName: true,
+            fileSize: true,
+            processingStatus: true,
+            contractId: true,
+            lastSyncedAt: true,
+            errorMessage: true,
+          },
+        },
+        sourceSyncs: {
+          orderBy: { startedAt: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            status: true,
+            syncMode: true,
+            triggeredBy: true,
+            filesFound: true,
+            filesProcessed: true,
+            filesFailed: true,
+            startedAt: true,
+            completedAt: true,
+            duration: true,
+            errorMessage: true,
+          },
+        },
+        _count: {
+          select: {
+            syncedFiles: true,
+          },
+        },
+      },
     });
 
-    if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Source not found' },
-        { status: 404 }
-      );
+    if (!source) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Source not found', 404);
     }
 
-    // Delete the source (cascades to synced files and sync logs)
-    await prisma.contractSource.delete({
-      where: { id: sourceId },
-    });
+    // Remove sensitive credentials from response
+    const { credentials: _credentials, accessToken, refreshToken: _refreshToken, ...safeSource } = source;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
-      message: 'Source deleted successfully',
+      data: {
+        ...safeSource,
+        hasCredentials: !!_credentials,
+        isOAuthConnected: !!accessToken,
+      },
     });
-  } catch (error) {
-    console.error('Error deleting contract source:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete contract source' },
-      { status: 500 }
-    );
   }
-}
+
+  // List all sources
+  const sources = await prisma.contractSource.findMany({
+    where: { tenantId },
+    include: {
+      _count: {
+        select: { syncedFiles: true },
+      },
+    },
+    orderBy: { name: 'asc' },
+  });
+
+  // Remove sensitive data
+  const safeSources = sources.map(({ credentials: _creds, accessToken, refreshToken: _refreshToken, ...source }) => ({
+    ...source,
+    hasCredentials: !!_creds,
+    isOAuthConnected: !!accessToken,
+  }));
+
+  // Calculate stats
+  const stats = {
+    total: sources.length,
+    connected: sources.filter(s => s.status === 'CONNECTED').length,
+    syncing: sources.filter(s => s.status === 'SYNCING').length,
+    errors: sources.filter(s => s.status === 'ERROR').length,
+    totalFilesSynced: sources.reduce((sum, s) => sum + s.totalFilesSynced, 0),
+  };
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: {
+      sources: safeSources,
+      stats,
+    },
+  });
+});
+
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const { tenantId, userId } = await getTenantContext();
+
+  if (!tenantId || !userId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const body = await request.json();
+  const parsed = createSourceSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid request', 400);
+  }
+
+  const data = parsed.data;
+
+  // Check for duplicate
+  const existing = await prisma.contractSource.findFirst({
+    where: {
+      tenantId,
+      provider: data.provider,
+      syncFolder: data.syncFolder,
+    },
+  });
+
+  if (existing) {
+    return createErrorResponse(ctx, 'CONFLICT', 'A source with this provider and folder already exists', 409);
+  }
+
+  // Create the source
+  const source = await prisma.contractSource.create({
+    data: {
+      tenantId,
+      name: data.name,
+      description: data.description,
+      provider: data.provider,
+      credentials: JSON.parse(JSON.stringify(data.credentials)),
+      syncFolder: data.syncFolder,
+      filePatterns: data.filePatterns,
+      syncInterval: data.syncInterval,
+      syncMode: data.syncMode,
+      autoProcess: data.autoProcess,
+      maxFileSizeMb: data.maxFileSizeMb,
+      status: 'DISCONNECTED',
+      createdBy: userId,
+    },
+  });
+
+  // Remove credentials from response
+  const { credentials: _credentials, ...safeSource } = source;
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: safeSource,
+  });
+});
+
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const { tenantId, userId } = await getTenantContext();
+
+  if (!tenantId || !userId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const body = await request.json();
+  const parsed = updateSourceSchema.safeParse(body);
+
+  if (!parsed.success) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid request', 400);
+  }
+
+  const { id, ...updateData } = parsed.data;
+
+  // Verify ownership
+  const existing = await prisma.contractSource.findFirst({
+    where: { id, tenantId },
+  });
+
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Source not found', 404);
+  }
+
+  // Update the source
+  const source = await prisma.contractSource.update({
+    where: { id },
+    data: updateData,
+  });
+
+  // Remove credentials from response
+  const { credentials: _c, accessToken: _a, refreshToken: _r, ...safeSource } = source;
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: safeSource,
+  });
+});
+
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const tenantId = await ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+  const sourceId = searchParams.get('id');
+
+  if (!sourceId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Source ID is required', 400);
+  }
+
+  // Verify ownership
+  const existing = await prisma.contractSource.findFirst({
+    where: { id: sourceId, tenantId },
+  });
+
+  if (!existing) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Source not found', 404);
+  }
+
+  // Delete the source (cascades to synced files and sync logs)
+  await prisma.contractSource.delete({
+    where: { id: sourceId },
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: 'Source deleted successfully',
+  });
+});

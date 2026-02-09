@@ -13,7 +13,7 @@
  */
 
 import OpenAI from 'openai';
-import { PrismaClient } from '@prisma/client';
+import { prisma as prismaSingleton, PrismaClient } from '../lib/prisma';
 
 // ============================================================================
 // TYPES
@@ -319,7 +319,7 @@ export class ContractGenerationService {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
-    this.prisma = prisma || new PrismaClient();
+    this.prisma = prisma || prismaSingleton;
   }
 
   // ============================================================================

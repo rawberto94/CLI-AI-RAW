@@ -170,7 +170,7 @@ const BatchUploadSection: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <div className={`h-10 w-10 rounded-full flex items-center justify-center ${
                     job.status === 'completed' ? 'bg-green-100 text-green-600' :
-                    job.status === 'processing' ? 'bg-blue-100 text-blue-600' :
+                    job.status === 'processing' ? 'bg-violet-100 text-violet-600' :
                     job.status === 'failed' ? 'bg-red-100 text-red-600' :
                     'bg-gray-100 text-gray-600'
                   }`}>

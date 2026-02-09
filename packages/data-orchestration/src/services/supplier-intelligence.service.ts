@@ -9,9 +9,8 @@
  * - Growth Trajectory (15%)
  */
 
-import { PrismaClient, SeniorityLevel } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { SeniorityLevel } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
 export interface SupplierScore {
   supplierId: string;

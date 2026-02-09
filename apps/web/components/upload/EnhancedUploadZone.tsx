@@ -46,8 +46,8 @@ interface EnhancedUploadZoneProps {
 
 export function EnhancedUploadZone({
   onUpload,
-  accept = ['.pdf', '.docx', '.doc', '.txt'],
-  maxSize = 25,
+  accept = ['.pdf', '.docx', '.doc', '.txt', '.html', '.htm'],
+  maxSize = 50,
   maxFiles = 10,
   className
 }: EnhancedUploadZoneProps) {
@@ -248,7 +248,7 @@ export function EnhancedUploadZone({
 
         {/* AI Badge */}
         <div className="absolute top-3 right-3">
-          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-purple-500 to-purple-500 rounded-full text-white text-xs font-medium">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full text-white text-xs font-medium">
             <Sparkles className="h-3 w-3" />
             AI-Powered Analysis
           </div>
@@ -357,7 +357,7 @@ function FileItem({
         'p-2 rounded-lg',
         file.status === 'error' ? 'bg-red-100 dark:bg-red-900/50' :
         file.status === 'completed' ? 'bg-green-100 dark:bg-green-900/50' :
-        file.status === 'processing' ? 'bg-purple-100 dark:bg-purple-900/50' :
+        file.status === 'processing' ? 'bg-violet-100 dark:bg-violet-900/50' :
         file.status === 'uploading' ? 'bg-violet-100 dark:bg-violet-900/50' :
         'bg-gray-100 dark:bg-gray-800'
       )}>
@@ -365,7 +365,7 @@ function FileItem({
           <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
         )}
         {file.status === 'processing' && (
-          <Sparkles className="h-5 w-5 text-purple-600 animate-pulse" />
+          <Sparkles className="h-5 w-5 text-violet-600 animate-pulse" />
         )}
         {file.status === 'completed' && (
           <Check className="h-5 w-5 text-green-600" />

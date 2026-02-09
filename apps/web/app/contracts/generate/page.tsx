@@ -661,7 +661,7 @@ export default function GenerateContractPage() {
             className={cn(
               'flex items-center justify-center w-12 h-12 rounded-full font-bold transition-all',
               step === stepNum
-                ? 'bg-gradient-to-r from-purple-500 to-pink-600 text-white shadow-lg scale-110'
+                ? 'bg-gradient-to-r from-violet-500 to-pink-600 text-white shadow-lg scale-110'
                 : step > stepNum
                 ? 'bg-green-500 text-white'
                 : 'bg-gray-200 text-gray-500'
@@ -687,7 +687,7 @@ export default function GenerateContractPage() {
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                 <Sparkles className="h-7 w-7 text-white" />
               </div>
               <h1 className="text-4xl font-bold text-gray-900">Generate Contract</h1>
@@ -720,7 +720,7 @@ export default function GenerateContractPage() {
                   <div
                     key={template.id}
                     onClick={() => selectTemplate(template)}
-                    className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border-2 border-violet-200 hover:border-purple-400 hover:shadow-lg transition-all cursor-pointer"
+                    className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border-2 border-violet-200 hover:border-violet-400 hover:shadow-lg transition-all cursor-pointer"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <h3 className="text-xl font-bold text-gray-900">{template.name}</h3>
@@ -812,7 +812,7 @@ export default function GenerateContractPage() {
                 <Button
                   onClick={() => setStep(3)}
                   disabled={!canProceed()}
-                  className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 text-white"
+                  className="bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 text-white"
                 >
                   Continue
                   <ArrowRight className="h-4 w-4 ml-2" />
@@ -853,7 +853,7 @@ export default function GenerateContractPage() {
                 <Button
                   onClick={generateContract}
                   disabled={generating}
-                  className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white"
+                  className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-purple-700 text-white"
                 >
                   {generating ? (
                     <>

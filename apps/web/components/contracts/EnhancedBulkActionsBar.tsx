@@ -526,9 +526,9 @@ const DOCUMENT_CLASSIFICATIONS = [
   { value: 'contract', label: 'Contract', icon: FileCheck, color: 'text-violet-600' },
   { value: 'purchase_order', label: 'Purchase Order', icon: ShoppingCart, color: 'text-amber-600' },
   { value: 'invoice', label: 'Invoice', icon: Receipt, color: 'text-violet-600' },
-  { value: 'quote', label: 'Quote / Proposal', icon: FileQuestion, color: 'text-purple-600' },
+  { value: 'quote', label: 'Quote / Proposal', icon: FileQuestion, color: 'text-violet-600' },
   { value: 'work_order', label: 'Work Order', icon: FileText, color: 'text-orange-600' },
-  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-purple-600' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-violet-600' },
   { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-rose-600' },
   { value: 'letter_of_intent', label: 'Letter of Intent', icon: FileText, color: 'text-violet-600' },
   { value: 'memorandum', label: 'Memorandum', icon: FileText, color: 'text-slate-600' },
@@ -818,7 +818,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 h-8 w-8 p-0 sm:w-auto sm:px-3"
+                    className="text-violet-400 hover:text-violet-300 hover:bg-violet-900/30 h-8 w-8 p-0 sm:w-auto sm:px-3"
                     onClick={() => handleAction("analyze")}
                     disabled={processing !== null}
                   >

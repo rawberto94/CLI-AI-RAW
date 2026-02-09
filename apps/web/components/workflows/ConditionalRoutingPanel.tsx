@@ -176,7 +176,7 @@ export function ConditionalRoutingPanel({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <GitBranch className="w-5 h-5 text-purple-600" />
+            <GitBranch className="w-5 h-5 text-violet-600" />
             Conditional Routing
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -196,12 +196,12 @@ export function ConditionalRoutingPanel({
             const targetStep = availableSteps.find((s) => s.id === route.targetStepId);
 
             return (
-              <Card key={route.id} className={cn('transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-900/50', isEditing && 'ring-2 ring-indigo-300 dark:ring-purple-600 shadow-lg')}>
+              <Card key={route.id} className={cn('transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-900/50', isEditing && 'ring-2 ring-indigo-300 dark:ring-violet-600 shadow-lg')}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="bg-purple-50 text-purple-700 border-indigo-200 dark:bg-purple-900/30 dark:text-indigo-300 dark:border-purple-700">
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-indigo-200 dark:bg-violet-900/30 dark:text-indigo-300 dark:border-violet-700">
                           Priority {route.priority}
                         </Badge>
                         {isEditing ? (
@@ -355,7 +355,7 @@ export function ConditionalRoutingPanel({
                                       (o) => o.value === condition.operator
                                     )?.label || condition.operator}
                                   </span>
-                                  <span className="font-semibold text-purple-600">{condition.value}</span>
+                                  <span className="font-semibold text-violet-600">{condition.value}</span>
                                 </div>
                               )}
 

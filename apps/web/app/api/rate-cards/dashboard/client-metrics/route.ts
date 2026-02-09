@@ -1,20 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/dashboard/client-metrics
  * Get client overview metrics for dashboard
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Get total clients
@@ -63,16 +61,10 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       totalClients,
       totalRateCards,
       topClients: topClients.sort((a, b) => b.totalSpend - a.totalSpend),
       unassignedRateCards: unassignedCount,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to fetch client metrics', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  });

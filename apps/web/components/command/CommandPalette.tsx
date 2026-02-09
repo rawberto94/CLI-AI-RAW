@@ -268,17 +268,17 @@ export function CommandPalette({ isOpen, onClose, customCommands = [] }: Command
                               'w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left',
                               'transition-colors duration-75',
                               isSelected
-                                ? 'bg-purple-50 text-indigo-900'
+                                ? 'bg-violet-50 text-indigo-900'
                                 : 'text-slate-700 hover:bg-slate-50'
                             )}
                           >
                             <div className={cn(
                               'p-2 rounded-lg',
-                              isSelected ? 'bg-purple-100' : 'bg-slate-100'
+                              isSelected ? 'bg-violet-100' : 'bg-slate-100'
                             )}>
                               <Icon className={cn(
                                 'w-4 h-4',
-                                isSelected ? 'text-purple-600' : 'text-slate-500'
+                                isSelected ? 'text-violet-600' : 'text-slate-500'
                               )} />
                             </div>
                             <div className="flex-1 min-w-0">

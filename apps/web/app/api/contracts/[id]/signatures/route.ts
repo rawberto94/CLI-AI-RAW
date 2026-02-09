@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Mock signature workflows
 const mockSignatureWorkflows = [
@@ -54,6 +56,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
 
@@ -74,7 +77,7 @@ export async function GET(
         const signatureData = metadata?.signatureWorkflows as unknown[] | undefined;
         
         if (signatureData && Array.isArray(signatureData) && signatureData.length > 0) {
-          return NextResponse.json({ 
+          return createSuccessResponse(ctx, { 
             workflows: signatureData,
             source: 'database'
           });
@@ -89,15 +92,12 @@ export async function GET(
       ? mockSignatureWorkflows 
       : mockSignatureWorkflows.map(w => ({ ...w, contractId }));
     
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       workflows,
       source: 'mock'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch signature workflows' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -106,6 +106,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const body = await request.json();
@@ -159,7 +160,7 @@ export async function POST(
           });
         }
 
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           workflow: newWorkflow,
           source: 'database'
         });
@@ -168,14 +169,11 @@ export async function POST(
       // Database update failed, will use fallback
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       workflow: newWorkflow,
       source: 'mock'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create signature request' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

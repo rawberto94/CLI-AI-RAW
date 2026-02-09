@@ -363,7 +363,7 @@ export default function AdvancedSearchClient() {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
+                <Calendar className="w-5 h-5 text-violet-600" />
                 Date Criteria
               </CardTitle>
             </CardHeader>

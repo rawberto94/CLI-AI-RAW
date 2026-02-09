@@ -78,7 +78,7 @@ const workflowTemplates = [
     name: 'Executive Approval',
     description: 'Full approval chain for high-value contracts',
     icon: GitBranch,
-    color: 'bg-gradient-to-br from-purple-500 to-fuchsia-600',
+    color: 'bg-gradient-to-br from-violet-500 to-fuchsia-600',
     steps: 5,
     popular: true,
     type: 'APPROVAL',
@@ -97,7 +97,7 @@ const workflowTemplates = [
     name: 'NDA Fast Track',
     description: 'Expedited approval for standard NDAs',
     icon: Zap,
-    color: 'bg-gradient-to-br from-purple-500 to-purple-600',
+    color: 'bg-gradient-to-br from-violet-500 to-purple-600',
     steps: 2,
     type: 'APPROVAL',
   },
@@ -151,7 +151,7 @@ const workflowTemplates = [
     name: 'Procurement Review',
     description: 'Budget → Procurement → Finance → Department Head',
     icon: FileText,
-    color: 'bg-gradient-to-br from-purple-500 to-purple-700',
+    color: 'bg-gradient-to-br from-violet-500 to-purple-700',
     steps: 4,
     type: 'APPROVAL',
   },
@@ -321,18 +321,18 @@ function WorkflowsPageContent() {
           >
             <div className="flex items-center gap-4">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl blur-md opacity-50" aria-hidden="true" />
-                <div className="relative p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl blur-md opacity-50" aria-hidden="true" />
+                <div className="relative p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                   <Workflow className="h-7 w-7 text-white" aria-hidden="true" />
                 </div>
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-900 via-purple-800 to-purple-900 dark:from-purple-300 dark:via-purple-300 dark:to-purple-300 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-900 via-purple-800 to-violet-900 dark:from-violet-300 dark:via-purple-300 dark:to-purple-300 bg-clip-text text-transparent">
                   Workflows
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
                   Manage approvals and automation in one place
-                  <Badge variant="secondary" className="bg-purple-100/80 dark:bg-purple-900/50 text-purple-700 dark:text-indigo-300 text-xs px-3 py-1">
+                  <Badge variant="secondary" className="bg-violet-100/80 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs px-3 py-1">
                     <Sparkles className="h-3.5 w-3.5 mr-1.5" aria-hidden="true" />
                     Unified
                   </Badge>
@@ -359,7 +359,7 @@ function WorkflowsPageContent() {
               
               <Button
                 onClick={createNew}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg gap-2 h-8"
+                className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg gap-2 h-8"
               >
                 <Plus className="h-3.5 w-3.5" />
                 New Workflow
@@ -373,7 +373,7 @@ function WorkflowsPageContent() {
               <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 p-1.5 rounded-xl shadow-lg shadow-slate-200/30 dark:shadow-slate-900/30">
                 <TabsTrigger 
                   value="queue" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 transition-all duration-200 dark:text-slate-300"
+                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <Inbox className="h-4 w-4" aria-hidden="true" />
                   Queue
@@ -381,15 +381,15 @@ function WorkflowsPageContent() {
                 </TabsTrigger>
                 <TabsTrigger 
                   value="automation" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 transition-all duration-200 dark:text-slate-300"
+                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <GitBranch className="h-4 w-4" aria-hidden="true" />
                   Automation
-                  <Badge variant="secondary" className="bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-indigo-300 ml-1 text-xs">{stats.total}</Badge>
+                  <Badge variant="secondary" className="bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 ml-1 text-xs">{stats.total}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="templates" 
-                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-purple-500/30 transition-all duration-200 dark:text-slate-300"
+                  className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 transition-all duration-200 dark:text-slate-300"
                 >
                   <FileText className="h-4 w-4" aria-hidden="true" />
                   Templates
@@ -427,7 +427,7 @@ function WorkflowsPageContent() {
                 {/* Stats Row */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {[
-                    { label: 'Total', value: stats.total, icon: GitBranch, color: 'from-purple-100 to-purple-100 dark:from-purple-900/50 dark:to-purple-900/50', iconColor: 'text-purple-600 dark:text-indigo-400' },
+                    { label: 'Total', value: stats.total, icon: GitBranch, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400' },
                     { label: 'Active', value: stats.active, icon: CheckCircle, color: 'from-violet-100 to-violet-100 dark:from-violet-900/50 dark:to-violet-900/50', iconColor: 'text-green-600 dark:text-green-400', valueColor: 'text-green-600 dark:text-green-400' },
                     { label: 'Inactive', value: stats.inactive, icon: Pause, color: 'from-slate-100 to-slate-50 dark:from-slate-800/50 dark:to-slate-700/50', iconColor: 'text-slate-600 dark:text-slate-400', valueColor: 'text-slate-600 dark:text-slate-400' },
                     { label: 'Executions', value: stats.totalExecutions, icon: Activity, color: 'from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50', iconColor: 'text-violet-600 dark:text-violet-400', valueColor: 'text-violet-600 dark:text-violet-400' },
@@ -452,22 +452,22 @@ function WorkflowsPageContent() {
                 {loading ? (
                   <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80">
                     <CardContent className="p-5 text-center">
-                      <RefreshCw className="h-12 w-12 mx-auto motion-safe:animate-spin text-purple-600 dark:text-indigo-400 mb-4" aria-hidden="true" />
+                      <RefreshCw className="h-12 w-12 mx-auto motion-safe:animate-spin text-violet-600 dark:text-violet-400 mb-4" aria-hidden="true" />
                       <p className="text-gray-600 dark:text-gray-300">Loading workflows...</p>
                     </CardContent>
                   </Card>
                 ) : workflows.length === 0 ? (
                   <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur">
                     <CardContent className="p-5 text-center">
-                      <div className="w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-100 dark:from-purple-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
-                        <GitBranch className="h-10 w-10 text-purple-600 dark:text-indigo-400" aria-hidden="true" />
+                      <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/50 dark:to-purple-900/50 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+                        <GitBranch className="h-10 w-10 text-violet-600 dark:text-violet-400" aria-hidden="true" />
                       </div>
                       <h3 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">No workflows yet</h3>
                       <p className="text-gray-600 dark:text-gray-400 mb-6 max-w-md mx-auto">
                         Create your first automated workflow to streamline contract approvals.
                       </p>
                       <div className="flex flex-col sm:flex-row items-center justify-center gap-2.5">
-                        <Button onClick={createNew} className="bg-gradient-to-r from-purple-600 to-purple-600 gap-2 h-8">
+                        <Button onClick={createNew} className="bg-gradient-to-r from-violet-600 to-purple-600 gap-2 h-8">
                           <Plus className="h-3.5 w-3.5" aria-hidden="true" />
                           Create Workflow
                         </Button>
@@ -511,7 +511,7 @@ function WorkflowsPageContent() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-105 transition-transform motion-reduce:transform-none">
+                              <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg group-hover:scale-105 transition-transform motion-reduce:transform-none">
                                 <Settings className="h-6 w-6 text-white" aria-hidden="true" />
                               </div>
                             </div>
@@ -607,7 +607,7 @@ function WorkflowsPageContent() {
                                   {template.steps} step{template.steps > 1 ? 's' : ''}
                                 </div>
                               </div>
-                              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-purple-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all motion-reduce:transform-none flex-shrink-0" aria-hidden="true" />
+                              <ChevronRight className="h-4 w-4 text-gray-400 dark:text-gray-500 group-hover:text-violet-600 dark:group-hover:text-indigo-400 group-hover:translate-x-1 transition-all motion-reduce:transform-none flex-shrink-0" aria-hidden="true" />
                             </div>
                           </CardContent>
                         </Card>
@@ -701,7 +701,7 @@ export default function UnifiedWorkflowsPage() {
   return (
     <Suspense fallback={
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20 dark:from-slate-900 dark:via-purple-950/20 dark:to-purple-950/20">
-        <RefreshCw className="h-8 w-8 motion-safe:animate-spin text-purple-600 dark:text-indigo-400" aria-label="Loading workflows" />
+        <RefreshCw className="h-8 w-8 motion-safe:animate-spin text-violet-600 dark:text-violet-400" aria-label="Loading workflows" />
       </div>
     }>
       <WorkflowsPageContent />

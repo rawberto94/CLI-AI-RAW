@@ -280,8 +280,8 @@ export function ContractStatusDot({
   const dotColors: Record<string, string> = {
     DRAFT: 'bg-violet-500',
     PENDING: 'bg-amber-500',
-    UPLOADED: 'bg-purple-500',
-    PROCESSING: 'bg-purple-500 animate-pulse',
+    UPLOADED: 'bg-violet-500',
+    PROCESSING: 'bg-violet-500 animate-pulse',
     COMPLETED: 'bg-green-500',
     ACTIVE: 'bg-green-500',
     FAILED: 'bg-red-500',

@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import type { Contract, ContractStatus, Prisma } from '@prisma/client';
 import { getErrorMessage } from '@/lib/types/common';
+import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { analyticsService } from 'data-orchestration/services';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -866,34 +868,26 @@ Your portfolio contains **${analysis.summary.totalContracts} contracts** worth *
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { filters } = body;
-    
-    // Get tenant ID (in production, from session)
-    const tenantId = 'demo-tenant';
-    
-    // Perform enhanced analysis
-    const analysis = await performDeepAnalysis(tenantId, filters || {});
-    
-    // Generate AI summary with enhanced context
-    const aiSummary = await generateAISummary(analysis);
-    
-    return NextResponse.json({
-      success: true,
-      analysis,
-      aiSummary,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        version: '2.0',
-        filtersApplied: Object.values(filters || {}).flat().length,
-      },
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: getErrorMessage(error) },
-      { status: 500 }
-    );
-  }
-}
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { filters } = body;
+  
+  // Get tenant ID from authenticated context
+  const tenantId = ctx.tenantId;
+  
+  // Perform enhanced analysis
+  const analysis = await performDeepAnalysis(tenantId, filters || {});
+  
+  // Generate AI summary with enhanced context
+  const aiSummary = await generateAISummary(analysis);
+  
+  return createSuccessResponse(ctx, {
+    analysis,
+    aiSummary,
+    metadata: {
+      generatedAt: new Date().toISOString(),
+      version: '2.0',
+      filtersApplied: Object.values(filters || {}).flat().length,
+    },
+  });
+});

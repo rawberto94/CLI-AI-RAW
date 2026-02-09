@@ -147,7 +147,7 @@ export const BulkActionsBar = memo(function BulkActionsBar({
                   <TooltipTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-violet-700 text-white border-0 shadow-lg shadow-violet-500/25"
+                      className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-violet-500/25"
                       onClick={onCategorize}
                       disabled={isProcessing || isCategorizing}
                     >

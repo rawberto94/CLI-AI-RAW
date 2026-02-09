@@ -1641,7 +1641,7 @@ Would you like me to notify the first approver or do anything else?`,
               </div>
 
               {message.role === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-600 flex items-center justify-center">
                   <User className="h-5 w-5 text-white" />
                 </div>
               )}
@@ -2049,7 +2049,7 @@ Would you like me to notify the first approver or do anything else?`,
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {result.role === 'user' ? (
-                      <User className="h-4 w-4 text-purple-500" />
+                      <User className="h-4 w-4 text-violet-500" />
                     ) : (
                       <Bot className="h-4 w-4 text-violet-500" />
                     )}

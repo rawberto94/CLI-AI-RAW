@@ -69,8 +69,8 @@ function SortIcon({ direction }: { direction: SortDirection }) {
     return <ChevronsUpDown className="w-4 h-4 text-slate-300" />;
   }
   return direction === 'asc' 
-    ? <ChevronUp className="w-4 h-4 text-purple-600" />
-    : <ChevronDown className="w-4 h-4 text-purple-600" />;
+    ? <ChevronUp className="w-4 h-4 text-violet-600" />
+    : <ChevronDown className="w-4 h-4 text-violet-600" />;
 }
 
 // ============================================================================
@@ -218,7 +218,7 @@ export function DataTable<T extends { id: string | number }>({
               setCurrentPage(1);
             }}
             placeholder="Search..."
-            className="w-full h-10 pl-10 pr-4 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-indigo-400"
+            className="w-full h-10 pl-10 pr-4 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-indigo-400"
           />
           {searchQuery && (
             <button 
@@ -279,7 +279,7 @@ export function DataTable<T extends { id: string | number }>({
                         }
                         setVisibleColumns(newVisible);
                       }}
-                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                     />
                     <span className="text-sm text-slate-700">{col.header}</span>
                   </label>
@@ -316,7 +316,7 @@ export function DataTable<T extends { id: string | number }>({
                       type="checkbox"
                       checked={selectedRows.size === paginatedData.length && paginatedData.length > 0}
                       onChange={handleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                      className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                     />
                   </th>
                 )}
@@ -385,7 +385,7 @@ export function DataTable<T extends { id: string | number }>({
                       'transition-colors',
                       onRowClick && 'cursor-pointer hover:bg-slate-50',
                       striped && rowIndex % 2 === 1 && 'bg-slate-50/50',
-                      selectedRows.has(row.id) && 'bg-purple-50'
+                      selectedRows.has(row.id) && 'bg-violet-50'
                     )}
                   >
                     {selectable && (
@@ -394,7 +394,7 @@ export function DataTable<T extends { id: string | number }>({
                           type="checkbox"
                           checked={selectedRows.has(row.id)}
                           onChange={() => handleSelectRow(row.id, row)}
-                          className="w-4 h-4 rounded border-slate-300 text-purple-600 focus:ring-purple-500"
+                          className="w-4 h-4 rounded border-slate-300 text-violet-600 focus:ring-violet-500"
                         />
                       </td>
                     )}
@@ -464,7 +464,7 @@ export function DataTable<T extends { id: string | number }>({
                       className={cn(
                         'w-8 h-8 text-sm font-medium rounded-lg transition-colors',
                         currentPage === pageNum
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-violet-600 text-white'
                           : 'text-slate-600 hover:bg-slate-100'
                       )}
                     >

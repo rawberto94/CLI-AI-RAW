@@ -160,7 +160,7 @@ export function EmptyState({
   const iconColors: Record<EmptyStateVariant, string> = {
     'no-data': 'from-slate-400 to-slate-500',
     'no-results': 'from-amber-400 to-orange-500',
-    'no-contracts': 'from-purple-400 to-purple-500',
+    'no-contracts': 'from-violet-400 to-purple-500',
     'no-notifications': 'from-violet-400 to-violet-500',
     'no-team': 'from-violet-400 to-purple-500',
     'error': 'from-red-400 to-rose-500',
@@ -221,7 +221,7 @@ export function EmptyState({
             <Button
               asChild={!!finalPrimaryAction.href}
               onClick={finalPrimaryAction.onClick}
-              className="gap-2 bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+              className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               {finalPrimaryAction.href ? (
                 <Link href={finalPrimaryAction.href}>
@@ -364,7 +364,7 @@ export function InlineEmptyState({ message, icon: Icon = Inbox, action }: Inline
       <Icon className="w-5 h-5" />
       <span className="text-sm">{message}</span>
       {action && (
-        <Button variant="link" size="sm" onClick={action.onClick} className="text-purple-600">
+        <Button variant="link" size="sm" onClick={action.onClick} className="text-violet-600">
           {action.label}
         </Button>
       )}

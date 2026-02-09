@@ -101,7 +101,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
       
       {/* Decorative Blobs */}
       <div className="absolute top-0 right-0 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl" />
+      <div className="absolute bottom-0 left-0 w-80 h-80 bg-violet-500/20 rounded-full blur-3xl" />
       
       {/* Content */}
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -214,7 +214,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                 
                 <DropdownMenuItem asChild>
                   <Link href="/upload">
-                    <Upload className="h-4 w-4 mr-2 text-purple-500" />
+                    <Upload className="h-4 w-4 mr-2 text-violet-500" />
                     <div>
                       <p className="font-medium">Advanced Upload</p>
                       <p className="text-xs text-slate-500">Full upload with AI analysis</p>
@@ -236,7 +236,7 @@ export const ContractsPageHeader = memo(function ContractsPageHeader({
                 
                 <DropdownMenuItem asChild>
                   <Link href="/contracts/generate">
-                    <LayoutTemplate className="h-4 w-4 mr-2 text-purple-500" />
+                    <LayoutTemplate className="h-4 w-4 mr-2 text-violet-500" />
                     <div>
                       <p className="font-medium">Generate from Template</p>
                       <p className="text-xs text-slate-500">Use a contract template</p>

@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const user = await prisma.user.findFirst({
       where: { 
-        email: session.user.email,
-        tenantId: session.user.tenantId 
+        email: ctx.userId,
+        tenantId: ctx.tenantId 
       },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const body = await request.json();
@@ -41,11 +35,5 @@ export async function POST(request: NextRequest) {
       }
     );
 
-    return NextResponse.json(result);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to perform bulk baseline comparison' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, result);
+  });

@@ -155,7 +155,7 @@ export function MetadataFieldSelector({
     const colors: Record<string, string> = {
       blue: 'bg-violet-100 text-violet-800',
       green: 'bg-green-100 text-green-800',
-      purple: 'bg-purple-100 text-purple-800',
+      purple: 'bg-violet-100 text-violet-800',
       red: 'bg-red-100 text-red-800',
       orange: 'bg-orange-100 text-orange-800',
       gray: 'bg-gray-100 text-gray-800',
@@ -220,7 +220,7 @@ export function MetadataFieldSelector({
                         <span className="text-sm">{field.label}</span>
                         {field.required && <span className="text-red-500 text-xs">*</span>}
                         {field.aiExtractionEnabled && showAIFields && (
-                          <Sparkles className="h-3 w-3 text-purple-500 ml-auto" />
+                          <Sparkles className="h-3 w-3 text-violet-500 ml-auto" />
                         )}
                       </label>
                     ))}
@@ -277,7 +277,7 @@ export function MetadataFieldSelector({
                           {field.label}
                           {field.required && <span className="text-red-500 ml-1">*</span>}
                           {field.aiExtractionEnabled && (
-                            <Sparkles className="h-3 w-3 text-purple-500 inline ml-1" />
+                            <Sparkles className="h-3 w-3 text-violet-500 inline ml-1" />
                           )}
                         </label>
                         {renderFieldInput(field, values[field.name], (value) => {
@@ -385,7 +385,7 @@ export function MetadataFieldSelector({
                               <span className="text-xs text-red-500">Required</span>
                             )}
                             {field.aiExtractionEnabled && showAIFields && (
-                              <span className="flex items-center gap-0.5 text-xs text-purple-600">
+                              <span className="flex items-center gap-0.5 text-xs text-violet-600">
                                 <Sparkles className="h-3 w-3" />
                                 AI
                               </span>

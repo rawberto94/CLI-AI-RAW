@@ -213,8 +213,8 @@ export const HelpIcon = memo(({
 
   const variantClasses = {
     subtle: 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300',
-    default: 'text-purple-500 hover:text-purple-600',
-    prominent: 'text-purple-600 bg-purple-100 dark:bg-purple-900/30 p-1 rounded-full',
+    default: 'text-violet-500 hover:text-violet-600',
+    prominent: 'text-violet-600 bg-violet-100 dark:bg-violet-900/30 p-1 rounded-full',
   };
 
   // Close on outside click
@@ -268,7 +268,7 @@ export const HelpIcon = memo(({
             className="absolute z-50 left-1/2 -translate-x-1/2 top-full mt-2 w-72 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-500">
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-500">
               <div className="flex items-center gap-2 text-white">
                 <Lightbulb className="h-4 w-4" />
                 <span className="font-medium text-sm">{tip.title}</span>
@@ -292,7 +292,7 @@ export const HelpIcon = memo(({
                 <ol className="mt-3 space-y-2">
                   {tip.steps.map((step, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-indigo-400 flex items-center justify-center text-xs font-medium">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-indigo-400 flex items-center justify-center text-xs font-medium">
                         {i + 1}
                       </span>
                       <span className="text-slate-600 dark:text-slate-400">{step}</span>
@@ -326,7 +326,7 @@ export const HelpIcon = memo(({
                       href={tip.learnMoreUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-600 hover:text-purple-700"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700"
                     >
                       <BookOpen className="h-3.5 w-3.5" />
                       Learn more
@@ -338,7 +338,7 @@ export const HelpIcon = memo(({
                       href={tip.videoUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1.5 text-xs font-medium text-purple-600 hover:text-purple-700"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-violet-600 hover:text-violet-700"
                     >
                       <Video className="h-3.5 w-3.5" />
                       Watch video
@@ -398,7 +398,7 @@ export const FeatureSpotlight = memo(({
   return (
     <div className={cn("relative", className)}>
       {/* Highlight ring */}
-      <div className="absolute -inset-2 rounded-xl border-2 border-purple-500 animate-pulse pointer-events-none" />
+      <div className="absolute -inset-2 rounded-xl border-2 border-violet-500 animate-pulse pointer-events-none" />
       
       {children}
 
@@ -415,7 +415,7 @@ export const FeatureSpotlight = memo(({
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               {isNew && (
-                <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white bg-gradient-to-r from-purple-500 to-purple-500 rounded">
+                <span className="px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white bg-gradient-to-r from-violet-500 to-purple-500 rounded">
                   New
                 </span>
               )}
@@ -442,7 +442,7 @@ export const FeatureSpotlight = memo(({
           {action && (
             <button
               onClick={action.onClick}
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-700"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700"
             >
               {action.label}
               <ArrowRight className="h-3.5 w-3.5" />
@@ -550,7 +550,7 @@ export const GuidedTour = memo(({
 
       {/* Highlight box */}
       <div
-        className="absolute border-2 border-purple-500 rounded-lg pointer-events-none"
+        className="absolute border-2 border-violet-500 rounded-lg pointer-events-none"
         style={{
           top: targetRect.top - 8,
           left: targetRect.left - 8,
@@ -568,7 +568,7 @@ export const GuidedTour = memo(({
         style={tooltipStyle}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-purple-500 to-purple-500">
+        <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-500">
           <div className="flex items-center gap-2 text-white">
             <Target className="h-4 w-4" />
             <span className="font-medium text-sm">
@@ -595,7 +595,7 @@ export const GuidedTour = memo(({
           {currentStep.action && (
             <button
               onClick={currentStep.action.onClick}
-              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-purple-600 hover:text-purple-700"
+              className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-violet-600 hover:text-violet-700"
             >
               <Play className="h-3.5 w-3.5" />
               {currentStep.action.label}
@@ -622,9 +622,9 @@ export const GuidedTour = memo(({
                 className={cn(
                   "w-2 h-2 rounded-full transition-colors",
                   i === tourStep
-                    ? "bg-purple-600"
+                    ? "bg-violet-600"
                     : i < tourStep
-                    ? "bg-purple-300"
+                    ? "bg-violet-300"
                     : "bg-slate-300 dark:bg-slate-600"
                 )}
               />
@@ -633,7 +633,7 @@ export const GuidedTour = memo(({
 
           <button
             onClick={handleNext}
-            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700"
+            className="flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-white bg-violet-600 rounded-lg hover:bg-violet-700"
           >
             {isLastStep ? (
               <>

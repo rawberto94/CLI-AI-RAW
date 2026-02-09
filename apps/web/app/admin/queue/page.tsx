@@ -186,7 +186,7 @@ export default function ImportQueuePage() {
       active: { color: 'bg-violet-100 text-violet-700', icon: Loader2 },
       completed: { color: 'bg-green-100 text-green-700', icon: CheckCircle },
       failed: { color: 'bg-red-100 text-red-700', icon: XCircle },
-      delayed: { color: 'bg-purple-100 text-purple-700', icon: Clock },
+      delayed: { color: 'bg-violet-100 text-violet-700', icon: Clock },
     };
     const { color, icon: Icon } = config[status];
     return (
@@ -204,7 +204,7 @@ export default function ImportQueuePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                 <Activity className="h-6 w-6 text-white" />
               </div>
               Import Queue Manager
@@ -259,7 +259,7 @@ export default function ImportQueuePage() {
             <Card className="border-0 shadow-sm">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2">
-                  <HardDrive className="h-4 w-4 text-purple-500" />
+                  <HardDrive className="h-4 w-4 text-violet-500" />
                   <span className="text-sm text-gray-600">Memory</span>
                 </div>
                 <p className="text-2xl font-bold mt-1">{health.memory}%</p>
@@ -300,7 +300,7 @@ export default function ImportQueuePage() {
             <Card className="border-0 shadow-sm">
               <CardContent className="pt-4">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-500" />
+                  <Activity className="h-4 w-4 text-violet-500" />
                   <span className="text-sm text-gray-600">Workers</span>
                 </div>
                 <p className="text-2xl font-bold mt-1">{health.workersActive}</p>
@@ -441,7 +441,7 @@ export default function ImportQueuePage() {
           <Card className="border-0 shadow-md">
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <BarChart3 className="h-4 w-4 text-purple-500" />
+                <BarChart3 className="h-4 w-4 text-violet-500" />
                 Processing Queues
               </CardTitle>
             </CardHeader>
@@ -520,9 +520,9 @@ export default function ImportQueuePage() {
                           <p className="font-bold text-red-700">{queue.failed}</p>
                           <p className="text-red-600">Failed</p>
                         </div>
-                        <div className="p-2 bg-purple-50 rounded-lg">
-                          <p className="font-bold text-purple-700">{queue.delayed}</p>
-                          <p className="text-purple-600">Delayed</p>
+                        <div className="p-2 bg-violet-50 rounded-lg">
+                          <p className="font-bold text-violet-700">{queue.delayed}</p>
+                          <p className="text-violet-600">Delayed</p>
                         </div>
                       </div>
                     </div>
@@ -536,7 +536,7 @@ export default function ImportQueuePage() {
           <Card className="border-0 shadow-md">
             <CardHeader>
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <FileText className="h-4 w-4 text-purple-500" />
+                <FileText className="h-4 w-4 text-violet-500" />
                 Recent Jobs
                 {selectedQueue && (
                   <Badge variant="outline" className="ml-2">

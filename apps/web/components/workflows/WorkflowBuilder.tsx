@@ -366,14 +366,14 @@ export function WorkflowBuilder({
 
       {/* Workflow Steps */}
       <Card className="shadow-2xl border-0">
-        <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b">
+        <CardHeader className="bg-gradient-to-r from-violet-50 to-pink-50 border-b">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-2xl bg-gradient-to-r from-purple-900 to-pink-900 bg-clip-text text-transparent">
+            <CardTitle className="text-2xl bg-gradient-to-r from-violet-900 to-pink-900 bg-clip-text text-transparent">
               Workflow Steps ({steps.length})
             </CardTitle>
             <Button
               onClick={addStep}
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Step
@@ -397,16 +397,16 @@ export function WorkflowBuilder({
                 
                 return (
                   <div key={step.id} className="relative">
-                    <div className="p-6 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-gray-200 hover:border-purple-300 transition-all">
+                    <div className="p-6 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border-2 border-gray-200 hover:border-violet-300 transition-all">
                       {/* Step Header */}
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                          <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                             <StepIcon className="h-6 w-6 text-white" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <Badge className="bg-purple-100 text-purple-700 border-purple-300">
+                              <Badge className="bg-violet-100 text-violet-700 border-violet-300">
                                 Step {index + 1}
                               </Badge>
                               <Badge variant="outline" className="capitalize">
@@ -564,7 +564,7 @@ export function WorkflowBuilder({
                     {/* Arrow to next step */}
                     {index < steps.length - 1 && (
                       <div className="flex justify-center my-2">
-                        <ArrowRight className="h-6 w-6 text-purple-500" />
+                        <ArrowRight className="h-6 w-6 text-violet-500" />
                       </div>
                     )}
                   </div>
@@ -592,7 +592,7 @@ export function WorkflowBuilder({
           <Button
             onClick={handleSave}
             disabled={saving || !workflow.name || steps.length === 0}
-            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700"
+            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-purple-700"
           >
             <Save className={cn('h-4 w-4 mr-2', saving && 'animate-spin')} />
             {saving ? 'Saving...' : 'Save Workflow'}

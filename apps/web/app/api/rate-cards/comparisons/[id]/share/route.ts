@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
  * POST /api/rate-cards/comparisons/[id]/share
@@ -8,17 +9,13 @@ import { getServerSession } from '@/lib/auth';
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     // Get session for user info
-    const session = await getServerSession();
-    
     // Require tenant ID for data isolation
-    const tenantId = request.headers.get('x-tenant-id') || session?.user?.tenantId;
+    const tenantId = ctx.tenantId || ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const body = await request.json();
@@ -33,10 +30,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Comparison not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found or access denied', 404);
     }
 
     // Update the comparison to be shared
@@ -56,7 +50,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
           userId,
           type: 'COMPARISON_SHARED',
           title: 'Rate comparison shared with you',
-          message: `${session?.user?.name || session?.user?.email || 'A colleague'} shared a rate comparison with you`,
+          message: `${ctx.userId || 'A colleague'} shared a rate comparison with you`,
           resourceType: 'RateComparison',
           resourceId: params.id,
           priority: 'NORMAL',
@@ -66,15 +60,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       });
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       comparison,
       message: 'Comparison shared successfully',
       shareUrl: `/rate-cards/comparisons/${params.id}`,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to share comparison', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to share comparison', details: error instanceof Error ? error.message : String(error), 500);
   }
 }

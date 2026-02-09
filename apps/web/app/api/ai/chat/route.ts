@@ -1,16 +1,14 @@
 
 // Note: This file contains many helper functions for AI chat capabilities.
 // Some functions are prepared for future features and may not be in use yet.
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 import { prisma } from '@/lib/prisma'
-import { conversationMemoryService } from '@repo/data-orchestration'
-import { getServerSession } from '@/lib/auth'
-
+import { conversationMemoryService } from 'data-orchestration/services'
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-})
+  apiKey: process.env.OPENAI_API_KEY || '' })
 
 // Intent detection for actionable requests
 interface DetectedIntent {
@@ -122,8 +120,7 @@ const CONTRACT_TYPE_ALIASES: Record<string, string> = {
   'purchase order': 'PO',
   'po': 'PO',
   'license': 'LICENSE',
-  'license agreement': 'LICENSE',
-};
+  'license agreement': 'LICENSE' };
 
 function normalizeContractType(input: string | undefined): string {
   if (!input) return 'CONTRACT';
@@ -159,10 +156,8 @@ function detectIntent(query: string): DetectedIntent {
         supplierName,
         parentYear,
         parentContractType: 'MSA',
-        relationshipType: `${contractType}_UNDER_MSA`,
-      },
-      confidence: 0.95,
-    };
+        relationshipType: `${contractType}_UNDER_MSA` },
+      confidence: 0.95 };
   }
 
   // Pattern: "create an amendment for [contract name]" or "add a SOW to [contract]"
@@ -178,10 +173,8 @@ function detectIntent(query: string): DetectedIntent {
       entities: {
         contractType,
         contractName,
-        parentContractType: 'EXISTING',
-      },
-      confidence: 0.9,
-    };
+        parentContractType: 'EXISTING' },
+      confidence: 0.9 };
   }
 
   // Pattern: "link this contract to MSA" or "connect to master agreement"
@@ -193,8 +186,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'action',
       action: 'link_contracts',
       entities: { parentYear, parentContractType: 'MSA' },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "show contract hierarchy" or "what's linked to this contract" or "show hierarchy for X"
@@ -206,8 +198,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'action',
       action: 'show_hierarchy',
       entities: { contractName },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "find master agreement for supplier X" or "what MSA do we have with supplier X"
@@ -219,8 +210,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'find_master',
       entities: { supplierName, contractType: 'MSA' },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -236,8 +226,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_supplier',
       entities: { supplierName },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "contracts expiring in X days" or "what contracts are expiring"
@@ -249,8 +238,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_expiring',
       entities: { daysUntilExpiry: days },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "contracts to be renewed" with optional supplier
@@ -262,8 +250,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_expiring',
       entities: { supplierName, daysUntilExpiry: 90 },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "how many contracts" or "count contracts"
@@ -275,8 +262,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'analytics',
       action: 'count',
       entities: { supplierName },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "contracts by status" (active, expired, pending)
@@ -288,8 +274,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_status',
       entities: { status },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // ============================================
@@ -303,8 +288,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_signature',
       entities: { signatureStatus: 'unsigned' },
-      confidence: 0.95,
-    };
+      confidence: 0.95 };
   }
 
   // Pattern: "signed contracts" or "fully signed"
@@ -314,8 +298,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_signature',
       entities: { signatureStatus: 'signed' },
-      confidence: 0.95,
-    };
+      confidence: 0.95 };
   }
 
   // Pattern: "partially signed contracts"
@@ -325,8 +308,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_signature',
       entities: { signatureStatus: 'partially_signed' },
-      confidence: 0.95,
-    };
+      confidence: 0.95 };
   }
 
   // Pattern: "contracts needing signature attention"
@@ -336,8 +318,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_needing_signature',
       entities: {},
-      confidence: 0.95,
-    };
+      confidence: 0.95 };
   }
 
   // Pattern: "high value contracts" or "contracts over $X"
@@ -349,8 +330,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_value',
       entities: { valueThreshold: threshold },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "summarize contracts with [supplier]" or "summary of [supplier] contracts"
@@ -362,8 +342,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'analytics',
       action: 'summarize',
       entities: { supplierName },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // ============================================
@@ -379,8 +358,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'spend_analysis',
       entities: { supplierName },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "cost savings" or "savings opportunities" or "where can we save"
@@ -391,8 +369,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'cost_savings',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "top suppliers" or "biggest suppliers" or "top 5/10 suppliers"
@@ -404,8 +381,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'top_suppliers',
       entities: { topN },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "high risk contracts" or "risky suppliers" or "risk assessment"
@@ -416,8 +392,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'risk_assessment',
       entities: { riskLevel: 'high' },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "auto-renewal" or "contracts with auto renewal"
@@ -428,8 +403,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'auto_renewals',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "spend by category" or "category breakdown"
@@ -440,8 +414,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'category_spend',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -456,8 +429,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'taxonomy',
       action: 'list_categories',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -474,8 +446,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'comparison',
       action: 'compare_contracts',
       entities: { contractA, contractB },
-      confidence: 0.92,
-    };
+      confidence: 0.92 };
   }
 
   // Pattern: "what's different between [A] and [B]" or "differences between contracts"
@@ -488,8 +459,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'comparison',
       action: 'compare_contracts',
       entities: { contractA, contractB },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "compare [supplier A] vs [supplier B] terms" or "which supplier has better terms"
@@ -502,8 +472,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'comparison',
       action: 'compare_suppliers',
       entities: { supplierA, supplierB },
-      confidence: 0.88,
-    };
+      confidence: 0.88 };
   }
 
   // Pattern: "compare renewal terms" or "side-by-side comparison"
@@ -514,8 +483,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'comparison',
       action: 'side_by_side',
       entities: {},
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "what category is [contract]" or "categorize [contract]"
@@ -527,8 +495,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'taxonomy',
       action: 'suggest_category',
       entities: { contractName },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "show [category] details" or "tell me about [category] category"
@@ -540,8 +507,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'taxonomy',
       action: 'category_details',
       entities: { category },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "contracts in [category]" or "[category] contracts"
@@ -553,8 +519,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'taxonomy',
       action: 'browse_taxonomy',
       entities: { category },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "payment terms" or "contracts with net 30/60/90"
@@ -565,8 +530,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'payment_terms',
       entities: {},
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "compare rates" or "rate comparison for [role]" or "benchmark rates"
@@ -577,8 +541,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'rate_comparison',
       entities: {},
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "supplier performance" or "how is [supplier] performing"
@@ -590,8 +553,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'supplier_performance',
       entities: { supplierName: supplierName?.trim() },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "negotiate" or "negotiation tips" or "how to negotiate with [supplier]"
@@ -603,8 +565,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'procurement',
       action: 'negotiate_terms',
       entities: { supplierName },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // ============================================
@@ -652,10 +613,8 @@ function detectIntent(query: string): DetectedIntent {
       entities: {
         contractName: contractName || undefined,
         supplierName: supplierName || undefined,
-        workflowType: 'renewal',
-      },
-      confidence: 0.9,
-    };
+        workflowType: 'renewal' },
+      confidence: 0.9 };
   }
 
   // Contract generation patterns  
@@ -673,10 +632,8 @@ function detectIntent(query: string): DetectedIntent {
         entities: {
           contractType: match[1]?.trim(),
           supplierName: match[2]?.trim(),
-          workflowType: 'contract_generation',
-        },
-        confidence: 0.85,
-      };
+          workflowType: 'contract_generation' },
+        confidence: 0.85 };
     }
   }
 
@@ -692,8 +649,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'workflow',
       action: 'start_workflow',
       entities: { workflowType: 'approval' },
-      confidence: 0.8,
-    };
+      confidence: 0.8 };
   }
 
   // ============================================
@@ -761,11 +717,8 @@ function detectIntent(query: string): DetectedIntent {
           avgValue: true,
           terms: wantsTerms,
           risk: wantsRisk,
-          rates: /rate|pricing|cost/i.test(query),
-        },
-      },
-      confidence: 0.95,
-    };
+          rates: /rate|pricing|cost/i.test(query) } },
+      confidence: 0.95 };
   }
 
   // Pattern: "compare X and Y" / "compare X vs Y" / "compare X with Y"
@@ -786,11 +739,8 @@ function detectIntent(query: string): DetectedIntent {
           terms: wantsTerms,
           risk: wantsRisk,
           rates: /rate|pricing|cost/i.test(query),
-          clauses: /clause|term|condition|obligation|liability|termination|indemnif/i.test(query),
-        },
-      },
-      confidence: 0.95,
-    };
+          clauses: /clause|term|condition|obligation|liability|termination|indemnif/i.test(query) } },
+      confidence: 0.95 };
   }
   
   // Pattern: "what's the difference between X and Y"
@@ -811,11 +761,8 @@ function detectIntent(query: string): DetectedIntent {
           terms: true,
           risk: true,
           rates: true,
-          clauses: true,
-        },
-      },
-      confidence: 0.95,
-    };
+          clauses: true } },
+      confidence: 0.95 };
   }
   
   // Pattern: "how does X compare to Y" / "X vs Y"
@@ -836,11 +783,8 @@ function detectIntent(query: string): DetectedIntent {
           terms: true,
           risk: true,
           rates: true,
-          clauses: true,
-        },
-      },
-      confidence: 0.95,
-    };
+          clauses: true } },
+      confidence: 0.95 };
   }
   
   // Pattern: Compare specific clauses - "compare termination clauses in X and Y"
@@ -858,11 +802,8 @@ function detectIntent(query: string): DetectedIntent {
         comparisonEntities: [entity1, entity2].filter(Boolean),
         clauseType,
         comparisonAspects: {
-          clauses: true,
-        },
-      },
-      confidence: 0.95,
-    };
+          clauses: true } },
+      confidence: 0.95 };
   }
 
   if (deepAnalysisPattern.test(lowerQuery) && (supplierName || category || year)) {
@@ -879,11 +820,8 @@ function detectIntent(query: string): DetectedIntent {
           categories: wantsCategories,
           supplierDetails: wantsSupplierDetails,
           risk: wantsRisk,
-          terms: wantsTerms,
-        },
-      },
-      confidence: 0.95,
-    };
+          terms: wantsTerms } },
+      confidence: 0.95 };
   }
 
   // ============================================
@@ -899,8 +837,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'search',
       action: 'semantic_search',
       entities: { searchQuery: searchTopic },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "which contracts have [clause/term]" or "contracts with [specific term]"
@@ -912,8 +849,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'search',
       action: 'clause_search',
       entities: { clauseTerm },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "what should I know about [contract/supplier]"
@@ -925,8 +861,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'analytics',
       action: 'executive_briefing',
       entities: { topic: briefingTopic, supplierName: briefingTopic },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "what's happening with [supplier/category]" or "update on [topic]"
@@ -938,8 +873,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'analytics',
       action: 'status_update',
       entities: { supplierName: topic, topic },
-      confidence: 0.85,
-    };
+      confidence: 0.85 };
   }
 
   // Pattern: "contracts ending/starting this month/quarter/year"
@@ -952,8 +886,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: action === 'ending' ? 'list_expiring' : 'list_by_status',
       entities: { timeframe, daysUntilExpiry: timeframe === 'week' ? 7 : timeframe === 'month' ? 30 : timeframe === 'quarter' ? 90 : 365 },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "most expensive/valuable contracts"
@@ -964,8 +897,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'list',
       action: 'list_by_value',
       entities: { sortOrder: 'desc', limit: 10 },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "contracts needing attention" or "what needs my attention"
@@ -976,8 +908,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'analytics',
       action: 'attention_needed',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "who signed [contract]" or "signatories for [contract]"
@@ -989,8 +920,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'search',
       action: 'find_signatories',
       entities: { contractName },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "when does [contract] expire" or "expiration date for [contract]"
@@ -1002,8 +932,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'search',
       action: 'find_expiration',
       entities: { contractName },
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -1027,11 +956,9 @@ function detectIntent(query: string): DetectedIntent {
         analysisAspects: {
           terms: true,
           risk: true,
-          value: true,
-        }
+          value: true }
       },
-      confidence: 0.92,
-    };
+      confidence: 0.92 };
   }
 
   // Pattern: "what are the termination clauses in [contract]" - specific clause questions
@@ -1046,10 +973,8 @@ function detectIntent(query: string): DetectedIntent {
       entities: { 
         contractName: targetContract,
         clauseTerm: clauseType,
-        searchQuery: `${clauseType} clause terms provisions`,
-      },
-      confidence: 0.95,
-    };
+        searchQuery: `${clauseType} clause terms provisions` },
+      confidence: 0.95 };
   }
 
   // Pattern: "analyze [contract] for risks" or "[contract] risk assessment"
@@ -1065,8 +990,7 @@ function detectIntent(query: string): DetectedIntent {
         searchQuery: 'risks liabilities obligations penalties termination breach',
         analysisAspects: { risk: true }
       },
-      confidence: 0.93,
-    };
+      confidence: 0.93 };
   }
 
   // ============================================
@@ -1082,10 +1006,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_expiration',
       entities: { 
         fieldToUpdate: 'expiration',
-        newValue: match[2].trim(),
-      },
-      confidence: 0.95,
-    };
+        newValue: match[2].trim() },
+      confidence: 0.95 };
   }
 
   // Pattern: "extend the contract to [date]"
@@ -1097,10 +1019,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_expiration',
       entities: { 
         fieldToUpdate: 'expiration',
-        newValue: match[1].trim(),
-      },
-      confidence: 0.9,
-    };
+        newValue: match[1].trim() },
+      confidence: 0.9 };
   }
 
   // Pattern: "set effective/start date to [date]"
@@ -1112,10 +1032,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_effective_date',
       entities: { 
         fieldToUpdate: 'effective',
-        newValue: match[2].trim(),
-      },
-      confidence: 0.95,
-    };
+        newValue: match[2].trim() },
+      confidence: 0.95 };
   }
 
   // Pattern: "set/update contract value to [amount]"
@@ -1127,10 +1045,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_value',
       entities: { 
         fieldToUpdate: 'value',
-        newValue: match[1].trim(),
-      },
-      confidence: 0.95,
-    };
+        newValue: match[1].trim() },
+      confidence: 0.95 };
   }
 
   // Pattern: "change/set status to [status]"
@@ -1142,10 +1058,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_status',
       entities: { 
         fieldToUpdate: 'status',
-        newValue: match[1].trim().toUpperCase(),
-      },
-      confidence: 0.95,
-    };
+        newValue: match[1].trim().toUpperCase() },
+      confidence: 0.95 };
   }
 
   // Pattern: "rename/change title to [name]"
@@ -1157,10 +1071,8 @@ function detectIntent(query: string): DetectedIntent {
       action: 'update_title',
       entities: { 
         fieldToUpdate: 'title',
-        newValue: match[1].trim(),
-      },
-      confidence: 0.9,
-    };
+        newValue: match[1].trim() },
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -1175,8 +1087,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'system',
       action: 'system_health',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "categorization accuracy" or "how accurate is the AI categorization"
@@ -1187,8 +1098,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'system',
       action: 'categorization_accuracy',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "queue status" or "how many jobs are pending"
@@ -1199,8 +1109,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'system',
       action: 'queue_status',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // Pattern: "AI performance" or "how is AI performing"
@@ -1211,8 +1120,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'system',
       action: 'ai_performance',
       entities: {},
-      confidence: 0.9,
-    };
+      confidence: 0.9 };
   }
 
   // ============================================
@@ -1236,8 +1144,7 @@ function detectIntent(query: string): DetectedIntent {
     do: 'action',
     does: 'confirmation',
     will: 'prediction',
-    would: 'hypothetical',
-  };
+    would: 'hypothetical' };
   
   const firstWord = lowerQuery.split(/\s+/)[0];
   const questionType = questionWords[firstWord as keyof typeof questionWords] || 'general';
@@ -1289,8 +1196,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'question',
       action: 'greeting',
       entities: {},
-      confidence: 1.0,
-    };
+      confidence: 1.0 };
   }
   
   if (isGoodbye) {
@@ -1298,8 +1204,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'question',
       action: 'farewell',
       entities: {},
-      confidence: 1.0,
-    };
+      confidence: 1.0 };
   }
   
   if (isHelpRequest) {
@@ -1307,8 +1212,7 @@ function detectIntent(query: string): DetectedIntent {
       type: 'question',
       action: 'help',
       entities: {},
-      confidence: 1.0,
-    };
+      confidence: 1.0 };
   }
 
   // Enhanced general query with smart context
@@ -1317,10 +1221,8 @@ function detectIntent(query: string): DetectedIntent {
     type: 'question',
     action: 'general',
     entities: {
-      searchQuery: extractedTerms.length > 2 ? extractedTerms : query,
-    },
-    confidence: hasImplicitContractContext ? 0.8 : 0.7,
-  };
+      searchQuery: extractedTerms.length > 2 ? extractedTerms : query },
+    confidence: hasImplicitContractContext ? 0.8 : 0.7 };
 }
 
 // Search for matching contracts
@@ -1351,13 +1253,10 @@ async function findMatchingContracts(entities: DetectedIntent['entities'], tenan
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        OR: searchTerms,
-      },
+        OR: searchTerms },
       include: {
-        contractMetadata: true,
-      },
-      take: 5,
-    });
+        contractMetadata: true },
+      take: 5 });
     
     return contracts;
   } catch {
@@ -1375,11 +1274,9 @@ async function listContractsBySupplier(supplierName: string, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        supplierName: { contains: supplierName, mode: 'insensitive' },
-      },
+        supplierName: { contains: supplierName, mode: 'insensitive' } },
       orderBy: { expirationDate: 'asc' },
-      take: 20,
-    });
+      take: 20 });
     return contracts;
   } catch {
     return [];
@@ -1396,10 +1293,8 @@ async function listExpiringContracts(daysUntilExpiry: number, tenantId: string, 
       tenantId,
       expirationDate: {
         lte: expiryDate,
-        gte: new Date(),
-      },
-      status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
-    };
+        gte: new Date() },
+      status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] } };
     
     if (supplierName) {
       where.supplierName = { contains: supplierName, mode: 'insensitive' };
@@ -1408,8 +1303,7 @@ async function listExpiringContracts(daysUntilExpiry: number, tenantId: string, 
     const contracts = await prisma.contract.findMany({
       where,
       orderBy: { expirationDate: 'asc' },
-      take: 20,
-    });
+      take: 20 });
     return contracts;
   } catch {
     return [];
@@ -1423,11 +1317,9 @@ async function listContractsByStatus(status: string, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        status: validStatus,
-      },
+        status: validStatus },
       orderBy: { updatedAt: 'desc' },
-      take: 20,
-    });
+      take: 20 });
     return contracts;
   } catch {
     return [];
@@ -1440,11 +1332,9 @@ async function listHighValueContracts(threshold: number, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        totalValue: { gte: threshold },
-      },
+        totalValue: { gte: threshold } },
       orderBy: { totalValue: 'desc' },
-      take: 20,
-    });
+      take: 20 });
     return contracts;
   } catch {
     return [];
@@ -1465,12 +1355,9 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
         artifacts: {
           where: { type: 'OVERVIEW' },
           select: { id: true, data: true },
-          take: 1,
-        },
-      },
+          take: 1 } },
       orderBy: { uploadedAt: 'desc' },
-      take: 50,
-    });
+      take: 50 });
 
     // Filter by signature status from metadata
     type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
@@ -1504,8 +1391,7 @@ async function listContractsBySignatureStatus(signatureStatus: SignatureStatusTy
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
         signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
         documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
-        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
-      };
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null };
     });
   } catch {
     return [];
@@ -1526,12 +1412,9 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
         artifacts: {
           where: { type: 'OVERVIEW' },
           select: { id: true, data: true },
-          take: 1,
-        },
-      },
+          take: 1 } },
       orderBy: { uploadedAt: 'desc' },
-      take: 50,
-    });
+      take: 50 });
 
     // Filter by document classification from metadata or direct field
     type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
@@ -1571,8 +1454,7 @@ async function listContractsByDocumentType(documentType: DocumentClassificationT
         documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
         documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
-        signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
-      };
+        signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false };
     });
   } catch {
     return [];
@@ -1587,12 +1469,9 @@ async function listNonContractDocuments(tenantId: string) {
         artifacts: {
           where: { type: 'OVERVIEW' },
           select: { id: true, data: true },
-          take: 1,
-        },
-      },
+          take: 1 } },
       orderBy: { uploadedAt: 'desc' },
-      take: 100,
-    });
+      take: 100 });
 
     // Filter to non-contract documents
     const nonContractTypes = ['purchase_order', 'invoice', 'quote', 'proposal', 'work_order', 'letter_of_intent', 'memorandum'];
@@ -1630,8 +1509,7 @@ async function listNonContractDocuments(tenantId: string) {
       return {
         ...c,
         documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'unknown',
-        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
-      };
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null };
     });
   } catch {
     return [];
@@ -1646,12 +1524,9 @@ async function listContractsNeedingSignature(tenantId: string) {
         artifacts: {
           where: { type: 'OVERVIEW' },
           select: { id: true, data: true },
-          take: 1,
-        },
-      },
+          take: 1 } },
       orderBy: { uploadedAt: 'desc' },
-      take: 50,
-    });
+      take: 50 });
 
     // Filter by signature_required_flag or signature status needing attention
     type ContractWithArtifacts = typeof contracts[number] & { artifacts: Array<{ id: string; data: unknown }> };
@@ -1686,8 +1561,7 @@ async function listContractsNeedingSignature(tenantId: string) {
         signatureStatus: parsed?.signature_status || (c as Record<string, unknown>).signatureStatus || 'unknown',
         signatureRequiredFlag: parsed?.signature_required_flag || (c as Record<string, unknown>).signatureRequiredFlag || false,
         documentClassification: parsed?.document_classification || (c as Record<string, unknown>).documentClassification || 'contract',
-        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null,
-      };
+        documentClassificationWarning: parsed?.document_classification_warning || (c as Record<string, unknown>).documentClassificationWarning || null };
     });
   } catch {
     return [];
@@ -1709,19 +1583,13 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
             id: true,
             type: true,
             data: true,
-            confidence: true,
-          },
-        },
+            confidence: true } },
         contractMetadata: true,
         parentContract: {
-          select: { id: true, contractTitle: true, contractType: true },
-        },
+          select: { id: true, contractTitle: true, contractType: true } },
         childContracts: {
           select: { id: true, contractTitle: true, contractType: true, status: true },
-          take: 10,
-        },
-      },
-    });
+          take: 10 } } });
 
     if (!contract) return null;
 
@@ -1765,8 +1633,7 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         signatureDate: (contract as any).signatureDate || null,
         signatureRequiredFlag: (contract as any).signatureRequiredFlag || false,
         documentClassification: (contract as any).documentClassification || 'contract',
-        documentClassificationWarning: (contract as any).documentClassificationWarning || null,
-      },
+        documentClassificationWarning: (contract as any).documentClassificationWarning || null },
       insights: {
         summary: (overview as any)?.summary || (overview as any)?.keyTerms?.join(', ') || 'No summary available',
         keyTerms: (overview as any)?.keyTerms || [],
@@ -1774,29 +1641,23 @@ async function getContractIntelligence(contractId: string, tenantId: string) {
         totalCommitment: (financial as any)?.totalContractValue || (financial as any)?.totalCommitment,
         criticalClauses: (clauses as any)?.clauses?.filter((c: { risk?: string; importance?: string }) => c.risk === 'high' || c.importance === 'critical')?.slice(0, 5) || [],
         terminationNotice: (renewal as any)?.noticePeriodDays || (clauses as any)?.terminationNoticeDays || 'Not specified',
-        autoRenewalTerms: (renewal as any)?.autoRenewalTerms || (contract.autoRenewalEnabled ? 'Enabled' : 'Disabled'),
-      },
+        autoRenewalTerms: (renewal as any)?.autoRenewalTerms || (contract.autoRenewalEnabled ? 'Enabled' : 'Disabled') },
       risks: {
         level: (risk as any)?.overallRisk || (risk as any)?.riskLevel || (daysUntilExpiry && daysUntilExpiry < 30 ? 'HIGH' : 'MEDIUM'),
         factors: risk.riskFactors || risk.risks || [],
-        mitigations: risk.mitigations || [],
-      },
+        mitigations: risk.mitigations || [] },
       compliance: {
         status: compliance.status || compliance.overallStatus || 'Unknown',
         issues: compliance.issues || compliance.nonCompliantItems || [],
-        score: compliance.score || compliance.complianceScore,
-      },
+        score: compliance.score || compliance.complianceScore },
       obligations: {
         ourObligations: obligations.partyObligations?.client || obligations.ourObligations || [],
         theirObligations: obligations.partyObligations?.supplier || obligations.theirObligations || [],
-        keyDates: obligations.keyDates || [],
-      },
+        keyDates: obligations.keyDates || [] },
       rates: rates.roles || rates.rateCard || [],
       relationships: {
         parent: (contract as any).parentContract,
-        children: (contract as any).childContracts || [],
-      },
-    };
+        children: (contract as any).childContracts || [] } };
   } catch {
     return null;
   }
@@ -1811,41 +1672,34 @@ async function getRecentActivity(tenantId: string) {
 
     // Recent contract uploads
     const recentUploads = await prisma.contract.count({
-      where: { tenantId, createdAt: { gte: last24h } },
-    });
+      where: { tenantId, createdAt: { gte: last24h } } });
 
     // Recently updated contracts
     const recentUpdates = await prisma.contract.count({
-      where: { tenantId, updatedAt: { gte: last24h }, createdAt: { lt: last24h } },
-    });
+      where: { tenantId, updatedAt: { gte: last24h }, createdAt: { lt: last24h } } });
 
     // Contracts expiring this week
     const expiringThisWeek = await prisma.contract.count({
       where: {
         tenantId,
         expirationDate: { gte: now, lte: last7d },
-        status: { notIn: ['EXPIRED', 'ARCHIVED'] },
-      },
-    });
+        status: { notIn: ['EXPIRED', 'ARCHIVED'] } } });
 
     // Total active contracts
     const totalActive = await prisma.contract.count({
-      where: { tenantId, status: 'ACTIVE' },
-    });
+      where: { tenantId, status: 'ACTIVE' } });
 
     // Total contract value
     const valueAgg = await prisma.contract.aggregate({
       where: { tenantId, status: 'ACTIVE' },
-      _sum: { totalValue: true },
-    });
+      _sum: { totalValue: true } });
 
     return {
       recentUploads,
       recentUpdates,
       expiringThisWeek,
       totalActive,
-      totalValue: Number(valueAgg._sum.totalValue || 0),
-    };
+      totalValue: Number(valueAgg._sum.totalValue || 0) };
   } catch {
     return null;
   }
@@ -1864,8 +1718,7 @@ async function searchContractsFlexible(searchTerm: string, tenantId: string, lim
           { description: { contains: searchTerm, mode: 'insensitive' } },
           { categoryL1: { contains: searchTerm, mode: 'insensitive' } },
           { categoryL2: { contains: searchTerm, mode: 'insensitive' } },
-        ],
-      },
+        ] },
       orderBy: { updatedAt: 'desc' },
       take: limit,
       select: {
@@ -1877,9 +1730,7 @@ async function searchContractsFlexible(searchTerm: string, tenantId: string, lim
         totalValue: true,
         expirationDate: true,
         contractType: true,
-        categoryL1: true,
-      },
-    });
+        categoryL1: true } });
 
     return contracts.map(c => ({
       id: c.id,
@@ -1892,8 +1743,7 @@ async function searchContractsFlexible(searchTerm: string, tenantId: string, lim
       category: c.categoryL1,
       daysUntilExpiry: c.expirationDate 
         ? Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-        : null,
-    }));
+        : null }));
   } catch {
     return [];
   }
@@ -1916,13 +1766,10 @@ async function getProactiveInsights(tenantId: string): Promise<{
         tenantId,
         expirationDate: {
           gte: now,
-          lte: in7Days,
-        },
-        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
-      },
+          lte: in7Days },
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] } },
       orderBy: { expirationDate: 'asc' },
-      take: 5,
-    });
+      take: 5 });
     
     // Fetch auto-renewal contracts coming up
     const autoRenewals = await prisma.contract.findMany({
@@ -1931,12 +1778,9 @@ async function getProactiveInsights(tenantId: string): Promise<{
         autoRenewalEnabled: true,
         expirationDate: {
           gte: now,
-          lte: in30Days,
-        },
-        status: 'ACTIVE',
-      },
-      take: 5,
-    });
+          lte: in30Days },
+        status: 'ACTIVE' },
+      take: 5 });
     
     // Fetch high-value contracts expiring soon
     const highValueExpiring = await prisma.contract.findMany({
@@ -1945,13 +1789,10 @@ async function getProactiveInsights(tenantId: string): Promise<{
         totalValue: { gte: 100000 },
         expirationDate: {
           gte: now,
-          lte: in30Days,
-        },
-        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
-      },
+          lte: in30Days },
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] } },
       orderBy: { totalValue: 'desc' },
-      take: 3,
-    });
+      take: 3 });
     
     // Build alerts
     const criticalAlerts: string[] = [];
@@ -1972,16 +1813,13 @@ async function getProactiveInsights(tenantId: string): Promise<{
     
     // Count total active vs expiring
     const activeCount = await prisma.contract.count({
-      where: { tenantId, status: 'ACTIVE' },
-    });
+      where: { tenantId, status: 'ACTIVE' } });
     
     const expiringCount = await prisma.contract.count({
       where: {
         tenantId,
         expirationDate: { lte: in30Days, gte: now },
-        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] },
-      },
-    });
+        status: { notIn: ['EXPIRED', 'ARCHIVED', 'CANCELLED'] } } });
     
     if (expiringCount > 0 && activeCount > 0) {
       const expiringPct = Math.round((expiringCount / activeCount) * 100);
@@ -1999,9 +1837,7 @@ async function getProactiveInsights(tenantId: string): Promise<{
         id: c.id,
         contractTitle: c.contractTitle,
         expirationDate: c.expirationDate,
-        totalValue: c.totalValue ? Number(c.totalValue) : null,
-      })),
-    };
+        totalValue: c.totalValue ? Number(c.totalValue) : null })) };
   } catch {
     return { criticalAlerts: [], insights: [], urgentContracts: [] };
   }
@@ -2032,34 +1868,24 @@ async function compareContracts(
           OR: [
             { fileName: { contains: contractNameA, mode: 'insensitive' } },
             { supplierName: { contains: contractNameA, mode: 'insensitive' } },
-          ],
-        },
+          ] },
         include: {
           artifacts: {
             where: { 
               type: { in: ['OVERVIEW', 'RENEWAL', 'FINANCIAL', 'TERMINATION_CLAUSE', 'LIABILITY_CLAUSE'] },
-              status: 'active',
-            },
-          },
-        },
-      }),
+              status: 'active' } } } }),
       prisma.contract.findFirst({
         where: {
           tenantId,
           OR: [
             { fileName: { contains: contractNameB, mode: 'insensitive' } },
             { supplierName: { contains: contractNameB, mode: 'insensitive' } },
-          ],
-        },
+          ] },
         include: {
           artifacts: {
             where: { 
               type: { in: ['OVERVIEW', 'RENEWAL', 'FINANCIAL', 'TERMINATION_CLAUSE', 'LIABILITY_CLAUSE'] },
-              status: 'active',
-            },
-          },
-        },
-      }),
+              status: 'active' } } } }),
     ]);
 
     if (!contractA || !contractB) {
@@ -2071,8 +1897,7 @@ async function compareContracts(
           ? `Could not find either contract. Please check the names.`
           : !contractA 
             ? `Could not find contract matching "${contractNameA}".`
-            : `Could not find contract matching "${contractNameB}".`,
-      };
+            : `Could not find contract matching "${contractNameB}".` };
     }
 
     // Build comparison
@@ -2092,22 +1917,19 @@ async function compareContracts(
       field: 'Supplier',
       valueA: formatValue(contractA.supplierName),
       valueB: formatValue(contractB.supplierName),
-      difference: contractA.supplierName === contractB.supplierName ? 'same' : 'different',
-    });
+      difference: contractA.supplierName === contractB.supplierName ? 'same' : 'different' });
 
     comparison.push({
       field: 'Contract Type',
       valueA: formatValue(contractA.contractType),
       valueB: formatValue(contractB.contractType),
-      difference: contractA.contractType === contractB.contractType ? 'same' : 'different',
-    });
+      difference: contractA.contractType === contractB.contractType ? 'same' : 'different' });
 
     comparison.push({
       field: 'Status',
       valueA: formatValue(contractA.status),
       valueB: formatValue(contractB.status),
-      difference: contractA.status === contractB.status ? 'same' : 'different',
-    });
+      difference: contractA.status === contractB.status ? 'same' : 'different' });
 
     comparison.push({
       field: 'Total Value',
@@ -2115,30 +1937,26 @@ async function compareContracts(
       valueB: formatMoney(contractB.totalValue),
       difference: !contractA.totalValue || !contractB.totalValue ? 'na' :
         contractA.totalValue === contractB.totalValue ? 'same' :
-        Number(contractA.totalValue) > Number(contractB.totalValue) ? 'better_a' : 'better_b',
-    });
+        Number(contractA.totalValue) > Number(contractB.totalValue) ? 'better_a' : 'better_b' });
 
     comparison.push({
       field: 'Start Date',
       valueA: formatDate(contractA.effectiveDate),
       valueB: formatDate(contractB.effectiveDate),
-      difference: contractA.effectiveDate?.getTime() === contractB.effectiveDate?.getTime() ? 'same' : 'different',
-    });
+      difference: contractA.effectiveDate?.getTime() === contractB.effectiveDate?.getTime() ? 'same' : 'different' });
 
     comparison.push({
       field: 'End Date',
       valueA: formatDate(contractA.expirationDate),
       valueB: formatDate(contractB.expirationDate),
       difference: !contractA.expirationDate || !contractB.expirationDate ? 'na' :
-        contractA.expirationDate.getTime() === contractB.expirationDate.getTime() ? 'same' : 'different',
-    });
+        contractA.expirationDate.getTime() === contractB.expirationDate.getTime() ? 'same' : 'different' });
 
     comparison.push({
       field: 'Auto-Renewal',
       valueA: contractA.autoRenewalEnabled ? 'Yes' : 'No',
       valueB: contractB.autoRenewalEnabled ? 'Yes' : 'No',
-      difference: contractA.autoRenewalEnabled === contractB.autoRenewalEnabled ? 'same' : 'different',
-    });
+      difference: contractA.autoRenewalEnabled === contractB.autoRenewalEnabled ? 'same' : 'different' });
 
     // Get artifact data for deeper comparison
     const getArtifactData = (artifacts: Array<{ type?: string; data?: unknown }>, type: string): Record<string, any> => {
@@ -2154,8 +1972,7 @@ async function compareContracts(
         field: 'Notice Period (Days)',
         valueA: termA.noticeRequiredDays ? `${termA.noticeRequiredDays} days` : 'N/A',
         valueB: termB.noticeRequiredDays ? `${termB.noticeRequiredDays} days` : 'N/A',
-        difference: termA.noticeRequiredDays === termB.noticeRequiredDays ? 'same' : 'different',
-      });
+        difference: termA.noticeRequiredDays === termB.noticeRequiredDays ? 'same' : 'different' });
     }
 
     const finA = getArtifactData(contractA.artifacts, 'FINANCIAL');
@@ -2166,8 +1983,7 @@ async function compareContracts(
         field: 'Payment Terms',
         valueA: formatValue(finA.paymentTerms),
         valueB: formatValue(finB.paymentTerms),
-        difference: finA.paymentTerms === finB.paymentTerms ? 'same' : 'different',
-      });
+        difference: finA.paymentTerms === finB.paymentTerms ? 'same' : 'different' });
     }
 
     const liabA = getArtifactData(contractA.artifacts, 'LIABILITY_CLAUSE');
@@ -2178,8 +1994,7 @@ async function compareContracts(
         field: 'Liability Cap',
         valueA: formatValue(liabA.liabilityCap),
         valueB: formatValue(liabB.liabilityCap),
-        difference: liabA.liabilityCap === liabB.liabilityCap ? 'same' : 'different',
-      });
+        difference: liabA.liabilityCap === liabB.liabilityCap ? 'same' : 'different' });
     }
 
     // Generate summary
@@ -2209,8 +2024,7 @@ async function compareContracts(
       contractA: null,
       contractB: null,
       comparison: [],
-      summary: 'Error comparing contracts. Please try again.',
-    };
+      summary: 'Error comparing contracts. Please try again.' };
   }
 }
 
@@ -2237,10 +2051,7 @@ async function countContracts(tenantId: string, supplierName?: string) {
         ...where,
         expirationDate: {
           lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
-          gte: new Date(),
-        },
-      },
-    });
+          gte: new Date() } } });
     
     return { total, active, expiringSoon, draft, expired, supplierName };
   } catch {
@@ -2254,9 +2065,7 @@ async function getSupplierSummary(supplierName: string, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        supplierName: { contains: supplierName, mode: 'insensitive' },
-      },
-    });
+        supplierName: { contains: supplierName, mode: 'insensitive' } } });
     
     const totalValue = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
     const statusCounts = contracts.reduce((acc, c) => {
@@ -2281,8 +2090,7 @@ async function getSupplierSummary(supplierName: string, tenantId: string) {
       activeContracts,
       contractTypes,
       expiringIn90Days: expiringContracts.length,
-      contracts,
-    };
+      contracts };
   } catch {
     return null;
   }
@@ -2312,9 +2120,7 @@ async function getSpendAnalysis(tenantId: string, supplierName?: string) {
         categoryL2: true,
         status: true,
         effectiveDate: true,
-        expirationDate: true,
-      },
-    });
+        expirationDate: true } });
 
     const totalSpend = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
     const annualSpend = contracts.reduce((sum, c) => sum + (Number(c.annualValue) || Number(c.totalValue) || 0), 0);
@@ -2346,8 +2152,7 @@ async function getSpendAnalysis(tenantId: string, supplierName?: string) {
         .slice(0, 10),
       byCategory: Object.entries(byCategory)
         .sort((a, b) => b[1].value - a[1].value),
-      supplierFilter: supplierName,
-    };
+      supplierFilter: supplierName };
   } catch {
     return null;
   }
@@ -2362,10 +2167,7 @@ async function getCostSavingsOpportunities(tenantId: string) {
       take: 10,
       include: {
         contract: {
-          select: { contractTitle: true, supplierName: true },
-        },
-      },
-    });
+          select: { contractTitle: true, supplierName: true } } } });
 
     const totalPotential = savings.reduce((sum, s) => sum + Number(s.potentialSavingsAmount), 0);
     
@@ -2382,8 +2184,7 @@ async function getCostSavingsOpportunities(tenantId: string) {
       opportunities: savings,
       totalPotentialSavings: totalPotential,
       byCategory,
-      count: savings.length,
-    };
+      count: savings.length };
   } catch {
     return { opportunities: [], totalPotentialSavings: 0, byCategory: {}, count: 0 };
   }
@@ -2398,9 +2199,7 @@ async function getTopSuppliers(tenantId: string, topN: number = 10) {
         supplierName: true,
         totalValue: true,
         status: true,
-        expirationDate: true,
-      },
-    });
+        expirationDate: true } });
 
     const supplierStats = contracts.reduce((acc, c) => {
       const supplier = c.supplierName || 'Unknown';
@@ -2427,8 +2226,7 @@ async function getTopSuppliers(tenantId: string, topN: number = 10) {
 
     return {
       suppliers: sorted.map(([name, stats]) => ({ name, ...stats })),
-      totalSuppliers: Object.keys(supplierStats).length,
-    };
+      totalSuppliers: Object.keys(supplierStats).length };
   } catch {
     return { suppliers: [], totalSuppliers: 0 };
   }
@@ -2446,26 +2244,22 @@ async function getRiskAssessment(tenantId: string) {
           { expirationRisk: { in: ['HIGH', 'CRITICAL'] } },
           { daysUntilExpiry: { lte: 30 } },
           { autoRenewalEnabled: true },
-        ],
-      },
+        ] },
       orderBy: { expirationDate: 'asc' },
-      take: 20,
-    });
+      take: 20 });
 
     // Categorize risks
     const byRiskLevel = {
       critical: contracts.filter(c => c.expirationRisk === 'CRITICAL' || (c.daysUntilExpiry && c.daysUntilExpiry <= 7)),
       high: contracts.filter(c => c.expirationRisk === 'HIGH' || (c.daysUntilExpiry && c.daysUntilExpiry <= 30 && c.daysUntilExpiry > 7)),
-      autoRenewal: contracts.filter(c => c.autoRenewalEnabled),
-    };
+      autoRenewal: contracts.filter(c => c.autoRenewalEnabled) };
 
     return {
       contracts,
       byRiskLevel,
       criticalCount: byRiskLevel.critical.length,
       highRiskCount: byRiskLevel.high.length,
-      autoRenewalCount: byRiskLevel.autoRenewal.length,
-    };
+      autoRenewalCount: byRiskLevel.autoRenewal.length };
   } catch {
     return { contracts: [], byRiskLevel: {}, criticalCount: 0, highRiskCount: 0, autoRenewalCount: 0 };
   }
@@ -2478,11 +2272,9 @@ async function getAutoRenewalContracts(tenantId: string) {
       where: {
         tenantId,
         autoRenewalEnabled: true,
-        status: { not: 'CANCELLED' },
-      },
+        status: { not: 'CANCELLED' } },
       orderBy: { expirationDate: 'asc' },
-      take: 20,
-    });
+      take: 20 });
 
     const upcomingRenewals = contracts.filter(c => 
       c.expirationDate && 
@@ -2493,8 +2285,7 @@ async function getAutoRenewalContracts(tenantId: string) {
       contracts,
       totalAutoRenewal: contracts.length,
       upcomingRenewals,
-      upcomingCount: upcomingRenewals.length,
-    };
+      upcomingCount: upcomingRenewals.length };
   } catch {
     return { contracts: [], totalAutoRenewal: 0, upcomingRenewals: [], upcomingCount: 0 };
   }
@@ -2509,9 +2300,7 @@ async function getCategorySpend(tenantId: string) {
         categoryL1: true,
         categoryL2: true,
         totalValue: true,
-        supplierName: true,
-      },
-    });
+        supplierName: true } });
 
     // Group by L1 category
     const byL1 = contracts.reduce((acc, c) => {
@@ -2547,8 +2336,7 @@ async function getCategorySpend(tenantId: string) {
         .map(([name, data]) => ({ name, ...data }))
         .sort((a, b) => b.value - a.value)
         .slice(0, 15),
-      totalCategories: Object.keys(byL1).length,
-    };
+      totalCategories: Object.keys(byL1).length };
   } catch {
     return { byL1Category: [], byL2Category: [], totalCategories: 0 };
   }
@@ -2564,9 +2352,7 @@ async function getPaymentTermsAnalysis(tenantId: string) {
         supplierName: true,
         paymentTerms: true,
         paymentFrequency: true,
-        totalValue: true,
-      },
-    });
+        totalValue: true } });
 
     // Group by payment terms
     const byTerms = contracts.reduce((acc, c) => {
@@ -2584,11 +2370,9 @@ async function getPaymentTermsAnalysis(tenantId: string) {
           terms, 
           count: data.count, 
           value: data.value,
-          contracts: data.contracts.slice(0, 5),
-        }))
+          contracts: data.contracts.slice(0, 5) }))
         .sort((a, b) => b.count - a.count),
-      totalContracts: contracts.length,
-    };
+      totalContracts: contracts.length };
   } catch {
     return { byTerms: [], totalContracts: 0 };
   }
@@ -2611,9 +2395,7 @@ async function getComplianceStatus(tenantId: string, supplierName?: string) {
         status: true,
         expirationDate: true,
         noticePeriodDays: true,
-        totalValue: true,
-      },
-    });
+        totalValue: true } });
 
     // Calculate compliance metrics based on available data
     // Contracts are considered to have issues if they're missing key dates/info
@@ -2633,9 +2415,7 @@ async function getComplianceStatus(tenantId: string, supplierName?: string) {
       contracts: contractsWithIssues.slice(0, 10).map(c => ({
         ...c,
         complianceScore: c.expirationDate && c.noticePeriodDays ? 100 : c.expirationDate ? 50 : 25,
-        issueCount: (!c.expirationDate ? 1 : 0) + (!c.noticePeriodDays ? 1 : 0),
-      })),
-    };
+        issueCount: (!c.expirationDate ? 1 : 0) + (!c.noticePeriodDays ? 1 : 0) })) };
   } catch {
     return { totalContracts: 0, compliantCount: 0, issueCount: 0, contracts: [] };
   }
@@ -2647,10 +2427,8 @@ async function getSupplierPerformance(tenantId: string, supplierName: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        supplierName: { contains: supplierName, mode: 'insensitive' },
-      },
-      orderBy: { effectiveDate: 'asc' },
-    });
+        supplierName: { contains: supplierName, mode: 'insensitive' } },
+      orderBy: { effectiveDate: 'asc' } });
 
     const activeContracts = contracts.filter(c => c.status === 'ACTIVE').length;
     const totalValue = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
@@ -2672,8 +2450,7 @@ async function getSupplierPerformance(tenantId: string, supplierName: string) {
       activeContracts,
       totalValue,
       relationshipMonths,
-      totalContracts: contracts.length,
-    };
+      totalContracts: contracts.length };
   } catch {
     return {
       supplierName,
@@ -2685,8 +2462,7 @@ async function getSupplierPerformance(tenantId: string, supplierName: string) {
       activeContracts: 0,
       totalValue: 0,
       relationshipMonths: 0,
-      totalContracts: 0,
-    };
+      totalContracts: 0 };
   }
 }
 
@@ -2805,8 +2581,7 @@ async function performDeepAnalysis(
           averageValue: 0,
           averageDurationMonths: 0,
           shortestDurationMonths: 0,
-          longestDurationMonths: 0,
-        },
+          longestDurationMonths: 0 },
         contracts: [],
         byCategory: {},
         byStatus: {},
@@ -2815,10 +2590,8 @@ async function performDeepAnalysis(
           expiringIn30Days: 0,
           expiringIn90Days: 0,
           autoRenewalCount: 0,
-          highValueAtRisk: 0,
-        },
-        filters: { supplierName, category, year },
-      };
+          highValueAtRisk: 0 },
+        filters: { supplierName, category, year } };
     }
     
     // Calculate durations
@@ -2842,8 +2615,7 @@ async function performDeepAnalysis(
         expirationDate,
         durationMonths,
         category: c.categoryL1 || 'Uncategorized',
-        daysUntilExpiry,
-      };
+        daysUntilExpiry };
     });
     
     // Calculate summary stats
@@ -2908,8 +2680,7 @@ async function performDeepAnalysis(
         averageValue: contracts.length > 0 ? totalValue / contracts.length : 0,
         averageDurationMonths: Math.round(avgDuration),
         shortestDurationMonths: durations.length > 0 ? Math.min(...durations) : 0,
-        longestDurationMonths: durations.length > 0 ? Math.max(...durations) : 0,
-      },
+        longestDurationMonths: durations.length > 0 ? Math.max(...durations) : 0 },
       contracts: contractsWithDuration.slice(0, 20), // Top 20 by value
       byCategory,
       byStatus,
@@ -2918,10 +2689,8 @@ async function performDeepAnalysis(
         expiringIn30Days,
         expiringIn90Days,
         autoRenewalCount,
-        highValueAtRisk,
-      },
-      filters: { supplierName, category, year },
-    };
+        highValueAtRisk },
+      filters: { supplierName, category, year } };
   } catch {
     return {
       summary: {
@@ -2931,8 +2700,7 @@ async function performDeepAnalysis(
         averageValue: 0,
         averageDurationMonths: 0,
         shortestDurationMonths: 0,
-        longestDurationMonths: 0,
-      },
+        longestDurationMonths: 0 },
       contracts: [],
       byCategory: {},
       byStatus: {},
@@ -2941,10 +2709,8 @@ async function performDeepAnalysis(
         expiringIn30Days: 0,
         expiringIn90Days: 0,
         autoRenewalCount: 0,
-        highValueAtRisk: 0,
-      },
-      filters: { supplierName, category, year },
-    };
+        highValueAtRisk: 0 },
+      filters: { supplierName, category, year } };
   }
 }
 
@@ -2961,11 +2727,8 @@ async function getRateComparison(tenantId: string, supplierName?: string) {
       where: { tenantId },
       include: {
         contract: {
-          select: { contractTitle: true, supplierName: true },
-        },
-      },
-      take: 20,
-    });
+          select: { contractTitle: true, supplierName: true } } },
+      take: 20 });
 
     // Transform to comparison format with market rates
     const comparison = rateCards.map(entry => {
@@ -2978,14 +2741,12 @@ async function getRateComparison(tenantId: string, supplierName?: string) {
         marketRate,
         vsMarket: variance,
         supplier: entry.supplierName || entry.contract?.supplierName || 'Unknown',
-        contractTitle: entry.contract?.contractTitle || 'Unknown',
-      };
+        contractTitle: entry.contract?.contractTitle || 'Unknown' };
     });
 
     return {
       rateCards: comparison,
-      totalRates: rateCards.length,
-    };
+      totalRates: rateCards.length };
   } catch {
     return { rateCards: [], totalRates: 0 };
   }
@@ -3068,11 +2829,9 @@ async function findContractsForComparison(
         OR: [
           { supplierName: { contains: searchTerm, mode: 'insensitive' } },
           { contractTitle: { contains: searchTerm, mode: 'insensitive' } },
-        ],
-      },
+        ] },
       include: {
-        contractMetadata: true,
-      },
+        contractMetadata: true },
       orderBy: { totalValue: 'desc' },
       take: 5, // Get top 5 by value
     });
@@ -3090,10 +2849,8 @@ async function findContractsForComparison(
           type: true,
           title: true,
           data: true,
-          status: true,
-        },
-        take: 20,
-      });
+          status: true },
+        take: 20 });
       
       // Get rate card entries
       const rateCards = await prisma.rateCardEntry.findMany({
@@ -3103,10 +2860,8 @@ async function findContractsForComparison(
           roleOriginal: true,
           dailyRate: true,
           currency: true,
-          unit: true,
-        },
-        take: 20,
-      });
+          unit: true },
+        take: 20 });
       
       // Extract key terms from metadata
       const customFields = (contract.contractMetadata as any)?.customFields || {};
@@ -3128,8 +2883,7 @@ async function findContractsForComparison(
       }
       const metadata = {
         ...(typeof contract.aiMetadata === 'object' && contract.aiMetadata ? (contract.aiMetadata as any) : {}),
-        ...(appliedMetadata as any),
-      };
+        ...(appliedMetadata as any) };
       const keyTerms: string[] = [];
       
       // Parse metadata for key terms
@@ -3151,8 +2905,7 @@ async function findContractsForComparison(
         intellectualProperty: null,
         sla: null,
         warranty: null,
-        insurance: null,
-      };
+        insurance: null };
       
       // Extract clauses from artifacts
       for (const artifact of artifacts) {
@@ -3217,8 +2970,7 @@ async function findContractsForComparison(
           id: a.id,
           type: a.type as string,
           title: a.title || 'Untitled',
-          content: (a.data as Record<string, unknown>) || {},
-        })),
+          content: (a.data as Record<string, unknown>) || {} })),
         metadata,
         keyTerms,
         clauses,
@@ -3226,9 +2978,7 @@ async function findContractsForComparison(
           roleName: r.roleStandardized || r.roleOriginal || 'Unknown Role',
           rate: Number(r.dailyRate) || 0,
           currency: r.currency || 'USD',
-          unit: r.unit || 'day',
-        })),
-      });
+          unit: r.unit || 'day' })) });
     }
     
     return contractsWithData;
@@ -3273,8 +3023,7 @@ async function performContractComparison(
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
-      maximumFractionDigits: 0,
-    }).format(value);
+      maximumFractionDigits: 0 }).format(value);
   };
   
   // Helper function to analyze difference
@@ -3306,8 +3055,7 @@ async function performContractComparison(
           label: 'Total Contract Value',
           value1: formatCurrency(contract1.totalValue, contract1.currency || 'USD'),
           value2: formatCurrency(contract2.totalValue, contract2.currency || 'USD'),
-          analysis: analyzeDifference('totalValue', contract1.totalValue, contract2.totalValue),
-        });
+          analysis: analyzeDifference('totalValue', contract1.totalValue, contract2.totalValue) });
         
         // Generate insight
         const valueDiff = Math.abs(contract1.totalValue - contract2.totalValue);
@@ -3318,8 +3066,7 @@ async function performContractComparison(
         similarities.push({
           field: 'totalValue',
           label: 'Total Contract Value',
-          sharedValue: formatCurrency(contract1.totalValue, contract1.currency || 'USD'),
-        });
+          sharedValue: formatCurrency(contract1.totalValue, contract1.currency || 'USD') });
       }
       
       // Annual value
@@ -3329,8 +3076,7 @@ async function performContractComparison(
           label: 'Annual Value',
           value1: formatCurrency(contract1.annualValue, contract1.currency || 'USD'),
           value2: formatCurrency(contract2.annualValue, contract2.currency || 'USD'),
-          analysis: analyzeDifference('annualValue', contract1.annualValue, contract2.annualValue),
-        });
+          analysis: analyzeDifference('annualValue', contract1.annualValue, contract2.annualValue) });
       }
     }
     
@@ -3344,14 +3090,12 @@ async function performContractComparison(
           value2: `${contract2.durationMonths} months`,
           analysis: contract1.durationMonths > contract2.durationMonths
             ? `${entity1Name} has a longer commitment (${contract1.durationMonths - contract2.durationMonths} months more)`
-            : `${entity2Name} has a longer commitment (${contract2.durationMonths - contract1.durationMonths} months more)`,
-        });
+            : `${entity2Name} has a longer commitment (${contract2.durationMonths - contract1.durationMonths} months more)` });
       } else if (contract1.durationMonths > 0) {
         similarities.push({
           field: 'duration',
           label: 'Contract Duration',
-          sharedValue: `${contract1.durationMonths} months`,
-        });
+          sharedValue: `${contract1.durationMonths} months` });
       }
     }
     
@@ -3363,14 +3107,12 @@ async function performContractComparison(
           label: 'Payment Terms',
           value1: contract1.paymentTerms || 'Not specified',
           value2: contract2.paymentTerms || 'Not specified',
-          analysis: 'Different payment terms may affect cash flow planning',
-        });
+          analysis: 'Different payment terms may affect cash flow planning' });
       } else if (contract1.paymentTerms) {
         similarities.push({
           field: 'paymentTerms',
           label: 'Payment Terms',
-          sharedValue: contract1.paymentTerms,
-        });
+          sharedValue: contract1.paymentTerms });
       }
       
       // Notice period
@@ -3380,8 +3122,7 @@ async function performContractComparison(
           label: 'Notice Period',
           value1: contract1.noticePeriodDays ? `${contract1.noticePeriodDays} days` : 'Not specified',
           value2: contract2.noticePeriodDays ? `${contract2.noticePeriodDays} days` : 'Not specified',
-          analysis: 'Different notice periods affect exit flexibility',
-        });
+          analysis: 'Different notice periods affect exit flexibility' });
       }
     }
     
@@ -3396,8 +3137,7 @@ async function performContractComparison(
           value2: contract2.autoRenewalEnabled ? 'Enabled' : 'Disabled',
           analysis: contract1.autoRenewalEnabled
             ? `${entity1Name} auto-renews - monitor notice period`
-            : `${entity2Name} auto-renews - monitor notice period`,
-        });
+            : `${entity2Name} auto-renews - monitor notice period` });
         
         if (contract1.autoRenewalEnabled || contract2.autoRenewalEnabled) {
           keyInsights.push('Auto-renewal is enabled on one contract - ensure timely review before renewal date');
@@ -3441,8 +3181,7 @@ async function performContractComparison(
               value2: `${formatCurrency(rate2.rate)}/${rate2.unit}`,
               analysis: diff > 0
                 ? `${entity1Name} is ${Math.abs(pctDiff)}% more expensive for this role`
-                : `${entity2Name} is ${Math.abs(pctDiff)}% more expensive for this role`,
-            });
+                : `${entity2Name} is ${Math.abs(pctDiff)}% more expensive for this role` });
           }
         }
       }
@@ -3475,8 +3214,7 @@ async function performContractComparison(
         indemnification: 'Indemnification',
         confidentiality: 'Confidentiality',
         intellectualProperty: 'Intellectual Property',
-        sla: 'Service Level Agreement',
-      };
+        sla: 'Service Level Agreement' };
       
       for (const [clauseKey, label] of Object.entries(clauseLabels)) {
         const clause1 = contract1.clauses[clauseKey];
@@ -3488,24 +3226,21 @@ async function performContractComparison(
             label,
             value1: clause1.substring(0, 200) + (clause1.length > 200 ? '...' : ''),
             value2: clause2.substring(0, 200) + (clause2.length > 200 ? '...' : ''),
-            analysis: 'Clause text differs - recommend legal review',
-          });
+            analysis: 'Clause text differs - recommend legal review' });
         } else if (clause1 && !clause2) {
           differences.push({
             field: `clause_${clauseKey}`,
             label,
             value1: clause1.substring(0, 200) + (clause1.length > 200 ? '...' : ''),
             value2: 'Not found in contract',
-            analysis: `${entity2Name} contract is missing this clause`,
-          });
+            analysis: `${entity2Name} contract is missing this clause` });
         } else if (!clause1 && clause2) {
           differences.push({
             field: `clause_${clauseKey}`,
             label,
             value1: 'Not found in contract',
             value2: clause2.substring(0, 200) + (clause2.length > 200 ? '...' : ''),
-            analysis: `${entity1Name} contract is missing this clause`,
-          });
+            analysis: `${entity1Name} contract is missing this clause` });
         }
       }
     }
@@ -3517,14 +3252,12 @@ async function performContractComparison(
         label: 'Category',
         value1: contract1.categoryL1 || 'Uncategorized',
         value2: contract2.categoryL1 || 'Uncategorized',
-        analysis: 'Contracts are in different categories',
-      });
+        analysis: 'Contracts are in different categories' });
     } else if (contract1.categoryL1) {
       similarities.push({
         field: 'category',
         label: 'Category',
-        sharedValue: contract1.categoryL1,
-      });
+        sharedValue: contract1.categoryL1 });
     }
   }
   
@@ -3588,8 +3321,7 @@ async function performContractComparison(
     similarities,
     summary,
     keyInsights,
-    recommendation,
-  };
+    recommendation };
 }
 
 /**
@@ -3623,8 +3355,7 @@ async function compareContractClauses(
       entity2Clause: contract2 ? 'Contract found but clause not extracted' : null,
       analysis: `Could not find one or both contracts. ${entity1Name}: ${contract1 ? 'found' : 'not found'}, ${entity2Name}: ${contract2 ? 'found' : 'not found'}`,
       differences: [],
-      recommendation: 'Please verify the contract/supplier names.',
-    };
+      recommendation: 'Please verify the contract/supplier names.' };
   }
   
   // Map clause type to key
@@ -3642,8 +3373,7 @@ async function compareContractClauses(
     'sla': 'sla',
     'service level': 'sla',
     'warranty': 'warranty',
-    'insurance': 'insurance',
-  };
+    'insurance': 'insurance' };
   
   const clauseKey = Object.entries(clauseKeyMap).find(([pattern]) => 
     clauseType.toLowerCase().includes(pattern)
@@ -3695,8 +3425,7 @@ async function compareContractClauses(
     entity2Clause: clause2 ?? null,
     analysis,
     differences,
-    recommendation,
-  };
+    recommendation };
 }
 
 // ============================================
@@ -3756,8 +3485,7 @@ async function performGroupComparison(
     categoryBreakdown: {},
     rateComparison: [],
     insights: [],
-    recommendation: '',
-  };
+    recommendation: '' };
   
   // Fetch contracts for each group
   for (const group of groups) {
@@ -3772,8 +3500,7 @@ async function performGroupComparison(
       const year = parseInt(group.year);
       whereClause.startDate = {
         gte: new Date(`${year}-01-01`),
-        lte: new Date(`${year}-12-31`),
-      };
+        lte: new Date(`${year}-12-31`) };
     }
     
     if (group.category) {
@@ -3797,10 +3524,8 @@ async function performGroupComparison(
         status: true,
         categoryL1: true,
         categoryL2: true,
-        currency: true,
-      },
-      orderBy: { totalValue: 'desc' },
-    });
+        currency: true },
+      orderBy: { totalValue: 'desc' } });
     
     // Calculate aggregates
     const totalValue = contracts.reduce((sum, c) => sum + toNumber(c.totalValue), 0);
@@ -3839,9 +3564,7 @@ async function performGroupComparison(
       contracts: contracts.slice(0, 10).map(c => ({
         id: c.id,
         title: c.contractTitle || c.supplierName || 'Untitled',
-        value: toNumber(c.totalValue),
-      })),
-    });
+        value: toNumber(c.totalValue) })) });
     
     // Build category breakdown
     for (const contract of contracts) {
@@ -3869,13 +3592,10 @@ async function performGroupComparison(
       if (contractIds.length > 0) {
         const rates = await prisma.rateCardEntry.findMany({
           where: {
-            contractId: { in: contractIds },
-          },
+            contractId: { in: contractIds } },
           select: {
             roleStandardized: true,
-            dailyRateUSD: true,
-          },
-        });
+            dailyRateUSD: true } });
         
         // Aggregate rates by role
         const roleAvgRates: Record<string, { sum: number; count: number }> = {};
@@ -3903,8 +3623,7 @@ async function performGroupComparison(
       .filter(([, rates]) => rates.some(r => r > 0))
       .map(([role, rates]) => ({
         role: role.charAt(0).toUpperCase() + role.slice(1),
-        rates,
-      }))
+        rates }))
       .sort((a, b) => (b.rates[0] ?? 0) - (a.rates[0] ?? 0));
   }
   
@@ -4017,9 +3736,7 @@ async function getTaxonomyCategories(tenantId: string) {
       orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
       include: {
         parent: { select: { id: true, name: true } },
-        children: { select: { id: true, name: true } },
-      },
-    });
+        children: { select: { id: true, name: true } } } });
 
     // Get top-level categories (L1)
     const topLevel = categories.filter(c => !c.parentId);
@@ -4043,10 +3760,7 @@ async function getTaxonomyCategories(tenantId: string) {
             .map(grandchild => ({
               id: grandchild.id,
               name: grandchild.name,
-              path: grandchild.path,
-            })),
-        })),
-    }));
+              path: grandchild.path })) })) }));
 
     // Calculate totals
     const totalCategories = categories.length;
@@ -4061,9 +3775,7 @@ async function getTaxonomyCategories(tenantId: string) {
         totalCategories,
         totalL1,
         totalL2,
-        totalL3,
-      },
-    };
+        totalL3 } };
   } catch {
     return { hierarchy: [], categories: [], stats: { totalCategories: 0, totalL1: 0, totalL2: 0, totalL3: 0, totalContracts: 0 } };
   }
@@ -4076,16 +3788,12 @@ async function getCategoryDetails(categoryName: string, tenantId: string) {
     const category = await prisma.taxonomyCategory.findFirst({
       where: {
         tenantId,
-        name: { contains: categoryName, mode: 'insensitive' },
-      },
+        name: { contains: categoryName, mode: 'insensitive' } },
       include: {
         parent: { select: { id: true, name: true } },
         children: {
           select: { id: true, name: true, path: true },
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-    });
+          orderBy: { sortOrder: 'asc' } } } });
 
     if (!category) {
       return null;
@@ -4098,8 +3806,7 @@ async function getCategoryDetails(categoryName: string, tenantId: string) {
       description: category.description,
       level: category.level,
       parentId: category.parentId,
-      children: category.children,
-    };
+      children: category.children };
   } catch {
     return null;
   }
@@ -4115,17 +3822,14 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
         OR: [
           { contractTitle: { contains: contractName, mode: 'insensitive' } },
           { supplierName: { contains: contractName, mode: 'insensitive' } },
-        ],
-      },
+        ] },
       select: {
         id: true,
         contractTitle: true,
         supplierName: true,
         categoryL1: true,
         categoryL2: true,
-        procurementCategoryId: true,
-      },
-    });
+        procurementCategoryId: true } });
 
     // Get all categories for suggestion
     const categories = await prisma.taxonomyCategory.findMany({
@@ -4136,9 +3840,7 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
         name: true,
         path: true,
         level: true,
-        keywords: true,
-      },
-    });
+        keywords: true } });
 
     // Simple keyword matching for suggestions
     const contractText = (contract?.contractTitle || contractName).toLowerCase();
@@ -4154,8 +3856,7 @@ async function suggestCategoryForContract(contractName: string, tenantId: string
       contract,
       currentCategory: contract?.procurementCategoryId ? { id: contract.procurementCategoryId, name: contract.categoryL1 || 'Uncategorized' } : null,
       suggestions: suggestions.length > 0 ? suggestions : categories.slice(0, 5),
-      allCategories: categories,
-    };
+      allCategories: categories };
   } catch {
     return { contract: null, currentCategory: null, suggestions: [], allCategories: [] };
   }
@@ -4168,9 +3869,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
     const category = await prisma.taxonomyCategory.findFirst({
       where: {
         tenantId,
-        name: { contains: categoryName, mode: 'insensitive' },
-      },
-    });
+        name: { contains: categoryName, mode: 'insensitive' } } });
 
     if (!category) {
       return null;
@@ -4180,8 +3879,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        procurementCategoryId: category.id,
-      },
+        procurementCategoryId: category.id },
       orderBy: { totalValue: 'desc' },
       take: 20,
       select: {
@@ -4190,9 +3888,7 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
         supplierName: true,
         totalValue: true,
         status: true,
-        expirationDate: true,
-      },
-    });
+        expirationDate: true } });
 
     const totalValue = contracts.reduce((sum, c) => sum + (Number(c.totalValue) || 0), 0);
 
@@ -4200,12 +3896,10 @@ async function getContractsInCategory(categoryName: string, tenantId: string) {
       category: {
         id: category.id,
         name: category.name,
-        path: category.path,
-      },
+        path: category.path },
       contracts,
       totalContracts: contracts.length,
-      totalValue,
-    };
+      totalValue };
   } catch {
     return null;
   }
@@ -4222,8 +3916,7 @@ async function findMasterAgreements(supplierName: string, tenantId: string, year
       tenantId,
       supplierName: { contains: supplierName, mode: 'insensitive' },
       contractType: { in: ['MSA', 'MASTER', 'MASTER_AGREEMENT', 'MASTER SERVICE AGREEMENT'] },
-      status: { notIn: ['EXPIRED', 'CANCELLED', 'ARCHIVED'] },
-    };
+      status: { notIn: ['EXPIRED', 'CANCELLED', 'ARCHIVED'] } };
     
     // If year specified, filter by effective date
     if (year) {
@@ -4231,8 +3924,7 @@ async function findMasterAgreements(supplierName: string, tenantId: string, year
       const endOfYear = new Date(`${year}-12-31`);
       where.effectiveDate = {
         gte: startOfYear,
-        lte: endOfYear,
-      };
+        lte: endOfYear };
     }
 
     const contracts = await prisma.contract.findMany({
@@ -4244,13 +3936,9 @@ async function findMasterAgreements(supplierName: string, tenantId: string, year
             contractTitle: true,
             contractType: true,
             status: true,
-            relationshipType: true,
-          },
-        },
-      },
+            relationshipType: true } } },
       orderBy: { effectiveDate: 'desc' },
-      take: 10,
-    });
+      take: 10 });
     
     return contracts;
   } catch {
@@ -4272,9 +3960,7 @@ async function getContractHierarchy(contractId: string, tenantId: string) {
             supplierName: true,
             status: true,
             effectiveDate: true,
-            expirationDate: true,
-          },
-        },
+            expirationDate: true } },
         childContracts: {
           select: {
             id: true,
@@ -4283,12 +3969,8 @@ async function getContractHierarchy(contractId: string, tenantId: string) {
             relationshipType: true,
             status: true,
             effectiveDate: true,
-            totalValue: true,
-          },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
+            totalValue: true },
+          orderBy: { createdAt: 'desc' } } } });
     
     return contract;
   } catch {
@@ -4302,10 +3984,8 @@ async function getChildContracts(parentContractId: string, tenantId: string) {
     const contracts = await prisma.contract.findMany({
       where: {
         tenantId,
-        parentContractId,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+        parentContractId },
+      orderBy: { createdAt: 'desc' } });
     
     return contracts;
   } catch {
@@ -4335,19 +4015,14 @@ async function createLinkedContractDraft(
         mimeType: 'application/pdf',
         parentContractId,
         relationshipType: relationshipType || `${contractType}_UNDER_MSA`,
-        linkedAt: new Date(),
-      },
+        linkedAt: new Date() },
       include: {
         parentContract: {
           select: {
             id: true,
             contractTitle: true,
             contractType: true,
-            supplierName: true,
-          },
-        },
-      },
-    });
+            supplierName: true } } } });
     
     return contract;
   } catch {
@@ -4373,8 +4048,7 @@ async function findSuitableParent(
         parentContractId: null, // Only top-level contracts
       },
       orderBy: { effectiveDate: 'desc' },
-      take: 5,
-    });
+      take: 5 });
     return activeContracts;
   }
   
@@ -4388,13 +4062,10 @@ async function findRenewalWorkflows(tenantId: string) {
       where: {
         tenantId,
         isActive: true,
-        type: { in: ['RENEWAL', 'APPROVAL'] },
-      },
+        type: { in: ['RENEWAL', 'APPROVAL'] } },
       include: {
-        steps: { orderBy: { order: 'asc' } },
-      },
-      take: 3,
-    });
+        steps: { orderBy: { order: 'asc' } } },
+      take: 3 });
     return workflows;
   } catch {
     return [];
@@ -4411,8 +4082,7 @@ async function startWorkflowExecution(
   try {
     const workflow = await prisma.workflow.findUnique({
       where: { id: workflowId },
-      include: { steps: { orderBy: { order: 'asc' } } },
-    });
+      include: { steps: { orderBy: { order: 'asc' } } } });
 
     if (!workflow) return null;
 
@@ -4431,16 +4101,11 @@ async function startWorkflowExecution(
             stepName: step.name,
             stepOrder: step.order,
             status: step.order === 0 ? 'PENDING' : 'WAITING',
-            assignedTo: step.assignedUser || step.assignedRole,
-          })),
-        },
-      },
+            assignedTo: step.assignedUser || step.assignedRole })) } },
       include: {
         stepExecutions: true,
         workflow: true,
-        contract: true,
-      },
-    });
+        contract: true } });
 
     return execution;
   } catch {
@@ -4460,8 +4125,7 @@ async function getContractContext(contractId: string): Promise<string> {
           select: {
             type: true,
             data: true,
-            updatedAt: true,
-          },
+            updatedAt: true },
           // Get ALL artifacts, not just 5
         },
         // Include parent and child contracts for hierarchy context
@@ -4476,9 +4140,7 @@ async function getContractContext(contractId: string): Promise<string> {
             supplierName: true,
             totalValue: true,
             effectiveDate: true,
-            expirationDate: true,
-          },
-        },
+            expirationDate: true } },
         childContracts: {
           select: {
             id: true,
@@ -4491,13 +4153,10 @@ async function getContractContext(contractId: string): Promise<string> {
             supplierName: true,
             totalValue: true,
             effectiveDate: true,
-            expirationDate: true,
-          },
+            expirationDate: true },
           orderBy: { createdAt: 'desc' },
           take: 20, // Limit to prevent context overflow
-        },
-      },
-    });
+        } } });
 
     if (!contract) return '';
 
@@ -4804,8 +4463,7 @@ Would you like me to:
         suggestions: [
           'Show me all suppliers',
           'Create a new contract',
-        ],
-      };
+        ] };
     }
 
     const contractList = contracts.map((c: { totalValue?: number; contractTitle?: string; name?: string; status?: string; id?: string; expirationDate?: string | Date; value?: number }, i: number) => {
@@ -4841,14 +4499,12 @@ Would you like me to start a renewal for any of these?`,
       sources: contracts.map((c: { contractTitle?: string; name?: string }) => `Contract: ${c.contractTitle || c.name}`),
       suggestedActions: contracts.slice(0, 3).map((c: { contractTitle?: string; name?: string; id?: string }) => ({
         label: `🔄 Renew: ${(c.contractTitle || c.name || '').slice(0, 25)}...`,
-        action: `start-renewal:${c.id}`,
-      })),
+        action: `start-renewal:${c.id}` })),
       suggestions: [
         `What is the total value of ${supplierName} contracts?`,
         `Which ${supplierName} contracts are expiring soon?`,
         'Create a new contract with this supplier',
-      ],
-    };
+      ] };
   },
 
   'list-expiring': (query, context) => {
@@ -4868,8 +4524,7 @@ Your procurement portfolio is in good shape for now!`,
         suggestions: [
           'Show me contracts expiring in 90 days',
           'What is my contract portfolio overview?',
-        ],
-      };
+        ] };
     }
 
     const totalValue = contracts.reduce((sum: number, c: { value?: number | string }) => sum + (Number(c.value) || 0), 0);
@@ -4909,8 +4564,7 @@ I recommend starting the renewal process for critical contracts immediately.`,
         'Start renewal for the most urgent contract',
         'Send reminders to all contract owners',
         'What is the standard renewal process?',
-      ],
-    };
+      ] };
   },
 
   'list-by-status': (query, context) => {
@@ -4923,8 +4577,7 @@ I recommend starting the renewal process for critical contracts immediately.`,
         suggestedActions: [
           { label: '📋 View All Contracts', action: 'view-all-contracts' },
         ],
-        suggestions: ['Show me active contracts', 'Show me all contracts'],
-      };
+        suggestions: ['Show me active contracts', 'Show me all contracts'] };
     }
 
     const contractList = contracts.slice(0, 10).map((c: { contractTitle?: string; name?: string; id?: string; supplierName?: string; value?: number | string }, i: number) => {
@@ -4948,8 +4601,7 @@ ${contracts.length > 10 ? `\n... and ${contracts.length - 10} more` : ''}`,
       suggestions: [
         'Show me contracts expiring soon',
         'Which contracts need approval?',
-      ],
-    };
+      ] };
   },
 
   'contract-count': (query, context) => {
@@ -4977,8 +4629,7 @@ ${counts.expiring > 0 ? `⚠️ You have ${counts.expiring} contract(s) expiring
         'Show me contracts expiring in 90 days',
         'What is the total contract value?',
         'List all suppliers',
-      ],
-    };
+      ] };
   },
 
   'supplier-summary': (query, context) => {
@@ -4991,8 +4642,7 @@ ${counts.expiring > 0 ? `⚠️ You have ${counts.expiring} contract(s) expiring
         suggestedActions: [
           { label: '🔍 Search Suppliers', action: 'search-suppliers' },
         ],
-        suggestions: ['List all suppliers', 'Search for a different supplier'],
-      };
+        suggestions: ['List all suppliers', 'Search for a different supplier'] };
     }
 
     const statusBreakdown = Object.entries(summary.statusBreakdown)
@@ -5023,8 +4673,7 @@ ${summary.expiringIn90Days > 0 ? `⚠️ **Action Required:** ${summary.expiring
         `Show contracts with ${summary.supplierName}`,
         `Which ${summary.supplierName} contracts are expiring?`,
         'Compare with other suppliers',
-      ],
-    };
+      ] };
   },
 
   // ============================================
@@ -5038,8 +4687,7 @@ ${summary.expiringIn90Days > 0 ? `⚠️ **Action Required:** ${summary.expiring
         response: `📊 **Spend Analysis**\n\nI couldn't retrieve spend data at this time. Please try again or check your contracts.`,
         sources: [],
         suggestedActions: [{ label: '📋 View Contracts', action: 'list-contracts' }],
-        suggestions: ['Show all contracts', 'List suppliers'],
-      };
+        suggestions: ['Show all contracts', 'List suppliers'] };
     }
 
     const topSuppliers = spendData.bySupplier.slice(0, 5).map(([name, data]: [string, any], i: number) => 
@@ -5075,8 +4723,7 @@ ${categoryBreakdown}
         'Show cost savings opportunities',
         'What are our top 10 suppliers?',
         'Spend by category breakdown',
-      ],
-    };
+      ] };
   },
 
   'cost-savings': (query, context) => {
@@ -5086,8 +4733,7 @@ ${categoryBreakdown}
         response: `💡 **Cost Savings Opportunities**\n\nNo savings opportunities identified yet. Consider:\n• Analyzing rate cards for competitive pricing\n• Reviewing auto-renewal contracts\n• Consolidating supplier relationships`,
         sources: [],
         suggestedActions: [{ label: '📊 Analyze Spend', action: 'spend-analysis' }],
-        suggestions: ['Show total spend', 'Compare supplier rates'],
-      };
+        suggestions: ['Show total spend', 'Compare supplier rates'] };
     }
 
     const opportunityList = savingsData.opportunities.slice(0, 5).map((opp: { title?: string; potentialSavingsAmount?: number; category?: string; confidence?: string; contract?: { contractTitle?: string } }, i: number) => 
@@ -5115,8 +4761,7 @@ ${opportunityList}
         'How can I implement the top savings?',
         'Show spend by category',
         'Which suppliers are most expensive?',
-      ],
-    };
+      ] };
   },
 
   'top-suppliers': (query, context) => {
@@ -5126,8 +4771,7 @@ ${opportunityList}
         response: `🏆 **Top Suppliers**\n\nNo supplier data available. Add contracts to see your supplier breakdown.`,
         sources: [],
         suggestedActions: [],
-        suggestions: ['Upload a contract', 'Create a contract'],
-      };
+        suggestions: ['Upload a contract', 'Create a contract'] };
     }
 
     const supplierList = topSuppliersData.suppliers.map((s: { name?: string; totalValue?: number; count?: number; activeCount?: number; expiringCount?: number }, i: number) => 
@@ -5153,8 +4797,7 @@ ${supplierList}
         'Show contracts with top supplier',
         'What are our high-risk contracts?',
         'How can I consolidate suppliers?',
-      ],
-    };
+      ] };
   },
 
   'risk-assessment': (query, context) => {
@@ -5164,8 +4807,7 @@ ${supplierList}
         response: `✅ **Risk Assessment**\n\nNo high-risk contracts identified! Your contract portfolio looks healthy.`,
         sources: ['Risk Analysis'],
         suggestedActions: [{ label: '📋 View All Contracts', action: 'list-contracts' }],
-        suggestions: ['Show expiring contracts', 'List auto-renewal contracts'],
-      };
+        suggestions: ['Show expiring contracts', 'List auto-renewal contracts'] };
     }
 
     const riskList = riskData.contracts.slice(0, 5).map((c: { expirationRisk?: string; contractTitle?: string; id?: string; daysUntilExpiry?: number; supplierName?: string; autoRenewalEnabled?: boolean }, i: number) => {
@@ -5195,8 +4837,7 @@ ${riskList}
         'Start renewal for critical contracts',
         'Disable auto-renewal on specific contracts',
         'Show me all auto-renewal contracts',
-      ],
-    };
+      ] };
   },
 
   'auto-renewals': (query, context) => {
@@ -5206,8 +4847,7 @@ ${riskList}
         response: `🔄 **Auto-Renewal Contracts**\n\nNo contracts have auto-renewal enabled.`,
         sources: [],
         suggestedActions: [],
-        suggestions: ['Show expiring contracts', 'List all contracts'],
-      };
+        suggestions: ['Show expiring contracts', 'List all contracts'] };
     }
 
     const contractList = autoRenewalData.contracts.slice(0, 8).map((c: { expirationDate?: string | Date; daysUntilExpiry?: number; contractTitle?: string; id?: string; supplierName?: string }, i: number) => {
@@ -5235,8 +4875,7 @@ ${contractList}
         'Disable auto-renewal for a specific contract',
         'What contracts are renewing next month?',
         'Show high-value auto-renewal contracts',
-      ],
-    };
+      ] };
   },
 
   'category-spend': (query, context) => {
@@ -5246,8 +4885,7 @@ ${contractList}
         response: `📊 **Category Spend**\n\nNo category data available. Categorize your contracts for better insights.`,
         sources: [],
         suggestedActions: [],
-        suggestions: ['Show all contracts', 'Upload a contract'],
-      };
+        suggestions: ['Show all contracts', 'Upload a contract'] };
     }
 
     const l1List = categoryData.byL1Category.slice(0, 6).map((cat: { name?: string; value?: number; count?: number; supplierCount?: number }, i: number) => 
@@ -5273,8 +4911,7 @@ ${l1List}
         'Show IT spend in detail',
         'Which category has most suppliers?',
         'Compare categories year over year',
-      ],
-    };
+      ] };
   },
 
   'payment-terms': (query, context) => {
@@ -5284,8 +4921,7 @@ ${l1List}
         response: `💳 **Payment Terms**\n\nNo payment terms data available.`,
         sources: [],
         suggestedActions: [],
-        suggestions: ['Show all contracts'],
-      };
+        suggestions: ['Show all contracts'] };
     }
 
     const termsList = paymentData.byTerms.slice(0, 5).map((t: { terms?: string; count?: number; value?: number }, i: number) => 
@@ -5310,8 +4946,7 @@ ${termsList}
         'Which suppliers offer Net 90?',
         'Show contracts with early payment discounts',
         'Calculate cash flow impact of term changes',
-      ],
-    };
+      ] };
   },
 
   'compliance-status': (query, context) => {
@@ -5321,8 +4956,7 @@ ${termsList}
         response: `✅ **Compliance Status**\n\nAll contracts are compliant! No issues detected.`,
         sources: ['Compliance Engine'],
         suggestedActions: [{ label: '📋 View All Contracts', action: 'list-contracts' }],
-        suggestions: ['Show contract audit trail', 'List contracts by category'],
-      };
+        suggestions: ['Show contract audit trail', 'List contracts by category'] };
     }
 
     const issueList = complianceData.contracts.slice(0, 5).map((c: { complianceScore?: number; contractTitle?: string; id?: string; issueCount?: number; supplierName?: string; lastAuditDate?: string }, i: number) => {
@@ -5352,8 +4986,7 @@ ${issueList}
         'What are the common compliance issues?',
         'Schedule audits for non-compliant contracts',
         'Show contracts missing required clauses',
-      ],
-    };
+      ] };
   },
 
   'supplier-performance': (query, context) => {
@@ -5363,8 +4996,7 @@ ${issueList}
         response: `📊 **Supplier Performance**\n\nNo performance data available${supplierName ? ` for ${supplierName}` : ''}. Add performance metrics to track supplier quality.`,
         sources: [],
         suggestedActions: [{ label: '📋 View Contracts', action: 'list-contracts' }],
-        suggestions: ['Show all suppliers', 'Add performance metrics'],
-      };
+        suggestions: ['Show all suppliers', 'Add performance metrics'] };
     }
 
     const scoreIcon = performanceData.overallScore >= 80 ? '🟢' : performanceData.overallScore >= 60 ? '🟡' : '🔴';
@@ -5403,8 +5035,7 @@ ${performanceData.recentIssues?.length > 0 ? performanceData.recentIssues.map((i
         `Show contracts with ${performanceData.supplierName}`,
         `Compare ${performanceData.supplierName} to alternatives`,
         'What are this supplier\'s strengths?',
-      ],
-    };
+      ] };
   },
 
   'rate-comparison': (query, context) => {
@@ -5414,8 +5045,7 @@ ${performanceData.recentIssues?.length > 0 ? performanceData.recentIssues.map((i
         response: `📊 **Rate Comparison**\n\nNo rate card data available${supplierName ? ` for ${supplierName}` : ''}. Upload rate cards to compare pricing.`,
         sources: [],
         suggestedActions: [{ label: '📤 Upload Rate Card', action: 'upload-rate-card' }],
-        suggestions: ['Upload a rate card', 'Show all suppliers'],
-      };
+        suggestions: ['Upload a rate card', 'Show all suppliers'] };
     }
 
     const rateList = rateData.rateCards.slice(0, 5).map((card: { roleName?: string; serviceType?: string; rate?: number; marketRate?: number; vsMarket?: number }, i: number) => {
@@ -5446,8 +5076,7 @@ ${avgVariance > 5 ? '⚠️ *Your rates are above market average. Consider reneg
         'Which roles are most expensive?',
         'Compare rates across suppliers',
         'Negotiate lower rates with this supplier',
-      ],
-    };
+      ] };
   },
 
   'negotiate-terms': (query, context) => {
@@ -5490,8 +5119,7 @@ ${avgVariance > 5 ? '⚠️ *Your rates are above market average. Consider reneg
         'What is our total spend with this supplier?',
         'Compare our rates to market benchmarks',
         'Show similar contracts for comparison',
-      ],
-    };
+      ] };
   },
 
   // ============================================
@@ -5544,8 +5172,7 @@ Please select which contract to link to, or I can help you find the right one.`}
           { label: '📅 Schedule Kickoff', action: 'schedule-meeting' },
         ] : parentContracts.slice(0, 3).map((p: { contractTitle?: string; contractType?: string; id?: string }) => ({
           label: `🔗 Link to ${(p.contractTitle || p.contractType || '').slice(0, 20)}...`,
-          action: `select-parent:${p.id}`,
-        })),
+          action: `select-parent:${p.id}` })),
         suggestions: [
           'Show me the terms of the MSA',
           'What SOWs already exist under this MSA?',
@@ -5560,10 +5187,7 @@ Please select which contract to link to, or I can help you find the right one.`}
           parentContracts: parentContracts.map((p: { id?: string; contractTitle?: string; contractType?: string }) => ({
             id: p.id,
             title: p.contractTitle,
-            type: p.contractType,
-          })),
-        },
-      };
+            type: p.contractType })) } };
     }
 
     // No parent contracts found
@@ -5594,9 +5218,7 @@ I couldn't find an existing Master Agreement with ${supplierName}${parentYear ? 
         action: 'create_linked',
         contractType,
         supplierName,
-        needsParent: true,
-      },
-    };
+        needsParent: true } };
   },
 
   'find-master-agreement': (query, context) => {
@@ -5627,8 +5249,7 @@ I couldn't find any active Master Agreements with "${supplierName}".
           `Create MSA with ${supplierName}`,
           'Show all active master agreements',
           'List suppliers without MSAs',
-        ],
-      };
+        ] };
     }
 
     const msaList = masterAgreements.map((msa: { effectiveDate?: string | Date; expirationDate?: string | Date; childContracts?: unknown[]; totalValue?: number | string; contractTitle?: string; status?: string; id?: string }, i: number) => {
@@ -5657,16 +5278,14 @@ ${msaList}
       sources: masterAgreements.map((m: { contractTitle?: string }) => `MSA: ${m.contractTitle}`),
       suggestedActions: masterAgreements.slice(0, 2).map((m: { contractTitle?: string; id?: string }) => ({
         label: `📝 Create SOW under ${(m.contractTitle || 'MSA').slice(0, 15)}...`,
-        action: `create-sow:${m.id}`,
-      })).concat([
+        action: `create-sow:${m.id}` })).concat([
         { label: '🔗 View Contract Tree', action: `show-hierarchy:${masterAgreements[0].id}` },
       ]),
       suggestions: [
         `Create a SOW under the ${masterAgreements[0].contractTitle || 'MSA'}`,
         'Show all linked contracts',
         'What is the total value of this relationship?',
-      ],
-    };
+      ] };
   },
 
   'show-hierarchy': (query, context) => {
@@ -5679,8 +5298,7 @@ ${msaList}
         suggestedActions: [
           { label: '🔍 Search Contracts', action: 'search-contracts' },
         ],
-        suggestions: ['Show me all master agreements'],
-      };
+        suggestions: ['Show me all master agreements'] };
     }
 
     const parent = contract.parentContract;
@@ -5726,8 +5344,7 @@ ${hierarchyView}
         'Create a new SOW under this MSA',
         'Show spending breakdown by SOW',
         'When do these contracts expire?',
-      ],
-    };
+      ] };
   },
 
   // ============================================
@@ -5764,8 +5381,7 @@ Would you like me to create a detailed risk report or schedule reviews for these
       'Show me details for Acme Corp MSA',
       'What are common risk patterns?',
       'Create a risk mitigation plan',
-    ],
-  }),
+    ] }),
 
   'expire': (query, context) => ({
     response: `I found **12 contracts expiring in the next 30 days**:
@@ -5789,8 +5405,7 @@ I recommend sending renewal reminders immediately for the critical contracts.`,
     suggestions: [
       'What is the renewal process for Acme Corp?',
       'Show me all auto-renewing contracts',
-    ],
-  }),
+    ] }),
 
   'pending approvals': (query, context) => ({
     response: `You have **8 pending approvals** across different workflows:
@@ -5809,8 +5424,7 @@ Would you like me to open the approval interface?`,
       { label: '✅ Approve All Standard Items', action: 'bulk-approve' },
       { label: '👀 Review Urgent Items', action: 'review-urgent' },
     ],
-    suggestions: ['Show me the Global Services Agreement', 'Who else needs to approve these?'],
-  }),
+    suggestions: ['Show me the Global Services Agreement', 'Who else needs to approve these?'] }),
 
   'summarize': (query, context) => ({
     response: `**Contract Summary: Master Service Agreement**
@@ -5838,8 +5452,7 @@ Would you like a detailed risk report?`,
       { label: '📅 Schedule Renewal Meeting', action: 'schedule-renewal' },
       { label: '⚠️ View Detailed Risks', action: 'view-risks' },
     ],
-    suggestions: ['What are the active SOWs?', 'Compare to similar MSAs'],
-  }),
+    suggestions: ['What are the active SOWs?', 'Compare to similar MSAs'] }),
 
   'renew-workflow': (query, context) => {
     const { contractName, supplierName, matchedContracts, workflows } = context;
@@ -5883,9 +5496,7 @@ Just let me know which option you prefer!`,
           ready: true,
           contractId: contract.id,
           contractName: contract.name || contract.contractTitle,
-          action: 'renew',
-        },
-      };
+          action: 'renew' } };
     }
     
     return {
@@ -5909,8 +5520,7 @@ What would you like to do?`,
         'Show me contracts expiring in 30 days',
         'List all contracts with [supplier name]',
         'Create a new MSA agreement',
-      ],
-    };
+      ] };
   },
 
   // ============================================
@@ -5931,8 +5541,7 @@ What would you like to do?`,
           'Create standard indirect procurement taxonomy',
           'What categories should I use?',
           'Show me sample taxonomy structures',
-        ],
-      };
+        ] };
     }
 
     const { stats, hierarchy } = taxonomyData;
@@ -5968,8 +5577,7 @@ ${categoryList}
         'Show IT & Technology categories',
         'What contracts are in Professional Services?',
         'Show spend by category',
-      ],
-    };
+      ] };
   },
 
   'category-details': (query, context) => {
@@ -5985,8 +5593,7 @@ ${categoryList}
           'Show all categories',
           'What categories exist?',
           'List IT categories',
-        ],
-      };
+        ] };
     }
 
     const { name, code, description, level, parent, children, contractCount, totalSpend, sampleContracts } = categoryDetails;
@@ -6029,8 +5636,7 @@ ${contractList}`,
         `Show all contracts in ${name}`,
         `What's the spend breakdown for ${name}?`,
         'Show parent category',
-      ],
-    };
+      ] };
   },
 
   'suggest-category': (query, context) => {
@@ -6040,8 +5646,7 @@ ${contractList}`,
         response: `🏷️ **Category Suggestion**\n\nI couldn't analyze "${contractName}". Make sure the contract exists in the system.`,
         sources: [],
         suggestedActions: [],
-        suggestions: ['Show all contracts', 'List categories'],
-      };
+        suggestions: ['Show all contracts', 'List categories'] };
     }
 
     const { contract, currentCategory, suggestions, allCategories } = categorySuggestion;
@@ -6064,8 +5669,7 @@ ${suggestions.slice(0, 3).map((s: { name?: string; code?: string }, i: number) =
         suggestions: [
           'Show category details',
           'List all categories',
-        ],
-      };
+        ] };
     }
 
     const suggestionList = suggestions.length > 0
@@ -6092,8 +5696,7 @@ ${suggestionList}
         'Show all categories',
         'What category fits IT services?',
         'Browse Professional Services',
-      ],
-    };
+      ] };
   },
 
   'browse-taxonomy': (query, context) => {
@@ -6105,8 +5708,7 @@ ${suggestionList}
         suggestedActions: [
           { label: '📂 Browse Categories', action: 'list-categories' },
         ],
-        suggestions: ['Show all categories', 'List uncategorized contracts'],
-      };
+        suggestions: ['Show all categories', 'List uncategorized contracts'] };
     }
 
     const { category, contracts, totalContracts, totalValue } = categoryContracts;
@@ -6138,8 +5740,7 @@ ${totalContracts > 10 ? `\n*Showing 10 of ${totalContracts} contracts.*` : ''}`,
         `Show spend breakdown for ${category.name}`,
         `High-value ${category.name} contracts`,
         'Show all categories',
-      ],
-    };
+      ] };
   },
 
   'default': (query, context) => ({
@@ -6162,9 +5763,7 @@ Could you provide more details about what you'd like to know?`,
       'Show me all high-risk contracts',
       'What contracts expire soon?',
       'Summarize my pending approvals',
-    ],
-  }),
-};
+    ] }) };
 
  
 function selectResponse(query: string, context: Record<string, any>) {
@@ -6180,30 +5779,26 @@ function selectResponse(query: string, context: Record<string, any>) {
       return mockAIResponses['list-by-supplier']?.(query, {
         ...context,
         contracts: context.contracts,
-        supplierName: context.intent.entities.supplierName,
-      });
+        supplierName: context.intent.entities.supplierName });
     }
     if (context.intent.action === 'list_expiring' && context.contracts) {
       return mockAIResponses['list-expiring']?.(query, {
         ...context,
         contracts: context.contracts,
         daysUntilExpiry: context.intent.entities.daysUntilExpiry || 30,
-        supplierName: context.intent.entities.supplierName,
-      });
+        supplierName: context.intent.entities.supplierName });
     }
     if (context.intent.action === 'list_by_status' && context.contracts) {
       return mockAIResponses['list-by-status']?.(query, {
         ...context,
         contracts: context.contracts,
-        status: context.intent.entities.status,
-      });
+        status: context.intent.entities.status });
     }
     if (context.intent.action === 'list_by_value' && context.contracts) {
       return mockAIResponses['list-by-status']?.(query, {
         ...context,
         contracts: context.contracts,
-        status: 'HIGH VALUE',
-      });
+        status: 'HIGH VALUE' });
     }
   }
 
@@ -6212,14 +5807,12 @@ function selectResponse(query: string, context: Record<string, any>) {
     if (context.intent.action === 'count' && context.counts) {
       return mockAIResponses['contract-count']?.(query, {
         ...context,
-        counts: context.counts,
-      });
+        counts: context.counts });
     }
     if (context.intent.action === 'summarize' && context.summary) {
       return mockAIResponses['supplier-summary']?.(query, {
         ...context,
-        summary: context.summary,
-      });
+        summary: context.summary });
     }
   }
 
@@ -6232,88 +5825,77 @@ function selectResponse(query: string, context: Record<string, any>) {
     if (context.intent.action === 'spend_analysis' && context.spendData) {
       return mockAIResponses['spend-analysis']?.(query, {
         ...context,
-        spendData: context.spendData,
-      });
+        spendData: context.spendData });
     }
     
     // Cost Savings Opportunities
     if (context.intent.action === 'savings_opportunities' && context.savingsData) {
       return mockAIResponses['cost-savings']?.(query, {
         ...context,
-        savingsData: context.savingsData,
-      });
+        savingsData: context.savingsData });
     }
     
     // Risk Assessment
     if (context.intent.action === 'risk_assessment' && context.riskData) {
       return mockAIResponses['risk-assessment']?.(query, {
         ...context,
-        riskData: context.riskData,
-      });
+        riskData: context.riskData });
     }
     
     // Compliance Status
     if (context.intent.action === 'compliance_status' && context.complianceData) {
       return mockAIResponses['compliance-status']?.(query, {
         ...context,
-        complianceData: context.complianceData,
-      });
+        complianceData: context.complianceData });
     }
     
     // Supplier Performance
     if (context.intent.action === 'supplier_performance' && context.performanceData) {
       return mockAIResponses['supplier-performance']?.(query, {
         ...context,
-        performanceData: context.performanceData,
-      });
+        performanceData: context.performanceData });
     }
     
     // Rate Comparison
     if (context.intent.action === 'rate_comparison' && context.rateData) {
       return mockAIResponses['rate-comparison']?.(query, {
         ...context,
-        rateData: context.rateData,
-      });
+        rateData: context.rateData });
     }
     
     // Top Suppliers
     if (context.intent.action === 'top_suppliers' && context.topSuppliersData) {
       return mockAIResponses['top-suppliers']?.(query, {
         ...context,
-        topSuppliersData: context.topSuppliersData,
-      });
+        topSuppliersData: context.topSuppliersData });
     }
     
     // Auto-renewals
     if (context.intent.action === 'auto_renewals' && context.autoRenewalData) {
       return mockAIResponses['auto-renewals']?.(query, {
         ...context,
-        autoRenewalData: context.autoRenewalData,
-      });
+        autoRenewalData: context.autoRenewalData });
     }
     
     // Category Spend
     if (context.intent.action === 'category_spend' && context.categoryData) {
       return mockAIResponses['category-spend']?.(query, {
         ...context,
-        categoryData: context.categoryData,
-      });
+        categoryData: context.categoryData });
     }
     
     // Payment Terms
     if (context.intent.action === 'payment_terms' && context.paymentData) {
       return mockAIResponses['payment-terms']?.(query, {
         ...context,
-        paymentData: context.paymentData,
-      });
+        paymentData: context.paymentData });
     }
     
     // Negotiation Assistance
     if (context.intent.action === 'negotiate') {
       return mockAIResponses['negotiate-terms']?.(query, {
         ...context,
-        supplierName: context.intent.entities.supplierName,
-      });
+        supplierName: context.intent.entities.supplierName });
     }
   }
 
@@ -6326,8 +5908,7 @@ function selectResponse(query: string, context: Record<string, any>) {
     if (context.intent.action === 'list_categories' && context.taxonomyData) {
       return mockAIResponses['list-categories']?.(query, {
         ...context,
-        taxonomyData: context.taxonomyData,
-      });
+        taxonomyData: context.taxonomyData });
     }
     
     // Category details
@@ -6335,8 +5916,7 @@ function selectResponse(query: string, context: Record<string, any>) {
       return mockAIResponses['category-details']?.(query, {
         ...context,
         categoryDetails: context.categoryDetails,
-        categoryName: context.intent.entities.category,
-      });
+        categoryName: context.intent.entities.category });
     }
     
     // Suggest category for contract
@@ -6344,8 +5924,7 @@ function selectResponse(query: string, context: Record<string, any>) {
       return mockAIResponses['suggest-category']?.(query, {
         ...context,
         categorySuggestion: context.categorySuggestion,
-        contractName: context.intent.entities.contractName,
-      });
+        contractName: context.intent.entities.contractName });
     }
     
     // Browse taxonomy / contracts in category
@@ -6353,8 +5932,7 @@ function selectResponse(query: string, context: Record<string, any>) {
       return mockAIResponses['browse-taxonomy']?.(query, {
         ...context,
         categoryContracts: context.categoryContracts,
-        categoryName: context.intent.entities.category,
-      });
+        categoryName: context.intent.entities.category });
     }
   }
 
@@ -6370,8 +5948,7 @@ function selectResponse(query: string, context: Record<string, any>) {
         contractName: context.intent.entities.contractName,
         supplierName: context.intent.entities.supplierName,
         matchedContracts: context.matchedContracts,
-        workflows: context.workflows,
-      });
+        workflows: context.workflows });
     }
     
     // Handle create_linked workflow (e.g., "start a SoW with supplier X linking to master agreement")
@@ -6384,8 +5961,7 @@ function selectResponse(query: string, context: Record<string, any>) {
         parentYear: context.intent.entities.parentYear,
         masterAgreements: context.masterAgreements,
         parentContracts: context.parentContracts || context.masterAgreements,
-        creationWorkflows: context.creationWorkflows,
-      });
+        creationWorkflows: context.creationWorkflows });
     }
   }
   
@@ -6401,8 +5977,7 @@ function selectResponse(query: string, context: Record<string, any>) {
         return mockAIResponses['show-hierarchy']?.(query, {
           ...context,
           contract: context.contractHierarchy,
-          contractName: context.intent.entities.contractName,
-        });
+          contractName: context.intent.entities.contractName });
       } else {
         // No contract found - return a helpful message
         return {
@@ -6416,8 +5991,7 @@ function selectResponse(query: string, context: Record<string, any>) {
             'Show me all contracts',
             'List contracts by supplier',
             'What contracts are active?',
-          ],
-        };
+          ] };
       }
     }
     
@@ -6426,8 +6000,7 @@ function selectResponse(query: string, context: Record<string, any>) {
       return mockAIResponses['link-existing-contract']?.(query, {
         ...context,
         childContractName: context.intent.entities.childContractName,
-        parentContractName: context.intent.entities.parentContractName,
-      });
+        parentContractName: context.intent.entities.parentContractName });
     }
   }
 
@@ -6488,8 +6061,7 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
           k: searchDepth,
           rerank: true,
           expandQuery: true,
-          filters: context?.tenantId ? { tenantId: context.tenantId } : {},
-        });
+          filters: context?.tenantId ? { tenantId: context.tenantId } : {} });
 
         if (searchResults.length > 0) {
           ragSearchResults = searchResults; // Store for returning to frontend
@@ -6612,8 +6184,7 @@ ${intentEntities?.isClarificationRequest ? '- User seems to be following up or c
       { role: 'system', content: systemPrompt },
       ...conversationHistory.slice(-10).map((msg: { role?: string; content?: string }) => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content || '',
-      })),
+        content: msg.content || '' })),
       { role: 'user', content: message },
     ];
 
@@ -6621,8 +6192,7 @@ ${intentEntities?.isClarificationRequest ? '- User seems to be following up or c
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.7,
-      max_tokens: 1500,
-    });
+      max_tokens: 1500 });
 
     const responseContent = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
 
@@ -6633,8 +6203,7 @@ ${intentEntities?.isClarificationRequest ? '- User seems to be following up or c
           contractName: r.contractName || 'Unknown Contract',
           score: r.score || 0.85,
           text: (r as any).text?.slice(0, 200) + '...' || r.content?.slice(0, 200) + '...' || '',
-          chunkType: (r as any).metadata?.chunkType || 'content',
-        }))
+          chunkType: (r as any).metadata?.chunkType || 'content' }))
       : [];
 
     // Generate smart, context-aware suggested actions based on intent and results
@@ -6650,8 +6219,7 @@ ${intentEntities?.isClarificationRequest ? '- User seems to be following up or c
       confidence: ragSearchResults.length > 0 ? 0.95 : 0.85,
       intent: { type: context?.intent?.type || 'general' },
       suggestedActions: smartSuggestedActions,
-      suggestions: smartSuggestions,
-    };
+      suggestions: smartSuggestions };
   } catch (error: unknown) {
     throw new Error(`OpenAI API error: ${error instanceof Error ? error.message : String(error)}`);
   }
@@ -6799,19 +6367,14 @@ function shouldUseRAG(query: string, intentEntities?: Record<string, any>): bool
   return ragKeywords.some(keyword => lowerQuery.includes(keyword));
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
     const { message, contractId, context: initialContext, conversationHistory, conversationId: providedConversationId } = await request.json()
     let context = initialContext || {};
 
     if (!message) {
-      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Message is required', 400);
     }
 
     // ============================================
@@ -6844,10 +6407,7 @@ export async function POST(request: NextRequest) {
 
     // Always use real OpenAI with real database data
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file.' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file.', 500);
     }
 
     // Detect intent from the resolved message (with references resolved)
@@ -6875,8 +6435,7 @@ export async function POST(request: NextRequest) {
         daysUntilExpiry: daysUntilExpiry,
         riskLevel: daysUntilExpiry !== null && daysUntilExpiry <= 30 ? 'high' : 
                    daysUntilExpiry !== null && daysUntilExpiry <= 90 ? 'medium' : 'low',
-        type: c.contractType || c.type || 'CONTRACT',
-      };
+        type: c.contractType || c.type || 'CONTRACT' };
     };
     
     // Fetch proactive insights on first message or status/dashboard queries
@@ -6906,8 +6465,7 @@ export async function POST(request: NextRequest) {
       const contractSummary = await prisma.contract.aggregate({
         where: { tenantId },
         _count: { id: true },
-        _sum: { totalValue: true },
-      });
+        _sum: { totalValue: true } });
       
       const expiringCount = await prisma.contract.count({
         where: { 
@@ -6916,8 +6474,7 @@ export async function POST(request: NextRequest) {
             lte: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000) // Next 90 days
           },
           status: 'ACTIVE'
-        },
-      });
+        } });
 
       additionalContext += `\n\n**📊 YOUR CONTRACT PORTFOLIO SUMMARY:**`;
       additionalContext += `\n- Total Contracts: ${contractSummary._count.id}`;
@@ -6958,8 +6515,7 @@ export async function POST(request: NextRequest) {
           expirationDate: intel.contract.expirationDate ? new Date(intel.contract.expirationDate).toISOString() : null,
           daysUntilExpiry: intel.contract.daysUntilExpiry,
           riskLevel: intel.risks.level?.toLowerCase() || 'medium',
-          type: intel.contract.type,
-        }];
+          type: intel.contract.type }];
 
         // Build comprehensive context from artifacts
         additionalContext += `\n\n**📄 CURRENT CONTRACT INTELLIGENCE:**\n`;
@@ -7047,8 +6603,7 @@ export async function POST(request: NextRequest) {
               filters: { 
                 tenantId,
                 contractIds: [contractId], // Scope to this contract only
-              },
-            });
+              } });
 
             if (contractSpecificResults.length > 0) {
               additionalContext += `\n\n**📑 RELEVANT CONTRACT SECTIONS (from RAG search):**\n`;
@@ -7104,8 +6659,7 @@ export async function POST(request: NextRequest) {
             { contractTitle: { contains: intent.entities.contractName, mode: 'insensitive' } },
             { supplierName: { contains: intent.entities.contractName, mode: 'insensitive' } },
             { fileName: { contains: intent.entities.contractName, mode: 'insensitive' } },
-          ],
-        },
+          ] },
         select: {
           id: true,
           contractTitle: true,
@@ -7114,10 +6668,8 @@ export async function POST(request: NextRequest) {
           totalValue: true,
           expirationDate: true,
           contractType: true,
-          fileName: true,
-        },
-        take: 3,
-      });
+          fileName: true },
+        take: 3 });
 
       if (matchingContracts.length > 0) {
         // Use the first matching contract (or the best match)
@@ -7127,8 +6679,7 @@ export async function POST(request: NextRequest) {
         // Add contract preview card
         contractPreviews = matchingContracts.map(c => formatContractForPreview({
           ...c,
-          name: c.contractTitle || c.fileName,
-        }));
+          name: c.contractTitle || c.fileName }));
         
         additionalContext += `\n\n**📄 Analyzing: [${contractTitle}](/contracts/${targetContract.id})**\n`;
         additionalContext += `- Supplier: ${targetContract.supplierName || 'Not specified'}\n`;
@@ -7146,8 +6697,7 @@ export async function POST(request: NextRequest) {
             filters: { 
               tenantId,
               contractIds: [targetContract.id], // Scope to this specific contract
-            },
-          });
+            } });
 
           if (contractRagResults.length > 0) {
             additionalContext += `\n\n**📑 RELEVANT SECTIONS FROM ${contractTitle.toUpperCase()}:**\n`;
@@ -7241,8 +6791,7 @@ export async function POST(request: NextRequest) {
           memorandum: 'Memoranda',
           amendment: 'Amendments',
           addendum: 'Addenda',
-          unknown: 'Unknown Document Types',
-        };
+          unknown: 'Unknown Document Types' };
         const label = typeLabels[intent.entities.documentType] || intent.entities.documentType;
         additionalContext = `\n\n**📄 ${label}:**\n${contracts.map(c => 
           `- [${c.contractTitle}](/contracts/${c.id}) - Supplier: ${c.supplierName}, Status: ${c.status}, Type: ${c.documentClassification || 'contract'}`
@@ -7270,8 +6819,7 @@ export async function POST(request: NextRequest) {
           k: 8,
           rerank: true,
           expandQuery: true,
-          filters: { tenantId },
-        });
+          filters: { tenantId } });
 
         if (ragResults.length > 0) {
           contractPreviews = ragResults.slice(0, 5).map(r => ({
@@ -7282,8 +6830,7 @@ export async function POST(request: NextRequest) {
             value: Number(r.totalValue || 0),
             matchScore: Math.round(r.score * 100),
             riskLevel: 'medium',
-            type: 'CONTRACT',
-          }));
+            type: 'CONTRACT' }));
 
           if (intent.action === 'semantic_search') {
             additionalContext += `\n\n**🔍 Semantic Search Results for "${searchQuery}":**\n\n`;
@@ -7325,8 +6872,7 @@ export async function POST(request: NextRequest) {
           supplierName: intent.entities.supplierName,
           category: intent.entities.category,
           year: intent.entities.timePeriod,
-          analysisAspects: intent.entities.analysisAspects,
-        });
+          analysisAspects: intent.entities.analysisAspects });
         
         // Build comprehensive analysis context
         const filterDesc = [
@@ -7775,8 +7321,7 @@ export async function POST(request: NextRequest) {
           const updateResult = await handleUpdateActions(intent as any, {
             tenantId,
             userId: undefined,
-            currentContractId: contractId,
-          });
+            currentContractId: contractId });
           
           if (updateResult.success) {
             additionalContext += `\n\n${updateResult.message}`;
@@ -7935,13 +7480,11 @@ export async function POST(request: NextRequest) {
           prisma.contract.findMany({
             where: { tenantId, supplierName: { contains: intent.entities.supplierA, mode: 'insensitive' } },
             orderBy: { totalValue: 'desc' },
-            take: 10,
-          }),
+            take: 10 }),
           prisma.contract.findMany({
             where: { tenantId, supplierName: { contains: intent.entities.supplierB, mode: 'insensitive' } },
             orderBy: { totalValue: 'desc' },
-            take: 10,
-          }),
+            take: 10 }),
         ]);
         
          
@@ -7949,8 +7492,7 @@ export async function POST(request: NextRequest) {
           count: contracts.length,
           totalValue: contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0),
           avgValue: contracts.length > 0 ? contracts.reduce((s, c) => s + Number(c.totalValue || 0), 0) / contracts.length : 0,
-          activeCount: contracts.filter(c => c.status === 'ACTIVE').length,
-        });
+          activeCount: contracts.filter(c => c.status === 'ACTIVE').length });
         
         const statsA = calcStats(supplierAContracts);
         const statsB = calcStats(supplierBContracts);
@@ -8076,13 +7618,12 @@ export async function POST(request: NextRequest) {
 
           context = { ...context, systemHealth: { healthData, resilienceData } };
         } catch {
-          additionalContext += `\n\n**System Health:** Unable to retrieve worker health status. Workers may be running on a separate server.`;
+          // system health fetch error ignored
         }
       } else if (intent.action === 'categorization_accuracy') {
         try {
           const accuracyRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analytics/categorization-accuracy`, {
-            headers: { 'x-tenant-id': tenantId },
-          });
+            headers: { 'x-tenant-id': tenantId } });
           
           if (accuracyRes.ok) {
             const accuracy = await accuracyRes.json();
@@ -8166,8 +7707,7 @@ export async function POST(request: NextRequest) {
       contractId, 
       context,
       intent,
-      additionalContext,
-    }) as any;
+      additionalContext }) as any;
 
     // ============================================
     // CONVERSATION MEMORY UPDATE
@@ -8181,25 +7721,21 @@ export async function POST(request: NextRequest) {
         intent: intent.type,
         action: intent.action,
         entities: intent.entities,
-        executedAction: true,
-      }
+        executedAction: true }
     );
 
     // Update reference context for future messages
     if (intent.entities.contractName) {
       await conversationMemoryService.updateReferenceContext(conversationId, {
-        lastContractName: intent.entities.contractName,
-      });
+        lastContractName: intent.entities.contractName });
     }
     if (intent.entities.supplierName) {
       await conversationMemoryService.updateReferenceContext(conversationId, {
-        lastSupplierName: intent.entities.supplierName,
-      });
+        lastSupplierName: intent.entities.supplierName });
     }
     if (intent.entities.category) {
       await conversationMemoryService.updateReferenceContext(conversationId, {
-        lastCategory: intent.entities.category,
-      });
+        lastCategory: intent.entities.category });
     }
 
     // Add conversation ID to response
@@ -8244,7 +7780,7 @@ export async function POST(request: NextRequest) {
       response.proactiveInsights = proactiveInsightsData;
     }
 
-    return NextResponse.json(response)
+    return createSuccessResponse(ctx, response)
   } catch (error: unknown) {
     // Generate helpful error response with recovery suggestions
     const err = error as { code?: string; message?: string };
@@ -8322,19 +7858,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Return a user-friendly error response that the UI can display nicely
-    return NextResponse.json({
-      response: `${userFriendlyMessage}\n\n**What you can try:**\n${recoverySuggestions.map(s => `• ${s}`).join('\n')}`,
-      error: true,
-      errorCode,
-      errorDetails: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
-      suggestedActions,
-      suggestions: recoverySuggestions,
-      metadata: {
-        intent: null,
-        confidence: 0,
-        usedRAG: false,
-        errorRecovery: true,
-      },
-    }, { status: 200 }); // Return 200 so the UI can display the friendly error
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `${userFriendlyMessage}\n\n**What you can try:**\n${recoverySuggestions.map(s => `• ${s}`).join('\n')}`, 200, {
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined,
+    });
   }
-}
+});

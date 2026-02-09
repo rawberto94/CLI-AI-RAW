@@ -406,7 +406,7 @@ export function AIDraftAssistant() {
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+                <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -451,7 +451,7 @@ export function AIDraftAssistant() {
                       )}
                     >
                       {message.role === 'assistant' && (
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                           <Bot className="h-4 w-4 text-white" />
                         </div>
                       )}
@@ -483,7 +483,7 @@ export function AIDraftAssistant() {
                               onClick={() => setShowDraftPanel(true)}
                               className="w-full bg-white gap-2"
                             >
-                              <FileText className="h-4 w-4 text-purple-500" />
+                              <FileText className="h-4 w-4 text-violet-500" />
                               View Draft
                               <ChevronRight className="h-4 w-4 ml-auto" />
                             </Button>
@@ -513,10 +513,10 @@ export function AIDraftAssistant() {
                       <button
                         key={index}
                         onClick={() => handleSuggestionClick(suggestion.text)}
-                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-purple-50/50 transition-colors group"
+                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-violet-50/50 transition-colors group"
                       >
                         <span className="text-lg mr-2">{suggestion.icon}</span>
-                        <span className="text-sm text-slate-700 group-hover:text-purple-700">
+                        <span className="text-sm text-slate-700 group-hover:text-violet-700">
                           {suggestion.text.slice(0, 40)}...
                         </span>
                       </button>
@@ -545,7 +545,7 @@ export function AIDraftAssistant() {
                   <Button
                     onClick={handleSend}
                     disabled={!input.trim() || isLoading}
-                    className="bg-gradient-to-r from-purple-500 to-purple-500 hover:from-purple-600 hover:to-purple-600 px-4"
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 px-4"
                   >
                     {isLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -574,7 +574,7 @@ export function AIDraftAssistant() {
                   <CardHeader className="pb-3 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-purple-500" />
+                        <FileText className="h-5 w-5 text-violet-500" />
                         Contract Draft
                       </CardTitle>
                       <Button
@@ -611,8 +611,8 @@ export function AIDraftAssistant() {
                               key={index}
                               className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                             >
-                              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                                <User className="h-4 w-4 text-purple-600" />
+                              <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-violet-600" />
                               </div>
                               <div>
                                 <p className="font-medium text-slate-900">{party.name}</p>

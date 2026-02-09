@@ -109,13 +109,13 @@ const ENTITY_TYPE_CONFIG: Record<EntityType, {
 }> = {
   party: { icon: Building2, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Party' },
   person: { icon: User, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Person' },
-  organization: { icon: Building2, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Organization' },
+  organization: { icon: Building2, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Organization' },
   location: { icon: MapPin, color: 'text-orange-600', bgColor: 'bg-orange-100', label: 'Location' },
-  date: { icon: Calendar, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Date' },
+  date: { icon: Calendar, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Date' },
   amount: { icon: DollarSign, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Amount' },
   obligation: { icon: Scale, color: 'text-amber-600', bgColor: 'bg-amber-100', label: 'Obligation' },
   clause: { icon: FileText, color: 'text-slate-600', bgColor: 'bg-slate-100', label: 'Clause' },
-  term: { icon: FileText, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Term' },
+  term: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Term' },
   condition: { icon: AlertTriangle, color: 'text-yellow-600', bgColor: 'bg-yellow-100', label: 'Condition' },
   risk: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100', label: 'Risk' },
   contract: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Contract' },
@@ -467,8 +467,8 @@ function StatsPanel({ stats }: { stats: GraphStats }) {
       <Card>
         <CardContent className="p-5">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100">
-              <Link2 className="w-6 h-6 text-purple-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Link2 className="w-6 h-6 text-violet-600" />
             </div>
             <div>
               <p className="text-2xl font-bold">{stats.totalRelations}</p>

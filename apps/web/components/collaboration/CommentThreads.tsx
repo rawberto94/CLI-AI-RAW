@@ -255,7 +255,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
                   <div className="border-t border-slate-100 bg-slate-50/50 p-4 space-y-3">
                     {comment.replies.map((reply) => (
                       <div key={reply.id} className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-600 flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                           {getInitials(reply.author)}
                         </div>
                         

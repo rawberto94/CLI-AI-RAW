@@ -470,10 +470,10 @@ export function SupplierRankings() {
                 ))}
             </div>
 
-            <div className="p-4 bg-purple-50 rounded-lg">
+            <div className="p-4 bg-violet-50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-5 w-5 text-purple-600" />
-                <p className="font-medium text-purple-900">Best Coverage</p>
+                <MapPin className="h-5 w-5 text-violet-600" />
+                <p className="font-medium text-violet-900">Best Coverage</p>
               </div>
               {sortedRankings
                 .sort(
@@ -484,10 +484,10 @@ export function SupplierRankings() {
                 .slice(0, 1)
                 .map((supplier) => (
                   <div key={supplier.supplierId}>
-                    <p className="text-lg font-bold text-purple-900">
+                    <p className="text-lg font-bold text-violet-900">
                       {supplier.supplierName}
                     </p>
-                    <p className="text-sm text-purple-700">
+                    <p className="text-sm text-violet-700">
                       {supplier.geographicCoverage.countries.length} countries
                     </p>
                   </div>

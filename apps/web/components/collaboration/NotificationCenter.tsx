@@ -42,10 +42,10 @@ interface NotificationCenterProps {
 const notificationTypeConfig: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   APPROVAL_REQUEST: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   APPROVAL_COMPLETED: { icon: Check, color: 'text-green-600', bgColor: 'bg-green-100' },
-  COMMENT_MENTION: { icon: MessageSquare, color: 'text-purple-600', bgColor: 'bg-purple-100' },
-  COMMENT_REPLY: { icon: MessageSquare, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  COMMENT_MENTION: { icon: MessageSquare, color: 'text-violet-600', bgColor: 'bg-violet-100' },
+  COMMENT_REPLY: { icon: MessageSquare, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   CONTRACT_DEADLINE: { icon: Clock, color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  CONTRACT_UPDATE: { icon: FileText, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  CONTRACT_UPDATE: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   WORKFLOW_STEP: { icon: Users, color: 'text-amber-600', bgColor: 'bg-amber-100' },
   SHARE_INVITE: { icon: Users, color: 'text-pink-600', bgColor: 'bg-pink-100' },
   SYSTEM: { icon: AlertCircle, color: 'text-slate-600', bgColor: 'bg-slate-100' },

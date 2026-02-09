@@ -13,12 +13,16 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { ContractStatus, type Prisma } from '@prisma/client';
+import { contractService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from "@/lib/cache";
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
 import {
+  getApiContext,
   getApiContext as _getApiContext,
   parseQueryParams as _parseQueryParams,
+  createSuccessResponse,
   createSuccessResponse as _createSuccessResponse,
+  createErrorResponse,
   createErrorResponse as _createErrorResponse,
   createValidationErrorResponse as _createValidationErrorResponse,
   handleApiError as _handleApiError,
@@ -51,7 +55,7 @@ function parsePaginationParams(searchParams: URLSearchParams) {
 }
 
 // Mock contracts data (wrapped with caching)
-function returnMockContracts(searchParams: URLSearchParams) {
+function returnMockContracts(searchParams: URLSearchParams, ctx: any) {
   const { page, limit } = parsePaginationParams(searchParams);
   
   const mockContracts = [
@@ -143,23 +147,20 @@ function returnMockContracts(searchParams: URLSearchParams) {
   const end = start + limit;
   const paginatedContracts = mockContracts.slice(start, end);
   
-  return NextResponse.json({
-    success: true,
-    data: {
-      contracts: paginatedContracts,
-      pagination: {
-        total,
-        limit,
-        page,
-        totalPages,
-        hasMore: page < totalPages,
-        hasPrevious: page > 1,
-      },
-      meta: {
-        responseTime: "5ms",
-        cached: false,
-        source: "mock-data",
-      },
+  return createSuccessResponse(ctx, {
+    contracts: paginatedContracts,
+    pagination: {
+      total,
+      limit,
+      page,
+      totalPages,
+      hasMore: page < totalPages,
+      hasPrevious: page > 1,
+    },
+    meta: {
+      responseTime: "5ms",
+      cached: false,
+      source: "mock-data",
     },
   });
 }
@@ -167,6 +168,7 @@ function returnMockContracts(searchParams: URLSearchParams) {
 async function handler(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
+  const ctx = getApiContext(request);
 
   // Mock mode is disabled in production for data integrity
   // To enable mock mode for testing, set ENABLE_MOCK_MODE=true in environment
@@ -174,7 +176,7 @@ async function handler(request: NextRequest) {
   const mockModeEnabled = process.env.ENABLE_MOCK_MODE === 'true' && process.env.NODE_ENV !== 'production';
   
   if (dataMode === 'mock' && mockModeEnabled) {
-    return returnMockContracts(searchParams);
+    return returnMockContracts(searchParams, ctx);
   }
   
   // In production, always use real data regardless of header
@@ -214,16 +216,10 @@ async function handler(request: NextRequest) {
 
   // Validate pagination parameters
   if (page < 1) {
-    return NextResponse.json(
-      { success: false, error: "Page must be greater than 0" },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Page must be greater than 0', 400);
   }
   if (limit < 1 || limit > 100) {
-    return NextResponse.json(
-      { success: false, error: "Limit must be between 1 and 100" },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Limit must be between 1 and 100', 400);
   }
 
   // Valid ContractStatus values from Prisma schema
@@ -521,16 +517,13 @@ async function handler(request: NextRequest) {
   const responseTime = Date.now() - startTime;
 
   // Return cached or fresh result
-  return NextResponse.json(
+  return createSuccessResponse(ctx, 
     {
-      ...cachedResult,
-      data: {
-        ...cachedResult.data,
-        meta: {
-          ...cachedResult.data.meta,
-          responseTime: `${responseTime}ms`,
-          cached: responseTime < 100, // If very fast, likely from cache
-        },
+      ...cachedResult.data,
+      meta: {
+        ...cachedResult.data.meta,
+        responseTime: `${responseTime}ms`,
+        cached: responseTime < 100,
       },
     },
     {
@@ -549,6 +542,7 @@ export async function GET(request: NextRequest) {
   } catch {
     // Fallback to mock data on any error
     const { searchParams } = new URL(request.url);
-    return returnMockContracts(searchParams);
+    const ctx = getApiContext(request);
+    return returnMockContracts(searchParams, ctx);
   }
 }

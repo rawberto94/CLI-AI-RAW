@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { auditTrailService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,6 +14,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id } = await params;
     const tenantId = await getApiTenantId(request);
@@ -33,7 +36,7 @@ export async function GET(
 
       if (user) {
         const name = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email?.split('@')[0] || 'Unknown';
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           user: {
             id: user.id,
@@ -64,7 +67,7 @@ export async function GET(
 
     const mockUser = mockUsers[id];
     if (mockUser) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         user: {
           ...mockUser,
@@ -75,14 +78,8 @@ export async function GET(
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: 'User not found' },
-      { status: 404 }
-    );
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch user' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

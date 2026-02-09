@@ -3,10 +3,9 @@
  * Extends RAG with entity extraction and relationship mapping
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import Anthropic from '@anthropic-ai/sdk';
 
-const prisma = new PrismaClient();
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
 });

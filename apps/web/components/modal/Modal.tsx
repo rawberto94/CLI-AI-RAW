@@ -253,7 +253,7 @@ export function AlertModal({
         <p className="text-slate-600 dark:text-slate-400 mb-6">{message}</p>
         <button
           onClick={handleConfirm}
-          className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 transition-colors"
+          className="w-full px-4 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors"
         >
           {confirmLabel}
         </button>

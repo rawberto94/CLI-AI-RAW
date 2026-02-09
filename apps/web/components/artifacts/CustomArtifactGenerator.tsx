@@ -156,10 +156,10 @@ const PRESET_TOPICS: CustomTopic[] = [
 ];
 
 const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  Legal: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-indigo-200' },
+  Legal: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-indigo-200' },
   Financial: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
   Operational: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-  Commercial: { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200' },
+  Commercial: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
   Compliance: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
   Risk: { bg: 'bg-rose-50', text: 'text-rose-700', border: 'border-rose-200' }
 };
@@ -366,7 +366,7 @@ export function CustomArtifactGenerator({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+          <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
             <Wand2 className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -376,14 +376,14 @@ export function CustomArtifactGenerator({
         </div>
         
         {selectedTopics.length > 0 && (
-          <Badge className="bg-purple-100 text-purple-700">
+          <Badge className="bg-violet-100 text-violet-700">
             {selectedTopics.length} topics selected
           </Badge>
         )}
       </div>
 
       {/* Custom Query Input */}
-      <Card className="border-purple-100 bg-gradient-to-br from-purple-50/50 to-purple-50/30">
+      <Card className="border-violet-100 bg-gradient-to-br from-violet-50/50 to-purple-50/30">
         <CardContent className="p-4">
           <Label className="text-sm font-medium text-slate-700 mb-2 block">
             Ask anything about this contract
@@ -401,7 +401,7 @@ export function CustomArtifactGenerator({
             <Button 
               onClick={generateInsights}
               disabled={isGenerating || (selectedTopics.length === 0 && !customQuery)}
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -426,7 +426,7 @@ export function CustomArtifactGenerator({
             variant="ghost"
             size="sm"
             onClick={() => setShowAddCustom(!showAddCustom)}
-            className="text-purple-600 hover:text-purple-700"
+            className="text-violet-600 hover:text-violet-700"
           >
             <Plus className="h-4 w-4 mr-1" />
             Add Custom
@@ -442,7 +442,7 @@ export function CustomArtifactGenerator({
               exit={{ opacity: 0, height: 0 }}
               className="mb-4"
             >
-              <Card className="border-dashed border-purple-200 bg-purple-50/30">
+              <Card className="border-dashed border-violet-200 bg-violet-50/30">
                 <CardContent className="p-4 space-y-3">
                   <Input
                     placeholder="Topic name (e.g., Force Majeure)"
@@ -464,7 +464,7 @@ export function CustomArtifactGenerator({
                     <Button variant="outline" size="sm" onClick={() => setShowAddCustom(false)}>
                       Cancel
                     </Button>
-                    <Button size="sm" onClick={addCustomTopic} className="bg-purple-600 hover:bg-purple-700">
+                    <Button size="sm" onClick={addCustomTopic} className="bg-violet-600 hover:bg-violet-700">
                       Add Topic
                     </Button>
                   </div>
@@ -488,19 +488,19 @@ export function CustomArtifactGenerator({
                 className={cn(
                   "p-3 rounded-lg border-2 text-left transition-all",
                   isSelected 
-                    ? "border-purple-500 bg-purple-50 ring-2 ring-purple-200" 
-                    : `${colors.border} ${colors.bg} hover:border-purple-300`
+                    ? "border-violet-500 bg-violet-50 ring-2 ring-violet-200" 
+                    : `${colors.border} ${colors.bg} hover:border-violet-300`
                 )}
               >
                 <div className="flex items-start justify-between">
                   <span className={cn(
                     "text-sm font-medium",
-                    isSelected ? "text-purple-700" : colors.text
+                    isSelected ? "text-violet-700" : colors.text
                   )}>
                     {topic.name}
                   </span>
                   {isSelected && (
-                    <CheckCircle2 className="h-4 w-4 text-purple-600 shrink-0" />
+                    <CheckCircle2 className="h-4 w-4 text-violet-600 shrink-0" />
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -526,15 +526,15 @@ export function CustomArtifactGenerator({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
           >
-            <Card className="border-purple-200 bg-purple-50/50">
+            <Card className="border-violet-200 bg-violet-50/50">
               <CardContent className="p-4">
                 <div className="flex items-center gap-3 mb-3">
-                  <Loader2 className="h-5 w-5 text-purple-600 animate-spin" />
+                  <Loader2 className="h-5 w-5 text-violet-600 animate-spin" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-purple-700">
+                    <p className="text-sm font-medium text-violet-700">
                       Analyzing: {currentTopic}
                     </p>
-                    <p className="text-xs text-purple-500">
+                    <p className="text-xs text-violet-500">
                       {Math.round(progress)}% complete
                     </p>
                   </div>
@@ -574,7 +574,7 @@ export function CustomArtifactGenerator({
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-600" />
+              <Brain className="h-5 w-5 text-violet-600" />
               AI Analysis Results
             </h3>
             <div className="flex gap-2">

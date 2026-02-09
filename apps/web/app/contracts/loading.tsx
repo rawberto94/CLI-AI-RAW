@@ -57,7 +57,7 @@ export default function ContractsLoading() {
           transition={{ delay: 0.2 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Contracts
           </h2>
           <p className="text-sm text-slate-500 mt-2">Fetching your contract data...</p>

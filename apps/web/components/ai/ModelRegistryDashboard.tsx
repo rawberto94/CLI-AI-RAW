@@ -109,7 +109,7 @@ const PROVIDER_CONFIG: Record<ModelProvider, { color: string; bgColor: string; l
   anthropic: { color: 'text-orange-600', bgColor: 'bg-orange-100', label: 'Anthropic' },
   google: { color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Google' },
   azure: { color: 'text-sky-600', bgColor: 'bg-sky-100', label: 'Azure' },
-  custom: { color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Custom' },
+  custom: { color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Custom' },
 };
 
 const STATUS_CONFIG: Record<ModelStatus, { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
@@ -121,12 +121,12 @@ const STATUS_CONFIG: Record<ModelStatus, { icon: React.ElementType; color: strin
 
 const CAPABILITY_COLORS: Record<ModelCapability, string> = {
   extraction: 'bg-violet-100 text-violet-700',
-  summarization: 'bg-purple-100 text-purple-700',
+  summarization: 'bg-violet-100 text-violet-700',
   classification: 'bg-green-100 text-green-700',
   comparison: 'bg-amber-100 text-amber-700',
   generation: 'bg-pink-100 text-pink-700',
-  chat: 'bg-purple-100 text-purple-700',
-  embedding: 'bg-purple-100 text-purple-700',
+  chat: 'bg-violet-100 text-violet-700',
+  embedding: 'bg-violet-100 text-violet-700',
   analysis: 'bg-orange-100 text-orange-700',
 };
 
@@ -352,7 +352,7 @@ function StatCard({
     green: 'text-green-600 bg-green-50',
     amber: 'text-amber-600 bg-amber-50',
     red: 'text-red-600 bg-red-50',
-    purple: 'text-purple-600 bg-purple-50',
+    purple: 'text-violet-600 bg-violet-50',
   };
 
   return (

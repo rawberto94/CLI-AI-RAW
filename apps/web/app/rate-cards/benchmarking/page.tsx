@@ -115,7 +115,7 @@ export default function RateBenchmarkingPage() {
                     onCheckedChange={(checked) => setShowBaselineOnly(checked as boolean)}
                   />
                   <Label htmlFor="baselineOnly" className="cursor-pointer">
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-700">
                       ⭐ Baseline Only
                 </Badge>
               </Label>

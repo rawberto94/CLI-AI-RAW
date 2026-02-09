@@ -52,9 +52,9 @@ export function FinancialTabContent({
               </div>
             </div>
 
-            <div className="p-4 bg-purple-50 rounded-lg">
+            <div className="p-4 bg-violet-50 rounded-lg">
               <div className="text-sm text-gray-600">Payment Schedule</div>
-              <div className="text-xl font-bold text-purple-700 mt-1">
+              <div className="text-xl font-bold text-violet-700 mt-1">
                 {financial.paymentSchedule?.frequency || "Monthly"}
               </div>
             </div>

@@ -1,6 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
+import { getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const deadlinesQuerySchema = z.object({
+  client: z.string().optional(),
+  type: z.enum(['all', 'expiration', 'renewal', 'milestone']).optional(),
+  mock: z.enum(['true', 'false']).optional(),
+});
 
 export const dynamic = 'force-dynamic';
 
@@ -66,17 +75,26 @@ const getMockDeadlines = () => {
  * Get all contract deadlines and obligations
  */
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
-    const { searchParams } = new URL(request.url);
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
+    const validated = parseQueryParams(request, deadlinesQuerySchema);
+    if (!validated.success) {
+      return createValidationErrorResponse(ctx, validated.error);
+    }
+    const queryParams = validated.data;
     const tenantId = await getApiTenantId(request);
-    const client = searchParams.get('client');
-    const type = searchParams.get('type');
-    const useMock = searchParams.get('mock') === 'true';
+    const client = queryParams.client || null;
+    const type = queryParams.type || null;
+    const useMock = queryParams.mock === 'true';
 
     // Return mock data if requested
     if (useMock) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         deadlines: getMockDeadlines(),
         source: 'mock',
         stats: {
@@ -244,8 +262,7 @@ export async function GET(request: NextRequest) {
     // Sort by date (earliest first)
     filteredDeadlines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         deadlines: filteredDeadlines,
         source: 'database',
         stats: {
@@ -258,8 +275,7 @@ export async function GET(request: NextRequest) {
       });
 
     } catch {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         deadlines: getMockDeadlines(),
         source: 'mock-fallback',
         stats: {
@@ -273,13 +289,6 @@ export async function GET(request: NextRequest) {
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch deadlines',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

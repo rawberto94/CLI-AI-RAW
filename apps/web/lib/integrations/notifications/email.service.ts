@@ -254,7 +254,7 @@ export class EmailNotificationService {
           .error-box { background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; padding: 16px; margin-top: 16px; }
           .error-message { font-family: monospace; font-size: 13px; color: #991b1b; white-space: pre-wrap; }
           .retry-info { background: #fef3c7; border-radius: 4px; padding: 12px; margin-top: 16px; color: #92400e; }
-          .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px; }
+          .button { display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; margin-top: 16px; }
           .footer { text-align: center; color: #666; font-size: 12px; margin-top: 24px; }
         </style>
       </head>
@@ -352,7 +352,7 @@ View source: ${process.env.NEXTAUTH_URL}/settings/contract-sources/${source.id}
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .card { background: white; border-radius: 8px; padding: 24px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 16px; }
-          .header { background: #3b82f6; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0; margin: -24px -24px 24px; }
+          .header { background: #8b5cf6; color: white; padding: 16px 24px; border-radius: 8px 8px 0 0; margin: -24px -24px 24px; }
           .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
           .stat-box { text-align: center; padding: 16px; background: #f8fafc; border-radius: 8px; }
           .stat-value { font-size: 24px; font-weight: bold; color: #1e293b; }
@@ -363,7 +363,7 @@ View source: ${process.env.NEXTAUTH_URL}/settings/contract-sources/${source.id}
           .section-title { font-size: 14px; font-weight: 600; color: #64748b; margin: 24px 0 12px; text-transform: uppercase; }
           .list-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #f1f5f9; }
           .list-item:last-child { border-bottom: none; }
-          .button { display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; }
+          .button { display: inline-block; background: #8b5cf6; color: white; padding: 12px 24px; border-radius: 6px; text-decoration: none; }
           .footer { text-align: center; color: #666; font-size: 12px; margin-top: 24px; }
         </style>
       </head>

@@ -135,7 +135,7 @@ export const EnhancedContractPreviewPanel = memo(function EnhancedContractPrevie
   onRedline,
   onRenewal,
   onAmendment,
-  formatCurrency = (v) => v ? `$${v.toLocaleString()}` : '—',
+  formatCurrency = (v) => v ? new Intl.NumberFormat('de-CH', { style: 'currency', currency: 'CHF', maximumFractionDigits: 0 }).format(v) : '—',
   formatDate = (d) => d ? new Date(d).toLocaleDateString() : '—',
   className,
 }: EnhancedContractPreviewPanelProps) {

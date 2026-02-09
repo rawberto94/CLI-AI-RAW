@@ -10,10 +10,8 @@
  * - Notification batching and consolidation
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from '@/lib/prisma';
 import webpush from "web-push";
-
-const prisma = new PrismaClient();
 
 // ============================================================================
 // Types
@@ -600,11 +598,11 @@ export class AdvancedNotificationService {
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .card { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-          .header { background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 24px; color: white; }
+          .header { background: linear-gradient(135deg, #8b5cf6 0%, #8b5cf6 100%); padding: 24px; color: white; }
           .header h1 { margin: 0; font-size: 20px; font-weight: 600; }
           .content { padding: 24px; }
           .content p { margin: 0 0 16px; color: #4b5563; line-height: 1.6; }
-          .button { display: inline-block; background: #3b82f6; color: white !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; }
+          .button { display: inline-block; background: #8b5cf6; color: white !important; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 500; }
           .footer { text-align: center; padding: 20px; color: #9ca3af; font-size: 12px; }
         </style>
       </head>
@@ -653,7 +651,7 @@ export class AdvancedNotificationService {
       <body>
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%); padding: 24px; color: white;">
+            <div style="background: linear-gradient(135deg, #8b5cf6 0%, #8b5cf6 100%); padding: 24px; color: white;">
               <h1 style="margin: 0; font-size: 20px;">Notification Digest</h1>
               <p style="margin: 8px 0 0; opacity: 0.9;">${notifications.length} new notifications</p>
             </div>

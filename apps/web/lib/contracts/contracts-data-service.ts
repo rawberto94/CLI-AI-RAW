@@ -155,9 +155,9 @@ export function formatFileSize(bytes: number): string {
  */
 export function formatCurrency(
   amount: number,
-  currency: string = "USD"
+  currency: string = "CHF"
 ): string {
-  return new Intl.NumberFormat("en-US", {
+  return new Intl.NumberFormat("de-CH", {
     style: "currency",
     currency,
     minimumFractionDigits: 0,

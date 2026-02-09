@@ -70,11 +70,11 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
 // Category colors
 const CATEGORY_COLORS: Record<string, string> = {
   dates: 'text-violet-500 bg-violet-50 border-violet-200',
-  clauses: 'text-purple-500 bg-purple-50 border-purple-200',
+  clauses: 'text-violet-500 bg-violet-50 border-violet-200',
   risk: 'text-red-500 bg-red-50 border-red-200',
   compliance: 'text-green-500 bg-green-50 border-green-200',
   cost: 'text-amber-500 bg-amber-50 border-amber-200',
-  parties: 'text-purple-500 bg-purple-50 border-cyan-200',
+  parties: 'text-violet-500 bg-violet-50 border-cyan-200',
   general: 'text-slate-500 bg-slate-50 border-slate-200',
 };
 
@@ -283,13 +283,13 @@ export function SmartSuggestions({
     return (
       <button
         onClick={() => setIsExpanded(true)}
-        className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-purple-100 transition-colors ${className}`}
+        className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-lg hover:from-violet-100 hover:to-purple-100 transition-colors ${className}`}
       >
-        <Sparkles className="w-4 h-4 text-purple-500" />
-        <span className="text-sm font-medium text-purple-700">
+        <Sparkles className="w-4 h-4 text-violet-500" />
+        <span className="text-sm font-medium text-violet-700">
           {visibleSuggestions.length} Smart Suggestions
         </span>
-        <ChevronRight className="w-4 h-4 text-purple-400" />
+        <ChevronRight className="w-4 h-4 text-violet-400" />
       </button>
     );
   }
@@ -299,10 +299,10 @@ export function SmartSuggestions({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-100">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5 text-purple-500" />
+          <Sparkles className="w-5 h-5 text-violet-500" />
           <h3 className="font-semibold text-slate-800">Smart Suggestions</h3>
           {!isLoading && (
-            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+            <span className="px-2 py-0.5 bg-violet-100 text-violet-700 rounded-full text-xs font-medium">
               {visibleSuggestions.length}
             </span>
           )}
@@ -484,7 +484,7 @@ export function SuggestionPill({
   return (
     <button
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-purple-50 to-purple-50 border border-purple-200 rounded-full text-sm text-purple-700 hover:from-purple-100 hover:to-purple-100 transition-colors"
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-full text-sm text-violet-700 hover:from-violet-100 hover:to-purple-100 transition-colors"
     >
       <Lightbulb className="w-3.5 h-3.5" />
       {text}

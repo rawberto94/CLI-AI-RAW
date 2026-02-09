@@ -1,13 +1,16 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 // POST /api/templates/[id]/favorite - Toggle favorite status
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     const tenantId = await getApiTenantId(request);
@@ -16,10 +19,7 @@ export async function POST(
     
     const userId = session?.user?.id;
     if (!userId) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     // Check template exists
@@ -28,10 +28,7 @@ export async function POST(
     });
 
     if (!template) {
-      return NextResponse.json(
-        { success: false, error: 'Template not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Store favorite in user preferences (or template metadata)
@@ -58,7 +55,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       template: {
         id,
@@ -66,10 +63,6 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error('Failed to toggle favorite:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to toggle favorite' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

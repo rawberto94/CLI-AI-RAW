@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuthApiHandler, createErrorResponse } from '@/lib/api-middleware';
 
 interface ExportRequest {
   type: "supplier" | "rate-card" | "contract" | "performance" | "financial";
@@ -9,43 +10,38 @@ interface ExportRequest {
 }
 
 // Mock implementation - in production, use libraries like jsPDF or xlsx
-export async function POST(request: NextRequest) {
-  try {
-    const body: ExportRequest = await request.json();
-    const { type, fields, format, filters = {} } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body: ExportRequest = await request.json();
+  const { type, fields, format, filters = {} } = body;
 
-    // Generate data
-    let data: any[] = [];
-    switch (type) {
-      case "supplier":
-        data = await generateSupplierData(fields, filters);
-        break;
-      case "rate-card":
-        data = await generateRateCardData(fields, filters);
-        break;
-      case "contract":
-        data = await generateContractData(fields, filters);
-        break;
-      case "performance":
-        data = await generatePerformanceData(fields, filters);
-        break;
-      case "financial":
-        data = await generateFinancialData(fields, filters);
-        break;
-    }
-
-    if (format === "excel") {
-      return exportToExcel(data, fields);
-    } else {
-      return exportToPDF(data, fields);
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to export report" },
-      { status: 500 }
-    );
+  // Generate data
+  let data: any[] = [];
+  switch (type) {
+    case "supplier":
+      data = await generateSupplierData(fields, filters);
+      break;
+    case "rate-card":
+      data = await generateRateCardData(fields, filters);
+      break;
+    case "contract":
+      data = await generateContractData(fields, filters);
+      break;
+    case "performance":
+      data = await generatePerformanceData(fields, filters);
+      break;
+    case "financial":
+      data = await generateFinancialData(fields, filters);
+      break;
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid export type', 400);
   }
-}
+
+  if (format === "excel") {
+    return exportToExcel(data, fields);
+  } else {
+    return exportToPDF(data, fields);
+  }
+});
 
 async function generateSupplierData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany({

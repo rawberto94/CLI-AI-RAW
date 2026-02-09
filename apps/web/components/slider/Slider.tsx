@@ -47,7 +47,7 @@ interface RangeSliderProps {
 // ============================================================================
 
 const colorClasses = {
-  indigo: 'bg-purple-600',
+  indigo: 'bg-violet-600',
   emerald: 'bg-violet-600',
   amber: 'bg-amber-500',
   red: 'bg-red-600',
@@ -55,7 +55,7 @@ const colorClasses = {
 };
 
 const thumbColorClasses = {
-  indigo: 'border-purple-600 focus:ring-purple-500',
+  indigo: 'border-violet-600 focus:ring-violet-500',
   emerald: 'border-violet-600 focus:ring-violet-500',
   amber: 'border-amber-500 focus:ring-amber-500',
   red: 'border-red-600 focus:ring-red-500',

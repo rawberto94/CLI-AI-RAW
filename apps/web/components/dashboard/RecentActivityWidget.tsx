@@ -121,10 +121,10 @@ const ACTIVITY_CONFIG: Record<ActivityType, {
   contract_updated: { icon: Edit, color: 'text-violet-500', bgColor: 'bg-violet-50' },
   contract_viewed: { icon: Eye, color: 'text-slate-500', bgColor: 'bg-slate-50' },
   contract_deleted: { icon: Trash2, color: 'text-red-500', bgColor: 'bg-red-50' },
-  version_created: { icon: GitBranch, color: 'text-purple-500', bgColor: 'bg-purple-50' },
+  version_created: { icon: GitBranch, color: 'text-violet-500', bgColor: 'bg-violet-50' },
   version_reverted: { icon: RefreshCw, color: 'text-amber-500', bgColor: 'bg-amber-50' },
-  document_uploaded: { icon: Upload, color: 'text-purple-500', bgColor: 'bg-purple-50' },
-  document_downloaded: { icon: Download, color: 'text-purple-500', bgColor: 'bg-purple-50' },
+  document_uploaded: { icon: Upload, color: 'text-violet-500', bgColor: 'bg-violet-50' },
+  document_downloaded: { icon: Download, color: 'text-violet-500', bgColor: 'bg-violet-50' },
   approval_requested: { icon: Clock, color: 'text-amber-500', bgColor: 'bg-amber-50' },
   approval_completed: { icon: CheckCircle2, color: 'text-violet-500', bgColor: 'bg-violet-50' },
   approval_rejected: { icon: AlertCircle, color: 'text-red-500', bgColor: 'bg-red-50' },
@@ -182,7 +182,7 @@ function ActivityItemRow({ activity, variant, showContract = true }: ActivityIte
     >
       {/* New indicator */}
       {activity.isNew && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-purple-500" />
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-violet-500" />
       )}
       
       {/* Icon */}
@@ -255,7 +255,7 @@ function ActivityItemRow({ activity, variant, showContract = true }: ActivityIte
               <Link
                 href={`/contracts/${activity.contract.id}`}
                 className={cn(
-                  "hover:text-purple-600 hover:underline truncate max-w-[120px]",
+                  "hover:text-violet-600 hover:underline truncate max-w-[120px]",
                   isCompact ? "text-[10px]" : "text-xs"
                 )}
               >
@@ -272,7 +272,7 @@ function ActivityItemRow({ activity, variant, showContract = true }: ActivityIte
           href={`/contracts/${activity.contract.id}`}
           className="opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 self-center"
         >
-          <ArrowUpRight className="h-4 w-4 text-slate-400 hover:text-purple-500" />
+          <ArrowUpRight className="h-4 w-4 text-slate-400 hover:text-violet-500" />
         </Link>
       )}
     </motion.div>
@@ -331,7 +331,7 @@ export function RecentActivityWidget({
             <Activity className="h-4 w-4" />
             Activity
             {hasNewItems && (
-              <span className="h-2 w-2 rounded-full bg-purple-500 animate-pulse" />
+              <span className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
             )}
           </h3>
           {onRefresh && (
@@ -379,8 +379,8 @@ export function RecentActivityWidget({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <div className="p-1.5 bg-purple-100 rounded-lg">
-              <Activity className="h-4 w-4 text-purple-600" />
+            <div className="p-1.5 bg-violet-100 rounded-lg">
+              <Activity className="h-4 w-4 text-violet-600" />
             </div>
             Recent Activity
             {hasNewItems && (

@@ -19,7 +19,7 @@ import {
   CheckCircle,
   XCircle,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface Anomaly {
   id: string;
@@ -181,7 +181,7 @@ export function AnomalyDetectionDashboard() {
       case 'outlier':
         return <Target className="h-5 w-5 text-amber-600" />;
       case 'unusual_pattern':
-        return <AlertTriangle className="h-5 w-5 text-purple-600" />;
+        return <AlertTriangle className="h-5 w-5 text-violet-600" />;
     }
   };
 

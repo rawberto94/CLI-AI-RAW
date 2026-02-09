@@ -33,9 +33,9 @@ interface ContractHoverPreviewProps {
 
 const formatCurrency = (value?: number) => {
   if (!value) return '—';
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CHF',
     maximumFractionDigits: 0,
   }).format(value);
 };
@@ -273,7 +273,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 h-8 text-xs text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950"
+                  className="flex-1 h-8 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
                   onClick={(e) => {
                     e.stopPropagation();
                     onAnalyze?.();

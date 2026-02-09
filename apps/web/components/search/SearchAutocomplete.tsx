@@ -204,7 +204,7 @@ export function SearchAutocomplete({
             'w-full h-12 pl-12 pr-12 text-sm text-slate-900',
             'bg-white border border-slate-200 rounded-xl',
             'placeholder:text-slate-400',
-            'focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-indigo-400',
+            'focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-indigo-400',
             'transition-all duration-200'
           )}
         />
@@ -212,7 +212,7 @@ export function SearchAutocomplete({
         {/* Loading / Clear */}
         <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
           {isLoading && (
-            <div className="w-5 h-5 border-2 border-indigo-200 border-t-purple-600 rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-indigo-200 border-t-violet-600 rounded-full animate-spin" />
           )}
           {query && !isLoading && (
             <button
@@ -270,12 +270,12 @@ export function SearchAutocomplete({
                         className={cn(
                           'w-full flex items-center gap-3 px-4 py-2.5 text-left',
                           'transition-colors duration-75',
-                          isSelected ? 'bg-purple-50' : 'hover:bg-slate-50'
+                          isSelected ? 'bg-violet-50' : 'hover:bg-slate-50'
                         )}
                       >
                         <Icon className={cn(
                           'w-4 h-4 flex-shrink-0',
-                          isSelected ? 'text-purple-500' : 'text-slate-400'
+                          isSelected ? 'text-violet-500' : 'text-slate-400'
                         )} />
                         <span className={cn(
                           'flex-1 text-sm truncate',
@@ -352,7 +352,7 @@ export function InlineSearch({ value, onChange, placeholder = 'Search...', class
           'w-full h-9 pl-9 pr-3 text-sm text-slate-700',
           'bg-slate-100 border-0 rounded-lg',
           'placeholder:text-slate-400',
-          'focus:outline-none focus:bg-white focus:ring-2 focus:ring-purple-500/20',
+          'focus:outline-none focus:bg-white focus:ring-2 focus:ring-violet-500/20',
           'transition-all duration-200'
         )}
       />
@@ -395,13 +395,13 @@ export function FilterTags({ tags, onRemove, onClearAll }: FilterTagsProps) {
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.9 }}
-          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-50 text-purple-700 rounded-lg text-sm"
+          className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-violet-50 text-violet-700 rounded-lg text-sm"
         >
           <span className="text-indigo-400 text-xs">{tag.label}:</span>
           <span className="font-medium">{tag.value}</span>
           <button
             onClick={() => onRemove(tag.id)}
-            className="ml-0.5 p-0.5 text-indigo-400 hover:text-purple-600 rounded transition-colors"
+            className="ml-0.5 p-0.5 text-indigo-400 hover:text-violet-600 rounded transition-colors"
           >
             <X className="w-3 h-3" />
           </button>

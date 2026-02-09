@@ -60,16 +60,16 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         </Card>
 
         {/* Parties */}
-        <Card className="border-purple-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600" />
+              <Users className="h-4 w-4 text-violet-600" />
               Parties Involved
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.parties?.map((party: any, idx: number) => (
-              <div key={idx} className="bg-purple-50 rounded-lg p-3 border border-purple-200">
+              <div key={idx} className="bg-violet-50 rounded-lg p-3 border border-violet-200">
                 <div className="font-medium text-gray-900">{party.name || party}</div>
                 {party.role && <div className="text-sm text-gray-600">{party.role}</div>}
                 {party.address && (
@@ -165,7 +165,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4 text-purple-600" />
+              <Award className="h-4 w-4 text-violet-600" />
               Professional Services Rate Cards
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
@@ -175,7 +175,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
           <CardContent>
             <div className="grid gap-4">
               {data.rateCards.map((rate: any, idx: number) => (
-                <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-md transition-shadow">
+                <div key={idx} className="border border-violet-200 rounded-lg p-4 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
@@ -197,7 +197,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-purple-700">
+                      <div className="text-2xl font-bold text-violet-700">
                         ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
                       </div>
                       <div className="text-sm text-gray-600">
@@ -207,7 +207,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                   </div>
                   
                   {rate.skills && rate.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-2 border-t border-purple-200">
+                    <div className="flex flex-wrap gap-1 pt-2 border-t border-violet-200">
                       {rate.skills.slice(0, 5).map((skill: string, skillIdx: number) => (
                         <Badge key={skillIdx} variant="outline" className="text-xs bg-white">
                           {skill}
@@ -375,19 +375,19 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
   const renderCompliance = (data: any) => (
     <div className="space-y-6">
       {/* Compliance Score */}
-      <div className="bg-gradient-to-br from-purple-50 to-purple-50 rounded-xl p-6 border border-purple-200">
+      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-6 border border-violet-200">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Compliance Score</p>
-            <p className="text-4xl font-bold text-purple-700">{data.complianceScore}/10</p>
+            <p className="text-4xl font-bold text-violet-700">{data.complianceScore}/10</p>
             <div className="mt-2 w-48 bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-purple-600 h-2 rounded-full transition-all"
+                className="bg-violet-600 h-2 rounded-full transition-all"
                 style={{ width: `${(data.complianceScore / 10) * 100}%` }}
               ></div>
             </div>
           </div>
-          <Scale className="h-16 w-16 text-purple-600 opacity-20" />
+          <Scale className="h-16 w-16 text-violet-600 opacity-20" />
         </div>
       </div>
 

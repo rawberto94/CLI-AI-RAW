@@ -1,25 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService as _baselineManagementService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const user = await prisma.user.findFirst({
       where: { 
-        email: session.user.email,
-        tenantId: session.user.tenantId 
+        email: ctx.userId,
+        tenantId: ctx.tenantId 
       },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -55,7 +49,7 @@ export async function GET(request: NextRequest) {
       prisma.rateCardBaseline.count({ where }),
     ]);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       baselines,
       pagination: {
         page,
@@ -64,31 +58,19 @@ export async function GET(request: NextRequest) {
         totalPages: Math.ceil(total / limit),
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch baselines' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const user = await prisma.user.findFirst({
       where: { 
-        email: session.user.email,
-        tenantId: session.user.tenantId 
+        email: ctx.userId,
+        tenantId: ctx.tenantId 
       },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const body = await request.json();
@@ -115,10 +97,7 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!baselineName || !baselineType || !role || !dailyRateUSD) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields', 400);
     }
 
     // Check for duplicate baseline name
@@ -132,10 +111,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
-      return NextResponse.json(
-        { error: 'A baseline with this name already exists' },
-        { status: 409 }
-      );
+      return createErrorResponse(ctx, 'CONFLICT', 'A baseline with this name already exists', 409);
     }
 
     // Get procurement category if provided
@@ -185,39 +161,24 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(baseline, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create baseline' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, baseline, { status: 201 });
+  });
 
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const PUT = withAuthApiHandler(async (request, ctx) => {
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: ctx.userId },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const body = await request.json();
     const { id, ...updateData } = body;
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'Baseline ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Baseline ID is required', 400);
     }
 
     // Verify baseline belongs to user's tenant
@@ -226,10 +187,7 @@ export async function PUT(request: NextRequest) {
     });
 
     if (!existing || existing.tenantId !== user.tenantId) {
-      return NextResponse.json(
-        { error: 'Baseline not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Baseline not found', 404);
     }
 
     // Update baseline
@@ -241,11 +199,5 @@ export async function PUT(request: NextRequest) {
       },
     });
 
-    return NextResponse.json(baseline);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update baseline' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, baseline);
+  });

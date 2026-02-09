@@ -364,7 +364,7 @@ export function EnhancedDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-purple-600" />
+              <PieChart className="h-5 w-5 text-violet-600" />
               Contract Status Distribution
             </CardTitle>
             <CardDescription>Breakdown by current status</CardDescription>
@@ -423,7 +423,7 @@ export function EnhancedDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-purple-600" />
+            <Activity className="h-5 w-5 text-violet-600" />
             Workflow Pipeline
           </CardTitle>
           <CardDescription>Contracts by workflow stage</CardDescription>

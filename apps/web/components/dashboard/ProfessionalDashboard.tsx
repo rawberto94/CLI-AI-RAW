@@ -319,8 +319,8 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
     green: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
     amber: { bg: 'bg-amber-50', iconBg: 'from-amber-500 to-orange-500', text: 'text-amber-600' },
     rose: { bg: 'bg-rose-50', iconBg: 'from-rose-500 to-red-500', text: 'text-rose-600' },
-    purple: { bg: 'bg-purple-50', iconBg: 'from-purple-500 to-pink-500', text: 'text-purple-600' },
-    indigo: { bg: 'bg-purple-50', iconBg: 'from-purple-500 to-violet-500', text: 'text-purple-600' },
+    purple: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-pink-500', text: 'text-violet-600' },
+    indigo: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
   }[color];
 
   return (
@@ -375,7 +375,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
 function ContractRow({ contract, index }: { contract: RecentContract; index: number }) {
   const statusConfig = {
     completed: { bg: 'bg-violet-100', text: 'text-violet-700', icon: CheckCircle2 },
-    processing: { bg: 'bg-purple-100', text: 'text-purple-700', icon: Zap },
+    processing: { bg: 'bg-violet-100', text: 'text-violet-700', icon: Zap },
     review: { bg: 'bg-amber-100', text: 'text-amber-700', icon: AlertCircle },
     pending: { bg: 'bg-slate-100', text: 'text-slate-600', icon: Clock },
   }[contract.status];
@@ -963,8 +963,8 @@ export function ProfessionalDashboard() {
       >
           <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100">
-              <Zap className="h-5 w-5 text-purple-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Zap className="h-5 w-5 text-violet-600" />
             </div>
             <div>
                 <p className="text-2xl font-bold text-foreground">{metrics.contractsThisWeek}</p>

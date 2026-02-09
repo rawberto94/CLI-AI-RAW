@@ -3,18 +3,15 @@
  * Processes bulk rate card imports with multi-currency conversion
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { db } from '@/lib/db';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const { records } = await request.json();
 
     if (!records || !Array.isArray(records) || records.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No records provided' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'No records provided', 400)
     }
 
     const results = {
@@ -24,12 +21,9 @@ export async function POST(request: NextRequest) {
     };
 
     // Get tenantId from request
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
     }
 
     for (let i = 0; i < records.length; i++) {
@@ -92,18 +86,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       ...results,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to process bulk import',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

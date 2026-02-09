@@ -60,13 +60,13 @@ export interface FloatingActionButtonProps {
 // ============================================================================
 
 const variantStyles = {
-  primary: 'bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/30',
+  primary: 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30',
   secondary: 'bg-slate-700 hover:bg-slate-800 text-white shadow-lg shadow-slate-500/30',
-  gradient: 'bg-gradient-to-r from-purple-500 via-purple-500 to-pink-500 hover:from-purple-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30',
+  gradient: 'bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 hover:from-violet-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-violet-500/30',
 };
 
 const actionColors = {
-  primary: 'bg-purple-500 hover:bg-purple-600 text-white',
+  primary: 'bg-violet-500 hover:bg-violet-600 text-white',
   secondary: 'bg-slate-600 hover:bg-slate-700 text-white',
   success: 'bg-violet-500 hover:bg-violet-600 text-white',
   warning: 'bg-amber-500 hover:bg-amber-600 text-white',

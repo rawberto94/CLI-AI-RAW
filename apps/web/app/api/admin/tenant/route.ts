@@ -3,151 +3,98 @@
  * Get and update tenant information
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(_request: NextRequest) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    const tenant = await prisma.tenant.findUnique({
-      where: { id: session.user.tenantId },
-      include: {
-        subscription: {
-          select: {
-            plan: true,
-            status: true,
-            startDate: true,
-            endDate: true,
-          },
-        },
-        usage: {
-          select: {
-            contractsProcessed: true,
-            storageUsed: true,
-            apiCallsCount: true,
-            aiTokensUsed: true,
-          },
-        },
-        _count: {
-          select: {
-            users: true,
-          },
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: ctx.tenantId },
+    include: {
+      subscription: {
+        select: {
+          plan: true,
+          status: true,
+          startDate: true,
+          endDate: true,
         },
       },
-    });
-
-    if (!tenant) {
-      return NextResponse.json(
-        { error: "Tenant not found" },
-        { status: 404 }
-      );
-    }
-
-    // Get contract count excluding DELETED
-    const contractsCount = await prisma.contract.count({
-      where: {
-        tenantId: session.user.tenantId,
-        isDeleted: false,
-      },
-    });
-
-    return NextResponse.json({ 
-      tenant: {
-        ...tenant,
-        _count: {
-          ...tenant._count,
-          contracts: contractsCount,
+      usage: {
+        select: {
+          contractsProcessed: true,
+          storageUsed: true,
+          apiCallsCount: true,
+          aiTokensUsed: true,
         },
       },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to get tenant information" },
-      { status: 500 }
-    );
+      _count: {
+        select: {
+          users: true,
+        },
+      },
+    },
+  });
+
+  if (!tenant) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
   }
-}
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+  // Get contract count excluding DELETED
+  const contractsCount = await prisma.contract.count({
+    where: {
+      tenantId: ctx.tenantId,
+      isDeleted: false,
+    },
+  });
 
-    // Check if user is admin or owner
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (!user || !["owner", "admin"].includes(user.role)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
-
-    const body = await request.json();
-    const { name } = body;
-
-    if (!name?.trim()) {
-      return NextResponse.json(
-        { error: "Organization name is required" },
-        { status: 400 }
-      );
-    }
-
-    // Check if name is already taken by another tenant
-    const existingTenant = await prisma.tenant.findFirst({
-      where: {
-        name,
-        NOT: { id: session.user.tenantId },
+  return createSuccessResponse(ctx, {
+    tenant: {
+      ...tenant,
+      _count: {
+        ...tenant._count,
+        contracts: contractsCount,
       },
-    });
+    },
+  });
+});
 
-    if (existingTenant) {
-      return NextResponse.json(
-        { error: "Organization name is already taken" },
-        { status: 409 }
-      );
-    }
+export const PATCH = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  const { name } = body;
 
-    const tenant = await prisma.tenant.update({
-      where: { id: session.user.tenantId },
-      data: { name },
-    });
-
-    // Audit log
-    await prisma.auditLog.create({
-      data: {
-        tenantId: session.user.tenantId,
-        userId: session.user.id,
-        action: "TENANT_UPDATED",
-        entityType: "TENANT",
-        entityId: tenant.id,
-        metadata: { name },
-      },
-    });
-
-    return NextResponse.json({ tenant });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to update tenant" },
-      { status: 500 }
-    );
+  if (!name?.trim()) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Organization name is required', 400);
   }
-}
+
+  // Check if name is already taken by another tenant
+  const existingTenant = await prisma.tenant.findFirst({
+    where: {
+      name,
+      NOT: { id: ctx.tenantId },
+    },
+  });
+
+  if (existingTenant) {
+    return createErrorResponse(ctx, 'CONFLICT', 'Organization name is already taken', 409);
+  }
+
+  const tenant = await prisma.tenant.update({
+    where: { id: ctx.tenantId },
+    data: { name },
+  });
+
+  // Audit log
+  await prisma.auditLog.create({
+    data: {
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
+      action: 'TENANT_UPDATED',
+      entityType: 'TENANT',
+      entityId: tenant.id,
+      metadata: { name },
+    },
+  });
+
+  return createSuccessResponse(ctx, { tenant });
+});

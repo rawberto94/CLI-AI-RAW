@@ -585,7 +585,7 @@ export default function EnhancedContractsDemo() {
                 <FileText className="h-6 w-6 text-slate-700" />
                 <h1 className="text-2xl font-semibold text-slate-900">
                   Contracts
-                  <span className="ml-2 text-sm font-normal text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full">
+                  <span className="ml-2 text-sm font-normal text-violet-600 bg-violet-50 px-2 py-0.5 rounded-full">
                     Enhanced UI Demo
                   </span>
                 </h1>

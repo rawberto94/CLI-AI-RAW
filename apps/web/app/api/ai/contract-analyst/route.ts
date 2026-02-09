@@ -7,10 +7,11 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch, type SearchFilters } from '@/lib/rag/advanced-rag.service';
 import OpenAI from 'openai';
+import { aiCopilotService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // Types
@@ -109,19 +110,16 @@ async function generateSuggestions(
           role: 'system',
           content: `Generate 3 relevant follow-up questions a user might ask after getting an answer about a contract. 
 Return ONLY a JSON array of strings, no explanation.
-Questions should be specific and actionable, not generic.`,
-        },
+Questions should be specific and actionable, not generic.` },
         {
           role: 'user',
           content: `Original question: "${query}"
 Answer summary: "${answer.slice(0, 500)}"
 
-Generate 3 follow-up questions:`,
-        },
+Generate 3 follow-up questions:` },
       ],
       temperature: 0.7,
-      max_tokens: 200,
-    });
+      max_tokens: 200 });
 
     let content = response.choices[0]?.message?.content || '[]';
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
@@ -147,34 +145,21 @@ function calculateConfidence(sources: SourceReference[]): number {
 // Main Handler
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     // Auth check
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     // Parse request
     const body: ContractAnalystRequest = await request.json();
     const { contractId, query, context, conversationHistory } = body;
 
     if (!contractId || !query) {
-      return NextResponse.json(
-        { error: 'Contract ID and query are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID and query are required', 400);
     }
 
     // Verify user has access to this contract
     const contract = await prisma.contract.findFirst({
       where: {
         id: contractId,
-        tenantId: session.user.tenantId,
-      },
+        tenantId: ctx.tenantId },
       select: {
         id: true,
         contractTitle: true,
@@ -187,24 +172,16 @@ export async function POST(request: NextRequest) {
         totalValue: true,
         startDate: true,
         endDate: true,
-        tenantId: true,
-      },
-    });
+        tenantId: true } });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found or access denied', 404);
     }
 
     // Initialize OpenAI
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json(
-        { error: 'AI service not configured' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI service not configured', 503);
     }
 
     const openai = new OpenAI({ apiKey });
@@ -212,8 +189,7 @@ export async function POST(request: NextRequest) {
     // Search for relevant contract sections using RAG
     const searchFilters: SearchFilters = {
       contractIds: [contractId],
-      tenantId: contract.tenantId,
-    };
+      tenantId: contract.tenantId };
 
     const searchResults = await hybridSearch(query, {
       mode: 'hybrid',
@@ -221,8 +197,7 @@ export async function POST(request: NextRequest) {
       minScore: 0.3,
       filters: searchFilters,
       rerank: true,
-      expandQuery: true,
-    });
+      expandQuery: true });
 
     // Build context from search results
     let contractContext = '';
@@ -236,8 +211,7 @@ export async function POST(request: NextRequest) {
             section: result.metadata?.section || result.metadata?.heading,
             pageNumber: result.metadata?.pageNumber,
             excerpt: result.text.slice(0, 300) + (result.text.length > 300 ? '...' : ''),
-            relevance: result.score,
-          });
+            relevance: result.score });
 
           return `[Section ${idx + 1}${result.metadata?.heading ? `: ${result.metadata.heading}` : ''}]
 ${result.text}`;
@@ -248,16 +222,14 @@ ${result.text}`;
       contractContext = contract.rawText.slice(0, 8000);
       sources.push({
         excerpt: 'Full contract text (no specific section identified)',
-        relevance: 0.5,
-      });
+        relevance: 0.5 });
     }
 
     // Build conversation messages
     const messages: OpenAI.ChatCompletionMessageParam[] = [
       {
         role: 'system',
-        content: SYSTEM_PROMPT,
-      },
+        content: SYSTEM_PROMPT },
       {
         role: 'user',
         content: `${CONTEXT_PROMPT_TEMPLATE(
@@ -272,8 +244,7 @@ ${contractContext || 'No specific contract content available. Please provide a g
 
 ---
 
-**User Question:** ${query}`,
-      },
+**User Question:** ${query}` },
     ];
 
     // Add conversation history if provided (for multi-turn conversations)
@@ -281,8 +252,7 @@ ${contractContext || 'No specific contract content available. Please provide a g
       // Insert history after system message but before current query
       const historyMessages: OpenAI.ChatCompletionMessageParam[] = conversationHistory.map(msg => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      }));
+        content: msg.content }));
       messages.splice(1, 0, ...historyMessages);
     }
 
@@ -291,8 +261,7 @@ ${contractContext || 'No specific contract content available. Please provide a g
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
       temperature: 0.3, // Lower temperature for more factual responses
-      max_tokens: 1500,
-    });
+      max_tokens: 1500 });
 
     const answer = completion.choices[0]?.message?.content || 'Unable to generate response.';
 
@@ -308,14 +277,13 @@ ${contractContext || 'No specific contract content available. Please provide a g
       confidence,
       sources,
       suggestions,
-      relatedQueries: suggestions.slice(0, 3),
-    };
+      relatedQueries: suggestions.slice(0, 3) };
 
     // Log usage for analytics (non-blocking)
     prisma.aIUsageLog.create({
       data: {
         tenantId: contract.tenantId,
-        userId: session.user.id,
+        userId: ctx.userId,
         contractId: contractId,
         feature: 'contract_analyst',
         model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
@@ -328,42 +296,26 @@ ${contractContext || 'No specific contract content available. Please provide a g
         metadata: JSON.stringify({
           query: query.slice(0, 200),
           confidence,
-          sourcesCount: sources.length,
-        }),
-      },
-    }).catch(() => {
+          sourcesCount: sources.length }) } }).catch(() => {
       // Ignore logging errors
     });
 
-    return NextResponse.json(response);
-  } catch (error) {
-    console.error('[Contract Analyst] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to analyze contract' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, response);
+  });
 
 // ============================================================================
 // Streaming Handler (for real-time responses)
 // ============================================================================
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const { searchParams } = new URL(request.url);
   const contractId = searchParams.get('contractId');
   const query = searchParams.get('query');
 
   if (!contractId || !query) {
-    return NextResponse.json(
-      { error: 'Contract ID and query are required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID and query are required', 400);
   }
 
   // For GET requests, redirect to POST with streaming
-  return NextResponse.json(
-    { message: 'Use POST method for contract analysis' },
-    { status: 405 }
-  );
-}
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Use POST method for contract analysis', 405);
+});

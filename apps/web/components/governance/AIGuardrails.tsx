@@ -308,7 +308,7 @@ const getSeverityColor = (severity: string) => {
 const getCategoryColor = (category: string) => {
   switch (category) {
     case 'compliance':
-      return 'bg-purple-100 text-purple-700';
+      return 'bg-violet-100 text-violet-700';
     case 'risk':
       return 'bg-red-100 text-red-700';
     case 'commercial':
@@ -331,7 +331,7 @@ const getDecisionColor = (decision: string) => {
     case 'escalated':
       return 'text-orange-600 bg-orange-50';
     case 'overridden':
-      return 'text-purple-600 bg-purple-50';
+      return 'text-violet-600 bg-violet-50';
     default:
       return 'text-gray-600 bg-gray-50';
   }
@@ -497,7 +497,7 @@ export function AIGuardrails() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading governance data...</p>
         </div>
       </div>
@@ -510,7 +510,7 @@ export function AIGuardrails() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-500 rounded-xl">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl">
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -596,8 +596,8 @@ export function AIGuardrails() {
             className="bg-white rounded-xl p-5 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Scale className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <Scale className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">78</p>
@@ -623,7 +623,7 @@ export function AIGuardrails() {
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={`flex items-center gap-2 py-4 border-b-2 text-sm font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'border-purple-600 text-purple-600'
+                        ? 'border-violet-600 text-violet-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -631,7 +631,7 @@ export function AIGuardrails() {
                     {tab.label}
                     {tab.count !== undefined && (
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        activeTab === tab.id ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                        activeTab === tab.id ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-600'
                       }`}>
                         {tab.count}
                       </span>
@@ -639,7 +639,7 @@ export function AIGuardrails() {
                   </button>
                 ))}
               </nav>
-              <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+              <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                 <Settings className="h-4 w-4" />
                 Configure
               </button>
@@ -656,7 +656,7 @@ export function AIGuardrails() {
                     animate={{ opacity: 1 }}
                     className={`bg-gray-50 rounded-xl p-5 border cursor-pointer transition-all ${
                       selectedPolicy === policy.id
-                        ? 'border-purple-300 ring-2 ring-purple-100'
+                        ? 'border-violet-300 ring-2 ring-violet-100'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => setSelectedPolicy(selectedPolicy === policy.id ? null : policy.id)}
@@ -731,7 +731,7 @@ export function AIGuardrails() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-4">
-                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 text-sm">
+                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 text-sm">
                               <Eye className="h-4 w-4" />
                               View Rules
                             </button>
@@ -786,12 +786,12 @@ export function AIGuardrails() {
                   >
                     <div className="flex items-start gap-4">
                       <div className={`p-2 rounded-lg ${
-                        flag.type === 'ai-generated' ? 'bg-purple-100' :
+                        flag.type === 'ai-generated' ? 'bg-violet-100' :
                         flag.type === 'deviation' ? 'bg-red-100' :
                         flag.type === 'compliance' ? 'bg-violet-100' :
                         'bg-yellow-100'
                       }`}>
-                        {flag.type === 'ai-generated' ? <Brain className="h-5 w-5 text-purple-600" /> :
+                        {flag.type === 'ai-generated' ? <Brain className="h-5 w-5 text-violet-600" /> :
                          flag.type === 'deviation' ? <AlertTriangle className="h-5 w-5 text-red-600" /> :
                          flag.type === 'compliance' ? <Shield className="h-5 w-5 text-violet-600" /> :
                          <Target className="h-5 w-5 text-yellow-600" />}
@@ -851,7 +851,7 @@ export function AIGuardrails() {
                     <input
                       type="text"
                       placeholder="Search audit logs..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -921,7 +921,7 @@ export function AIGuardrails() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">Automated Thresholds</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     <Sliders className="h-4 w-4" />
                     Add Threshold
                   </button>
@@ -989,7 +989,7 @@ export function AIGuardrails() {
                               onChange={() => {}}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                           </label>
                           <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                             <Settings className="h-4 w-4" />

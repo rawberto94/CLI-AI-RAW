@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currencyAdvancedService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const baseCurrency = searchParams.get('baseCurrency') || 'USD';
     const tenantId = await getApiTenantId(request);
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     // Detect currency volatility
@@ -18,17 +18,11 @@ export async function GET(request: NextRequest) {
     // Get affected rates for tenant
     const affectedRates = await currencyAdvancedService.getRatesAffectedByVolatility(tenantId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       baseCurrency,
       alertCount: volatilityAlerts.length,
       alerts: volatilityAlerts,
       affectedRates: affectedRates.length,
       affectedRateDetails: affectedRates,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to detect currency volatility' },
-      { status: 500 }
-    );
-  }
-}
+  });

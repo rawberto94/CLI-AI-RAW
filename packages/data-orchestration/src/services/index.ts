@@ -203,6 +203,10 @@ export { analyticsService } from './analytics.service';
 export { analyticalIntelligenceService } from './analytical-intelligence.service';
 export { analyticalSyncService } from './analytical-sync.service';
 
+// Reporting services
+export { reportGeneratorService } from './report-generator.service';
+export { reportExportService } from './report-export.service';
+
 // Metadata and locking
 export { metadataEditorService } from './metadata-editor.service';
 export { optimisticLockingService, OptimisticLockError } from './optimistic-locking.service';

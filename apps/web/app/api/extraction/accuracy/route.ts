@@ -1,3 +1,4 @@
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 /**
  * Extraction Accuracy API
  * GET /api/extraction/accuracy - Get extraction accuracy statistics
@@ -9,174 +10,164 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'
+import { analyticsService } from 'data-orchestration/services';
 
 // ============================================================================
 // GET - Get accuracy statistics
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const tenantId = getSessionTenantId(session)
-    const { searchParams } = new URL(request.url)
-    const view = searchParams.get('view') || 'summary'
-    const contractType = searchParams.get('contractType')
-
-    // Base filter
-    const whereClause = {
-      contract: { tenantId },
-      ...(contractType && { contractType }),
-    }
-
-    if (view === 'summary') {
-      // Overall accuracy summary
-      const corrections = await prisma.extractionCorrection.findMany({
-        where: whereClause,
-        select: {
-          fieldName: true,
-          wasCorrect: true,
-          contractType: true,
-          createdAt: true,
-        }
-      })
-
-      const totalCount = corrections.length
-      const correctCount = corrections.filter(c => c.wasCorrect).length
-      const overallAccuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : null
-
-      // Field-level breakdown
-      const fieldStats = corrections.reduce((acc, c) => {
-        if (!acc[c.fieldName]) {
-          acc[c.fieldName] = { correct: 0, total: 0 }
-        }
-        acc[c.fieldName].total++
-        if (c.wasCorrect) acc[c.fieldName].correct++
-        return acc
-      }, {} as Record<string, { correct: number; total: number }>)
-
-      const fieldAccuracy = Object.entries(fieldStats)
-        .map(([field, stats]) => ({
-          field,
-          accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-          sampleSize: stats.total,
-        }))
-        .sort((a, b) => a.accuracy - b.accuracy)
-
-      // Contract type breakdown
-      const typeStats = corrections.reduce((acc, c) => {
-        const type = c.contractType || 'unknown'
-        if (!acc[type]) {
-          acc[type] = { correct: 0, total: 0 }
-        }
-        acc[type].total++
-        if (c.wasCorrect) acc[type].correct++
-        return acc
-      }, {} as Record<string, { correct: number; total: number }>)
-
-      const typeAccuracy = Object.entries(typeStats)
-        .map(([type, stats]) => ({
-          contractType: type,
-          accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
-          sampleSize: stats.total,
-        }))
-        .sort((a, b) => a.accuracy - b.accuracy)
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          overview: {
-            totalFeedback: totalCount,
-            correctExtractions: correctCount,
-            corrections: totalCount - correctCount,
-            overallAccuracy,
-          },
-          fieldAccuracy,
-          typeAccuracy,
-          recommendations: generateRecommendations(fieldAccuracy, typeAccuracy),
-        }
-      })
-    }
-
-    if (view === 'patterns') {
-      // Error pattern analysis
-      const corrections = await prisma.extractionCorrection.findMany({
-        where: {
-          ...whereClause,
-          wasCorrect: false,
-        },
-        select: {
-          fieldName: true,
-          originalValue: true,
-          correctedValue: true,
-          contractType: true,
-        }
-      })
-
-      const patterns = analyzePatterns(corrections)
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          totalErrors: corrections.length,
-          patterns,
-        }
-      })
-    }
-
-    if (view === 'trends') {
-      // Accuracy over time
-      const corrections = await prisma.extractionCorrection.findMany({
-        where: whereClause,
-        select: {
-          wasCorrect: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'asc' }
-      })
-
-      // Group by week
-      const weeklyTrends = corrections.reduce((acc, c) => {
-        const weekStart = getWeekStart(c.createdAt)
-        const key = weekStart.toISOString().split('T')[0]
-        
-        if (!acc[key]) {
-          acc[key] = { correct: 0, total: 0, weekStart: key }
-        }
-        acc[key].total++
-        if (c.wasCorrect) acc[key].correct++
-        return acc
-      }, {} as Record<string, { correct: number; total: number; weekStart: string }>)
-
-      const trends = Object.values(weeklyTrends).map(week => ({
-        weekStart: week.weekStart,
-        accuracy: week.total > 0 ? Math.round((week.correct / week.total) * 100) : 0,
-        sampleSize: week.total,
-      }))
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          trends,
-          isImproving: isAccuracyImproving(trends),
-        }
-      })
-    }
-
-    return NextResponse.json({
-      success: false,
-      error: 'Invalid view parameter'
-    }, { status: 400 })
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get accuracy stats' },
-      { status: 500 }
-    )
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
   }
-}
+
+  const tenantId = getSessionTenantId(session)
+  const { searchParams } = new URL(request.url)
+  const view = searchParams.get('view') || 'summary'
+  const contractType = searchParams.get('contractType')
+
+  // Base filter
+  const whereClause = {
+    contract: { tenantId },
+    ...(contractType && { contractType }),
+  }
+
+  if (view === 'summary') {
+    // Overall accuracy summary
+    const corrections = await prisma.extractionCorrection.findMany({
+      where: whereClause,
+      select: {
+        fieldName: true,
+        wasCorrect: true,
+        contractType: true,
+        createdAt: true,
+      }
+    })
+
+    const totalCount = corrections.length
+    const correctCount = corrections.filter(c => c.wasCorrect).length
+    const overallAccuracy = totalCount > 0 ? Math.round((correctCount / totalCount) * 100) : null
+
+    // Field-level breakdown
+    const fieldStats = corrections.reduce((acc, c) => {
+      if (!acc[c.fieldName]) {
+        acc[c.fieldName] = { correct: 0, total: 0 }
+      }
+      acc[c.fieldName].total++
+      if (c.wasCorrect) acc[c.fieldName].correct++
+      return acc
+    }, {} as Record<string, { correct: number; total: number }>)
+
+    const fieldAccuracy = Object.entries(fieldStats)
+      .map(([field, stats]) => ({
+        field,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+        sampleSize: stats.total,
+      }))
+      .sort((a, b) => a.accuracy - b.accuracy)
+
+    // Contract type breakdown
+    const typeStats = corrections.reduce((acc, c) => {
+      const type = c.contractType || 'unknown'
+      if (!acc[type]) {
+        acc[type] = { correct: 0, total: 0 }
+      }
+      acc[type].total++
+      if (c.wasCorrect) acc[type].correct++
+      return acc
+    }, {} as Record<string, { correct: number; total: number }>)
+
+    const typeAccuracy = Object.entries(typeStats)
+      .map(([type, stats]) => ({
+        contractType: type,
+        accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : 0,
+        sampleSize: stats.total,
+      }))
+      .sort((a, b) => a.accuracy - b.accuracy)
+
+    return createSuccessResponse(ctx, {
+      success: true,
+      data: {
+        overview: {
+          totalFeedback: totalCount,
+          correctExtractions: correctCount,
+          corrections: totalCount - correctCount,
+          overallAccuracy,
+        },
+        fieldAccuracy,
+        typeAccuracy,
+        recommendations: generateRecommendations(fieldAccuracy, typeAccuracy),
+      }
+    })
+  }
+
+  if (view === 'patterns') {
+    // Error pattern analysis
+    const corrections = await prisma.extractionCorrection.findMany({
+      where: {
+        ...whereClause,
+        wasCorrect: false,
+      },
+      select: {
+        fieldName: true,
+        originalValue: true,
+        correctedValue: true,
+        contractType: true,
+      }
+    })
+
+    const patterns = analyzePatterns(corrections)
+
+    return createSuccessResponse(ctx, {
+      success: true,
+      data: {
+        totalErrors: corrections.length,
+        patterns,
+      }
+    })
+  }
+
+  if (view === 'trends') {
+    // Accuracy over time
+    const corrections = await prisma.extractionCorrection.findMany({
+      where: whereClause,
+      select: {
+        wasCorrect: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'asc' }
+    })
+
+    // Group by week
+    const weeklyTrends = corrections.reduce((acc, c) => {
+      const weekStart = getWeekStart(c.createdAt)
+      const key = weekStart.toISOString().split('T')[0]
+
+      if (!acc[key]) {
+        acc[key] = { correct: 0, total: 0, weekStart: key }
+      }
+      acc[key].total++
+      if (c.wasCorrect) acc[key].correct++
+      return acc
+    }, {} as Record<string, { correct: number; total: number; weekStart: string }>)
+
+    const trends = Object.values(weeklyTrends).map(week => ({
+      weekStart: week.weekStart,
+      accuracy: week.total > 0 ? Math.round((week.correct / week.total) * 100) : 0,
+      sampleSize: week.total,
+    }))
+
+    return createSuccessResponse(ctx, {
+      success: true,
+      data: {
+        trends,
+        isImproving: isAccuracyImproving(trends),
+      }
+    })
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid view parameter', 400)
+});
 
 // ============================================================================
 // HELPER FUNCTIONS

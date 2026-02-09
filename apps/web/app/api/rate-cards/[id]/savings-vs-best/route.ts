@@ -5,10 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/rate-cards/[id]/savings-vs-best
@@ -16,10 +15,10 @@ import { rateCardBenchmarkingService } from 'data-orchestration/services';
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getApiContext(request);
+try {
+    if (!ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const rateCardId = params.id;
@@ -28,22 +27,19 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     const rateCard = await prisma.rateCardEntry.findFirst({
       where: {
         id: rateCardId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
     });
 
     if (!rateCard) {
-      return NextResponse.json({ error: 'Rate card not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
     const benchmarkEngine = new rateCardBenchmarkingService(prisma);
     const savingsVsBest = await benchmarkEngine.calculateSavingsVsBest(rateCardId);
 
-    return NextResponse.json(savingsVsBest);
+    return createSuccessResponse(ctx, savingsVsBest);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to calculate savings' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to calculate savings', 500);
   }
 }

@@ -118,8 +118,8 @@ export default function ArtifactsAnalyticsPage() {
               className="flex flex-col items-center gap-4"
             >
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-purple-500/20 blur-2xl rounded-full" />
-                <div className="relative p-4 bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 blur-2xl rounded-full" />
+                <div className="relative p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg">
                   <RefreshCw className="h-8 w-8 animate-spin text-white" />
                 </div>
               </div>
@@ -145,7 +145,7 @@ export default function ArtifactsAnalyticsPage() {
           className="flex items-start justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
               <Brain className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -164,7 +164,7 @@ export default function ArtifactsAnalyticsPage() {
             </Button>
             <Button 
               onClick={loadMetrics}
-              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 shadow-lg shadow-purple-500/25"
+              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/25"
             >
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
@@ -184,7 +184,7 @@ export default function ArtifactsAnalyticsPage() {
             const gradients: Record<string, string> = {
               blue: 'from-violet-500 to-purple-600',
               green: 'from-violet-500 to-violet-600',
-              purple: 'from-purple-500 to-violet-600',
+              purple: 'from-violet-500 to-purple-600',
               emerald: 'from-violet-500 to-violet-600'
             };
             return (
@@ -234,7 +234,7 @@ export default function ArtifactsAnalyticsPage() {
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-purple-500" />
+                    <BarChart3 className="h-5 w-5 text-violet-500" />
                     Quality Metrics
                   </CardTitle>
                   <CardDescription>

@@ -58,7 +58,7 @@ function AuthErrorCard() {
         >
           <Button 
             asChild 
-            className="w-full h-11 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-purple-500/25 hover:shadow-xl group"
+            className="w-full h-11 bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white font-semibold rounded-xl transition-all duration-300 shadow-lg shadow-violet-500/25 hover:shadow-xl group"
           >
             <Link href="/auth/signin" className="flex items-center justify-center gap-2">
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />

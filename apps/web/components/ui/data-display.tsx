@@ -73,9 +73,9 @@ function getInitials(name: string): string {
 
 function stringToColor(str: string): string {
   const colors = [
-    'bg-violet-500', 'bg-purple-500', 'bg-pink-500', 'bg-red-500',
+    'bg-violet-500', 'bg-violet-500', 'bg-pink-500', 'bg-red-500',
     'bg-orange-500', 'bg-amber-500', 'bg-green-500', 'bg-violet-500',
-    'bg-purple-500', 'bg-purple-500',
+    'bg-violet-500', 'bg-violet-500',
   ];
   let hash = 0;
   for (let i = 0; i < str.length; i++) {
@@ -593,7 +593,7 @@ const statColors = {
   green: 'text-green-600 dark:text-green-400',
   red: 'text-red-600 dark:text-red-400',
   amber: 'text-amber-600 dark:text-amber-400',
-  purple: 'text-purple-600 dark:text-purple-400',
+  purple: 'text-violet-600 dark:text-violet-400',
 };
 
 export function StatDisplay({
@@ -726,7 +726,7 @@ const progressColors = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
-  purple: 'bg-purple-500',
+  purple: 'bg-violet-500',
 };
 
 export function ProgressTracker({

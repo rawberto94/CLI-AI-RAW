@@ -13,6 +13,7 @@
 import 'server-only';
 
 import { getContractQueue } from '@/lib/queue/contract-queue';
+import { logger } from '@/lib/logger';
 
 /**
  * Priority levels matching queue configuration
@@ -154,9 +155,7 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
     workerScript = join(workspaceRoot, 'scripts', 'generate-artifacts-worker.mjs');
   }
   
-  console.log(`[Legacy Processing] Spawning worker for contract: ${contractId}`);
-  console.log(`[Legacy Processing] Worker script: ${workerScript}`);
-  console.log(`[Legacy Processing] Workspace root: ${workspaceRoot}`);
+  logger.info('Spawning legacy worker for contract', { contractId, workerScript, workspaceRoot });
   
   const worker = spawn('npx', ['tsx', workerScript, contractId, tenantId, filePath, mimeType || 'application/octet-stream'], {
     detached: true,
@@ -171,11 +170,11 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   
   // Log any errors from the worker
   worker.stderr?.on('data', (data) => {
-    console.error(`[Legacy Worker Error] ${data}`);
+    logger.error('Legacy worker stderr', { contractId, output: String(data) });
   });
   
   worker.on('error', (err) => {
-    console.error(`[Legacy Worker] Failed to start worker:`, err);
+    logger.error('Failed to start legacy worker', { contractId, error: err.message });
   });
   
   worker.unref(); // Allow parent to exit independently

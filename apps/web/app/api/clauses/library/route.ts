@@ -1,8 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
-import { getServerSession } from '@/lib/auth';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 // Default library clauses to seed if database is empty
 const defaultLibraryClauses = [
   {
@@ -96,190 +96,172 @@ const defaultLibraryClauses = [
 ];
 
 // GET /api/clauses/library - Get all library clauses
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await getTenantIdFromRequest(request);
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+  const riskLevel = searchParams.get('riskLevel');
+  const search = searchParams.get('search');
+  const isStandard = searchParams.get('isStandard');
+  const isMandatory = searchParams.get('isMandatory');
+
+  // Try to get from database first
   try {
-    const tenantId = await getTenantIdFromRequest(request);
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const riskLevel = searchParams.get('riskLevel');
-    const search = searchParams.get('search');
-    const isStandard = searchParams.get('isStandard');
-    const isMandatory = searchParams.get('isMandatory');
+    // Check if library exists
+    const count = await prisma.clauseLibrary.count({ where: { tenantId } });
 
-    // Try to get from database first
-    try {
-      // Check if library exists
-      const count = await prisma.clauseLibrary.count({ where: { tenantId } });
-      
-      // Seed default clauses if empty
-      if (count === 0) {
-        await prisma.clauseLibrary.createMany({
-          data: defaultLibraryClauses.map(clause => ({
-            ...clause,
-            tenantId,
-            tags: JSON.stringify(clause.tags),
-            createdBy: 'system',
-          })),
-          skipDuplicates: true,
-        });
-      }
-
-      // Build where clause
-      const where: Record<string, unknown> = { tenantId };
-      if (category) where.category = category;
-      if (riskLevel) where.riskLevel = riskLevel;
-      if (isStandard === 'true') where.isStandard = true;
-      if (isMandatory === 'true') where.isMandatory = true;
-      if (search) {
-        where.OR = [
-          { title: { contains: search, mode: 'insensitive' } },
-          { content: { contains: search, mode: 'insensitive' } },
-          { name: { contains: search, mode: 'insensitive' } },
-        ];
-      }
-
-      const clauses = await prisma.clauseLibrary.findMany({
-        where,
-        orderBy: [
-          { usageCount: 'desc' },
-          { title: 'asc' },
-        ],
-      });
-
-      return NextResponse.json({ 
-        clauses: clauses.map(c => ({
-          ...c,
-          tags: typeof c.tags === 'string' ? JSON.parse(c.tags) : c.tags,
+    // Seed default clauses if empty
+    if (count === 0) {
+      await prisma.clauseLibrary.createMany({
+        data: defaultLibraryClauses.map(clause => ({
+          ...clause,
+          tenantId,
+          tags: JSON.stringify(clause.tags),
+          createdBy: 'system',
         })),
-        source: 'database',
-        total: clauses.length,
-      });
-    } catch {
-      // Fallback to default clauses
-      let filteredClauses = defaultLibraryClauses.map((c, i) => ({
-        ...c,
-        id: `lib${i + 1}`,
-        tenantId,
-        usageCount: Math.floor(Math.random() * 100),
-        createdBy: 'system',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      }));
-
-      if (category) {
-        filteredClauses = filteredClauses.filter(c => c.category === category);
-      }
-      if (riskLevel) {
-        filteredClauses = filteredClauses.filter(c => c.riskLevel === riskLevel);
-      }
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filteredClauses = filteredClauses.filter(c => 
-          c.title.toLowerCase().includes(searchLower) ||
-          c.content.toLowerCase().includes(searchLower)
-        );
-      }
-
-      return NextResponse.json({ 
-        clauses: filteredClauses,
-        source: 'default',
-        total: filteredClauses.length,
+        skipDuplicates: true,
       });
     }
+
+    // Build where clause
+    const where: Record<string, unknown> = { tenantId };
+    if (category) where.category = category;
+    if (riskLevel) where.riskLevel = riskLevel;
+    if (isStandard === 'true') where.isStandard = true;
+    if (isMandatory === 'true') where.isMandatory = true;
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { content: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const clauses = await prisma.clauseLibrary.findMany({
+      where,
+      orderBy: [
+        { usageCount: 'desc' },
+        { title: 'asc' },
+      ],
+    });
+
+    return createSuccessResponse(ctx, { 
+      clauses: clauses.map(c => ({
+        ...c,
+        tags: typeof c.tags === 'string' ? JSON.parse(c.tags) : c.tags,
+      })),
+      source: 'database',
+      total: clauses.length,
+    });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch clause library' },
-      { status: 500 }
-    );
-  }
-}
+    // Fallback to default clauses
+    let filteredClauses = defaultLibraryClauses.map((c, i) => ({
+      ...c,
+      id: `lib${i + 1}`,
+      tenantId,
+      usageCount: Math.floor(Math.random() * 100),
+      createdBy: 'system',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }));
 
-// POST /api/clauses/library - Add clause to library
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    const tenantId = await getTenantIdFromRequest(request);
-    const body = await request.json();
-    const { 
-      name, 
-      title, 
-      category, 
-      content, 
-      riskLevel = 'MEDIUM',
-      isStandard = false,
-      isMandatory = false,
-      isNegotiable = true,
-      tags = [],
-      jurisdiction,
-      contractTypes = [],
-      alternativeText,
-    } = body;
-
-    if (!name || !title || !category || !content) {
-      return NextResponse.json(
-        { error: 'Missing required fields: name, title, category, content' },
-        { status: 400 }
+    if (category) {
+      filteredClauses = filteredClauses.filter(c => c.category === category);
+    }
+    if (riskLevel) {
+      filteredClauses = filteredClauses.filter(c => c.riskLevel === riskLevel);
+    }
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredClauses = filteredClauses.filter(c => 
+        c.title.toLowerCase().includes(searchLower) ||
+        c.content.toLowerCase().includes(searchLower)
       );
     }
 
-    try {
-      const clause = await prisma.clauseLibrary.create({
-        data: {
-          tenantId,
-          name,
-          title,
-          category,
-          content,
-          plainText: content.replace(/<[^>]*>/g, ''), // Strip HTML
-          riskLevel,
-          isStandard,
-          isMandatory,
-          isNegotiable,
-          tags: JSON.stringify(tags),
-          jurisdiction,
-          contractTypes: JSON.stringify(contractTypes),
-          alternativeText,
-          createdBy: session?.user?.id || 'system'
-        },
-      });
+    return createSuccessResponse(ctx, { 
+      clauses: filteredClauses,
+      source: 'default',
+      total: filteredClauses.length,
+    });
+  }
+});
 
-      return NextResponse.json({ 
-        clause: {
-          ...clause,
-          tags: typeof clause.tags === 'string' ? JSON.parse(clause.tags as string) : clause.tags,
-        },
-        source: 'database',
-      });
-    } catch {
-      // Return mock response for development
-      const newClause = {
-        id: `lib-${Date.now()}`,
+// POST /api/clauses/library - Add clause to library
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await getTenantIdFromRequest(request);
+  const body = await request.json();
+  const { 
+    name, 
+    title, 
+    category, 
+    content, 
+    riskLevel = 'MEDIUM',
+    isStandard = false,
+    isMandatory = false,
+    isNegotiable = true,
+    tags = [],
+    jurisdiction,
+    contractTypes = [],
+    alternativeText,
+  } = body;
+
+  if (!name || !title || !category || !content) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: name, title, category, content', 400);
+  }
+
+  try {
+    const clause = await prisma.clauseLibrary.create({
+      data: {
         tenantId,
         name,
         title,
         category,
         content,
+        plainText: content.replace(/<[^>]*>/g, ''), // Strip HTML
         riskLevel,
         isStandard,
         isMandatory,
         isNegotiable,
-        tags,
-        usageCount: 0,
-        createdBy: 'user',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+        tags: JSON.stringify(tags),
+        jurisdiction,
+        contractTypes: JSON.stringify(contractTypes),
+        alternativeText,
+        createdBy: session?.user?.id || 'system'
+      },
+    });
 
-      return NextResponse.json({ 
-        clause: newClause,
-        source: 'memory',
-        warning: 'Database unavailable, clause not persisted',
-      });
-    }
+    return createSuccessResponse(ctx, { 
+      clause: {
+        ...clause,
+        tags: typeof clause.tags === 'string' ? JSON.parse(clause.tags as string) : clause.tags,
+      },
+      source: 'database',
+    });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to add clause to library' },
-      { status: 500 }
-    );
+    // Return mock response for development
+    const newClause = {
+      id: `lib-${Date.now()}`,
+      tenantId,
+      name,
+      title,
+      category,
+      content,
+      riskLevel,
+      isStandard,
+      isMandatory,
+      isNegotiable,
+      tags,
+      usageCount: 0,
+      createdBy: 'user',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    return createSuccessResponse(ctx, { 
+      clause: newClause,
+      source: 'memory',
+      warning: 'Database unavailable, clause not persisted',
+    });
   }
-}
+});

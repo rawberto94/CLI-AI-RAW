@@ -184,7 +184,7 @@ const DetailedFeedbackForm: React.FC<{
                   onClick={() => setCategory(cat.value)}
                   className={`p-2 rounded-lg border text-left text-sm transition-all ${
                     category === cat.value
-                      ? 'border-purple-500 bg-purple-50 text-purple-700'
+                      ? 'border-violet-500 bg-violet-50 text-violet-700'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
                   }`}
                 >
@@ -206,7 +206,7 @@ const DetailedFeedbackForm: React.FC<{
             onChange={(e) => setComment(e.target.value)}
             placeholder="Tell us more about your experience..."
             rows={2}
-            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm resize-none transition-all"
+            className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm resize-none transition-all"
           />
         </div>
 
@@ -221,7 +221,7 @@ const DetailedFeedbackForm: React.FC<{
               onChange={(e) => setAlternative(e.target.value)}
               placeholder="Share what you expected or needed..."
               rows={2}
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-sm resize-none transition-all"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 text-sm resize-none transition-all"
             />
           </div>
         )}
@@ -237,7 +237,7 @@ const DetailedFeedbackForm: React.FC<{
           <button
             onClick={handleSubmit}
             disabled={isSubmitting}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-purple-600 text-white text-sm font-medium rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-violet-600 text-white text-sm font-medium rounded-lg hover:bg-violet-700 disabled:opacity-50 transition-colors"
           >
             {isSubmitting ? (
               <RefreshCw className="w-4 h-4 animate-spin" />
@@ -374,8 +374,8 @@ export const AISuggestionFeedback: React.FC<AISuggestionFeedbackProps> = ({
       {/* Suggestion Header */}
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <div className="p-1.5 bg-purple-100 rounded-lg">
-            <Sparkles className="w-4 h-4 text-purple-600" />
+          <div className="p-1.5 bg-violet-100 rounded-lg">
+            <Sparkles className="w-4 h-4 text-violet-600" />
           </div>
           <div>
             <span className="text-sm font-medium text-slate-900">{suggestion.title}</span>
@@ -422,7 +422,7 @@ export const AISuggestionFeedback: React.FC<AISuggestionFeedbackProps> = ({
               />
               <button
                 onClick={() => setShowDetailedForm(!showDetailedForm)}
-                className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                className="text-sm text-violet-600 hover:text-violet-700 flex items-center gap-1"
               >
                 <MessageSquare className="w-4 h-4" />
                 Add details

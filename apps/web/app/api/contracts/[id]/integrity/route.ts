@@ -15,29 +15,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerTenantId } from '@/lib/tenant-server'
 import { validateContractIntegrity, formatIntegrityReport } from '@/lib/validation/contract-integrity'
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   const params = await context.params
   try {
     const contractId = params.id
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'Contract ID is required' },
-        { status: 400 }
-      )
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get tenant ID for isolation
     const tenantId = await getServerTenantId()
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 401 }
-      )
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
     // Get format preference
@@ -70,7 +66,7 @@ export async function GET(
     }
 
     // Return JSON format
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       contractId,
       tenantId,
       valid: result.valid,
@@ -100,14 +96,8 @@ export async function GET(
       warnings,
       info,
       suggestedFixes,
-    })
+    });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Integrity check failed',
-        details: (error as Error).message,
-      },
-      { status: 500 }
-    )
+    return handleApiError(ctx, error);
   }
 }

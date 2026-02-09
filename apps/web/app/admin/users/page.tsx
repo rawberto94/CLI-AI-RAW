@@ -83,7 +83,7 @@ interface Invitation {
 }
 
 const ROLES = [
-  { value: 'owner', label: 'Owner', color: 'bg-purple-100 text-purple-800' },
+  { value: 'owner', label: 'Owner', color: 'bg-violet-100 text-violet-800' },
   { value: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800' },
   { value: 'manager', label: 'Manager', color: 'bg-violet-100 text-violet-800' },
   { value: 'member', label: 'Member', color: 'bg-green-100 text-green-800' },

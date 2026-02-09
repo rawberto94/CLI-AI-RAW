@@ -90,8 +90,8 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
     defaultTitle: 'Compliance Status Unknown',
     defaultDescription: 'Run compliance checks to verify regulatory adherence.',
     illustration: '✅',
-    color: 'text-purple-500',
-    bgGradient: 'from-purple-50 to-violet-50 dark:from-purple-950/30 dark:to-violet-950/30',
+    color: 'text-violet-500',
+    bgGradient: 'from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-violet-950/30',
   },
   'no-summary': {
     icon: FileText,
@@ -106,8 +106,8 @@ const EMPTY_STATE_CONFIG: Record<EmptyStateType, {
     defaultTitle: 'No Recent Activity',
     defaultDescription: 'Activity like edits, views, and comments will be tracked here.',
     illustration: '📊',
-    color: 'text-purple-500',
-    bgGradient: 'from-purple-50 to-sky-50 dark:from-purple-950/30 dark:to-sky-950/30',
+    color: 'text-violet-500',
+    bgGradient: 'from-violet-50 to-sky-50 dark:from-violet-950/30 dark:to-sky-950/30',
   },
   'no-reminders': {
     icon: Clock,

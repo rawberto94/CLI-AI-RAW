@@ -233,7 +233,7 @@ export function RedlineViewer({
       case 'addition': return <span className="text-green-500 font-bold">+</span>;
       case 'deletion': return <span className="text-red-500 font-bold">−</span>;
       case 'modification': return <Edit3 className="h-4 w-4 text-violet-500" />;
-      case 'suggestion': return <Zap className="h-4 w-4 text-purple-500" />;
+      case 'suggestion': return <Zap className="h-4 w-4 text-violet-500" />;
     }
   };
 
@@ -258,7 +258,7 @@ export function RedlineViewer({
     return (
       <div className="flex items-center justify-center min-h-[600px] bg-white dark:bg-slate-800 rounded-xl">
         <div className="text-center">
-          <Loader2 className="h-10 w-10 animate-spin text-purple-500 mx-auto mb-4" />
+          <Loader2 className="h-10 w-10 animate-spin text-violet-500 mx-auto mb-4" />
           <p className="text-gray-600 dark:text-slate-300 font-medium">Performing legal review...</p>
           <p className="text-gray-400 dark:text-slate-500 text-sm mt-1">Analyzing contract against playbook standards</p>
         </div>
@@ -276,7 +276,7 @@ export function RedlineViewer({
           {onRefreshReview && (
             <button
               onClick={onRefreshReview}
-              className="mt-4 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
             >
               Start Review
             </button>
@@ -293,8 +293,8 @@ export function RedlineViewer({
         <div className="px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/50 rounded-lg">
-                <Shield className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/50 rounded-lg">
+                <Shield className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
                 <h1 className="font-semibold text-gray-900 dark:text-slate-100">Legal Review & Redlining</h1>
@@ -346,7 +346,7 @@ export function RedlineViewer({
           </div>
 
           {/* Summary */}
-          <div className="mt-4 p-4 bg-gradient-to-r from-purple-50 to-purple-50 dark:from-purple-950/30 dark:to-purple-950/30 rounded-lg border border-purple-100 dark:border-purple-900/50">
+          <div className="mt-4 p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 rounded-lg border border-violet-100 dark:border-violet-900/50">
             <p className="text-gray-700 dark:text-slate-300">{review.summary}</p>
           </div>
 
@@ -408,7 +408,7 @@ export function RedlineViewer({
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search changes..."
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
             />
           </div>
 
@@ -420,7 +420,7 @@ export function RedlineViewer({
                 onClick={() => setActiveFilter(status)}
                 className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
                   activeFilter === status
-                    ? 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300'
+                    ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300'
                     : 'text-gray-600 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700'
                 }`}
               >
@@ -515,7 +515,7 @@ export function RedlineViewer({
                         <div
                           key={change.id}
                           className={`p-5 transition-colors ${
-                            selectedChange === change.id ? 'bg-purple-50 dark:bg-purple-950/30' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'
+                            selectedChange === change.id ? 'bg-violet-50 dark:bg-violet-950/30' : 'hover:bg-gray-50 dark:hover:bg-slate-700/50'
                           }`}
                         >
                           {/* Change Header */}
@@ -588,15 +588,15 @@ export function RedlineViewer({
 
                           {/* Playbook Reference */}
                           {change.playbookReference && (
-                            <div className="mt-3 p-3 bg-purple-50 rounded-lg border border-purple-100">
+                            <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100">
                               <div className="flex items-center gap-2 mb-2">
-                                <BookOpen className="h-4 w-4 text-purple-600" />
-                                <span className="text-sm font-medium text-purple-700">
+                                <BookOpen className="h-4 w-4 text-violet-600" />
+                                <span className="text-sm font-medium text-violet-700">
                                   Playbook: {change.playbookReference.clauseName}
                                 </span>
                               </div>
                               {change.playbookReference.fallbackPosition && (
-                                <p className="text-xs text-purple-600 mt-1">
+                                <p className="text-xs text-violet-600 mt-1">
                                   <strong>Fallback:</strong> {change.playbookReference.fallbackPosition}
                                 </p>
                               )}
@@ -723,7 +723,7 @@ export function RedlineViewer({
             <div className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 overflow-hidden">
               <div className="px-5 py-4 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between">
                 <h3 className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <FileText className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   Clause Assessments ({review.clauseAssessments.length})
                 </h3>
                 <button

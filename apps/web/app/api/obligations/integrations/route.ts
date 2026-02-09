@@ -6,11 +6,10 @@
  * GET /api/obligations/integrations - Get integration status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-
-
+import { aiObligationTrackerService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 export const dynamic = 'force-dynamic';
 
 interface SlackMessage {
@@ -202,279 +201,267 @@ async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage):
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { action, platform, obligationId, webhookUrl, channel } = body;
-
-    // Get tenant configuration for webhook URLs
-    const tenantConfig = await prisma.tenantConfig.findUnique({
-      where: { tenantId: session.user.tenantId },
-    });
-
-    const integrations = tenantConfig?.integrations as Record<string, unknown> || {};
-
-    if (action === 'test') {
-      // Test the integration
-      const testMessage = {
-        text: '✅ ConTigo integration test successful! You will receive obligation notifications here.',
-      };
-
-      if (platform === 'slack') {
-        const url = webhookUrl || (integrations.slackWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Slack webhook URL not configured' }, { status: 400 });
-        }
-        const success = await sendSlackNotification(url, testMessage);
-        return NextResponse.json({ success, message: success ? 'Test notification sent!' : 'Failed to send notification' });
-      }
-
-      if (platform === 'teams') {
-        const url = webhookUrl || (integrations.teamsWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Teams webhook URL not configured' }, { status: 400 });
-        }
-        const teamsMessage: TeamsMessage = {
-          '@type': 'MessageCard',
-          '@context': 'https://schema.org/extensions',
-          themeColor: '7C3AED',
-          summary: 'ConTigo Integration Test',
-          sections: [{ activityTitle: '✅ ConTigo integration test successful!', text: 'You will receive obligation notifications here.', markdown: true }],
-        };
-        const success = await sendTeamsNotification(url, teamsMessage);
-        return NextResponse.json({ success, message: success ? 'Test notification sent!' : 'Failed to send notification' });
-      }
-    }
-
-    if (action === 'notify_obligation') {
-      // Send notification for a specific obligation
-      const obligation = await prisma.obligation.findFirst({
-        where: { id: obligationId, tenantId: session.user.tenantId },
-        include: { contract: { select: { contractTitle: true } } },
-      });
-
-      if (!obligation) {
-        return NextResponse.json({ error: 'Obligation not found' }, { status: 404 });
-      }
-
-      const oblData = {
-        ...obligation,
-        status: obligation.status.toLowerCase(),
-        priority: obligation.priority.toLowerCase(),
-        type: obligation.type.toLowerCase(),
-        contractTitle: obligation.contract?.contractTitle,
-      };
-
-      if (platform === 'slack') {
-        const url = webhookUrl || (integrations.slackWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Slack webhook URL not configured' }, { status: 400 });
-        }
-        const slackMessage = formatSlackObligation(oblData);
-        if (channel) slackMessage.channel = channel;
-        const success = await sendSlackNotification(url, slackMessage);
-        return NextResponse.json({ success });
-      }
-
-      if (platform === 'teams') {
-        const url = webhookUrl || (integrations.teamsWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Teams webhook URL not configured' }, { status: 400 });
-        }
-        const teamsMessage = formatTeamsObligation(oblData);
-        const success = await sendTeamsNotification(url, teamsMessage);
-        return NextResponse.json({ success });
-      }
-    }
-
-    if (action === 'notify_digest') {
-      // Send daily/weekly digest of obligations
-      const overdueObligations = await prisma.obligation.findMany({
-        where: {
-          tenantId: session.user.tenantId,
-          status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
-          dueDate: { lt: new Date() },
-        },
-        include: { contract: { select: { contractTitle: true } } },
-        take: 10,
-      });
-
-      const upcomingObligations = await prisma.obligation.findMany({
-        where: {
-          tenantId: session.user.tenantId,
-          status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
-          dueDate: {
-            gte: new Date(),
-            lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next 7 days
-          },
-        },
-        include: { contract: { select: { contractTitle: true } } },
-        take: 10,
-        orderBy: { dueDate: 'asc' },
-      });
-
-      if (platform === 'slack') {
-        const url = webhookUrl || (integrations.slackWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Slack webhook URL not configured' }, { status: 400 });
-        }
-
-        const digestMessage: SlackMessage = {
-          text: '📋 ConTigo Obligations Digest',
-          blocks: [
-            {
-              type: 'header',
-              text: { type: 'plain_text', text: '📋 Obligations Digest', emoji: true },
-            },
-            overdueObligations.length > 0 ? {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*🚨 Overdue (${overdueObligations.length}):*\n${overdueObligations.map((o) => `• ${o.title}`).join('\n')}`,
-              },
-            } : null,
-            upcomingObligations.length > 0 ? {
-              type: 'section',
-              text: {
-                type: 'mrkdwn',
-                text: `*⏰ Due This Week (${upcomingObligations.length}):*\n${upcomingObligations.map((o) => `• ${o.title} - Due ${o.dueDate?.toLocaleDateString()}`).join('\n')}`,
-              },
-            } : null,
-            {
-              type: 'actions',
-              elements: [
-                {
-                  type: 'button',
-                  text: { type: 'plain_text', text: 'View All Obligations', emoji: true },
-                  url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations`,
-                  style: 'primary',
-                },
-              ],
-            },
-          ].filter(Boolean) as SlackMessage['blocks'],
-        };
-
-        const success = await sendSlackNotification(url, digestMessage);
-        return NextResponse.json({ success, overdue: overdueObligations.length, upcoming: upcomingObligations.length });
-      }
-
-      if (platform === 'teams') {
-        const url = webhookUrl || (integrations.teamsWebhookUrl as string);
-        if (!url) {
-          return NextResponse.json({ error: 'Teams webhook URL not configured' }, { status: 400 });
-        }
-
-        const digestMessage: TeamsMessage = {
-          '@type': 'MessageCard',
-          '@context': 'https://schema.org/extensions',
-          themeColor: '7C3AED',
-          summary: 'ConTigo Obligations Digest',
-          sections: [
-            {
-              activityTitle: '📋 Obligations Digest',
-              facts: [
-                { name: '🚨 Overdue', value: String(overdueObligations.length) },
-                { name: '⏰ Due This Week', value: String(upcomingObligations.length) },
-              ],
-              markdown: true,
-            },
-            overdueObligations.length > 0 ? {
-              activityTitle: '🚨 Overdue Obligations',
-              text: overdueObligations.map((o) => `- ${o.title}`).join('\n'),
-              markdown: true,
-            } : null,
-            upcomingObligations.length > 0 ? {
-              activityTitle: '⏰ Upcoming This Week',
-              text: upcomingObligations.map((o) => `- ${o.title} (Due: ${o.dueDate?.toLocaleDateString()})`).join('\n'),
-              markdown: true,
-            } : null,
-          ].filter(Boolean) as TeamsMessage['sections'],
-          potentialAction: [
-            {
-              '@type': 'OpenUri',
-              name: 'View All Obligations',
-              targets: [{ os: 'default', uri: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations` }],
-            },
-          ],
-        };
-
-        const success = await sendTeamsNotification(url, digestMessage);
-        return NextResponse.json({ success, overdue: overdueObligations.length, upcoming: upcomingObligations.length });
-      }
-    }
-
-    if (action === 'configure') {
-      // Save webhook configuration
-      const { slackWebhookUrl, teamsWebhookUrl, slackChannel, teamsChannel, enabled } = body;
-
-      await prisma.tenantConfig.upsert({
-        where: { tenantId: session.user.tenantId },
-        update: {
-          integrations: {
-            ...integrations,
-            slackWebhookUrl,
-            teamsWebhookUrl,
-            slackChannel,
-            teamsChannel,
-            obligationNotificationsEnabled: enabled,
-          },
-        },
-        create: {
-          tenantId: session.user.tenantId,
-          integrations: {
-            slackWebhookUrl,
-            teamsWebhookUrl,
-            slackChannel,
-            teamsChannel,
-            obligationNotificationsEnabled: enabled,
-          },
-        },
-      });
-
-      return NextResponse.json({ success: true, message: 'Integration settings saved' });
-    }
-
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error('Integration API error:', error);
-    return NextResponse.json({ error: 'Failed to process integration request' }, { status: 500 });
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user?.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
 
-export async function GET(_request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const body = await request.json();
+  const { action, platform, obligationId, webhookUrl, channel } = body;
+
+  // Get tenant configuration for webhook URLs
+  const tenantConfig = await prisma.tenantConfig.findUnique({
+    where: { tenantId: session.user.tenantId },
+  });
+
+  const integrations = tenantConfig?.integrations as Record<string, unknown> || {};
+
+  if (action === 'test') {
+    // Test the integration
+    const testMessage = {
+      text: '✅ ConTigo integration test successful! You will receive obligation notifications here.',
+    };
+
+    if (platform === 'slack') {
+      const url = webhookUrl || (integrations.slackWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Slack webhook URL not configured', 400);
+      }
+      const success = await sendSlackNotification(url, testMessage);
+      return createSuccessResponse(ctx, { success, message: success ? 'Test notification sent!' : 'Failed to send notification' });
     }
 
-    const tenantConfig = await prisma.tenantConfig.findUnique({
-      where: { tenantId: session.user.tenantId },
+    if (platform === 'teams') {
+      const url = webhookUrl || (integrations.teamsWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Teams webhook URL not configured', 400);
+      }
+      const teamsMessage: TeamsMessage = {
+        '@type': 'MessageCard',
+        '@context': 'https://schema.org/extensions',
+        themeColor: '7C3AED',
+        summary: 'ConTigo Integration Test',
+        sections: [{ activityTitle: '✅ ConTigo integration test successful!', text: 'You will receive obligation notifications here.', markdown: true }],
+      };
+      const success = await sendTeamsNotification(url, teamsMessage);
+      return createSuccessResponse(ctx, { success, message: success ? 'Test notification sent!' : 'Failed to send notification' });
+    }
+  }
+
+  if (action === 'notify_obligation') {
+    // Send notification for a specific obligation
+    const obligation = await prisma.obligation.findFirst({
+      where: { id: obligationId, tenantId: session.user.tenantId },
+      include: { contract: { select: { contractTitle: true } } },
     });
 
-    const integrations = tenantConfig?.integrations as Record<string, unknown> || {};
+    if (!obligation) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Obligation not found', 404);
+    }
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        slack: {
-          configured: !!integrations.slackWebhookUrl,
-          channel: integrations.slackChannel || null,
+    const oblData = {
+      ...obligation,
+      status: obligation.status.toLowerCase(),
+      priority: obligation.priority.toLowerCase(),
+      type: obligation.type.toLowerCase(),
+      contractTitle: obligation.contract?.contractTitle,
+    };
+
+    if (platform === 'slack') {
+      const url = webhookUrl || (integrations.slackWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Slack webhook URL not configured', 400);
+      }
+      const slackMessage = formatSlackObligation(oblData);
+      if (channel) slackMessage.channel = channel;
+      const success = await sendSlackNotification(url, slackMessage);
+      return createSuccessResponse(ctx, { success });
+    }
+
+    if (platform === 'teams') {
+      const url = webhookUrl || (integrations.teamsWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Teams webhook URL not configured', 400);
+      }
+      const teamsMessage = formatTeamsObligation(oblData);
+      const success = await sendTeamsNotification(url, teamsMessage);
+      return createSuccessResponse(ctx, { success });
+    }
+  }
+
+  if (action === 'notify_digest') {
+    // Send daily/weekly digest of obligations
+    const overdueObligations = await prisma.obligation.findMany({
+      where: {
+        tenantId: session.user.tenantId,
+        status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
+        dueDate: { lt: new Date() },
+      },
+      include: { contract: { select: { contractTitle: true } } },
+      take: 10,
+    });
+
+    const upcomingObligations = await prisma.obligation.findMany({
+      where: {
+        tenantId: session.user.tenantId,
+        status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
+        dueDate: {
+          gte: new Date(),
+          lte: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Next 7 days
         },
-        teams: {
-          configured: !!integrations.teamsWebhookUrl,
-          channel: integrations.teamsChannel || null,
+      },
+      include: { contract: { select: { contractTitle: true } } },
+      take: 10,
+      orderBy: { dueDate: 'asc' },
+    });
+
+    if (platform === 'slack') {
+      const url = webhookUrl || (integrations.slackWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Slack webhook URL not configured', 400);
+      }
+
+      const digestMessage: SlackMessage = {
+        text: '📋 ConTigo Obligations Digest',
+        blocks: [
+          {
+            type: 'header',
+            text: { type: 'plain_text', text: '📋 Obligations Digest', emoji: true },
+          },
+          overdueObligations.length > 0 ? {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*🚨 Overdue (${overdueObligations.length}):*\n${overdueObligations.map((o) => `• ${o.title}`).join('\n')}`,
+            },
+          } : null,
+          upcomingObligations.length > 0 ? {
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*⏰ Due This Week (${upcomingObligations.length}):*\n${upcomingObligations.map((o) => `• ${o.title} - Due ${o.dueDate?.toLocaleDateString()}`).join('\n')}`,
+            },
+          } : null,
+          {
+            type: 'actions',
+            elements: [
+              {
+                type: 'button',
+                text: { type: 'plain_text', text: 'View All Obligations', emoji: true },
+                url: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations`,
+                style: 'primary',
+              },
+            ],
+          },
+        ].filter(Boolean) as SlackMessage['blocks'],
+      };
+
+      const success = await sendSlackNotification(url, digestMessage);
+      return createSuccessResponse(ctx, { success, overdue: overdueObligations.length, upcoming: upcomingObligations.length });
+    }
+
+    if (platform === 'teams') {
+      const url = webhookUrl || (integrations.teamsWebhookUrl as string);
+      if (!url) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Teams webhook URL not configured', 400);
+      }
+
+      const digestMessage: TeamsMessage = {
+        '@type': 'MessageCard',
+        '@context': 'https://schema.org/extensions',
+        themeColor: '7C3AED',
+        summary: 'ConTigo Obligations Digest',
+        sections: [
+          {
+            activityTitle: '📋 Obligations Digest',
+            facts: [
+              { name: '🚨 Overdue', value: String(overdueObligations.length) },
+              { name: '⏰ Due This Week', value: String(upcomingObligations.length) },
+            ],
+            markdown: true,
+          },
+          overdueObligations.length > 0 ? {
+            activityTitle: '🚨 Overdue Obligations',
+            text: overdueObligations.map((o) => `- ${o.title}`).join('\n'),
+            markdown: true,
+          } : null,
+          upcomingObligations.length > 0 ? {
+            activityTitle: '⏰ Upcoming This Week',
+            text: upcomingObligations.map((o) => `- ${o.title} (Due: ${o.dueDate?.toLocaleDateString()})`).join('\n'),
+            markdown: true,
+          } : null,
+        ].filter(Boolean) as TeamsMessage['sections'],
+        potentialAction: [
+          {
+            '@type': 'OpenUri',
+            name: 'View All Obligations',
+            targets: [{ os: 'default', uri: `${process.env.NEXT_PUBLIC_APP_URL || 'https://app.contigo.ai'}/obligations` }],
+          },
+        ],
+      };
+
+      const success = await sendTeamsNotification(url, digestMessage);
+      return createSuccessResponse(ctx, { success, overdue: overdueObligations.length, upcoming: upcomingObligations.length });
+    }
+  }
+
+  if (action === 'configure') {
+    // Save webhook configuration
+    const { slackWebhookUrl, teamsWebhookUrl, slackChannel, teamsChannel, enabled } = body;
+
+    await prisma.tenantConfig.upsert({
+      where: { tenantId: session.user.tenantId },
+      update: {
+        integrations: {
+          ...integrations,
+          slackWebhookUrl,
+          teamsWebhookUrl,
+          slackChannel,
+          teamsChannel,
+          obligationNotificationsEnabled: enabled,
         },
-        enabled: integrations.obligationNotificationsEnabled || false,
+      },
+      create: {
+        tenantId: session.user.tenantId,
+        integrations: {
+          slackWebhookUrl,
+          teamsWebhookUrl,
+          slackChannel,
+          teamsChannel,
+          obligationNotificationsEnabled: enabled,
+        },
       },
     });
-  } catch (error) {
-    console.error('Integration status error:', error);
-    return NextResponse.json({ error: 'Failed to get integration status' }, { status: 500 });
+
+    return createSuccessResponse(ctx, { success: true, message: 'Integration settings saved' });
   }
-}
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});
+
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  if (!session?.user?.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+
+  const tenantConfig = await prisma.tenantConfig.findUnique({
+    where: { tenantId: session.user.tenantId },
+  });
+
+  const integrations = tenantConfig?.integrations as Record<string, unknown> || {};
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: {
+      slack: {
+        configured: !!integrations.slackWebhookUrl,
+        channel: integrations.slackChannel || null,
+      },
+      teams: {
+        configured: !!integrations.teamsWebhookUrl,
+        channel: integrations.teamsChannel || null,
+      },
+      enabled: integrations.obligationNotificationsEnabled || false,
+    },
+  });
+});

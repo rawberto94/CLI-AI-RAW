@@ -469,7 +469,7 @@ export default function CategoryAnalyticsPage() {
                   onClick={handleBulkCategorize}
                   disabled={isBulkCategorizing}
                   className="mt-6 w-full flex items-center justify-center gap-2 px-4 py-3
-                           bg-gradient-to-r from-purple-500 to-purple-500 rounded-xl
+                           bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl
                            font-medium hover:opacity-90 transition-opacity
                            disabled:opacity-50 disabled:cursor-not-allowed"
                 >

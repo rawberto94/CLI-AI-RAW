@@ -95,7 +95,7 @@ const DATABASE_CONFIGS: Record<DatabaseType, { name: string; icon: string; defau
   mssql: { name: 'SQL Server', icon: '🔷', defaultPort: 1433, color: 'from-red-500 to-rose-600' },
   oracle: { name: 'Oracle', icon: '🔴', defaultPort: 1521, color: 'from-red-600 to-orange-600' },
   mongodb: { name: 'MongoDB', icon: '🍃', defaultPort: 27017, color: 'from-violet-500 to-violet-600' },
-  snowflake: { name: 'Snowflake', icon: '❄️', defaultPort: 443, color: 'from-purple-500 to-purple-600' },
+  snowflake: { name: 'Snowflake', icon: '❄️', defaultPort: 443, color: 'from-violet-500 to-purple-600' },
   bigquery: { name: 'BigQuery', icon: '📊', defaultPort: 443, color: 'from-violet-600 to-purple-700' },
 };
 
@@ -274,7 +274,7 @@ export default function ExternalDatabaseImportPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-purple-600 to-purple-600 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600 shadow-2xl">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" />
         <div className="absolute -top-24 -right-24 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         

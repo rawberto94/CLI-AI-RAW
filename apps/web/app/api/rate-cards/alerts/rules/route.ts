@@ -2,24 +2,21 @@ import { NextRequest, NextResponse } from 'next/server';
 import { AlertManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 const alertManagementService = new AlertManagementService(prisma);
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const body = await request.json();
     const { userId, rule } = body;
 
     if (!userId || !rule) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields', 400);
     }
 
     const alertRule = await alertManagementService.createAlertRule({
@@ -28,23 +25,16 @@ export async function POST(request: NextRequest) {
       userId,
     });
 
-    return NextResponse.json(alertRule);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create alert rule' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, alertRule);
+  });
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const tenantId = await getApiTenantId(request);
     const userId = searchParams.get('userId');
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const rules = await alertManagementService.getAlerts(
@@ -53,11 +43,5 @@ export async function GET(request: NextRequest) {
       { limit: 100 }
     );
 
-    return NextResponse.json(rules);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch alert rules' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, rules);
+  });

@@ -453,7 +453,7 @@ const featureConfig: Record<FeatureType, { bg: string; text: string; label: stri
     label: 'BETA',
   },
   alpha: {
-    bg: 'bg-gradient-to-r from-purple-500 to-pink-500',
+    bg: 'bg-gradient-to-r from-violet-500 to-pink-500',
     text: 'text-white',
     label: 'ALPHA',
   },

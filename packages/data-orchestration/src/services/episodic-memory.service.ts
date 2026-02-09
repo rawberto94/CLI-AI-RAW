@@ -8,11 +8,10 @@
  * @version 1.0.0
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { Redis } from '@upstash/redis';
 import OpenAI from 'openai';
 
-const prisma = new PrismaClient();
 
 // Initialize Redis for caching
 let redis: Redis | null = null;

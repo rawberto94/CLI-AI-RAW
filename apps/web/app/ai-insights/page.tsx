@@ -94,13 +94,13 @@ export default function AIInsightsDashboard() {
         >
           <div>
             <div className="flex items-center gap-3 mb-2">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg">
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-lg">
                 <Brain className="h-6 w-6" />
               </div>
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
                 AI Insights
               </h1>
-              <Badge className="bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0">
+              <Badge className="bg-gradient-to-r from-violet-500 to-pink-500 text-white border-0">
                 Powered by Autonomous Agents
               </Badge>
             </div>
@@ -162,19 +162,19 @@ export default function AIInsightsDashboard() {
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <Card className="bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 border-purple-200/60">
+            <Card className="bg-gradient-to-br from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 border-violet-200/60">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mb-1">
+                    <p className="text-sm font-medium text-violet-600 dark:text-violet-400 mb-1">
                       Avg Health Score
                     </p>
                     <p className="text-3xl font-bold text-slate-900 dark:text-white">
                       {statsLoading ? '...' : `${stats?.avgHealthScore || 0}/100`}
                     </p>
                   </div>
-                  <div className="p-3 rounded-xl bg-purple-100 dark:bg-purple-900/50">
-                    <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+                  <div className="p-3 rounded-xl bg-violet-100 dark:bg-violet-900/50">
+                    <Activity className="h-6 w-6 text-violet-600 dark:text-violet-400" />
                   </div>
                 </div>
               </CardContent>
@@ -314,7 +314,7 @@ export default function AIInsightsDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-purple-500" />
+                  <Activity className="h-5 w-5 text-violet-500" />
                   Contract Health Monitoring
                 </CardTitle>
                 <CardDescription>

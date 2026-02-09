@@ -128,7 +128,7 @@ function FileItem({ uploadedFile, onRemove }: FileItemProps) {
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
-              className="h-full bg-purple-600 rounded-full"
+              className="h-full bg-violet-600 rounded-full"
             />
           </div>
         )}
@@ -138,7 +138,7 @@ function FileItem({ uploadedFile, onRemove }: FileItemProps) {
       <div className="flex-shrink-0">
         {status === 'uploading' && (
           <div className="flex items-center gap-2">
-            <Loader2 className="w-4 h-4 text-purple-600 animate-spin" />
+            <Loader2 className="w-4 h-4 text-violet-600 animate-spin" />
             <span className="text-sm text-slate-500">{progress}%</span>
           </div>
         )}
@@ -171,8 +171,8 @@ function FileItem({ uploadedFile, onRemove }: FileItemProps) {
 
 export function FileUploadZone({
   accept = '*',
-  maxSize = 10 * 1024 * 1024, // 10MB default
-  maxFiles = 5,
+  maxSize = 50 * 1024 * 1024, // 50MB default
+  maxFiles = 10,
   multiple = true,
   onUpload,
   onRemove,
@@ -331,7 +331,7 @@ export function FileUploadZone({
           'relative border-2 border-dashed rounded-2xl transition-all cursor-pointer',
           compact ? 'p-6' : 'p-10',
           isDragging
-            ? 'border-indigo-400 bg-purple-50'
+            ? 'border-indigo-400 bg-violet-50'
             : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50',
           disabled && 'opacity-50 cursor-not-allowed'
         )}
@@ -351,13 +351,13 @@ export function FileUploadZone({
             className={cn(
               'rounded-2xl flex items-center justify-center mb-4',
               compact ? 'w-12 h-12' : 'w-16 h-16',
-              isDragging ? 'bg-purple-100' : 'bg-slate-100'
+              isDragging ? 'bg-violet-100' : 'bg-slate-100'
             )}
           >
             <CloudUpload
               className={cn(
                 compact ? 'w-6 h-6' : 'w-8 h-8',
-                isDragging ? 'text-purple-600' : 'text-slate-400'
+                isDragging ? 'text-violet-600' : 'text-slate-400'
               )}
             />
           </div>
@@ -366,7 +366,7 @@ export function FileUploadZone({
             {isDragging ? 'Drop files here' : 'Drag & drop files here'}
           </p>
           <p className="text-sm text-slate-500 mt-1">
-            or <span className="text-purple-600 hover:underline">browse</span> to choose files
+            or <span className="text-violet-600 hover:underline">browse</span> to choose files
           </p>
           
           {!compact && (

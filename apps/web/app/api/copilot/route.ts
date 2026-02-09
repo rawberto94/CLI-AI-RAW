@@ -8,26 +8,21 @@
  * - POST /api/copilot/apply - Apply a suggestion
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
 import { 
   getAICopilotService,
   type CopilotContext,
   type RealtimeSuggestion as _RealtimeSuggestion 
-} from '@repo/data-orchestration';
+} from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Get real-time suggestions
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
     const body = await request.json();
     const { 
       text, 
@@ -37,18 +32,11 @@ export async function POST(request: NextRequest) {
       contractValue,
       isNegotiating = false,
       userRole = 'drafter',
-      playbook,
-    } = body;
+      playbook } = body;
 
     if (!text) {
-      return NextResponse.json(
-        { error: 'Text is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Text is required', 400);
     }
-
-    const tenantId = getSessionTenantId(session);
-    const userId = session.user.id || 'anonymous';
 
     const context: CopilotContext = {
       tenantId,
@@ -58,24 +46,10 @@ export async function POST(request: NextRequest) {
       contractValue,
       isNegotiating,
       userRole,
-      activePlaybook: playbook,
-    };
+      activePlaybook: playbook };
 
     const copilotService = getAICopilotService();
     const response = await copilotService.getSuggestions(text, cursorPosition, context);
 
-    return NextResponse.json({
-      success: true,
-      ...response,
-    });
-  } catch (error) {
-    console.error('Copilot error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to get suggestions',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, response);
+  });

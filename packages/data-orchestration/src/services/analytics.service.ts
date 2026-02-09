@@ -3,9 +3,8 @@
  * Comprehensive contract intelligence with predictive insights and visual reporting
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 // ============================================
 // TYPES & INTERFACES

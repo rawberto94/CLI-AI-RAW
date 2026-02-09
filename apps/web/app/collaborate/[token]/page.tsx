@@ -271,7 +271,7 @@ export default function CollaboratorPortalPage() {
             )}
             {collaborator.permissions.canComment && (
               <span className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4 text-purple-600" /> Comment
+                <MessageSquare className="h-4 w-4 text-violet-600" /> Comment
               </span>
             )}
           </div>

@@ -5,14 +5,16 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
+import { auditTrailService } from 'data-orchestration/services';
 
-export async function GET(_request: NextRequest) {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const user = await prisma.user.findUnique({
@@ -26,16 +28,16 @@ export async function GET(_request: NextRequest) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       enabled: user.mfaEnabled,
       method: user.mfaEnabled ? 'totp' : null,
       enrolledAt: user.mfaEnabledAt?.toISOString() || null,
     });
   } catch (error) {
     console.error('Failed to get MFA status:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Internal server error', 500);
   }
-}
+});

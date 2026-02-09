@@ -257,7 +257,7 @@ function StatCard({
     blue: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
     green: 'from-violet-500 to-violet-500 text-green-600 bg-green-50',
     amber: 'from-amber-500 to-orange-500 text-amber-600 bg-amber-50',
-    purple: 'from-purple-500 to-violet-500 text-purple-600 bg-purple-50',
+    purple: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
     rose: 'from-rose-500 to-pink-500 text-rose-600 bg-rose-50',
   };
 
@@ -602,7 +602,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
                         const percentage = (count / usageStats.totalDecisions) * 100;
                         return (
                           <div key={model} className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-500">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500">
                               <Sparkles className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1">

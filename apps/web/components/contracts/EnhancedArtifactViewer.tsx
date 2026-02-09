@@ -145,8 +145,8 @@ export function EnhancedArtifactViewer({
                     </div>
                   )}
                   <div className="flex items-center gap-1">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <span className="font-medium text-purple-600">AI-Powered Analysis</span>
+                    <Sparkles className="h-4 w-4 text-violet-600" />
+                    <span className="font-medium text-violet-600">AI-Powered Analysis</span>
                   </div>
                 </div>
               </div>
@@ -200,10 +200,10 @@ export function EnhancedArtifactViewer({
 
         {/* Parties with Elegant Design */}
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-purple-200 hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-pink-50">
+          <Card className="h-full border-violet-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-pink-50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 bg-purple-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Users className="h-4 w-4 text-white" />
                 </div>
                 Parties Involved
@@ -221,8 +221,8 @@ export function EnhancedArtifactViewer({
                   transition={{ delay: idx * 0.1 }}
                   className="relative overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-100 to-pink-100 opacity-50 rounded-lg" />
-                  <div className="relative p-4 border border-purple-200 rounded-lg backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-100 to-pink-100 opacity-50 rounded-lg" />
+                  <div className="relative p-4 border border-violet-200 rounded-lg backdrop-blur-sm">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <h4 className="font-bold text-gray-900 text-lg">
@@ -247,7 +247,7 @@ export function EnhancedArtifactViewer({
                       </div>
                     )}
                     {party.obligations && (
-                      <div className="mt-3 pt-3 border-t border-purple-200">
+                      <div className="mt-3 pt-3 border-t border-violet-200">
                         <p className="text-sm text-gray-700">{party.obligations}</p>
                       </div>
                     )}
@@ -465,12 +465,12 @@ export function EnhancedArtifactViewer({
       {/* Rate Cards - Premium Design */}
       {data.rateCards && data.rateCards.length > 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="border-purple-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-purple-50 via-pink-50 to-rose-50">
+          <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-violet-50 via-pink-50 to-rose-50">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-600 rounded-lg shadow-md">
                       <Award className="h-4 w-4 text-white" />
                     </div>
                     Professional Services Rate Cards
@@ -490,14 +490,14 @@ export function EnhancedArtifactViewer({
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="group relative overflow-hidden rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-300 hover:shadow-lg"
+                    className="group relative overflow-hidden rounded-xl border-2 border-violet-200 hover:border-violet-400 transition-all duration-300 hover:shadow-lg"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 opacity-50" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-pink-50 to-rose-50 opacity-50" />
                     <div className="relative p-5">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md">
+                            <div className="p-2 bg-gradient-to-br from-violet-600 to-pink-600 rounded-lg shadow-md">
                               <Users className="h-4 w-4 text-white" />
                             </div>
                             <h4 className="text-xl font-bold text-gray-900">{rate.role}</h4>
@@ -522,7 +522,7 @@ export function EnhancedArtifactViewer({
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                          <div className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                             ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-600 font-medium mt-1">
@@ -532,9 +532,9 @@ export function EnhancedArtifactViewer({
                       </div>
                       
                       {rate.skills && rate.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-3 border-t border-purple-200">
+                        <div className="flex flex-wrap gap-2 pt-3 border-t border-violet-200">
                           {rate.skills.slice(0, 6).map((skill: string, skillIdx: number) => (
-                            <Badge key={skillIdx} variant="outline" className="text-xs bg-white hover:bg-purple-50 transition-colors">
+                            <Badge key={skillIdx} variant="outline" className="text-xs bg-white hover:bg-violet-50 transition-colors">
                               {skill}
                             </Badge>
                           ))}
@@ -812,7 +812,7 @@ export function EnhancedArtifactViewer({
       {/* Compliance Score Hero */}
       <motion.div variants={itemVariants}>
         <Card className="relative overflow-hidden border-0 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-purple-500 to-purple-600 opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 opacity-90" />
           <div className="absolute inset-0">
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -translate-x-1/2 translate-y-1/2" />
           </div>
@@ -1202,8 +1202,8 @@ export function EnhancedArtifactViewer({
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-purple-600" />
-            <span className="font-medium text-purple-600">AI-Enhanced Extraction</span>
+            <Brain className="h-4 w-4 text-violet-600" />
+            <span className="font-medium text-violet-600">AI-Enhanced Extraction</span>
           </div>
         </div>
         {onExport && (

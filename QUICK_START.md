@@ -1,5 +1,9 @@
 # 🚀 Quick Start Guide
 
+> **DEPRECATED:** See the [README.md](README.md) Quick Start section for current setup instructions. Retained for historical reference only.
+
+---
+
 Get the Contract Intelligence Platform running in 5 minutes!
 
 ## Prerequisites

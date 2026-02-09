@@ -5,18 +5,17 @@
  * quality metrics, and recommendations for improvement.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getExtractionAnalytics } from '@/lib/ai/extraction-analytics';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 /**
  * GET /api/ai/extraction-insights
  * 
  * Returns real-time extraction performance insights
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const type = request.nextUrl.searchParams.get('type') || 'all';
 
     const analytics = getExtractionAnalytics();
@@ -24,28 +23,19 @@ export async function GET(request: NextRequest) {
     switch (type) {
       case 'realtime': {
         const insights = await analytics.getRealTimeInsights(tenantId);
-        return NextResponse.json({
-          success: true,
-          data: insights,
-        });
+        return createSuccessResponse(ctx, insights);
       }
 
       case 'quality': {
         const quality = analytics.getQualityScore(tenantId);
-        return NextResponse.json({
-          success: true,
-          data: quality,
-        });
+        return createSuccessResponse(ctx, quality);
       }
 
       case 'tenant': {
         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // Last 30 days
         const endDate = new Date();
         const tenantAnalytics = await analytics.getTenantAnalytics(tenantId, startDate, endDate);
-        return NextResponse.json({
-          success: true,
-          data: tenantAnalytics,
-        });
+        return createSuccessResponse(ctx, tenantAnalytics);
       }
 
       case 'all':
@@ -55,35 +45,21 @@ export async function GET(request: NextRequest) {
           analytics.getQualityScore(tenantId),
         ]);
 
-        return NextResponse.json({
-          success: true,
-          data: {
+        return createSuccessResponse(ctx, {
             realtime,
             quality,
-            timestamp: new Date().toISOString(),
-          },
-        });
+            timestamp: new Date().toISOString() });
       }
     }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to get insights',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * POST /api/ai/extraction-insights/record
  * 
  * Record an extraction event for analytics
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getApiTenantId(request);
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
 
     const {
@@ -97,14 +73,10 @@ export async function POST(request: NextRequest) {
       processingTimeMs,
       modelUsed,
       success: _success,
-      errorMessage: _errorMessage,
-    } = body;
+      errorMessage: _errorMessage } = body;
 
     if (!contractId || !eventType) {
-      return NextResponse.json(
-        { success: false, error: 'contractId and eventType are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and eventType are required', 400);
     }
 
     const analytics = getExtractionAnalytics();
@@ -138,17 +110,5 @@ export async function POST(request: NextRequest) {
         break;
     }
 
-    return NextResponse.json({
-      success: true,
-      message: 'Event recorded',
-    });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to record event',
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { message: 'Event recorded' });
+  });

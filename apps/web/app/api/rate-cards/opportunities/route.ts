@@ -3,14 +3,14 @@ import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
 import { SavingsOpportunityService, savingsOpportunityService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from '@/lib/cache';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -75,7 +75,7 @@ export async function GET(request: NextRequest) {
       }, {} as Record<string, number>),
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       opportunities: opportunities.map((opp) => ({
         ...opp,
@@ -88,16 +88,9 @@ export async function GET(request: NextRequest) {
       })),
       summary,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { tenantId = 'demo-tenant', options = {} } = body;
 
@@ -112,16 +105,10 @@ export async function POST(request: NextRequest) {
     // Create opportunities in database
     await service.createOpportunities(detectedOpportunities);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `Detected ${detectedOpportunities.length} opportunities`,
       count: detectedOpportunities.length,
       opportunities: detectedOpportunities,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+  });

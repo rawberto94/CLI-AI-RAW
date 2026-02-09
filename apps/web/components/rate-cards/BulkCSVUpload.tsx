@@ -305,9 +305,9 @@ export function BulkCSVUpload({ onSuccess, tenantId = 'demo' }: BulkCSVUploadPro
                   <p className="text-xs text-red-600 font-medium">Invalid</p>
                   <p className="text-2xl font-bold text-red-900">{result.summary.invalid}</p>
                 </div>
-                <div className="bg-purple-50 p-4 rounded-lg">
-                  <p className="text-xs text-purple-600 font-medium">Imported</p>
-                  <p className="text-2xl font-bold text-purple-900">{result.summary.imported}</p>
+                <div className="bg-violet-50 p-4 rounded-lg">
+                  <p className="text-xs text-violet-600 font-medium">Imported</p>
+                  <p className="text-2xl font-bold text-violet-900">{result.summary.imported}</p>
                 </div>
               </div>
 

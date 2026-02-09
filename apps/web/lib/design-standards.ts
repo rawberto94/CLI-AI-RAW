@@ -178,9 +178,9 @@ export const COLORS = {
       border: 'border-red-300',
     },
     info: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-600',
-      border: 'border-blue-300',
+      bg: 'bg-violet-100',
+      text: 'text-violet-600',
+      border: 'border-violet-300',
     },
   },
   
@@ -210,8 +210,8 @@ STAT CARD EXAMPLE:
         <p className="text-2xl font-bold mt-1">{value}</p>
         <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
       </div>
-      <div className="p-2 rounded-lg bg-blue-50">
-        <Icon className="w-6 h-6 text-blue-600" />
+      <div className="p-2 rounded-lg bg-violet-50">
+        <Icon className="w-6 h-6 text-violet-600" />
       </div>
     </div>
   </CardContent>

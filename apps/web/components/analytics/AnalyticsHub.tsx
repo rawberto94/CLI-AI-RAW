@@ -153,7 +153,7 @@ export function AnalyticsHub() {
           value={`$${(metrics.potentialSavings / 1000000).toFixed(1)}M`}
           change="15% of total value"
           trend="up"
-          icon={<TrendingUp className="h-6 w-6 text-purple-600" />}
+          icon={<TrendingUp className="h-6 w-6 text-violet-600" />}
         />
         <MetricCard
           title="Active Suppliers"
@@ -174,7 +174,7 @@ export function AnalyticsHub() {
           value={metrics.artifactsProcessed.toLocaleString()}
           change="+234 this week"
           trend="up"
-          icon={<BarChart3 className="h-6 w-6 text-purple-600" />}
+          icon={<BarChart3 className="h-6 w-6 text-violet-600" />}
         />
       </div>
 

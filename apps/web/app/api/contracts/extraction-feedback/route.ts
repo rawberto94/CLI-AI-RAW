@@ -5,11 +5,11 @@
  * This is the legacy endpoint - new clients should use /api/contracts/[id]/feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from '@/lib/auth'
-import { getSessionTenantId } from '@/lib/tenant-server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPES
@@ -43,34 +43,20 @@ interface BatchFeedbackRequest {
 // HANDLERS
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+export const POST = withAuthApiHandler(async (request, ctx) => {
 
-    const body = await request.json()
-    const tenantId = getSessionTenantId(session)
-    
-    // Check if it's batch or single feedback
-    if (Array.isArray(body.feedback)) {
-      return handleBatchFeedback(body as BatchFeedbackRequest, tenantId)
-    } else {
-      return handleSingleFeedback(body as FeedbackRequest, tenantId)
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to record feedback', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+  const body = await request.json()
+  const tenantId = ctx.tenantId
+  
+  // Check if it's batch or single feedback
+  if (Array.isArray(body.feedback)) {
+    return handleBatchFeedback(body as BatchFeedbackRequest, tenantId, ctx)
+  } else {
+    return handleSingleFeedback(body as FeedbackRequest, tenantId, ctx)
   }
-}
+});
 
-async function handleSingleFeedback(body: FeedbackRequest, tenantId: string): Promise<NextResponse> {
+async function handleSingleFeedback(body: FeedbackRequest, tenantId: string, ctx: any): Promise<ReturnType<typeof createSuccessResponse | typeof createErrorResponse>> {
   const {
     contractId,
     fieldName,
@@ -83,10 +69,7 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string): Pr
   } = body
 
   if (!contractId || !fieldName) {
-    return NextResponse.json(
-      { error: 'contractId and fieldName are required' },
-      { status: 400 }
-    )
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId and fieldName are required', 400)
   }
 
   // Verify contract exists
@@ -96,10 +79,7 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string): Pr
   })
 
   if (!contract) {
-    return NextResponse.json(
-      { error: 'Contract not found' },
-      { status: 404 }
-    )
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404)
   }
 
   // Record the feedback
@@ -120,21 +100,17 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string): Pr
 
   await prisma.extractionCorrection.create({ data })
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     message: wasCorrect ? 'Confirmation recorded' : 'Correction recorded',
     fieldName
   })
 }
 
-async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string): Promise<NextResponse> {
+async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string, ctx: any): Promise<ReturnType<typeof createSuccessResponse | typeof createErrorResponse>> {
   const { contractId, contractType, feedback } = body
 
   if (!contractId || !feedback || !Array.isArray(feedback)) {
-    return NextResponse.json(
-      { error: 'contractId and feedback array are required' },
-      { status: 400 }
-    )
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId and feedback array are required', 400)
   }
 
   // Verify contract exists
@@ -144,10 +120,7 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string)
   })
 
   if (!contract) {
-    return NextResponse.json(
-      { error: 'Contract not found' },
-      { status: 404 }
-    )
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404)
   }
 
   let correctCount = 0
@@ -178,8 +151,7 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string)
     }
   }
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     message: `Recorded ${correctCount} confirmations and ${correctionCount} corrections`,
     stats: { confirmations: correctCount, corrections: correctionCount }
   })
@@ -189,55 +161,35 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string)
 // GET: Retrieve learning stats and insights
 // ============================================================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession()
-    if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
+export const GET = withAuthApiHandler(async (request, ctx) => {
 
-    const tenantId = getSessionTenantId(session)
-    const { searchParams } = new URL(request.url)
-    const action = searchParams.get('action') || 'stats'
-    const fieldName = searchParams.get('field')
+  const tenantId = ctx.tenantId
+  const { searchParams } = new URL(request.url)
+  const action = searchParams.get('action') || 'stats'
+  const fieldName = searchParams.get('field')
 
-    switch (action) {
-      case 'stats':
-        return await getOverallStats(tenantId)
+  switch (action) {
+    case 'stats':
+      return await getOverallStats(tenantId, ctx)
 
-      case 'field':
-        if (!fieldName) {
-          return NextResponse.json(
-            { error: 'field parameter required for field stats' },
-            { status: 400 }
-          )
-        }
-        return await getFieldStats(tenantId, fieldName)
+    case 'field':
+      if (!fieldName) {
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'field parameter required for field stats', 400)
+      }
+      return await getFieldStats(tenantId, fieldName, ctx)
 
-      case 'insights':
-        return await getInsights(tenantId)
+    case 'insights':
+      return await getInsights(tenantId, ctx)
 
-      case 'all-fields':
-        return await getAllFieldStats(tenantId)
+    case 'all-fields':
+      return await getAllFieldStats(tenantId, ctx)
 
-      default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        )
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to retrieve learning stats', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    )
+    default:
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown action: ${action}`, 400)
   }
-}
+});
 
-async function getOverallStats(tenantId: string): Promise<NextResponse> {
+async function getOverallStats(tenantId: string, ctx: any) {
   const corrections = await prisma.extractionCorrection.findMany({
     where: { contract: { tenantId } },
     select: { wasCorrect: true }
@@ -246,8 +198,7 @@ async function getOverallStats(tenantId: string): Promise<NextResponse> {
   const total = corrections.length
   const correct = corrections.filter(c => c.wasCorrect).length
   
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     stats: {
       totalFeedback: total,
       correctExtractions: correct,
@@ -257,7 +208,7 @@ async function getOverallStats(tenantId: string): Promise<NextResponse> {
   })
 }
 
-async function getFieldStats(tenantId: string, fieldName: string): Promise<NextResponse> {
+async function getFieldStats(tenantId: string, fieldName: string, ctx: any) {
   const corrections = await prisma.extractionCorrection.findMany({
     where: { 
       contract: { tenantId },
@@ -272,8 +223,7 @@ async function getFieldStats(tenantId: string, fieldName: string): Promise<NextR
     ? corrections.reduce((sum, c) => sum + Number(c.confidence || 0), 0) / corrections.length
     : null
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     fieldStats: {
       fieldName,
       totalFeedback: total,
@@ -285,7 +235,7 @@ async function getFieldStats(tenantId: string, fieldName: string): Promise<NextR
   })
 }
 
-async function getAllFieldStats(tenantId: string): Promise<NextResponse> {
+async function getAllFieldStats(tenantId: string, ctx: any) {
   const corrections = await prisma.extractionCorrection.findMany({
     where: { contract: { tenantId } },
     select: { fieldName: true, wasCorrect: true }
@@ -307,13 +257,12 @@ async function getAllFieldStats(tenantId: string): Promise<NextResponse> {
     accuracy: stats.total > 0 ? Math.round((stats.correct / stats.total) * 100) : null,
   })).sort((a, b) => (a.accuracy || 0) - (b.accuracy || 0))
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     fieldStats
   })
 }
 
-async function getInsights(tenantId: string): Promise<NextResponse> {
+async function getInsights(tenantId: string, ctx: any) {
   const corrections = await prisma.extractionCorrection.findMany({
     where: { 
       contract: { tenantId },
@@ -350,8 +299,7 @@ async function getInsights(tenantId: string): Promise<NextResponse> {
     .slice(0, 5)
     .map(([type, count]) => ({ contractType: type, errorCount: count }))
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     insights: {
       totalErrors: corrections.length,
       problematicFields,

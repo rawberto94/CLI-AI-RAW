@@ -361,8 +361,8 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
           className="text-center"
         >
           <div className="relative w-16 h-16 mx-auto mb-4">
-            <div className="absolute inset-0 border-4 border-indigo-200 border-t-purple-600 rounded-full animate-spin" />
-            <Pen className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute inset-0 border-4 border-indigo-200 border-t-violet-600 rounded-full animate-spin" />
+            <Pen className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 font-medium">Loading signature workflow...</p>
         </motion.div>
@@ -373,7 +373,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-purple-600 via-violet-600 to-purple-600 shadow-xl">
+      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 shadow-xl">
         <div className="max-w-5xl mx-auto px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -419,10 +419,10 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
           <div className="col-span-2 space-y-6">
             {/* Signers */}
             <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-purple-50 to-violet-50 rounded-t-xl">
+              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 rounded-t-xl">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg shadow-lg shadow-purple-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-lg shadow-violet-500/25">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     Signers
@@ -434,7 +434,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
                 {!anySent && (
                   <Button
                     onClick={() => setShowAddSigner(true)}
-                    className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700 shadow-lg shadow-purple-500/25 gap-2"
+                    className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25 gap-2"
                     size="sm"
                   >
                     <Plus className="w-4 h-4" />
@@ -580,15 +580,15 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             </Card>
 
             {/* Help */}
-            <Card className="bg-gradient-to-br from-purple-50 to-violet-50 border-indigo-200 shadow-lg">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-indigo-200 shadow-lg">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
                     <AlertCircle className="w-4 h-4 text-white" />
                   </div>
                   <div className="text-sm text-indigo-900">
                     <p className="font-semibold mb-1">What happens next?</p>
-                    <ul className="space-y-1 text-purple-700">
+                    <ul className="space-y-1 text-violet-700">
                       <li>• Signers receive email invitations</li>
                       <li>• They review and sign the document</li>
                       <li>• Once all sign, contract is stored</li>
@@ -606,7 +606,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
         <DialogContent className="bg-white/95 backdrop-blur-md border-slate-200/80 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                 <Plus className="w-4 h-4 text-white" />
               </div>
               Add Signer
@@ -660,7 +660,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             </Button>
             <Button 
               onClick={handleAddSigner}
-              className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-700 hover:to-violet-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               Add Signer
             </Button>

@@ -102,8 +102,8 @@ export default function ImprovedAnalyticsPage() {
       title: 'Renewals',
       description: 'Contract renewals',
       href: '/analytics/renewals',
-      gradient: 'from-purple-500 to-violet-500',
-      shadowColor: 'shadow-purple-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     },
     {
       title: 'Suppliers',
@@ -123,8 +123,8 @@ export default function ImprovedAnalyticsPage() {
       title: 'Procurement',
       description: 'Procurement intelligence',
       href: '/analytics/procurement',
-      gradient: 'from-purple-500 to-purple-500',
-      shadowColor: 'shadow-purple-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     }
   ]
 
@@ -139,11 +139,11 @@ export default function ImprovedAnalyticsPage() {
         transition={{ duration: 0.5 }}
         className="flex items-center gap-4"
       >
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-purple-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/30">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-violet-500/30">
           <BarChart3 className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             Analytics Hub
           </h1>
           <p className="text-muted-foreground text-lg">

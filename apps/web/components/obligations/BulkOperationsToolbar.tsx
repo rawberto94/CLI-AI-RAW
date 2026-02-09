@@ -373,7 +373,7 @@ export function BulkOperationsToolbar({
               variant={currentAction?.variant === 'destructive' ? 'destructive' : 'default'}
               className={
                 currentAction?.variant !== 'destructive'
-                  ? 'bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                  ? 'bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700'
                   : ''
               }
             >

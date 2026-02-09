@@ -71,7 +71,7 @@ const statusConfig: Record<DraftStatus, { label: string; color: string; icon: Re
   PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-amber-100 text-amber-700', icon: <Clock className="h-3 w-3" /> },
   APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: <CheckCircle2 className="h-3 w-3" /> },
   REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: <AlertTriangle className="h-3 w-3" /> },
-  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-purple-100 text-purple-700', icon: <FileSignature className="h-3 w-3" /> },
+  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-violet-100 text-violet-700', icon: <FileSignature className="h-3 w-3" /> },
   EXECUTED: { label: 'Executed', color: 'bg-violet-100 text-violet-700', icon: <CheckCircle2 className="h-3 w-3" /> },
   CANCELLED: { label: 'Cancelled', color: 'bg-gray-100 text-gray-500', icon: <Trash2 className="h-3 w-3" /> },
   ARCHIVED: { label: 'Archived', color: 'bg-slate-100 text-slate-600', icon: <Clock className="h-3 w-3" /> },
@@ -278,7 +278,7 @@ function QuickStats({ metrics, drafts }: { metrics: DraftsMetrics | null; drafts
       value: formattedValue, 
       change: `${drafts.length} contracts`, 
       icon: DollarSign, 
-      color: 'text-purple-600' 
+      color: 'text-violet-600' 
     },
   ];
 
@@ -295,7 +295,7 @@ function QuickStats({ metrics, drafts }: { metrics: DraftsMetrics | null; drafts
               stat.color === 'text-violet-600' ? 'from-violet-400 to-purple-600 shadow-violet-500/30' :
               stat.color === 'text-amber-600' ? 'from-amber-400 to-amber-600 shadow-amber-500/30' :
               stat.color === 'text-green-600' ? 'from-violet-400 to-violet-600 shadow-green-500/30' :
-              'from-purple-400 to-purple-600 shadow-purple-500/30'
+              'from-violet-400 to-purple-600 shadow-violet-500/30'
             )}>
               <stat.icon className="h-4 w-4" />
             </div>
@@ -340,7 +340,7 @@ function CreateContractCard({ onSelect }: { onSelect: (type: 'new' | 'template' 
       title: 'Amendment',
       description: 'Create an amendment to existing contract',
       icon: GitBranch,
-      gradient: 'from-purple-500 to-violet-600',
+      gradient: 'from-violet-500 to-purple-600',
     },
   ];
 
@@ -741,7 +741,7 @@ export default function ContractGenerationPage() {
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">{metrics.pendingApproval + metrics.inReview}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-purple-500/30 transition-all duration-300">
+            <TabsTrigger value="templates" className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">
               <Copy className="h-4 w-4" />
               Templates
               {templates.length > 0 && (

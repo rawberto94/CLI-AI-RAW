@@ -375,11 +375,11 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
 
               {/* Playbook Match */}
               {redline.playbookMatch && (
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-900">Playbook: {redline.playbookMatch.ruleName}</span>
+                      <BookOpen className="w-4 h-4 text-violet-600" />
+                      <span className="text-sm font-medium text-violet-900">Playbook: {redline.playbookMatch.ruleName}</span>
                     </div>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                       redline.playbookMatch.deviation > 50 ? 'bg-red-100 text-red-700' : 
@@ -389,8 +389,8 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
                       {redline.playbookMatch.deviation}% deviation
                     </span>
                   </div>
-                  <div className="text-xs text-purple-600 uppercase mb-1">Standard Language</div>
-                  <p className="text-sm text-purple-800 italic">&ldquo;{redline.playbookMatch.fallbackLanguage}&rdquo;</p>
+                  <div className="text-xs text-violet-600 uppercase mb-1">Standard Language</div>
+                  <p className="text-sm text-violet-800 italic">&ldquo;{redline.playbookMatch.fallbackLanguage}&rdquo;</p>
                 </div>
               )}
 
@@ -616,7 +616,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
     return (
       <div className="h-full flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading negotiation data...</p>
         </div>
       </div>
@@ -630,7 +630,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <GitCompare className="w-5 h-5 text-purple-500" />
+              <GitCompare className="w-5 h-5 text-violet-500" />
               Negotiation Co-Pilot
             </h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -645,7 +645,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
             <button
               onClick={() => setShowChat(!showChat)}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                showChat ? 'bg-purple-100 text-purple-700' : 'bg-purple-500 text-white hover:bg-purple-600'
+                showChat ? 'bg-violet-100 text-violet-700' : 'bg-violet-500 text-white hover:bg-violet-600'
               }`}
             >
               <MessageSquare className="w-4 h-4" />
@@ -695,7 +695,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
                   filter === f
-                    ? 'bg-purple-500 text-white'
+                    ? 'bg-violet-500 text-white'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
@@ -731,7 +731,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
             >
               <div className="p-4 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-purple-500" />
+                  <Zap className="w-5 h-5 text-violet-500" />
                   <span className="font-medium text-slate-900">AI Negotiation Assistant</span>
                 </div>
                 <button onClick={() => setShowChat(false)} className="p-1 hover:bg-slate-100 rounded">
@@ -742,8 +742,8 @@ Provide concise, actionable advice. Include specific language suggestions when h
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {chatMessages.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <MessageSquare className="w-6 h-6 text-purple-500" />
+                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <MessageSquare className="w-6 h-6 text-violet-500" />
                     </div>
                     <h4 className="font-medium text-slate-900 mb-1">Ask me anything</h4>
                     <p className="text-sm text-slate-500">I can help with counter-proposals, risk analysis, and negotiation strategy</p>
@@ -752,11 +752,11 @@ Provide concise, actionable advice. Include specific language suggestions when h
                   chatMessages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        msg.role === 'user' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-900'
+                        msg.role === 'user' ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-900'
                       }`}>
                         {msg.loading ? (
                           <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                            <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
                             <span className="text-sm text-slate-500">Analyzing...</span>
                           </div>
                         ) : (
@@ -768,7 +768,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
                                   <button 
                                     key={i} 
                                     onClick={() => setChatInput(s)}
-                                    className="block text-xs text-purple-600 hover:underline"
+                                    className="block text-xs text-violet-600 hover:underline"
                                   >
                                     → {s}
                                   </button>
@@ -792,12 +792,12 @@ Provide concise, actionable advice. Include specific language suggestions when h
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSubmit()}
                     placeholder="Ask about clauses, suggest counters..."
                     disabled={chatLoading}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
                   />
                   <button
                     onClick={handleChatSubmit}
                     disabled={chatLoading || !chatInput.trim()}
-                    className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {chatLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

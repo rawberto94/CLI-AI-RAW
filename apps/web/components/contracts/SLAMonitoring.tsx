@@ -194,11 +194,11 @@ const statusConfig: Record<SLAStatus, {
 
 const categoryConfig: Record<SLACategory, { label: string; color: string }> = {
   'response-time': { label: 'Response Time', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30' },
-  uptime: { label: 'Uptime', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30' },
+  uptime: { label: 'Uptime', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30' },
   quality: { label: 'Quality', color: 'bg-green-100 text-green-700 dark:bg-green-900/30' },
   delivery: { label: 'Delivery', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30' },
   compliance: { label: 'Compliance', color: 'bg-red-100 text-red-700 dark:bg-red-900/30' },
-  support: { label: 'Support', color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30' },
+  support: { label: 'Support', color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30' },
 };
 
 // ============================================================================

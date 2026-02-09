@@ -134,7 +134,7 @@ export const statusColors = {
   warning: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   error: 'text-red-600 bg-red-50 border-red-200',
   info: 'text-violet-600 bg-violet-50 border-violet-200',
-  processing: 'text-purple-600 bg-purple-50 border-purple-200',
+  processing: 'text-violet-600 bg-violet-50 border-violet-200',
 }
 
 // Animation Classes

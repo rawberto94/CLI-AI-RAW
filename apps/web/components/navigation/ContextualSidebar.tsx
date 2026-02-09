@@ -58,7 +58,7 @@ const getItemConfig = (type: ContextualItem['type']) => {
     case 'alert':
       return { icon: AlertTriangle, color: 'bg-red-100 text-red-600' };
     case 'insight':
-      return { icon: Zap, color: 'bg-purple-100 text-purple-600' };
+      return { icon: Zap, color: 'bg-violet-100 text-violet-600' };
     default:
       return { icon: Activity, color: 'bg-slate-100 text-slate-600' };
   }

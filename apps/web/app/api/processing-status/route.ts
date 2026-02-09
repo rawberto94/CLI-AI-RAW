@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
-import { getApiTenantId } from "@/lib/tenant-server";
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 // Mock data for processing status (fallback)
 const mockJobs = [
   {
@@ -254,108 +253,94 @@ const mockMetrics = {
   systemLoad: 45,
 };
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const contractId = searchParams.get("contractId");
-    const jobId = searchParams.get("jobId");
-    const type = searchParams.get("type") || "status";
-    const tenantId = await getApiTenantId(request);
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 400 }
-      );
-    }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const contractId = searchParams.get("contractId");
+  const jobId = searchParams.get("jobId");
+  const type = searchParams.get("type") || "status";
+  const tenantId = await ctx.tenantId;
 
-    // If requesting specific contract status
-    if (contractId && type === "status") {
-      // Return completed status immediately since artifacts are created during upload
-      return NextResponse.json({
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+  }
+
+  // If requesting specific contract status
+  if (contractId && type === "status") {
+    // Return completed status immediately since artifacts are created during upload
+    return createSuccessResponse(ctx, {
+      success: true,
+      contractId,
+      status: "completed",
+      currentStage: "complete",
+      progress: 100,
+      timestamp: new Date().toISOString(),
+    });
+  }
+
+  // If requesting specific job status
+  if (jobId) {
+    const job = mockJobs.find((j) => j.id === jobId);
+    if (job) {
+      return createSuccessResponse(ctx, {
         success: true,
-        contractId,
-        status: "completed",
-        currentStage: "complete",
-        progress: 100,
+        data: job,
         timestamp: new Date().toISOString(),
       });
     }
-
-    // If requesting specific job status
-    if (jobId) {
-      const job = mockJobs.find((j) => j.id === jobId);
-      if (job) {
-        return NextResponse.json({
-          success: true,
-          data: job,
-          timestamp: new Date().toISOString(),
-        });
-      }
-    }
-
-    // Get all jobs for tenant
-    const jobs = mockJobs;
-
-    let response = {};
-
-    switch (type) {
-      case "jobs":
-        response = {
-          success: true,
-          data: jobs,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "workers":
-        response = {
-          success: true,
-          data: mockWorkers,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "metrics":
-        response = {
-          success: true,
-          data: {
-            ...mockMetrics,
-            totalJobs: jobs.length,
-            activeJobs: jobs.filter((j) => j.status === "processing").length,
-            completedJobs: jobs.filter((j) => j.status === "completed").length,
-            failedJobs: jobs.filter((j) => j.status === "failed").length,
-          },
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "all":
-      default:
-        response = {
-          success: true,
-          data: {
-            jobs: jobs.length > 0 ? jobs : mockJobs,
-            workers: mockWorkers,
-            metrics: mockMetrics,
-          },
-          timestamp: new Date().toISOString(),
-        };
-        break;
-    }
-
-    return NextResponse.json(response);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch processing status",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
   }
-}
+
+  // Get all jobs for tenant
+  const jobs = mockJobs;
+
+  let response = {};
+
+  switch (type) {
+    case "jobs":
+      response = {
+        success: true,
+        data: jobs,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "workers":
+      response = {
+        success: true,
+        data: mockWorkers,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "metrics":
+      response = {
+        success: true,
+        data: {
+          ...mockMetrics,
+          totalJobs: jobs.length,
+          activeJobs: jobs.filter((j) => j.status === "processing").length,
+          completedJobs: jobs.filter((j) => j.status === "completed").length,
+          failedJobs: jobs.filter((j) => j.status === "failed").length,
+        },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "all":
+    default:
+      response = {
+        success: true,
+        data: {
+          jobs: jobs.length > 0 ? jobs : mockJobs,
+          workers: mockWorkers,
+          metrics: mockMetrics,
+        },
+        timestamp: new Date().toISOString(),
+      };
+      break;
+  }
+
+  return createSuccessResponse(ctx, response);
+});
 
 async function _getContractStatus(contractId: string) {
   try {
@@ -383,91 +368,64 @@ async function _getContractStatus(contractId: string) {
   }
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, jobId, data } = body;
-    const tenantId = await getApiTenantId(request);
-    
-    if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 400 }
-      );
-    }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action, jobId, data } = body;
+  const tenantId = await ctx.tenantId;
 
-    // Simulate processing time
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
-    let response = {};
-
-    switch (action) {
-      case "pause_job":
-        response = {
-          success: true,
-          message: `Job ${jobId} paused successfully`,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "resume_job":
-        response = {
-          success: true,
-          message: `Job ${jobId} resumed successfully`,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "cancel_job":
-        response = {
-          success: true,
-          message: `Job ${jobId} cancelled successfully`,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "retry_job":
-        response = {
-          success: true,
-          message: `Job ${jobId} queued for retry`,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      case "restart_worker":
-        response = {
-          success: true,
-          message: `Worker ${data.workerId} restarted successfully`,
-          timestamp: new Date().toISOString(),
-        };
-        break;
-
-      default:
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Invalid action",
-            validActions: [
-              "pause_job",
-              "resume_job",
-              "cancel_job",
-              "retry_job",
-              "restart_worker",
-            ],
-          },
-          { status: 400 }
-        );
-    }
-
-    return NextResponse.json(response);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to execute action",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
   }
-}
+
+  // Simulate processing time
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  let response = {};
+
+  switch (action) {
+    case "pause_job":
+      response = {
+        success: true,
+        message: `Job ${jobId} paused successfully`,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "resume_job":
+      response = {
+        success: true,
+        message: `Job ${jobId} resumed successfully`,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "cancel_job":
+      response = {
+        success: true,
+        message: `Job ${jobId} cancelled successfully`,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "retry_job":
+      response = {
+        success: true,
+        message: `Job ${jobId} queued for retry`,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    case "restart_worker":
+      response = {
+        success: true,
+        message: `Worker ${data.workerId} restarted successfully`,
+        timestamp: new Date().toISOString(),
+      };
+      break;
+
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+  }
+
+  return createSuccessResponse(ctx, response);
+});

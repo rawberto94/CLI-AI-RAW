@@ -255,7 +255,7 @@ export function IntegrationStatusWidget({
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Plug className="h-4 w-4 text-purple-500" />
+              <Plug className="h-4 w-4 text-violet-500" />
               Integrations
             </CardTitle>
             

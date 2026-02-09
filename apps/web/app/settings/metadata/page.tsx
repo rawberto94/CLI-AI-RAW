@@ -172,7 +172,7 @@ export default function MetadataSettingsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">AI-Enabled</span>
-                  <span className="font-medium text-purple-600">12</span>
+                  <span className="font-medium text-violet-600">12</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Required</span>

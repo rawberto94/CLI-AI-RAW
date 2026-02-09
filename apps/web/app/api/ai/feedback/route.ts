@@ -9,8 +9,8 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 interface CorrectionRequest {
   contractId: string;
@@ -25,33 +25,21 @@ interface CorrectionRequest {
 /**
  * POST - Record a user correction for AI learning
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
-
-    const services = await import('@repo/data-orchestration/services');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+    const services = await import('data-orchestration/services');
     const aiLearningService = services.aiLearningService;
 
     const body = await request.json() as CorrectionRequest;
 
     // Validate required fields
     if (!body.contractId || !body.artifactType) {
-      return NextResponse.json(
-        { error: 'contractId and artifactType are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and artifactType are required', 400);
     }
 
     if (!body.originalData || !body.correctedData) {
-      return NextResponse.json(
-        { error: 'originalData and correctedData are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'originalData and correctedData are required', 400);
     }
 
     // Calculate which fields were corrected
@@ -68,40 +56,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       correctedData: body.correctedData as Record<string, unknown>,
       correctionFields,
       userId,
-      feedbackType: body.feedbackType || 'correction',
-    });
+      feedbackType: body.feedbackType || 'correction' });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: 'Correction recorded for AI learning',
       data: {
         contractId: body.contractId,
         artifactType: body.artifactType,
         correctionFields,
-        recordedAt: new Date().toISOString(),
-      },
-    });
+        recordedAt: new Date().toISOString() } });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to record correction' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET - Retrieve learned patterns or stats
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
-    const services = await import('@repo/data-orchestration/services');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+    const services = await import('data-orchestration/services');
     const aiLearningService = services.aiLearningService;
 
     const { searchParams } = new URL(request.url);
@@ -113,17 +85,10 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       artifactType
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       tenantId,
       artifactType: artifactType || 'all',
       patterns,
-      patternCount: patterns.length,
-    });
+      patternCount: patterns.length });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to retrieve learning data' },
-      { status: 500 }
-    );
-  }
-}
+  });

@@ -115,8 +115,8 @@ export function QuickSummarizeButton({ onClick, isLoading }: QuickSummarizeButto
         disabled={isLoading}
         className={cn(
           "h-14 w-14 rounded-full shadow-2xl",
-          "bg-gradient-to-br from-purple-600 via-purple-600 to-purple-600",
-          "hover:from-purple-700 hover:via-purple-700 hover:to-purple-700",
+          "bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600",
+          "hover:from-violet-700 hover:via-purple-700 hover:to-purple-700",
           "text-white border-0"
         )}
       >
@@ -164,7 +164,7 @@ function SummarySection({
     green: 'from-violet-500 to-violet-600',
     amber: 'from-amber-500 to-orange-600',
     red: 'from-red-500 to-rose-600',
-    purple: 'from-purple-500 to-pink-600',
+    purple: 'from-violet-500 to-pink-600',
   };
 
   return (
@@ -310,7 +310,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
     <Dialog open={isOpen} onOpenChange={() => onClose?.()}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col bg-gradient-to-br from-slate-50 to-white p-0">
         {/* Header */}
-        <DialogHeader className="bg-gradient-to-r from-purple-600 via-purple-600 to-purple-600 px-6 py-5 text-white flex-shrink-0">
+        <DialogHeader className="bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 px-6 py-5 text-white flex-shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
@@ -318,7 +318,7 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
               </div>
               <div>
                 <DialogTitle className="text-xl font-bold text-white">AI Contract Summary</DialogTitle>
-                <DialogDescription className="text-purple-100 mt-0.5">
+                <DialogDescription className="text-violet-100 mt-0.5">
                   {contractTitle}
                 </DialogDescription>
               </div>
@@ -379,8 +379,8 @@ ${summary.risks.factors.map(f => `- ${f.title} (${f.severity}): ${f.description}
           {loading ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="relative">
-                <div className="w-20 h-20 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-                <Brain className="w-8 h-8 text-purple-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                <div className="w-20 h-20 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+                <Brain className="w-8 h-8 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
               </div>
               <h3 className="text-lg font-semibold text-slate-900 mt-6 mb-2">Analyzing Contract</h3>
               <p className="text-slate-500 text-center max-w-md">

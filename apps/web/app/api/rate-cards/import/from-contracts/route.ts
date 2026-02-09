@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardExtractionService, rateCardManagementService } from 'data-orchestration/services';
 
 /**
  * Rate card artifact data types
@@ -45,15 +47,11 @@ interface ImportError {
  * POST /api/rate-cards/import/from-contracts
  * Extract rate cards from contract artifacts
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const { contractId, tenantId } = await request.json();
 
     if (!contractId || !tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID and Tenant ID are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID and Tenant ID are required', 400)
     }
 
     // Look up contract with rate artifacts
@@ -72,10 +70,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404)
     }
 
     // Extract rate card data from artifacts
@@ -161,7 +156,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       imported: importedRates.length,
       errors: errors.length,
@@ -171,10 +166,4 @@ export async function POST(request: NextRequest) {
       }
     });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+  });

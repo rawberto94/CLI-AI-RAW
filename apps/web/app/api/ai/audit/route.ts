@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -8,14 +8,8 @@ export const maxDuration = 60;
  * GET /api/ai/audit
  * Get AI decision audit trail, usage stats, or compliance reports
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'decisions';
     const featureId = searchParams.get('featureId');
@@ -24,14 +18,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const auditService = (services as any).aiDecisionAuditService;
 
     if (!auditService) {
-      return NextResponse.json(
-        { error: 'AI Decision Audit service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Decision Audit service not available', 503);
     }
 
     let result;
@@ -43,8 +34,7 @@ export async function GET(request: NextRequest) {
           featureId,
           from: fromDate ? new Date(fromDate) : undefined,
           to: toDate ? new Date(toDate) : undefined,
-          limit,
-        });
+          limit });
         break;
 
       case 'stats':
@@ -57,68 +47,42 @@ export async function GET(request: NextRequest) {
 
       case 'compliance':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for compliance report' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for compliance report', 400);
         }
         result = await auditService.generateComplianceReport(tenantId);
         break;
 
       case 'risk-flags':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for risk flags' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for risk flags', 400);
         }
         result = await auditService.getRiskFlags(tenantId);
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to retrieve AI audit data', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });
 
 /**
  * POST /api/ai/audit
  * Log AI decision or record user feedback
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action = 'log', ...data } = body;
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const auditService = (services as any).aiDecisionAuditService;
 
     if (!auditService) {
-      return NextResponse.json(
-        { error: 'AI Decision Audit service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Decision Audit service not available', 503);
     }
 
     let result;
@@ -138,10 +102,7 @@ export async function POST(request: NextRequest) {
         } = data;
 
         if (!feature || !input || !output) {
-          return NextResponse.json(
-            { error: 'feature, input, and output are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'feature, input, and output are required', 400);
         }
 
         result = await auditService.logDecision({
@@ -154,18 +115,14 @@ export async function POST(request: NextRequest) {
           confidence: confidence || 0.85,
           citations: citations || [],
           processingTimeMs: processingTimeMs || 0,
-          tokenUsage: tokenUsage || { input: 0, output: 0, total: 0 },
-        });
+          tokenUsage: tokenUsage || { input: 0, output: 0, total: 0 } });
         break;
 
       case 'feedback':
         const { decisionId, userId, rating, correction, comment } = data;
 
         if (!decisionId || !userId) {
-          return NextResponse.json(
-            { error: 'decisionId and userId are required for feedback' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'decisionId and userId are required for feedback', 400);
         }
 
         result = await auditService.recordFeedback({
@@ -173,8 +130,7 @@ export async function POST(request: NextRequest) {
           userId,
           rating,
           correction,
-          comment,
-        });
+          comment });
         break;
 
       case 'flag':
@@ -186,10 +142,7 @@ export async function POST(request: NextRequest) {
         } = data;
 
         if (!flagDecisionId || !flagType || !reason) {
-          return NextResponse.json(
-            { error: 'decisionId, flagType, and reason are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'decisionId, flagType, and reason are required', 400);
         }
 
         result = await auditService.flagDecision(
@@ -201,21 +154,10 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to log AI decision', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });

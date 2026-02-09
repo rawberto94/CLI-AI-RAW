@@ -21,7 +21,7 @@ export default function ImportWizardLoading() {
         <div className="relative w-32 h-32">
           {/* Center icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-violet-600 flex items-center justify-center shadow-2xl">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-2xl">
               <Wand2 className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -44,13 +44,13 @@ export default function ImportWizardLoading() {
                   initial={{ opacity: 0, scale: 0 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: delay * 0.2, duration: 0.3 }}
-                  className="absolute w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center border border-purple-100"
+                  className="absolute w-8 h-8 rounded-full bg-white shadow-lg flex items-center justify-center border border-violet-100"
                   style={{
                     left: `calc(50% + ${x}px - 16px)`,
                     top: `calc(50% + ${y}px - 16px)`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-purple-600" />
+                  <Icon className="w-4 h-4 text-violet-600" />
                 </motion.div>
               );
             })}
@@ -64,7 +64,7 @@ export default function ImportWizardLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-purple-600 to-violet-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Import Wizard
           </h2>
           <p className="mt-2 text-sm text-gray-500 flex items-center justify-center gap-1">

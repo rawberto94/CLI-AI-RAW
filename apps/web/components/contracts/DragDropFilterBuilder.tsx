@@ -149,7 +149,7 @@ const FILTER_TEMPLATES = [
     label: 'Currency',
     icon: Coins,
     color: 'slate',
-    options: ['USD', 'EUR', 'GBP', 'JPY', 'AUD'],
+    options: ['CHF', 'USD', 'EUR', 'GBP', 'JPY', 'AUD'],
   },
 ] as const;
 
@@ -157,11 +157,11 @@ const FILTER_TEMPLATES = [
 const getColorClasses = (color: string) => {
   const colorMap: Record<string, { border: string; bg: string; hover: string; icon: string; text: string }> = {
     blue: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
-    purple: { border: 'border-purple-200', bg: 'bg-purple-50', hover: 'hover:bg-purple-100', icon: 'text-purple-600', text: 'text-purple-700' },
+    purple: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     emerald: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     amber: { border: 'border-amber-200', bg: 'bg-amber-50', hover: 'hover:bg-amber-100', icon: 'text-amber-600', text: 'text-amber-700' },
-    indigo: { border: 'border-indigo-200', bg: 'bg-purple-50', hover: 'hover:bg-purple-100', icon: 'text-purple-600', text: 'text-purple-700' },
-    cyan: { border: 'border-cyan-200', bg: 'bg-purple-50', hover: 'hover:bg-purple-100', icon: 'text-purple-600', text: 'text-purple-700' },
+    indigo: { border: 'border-indigo-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
+    cyan: { border: 'border-cyan-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     red: { border: 'border-red-200', bg: 'bg-red-50', hover: 'hover:bg-red-100', icon: 'text-red-600', text: 'text-red-700' },
     teal: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     pink: { border: 'border-pink-200', bg: 'bg-pink-50', hover: 'hover:bg-pink-100', icon: 'text-pink-600', text: 'text-pink-700' },
@@ -324,9 +324,9 @@ export function DragDropFilterBuilder({
       >
         <div className="flex flex-col h-full min-h-0">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-purple-50 to-purple-50">
+          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-violet-50 to-purple-50">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
                 <Wand2 className="h-5 w-5" />
               </div>
               <div>
@@ -352,7 +352,7 @@ export function DragDropFilterBuilder({
             <div className="w-64 border-r bg-slate-50 overflow-y-auto flex-shrink-0">
               <div className="p-4">
               <div className="mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-purple-600" />
+                <Sparkles className="h-4 w-4 text-violet-600" />
                 <h3 className="font-semibold text-sm text-slate-900">Filter Library</h3>
               </div>
               <p className="text-xs text-slate-500 mb-3">
@@ -518,7 +518,7 @@ export function DragDropFilterBuilder({
                       className={cn(
                         'relative rounded-xl border-2 border-dashed transition-all',
                         hoveredGroup === group.id
-                          ? 'border-indigo-400 bg-purple-50/50'
+                          ? 'border-indigo-400 bg-violet-50/50'
                           : 'border-slate-300 bg-white'
                       )}
                       onDragOver={(e) => {
@@ -753,7 +753,7 @@ export function DragDropFilterBuilder({
               <Button
                 onClick={() => onApply(filterGroups)}
                 disabled={totalFilters === 0}
-                className="bg-gradient-to-r from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Apply Filters

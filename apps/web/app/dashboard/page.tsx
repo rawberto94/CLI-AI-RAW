@@ -123,7 +123,7 @@ const quickActions = [
     label: "AI Assistant",
     description: "Ask about contracts",
     href: "/ai/chat",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-violet-500 to-pink-500",
   },
   {
     icon: Search,
@@ -377,19 +377,19 @@ export default function DashboardPage() {
           {/* Recently Added */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                     <Plus className="h-5 w-5" />
                   </div>
-                  <Link href="/upload" className="text-xs text-muted-foreground hover:text-purple-600 flex items-center gap-1">
+                  <Link href="/upload" className="text-xs text-muted-foreground hover:text-violet-600 flex items-center gap-1">
                     Upload <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Recently Added</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-700 to-purple-500 dark:from-purple-400 dark:to-purple-300 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-700 to-purple-500 dark:from-violet-400 dark:to-purple-300 bg-clip-text text-transparent">
                     +{dashboardData.overview.recentlyAdded}
                   </p>
                   <p className="text-xs text-muted-foreground pt-2">
@@ -436,7 +436,7 @@ export default function DashboardPage() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg shadow-purple-500/30">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30">
                     <Zap className="h-5 w-5" />
                   </div>
                   <div>
@@ -549,7 +549,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white">
                       <Bot className="h-5 w-5" />
                     </div>
                     <div>
@@ -613,7 +613,7 @@ export default function DashboardPage() {
                     { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
                     { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
                     { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
-                    { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
+                    { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
                   ];
                   const defaultColor = { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-500' };
                   const color = colors[idx % colors.length] ?? defaultColor;

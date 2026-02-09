@@ -83,7 +83,7 @@ const AI_MODELS = [
     name: 'Auto Select', 
     description: 'Automatically choose between Azure CH and Mistral EU',
     badge: 'Smart',
-    badgeColor: 'bg-purple-100 text-purple-700'
+    badgeColor: 'bg-violet-100 text-violet-700'
   },
 ];
 
@@ -190,7 +190,7 @@ export function ProcessingConfig({ options, onChange, disabled }: ProcessingConf
             <AccordionItem value="model">
               <AccordionTrigger className="text-sm">
                 <div className="flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-purple-600" />
+                  <Brain className="h-4 w-4 text-violet-600" />
                   AI Model
                 </div>
               </AccordionTrigger>
@@ -204,7 +204,7 @@ export function ProcessingConfig({ options, onChange, disabled }: ProcessingConf
                       className={cn(
                         'w-full p-3 rounded-lg border text-left transition-all',
                         options.aiModel === model.id
-                          ? 'border-purple-500 bg-purple-50'
+                          ? 'border-violet-500 bg-violet-50'
                           : 'border-slate-200 hover:border-slate-300'
                       )}
                     >

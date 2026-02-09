@@ -65,13 +65,13 @@ const PROVIDERS = {
   SHAREPOINT: { name: "SharePoint", icon: Cloud, color: "text-violet-600" },
   ONEDRIVE: { name: "OneDrive", icon: Cloud, color: "text-violet-500" },
   GOOGLE_DRIVE: { name: "Google Drive", icon: Cloud, color: "text-green-600" },
-  AZURE_BLOB: { name: "Azure Blob", icon: HardDrive, color: "text-purple-600" },
+  AZURE_BLOB: { name: "Azure Blob", icon: HardDrive, color: "text-violet-600" },
   AWS_S3: { name: "Amazon S3", icon: HardDrive, color: "text-orange-600" },
   SFTP: { name: "SFTP", icon: Server, color: "text-gray-600" },
   FTP: { name: "FTP", icon: Server, color: "text-gray-500" },
   DROPBOX: { name: "Dropbox", icon: Cloud, color: "text-violet-400" },
   BOX: { name: "Box", icon: Cloud, color: "text-violet-700" },
-  CUSTOM_API: { name: "Custom API", icon: Server, color: "text-purple-600" },
+  CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
 const STATUS_BADGES = {
@@ -289,8 +289,8 @@ export default function ContractSourcesPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <FileText className="w-6 h-6 text-purple-600" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900 rounded-lg">
+                  <FileText className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Files Synced</p>

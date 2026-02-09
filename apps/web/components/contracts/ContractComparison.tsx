@@ -100,7 +100,7 @@ const categoryIcons: Record<DiffSection['category'], React.ReactNode> = {
 const categoryColors: Record<DiffSection['category'], string> = {
   terms: 'text-violet-600 bg-violet-100',
   financial: 'text-green-600 bg-green-100',
-  dates: 'text-purple-600 bg-purple-100',
+  dates: 'text-violet-600 bg-violet-100',
   parties: 'text-amber-600 bg-amber-100',
   compliance: 'text-rose-600 bg-rose-100',
   general: 'text-slate-600 bg-slate-100',
@@ -360,7 +360,7 @@ export function ContractComparison({
     <Dialog open={isOpen} onOpenChange={() => onClose()}>
       <DialogContent className="max-w-5xl max-h-[90vh] p-0 overflow-hidden">
         {/* Header */}
-        <div className="bg-gradient-to-br from-purple-600 via-purple-600 to-purple-600 p-6 text-white">
+        <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600 p-6 text-white">
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm">
@@ -481,7 +481,7 @@ export function ContractComparison({
               {/* Loading State */}
               {isLoading && (
                 <div className="flex flex-col items-center justify-center py-16">
-                  <Loader2 className="w-12 h-12 animate-spin text-purple-600 mb-4" />
+                  <Loader2 className="w-12 h-12 animate-spin text-violet-600 mb-4" />
                   <p className="text-sm text-slate-600">Analyzing differences...</p>
                 </div>
               )}
@@ -559,14 +559,14 @@ export function ContractComparison({
         {/* Footer Actions */}
         <div className="border-t bg-slate-50 p-4 flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Sparkles className="w-4 h-4 text-purple-500" />
+            <Sparkles className="w-4 h-4 text-violet-500" />
             AI-powered change detection
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" onClick={onClose}>
               Close
             </Button>
-            <Button className="bg-gradient-to-r from-purple-600 to-purple-600 text-white">
+            <Button className="bg-gradient-to-r from-violet-600 to-purple-600 text-white">
               <Copy className="w-4 h-4 mr-1.5" />
               Copy Summary
             </Button>

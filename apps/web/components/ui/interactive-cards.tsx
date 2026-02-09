@@ -428,7 +428,7 @@ interface FeatureCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'childre
 
 const gradients = {
   blue: 'from-violet-500 to-purple-600',
-  purple: 'from-purple-500 to-pink-600',
+  purple: 'from-violet-500 to-pink-600',
   green: 'from-violet-500 to-violet-600',
   orange: 'from-orange-500 to-amber-600',
   pink: 'from-pink-500 to-rose-600',

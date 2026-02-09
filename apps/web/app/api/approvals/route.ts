@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { workflowService } from 'data-orchestration/services';
 export const dynamic = 'force-dynamic';
 
 // Mock approval queue data (fallback)
@@ -161,10 +161,9 @@ function calculateRiskScore(value: number, daysOverdue: number, deviations: numb
   return { score: Math.min(100, score), level };
 }
 
-export async function GET(request: NextRequest) {
-  const session = await getServerSession();
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (!session?.user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
   const tenantId = session.user.tenantId;
   const _userId = session.user.id;
@@ -320,7 +319,7 @@ export async function GET(request: NextRequest) {
         totalValue: dbApprovals.reduce((sum, a) => sum + a.value, 0),
       };
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: {
           items: approvals,
@@ -337,7 +336,7 @@ export async function GET(request: NextRequest) {
     }
     
     // No approvals in database - return empty list
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         items: [],
@@ -361,145 +360,79 @@ export async function GET(request: NextRequest) {
       source: 'database',
     });
   } catch (dbError: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Database error', details: String(dbError) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Database error', 500);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+  }
+  const tenantId = session.user.tenantId;
+  const userId = session.user.id;
+  const body = await request.json();
+  const { action, approvalId, approvalIds, comment, delegateTo, reason } = body;
+
+  // Try database operations first
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
-    const body = await request.json();
-    const { action, approvalId, approvalIds, comment, delegateTo, reason } = body;
-
-    // Try database operations first
-    try {
-      if (action === 'approve') {
-        // Update workflow step execution
-        if (approvalId) {
-          await prisma.workflowStepExecution.updateMany({
-            where: {
-              executionId: approvalId,
-              status: 'PENDING',
-            },
-            data: {
-              status: 'COMPLETED',
-              completedAt: new Date(),
-              completedBy: userId,
-              result: { approved: true, comment },
-            },
-          });
-
-          // Check if all steps are complete
-          const stepExecutions = await prisma.workflowStepExecution.findMany({
-            where: { executionId: approvalId },
-          });
-          const allComplete = stepExecutions.every(s => s.status === 'COMPLETED');
-          
-          if (allComplete) {
-            await prisma.workflowExecution.update({
-              where: { id: approvalId },
-              data: { status: 'COMPLETED', completedAt: new Date() },
-            });
-          } else {
-            // Move to next step
-            const nextStep = stepExecutions.find(s => s.status === 'PENDING');
-            if (nextStep) {
-              await prisma.workflowExecution.update({
-                where: { id: approvalId },
-                data: { currentStep: String(nextStep.stepOrder) },
-              });
-            }
-          }
-
-          // Create notification for next approver
-          const nextPending = await prisma.workflowStepExecution.findFirst({
-            where: { executionId: approvalId, status: 'PENDING' },
-          });
-          if (nextPending && nextPending.assignedTo) {
-            await prisma.notification.create({
-              data: {
-                tenantId,
-                userId: nextPending.assignedTo,
-                type: 'APPROVAL_REQUEST',
-                title: 'Approval Required',
-                message: `${nextPending.stepName} step requires your approval`,
-                link: `/approvals`,
-                metadata: { approvalId, stepName: nextPending.stepName },
-              },
-            });
-          }
-        }
-
-        return NextResponse.json({
-          success: true,
-          message: approvalIds?.length > 1
-            ? `${approvalIds.length} items approved successfully`
-            : 'Approval completed successfully',
-          data: {
-            approvalId: approvalId || approvalIds?.[0],
-            newStatus: 'approved',
-            approvedAt: new Date().toISOString(),
-            comment,
+    if (action === 'approve') {
+      // Update workflow step execution
+      if (approvalId) {
+        await prisma.workflowStepExecution.updateMany({
+          where: {
+            executionId: approvalId,
+            status: 'PENDING',
           },
-          source: 'database',
+          data: {
+            status: 'COMPLETED',
+            completedAt: new Date(),
+            completedBy: userId,
+            result: { approved: true, comment },
+          },
         });
-      }
 
-      if (action === 'reject') {
-        if (!reason) {
-          return NextResponse.json(
-            { success: false, error: 'Rejection reason is required' },
-            { status: 400 }
-          );
-        }
+        // Check if all steps are complete
+        const stepExecutions = await prisma.workflowStepExecution.findMany({
+          where: { executionId: approvalId },
+        });
+        const allComplete = stepExecutions.every(s => s.status === 'COMPLETED');
 
-        if (approvalId) {
-          await prisma.workflowStepExecution.updateMany({
-            where: {
-              executionId: approvalId,
-              status: 'PENDING',
-            },
-            data: {
-              status: 'REJECTED',
-              completedAt: new Date(),
-              completedBy: userId,
-              result: { rejected: true, reason },
-            },
-          });
-
+        if (allComplete) {
           await prisma.workflowExecution.update({
             where: { id: approvalId },
-            data: { status: 'REJECTED', completedAt: new Date() },
+            data: { status: 'COMPLETED', completedAt: new Date() },
           });
+        } else {
+          // Move to next step
+          const nextStep = stepExecutions.find(s => s.status === 'PENDING');
+          if (nextStep) {
+            await prisma.workflowExecution.update({
+              where: { id: approvalId },
+              data: { currentStep: String(nextStep.stepOrder) },
+            });
+          }
         }
 
-        return NextResponse.json({
-          success: true,
-          message: 'Approval rejected',
-          data: {
-            approvalId,
-            newStatus: 'rejected',
-            rejectedAt: new Date().toISOString(),
-            reason,
-          },
-          source: 'database',
+        // Create notification for next approver
+        const nextPending = await prisma.workflowStepExecution.findFirst({
+          where: { executionId: approvalId, status: 'PENDING' },
         });
+        if (nextPending && nextPending.assignedTo) {
+          await prisma.notification.create({
+            data: {
+              tenantId,
+              userId: nextPending.assignedTo,
+              type: 'APPROVAL_REQUEST',
+              title: 'Approval Required',
+              message: `${nextPending.stepName} step requires your approval`,
+              link: `/approvals`,
+              metadata: { approvalId, stepName: nextPending.stepName },
+            },
+          });
+        }
       }
-    } catch {
-      // Database operation failed - fall through to mock responses
-    }
 
-    // Fallback mock responses
-    if (action === 'approve') {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         message: approvalIds?.length > 1
           ? `${approvalIds.length} items approved successfully`
@@ -510,19 +443,36 @@ export async function POST(request: NextRequest) {
           approvedAt: new Date().toISOString(),
           comment,
         },
-        source: 'mock',
+        source: 'database',
       });
     }
 
     if (action === 'reject') {
       if (!reason) {
-        return NextResponse.json(
-          { success: false, error: 'Rejection reason is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Rejection reason is required', 400);
       }
 
-      return NextResponse.json({
+      if (approvalId) {
+        await prisma.workflowStepExecution.updateMany({
+          where: {
+            executionId: approvalId,
+            status: 'PENDING',
+          },
+          data: {
+            status: 'REJECTED',
+            completedAt: new Date(),
+            completedBy: userId,
+            result: { rejected: true, reason },
+          },
+        });
+
+        await prisma.workflowExecution.update({
+          where: { id: approvalId },
+          data: { status: 'REJECTED', completedAt: new Date() },
+        });
+      }
+
+      return createSuccessResponse(ctx, {
         success: true,
         message: 'Approval rejected',
         data: {
@@ -531,91 +481,107 @@ export async function POST(request: NextRequest) {
           rejectedAt: new Date().toISOString(),
           reason,
         },
-        source: 'mock',
+        source: 'database',
       });
     }
-
-    if (action === 'delegate') {
-      if (!delegateTo) {
-        return NextResponse.json(
-          { success: false, error: 'Delegate target is required' },
-          { status: 400 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `Delegated to ${delegateTo}`,
-        data: {
-          approvalId,
-          delegatedTo: delegateTo,
-          delegatedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'request-info') {
-      return NextResponse.json({
-        success: true,
-        message: 'Information request sent',
-        data: {
-          approvalId,
-          status: 'info-requested',
-          requestedAt: new Date().toISOString(),
-          comment,
-        },
-      });
-    }
-
-    if (action === 'escalate') {
-      return NextResponse.json({
-        success: true,
-        message: 'Approval escalated to next level',
-        data: {
-          approvalId,
-          escalatedAt: new Date().toISOString(),
-          newAssignee: 'VP Level Approver',
-        },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
+  } catch {
+    // Database operation failed - fall through to mock responses
   }
-}
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { approvalId, updates } = body;
+  // Fallback mock responses
+  if (action === 'approve') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: approvalIds?.length > 1
+        ? `${approvalIds.length} items approved successfully`
+        : 'Approval completed successfully',
+      data: {
+        approvalId: approvalId || approvalIds?.[0],
+        newStatus: 'approved',
+        approvedAt: new Date().toISOString(),
+        comment,
+      },
+      source: 'mock',
+    });
+  }
 
-    if (!approvalId) {
-      return NextResponse.json(
-        { success: false, error: 'Approval ID is required' },
-        { status: 400 }
-      );
+  if (action === 'reject') {
+    if (!reason) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Rejection reason is required', 400);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
-      message: 'Approval updated',
+      message: 'Approval rejected',
       data: {
         approvalId,
-        updates,
-        updatedAt: new Date().toISOString(),
+        newStatus: 'rejected',
+        rejectedAt: new Date().toISOString(),
+        reason,
+      },
+      source: 'mock',
+    });
+  }
+
+  if (action === 'delegate') {
+    if (!delegateTo) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Delegate target is required', 400);
+    }
+
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: `Delegated to ${delegateTo}`,
+      data: {
+        approvalId,
+        delegatedTo: delegateTo,
+        delegatedAt: new Date().toISOString(),
       },
     });
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
   }
-}
+
+  if (action === 'request-info') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Information request sent',
+      data: {
+        approvalId,
+        status: 'info-requested',
+        requestedAt: new Date().toISOString(),
+        comment,
+      },
+    });
+  }
+
+  if (action === 'escalate') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Approval escalated to next level',
+      data: {
+        approvalId,
+        escalatedAt: new Date().toISOString(),
+        newAssignee: 'VP Level Approver',
+      },
+    });
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});
+
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { approvalId, updates } = body;
+
+  if (!approvalId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Approval ID is required', 400);
+  }
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: 'Approval updated',
+    data: {
+      approvalId,
+      updates,
+      updatedAt: new Date().toISOString(),
+    },
+  });
+});

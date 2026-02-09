@@ -209,8 +209,8 @@ const StepIndicator: React.FC<{
       case 'approval': return 'bg-green-500';
       case 'review': return 'bg-violet-500';
       case 'notification': return 'bg-amber-500';
-      case 'auto': return 'bg-purple-500';
-      case 'parallel': return 'bg-purple-500';
+      case 'auto': return 'bg-violet-500';
+      case 'parallel': return 'bg-violet-500';
       default: return 'bg-slate-500';
     }
   };
@@ -242,9 +242,9 @@ const StepIndicator: React.FC<{
             <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${
               step.type === 'approval' ? 'bg-green-100 text-green-700' :
               step.type === 'review' ? 'bg-violet-100 text-violet-700' :
-              step.type === 'auto' ? 'bg-purple-100 text-purple-700' :
+              step.type === 'auto' ? 'bg-violet-100 text-violet-700' :
               step.type === 'notification' ? 'bg-amber-100 text-amber-700' :
-              'bg-purple-100 text-purple-700'
+              'bg-violet-100 text-violet-700'
             }`}>
               {step.type.charAt(0).toUpperCase() + step.type.slice(1)}
             </span>
@@ -325,7 +325,7 @@ export const WorkflowTemplatePreview: React.FC<WorkflowTemplatePreviewProps> = (
         className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
       >
         {/* Header */}
-        <div className="px-6 py-5 bg-gradient-to-r from-purple-500 to-purple-600 text-white flex items-start justify-between shrink-0">
+        <div className="px-6 py-5 bg-gradient-to-r from-violet-500 to-purple-600 text-white flex items-start justify-between shrink-0">
           <div className="flex items-center gap-4">
             <div className="p-3 bg-white/20 rounded-xl">
               <Icon className="w-8 h-8" />
@@ -366,14 +366,14 @@ export const WorkflowTemplatePreview: React.FC<WorkflowTemplatePreviewProps> = (
               icon={Users}
               label="Steps"
               value={`${template.steps.length} steps`}
-              color="bg-purple-50 text-purple-700"
+              color="bg-violet-50 text-violet-700"
             />
           </div>
 
           {/* Workflow Steps */}
           <div className="mb-6">
             <h3 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-              <ArrowRight className="w-5 h-5 text-purple-500" />
+              <ArrowRight className="w-5 h-5 text-violet-500" />
               Workflow Steps
             </h3>
             <div className="bg-slate-50 rounded-xl p-5">
@@ -430,7 +430,7 @@ export const WorkflowTemplatePreview: React.FC<WorkflowTemplatePreviewProps> = (
               <ul className="space-y-2">
                 {template.bestFor.map((item, idx) => (
                   <li key={idx} className="flex items-center gap-2 text-sm text-slate-600">
-                    <ChevronRight className="w-4 h-4 text-purple-500 shrink-0" />
+                    <ChevronRight className="w-4 h-4 text-violet-500 shrink-0" />
                     {item}
                   </li>
                 ))}
@@ -450,7 +450,7 @@ export const WorkflowTemplatePreview: React.FC<WorkflowTemplatePreviewProps> = (
           {onSelect && (
             <button
               onClick={() => onSelect(template)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-purple-200 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white font-medium rounded-lg hover:shadow-lg hover:shadow-violet-200 transition-all"
             >
               <Play className="w-4 h-4" />
               Use This Workflow
@@ -472,7 +472,7 @@ export const WorkflowPreviewButton: React.FC<{
 }> = ({ template, onPreview, className }) => (
   <button
     onClick={() => onPreview(template)}
-    className={`flex items-center gap-1.5 text-sm text-purple-600 hover:text-purple-700 font-medium transition-colors ${className || ''}`}
+    className={`flex items-center gap-1.5 text-sm text-violet-600 hover:text-violet-700 font-medium transition-colors ${className || ''}`}
   >
     <Eye className="w-4 h-4" />
     Preview

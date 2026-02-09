@@ -39,6 +39,6 @@ Sentry.init({
   ignoreErrors: [
     "NEXT_NOT_FOUND",
     "NEXT_REDIRECT",
-    /prisma.*connection/i,
+    // NOTE: Do NOT ignore Prisma connection errors — DB outages must trigger alerts
   ],
 });

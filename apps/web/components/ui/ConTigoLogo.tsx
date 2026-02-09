@@ -6,130 +6,128 @@ interface ConTigoLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   showText?: boolean;
   className?: string;
+  href?: string;
 }
 
-export function ConTigoLogo({ size = 'md', showText = true, className = '' }: ConTigoLogoProps) {
-  const sizes = {
-    sm: { icon: 'w-8 h-8', text: 'text-lg' },
-    md: { icon: 'w-10 h-10', text: 'text-xl' },
-    lg: { icon: 'w-12 h-12', text: 'text-2xl' },
-    xl: { icon: 'w-16 h-16', text: 'text-3xl' },
-  };
+/**
+ * Official ConTigo Logo — 3 stacked bars + "contigo" text
+ *
+ * Bar colors (top→bottom): violet-700 (#6D28D9) → violet-500 (#8B5CF6) → violet-300 (#C4B5FD)
+ * Text: "con" bold + "tigo" light/thin weight, all lowercase
+ * No background box — bare SVG bars
+ */
 
-  const s = sizes[size];
+const ICON_SIZES = {
+  sm: 28,
+  md: 36,
+  lg: 44,
+  xl: 56,
+} as const;
 
+const TEXT_SIZES = {
+  sm: 'text-lg',
+  md: 'text-xl',
+  lg: 'text-2xl',
+  xl: 'text-3xl',
+} as const;
+
+function LogoBars({ color = 'brand' }: { color?: 'brand' | 'white' }) {
+  if (color === 'white') {
+    return (
+      <g transform="translate(4, 8)">
+        <rect x="0" y="0" width="40" height="9" rx="4.5" fill="white" />
+        <rect x="0" y="13" width="40" height="9" rx="4.5" fill="white" fillOpacity="0.65" />
+        <rect x="0" y="26" width="40" height="9" rx="4.5" fill="white" fillOpacity="0.35" />
+      </g>
+    );
+  }
   return (
-    <Link href="/" className={`flex items-center gap-2.5 group ${className}`}>
-      {/* Stacked Bars Icon */}
-      <div className={`relative ${s.icon} flex-shrink-0 bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 rounded-xl shadow-lg shadow-violet-500/25 p-1.5 group-hover:scale-105 transition-transform`}>
-        <svg viewBox="0 0 48 48" fill="none" className="w-full h-full">
-          <g transform="translate(8, 10)">
-            <rect x="0" y="0" width="32" height="8" rx="4" fill="white"/>
-            <rect x="0" y="12" width="32" height="8" rx="4" fill="white" fillOpacity="0.8"/>
-            <rect x="0" y="24" width="32" height="8" rx="4" fill="white" fillOpacity="0.6"/>
-          </g>
-        </svg>
-      </div>
+    <g transform="translate(4, 8)">
+      <rect x="0" y="0" width="40" height="9" rx="4.5" fill="#6D28D9" />
+      <rect x="0" y="13" width="40" height="9" rx="4.5" fill="#8B5CF6" />
+      <rect x="0" y="26" width="40" height="9" rx="4.5" fill="#C4B5FD" />
+    </g>
+  );
+}
 
-      {/* Text */}
-      {showText && (
-        <span className={`font-bold ${s.text} tracking-tight`}>
-          <span className="text-violet-600">Con</span>
-          <span className="text-slate-800">Tigo</span>
-        </span>
-      )}
+function LogoText({ variant = 'color', textClass }: { variant?: 'color' | 'white'; textClass: string }) {
+  if (variant === 'white') {
+    return (
+      <span className={`${textClass} tracking-tight`}>
+        <span className="font-bold text-violet-300">con</span>
+        <span className="font-light text-white">tigo</span>
+      </span>
+    );
+  }
+  return (
+    <span className={`${textClass} tracking-tight`}>
+      <span className="font-bold text-violet-700 dark:text-violet-400">con</span>
+      <span className="font-light text-slate-900 dark:text-white">tigo</span>
+    </span>
+  );
+}
+
+function LogoWrapper({
+  href,
+  className,
+  children,
+}: {
+  href?: string;
+  className: string;
+  children: React.ReactNode;
+}) {
+  if (!href) {
+    return <div className={className}>{children}</div>;
+  }
+  return (
+    <Link href={href} className={`${className} group`} aria-label="ConTigo home">
+      {children}
     </Link>
   );
 }
 
-// Inline SVG version for better quality
-export function ConTigoLogoSVG({ size = 'md', showText = true, className = '' }: ConTigoLogoProps) {
-  const sizes = {
-    sm: { height: 32, fontSize: 18 },
-    md: { height: 40, fontSize: 22 },
-    lg: { height: 48, fontSize: 26 },
-    xl: { height: 64, fontSize: 32 },
-  };
-
-  const s = sizes[size];
+export function ConTigoLogo({ size = 'md', showText = true, className = '', href = '/' }: ConTigoLogoProps) {
+  const iconSize = ICON_SIZES[size];
 
   return (
-    <Link href="/" className={`flex items-center gap-2.5 group ${className}`}>
-      {/* SVG Stacked Bars Icon */}
-      <svg 
-        width={s.height} 
-        height={s.height} 
-        viewBox="0 0 48 48" 
-        className="flex-shrink-0 group-hover:scale-105 transition-transform"
+    <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
+      <svg
+        width={iconSize}
+        height={iconSize}
+        viewBox="0 0 48 48"
+        fill="none"
+        aria-hidden="true"
+        className="flex-shrink-0"
       >
-        <defs>
-          <linearGradient id={`barGrad1_${size}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="100%" stopColor="#8B5CF6" />
-          </linearGradient>
-          <linearGradient id={`barGrad2_${size}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#8B5CF6" />
-            <stop offset="100%" stopColor="#A78BFA" />
-          </linearGradient>
-          <linearGradient id={`barGrad3_${size}`} x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#A78BFA" />
-            <stop offset="100%" stopColor="#C4B5FD" />
-          </linearGradient>
-        </defs>
-        
-        {/* Three Stacked Bars */}
-        <g transform="translate(8, 10)">
-          <rect x="0" y="0" width="32" height="8" rx="4" fill={`url(#barGrad1_${size})`} />
-          <rect x="0" y="12" width="32" height="8" rx="4" fill={`url(#barGrad2_${size})`} />
-          <rect x="0" y="24" width="32" height="8" rx="4" fill={`url(#barGrad3_${size})`} />
-        </g>
+        <LogoBars color="brand" />
       </svg>
-
-      {/* Text */}
-      {showText && (
-        <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
-          <span className="text-violet-600">con</span>
-          <span className="text-slate-800">tigo</span>
-        </span>
-      )}
-    </Link>
+      {showText && <LogoText textClass={TEXT_SIZES[size]} variant="color" />}
+    </LogoWrapper>
   );
 }
 
-// White version for dark backgrounds
-export function ConTigoLogoWhite({ size = 'md', showText = true, className = '' }: ConTigoLogoProps) {
-  const sizes = {
-    sm: { height: 32, fontSize: 18 },
-    md: { height: 40, fontSize: 22 },
-    lg: { height: 48, fontSize: 26 },
-    xl: { height: 64, fontSize: 32 },
-  };
+// Alias — kept for backward compatibility
+export function ConTigoLogoSVG(props: ConTigoLogoProps) {
+  return <ConTigoLogo {...props} />;
+}
 
-  const s = sizes[size];
+// White version for dark/gradient backgrounds
+export function ConTigoLogoWhite({ size = 'md', showText = true, className = '', href = '/' }: ConTigoLogoProps) {
+  const iconSize = ICON_SIZES[size];
 
   return (
-    <Link href="/" className={`flex items-center gap-2.5 group ${className}`}>
-      {/* SVG Stacked Bars Icon - White */}
-      <svg 
-        width={s.height} 
-        height={s.height} 
-        viewBox="0 0 48 48" 
-        className="flex-shrink-0 group-hover:scale-105 transition-transform"
+    <LogoWrapper href={href} className={`flex items-center gap-2.5 ${className}`}>
+      <svg
+        width={iconSize}
+        height={iconSize}
+        viewBox="0 0 48 48"
+        fill="none"
+        aria-hidden="true"
+        className="flex-shrink-0"
       >
-        <g transform="translate(8, 10)">
-          <rect x="0" y="0" width="32" height="8" rx="4" fill="white" />
-          <rect x="0" y="12" width="32" height="8" rx="4" fill="white" fillOpacity="0.7" />
-          <rect x="0" y="24" width="32" height="8" rx="4" fill="white" fillOpacity="0.5" />
-        </g>
+        <LogoBars color="white" />
       </svg>
-
-      {/* Text */}
-      {showText && (
-        <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
-          <span className="text-violet-300">con</span>
-          <span className="text-white">tigo</span>
-        </span>
-      )}
-    </Link>
+      {showText && <LogoText textClass={TEXT_SIZES[size]} variant="white" />}
+    </LogoWrapper>
   );
 }

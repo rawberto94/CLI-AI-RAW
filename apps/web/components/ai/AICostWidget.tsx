@@ -210,11 +210,11 @@ export function AICostWidget({
       </PopoverTrigger>
 
       <PopoverContent className="w-80 p-0" align="end">
-        <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-pink-50">
+        <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-violet-50 to-pink-50">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="p-2 rounded-lg bg-white shadow-sm">
-                <Coins className="w-5 h-5 text-purple-500" />
+                <Coins className="w-5 h-5 text-violet-500" />
               </div>
               <div>
                 <p className="text-sm font-semibold text-gray-900">Session Usage</p>
@@ -254,7 +254,7 @@ export function AICostWidget({
                   ? "[&>div]:bg-red-500"
                   : isBudgetWarning
                   ? "[&>div]:bg-amber-500"
-                  : "[&>div]:bg-purple-500"
+                  : "[&>div]:bg-violet-500"
               }`}
             />
           </div>
@@ -320,7 +320,7 @@ export function AICostWidget({
                   <span className="text-gray-400 mx-1">•</span>
                   <span className="font-mono text-gray-500">{currentUsage.model}</span>
                 </div>
-                <span className="font-medium text-purple-600">
+                <span className="font-medium text-violet-600">
                   {formatCost(currentUsage.cost)}
                 </span>
               </div>

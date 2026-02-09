@@ -55,9 +55,9 @@ interface AICategorizationCardProps {
 
 const CONTRACT_TYPE_LABELS: Record<ContractTypeCategory, { label: string; color: string }> = {
   MSA: { label: 'Master Service Agreement', color: 'bg-violet-100 text-violet-700' },
-  SOW: { label: 'Statement of Work', color: 'bg-purple-100 text-purple-700' },
-  NDA: { label: 'Non-Disclosure Agreement', color: 'bg-purple-100 text-purple-700' },
-  SLA: { label: 'Service Level Agreement', color: 'bg-purple-100 text-purple-700' },
+  SOW: { label: 'Statement of Work', color: 'bg-violet-100 text-violet-700' },
+  NDA: { label: 'Non-Disclosure Agreement', color: 'bg-violet-100 text-violet-700' },
+  SLA: { label: 'Service Level Agreement', color: 'bg-violet-100 text-violet-700' },
   DPA: { label: 'Data Processing Agreement', color: 'bg-pink-100 text-pink-700' },
   LICENSE: { label: 'License Agreement', color: 'bg-violet-100 text-violet-700' },
   EMPLOYMENT: { label: 'Employment Contract', color: 'bg-amber-100 text-amber-700' },

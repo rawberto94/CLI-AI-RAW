@@ -5,9 +5,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
 import * as crypto from 'crypto';
+import { auditTrailService } from 'data-orchestration/services';
 
 // TOTP verification (simplified - in production use a library like otplib)
 function verifyTOTP(secret: string, code: string): boolean {
@@ -60,17 +62,18 @@ function generateTOTP(secret: string, counter: number, digits: number): string {
 }
 
 export async function POST(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await request.json();
     const { code, secret } = body;
 
     if (!code || code.length !== 6) {
-      return NextResponse.json({ error: 'Invalid code format' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid code format', 400);
     }
 
     // Get user preferences with pending secret
@@ -83,22 +86,24 @@ export async function POST(request: NextRequest) {
     const pendingExpires = customSettings.pendingMfaExpires;
 
     if (!pendingSecret) {
-      return NextResponse.json(
-        { error: 'No pending MFA setup. Please start setup again.' },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'BAD_REQUEST',
+        'No pending MFA setup. Please start setup again.',
+        400
       );
     }
 
     if (pendingExpires && new Date(pendingExpires) < new Date()) {
-      return NextResponse.json(
-        { error: 'MFA setup expired. Please start again.' },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'BAD_REQUEST',
+        'MFA setup expired. Please start again.',
+        400
       );
     }
 
     // Verify the code
     if (!verifyTOTP(pendingSecret, code)) {
-      return NextResponse.json({ error: 'Invalid verification code' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid verification code', 400);
     }
 
     // Enable MFA on user record and clear pending settings
@@ -142,9 +147,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { success: true });
   } catch (error) {
     console.error('Failed to verify MFA:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Internal server error', 500);
   }
 }

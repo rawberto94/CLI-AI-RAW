@@ -1,7 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,11 +15,9 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
     const tenantId = session.user.tenantId;
     const userId = session.user.id;
     const { id: workflowId } = await params;
@@ -25,10 +25,7 @@ export async function POST(
     const { contractId, initiatedBy, metadata, dueDate, priority } = body;
 
     if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get workflow details - verify it belongs to tenant
@@ -42,17 +39,11 @@ export async function POST(
     });
 
     if (!workflow) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
     }
 
     if (!workflow.isActive) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow is not active' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Workflow is not active', 400);
     }
 
     // Calculate due date based on first step timeout or provided dueDate
@@ -139,7 +130,7 @@ export async function POST(
       // Contract update is optional, don't fail the execution
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         executionId: execution.id,
@@ -155,14 +146,7 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to execute workflow',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -174,6 +158,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: workflowId } = await params;
     const tenantId = await getApiTenantId(request);
@@ -201,7 +186,7 @@ export async function GET(
       orderBy: { createdAt: 'desc' },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       executions: executions.map((exec) => ({
         ...exec,
@@ -214,10 +199,7 @@ export async function GET(
       total: executions.length,
       source: 'database',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch executions' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

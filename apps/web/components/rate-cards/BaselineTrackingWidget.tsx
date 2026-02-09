@@ -57,18 +57,18 @@ export function BaselineTrackingWidget({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Star className="h-5 w-5 text-purple-600" />
+          <Star className="h-5 w-5 text-violet-600" />
           Baseline Tracking
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Summary Stats */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="text-center p-4 rounded-lg bg-purple-50">
-            <div className="text-3xl font-bold text-purple-600">
+          <div className="text-center p-4 rounded-lg bg-violet-50">
+            <div className="text-3xl font-bold text-violet-600">
               {metrics.totalBaselines ?? 0}
             </div>
-            <div className="text-sm text-purple-700">Total Baselines</div>
+            <div className="text-sm text-violet-700">Total Baselines</div>
           </div>
           <div className="text-center p-4 rounded-lg bg-muted">
             <div className={`text-3xl font-bold ${getComplianceColor(metrics.compliancePercentage ?? 0)}`}>

@@ -366,7 +366,7 @@ export function ContractHealthScore({
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
               Health Factors
             </span>
-            <Sparkles className="w-3 h-3 text-purple-500" />
+            <Sparkles className="w-3 h-3 text-violet-500" />
           </div>
           {factors.map((factor) => (
             <HealthFactorRow key={factor.id} factor={factor} />

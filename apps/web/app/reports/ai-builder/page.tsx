@@ -790,7 +790,7 @@ export default function AIReportBuilderPage() {
               <Button
                 onClick={generateReport}
                 disabled={isGenerating}
-                className="bg-white text-purple-600 hover:bg-violet-50 shadow-lg font-semibold"
+                className="bg-white text-violet-600 hover:bg-violet-50 shadow-lg font-semibold"
               >
                 {isGenerating ? (
                   <>
@@ -950,7 +950,7 @@ export default function AIReportBuilderPage() {
             exit={{ x: '100%' }}
             className="ml-auto w-full max-w-md bg-white shadow-2xl relative flex flex-col h-full"
           >
-            <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+            <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-pink-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <History className="h-5 w-5" />
@@ -960,7 +960,7 @@ export default function AIReportBuilderPage() {
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-purple-100 text-sm mt-1">View and restore previous reports</p>
+              <p className="text-violet-100 text-sm mt-1">View and restore previous reports</p>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -972,10 +972,10 @@ export default function AIReportBuilderPage() {
                 </div>
               ) : (
                 reportHistory.map((item, idx) => (
-                  <div key={item.id} className="p-3 bg-white border rounded-lg hover:border-purple-300 transition-colors">
+                  <div key={item.id} className="p-3 bg-white border rounded-lg hover:border-violet-300 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-gray-500">{new Date(item.generatedAt).toLocaleString()}</span>
-                      {idx === 0 && <Badge className="bg-purple-100 text-purple-700 text-xs">Latest</Badge>}
+                      {idx === 0 && <Badge className="bg-violet-100 text-violet-700 text-xs">Latest</Badge>}
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                       <div className="p-2 bg-violet-50 rounded">
@@ -1259,7 +1259,7 @@ export default function AIReportBuilderPage() {
               </Badge>
             ))}
             {filters.years.map(y => (
-              <Badge key={y} className="bg-purple-100 text-purple-700 hover:bg-purple-200 gap-1.5 pl-2 pr-1 py-1">
+              <Badge key={y} className="bg-violet-100 text-violet-700 hover:bg-violet-200 gap-1.5 pl-2 pr-1 py-1">
                 <Calendar className="h-3 w-3" />
                 {y}
                 <button onClick={() => removeFilter('years', y)} className="ml-0.5 hover:text-red-600 rounded-full p-0.5 hover:bg-red-100">
@@ -1333,8 +1333,8 @@ export default function AIReportBuilderPage() {
               </p>
               <div className="mt-6 flex justify-center gap-2">
                 <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </CardContent>
           </Card>
@@ -1353,7 +1353,7 @@ export default function AIReportBuilderPage() {
                   </p>
                 )}
                 {isComparisonMode && comparisonReport && (
-                  <Badge className="mt-1 bg-purple-100 text-purple-700">
+                  <Badge className="mt-1 bg-violet-100 text-violet-700">
                     <GitCompare className="h-3 w-3 mr-1" />
                     Comparison Mode Active
                   </Badge>
@@ -1377,7 +1377,7 @@ export default function AIReportBuilderPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={clearComparison}
-                    className="gap-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                    className="gap-2 bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100"
                   >
                     <X className="h-4 w-4" />
                     Clear Comparison
@@ -1424,9 +1424,9 @@ export default function AIReportBuilderPage() {
             
             {/* ============= COMPARISON SUMMARY (if in comparison mode) ============= */}
             {isComparisonMode && comparisonReport && (
-              <Card className="border-2 border-purple-200 bg-purple-50/50">
+              <Card className="border-2 border-violet-200 bg-violet-50/50">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-purple-800">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-violet-800">
                     <GitCompare className="h-4 w-4" />
                     Comparison vs Previous Report
                   </CardTitle>
@@ -1619,13 +1619,13 @@ export default function AIReportBuilderPage() {
                 </CardContent>
               </Card>
               
-              <Card className="border-0 shadow-md bg-gradient-to-br from-purple-500 to-purple-600 text-white overflow-hidden relative">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-purple-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
                 <CardContent className="pt-6 relative">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-3xl font-bold">{report.summary.averageDurationMonths}<span className="text-lg">mo</span></p>
-                      <p className="text-purple-100 text-sm mt-1">Avg Duration</p>
+                      <p className="text-violet-100 text-sm mt-1">Avg Duration</p>
                     </div>
                     <div className="p-2 bg-white/20 rounded-lg">
                       <Clock className="h-5 w-5" />
@@ -1704,7 +1704,7 @@ export default function AIReportBuilderPage() {
                               rec.type === 'cost' && "bg-violet-100",
                               rec.type === 'risk' && "bg-red-100",
                               rec.type === 'compliance' && "bg-violet-100",
-                              rec.type === 'efficiency' && "bg-purple-100",
+                              rec.type === 'efficiency' && "bg-violet-100",
                               rec.type === 'strategic' && "bg-amber-100"
                             )}>
                               <TypeIcon className={cn(
@@ -1712,7 +1712,7 @@ export default function AIReportBuilderPage() {
                                 rec.type === 'cost' && "text-violet-600",
                                 rec.type === 'risk' && "text-red-600",
                                 rec.type === 'compliance' && "text-violet-600",
-                                rec.type === 'efficiency' && "text-purple-600",
+                                rec.type === 'efficiency' && "text-violet-600",
                                 rec.type === 'strategic' && "text-amber-600"
                               )} />
                             </div>
@@ -1760,7 +1760,7 @@ export default function AIReportBuilderPage() {
               <Card className="border-0 shadow-lg overflow-hidden">
                 <CardHeader className="border-b">
                   <CardTitle className="flex items-center gap-2 text-gray-800">
-                    <div className="p-1.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
+                    <div className="p-1.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                       <Users className="h-4 w-4 text-white" />
                     </div>
                     Supplier Analysis
@@ -1919,7 +1919,7 @@ export default function AIReportBuilderPage() {
                 <Card className="border-0 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <Target className="h-4 w-4 text-purple-500" />
+                      <Target className="h-4 w-4 text-violet-500" />
                       Industry Benchmarks
                     </CardTitle>
                     <CardDescription>Your portfolio vs industry standards</CardDescription>
@@ -2017,23 +2017,23 @@ export default function AIReportBuilderPage() {
               <Card className="border-0 shadow-md">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-purple-500" />
+                    <Clock className="h-4 w-4 text-violet-500" />
                     Duration Analysis
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-700">{report.summary.shortestDurationMonths}</p>
-                      <p className="text-xs text-purple-600 mt-1">Shortest (mo)</p>
+                    <div className="text-center p-4 bg-violet-50 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-700">{report.summary.shortestDurationMonths}</p>
+                      <p className="text-xs text-violet-600 mt-1">Shortest (mo)</p>
                     </div>
-                    <div className="text-center p-4 bg-purple-100 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-800">{report.summary.averageDurationMonths}</p>
-                      <p className="text-xs text-purple-700 mt-1">Average (mo)</p>
+                    <div className="text-center p-4 bg-violet-100 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-800">{report.summary.averageDurationMonths}</p>
+                      <p className="text-xs text-violet-700 mt-1">Average (mo)</p>
                     </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-700">{report.summary.longestDurationMonths}</p>
-                      <p className="text-xs text-purple-600 mt-1">Longest (mo)</p>
+                    <div className="text-center p-4 bg-violet-50 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-700">{report.summary.longestDurationMonths}</p>
+                      <p className="text-xs text-violet-600 mt-1">Longest (mo)</p>
                     </div>
                   </div>
                   
@@ -2091,12 +2091,12 @@ export default function AIReportBuilderPage() {
                     <p className="text-2xl font-bold text-yellow-600">{report.riskAnalysis.autoRenewalCount}</p>
                     <p className="text-[10px] text-yellow-600 mt-1 font-medium">Auto-Renewal</p>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                    <div className="w-10 h-10 mx-auto mb-2 bg-purple-500 rounded-full flex items-center justify-center">
+                  <div className="text-center p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl border border-violet-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-violet-500 rounded-full flex items-center justify-center">
                       <DollarSign className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-2xl font-bold text-purple-600">{report.riskAnalysis.highValueAtRisk}</p>
-                    <p className="text-[10px] text-purple-500 mt-1 font-medium">High-Value Risk</p>
+                    <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.highValueAtRisk}</p>
+                    <p className="text-[10px] text-violet-500 mt-1 font-medium">High-Value Risk</p>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl border border-rose-200">
                     <div className="w-10 h-10 mx-auto mb-2 bg-rose-500 rounded-full flex items-center justify-center">
@@ -2112,12 +2112,12 @@ export default function AIReportBuilderPage() {
                     <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.missingCriticalData || 0}</p>
                     <p className="text-[10px] text-violet-500 mt-1 font-medium">Missing Data</p>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-indigo-200">
-                    <div className="w-10 h-10 mx-auto mb-2 bg-purple-500 rounded-full flex items-center justify-center">
+                  <div className="text-center p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl border border-indigo-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-violet-500 rounded-full flex items-center justify-center">
                       <Layers className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-2xl font-bold text-purple-600">{report.riskAnalysis.concentrationRisk || 0}%</p>
-                    <p className="text-[10px] text-purple-500 mt-1 font-medium">Concentration</p>
+                    <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.concentrationRisk || 0}%</p>
+                    <p className="text-[10px] text-violet-500 mt-1 font-medium">Concentration</p>
                   </div>
                 </div>
               </CardContent>

@@ -1,17 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
+// TODO: Migrate $executeRaw/$queryRaw calls to contractService when raw query support is added
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/sync-health-scores
  * Calculates and syncs health scores for all contracts using raw SQL
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     // Get contracts with artifacts - use raw SQL to avoid enum issues
@@ -153,72 +156,55 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: 'Health score sync completed',
-      data: { totalContracts: contracts.length, ...results, duration: `${Date.now() - startTime}ms` },
-      meta: { timestamp: now.toISOString(), source: 'database' }
+      totalContracts: contracts.length, ...results, duration: `${Date.now() - startTime}ms`
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: { code: 'SYNC_ERROR', message: error instanceof Error ? error.message : 'Failed to sync health scores' } },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 /**
  * GET /api/contracts/sync-health-scores - Returns health score statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
-
-    const stats = await prisma.$queryRaw<Array<{
-      total: bigint; avg_overall: number; avg_risk: number; avg_compliance: number;
-      critical_count: bigint; high_count: bigint; medium_count: bigint; healthy_count: bigint;
-    }>>`
-      SELECT 
-        COUNT(*) as total,
-        AVG(overall_score) as avg_overall,
-        AVG(risk_score) as avg_risk,
-        AVG(compliance_score) as avg_compliance,
-        COUNT(*) FILTER (WHERE alert_level = 'critical') as critical_count,
-        COUNT(*) FILTER (WHERE alert_level = 'high') as high_count,
-        COUNT(*) FILTER (WHERE alert_level = 'medium') as medium_count,
-        COUNT(*) FILTER (WHERE alert_level IN ('low', 'none')) as healthy_count
-      FROM contract_health_scores WHERE tenant_id = ${tenantId}
-    `;
-
-    const s = stats[0] || { total: 0n, avg_overall: 0, avg_risk: 0, avg_compliance: 0, critical_count: 0n, high_count: 0n, medium_count: 0n, healthy_count: 0n };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        summary: {
-          total: Number(s.total),
-          averageScore: Math.round(s.avg_overall || 0),
-          averageRiskScore: Math.round(s.avg_risk || 0),
-          averageComplianceScore: Math.round(s.avg_compliance || 0)
-        },
-        byAlertLevel: {
-          critical: Number(s.critical_count),
-          high: Number(s.high_count),
-          medium: Number(s.medium_count),
-          healthy: Number(s.healthy_count)
-        }
-      },
-      meta: { timestamp: new Date().toISOString(), source: 'database' }
-    });
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: { code: 'FETCH_ERROR', message: error instanceof Error ? error.message : 'Failed to get health score stats' } },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
   }
-}
+
+  const stats = await prisma.$queryRaw<Array<{
+    total: bigint; avg_overall: number; avg_risk: number; avg_compliance: number;
+    critical_count: bigint; high_count: bigint; medium_count: bigint; healthy_count: bigint;
+  }>>`
+    SELECT 
+      COUNT(*) as total,
+      AVG(overall_score) as avg_overall,
+      AVG(risk_score) as avg_risk,
+      AVG(compliance_score) as avg_compliance,
+      COUNT(*) FILTER (WHERE alert_level = 'critical') as critical_count,
+      COUNT(*) FILTER (WHERE alert_level = 'high') as high_count,
+      COUNT(*) FILTER (WHERE alert_level = 'medium') as medium_count,
+      COUNT(*) FILTER (WHERE alert_level IN ('low', 'none')) as healthy_count
+    FROM contract_health_scores WHERE tenant_id = ${tenantId}
+  `;
+
+  const s = stats[0] || { total: 0n, avg_overall: 0, avg_risk: 0, avg_compliance: 0, critical_count: 0n, high_count: 0n, medium_count: 0n, healthy_count: 0n };
+
+  return createSuccessResponse(ctx, {
+    summary: {
+      total: Number(s.total),
+      averageScore: Math.round(s.avg_overall || 0),
+      averageRiskScore: Math.round(s.avg_risk || 0),
+      averageComplianceScore: Math.round(s.avg_compliance || 0)
+    },
+    byAlertLevel: {
+      critical: Number(s.critical_count),
+      high: Number(s.high_count),
+      medium: Number(s.medium_count),
+      healthy: Number(s.healthy_count)
+    }
+  });
+});

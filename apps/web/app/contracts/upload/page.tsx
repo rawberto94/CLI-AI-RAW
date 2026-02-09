@@ -228,9 +228,9 @@ export default function UploadPage() {
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/plain': ['.txt'],
+      'text/html': ['.html', '.htm'],
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg'],
-      'image/svg+xml': ['.svg'],
     },
     multiple: true,
     maxSize: 50 * 1024 * 1024, // 50MB
@@ -436,7 +436,7 @@ export default function UploadPage() {
             transition={{ duration: 8, repeat: Infinity }}
           />
           <motion.div 
-            className="absolute bottom-10 left-10 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl motion-reduce:animate-none"
+            className="absolute bottom-10 left-10 w-48 h-48 bg-violet-400/20 rounded-full blur-3xl motion-reduce:animate-none"
             animate={{ 
               scale: [1, 1.3, 1],
               x: [0, -20, 0],
@@ -608,7 +608,7 @@ export default function UploadPage() {
                       'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden motion-reduce:transition-none',
                       isDragActive
                         ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 scale-[1.02]'
-                        : 'border-gray-300 dark:border-slate-600 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50/30 dark:hover:from-slate-800 dark:hover:to-purple-900/20',
+                        : 'border-gray-300 dark:border-slate-600 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50/30 dark:hover:from-slate-800 dark:hover:to-violet-900/20',
                       isUploading && 'opacity-50 cursor-not-allowed'
                     )}
                   >
@@ -745,7 +745,7 @@ export default function UploadPage() {
                 {[
                   { icon: Zap, gradient: 'from-violet-500 to-purple-600', title: 'Lightning Fast', desc: 'AI extraction in seconds' },
                   { icon: Shield, gradient: 'from-violet-500 to-violet-600', title: 'Secure Storage', desc: 'Bank-grade encryption' },
-                  { icon: Brain, gradient: 'from-purple-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
+                  { icon: Brain, gradient: 'from-violet-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
                   { icon: BarChart3, gradient: 'from-orange-500 to-red-600', title: 'Smart Reports', desc: '10 artifact types' },
                 ].map(feature => (
                   <Card key={feature.title} className="border-0 dark:border dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-shadow motion-reduce:transition-none dark:bg-slate-800/80">
@@ -872,11 +872,11 @@ export default function UploadPage() {
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-purple-50 dark:from-purple-900/30 dark:to-purple-900/30 rounded-xl border border-purple-200 dark:border-purple-700"
+                              className="mt-3 p-4 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 rounded-xl border border-violet-200 dark:border-violet-700"
                             >
                               <div className="flex items-center gap-2 mb-3">
-                                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-                                <span className="font-medium text-purple-900 dark:text-purple-200 text-sm">Live AI Processing</span>
+                                <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+                                <span className="font-medium text-violet-900 dark:text-violet-200 text-sm">Live AI Processing</span>
                               </div>
                               <RealtimeArtifactViewer
                                 contractId={file.contractId}

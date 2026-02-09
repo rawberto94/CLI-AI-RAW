@@ -307,8 +307,8 @@ export default function TagManagementPage() {
           <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-xl">
-                  <BarChart3 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                  <BarChart3 className="w-6 h-6 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-slate-900 dark:text-white">

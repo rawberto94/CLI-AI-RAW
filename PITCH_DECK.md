@@ -1,5 +1,9 @@
 # 🚀 ConTigo Platform - Pitch Deck
 
+> **DEPRECATED:** Superseded by [docs/BUSINESS_PLAN.md](docs/BUSINESS_PLAN.md) and [docs/REVENUE_MODEL.md](docs/REVENUE_MODEL.md). Retained for historical reference only.
+
+---
+
 **AI-Powered Contract Intelligence Platform**  
 _Transforming Contract Management with Swiss Data Protection_
 
@@ -567,8 +571,8 @@ Schedule a personalized 30-minute demo:
 
 ### **Contact Information**
 
-- 🌐 **Website:** www.contigo-platform.com
-- 📧 **Email:** sales@contigo-platform.com
+- 🌐 **Website:** www.contigo-app.ch
+- 📧 **Email:** sales@contigo-app.ch
 - 📞 **Phone:** +41 XX XXX XX XX
 - 💬 **Chat:** Available on website 24/7
 

@@ -30,20 +30,20 @@ export default function AppLayout({
           aria-label="Page header"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 bg-white/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70"
+          className="sticky top-16 lg:top-0 z-20 border-b border-slate-200/60 dark:border-slate-700/60 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl supports-[backdrop-filter]:bg-white/70 dark:supports-[backdrop-filter]:bg-slate-900/70"
         >
           {/* Decorative accent line */}
-          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-slate-200 dark:via-slate-700 to-transparent" />
           
           <div className="flex h-14 md:h-16 items-center justify-between px-4 lg:px-6">
             <div className="flex items-center gap-3">
               {title && (
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent truncate">
+                  <h1 className="text-lg md:text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent truncate">
                     {title}
                   </h1>
                   {description && (
-                    <p className="text-xs md:text-sm text-slate-500 truncate hidden sm:block">{description}</p>
+                    <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 truncate hidden sm:block">{description}</p>
                   )}
                 </div>
               )}
@@ -54,30 +54,30 @@ export default function AppLayout({
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="hidden md:flex h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                className="hidden md:flex h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
                 aria-label="Search contracts"
               >
-                <Search className="h-4 w-4 text-slate-500" />
+                <Search className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </Button>
               
               {/* Notifications */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                className="h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
                 aria-label="Notifications"
               >
-                <Bell className="h-4 w-4 text-slate-500" />
+                <Bell className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </Button>
               
               {/* User Menu */}
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-9 w-9 rounded-xl hover:bg-slate-100/80" 
+                className="h-9 w-9 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/80" 
                 aria-label="User menu"
               >
-                <User className="h-4 w-4 text-slate-500" />
+                <User className="h-4 w-4 text-slate-500 dark:text-slate-400" />
               </Button>
               
               {/* Custom Actions - hidden on mobile if space is tight */}

@@ -124,7 +124,7 @@ export default function SecurityPage() {
       const [sessionsRes, mfaRes, ipRes, settingsRes] = await Promise.all([
         fetch('/api/admin/sessions'),
         fetch('/api/auth/mfa/status'),
-        fetch('/api/admin/ip-allowlist'),
+        fetch('/api/admin/security/ip-allowlist'),
         fetch('/api/admin/security-settings'),
       ]);
 
@@ -258,7 +258,7 @@ export default function SecurityPage() {
     }
 
     try {
-      const response = await fetch('/api/admin/ip-allowlist', {
+      const response = await fetch('/api/admin/security/ip-allowlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newIP),
@@ -277,7 +277,7 @@ export default function SecurityPage() {
 
   const handleRemoveIP = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/ip-allowlist/${id}`, {
+      const response = await fetch(`/api/admin/security/ip-allowlist/${id}`, {
         method: 'DELETE',
       });
 

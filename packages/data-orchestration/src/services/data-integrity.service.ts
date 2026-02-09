@@ -7,7 +7,7 @@
  * Requirements: 6.2 - THE System SHALL validate data integrity before saving to the database
  */
 
-import { PrismaClient } from 'clients-db';
+import { prisma, PrismaClient } from '../lib/prisma';
 import { z } from 'zod';
 import { monitoringService } from './monitoring.service';
 
@@ -45,7 +45,7 @@ class DataIntegrityService {
   private businessRules: Map<string, BusinessRule[]>;
 
   constructor() {
-    this.db = new PrismaClient();
+    this.db = prisma;
     this.businessRules = new Map();
     this.initializeBusinessRules();
   }

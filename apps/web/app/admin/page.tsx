@@ -146,17 +146,17 @@ function AIAccuracyDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <RefreshCw className="h-8 w-8 animate-spin text-purple-500" />
+        <RefreshCw className="h-8 w-8 animate-spin text-violet-500 dark:text-violet-400" />
       </div>
     );
   }
 
   if (!data) {
     return (
-      <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+      <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
         <CardContent className="p-12 text-center">
-          <BarChart3 className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-          <p className="text-gray-500">No extraction data yet. Accuracy tracking begins when users provide feedback on extracted fields.</p>
+          <BarChart3 className="h-12 w-12 mx-auto text-gray-400 dark:text-slate-500 mb-4" />
+          <p className="text-gray-500 dark:text-slate-400">No extraction data yet. Accuracy tracking begins when users provide feedback on extracted fields.</p>
         </CardContent>
       </Card>
     );
@@ -166,15 +166,15 @@ function AIAccuracyDashboard() {
     <div className="space-y-6">
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+        <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <BarChart3 className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                <BarChart3 className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Overall Accuracy</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-slate-400">Overall Accuracy</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.overallAccuracy ?? '--'}%
                 </p>
               </div>
@@ -182,15 +182,15 @@ function AIAccuracyDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+        <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-violet-100 rounded-xl">
-                <Check className="h-6 w-6 text-violet-600" />
+              <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                <Check className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Correct Extractions</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-slate-400">Correct Extractions</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.correctExtractions}
                 </p>
               </div>
@@ -198,15 +198,15 @@ function AIAccuracyDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+        <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-amber-100 rounded-xl">
-                <Edit2 className="h-6 w-6 text-amber-600" />
+              <div className="p-3 bg-amber-100 dark:bg-amber-900/30 rounded-xl">
+                <Edit2 className="h-6 w-6 text-amber-600 dark:text-amber-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Corrections Made</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-slate-400">Corrections Made</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.corrections}
                 </p>
               </div>
@@ -214,15 +214,15 @@ function AIAccuracyDashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+        <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
           <CardContent className="p-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-xl">
-                <FileText className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 dark:bg-violet-900/30 rounded-xl">
+                <FileText className="h-6 w-6 text-violet-600 dark:text-violet-400" />
               </div>
               <div>
-                <p className="text-sm text-gray-500">Total Feedback</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-gray-500 dark:text-slate-400">Total Feedback</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">
                   {data.overview.totalFeedback}
                 </p>
               </div>
@@ -232,10 +232,10 @@ function AIAccuracyDashboard() {
       </div>
 
       {/* Field Accuracy Table */}
-      <Card className="bg-white/90 backdrop-blur-sm shadow-lg">
+      <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Zap className="h-5 w-5 text-purple-500" />
+            <Zap className="h-5 w-5 text-violet-500 dark:text-violet-400" />
             Field Accuracy
           </CardTitle>
           <CardDescription>
@@ -261,7 +261,7 @@ function AIAccuracyDashboard() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-gray-200 dark:bg-slate-600 rounded-full overflow-hidden">
                           <div 
                             className={`h-full rounded-full ${
                               field.accuracy >= 90 ? 'bg-violet-500' :
@@ -277,13 +277,13 @@ function AIAccuracyDashboard() {
                     <TableCell>{field.sampleSize} samples</TableCell>
                     <TableCell>
                       {field.accuracy >= 90 ? (
-                        <Badge className="bg-violet-100 text-violet-700">Excellent</Badge>
+                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">Excellent</Badge>
                       ) : field.accuracy >= 70 ? (
-                        <Badge className="bg-violet-100 text-violet-700">Good</Badge>
+                        <Badge className="bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300">Good</Badge>
                       ) : field.accuracy >= 50 ? (
-                        <Badge className="bg-amber-100 text-amber-700">Needs Improvement</Badge>
+                        <Badge className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">Needs Improvement</Badge>
                       ) : (
-                        <Badge className="bg-red-100 text-red-700">Poor</Badge>
+                        <Badge className="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300">Poor</Badge>
                       )}
                     </TableCell>
                   </TableRow>
@@ -291,17 +291,17 @@ function AIAccuracyDashboard() {
               </TableBody>
             </Table>
           ) : (
-            <p className="text-gray-500 text-center py-8">No field-level data yet</p>
+            <p className="text-gray-500 dark:text-slate-400 text-center py-8">No field-level data yet</p>
           )}
         </CardContent>
       </Card>
 
       {/* Recommendations */}
       {data.recommendations.length > 0 && (
-        <Card className="bg-gradient-to-r from-purple-50 to-purple-50 border-indigo-200 shadow-lg">
+        <Card className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 border-indigo-200 dark:border-violet-800 shadow-lg">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-purple-600" />
+              <AlertCircle className="h-5 w-5 text-violet-600 dark:text-violet-400" />
               AI Recommendations
             </CardTitle>
           </CardHeader>
@@ -309,8 +309,8 @@ function AIAccuracyDashboard() {
             <ul className="space-y-2">
               {data.recommendations.map((rec, i) => (
                 <li key={i} className="flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
-                  <span className="text-gray-700">{rec}</span>
+                  <span className="text-violet-500 dark:text-violet-400 mt-1">•</span>
+                  <span className="text-gray-700 dark:text-slate-200">{rec}</span>
                 </li>
               ))}
             </ul>
@@ -508,7 +508,7 @@ export default function TenantAdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <div className="container mx-auto py-8 px-4 max-w-6xl">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
@@ -517,23 +517,23 @@ export default function TenantAdminPage() {
         >
           <div className="flex items-center gap-4">
             <motion.div 
-              className="p-4 rounded-2xl bg-gradient-to-br from-purple-600 via-purple-600 to-violet-600 text-white shadow-xl shadow-purple-500/30"
+              className="p-4 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-violet-600 text-white shadow-xl shadow-violet-500/30"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
             >
               <Building2 className="h-8 w-8" />
             </motion.div>
             <div>
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 dark:from-slate-200 dark:to-slate-400 bg-clip-text text-transparent">
                 Organization Settings
               </h1>
-              <p className="text-slate-500 mt-1">
+              <p className="text-slate-500 dark:text-slate-400 mt-1">
                 Manage your organization, team members, and settings
               </p>
             </div>
           </div>
           <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <Button onClick={loadData} variant="outline" size="sm" className="bg-white/80 backdrop-blur-sm shadow-sm">
+            <Button onClick={loadData} variant="outline" size="sm" className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm shadow-sm">
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh
             </Button>
@@ -568,7 +568,7 @@ export default function TenantAdminPage() {
             { label: 'Team Members', value: tenantInfo?._count?.users || 0, icon: Users, gradient: 'from-violet-500 to-purple-500' },
             { label: 'Contracts', value: tenantInfo?._count?.contracts || 0, icon: FileText, gradient: 'from-violet-500 to-violet-500' },
             { label: 'Storage Used', value: formatBytes(tenantInfo?.usage?.storageUsed || 0), icon: BarChart3, gradient: 'from-amber-500 to-orange-500' },
-            { label: 'Plan', value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-purple-500 to-pink-500', capitalize: true },
+            { label: 'Plan', value: tenantInfo?.subscription?.plan?.toLowerCase() || 'Free', icon: Crown, gradient: 'from-violet-500 to-pink-500', capitalize: true },
           ].map((stat, i) => {
             const StatIcon = stat.icon;
             return (
@@ -578,12 +578,12 @@ export default function TenantAdminPage() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.05 * i + 0.2 }}
               >
-                <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg hover:shadow-xl transition-all">
+                <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg hover:shadow-xl transition-all">
                   <CardContent className="pt-6">
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-slate-500">{stat.label}</p>
-                        <p className={`text-2xl font-bold text-slate-900 ${stat.capitalize ? 'capitalize' : ''}`}>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{stat.label}</p>
+                        <p className={`text-2xl font-bold text-slate-900 dark:text-white ${stat.capitalize ? 'capitalize' : ''}`}>
                           {stat.value}
                         </p>
                       </div>
@@ -604,25 +604,25 @@ export default function TenantAdminPage() {
           transition={{ delay: 0.3 }}
         >
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6 bg-white/80 backdrop-blur-sm p-1 shadow-sm">
-              <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+            <TabsList className="mb-6 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm p-1 shadow-sm">
+              <TabsTrigger value="team" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Users className="h-4 w-4" />
                 Team
               </TabsTrigger>
-              <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="invitations" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Mail className="h-4 w-4" />
                 Invitations
                 {invitations.filter(i => i.status === "PENDING").length > 0 && (
-                  <Badge variant="secondary" className="ml-1 bg-amber-100 text-amber-700">
+                  <Badge variant="secondary" className="ml-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
                     {invitations.filter(i => i.status === "PENDING").length}
                   </Badge>
                 )}
               </TabsTrigger>
-              <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="organization" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Building2 className="h-4 w-4" />
                 Organization
               </TabsTrigger>
-              <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
+              <TabsTrigger value="ai-accuracy" className="flex items-center gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-500 data-[state=active]:text-white">
                 <Zap className="h-4 w-4" />
                 AI Accuracy
               </TabsTrigger>
@@ -630,7 +630,7 @@ export default function TenantAdminPage() {
 
         {/* Team Tab */}
             <TabsContent value="team">
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle>Team Members</CardTitle>
@@ -789,7 +789,7 @@ export default function TenantAdminPage() {
 
         {/* Invitations Tab */}
             <TabsContent value="invitations">
-              <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+              <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
             <CardHeader>
               <CardTitle>Pending Invitations</CardTitle>
               <CardDescription>Track and manage pending team invitations</CardDescription>
@@ -866,7 +866,7 @@ export default function TenantAdminPage() {
         {/* Organization Tab */}
             <TabsContent value="organization">
               <div className="grid gap-6">
-                <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+                <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
               <CardHeader>
                 <CardTitle>Organization Details</CardTitle>
                 <CardDescription>Update your organization information</CardDescription>
@@ -906,29 +906,29 @@ export default function TenantAdminPage() {
               </CardContent>
             </Card>
 
-            <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700 shadow-lg">
               <CardHeader>
                 <CardTitle>Subscription</CardTitle>
                 <CardDescription>Your current plan and usage</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-purple-50 rounded-lg border border-indigo-100">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950 dark:to-purple-950 rounded-lg border border-indigo-100 dark:border-violet-800">
                   <div>
-                    <p className="font-medium text-lg capitalize text-indigo-900">
+                    <p className="font-medium text-lg capitalize text-indigo-900 dark:text-indigo-200">
                       {tenantInfo?.subscription?.plan?.toLowerCase() || "Free"} Plan
                     </p>
-                    <p className="text-sm text-purple-600">
+                    <p className="text-sm text-violet-600 dark:text-violet-400">
                       {tenantInfo?.usage?.contractsProcessed || 0} contracts processed
                     </p>
                   </div>
-                  <Button className="bg-gradient-to-r from-purple-500 to-purple-500 text-white hover:from-purple-600 hover:to-purple-600">
+                  <Button className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600">
                     Upgrade Plan
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-destructive/50 bg-white/90 backdrop-blur-sm shadow-lg">
+            <Card className="border-destructive/50 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm shadow-lg">
               <CardHeader>
                 <CardTitle className="text-destructive">Danger Zone</CardTitle>
                 <CardDescription>Irreversible actions - proceed with caution</CardDescription>

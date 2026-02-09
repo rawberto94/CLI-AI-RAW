@@ -130,7 +130,7 @@ export function ResponsiveExamples() {
                   Responsive layout without media queries
                 </p>
               </div>
-              <div className="flex-1 p-4 bg-purple-50 rounded-lg">
+              <div className="flex-1 p-4 bg-violet-50 rounded-lg">
                 <h4 className="font-semibold mb-2">Section 3</h4>
                 <p className="text-sm text-gray-600">
                   Automatically adjusts based on screen size
@@ -161,8 +161,8 @@ export function ResponsiveExamples() {
             </ResponsiveShow>
 
             <ResponsiveShow on="desktop">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-purple-900 font-medium">
+              <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+                <p className="text-violet-900 font-medium">
                   🖥️ This content is only visible on desktop
                 </p>
               </div>
@@ -242,7 +242,7 @@ function Badge({ children, color }: { children: React.ReactNode; color: string }
   const colors = {
     blue: 'bg-violet-100 text-violet-800',
     green: 'bg-green-100 text-green-800',
-    purple: 'bg-purple-100 text-purple-800',
+    purple: 'bg-violet-100 text-violet-800',
     orange: 'bg-orange-100 text-orange-800',
     gray: 'bg-gray-100 text-gray-800',
   };

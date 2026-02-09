@@ -232,7 +232,7 @@ and
       case 'clarity':
         return <Lightbulb className="h-4 w-4 text-yellow-500" />;
       case 'improvement':
-        return <Sparkles className="h-4 w-4 text-purple-500" />;
+        return <Sparkles className="h-4 w-4 text-violet-500" />;
     }
   };
 
@@ -442,7 +442,7 @@ and
               <div className="flex-1" />
               <button
                 onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-purple-500 text-white rounded-lg hover:from-purple-600 hover:to-purple-600 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg hover:from-violet-600 hover:to-purple-600 transition-colors text-sm"
               >
                 <Wand2 className="h-4 w-4" />
                 AI Assist
@@ -466,10 +466,10 @@ and
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-6 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-purple-50 to-purple-50 rounded-xl p-4 border border-purple-100">
+                  <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-white rounded-lg shadow-sm">
-                        <Sparkles className="h-5 w-5 text-purple-500" />
+                        <Sparkles className="h-5 w-5 text-violet-500" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900 mb-2">AI Writing Assistant</h3>
@@ -479,11 +479,11 @@ and
                             value={aiPrompt}
                             onChange={(e) => setAiPrompt(e.target.value)}
                             placeholder="Ask AI to help... (e.g., 'Strengthen the liability clause', 'Add GDPR compliance language')"
-                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                           />
                           <button
                             onClick={handleAIAssist}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
                           >
                             Generate
                           </button>
@@ -493,7 +493,7 @@ and
                             <button
                               key={suggestion}
                               onClick={() => setAiPrompt(suggestion)}
-                              className="px-3 py-1 text-sm bg-white text-purple-700 rounded-full hover:bg-purple-100 transition-colors border border-purple-200"
+                              className="px-3 py-1 text-sm bg-white text-violet-700 rounded-full hover:bg-violet-100 transition-colors border border-violet-200"
                             >
                               {suggestion}
                             </button>

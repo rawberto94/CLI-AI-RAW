@@ -264,7 +264,7 @@ export function AIMetadataExtractor({
             <button
               onClick={handleExtract}
               disabled={isExtracting}
-              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+              className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50"
             >
               <Sparkles className="mr-2 h-4 w-4" />
               Start Extraction
@@ -290,9 +290,9 @@ export function AIMetadataExtractor({
         <div className="text-center">
           <div className="relative mx-auto h-12 w-12">
             <div className="absolute inset-0 flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-purple-600 animate-pulse" />
+              <Sparkles className="h-6 w-6 text-violet-600 animate-pulse" />
             </div>
-            <svg className="animate-spin h-12 w-12 text-purple-600" viewBox="0 0 24 24">
+            <svg className="animate-spin h-12 w-12 text-violet-600" viewBox="0 0 24 24">
               <circle
                 className="opacity-25"
                 cx="12"
@@ -316,7 +316,7 @@ export function AIMetadataExtractor({
           
           <div className="mt-4 w-full bg-gray-200 rounded-full h-2.5">
             <div
-              className="bg-purple-600 h-2.5 rounded-full transition-all duration-500"
+              className="bg-violet-600 h-2.5 rounded-full transition-all duration-500"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -335,7 +335,7 @@ export function AIMetadataExtractor({
       <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Sparkles className="h-5 w-5 text-purple-600" />
+            <Sparkles className="h-5 w-5 text-violet-600" />
             <h3 className="text-lg font-medium text-gray-900">Extracted Metadata</h3>
           </div>
           
@@ -388,7 +388,7 @@ export function AIMetadataExtractor({
             placeholder="Search fields..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8 pr-3 py-1.5 w-full text-sm border border-gray-300 rounded-md focus:ring-purple-500 focus:border-purple-500"
+            className="pl-8 pr-3 py-1.5 w-full text-sm border border-gray-300 rounded-md focus:ring-violet-500 focus:border-violet-500"
           />
         </div>
 
@@ -397,7 +397,7 @@ export function AIMetadataExtractor({
           <select
             value={confidenceFilter}
             onChange={(e) => setConfidenceFilter(e.target.value as any)}
-            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-purple-500 focus:border-purple-500"
+            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-violet-500 focus:border-violet-500"
           >
             <option value="all">All fields</option>
             <option value="high">High confidence (≥80%)</option>
@@ -411,7 +411,7 @@ export function AIMetadataExtractor({
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as any)}
-            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-purple-500 focus:border-purple-500"
+            className="text-sm border border-gray-300 rounded-md py-1 px-2 focus:ring-violet-500 focus:border-violet-500"
           >
             <option value="default">Default order</option>
             <option value="confidence">By confidence</option>
@@ -482,7 +482,7 @@ export function AIMetadataExtractor({
                               type="text"
                               value={editValue || ''}
                               onChange={(e) => setEditValue(e.target.value)}
-                              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-purple-500 focus:border-purple-500"
+                              className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-violet-500 focus:border-violet-500"
                               autoFocus
                             />
                             <button
@@ -599,7 +599,7 @@ export function AIMetadataExtractor({
           <button
             onClick={handleApplyHighConfidenceOnly}
             disabled={isApplying || highConfidenceCount === 0}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 disabled:opacity-50"
+            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-violet-600 hover:text-violet-700 disabled:opacity-50"
           >
             <Zap className="mr-1 h-4 w-4" />
             Apply High Confidence ({highConfidenceCount})
@@ -608,7 +608,7 @@ export function AIMetadataExtractor({
           <button
             onClick={handleApply}
             disabled={isApplying}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50"
+            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 disabled:opacity-50"
           >
             {isApplying ? (
               <>

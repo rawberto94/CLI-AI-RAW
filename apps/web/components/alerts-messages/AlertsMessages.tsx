@@ -173,9 +173,9 @@ export function Callout({
       title: title || 'Tip',
     },
     important: {
-      bg: 'bg-purple-50 dark:bg-purple-950',
-      border: 'border-l-4 border-purple-500',
-      icon: <AlertCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />,
+      bg: 'bg-violet-50 dark:bg-violet-950',
+      border: 'border-l-4 border-violet-500',
+      icon: <AlertCircle className="w-5 h-5 text-violet-600 dark:text-violet-400" />,
       title: title || 'Important',
     },
     warning: {
@@ -425,7 +425,7 @@ export function AnnouncementBar({
 
   const typeStyles = {
     info: 'bg-violet-600 text-white',
-    promo: 'bg-gradient-to-r from-purple-600 to-pink-600 text-white',
+    promo: 'bg-gradient-to-r from-violet-600 to-pink-600 text-white',
     warning: 'bg-yellow-400 text-yellow-900',
   };
 

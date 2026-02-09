@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { metadataEditorService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/metadata/tags
@@ -7,29 +8,21 @@ import { metadataEditorService } from 'data-orchestration/services';
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   try {
     const body = await request.json();
     const { tags, tenantId, userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'tenantId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
     }
 
     if (!tags || !Array.isArray(tags)) {
-      return NextResponse.json(
-        { error: 'tags array is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'tags array is required', 400);
     }
 
     await metadataEditorService.addTags(
@@ -39,14 +32,11 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Tags added successfully',
       tags,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to add tags' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

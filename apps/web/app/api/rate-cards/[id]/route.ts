@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEntryService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const rateCardService = new rateCardEntryService(prisma);
 
@@ -11,7 +11,8 @@ const rateCardService = new rateCardEntryService(prisma);
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const { id } = params;
     
     // Check data mode from header - mock only allowed in development
@@ -19,10 +20,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     
     // If mock mode requested in production, reject
     if (dataMode === 'mock' && process.env.NODE_ENV === 'production') {
-      return NextResponse.json(
-        { error: 'Mock mode not available in production' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Mock mode not available in production', 400);
     }
     
     // If mock mode (dev only), return mock data
@@ -142,35 +140,25 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       
       const mockEntry = mockRateCards.find(rc => rc.id === id);
       if (!mockEntry) {
-        return NextResponse.json(
-          { error: 'Rate card not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
       }
       
-      return NextResponse.json(mockEntry);
+      return createSuccessResponse(ctx, mockEntry);
     }
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
 
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const entry = await rateCardService.getEntry(id, tenantId);
 
-    return NextResponse.json(entry);
+    return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Rate card not found', details: error instanceof Error ? error.message : String(error) },
-      { status: 404 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', details: error instanceof Error ? error.message : String(error), 404);
   }
 }
 
@@ -180,20 +168,17 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const { id } = params;
     const body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
 
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Convert date strings to Date objects
@@ -206,12 +191,9 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
 
     const entry = await rateCardService.updateEntry(id, body, tenantId);
 
-    return NextResponse.json(entry);
+    return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to update rate card', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update rate card', details: error instanceof Error ? error.message : String(error), 400);
   }
 }
 
@@ -221,28 +203,22 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getApiContext(request);
+try {
     const { id } = params;
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
 
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     await rateCardService.deleteEntry(id, tenantId);
 
-    return NextResponse.json({ success: true, message: 'Rate card deleted' });
+    return createSuccessResponse(ctx, { message: 'Rate card deleted' });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to delete rate card', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete rate card', details: error instanceof Error ? error.message : String(error), 400);
   }
 }

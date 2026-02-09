@@ -35,8 +35,8 @@ const CopilotDraftingCanvas = dynamic(
           className="text-center"
         >
           <div className="relative mx-auto mb-4">
-            <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-            <Sparkles className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+            <Sparkles className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 font-medium">Loading AI Copilot...</p>
           <p className="text-sm text-slate-500 mt-1">Preparing intelligent drafting assistant</p>
@@ -167,16 +167,16 @@ export default function CopilotDraftPage() {
         <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
           <div className="flex items-center gap-3 mt-2">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-xl shadow-lg">
               <HeaderIcon className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                   {headerInfo.title}
                 </h1>
                 {headerInfo.badge && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                  <Badge variant="secondary" className="bg-violet-100 text-violet-700 text-xs">
                     {headerInfo.badge}
                   </Badge>
                 )}

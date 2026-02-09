@@ -5,10 +5,12 @@
  * Database persisted using AuditLog model
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // Types
@@ -89,6 +91,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const resolvedParams = await params;
     const contractId = resolvedParams.id;
@@ -150,7 +153,7 @@ export async function GET(
     const paginatedLogs = logs.slice((page - 1) * limit, page * limit);
 
     // If no logs exist, return empty result (no more sample data)
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         logs: paginatedLogs,
@@ -169,11 +172,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Failed to fetch audit logs:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch audit logs' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -185,6 +184,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const resolvedParams = await params;
     const contractId = resolvedParams.id;
@@ -192,10 +192,7 @@ export async function POST(
     const tenantId = await getApiTenantId(request) || body.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const {
@@ -209,10 +206,7 @@ export async function POST(
     } = body;
 
     if (!userId || !action || !category) {
-      return NextResponse.json(
-        { success: false, error: 'userId, action, and category are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId, action, and category are required', 400);
     }
 
     // Get request metadata
@@ -245,16 +239,12 @@ export async function POST(
 
     const logEntry = transformAuditLog(dbLog, contractId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: logEntry,
     });
   } catch (error) {
-    console.error('Failed to create audit log:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create audit log' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

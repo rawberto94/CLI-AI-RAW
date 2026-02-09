@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 /**
  * Supplier Portal API
  * Provides external suppliers access to their contracts, tasks, and messages
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
   const section = searchParams.get('section');
@@ -13,15 +15,11 @@ export async function GET(request: NextRequest) {
 
   // Validate magic link token
   if (token && token.length < 10) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid or expired token' },
-      { status: 401 }
-    );
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid or expired token', 401);
   }
 
   try {
-    // Get supplier info - for now, we'll use supplierName from contracts
-    // In production, this would be validated against a token/session
+    // Get supplier info
     const supplierName = supplierId || 'Unknown Supplier';
 
     // Get contracts for this supplier
@@ -94,104 +92,90 @@ export async function GET(request: NextRequest) {
     if (section) {
       switch (section) {
         case 'contracts':
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: { contracts: portalData.contracts },
           });
         case 'tasks':
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: { tasks: portalData.pendingTasks },
           });
         default:
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: portalData,
           });
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: portalData,
     });
   } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch portal data' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch portal data', 500);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, contractId, taskId, message: _message, document: _document } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action, contractId, taskId, message: _message, document: _document } = body;
 
-    if (action === 'sign') {
-      return NextResponse.json({
-        success: true,
-        message: 'Contract signed successfully',
-        data: {
-          contractId,
-          signedAt: new Date().toISOString(),
-          signatureId: `sig-${Date.now()}`,
-        },
-      });
-    }
-
-    if (action === 'upload') {
-      return NextResponse.json({
-        success: true,
-        message: 'Document uploaded successfully',
-        data: {
-          documentId: `doc-${Date.now()}`,
-          uploadedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'send-message') {
-      return NextResponse.json({
-        success: true,
-        message: 'Message sent',
-        data: {
-          messageId: `msg-${Date.now()}`,
-          sentAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'complete-task') {
-      return NextResponse.json({
-        success: true,
-        message: 'Task completed',
-        data: {
-          taskId,
-          completedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'generate-magic-link') {
-      // Generate magic link for supplier access
-      return NextResponse.json({
-        success: true,
-        data: {
-          magicLink: `https://app.company.com/portal?token=${Buffer.from(Date.now().toString()).toString('base64')}`,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (_error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
+  if (action === 'sign') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Contract signed successfully',
+      data: {
+        contractId,
+        signedAt: new Date().toISOString(),
+        signatureId: `sig-${Date.now()}`,
+      },
+    });
   }
-}
+
+  if (action === 'upload') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Document uploaded successfully',
+      data: {
+        documentId: `doc-${Date.now()}`,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'send-message') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Message sent',
+      data: {
+        messageId: `msg-${Date.now()}`,
+        sentAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'complete-task') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Task completed',
+      data: {
+        taskId,
+        completedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'generate-magic-link') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      data: {
+        magicLink: `https://app.company.com/portal?token=${Buffer.from(Date.now().toString()).toString('base64')}`,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+    });
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});

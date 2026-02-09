@@ -424,17 +424,17 @@ export default function SettingsClient() {
               <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg shadow-purple-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
                       <HelpCircle className="w-5 h-5 text-white" />
                     </div>
                     Help & Support
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-purple-200">
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-200">
                     <div>
-                      <h4 className="font-medium text-purple-900">App Tour & Learning Center</h4>
-                      <p className="text-sm text-purple-700">
+                      <h4 className="font-medium text-violet-900">App Tour & Learning Center</h4>
+                      <p className="text-sm text-violet-700">
                         Interactive walkthrough and feature guides
                       </p>
                     </div>
@@ -443,7 +443,7 @@ export default function SettingsClient() {
                         <Button
                           variant="outline"
                           size="sm"
-                          className="bg-white border-purple-300 text-purple-700 hover:bg-purple-100"
+                          className="bg-white border-violet-300 text-violet-700 hover:bg-violet-100"
                         >
                           <Play className="w-4 h-4 mr-2" />
                           Open Tour
@@ -459,7 +459,7 @@ export default function SettingsClient() {
                           localStorage.removeItem('contigo-welcome-banner-dismissed');
                           window.location.href = '/tour';
                         }}
-                        className="text-purple-600 hover:text-purple-700 hover:bg-purple-100"
+                        className="text-violet-600 hover:text-violet-700 hover:bg-violet-100"
                       >
                         Restart
                       </Button>
@@ -677,7 +677,7 @@ export default function SettingsClient() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg shadow-lg shadow-purple-500/25">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-lg shadow-lg shadow-violet-500/25">
                     <Zap className="w-5 h-5 text-white" />
                   </div>
                   Processing Configuration
@@ -790,7 +790,7 @@ export default function SettingsClient() {
                               <BarChart3 className="w-5 h-5 text-violet-600" />
                             )}
                             {key === "slack" && (
-                              <Bell className="w-5 h-5 text-purple-600" />
+                              <Bell className="w-5 h-5 text-violet-600" />
                             )}
                             {key === "teams" && (
                               <Users className="w-5 h-5 text-violet-600" />

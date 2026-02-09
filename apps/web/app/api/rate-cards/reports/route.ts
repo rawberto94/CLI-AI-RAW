@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { automatedReportingService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { tenantId, reportType, startDate, endDate, filters } = body;
 
     if (!tenantId || !reportType) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields', 400);
     }
 
     let report;
@@ -46,17 +43,8 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid report type' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid report type', 400);
     }
 
-    return NextResponse.json(report);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to generate report' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, report);
+  });

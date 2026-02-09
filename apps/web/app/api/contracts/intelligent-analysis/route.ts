@@ -18,8 +18,9 @@
  * - Smart auto-correction of values
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
 let advancedIntelligence: any = null;
@@ -233,7 +234,7 @@ Return a comprehensive JSON analysis.`;
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -241,18 +242,12 @@ export async function POST(request: NextRequest) {
     const { documentText, contractId, contractType: hintedContractType, industry, options = {} } = body;
 
     if (!documentText || documentText.trim().length < 100) {
-      return NextResponse.json(
-        { error: 'Document text is required and must be at least 100 characters' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Document text is required and must be at least 100 characters', 400);
     }
 
     // Check for OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 
     const openai = new OpenAI({
@@ -876,18 +871,12 @@ Return JSON:
       }
     };
 
-    return NextResponse.json(analysisResult);
+    return createSuccessResponse(ctx, analysisResult);
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Analysis failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 // ============================================================================
 // HELPER FUNCTIONS

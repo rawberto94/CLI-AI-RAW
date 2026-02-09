@@ -6,10 +6,12 @@
  * DELETE /api/drafts/[id] - Delete a draft
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +20,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -66,22 +62,15 @@ export async function GET(
     });
 
     if (!draft) {
-      return NextResponse.json(
-        { success: false, error: 'Draft not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: { draft },
     });
   } catch (error) {
-    console.error('Error fetching draft:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch draft' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -90,14 +79,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -109,18 +93,12 @@ export async function PATCH(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Draft not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
     }
 
     // Check if draft is locked by another user
     if (existing.isLocked && existing.lockedBy !== session.user.id) {
-      return NextResponse.json(
-        { success: false, error: 'Draft is locked by another user' },
-        { status: 423 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Draft is locked by another user', 423);
     }
 
     const {
@@ -202,16 +180,12 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: { draft },
     });
   } catch (error) {
-    console.error('Error updating draft:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update draft' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -220,14 +194,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -238,33 +206,23 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Draft not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Draft not found', 404);
     }
 
     // Don't allow deleting finalized drafts
     if (existing.status === 'FINALIZED') {
-      return NextResponse.json(
-        { success: false, error: 'Cannot delete finalized drafts' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot delete finalized drafts', 400);
     }
 
     await prisma.contractDraft.delete({
       where: { id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Draft deleted successfully',
     });
   } catch (error) {
-    console.error('Error deleting draft:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete draft' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

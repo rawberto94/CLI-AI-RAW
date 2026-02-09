@@ -1,5 +1,9 @@
 # Docker Container Architecture
 
+> **DEPRECATED:** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7 (Infrastructure & Deployment) and [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §14 (Deployment) for current Docker documentation. Retained for historical reference only.
+
+---
+
 This document explains the Docker container setup for the CLI-AI Contract Intelligence Platform, including the multi-container architecture, multi-tenancy strategy, and deployment configurations.
 
 ---

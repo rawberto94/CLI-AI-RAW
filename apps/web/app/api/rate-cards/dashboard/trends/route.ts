@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
 /**
  * Rate trend data types
@@ -16,16 +18,12 @@ interface CategoryTrend {
   count: number;
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Get rate inflation by role category
@@ -109,7 +107,7 @@ export async function GET(request: NextRequest) {
       _count: true,
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       rateInflationByCategory,
       supplierCompetitiveness: supplierBenchmarks,
       savingsPipeline: savingsPipeline.map((item) => ({
@@ -118,10 +116,4 @@ export async function GET(request: NextRequest) {
         count: item._count,
       })),
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch trend data' },
-      { status: 500 }
-    );
-  }
-}
+  });

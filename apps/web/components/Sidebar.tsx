@@ -99,7 +99,7 @@ const navigationGroups: NavGroup[] = [
     label: 'AI Intelligence',
     icon: Sparkles,
     defaultOpen: true,
-    gradient: 'from-purple-500 to-pink-500',
+    gradient: 'from-violet-500 to-pink-500',
     items: [
       { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", tourId: "ai-assistant" },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
@@ -264,7 +264,7 @@ const NavItemComponent = memo(function NavItemComponent({
           </motion.div>
           <span className="flex-1">{item.label}</span>
           {item.isNew && (
-            <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 animate-pulse">
+            <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-violet-500 to-pink-500 text-white border-0 animate-pulse">
               NEW
             </Badge>
           )}
@@ -393,7 +393,7 @@ function MobileSidebar({
               <Link
                 href="/tour"
                 onClick={onClose}
-                className="flex items-center gap-3 w-full px-3 py-2.5 mb-3 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25"
+                className="flex items-center gap-3 w-full px-3 py-2.5 mb-3 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25"
               >
                 <div className="p-1.5 bg-white/20 rounded-lg">
                   <PlayCircle className="h-4 w-4" />
@@ -409,7 +409,7 @@ function MobileSidebar({
                 <button
                   type="button"
                   onClick={resetTutorial}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
                 >
                   <HelpCircle className="h-4 w-4" />
                   <span className="font-medium">Quick Start Guide</span>
@@ -537,7 +537,7 @@ export function Sidebar() {
               className="overflow-hidden"
             >
               <div className="p-3 border-b border-slate-200/60">
-                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-purple-50 rounded-xl p-4 border border-purple-100 shadow-sm">
+                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-purple-50 rounded-xl p-4 border border-violet-100 shadow-sm">
                   <motion.button 
                     type="button"
                     onClick={dismissTutorial}
@@ -552,7 +552,7 @@ export function Sidebar() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", delay: 0.2 }}
-                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30"
+                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-500/30"
                     >
                       <Sparkles className="h-5 w-5 text-white" />
                     </motion.div>
@@ -564,7 +564,7 @@ export function Sidebar() {
                       <div className="flex gap-2 mt-3">
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Link href="/contracts">
-                            <Button size="sm" className="h-7 text-xs rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-purple-500/25">
+                            <Button size="sm" className="h-7 text-xs rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/25">
                               <FolderOpen className="h-3 w-3 mr-1" />
                               Explore
                             </Button>
@@ -572,7 +572,7 @@ export function Sidebar() {
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Link href="/ai/chat">
-                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg border-purple-200 text-purple-700 hover:bg-purple-50">
+                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg border-violet-200 text-violet-700 hover:bg-violet-50">
                               <MessageSquare className="h-3 w-3 mr-1" />
                               AI Chat
                             </Button>
@@ -606,7 +606,7 @@ export function Sidebar() {
           >
             <Link
               href="/tour"
-              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
             >
               <div className="p-1.5 bg-white/20 rounded-lg">
                 <PlayCircle className="h-4 w-4" />
@@ -626,7 +626,7 @@ export function Sidebar() {
               type="button"
               onClick={resetTutorial}
               whileHover={{ x: 2 }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
             >
               <PlayCircle className="h-4 w-4" />
               <span className="font-medium">Take the Tour</span>
@@ -648,7 +648,7 @@ export function Sidebar() {
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'))}
               whileHover={{ x: 2 }}
-              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
             >
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

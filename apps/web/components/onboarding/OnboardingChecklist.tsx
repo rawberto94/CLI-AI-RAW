@@ -312,7 +312,7 @@ export function OnboardingChecklist() {
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${progressPercent}%` }}
-                className="h-full bg-gradient-to-r from-purple-500 to-purple-600"
+                className="h-full bg-gradient-to-r from-violet-500 to-purple-600"
               />
             </div>
 
@@ -340,7 +340,7 @@ export function OnboardingChecklist() {
                             isStepComplete
                               ? "bg-violet-50 dark:bg-violet-900/20"
                               : isNextStep
-                              ? "bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30"
+                              ? "bg-violet-50 dark:bg-violet-900/20 hover:bg-violet-100 dark:hover:bg-violet-900/30"
                               : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
                           )}
                         >
@@ -375,14 +375,14 @@ export function OnboardingChecklist() {
                               {step.description}
                             </p>
                             {step.reward && !isStepComplete && (
-                              <div className="flex items-center gap-1 mt-1 text-[10px] text-purple-600 dark:text-indigo-400">
+                              <div className="flex items-center gap-1 mt-1 text-[10px] text-violet-600 dark:text-indigo-400">
                                 <Zap className="h-3 w-3" />
                                 {step.reward}
                               </div>
                             )}
                           </div>
                           {isNextStep && (
-                            <ArrowRight className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                            <ArrowRight className="h-4 w-4 text-violet-500 flex-shrink-0" />
                           )}
                         </Link>
                       );

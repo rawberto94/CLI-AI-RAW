@@ -25,7 +25,7 @@ export function StatCard({
     amber: 'from-amber-500 to-orange-600',
     red: 'from-red-500 to-rose-600',
     blue: 'from-violet-500 to-purple-600',
-    purple: 'from-purple-500 to-violet-600',
+    purple: 'from-violet-500 to-purple-600',
     slate: 'from-slate-500 to-gray-600',
   }
 
@@ -34,7 +34,7 @@ export function StatCard({
     amber: 'bg-amber-50/50 border-amber-100/50',
     red: 'bg-red-50/50 border-red-100/50',
     blue: 'bg-violet-50/50 border-violet-100/50',
-    purple: 'bg-purple-50/50 border-purple-100/50',
+    purple: 'bg-violet-50/50 border-violet-100/50',
     slate: 'bg-slate-50/50 border-slate-100/50',
   }
 

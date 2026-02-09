@@ -62,7 +62,7 @@ const categoryConfig: Record<string, { icon: React.ElementType; color: string; l
   contract: { icon: FileText, color: 'text-green-600 bg-green-100', label: 'Contract' },
   system: { icon: Settings, color: 'text-slate-600 bg-slate-100', label: 'System' },
   security: { icon: Shield, color: 'text-red-600 bg-red-100', label: 'Security' },
-  data: { icon: Database, color: 'text-purple-600 bg-purple-100', label: 'Data' },
+  data: { icon: Database, color: 'text-violet-600 bg-violet-100', label: 'Data' },
   integration: { icon: Database, color: 'text-orange-600 bg-orange-100', label: 'Integration' },
 };
 

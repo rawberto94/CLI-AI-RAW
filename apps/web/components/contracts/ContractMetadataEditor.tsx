@@ -517,7 +517,7 @@ export function ContractMetadataEditor({
             size="sm"
             onClick={handleSave}
             disabled={saving}
-            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-violet-700 shadow-lg"
+            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-purple-700 shadow-lg"
           >
             {saving ? (
               <>Saving...</>

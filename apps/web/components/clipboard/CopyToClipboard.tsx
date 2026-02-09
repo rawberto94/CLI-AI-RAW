@@ -82,7 +82,7 @@ export function CopyButton({
   const variants = {
     default: 'bg-slate-100 hover:bg-slate-200 text-slate-600',
     code: 'bg-slate-700 hover:bg-slate-600 text-slate-300',
-    link: 'bg-purple-100 hover:bg-purple-200 text-purple-600',
+    link: 'bg-violet-100 hover:bg-violet-200 text-violet-600',
     minimal: 'hover:bg-slate-100 text-slate-400 hover:text-slate-600',
   };
 
@@ -281,7 +281,7 @@ export function ShareLink({ url, label = 'Share link', className }: ShareLinkPro
           'px-4 py-2 text-sm font-medium rounded-lg transition-all',
           copied
             ? 'bg-violet-100 text-violet-700'
-            : 'bg-purple-600 text-white hover:bg-purple-700'
+            : 'bg-violet-600 text-white hover:bg-violet-700'
         )}
       >
         {copied ? (

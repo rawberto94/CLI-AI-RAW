@@ -70,7 +70,7 @@ interface QuickUploadModalProps {
 
 const getFileIcon = (mimeType: string) => {
   if (mimeType.includes('pdf')) return <FileText className="h-5 w-5 text-red-500" />
-  if (mimeType.includes('image')) return <FileImage className="h-5 w-5 text-purple-500" />
+  if (mimeType.includes('image')) return <FileImage className="h-5 w-5 text-violet-500" />
   if (mimeType.includes('word') || mimeType.includes('document')) return <FileText className="h-5 w-5 text-violet-500" />
   return <File className="h-5 w-5 text-slate-500" />
 }
@@ -86,6 +86,7 @@ const ACCEPTED_TYPES = [
   'application/msword',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
   'text/plain',
+  'text/html',
   'image/png',
   'image/jpeg',
 ]

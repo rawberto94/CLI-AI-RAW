@@ -3,12 +3,12 @@
  * Detect and manage suspicious or unusual extraction results
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Dynamic import to avoid build-time resolution issues
 async function getAnomalyDetectionService() {
-  const services = await import('@repo/data-orchestration/services');
+  const services = await import('data-orchestration/services');
   return (services as any).extractionAnomalyDetectionService;
 }
 
@@ -16,14 +16,8 @@ async function getAnomalyDetectionService() {
  * GET /api/ai/anomalies
  * Retrieve detected anomalies
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const severity = searchParams.get('severity');
     const type = searchParams.get('type');
@@ -71,42 +65,26 @@ export async function GET(request: NextRequest) {
         critical: allAnomalies.filter((a: any) => a.severity === 'critical').length,
         high: allAnomalies.filter((a: any) => a.severity === 'high').length,
         medium: allAnomalies.filter((a: any) => a.severity === 'medium').length,
-        low: allAnomalies.filter((a: any) => a.severity === 'low').length,
-      },
-      byType: {} as Record<string, number>,
-    };
+        low: allAnomalies.filter((a: any) => a.severity === 'low').length },
+      byType: {} as Record<string, number> };
 
     // Count by type
     allAnomalies.forEach((a: any) => {
       stats.byType[a.type] = (stats.byType[a.type] || 0) + 1;
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       anomalies,
       stats,
-      filters: { severity, type, limit, includeResolved },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to retrieve anomalies' },
-      { status: 500 }
-    );
-  }
-}
+      filters: { severity, type, limit, includeResolved } });
+  });
 
 /**
  * POST /api/ai/anomalies
  * Analyze extractions for anomalies or manage rules
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action, ...data } = body;
 
@@ -117,10 +95,7 @@ export async function POST(request: NextRequest) {
       const { extractionId, contractId, fields, model, contractType } = data;
 
       if (!extractionId || !contractId || !fields) {
-        return NextResponse.json(
-          { error: 'extractionId, contractId, and fields are required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'extractionId, contractId, and fields are required', 400);
       }
 
       const result = anomalyService.analyzeExtraction(tenantId, {
@@ -128,14 +103,11 @@ export async function POST(request: NextRequest) {
         contractId,
         fields,
         model,
-        contractType,
-      });
+        contractType });
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         extractionId,
-        result,
-      });
+        result });
     }
 
     // Add a custom detection rule
@@ -143,19 +115,14 @@ export async function POST(request: NextRequest) {
       const { rule } = data;
 
       if (!rule || !rule.id || !rule.name || !rule.type) {
-        return NextResponse.json(
-          { error: 'rule with id, name, and type is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'rule with id, name, and type is required', 400);
       }
 
       anomalyService.addRule(tenantId, rule);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Rule added successfully',
-        ruleId: rule.id,
-      });
+        ruleId: rule.id });
     }
 
     // Remove a detection rule
@@ -163,36 +130,26 @@ export async function POST(request: NextRequest) {
       const { ruleId } = data;
 
       if (!ruleId) {
-        return NextResponse.json(
-          { error: 'ruleId is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'ruleId is required', 400);
       }
 
       const success = anomalyService.removeRule(tenantId, ruleId);
 
       if (!success) {
-        return NextResponse.json(
-          { error: 'Rule not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Rule not found', 404);
       }
 
-      return NextResponse.json({
-        success: true,
-        message: 'Rule removed',
-      });
+      return createSuccessResponse(ctx, {
+        message: 'Rule removed' });
     }
 
     // Get all rules
     if (action === 'getRules') {
       const rules = anomalyService.getRules(tenantId);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         rules,
-        totalCount: rules.length,
-      });
+        totalCount: rules.length });
     }
 
     // Resolve an anomaly
@@ -200,25 +157,17 @@ export async function POST(request: NextRequest) {
       const { anomalyId, resolution, notes } = data;
 
       if (!anomalyId || !resolution) {
-        return NextResponse.json(
-          { error: 'anomalyId and resolution are required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'anomalyId and resolution are required', 400);
       }
 
       const success = anomalyService.resolveAnomaly(tenantId, anomalyId, resolution, notes);
 
       if (!success) {
-        return NextResponse.json(
-          { error: 'Anomaly not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Anomaly not found', 404);
       }
 
-      return NextResponse.json({
-        success: true,
-        message: 'Anomaly resolved',
-      });
+      return createSuccessResponse(ctx, {
+        message: 'Anomaly resolved' });
     }
 
     // Bulk resolve anomalies
@@ -226,10 +175,7 @@ export async function POST(request: NextRequest) {
       const { anomalyIds, resolution, notes } = data;
 
       if (!anomalyIds || !Array.isArray(anomalyIds) || !resolution) {
-        return NextResponse.json(
-          { error: 'anomalyIds array and resolution are required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'anomalyIds array and resolution are required', 400);
       }
 
       let resolved = 0;
@@ -239,12 +185,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: `${resolved} of ${anomalyIds.length} anomalies resolved`,
         resolved,
-        total: anomalyIds.length,
-      });
+        total: anomalyIds.length });
     }
 
     // Get field statistics (for understanding baseline)
@@ -252,19 +196,14 @@ export async function POST(request: NextRequest) {
       const { fieldName } = data;
 
       if (!fieldName) {
-        return NextResponse.json(
-          { error: 'fieldName is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'fieldName is required', 400);
       }
 
       const stats = anomalyService.getFieldStatistics(tenantId, fieldName);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         fieldName,
-        statistics: stats,
-      });
+        statistics: stats });
     }
 
     // Clear resolved anomalies (cleanup)
@@ -282,21 +221,10 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: `Cleared ${cleared} resolved anomalies older than ${cutoffDate.toISOString()}`,
-        cleared,
-      });
+        cleared });
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action. Use: analyze, addRule, removeRule, getRules, resolve, bulkResolve, fieldStats, or clearResolved' },
-      { status: 400 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to process anomaly request' },
-      { status: 500 }
-    );
-  }
-}
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: analyze, addRule, removeRule, getRules, resolve, bulkResolve, fieldStats, or clearResolved', 400);
+  });

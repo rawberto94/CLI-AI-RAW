@@ -85,7 +85,7 @@ const activityConfig: Record<ActivityType, {
   contract_updated: { icon: Edit, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Updated' },
   contract_deleted: { icon: Trash2, color: 'text-red-600', bg: 'bg-red-100', label: 'Deleted' },
   contract_viewed: { icon: Eye, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Viewed' },
-  contract_downloaded: { icon: Download, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Downloaded' },
+  contract_downloaded: { icon: Download, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Downloaded' },
   contract_approved: { icon: CheckCircle, color: 'text-green-600', bg: 'bg-green-100', label: 'Approved' },
   contract_rejected: { icon: XCircle, color: 'text-red-600', bg: 'bg-red-100', label: 'Rejected' },
   comment_added: { icon: MessageSquare, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Comment' },
@@ -95,7 +95,7 @@ const activityConfig: Record<ActivityType, {
   user_login: { icon: User, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Login' },
   settings_changed: { icon: Settings, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Settings' },
   import_completed: { icon: Upload, color: 'text-green-600', bg: 'bg-green-100', label: 'Import' },
-  export_completed: { icon: Download, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Export' },
+  export_completed: { icon: Download, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Export' },
 };
 
 // Demo activity data

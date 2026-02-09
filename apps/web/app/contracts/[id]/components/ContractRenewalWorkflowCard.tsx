@@ -152,7 +152,7 @@ export const ContractRenewalWorkflowCard = memo(function ContractRenewalWorkflow
       case 'approved':
         return { 
           label: 'Approved', 
-          color: 'bg-blue-100 text-blue-700',
+          color: 'bg-violet-100 text-violet-700',
           icon: CheckCircle2,
         }
       case 'pending_approval':

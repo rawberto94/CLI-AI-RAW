@@ -238,12 +238,12 @@ export const TotalValueCard = memo(function TotalValueCard({
       value={formatCurrency(value)}
       subtitle="Portfolio worth"
       subtitleIcon={Sparkles}
-      subtitleColor="text-purple-500"
+      subtitleColor="text-violet-500"
       icon={DollarSign}
-      iconGradient="bg-gradient-to-br from-purple-500 to-pink-600"
-      iconShadow="shadow-purple-500/30"
+      iconGradient="bg-gradient-to-br from-violet-500 to-pink-600"
+      iconShadow="shadow-violet-500/30"
       isActive={isActive}
-      ringColor="ring-purple-500 border-purple-300 shadow-purple-100"
+      ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.25}
     />
@@ -302,7 +302,7 @@ export const CategorizedCard = memo(function CategorizedCard({
                 )}
               </p>
             </div>
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
               <Tag className="h-6 w-6 text-white" />
             </div>
           </div>

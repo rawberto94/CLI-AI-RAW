@@ -575,14 +575,14 @@ export function SupplierComparisonView({
               .map((supplier) => (
                 <div
                   key={supplier.supplierId}
-                  className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg"
+                  className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg"
                 >
-                  <MapPin className="h-5 w-5 text-purple-600 mt-0.5" />
+                  <MapPin className="h-5 w-5 text-violet-600 mt-0.5" />
                   <div>
-                    <p className="font-medium text-purple-900">
+                    <p className="font-medium text-violet-900">
                       Best Coverage: {supplier.supplierName}
                     </p>
-                    <p className="text-sm text-purple-700">
+                    <p className="text-sm text-violet-700">
                       Operates in {supplier.geographicCoverage.countries.length}{' '}
                       countries with the widest geographic reach
                     </p>

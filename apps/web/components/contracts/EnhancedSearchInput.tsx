@@ -321,8 +321,8 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
                         suggestion.type === 'recent' && 'text-slate-400',
                         suggestion.type === 'trending' && 'text-amber-500',
                         suggestion.type === 'contract' && 'text-violet-500',
-                        suggestion.type === 'party' && 'text-purple-500',
-                        suggestion.type === 'category' && 'text-purple-500'
+                        suggestion.type === 'party' && 'text-violet-500',
+                        suggestion.type === 'category' && 'text-violet-500'
                       )}
                     />
                     <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">

@@ -18,6 +18,8 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id";
 import GitHubProvider from "next-auth/providers/github";
 import { prisma } from "@/lib/prisma";
 import { compare } from "bcryptjs";
+import { getAccountLockout } from "@/lib/security/account-lockout";
+import { auditLog, AuditAction } from "@/lib/security/audit";
 
 // Build providers array based on environment configuration
 const providers: NextAuthConfig["providers"] = [];
@@ -36,17 +38,37 @@ providers.push(
         return null;
       }
 
-      try {
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-          include: { tenant: true },
-        });
+      const email = credentials.email as string;
 
-        if (!user) {
+      try {
+        // --- Account Lockout Check ---
+        const lockout = getAccountLockout();
+        const isLocked = await lockout.isLocked(email);
+        if (isLocked) {
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userEmail: email,
+            metadata: { reason: 'account_locked' },
+            success: false,
+            errorMessage: 'Account temporarily locked due to too many failed attempts',
+          });
           return null;
         }
 
-        if (!user.passwordHash) {
+        const user = await prisma.user.findUnique({
+          where: { email },
+          include: { tenant: true },
+        });
+
+        if (!user || !user.passwordHash) {
+          // Record failed attempt even for non-existent users (prevents user enumeration timing)
+          await lockout.recordFailedAttempt(email, 'unknown').catch(() => {});
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userEmail: email,
+            metadata: { reason: 'invalid_credentials' },
+            success: false,
+          }).catch(() => {});
           return null;
         }
 
@@ -56,12 +78,41 @@ providers.push(
         );
 
         if (!isPasswordValid) {
+          await lockout.recordFailedAttempt(email, 'unknown').catch(() => {});
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userId: user.id,
+            userEmail: email,
+            tenantId: user.tenantId,
+            metadata: { reason: 'invalid_password' },
+            success: false,
+          }).catch(() => {});
           return null;
         }
 
         if (user.status !== "ACTIVE") {
+          await auditLog({
+            action: AuditAction.LOGIN_FAILED,
+            userId: user.id,
+            userEmail: email,
+            tenantId: user.tenantId,
+            metadata: { reason: 'account_inactive', status: user.status },
+            success: false,
+            errorMessage: `Account status: ${user.status}`,
+          }).catch(() => {});
           return null;
         }
+
+        // Successful login — reset lockout counter & audit log
+        await lockout.recordSuccessfulLogin(email, 'unknown').catch(() => {});
+        await auditLog({
+          action: AuditAction.LOGIN_SUCCESS,
+          userId: user.id,
+          userEmail: email,
+          tenantId: user.tenantId,
+          metadata: { provider: 'credentials' },
+          success: true,
+        }).catch(() => {});
 
         return {
           id: user.id,

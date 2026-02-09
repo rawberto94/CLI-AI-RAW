@@ -364,8 +364,8 @@ export function LoadingDots({ className }: { className?: string }) {
 export function TypingIndicator() {
   return (
     <div className="flex items-center gap-3 p-4">
-      <div className="h-8 w-8 rounded-full bg-purple-100 flex items-center justify-center">
-        <div className="text-purple-600 text-xs font-bold">AI</div>
+      <div className="h-8 w-8 rounded-full bg-violet-100 flex items-center justify-center">
+        <div className="text-violet-600 text-xs font-bold">AI</div>
       </div>
       <div className="bg-slate-100 dark:bg-slate-800 dark:bg-slate-800 dark:bg-slate-800 rounded-lg px-4 py-3">
         <LoadingDots />

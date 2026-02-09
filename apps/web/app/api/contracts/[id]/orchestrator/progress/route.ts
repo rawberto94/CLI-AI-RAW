@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 import {
   getContractProfile,
   getRelevantArtifacts,
   type ContractType,
 } from '@repo/workers';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/orchestrator/progress
@@ -17,6 +19,7 @@ export async function GET(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   const contractId = params.id;
   const tenantId = await getApiTenantId(request);
 
@@ -33,10 +36,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get processing job with orchestrator state
@@ -121,16 +121,13 @@ export async function GET(
       lastUpdated: processingJob?.updatedAt?.toISOString() ?? new Date().toISOString(),
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       progress,
       suggestions: suggestions.slice(0, 5), // Top 5 suggestions
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch progress' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 

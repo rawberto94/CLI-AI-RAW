@@ -4,9 +4,11 @@
  * GET /api/contracts/[id]/renewal - Get renewal details for a contract
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +20,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = await getServerTenantId();
@@ -29,10 +32,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get renewal artifact
@@ -55,7 +55,7 @@ export async function GET(
         );
       }
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         contractId,
         contractName: contract.contractTitle || 'Unnamed Contract',
@@ -104,7 +104,7 @@ export async function GET(
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       contractName: contract.contractTitle || 'Unnamed Contract',
@@ -123,10 +123,7 @@ export async function GET(
       renewalCount: data.renewalCount,
       certainty: data.certainty,
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get contract renewal details' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

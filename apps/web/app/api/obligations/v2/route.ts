@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
+import { aiObligationTrackerService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import {
   ObligationStatus,
   ObligationPriority,
@@ -73,215 +73,197 @@ const recurrenceMap: Record<string, RecurrenceFrequency> = {
  * GET /api/obligations/v2
  * Retrieve obligations from the dedicated database table
  */
-export async function GET(request: Request) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const { searchParams } = new URL(request.url);
-    const contractId = searchParams.get('contractId');
-    const status = searchParams.get('status');
-    const type = searchParams.get('type');
-    const owner = searchParams.get('owner');
-    const priority = searchParams.get('priority');
-    const dueBefore = searchParams.get('dueBefore');
-    const dueAfter = searchParams.get('dueAfter');
-    const assignedTo = searchParams.get('assignedTo');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const sortBy = searchParams.get('sortBy') || 'dueDate';
-    const sortOrder = searchParams.get('sortOrder') || 'asc';
-
-    // Build where clause
-    const where: Prisma.ObligationWhereInput = {
-      tenantId: session.user.tenantId,
-      ...(contractId && { contractId }),
-      ...(status && { status: statusMap[status] || status as ObligationStatus }),
-      ...(type && { type: typeMap[type] || type as ObligationType }),
-      ...(owner && { owner: ownerMap[owner] || owner as ObligationOwner }),
-      ...(priority && { priority: priorityMap[priority] || priority as ObligationPriority }),
-      ...(assignedTo && { assignedToUserId: assignedTo }),
-      ...(dueBefore || dueAfter ? {
-        dueDate: {
-          ...(dueBefore && { lte: new Date(dueBefore) }),
-          ...(dueAfter && { gte: new Date(dueAfter) }),
-        },
-      } : {}),
-    };
-
-    // Build order by
-    const orderBy: Prisma.ObligationOrderByWithRelationInput = {
-      [sortBy]: sortOrder,
-    };
-
-    // Get total count
-    const total = await prisma.obligation.count({ where });
-
-    // Get obligations with pagination
-    const obligations = await prisma.obligation.findMany({
-      where,
-      orderBy,
-      skip: (page - 1) * limit,
-      take: limit,
-      include: {
-        contract: {
-          select: {
-            id: true,
-            contractTitle: true,
-            supplier: { select: { name: true } },
-            client: { select: { name: true } },
-          },
-        },
-        assignedToUser: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            email: true,
-          },
-        },
-      },
-    });
-
-    // Transform for frontend compatibility
-    const transformedObligations = obligations.map((obl) => ({
-      id: obl.id,
-      title: obl.title,
-      description: obl.description,
-      type: obl.type.toLowerCase(),
-      status: obl.status.toLowerCase().replace('_', '_'),
-      priority: obl.priority.toLowerCase(),
-      owner: obl.owner.toLowerCase(),
-      dueDate: obl.dueDate?.toISOString(),
-      startDate: obl.startDate?.toISOString(),
-      endDate: obl.endDate?.toISOString(),
-      completedAt: obl.completedAt?.toISOString(),
-      completedBy: obl.completedBy,
-      contractId: obl.contractId,
-      contractTitle: obl.contract?.contractTitle || 'Untitled Contract',
-      vendorName: obl.contract?.supplier?.name || obl.contract?.client?.name,
-      clauseReference: obl.clauseReference,
-      sourceSection: obl.sourceSection,
-      sourceExcerpt: obl.sourceExcerpt,
-      riskScore: obl.riskScore,
-      riskFactors: obl.riskFactors,
-      financialImpact: obl.financialImpact?.toString(),
-      currency: obl.currency,
-      isRecurring: obl.isRecurring,
-      recurrenceFrequency: obl.recurrenceFrequency?.toLowerCase(),
-      assignedTo: obl.assignedToUser ? {
-        id: obl.assignedToUser.id,
-        name: `${obl.assignedToUser.firstName || ''} ${obl.assignedToUser.lastName || ''}`.trim() || obl.assignedToUser.email,
-        email: obl.assignedToUser.email,
-      } : null,
-      reminderDays: obl.reminderDays,
-      requiredEvidence: obl.requiredEvidence,
-      attachedEvidence: obl.attachedEvidence,
-      completionCriteria: obl.completionCriteria,
-      completionNotes: obl.completionNotes,
-      tags: obl.tags,
-      customFields: obl.customFields,
-      createdAt: obl.createdAt.toISOString(),
-      updatedAt: obl.updatedAt.toISOString(),
-    }));
-
-    // Calculate metrics
-    const now = new Date();
-    const allObligations = await prisma.obligation.findMany({
-      where: { tenantId: session.user.tenantId },
-      select: { status: true, priority: true, type: true, owner: true, dueDate: true },
-    });
-
-    const metrics = {
-      total: allObligations.length,
-      byStatus: {
-        pending: allObligations.filter((o) => o.status === 'PENDING').length,
-        in_progress: allObligations.filter((o) => o.status === 'IN_PROGRESS').length,
-        completed: allObligations.filter((o) => o.status === 'COMPLETED').length,
-        overdue: allObligations.filter((o) => 
-          o.status === 'OVERDUE' || 
-          (!['COMPLETED', 'WAIVED', 'CANCELLED'].includes(o.status) && o.dueDate && o.dueDate < now)
-        ).length,
-        at_risk: allObligations.filter((o) => o.status === 'AT_RISK').length,
-        waived: allObligations.filter((o) => o.status === 'WAIVED').length,
-        cancelled: allObligations.filter((o) => o.status === 'CANCELLED').length,
-      },
-      byPriority: {
-        critical: allObligations.filter((o) => o.priority === 'CRITICAL').length,
-        high: allObligations.filter((o) => o.priority === 'HIGH').length,
-        medium: allObligations.filter((o) => o.priority === 'MEDIUM').length,
-        low: allObligations.filter((o) => o.priority === 'LOW').length,
-      },
-      byType: {} as Record<string, number>,
-      byOwner: {
-        us: allObligations.filter((o) => o.owner === 'US').length,
-        counterparty: allObligations.filter((o) => o.owner === 'COUNTERPARTY').length,
-        both: allObligations.filter((o) => o.owner === 'BOTH').length,
-      },
-    };
-
-    // Calculate byType
-    allObligations.forEach((o) => {
-      const typeLower = o.type.toLowerCase();
-      metrics.byType[typeLower] = (metrics.byType[typeLower] || 0) + 1;
-    });
-
-    return NextResponse.json({
-      obligations: transformedObligations,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-      metrics,
-    });
-  } catch (error) {
-    console.error('Failed to fetch obligations:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch obligations' },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user?.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
+
+  const { searchParams } = new URL(request.url);
+  const contractId = searchParams.get('contractId');
+  const status = searchParams.get('status');
+  const type = searchParams.get('type');
+  const owner = searchParams.get('owner');
+  const priority = searchParams.get('priority');
+  const dueBefore = searchParams.get('dueBefore');
+  const dueAfter = searchParams.get('dueAfter');
+  const assignedTo = searchParams.get('assignedTo');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '50');
+  const sortBy = searchParams.get('sortBy') || 'dueDate';
+  const sortOrder = searchParams.get('sortOrder') || 'asc';
+
+  // Build where clause
+  const where: Prisma.ObligationWhereInput = {
+    tenantId: session.user.tenantId,
+    ...(contractId && { contractId }),
+    ...(status && { status: statusMap[status] || status as ObligationStatus }),
+    ...(type && { type: typeMap[type] || type as ObligationType }),
+    ...(owner && { owner: ownerMap[owner] || owner as ObligationOwner }),
+    ...(priority && { priority: priorityMap[priority] || priority as ObligationPriority }),
+    ...(assignedTo && { assignedToUserId: assignedTo }),
+    ...(dueBefore || dueAfter ? {
+      dueDate: {
+        ...(dueBefore && { lte: new Date(dueBefore) }),
+        ...(dueAfter && { gte: new Date(dueAfter) }),
+      },
+    } : {}),
+  };
+
+  // Build order by
+  const orderBy: Prisma.ObligationOrderByWithRelationInput = {
+    [sortBy]: sortOrder,
+  };
+
+  // Get total count
+  const total = await prisma.obligation.count({ where });
+
+  // Get obligations with pagination
+  const obligations = await prisma.obligation.findMany({
+    where,
+    orderBy,
+    skip: (page - 1) * limit,
+    take: limit,
+    include: {
+      contract: {
+        select: {
+          id: true,
+          contractTitle: true,
+          supplier: { select: { name: true } },
+          client: { select: { name: true } },
+        },
+      },
+      assignedToUser: {
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          email: true,
+        },
+      },
+    },
+  });
+
+  // Transform for frontend compatibility
+  const transformedObligations = obligations.map((obl) => ({
+    id: obl.id,
+    title: obl.title,
+    description: obl.description,
+    type: obl.type.toLowerCase(),
+    status: obl.status.toLowerCase().replace('_', '_'),
+    priority: obl.priority.toLowerCase(),
+    owner: obl.owner.toLowerCase(),
+    dueDate: obl.dueDate?.toISOString(),
+    startDate: obl.startDate?.toISOString(),
+    endDate: obl.endDate?.toISOString(),
+    completedAt: obl.completedAt?.toISOString(),
+    completedBy: obl.completedBy,
+    contractId: obl.contractId,
+    contractTitle: obl.contract?.contractTitle || 'Untitled Contract',
+    vendorName: obl.contract?.supplier?.name || obl.contract?.client?.name,
+    clauseReference: obl.clauseReference,
+    sourceSection: obl.sourceSection,
+    sourceExcerpt: obl.sourceExcerpt,
+    riskScore: obl.riskScore,
+    riskFactors: obl.riskFactors,
+    financialImpact: obl.financialImpact?.toString(),
+    currency: obl.currency,
+    isRecurring: obl.isRecurring,
+    recurrenceFrequency: obl.recurrenceFrequency?.toLowerCase(),
+    assignedTo: obl.assignedToUser ? {
+      id: obl.assignedToUser.id,
+      name: `${obl.assignedToUser.firstName || ''} ${obl.assignedToUser.lastName || ''}`.trim() || obl.assignedToUser.email,
+      email: obl.assignedToUser.email,
+    } : null,
+    reminderDays: obl.reminderDays,
+    requiredEvidence: obl.requiredEvidence,
+    attachedEvidence: obl.attachedEvidence,
+    completionCriteria: obl.completionCriteria,
+    completionNotes: obl.completionNotes,
+    tags: obl.tags,
+    customFields: obl.customFields,
+    createdAt: obl.createdAt.toISOString(),
+    updatedAt: obl.updatedAt.toISOString(),
+  }));
+
+  // Calculate metrics
+  const now = new Date();
+  const allObligations = await prisma.obligation.findMany({
+    where: { tenantId: session.user.tenantId },
+    select: { status: true, priority: true, type: true, owner: true, dueDate: true },
+  });
+
+  const metrics = {
+    total: allObligations.length,
+    byStatus: {
+      pending: allObligations.filter((o) => o.status === 'PENDING').length,
+      in_progress: allObligations.filter((o) => o.status === 'IN_PROGRESS').length,
+      completed: allObligations.filter((o) => o.status === 'COMPLETED').length,
+      overdue: allObligations.filter((o) => 
+        o.status === 'OVERDUE' || 
+        (!['COMPLETED', 'WAIVED', 'CANCELLED'].includes(o.status) && o.dueDate && o.dueDate < now)
+      ).length,
+      at_risk: allObligations.filter((o) => o.status === 'AT_RISK').length,
+      waived: allObligations.filter((o) => o.status === 'WAIVED').length,
+      cancelled: allObligations.filter((o) => o.status === 'CANCELLED').length,
+    },
+    byPriority: {
+      critical: allObligations.filter((o) => o.priority === 'CRITICAL').length,
+      high: allObligations.filter((o) => o.priority === 'HIGH').length,
+      medium: allObligations.filter((o) => o.priority === 'MEDIUM').length,
+      low: allObligations.filter((o) => o.priority === 'LOW').length,
+    },
+    byType: {} as Record<string, number>,
+    byOwner: {
+      us: allObligations.filter((o) => o.owner === 'US').length,
+      counterparty: allObligations.filter((o) => o.owner === 'COUNTERPARTY').length,
+      both: allObligations.filter((o) => o.owner === 'BOTH').length,
+    },
+  };
+
+  // Calculate byType
+  allObligations.forEach((o) => {
+    const typeLower = o.type.toLowerCase();
+    metrics.byType[typeLower] = (metrics.byType[typeLower] || 0) + 1;
+  });
+
+  return createSuccessResponse(ctx, {
+    obligations: transformedObligations,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+    metrics,
+  });
+});
 
 /**
  * POST /api/obligations/v2
  * Create obligation or extract from contract
  */
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { action, contractId, obligation, extractionOptions } = body;
-
-    if (action === 'extract') {
-      return handleExtraction(contractId, session.user.tenantId, session.user.id!, extractionOptions);
-    }
-
-    if (action === 'create' || !action) {
-      return handleCreate(obligation, contractId, session.user.tenantId, session.user.id!);
-    }
-
-    if (action === 'bulk_create') {
-      return handleBulkCreate(body.obligations, session.user.tenantId, session.user.id!);
-    }
-
-    return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-  } catch (error) {
-    console.error('Failed to process obligation request:', error);
-    return NextResponse.json(
-      { error: 'Failed to process request' },
-      { status: 500 }
-    );
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  if (!session?.user?.tenantId) {
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
   }
-}
+
+  const body = await request.json();
+  const { action, contractId, obligation, extractionOptions } = body;
+
+  if (action === 'extract') {
+    return handleExtraction(contractId, session.user.tenantId, session.user.id!, extractionOptions, ctx);
+  }
+
+  if (action === 'create' || !action) {
+    return handleCreate(obligation, contractId, session.user.tenantId, session.user.id!, ctx);
+  }
+
+  if (action === 'bulk_create') {
+    return handleBulkCreate(body.obligations, session.user.tenantId, session.user.id!, ctx);
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});
 
 /**
  * Handle creating a single obligation
@@ -290,13 +272,11 @@ async function handleCreate(
   obligation: Record<string, unknown>,
   contractId: string,
   tenantId: string,
-  userId: string
+  userId: string,
+  ctx: any
 ) {
   if (!obligation || !contractId) {
-    return NextResponse.json(
-      { error: 'obligation and contractId are required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'obligation and contractId are required', 400);
   }
 
   // Verify contract exists
@@ -305,7 +285,7 @@ async function handleCreate(
   });
 
   if (!contract) {
-    return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
   }
 
   // Create obligation in database
@@ -360,8 +340,7 @@ async function handleCreate(
     },
   });
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     obligation: {
       ...newObligation,
       type: newObligation.type.toLowerCase(),
@@ -378,13 +357,11 @@ async function handleCreate(
 async function handleBulkCreate(
   obligations: Record<string, unknown>[],
   tenantId: string,
-  userId: string
+  userId: string,
+  ctx: any
 ) {
   if (!obligations || !Array.isArray(obligations) || obligations.length === 0) {
-    return NextResponse.json(
-      { error: 'obligations array is required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'obligations array is required', 400);
   }
 
   const created = [];
@@ -429,8 +406,7 @@ async function handleBulkCreate(
     }
   }
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     created: created.length,
     errors: errors.length > 0 ? errors : undefined,
     message: `Created ${created.length} obligations${errors.length > 0 ? `, ${errors.length} failed` : ''}`,
@@ -444,13 +420,11 @@ async function handleExtraction(
   contractId: string,
   tenantId: string,
   userId: string,
-  options: Record<string, unknown> = {}
+  options: Record<string, unknown> = {},
+  ctx: any
 ) {
   if (!contractId) {
-    return NextResponse.json(
-      { error: 'contractId is required for extraction' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractId is required for extraction', 400);
   }
 
   const contract = await prisma.contract.findFirst({
@@ -469,17 +443,14 @@ async function handleExtraction(
   });
 
   if (!contract) {
-    return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
   }
 
   const contractText = contract.rawText || 
     ((contract.aiMetadata as Record<string, unknown>)?.fullText as string) || '';
 
   if (!contractText || contractText.length < 100) {
-    return NextResponse.json(
-      { error: 'No contract text available for extraction' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'No contract text available for extraction', 400);
   }
 
   // Extract using AI
@@ -543,8 +514,7 @@ async function handleExtraction(
     created.push(newObligation);
   }
 
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     extraction: {
       obligations: created,
       summary: extractedObligations.summary,

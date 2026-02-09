@@ -139,28 +139,28 @@ const ConversationItem = memo(({
         className={cn(
           "w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
           isActive
-            ? "bg-purple-50 dark:bg-purple-900/30"
+            ? "bg-violet-50 dark:bg-violet-900/30"
             : "hover:bg-slate-100 dark:hover:bg-slate-800"
         )}
       >
         <div className={cn(
           "mt-0.5 p-1.5 rounded-md",
           isActive
-            ? "bg-purple-100 dark:bg-purple-800"
+            ? "bg-violet-100 dark:bg-violet-800"
             : "bg-slate-100 dark:bg-slate-800"
         )}>
           {conversation.contractContext ? (
             <FileText className={cn(
               "h-4 w-4",
               isActive
-                ? "text-purple-600 dark:text-indigo-400"
+                ? "text-violet-600 dark:text-indigo-400"
                 : "text-slate-500 dark:text-slate-400"
             )} />
           ) : (
             <MessageSquare className={cn(
               "h-4 w-4",
               isActive
-                ? "text-purple-600 dark:text-indigo-400"
+                ? "text-violet-600 dark:text-indigo-400"
                 : "text-slate-500 dark:text-slate-400"
             )} />
           )}
@@ -179,7 +179,7 @@ const ConversationItem = memo(({
               }}
               autoFocus
               aria-label="Edit conversation title"
-              className="w-full px-2 py-0.5 text-sm rounded border border-indigo-300 dark:border-purple-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              className="w-full px-2 py-0.5 text-sm rounded border border-indigo-300 dark:border-violet-600 bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-violet-500"
               onClick={(e) => e.stopPropagation()}
             />
           ) : (
@@ -188,7 +188,7 @@ const ConversationItem = memo(({
                 <span className={cn(
                   "text-sm font-medium truncate",
                   isActive
-                    ? "text-purple-700 dark:text-indigo-300"
+                    ? "text-violet-700 dark:text-indigo-300"
                     : "text-slate-700 dark:text-slate-300"
                 )}>
                   {conversation.title}
@@ -350,7 +350,7 @@ export const ConversationSidebar = memo(({
         
         <button
           onClick={onNewConversation}
-          className="p-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors"
+          className="p-2 rounded-lg bg-violet-600 hover:bg-violet-700 transition-colors"
           title="New conversation"
         >
           <Plus className="h-5 w-5 text-white" />
@@ -364,7 +364,7 @@ export const ConversationSidebar = memo(({
               className={cn(
                 "p-2 rounded-lg mb-2 transition-colors",
                 activeConversationId === conv.id
-                  ? "bg-purple-100 dark:bg-purple-900/50"
+                  ? "bg-violet-100 dark:bg-violet-900/50"
                   : "hover:bg-slate-100 dark:hover:bg-slate-800"
               )}
               title={conv.title}
@@ -372,7 +372,7 @@ export const ConversationSidebar = memo(({
               <MessageSquare className={cn(
                 "h-5 w-5",
                 activeConversationId === conv.id
-                  ? "text-purple-600 dark:text-indigo-400"
+                  ? "text-violet-600 dark:text-indigo-400"
                   : "text-slate-500 dark:text-slate-400"
               )} />
             </button>
@@ -393,7 +393,7 @@ export const ConversationSidebar = memo(({
           <div className="flex items-center gap-1">
             <button
               onClick={onNewConversation}
-              className="p-2 rounded-lg bg-purple-600 hover:bg-purple-700 transition-colors"
+              className="p-2 rounded-lg bg-violet-600 hover:bg-violet-700 transition-colors"
               title="New conversation"
             >
               <Plus className="h-4 w-4 text-white" />
@@ -419,7 +419,7 @@ export const ConversationSidebar = memo(({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             aria-label="Search conversations"
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
           />
           {searchQuery && (
             <button
@@ -439,7 +439,7 @@ export const ConversationSidebar = memo(({
             className={cn(
               "flex-1 py-1.5 text-xs font-medium rounded-md transition-colors",
               filter === 'all'
-                ? "bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-indigo-300"
+                ? "bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-indigo-300"
                 : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
             )}
           >
@@ -473,7 +473,7 @@ export const ConversationSidebar = memo(({
             {!searchQuery && (
               <button
                 onClick={onNewConversation}
-                className="mt-3 text-sm text-purple-600 dark:text-indigo-400 hover:underline"
+                className="mt-3 text-sm text-violet-600 dark:text-indigo-400 hover:underline"
               >
                 Start a new conversation
               </button>

@@ -350,7 +350,7 @@ const SmartSearchInput = memo(function SmartSearchInput({
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => onAIClick(value)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/50 dark:hover:to-purple-950/50 transition-colors group"
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/50 dark:hover:to-violet-950/50 transition-colors group"
                 >
                   <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
                     <Sparkles className="h-4 w-4 text-white" />

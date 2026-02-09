@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,6 +49,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -55,7 +57,7 @@ export async function GET(
 
     // Return mock data if requested or if database query fails
     if (useMock) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         comments: getMockComments(),
         source: 'mock'
@@ -132,29 +134,18 @@ export async function GET(
         };
       });
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         comments: formattedComments,
         source: 'database'
       });
 
-    } catch {
-      return NextResponse.json({
-        success: true,
-        comments: getMockComments(),
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch comments',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -166,6 +157,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getApiContext(request);
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -174,10 +166,7 @@ export async function POST(
     const { content, author, authorEmail, parentId, mentions } = body;
 
     if (!content || !author) {
-      return NextResponse.json(
-        { success: false, error: 'Content and author are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Content and author are required', 400);
     }
 
     // Mock response if requested
@@ -194,7 +183,7 @@ export async function POST(
         parentId,
       };
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         comment: newComment,
         message: 'Comment added successfully',
@@ -217,7 +206,7 @@ export async function POST(
         }
       });
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         comment: {
           id: newComment.id,
@@ -234,35 +223,11 @@ export async function POST(
         source: 'database'
       });
 
-    } catch {
-      const newComment = {
-        id: Date.now().toString(),
-        author,
-        authorEmail,
-        content,
-        createdAt: new Date().toISOString(),
-        mentions: mentions || [],
-        isResolved: false,
-        likes: 0,
-        parentId,
-      };
-
-      return NextResponse.json({
-        success: true,
-        comment: newComment,
-        message: 'Comment added successfully (mock)',
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to add comment',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

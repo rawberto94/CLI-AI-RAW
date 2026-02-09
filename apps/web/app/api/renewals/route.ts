@@ -6,10 +6,13 @@
  * PATCH /api/renewals - Update renewal status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -116,7 +119,13 @@ function calculateRiskLevel(healthScore: number): RenewalContract['riskLevel'] {
 }
 
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status');
     const priority = searchParams.get('priority');
@@ -330,8 +339,7 @@ export async function GET(request: NextRequest) {
       priority: r.priority,
     }));
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         renewals,
         stats,
@@ -347,18 +355,20 @@ export async function GET(request: NextRequest) {
         tenantId,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch renewals' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
 export async function POST(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
     const body = await request.json();
-    const { action, renewalId, contractId, renewalData } = body;
     const tenantId = await getServerTenantId();
 
     // Extract contract ID from renewal ID if needed
@@ -371,10 +381,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (action === 'initiate') {
@@ -399,14 +406,11 @@ export async function POST(request: NextRequest) {
         source: 'api:renewals',
       });
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Renewal process initiated',
-        data: {
-          renewalId: `renewal-${actualContractId}`,
-          status: 'in-negotiation',
-          initiatedAt: new Date().toISOString(),
-        },
+        renewalId: `renewal-${actualContractId}`,
+        status: 'in-negotiation',
+        initiatedAt: new Date().toISOString(),
       });
     }
 
@@ -426,14 +430,11 @@ export async function POST(request: NextRequest) {
         source: 'api:renewals',
       });
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Renewal notice sent to vendor',
-        data: {
-          renewalId,
-          noticeSentAt: new Date().toISOString(),
-          noticeStatus: 'sent',
-        },
+        renewalId,
+        noticeSentAt: new Date().toISOString(),
+        noticeStatus: 'sent',
       });
     }
 
@@ -452,14 +453,11 @@ export async function POST(request: NextRequest) {
         source: 'api:renewals',
       });
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: `Auto-renewal ${contract.autoRenewalEnabled ? 'disabled' : 'enabled'}`,
-        data: {
-          renewalId,
-          autoRenewal: !contract.autoRenewalEnabled,
-          updatedAt: new Date().toISOString(),
-        },
+        renewalId,
+        autoRenewal: !contract.autoRenewalEnabled,
+        updatedAt: new Date().toISOString(),
       });
     }
 
@@ -484,14 +482,11 @@ export async function POST(request: NextRequest) {
         source: 'api:renewals',
       });
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Renewal completed successfully',
-        data: {
-          renewalId,
-          status: 'completed',
-          completedAt: new Date().toISOString(),
-        },
+        renewalId,
+        status: 'completed',
+        completedAt: new Date().toISOString(),
       });
     }
 
@@ -516,43 +511,36 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Contract dates updated',
-        data: {
-          contractId: actualContractId,
-          startDate,
-          endDate,
-          updatedAt: new Date().toISOString(),
-        },
+        contractId: actualContractId,
+        startDate,
+        endDate,
+        updatedAt: new Date().toISOString(),
       });
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to process renewal action' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to process renewal action', 500);
   }
 }
 
 export async function PATCH(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
     const body = await request.json();
-    const { renewalId, contractId, updates } = body;
     const tenantId = await getServerTenantId();
 
     const actualContractId = contractId || renewalId?.replace('renewal-', '');
 
     if (!actualContractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID is required', 400);
     }
 
     // Verify contract belongs to tenant before any updates
@@ -562,10 +550,7 @@ export async function PATCH(request: NextRequest) {
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Update contract fields if provided
@@ -612,20 +597,14 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: 'Renewal updated',
-      data: {
-        renewalId,
-        contractId: actualContractId,
-        updates,
-        updatedAt: new Date().toISOString(),
-      },
+      renewalId,
+      contractId: actualContractId,
+      updates,
+      updatedAt: new Date().toISOString(),
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to update renewal' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update renewal', 500);
   }
 }

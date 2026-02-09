@@ -6,34 +6,25 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { csvImportService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const formData = await request.formData();
     const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file provided' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'No file provided', 400);
     }
 
     // Check file type
     if (!file.name.endsWith('.csv')) {
-      return NextResponse.json(
-        { error: 'Invalid file type. Please upload a CSV file.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid file type. Please upload a CSV file.', 400);
     }
 
     // Check file size (max 10MB)
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
-      return NextResponse.json(
-        { error: 'File too large. Maximum size is 10MB.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'File too large. Maximum size is 10MB.', 400);
     }
 
     // Read file content
@@ -57,14 +48,5 @@ export async function POST(request: NextRequest) {
       },
     };
 
-    return NextResponse.json(response);
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Failed to parse CSV file',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, response);
+  });

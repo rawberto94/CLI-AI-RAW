@@ -103,10 +103,10 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
           const Icon = artifact.icon
           const colorMap = {
             blue: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600',
-            purple: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600',
+            purple: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-pink-600',
             green: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600',
             red: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-600',
-            indigo: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600'
+            indigo: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600'
           }
           return (
             <TabsTrigger
@@ -265,7 +265,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
   
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-pink-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -276,7 +276,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
               variant="outline"
               size="sm"
               onClick={() => onCopy(data, 'clauses')}
-              className="hover:bg-purple-100"
+              className="hover:bg-violet-100"
             >
               {copiedSection === 'clauses' ? (
                 <Check className="h-4 w-4 mr-2 text-green-600" />
@@ -297,8 +297,8 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
                     className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <Scale className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-violet-100 rounded-lg">
+                        <Scale className="h-5 w-5 text-violet-600" />
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-gray-900">{clause.title || clause.type || `Clause ${idx + 1}`}</p>
@@ -567,13 +567,13 @@ function RiskArtifact({ data, onCopy, copiedSection, expandedSections, toggleSec
 function ComplianceArtifact({ data, onCopy, copiedSection, expandedSections, toggleSection }: any) {
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Compliance Analysis</h3>
               {data.complianceScore !== undefined && (
-                <p className="text-3xl font-bold text-purple-600 mt-2">
+                <p className="text-3xl font-bold text-violet-600 mt-2">
                   {data.complianceScore}% Compliant
                 </p>
               )}
@@ -582,7 +582,7 @@ function ComplianceArtifact({ data, onCopy, copiedSection, expandedSections, tog
               variant="outline"
               size="sm"
               onClick={() => onCopy(data, 'compliance')}
-              className="hover:bg-purple-100"
+              className="hover:bg-violet-100"
             >
               {copiedSection === 'compliance' ? (
                 <Check className="h-4 w-4 mr-2 text-green-600" />

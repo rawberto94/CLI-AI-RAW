@@ -221,7 +221,7 @@ export function ObligationExport({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5 text-purple-600" />
+          <Download className="h-5 w-5 text-violet-600" />
           Export Obligations
         </CardTitle>
         <CardDescription>
@@ -244,7 +244,7 @@ export function ObligationExport({
               <RadioGroupItem value="csv" id="csv" className="peer sr-only" />
               <Label
                 htmlFor="csv"
-                className="flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-purple-600 peer-data-[state=checked]:bg-purple-50"
+                className="flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50"
               >
                 <FileSpreadsheet className="h-8 w-8 text-green-600 mb-2" />
                 <span className="font-medium">CSV</span>
@@ -255,9 +255,9 @@ export function ObligationExport({
               <RadioGroupItem value="json" id="json" className="peer sr-only" />
               <Label
                 htmlFor="json"
-                className="flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-purple-600 peer-data-[state=checked]:bg-purple-50"
+                className="flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50"
               >
-                <FileJson className="h-8 w-8 text-blue-600 mb-2" />
+                <FileJson className="h-8 w-8 text-violet-600 mb-2" />
                 <span className="font-medium">JSON</span>
                 <span className="text-xs text-slate-500">Data format</span>
               </Label>
@@ -268,7 +268,7 @@ export function ObligationExport({
                 htmlFor="xlsx"
                 className="flex flex-col items-center justify-center p-4 border-2 rounded-lg cursor-not-allowed opacity-50"
               >
-                <FileSpreadsheet className="h-8 w-8 text-purple-600 mb-2" />
+                <FileSpreadsheet className="h-8 w-8 text-violet-600 mb-2" />
                 <span className="font-medium">Excel</span>
                 <span className="text-xs text-slate-500">Coming soon</span>
               </Label>
@@ -374,7 +374,7 @@ export function ObligationExport({
           <Button
             onClick={handleExport}
             disabled={exporting || options.includeFields.length === 0}
-            className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+            className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
           >
             {exporting ? (
               <>
@@ -422,7 +422,7 @@ function ExportDialogContent({
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2">
-          <Download className="h-5 w-5 text-purple-600" />
+          <Download className="h-5 w-5 text-violet-600" />
           Export Obligations
         </DialogTitle>
         <DialogDescription>
@@ -445,7 +445,7 @@ function ExportDialogContent({
               <RadioGroupItem value="csv" id="dialog-csv" className="peer sr-only" />
               <Label
                 htmlFor="dialog-csv"
-                className="flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-purple-600 peer-data-[state=checked]:bg-purple-50"
+                className="flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50"
               >
                 <FileSpreadsheet className="h-4 w-4 mr-2 text-green-600" />
                 CSV
@@ -455,9 +455,9 @@ function ExportDialogContent({
               <RadioGroupItem value="json" id="dialog-json" className="peer sr-only" />
               <Label
                 htmlFor="dialog-json"
-                className="flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-purple-600 peer-data-[state=checked]:bg-purple-50"
+                className="flex items-center justify-center p-3 border-2 rounded-lg cursor-pointer hover:bg-slate-50 peer-data-[state=checked]:border-violet-600 peer-data-[state=checked]:bg-violet-50"
               >
-                <FileJson className="h-4 w-4 mr-2 text-blue-600" />
+                <FileJson className="h-4 w-4 mr-2 text-violet-600" />
                 JSON
               </Label>
             </div>
@@ -523,7 +523,7 @@ function ExportDialogContent({
         <Button
           onClick={onExport}
           disabled={exporting || options.includeFields.length === 0}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+          className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
         >
           {exporting ? (
             <>

@@ -116,14 +116,14 @@ const CATEGORY_CONFIG = {
   },
   optimization: { 
     icon: Target, 
-    color: 'text-purple-600', 
-    bg: 'bg-purple-50',
+    color: 'text-violet-600', 
+    bg: 'bg-violet-50',
     label: 'Optimization'
   },
   trend: { 
     icon: TrendingUp, 
-    color: 'text-purple-600', 
-    bg: 'bg-purple-50',
+    color: 'text-violet-600', 
+    bg: 'bg-violet-50',
     label: 'Trend'
   },
   alert: { 
@@ -142,9 +142,9 @@ const PRIORITY_CONFIG = {
 }
 
 const formatCurrency = (value: number): string => {
-  if (value >= 1000000) return `$${(value / 1000000).toFixed(1)}M`
-  if (value >= 1000) return `$${(value / 1000).toFixed(0)}K`
-  return `$${value}`
+  if (value >= 1000000) return `CHF ${(value / 1000000).toFixed(1)}M`
+  if (value >= 1000) return `CHF ${(value / 1000).toFixed(0)}K`
+  return `CHF ${value}`
 }
 
 const formatPercentage = (value: number): string => `${value.toFixed(1)}%`
@@ -389,7 +389,7 @@ export function AIInsightsSummaryWidget({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base">
-            <div className="p-1.5 bg-gradient-to-br from-purple-500 to-purple-500 rounded-lg">
+            <div className="p-1.5 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
               <Sparkles className="h-4 w-4 text-white" />
             </div>
             AI Insights
@@ -434,7 +434,7 @@ export function AIInsightsSummaryWidget({
               <PerformanceRing 
                 value={metrics.avgConfidence} 
                 label="Confidence"
-                color="text-purple-500"
+                color="text-violet-500"
               />
             </div>
             
@@ -455,7 +455,7 @@ export function AIInsightsSummaryWidget({
                 icon={Lightbulb}
                 label="Recommendations"
                 value={metrics.recommendationsGenerated}
-                color="bg-purple-500"
+                color="bg-violet-500"
               />
             </div>
           </div>

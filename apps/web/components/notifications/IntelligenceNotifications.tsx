@@ -45,13 +45,13 @@ const notificationTypeConfig: Record<string, {
   bgColor: string 
 }> = {
   CONTRACT_UPLOADED: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100' },
-  CONTRACT_ANALYZED: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  CONTRACT_ANALYZED: { icon: Sparkles, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   APPROVAL_REQUEST: { icon: Clock, color: 'text-amber-600', bgColor: 'bg-amber-100' },
   APPROVAL_COMPLETED: { icon: Check, color: 'text-green-600', bgColor: 'bg-green-100' },
   RENEWAL_REMINDER: { icon: Calendar, color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  COMMENT_MENTION: { icon: MessageSquare, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  COMMENT_MENTION: { icon: MessageSquare, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   BUDGET_ALERT: { icon: DollarSign, color: 'text-rose-600', bgColor: 'bg-rose-100' },
-  TEAM_INVITE: { icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  TEAM_INVITE: { icon: Users, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   SYSTEM: { icon: AlertCircle, color: 'text-slate-600', bgColor: 'bg-slate-100' },
 };
 

@@ -16,7 +16,7 @@ import { twMerge } from 'tailwind-merge';
  */
 export const WORKFLOW_COLORS = {
   // Standard workflows
-  approval: 'from-blue-500 to-indigo-600',
+  approval: 'from-violet-500 to-purple-600',
   review: 'from-purple-500 to-fuchsia-600',
   
   // Process types
@@ -25,7 +25,7 @@ export const WORKFLOW_COLORS = {
   
   // Specialized workflows
   renewal: 'from-amber-500 to-orange-600',
-  amendment: 'from-cyan-500 to-blue-600',
+  amendment: 'from-cyan-500 to-violet-600',
   highValue: 'from-rose-500 to-pink-600',
   
   // Compliance workflows
@@ -43,12 +43,12 @@ export const WORKFLOW_COLORS = {
  * Dark mode compatible workflow colors
  */
 export const WORKFLOW_COLORS_DARK = {
-  approval: 'dark:from-blue-400 dark:to-indigo-500',
+  approval: 'dark:from-violet-400 dark:to-purple-500',
   review: 'dark:from-purple-400 dark:to-fuchsia-500',
   quick: 'dark:from-green-400 dark:to-emerald-500',
   comprehensive: 'dark:from-purple-500 dark:to-violet-600',
   renewal: 'dark:from-amber-400 dark:to-orange-500',
-  amendment: 'dark:from-cyan-400 dark:to-blue-500',
+  amendment: 'dark:from-cyan-400 dark:to-violet-500',
   highValue: 'dark:from-rose-400 dark:to-pink-500',
   compliance: 'dark:from-indigo-400 dark:to-violet-500',
   gdpr: 'dark:from-teal-400 dark:to-emerald-500',
@@ -149,8 +149,8 @@ export const STATUS_BADGE_COLORS = {
     dark: 'dark:bg-red-900/30 dark:text-red-300 dark:border-red-700',
   },
   info: {
-    light: 'bg-blue-100 text-blue-800 border-blue-300',
-    dark: 'dark:bg-blue-900/30 dark:text-blue-300 dark:border-blue-700',
+    light: 'bg-violet-100 text-violet-800 border-violet-300',
+    dark: 'dark:bg-violet-900/30 dark:text-violet-300 dark:border-violet-700',
   },
   neutral: {
     light: 'bg-slate-100 text-slate-800 border-slate-300',

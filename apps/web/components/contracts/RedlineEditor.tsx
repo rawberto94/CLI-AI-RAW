@@ -564,7 +564,7 @@ function VersionHistoryPanel({
               className={cn(
                 "p-4 cursor-pointer hover:bg-slate-50 transition-colors",
                 currentVersion === version.version && "bg-violet-50 border-l-2 border-violet-500",
-                compareMode && compareSelection.includes(version.id) && "bg-purple-50 border-l-2 border-purple-500"
+                compareMode && compareSelection.includes(version.id) && "bg-violet-50 border-l-2 border-violet-500"
               )}
             >
               <div className="flex items-start justify-between">
@@ -573,7 +573,7 @@ function VersionHistoryPanel({
                     <div className={cn(
                       "w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5",
                       compareSelection.includes(version.id)
-                        ? "border-purple-500 bg-purple-500"
+                        ? "border-violet-500 bg-violet-500"
                         : "border-slate-300"
                     )}>
                       {compareSelection.includes(version.id) && (

@@ -168,7 +168,7 @@ export function withCSRFProtection(
 ) {
   return async (request: NextRequest, context: any): Promise<NextResponse> => {
     // Skip for public API routes
-    const publicRoutes = ['/api/auth', '/api/health', '/api/ready', '/api/webhooks'];
+    const publicRoutes = ['/api/auth', '/api/health', '/api/monitoring/health', '/api/webhooks'];
     const isPublicRoute = publicRoutes.some(route => 
       request.nextUrl.pathname.startsWith(route)
     );

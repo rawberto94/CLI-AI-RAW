@@ -176,8 +176,8 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3 border-b">
         <CardTitle className="text-base flex items-center gap-2">
-          <div className="p-1.5 bg-purple-100 rounded-full">
-            <Sparkles className="h-4 w-4 text-purple-600" />
+          <div className="p-1.5 bg-violet-100 rounded-full">
+            <Sparkles className="h-4 w-4 text-violet-600" />
           </div>
           AI Assistant
           <Badge variant="secondary" className="text-xs">
@@ -218,8 +218,8 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
                 )}
               >
                 {message.role === 'assistant' && (
-                  <div className="p-2 bg-purple-100 rounded-full h-fit">
-                    <Bot className="h-4 w-4 text-purple-600" />
+                  <div className="p-2 bg-violet-100 rounded-full h-fit">
+                    <Bot className="h-4 w-4 text-violet-600" />
                   </div>
                 )}
                 <div
@@ -255,8 +255,8 @@ export function ChatAssistant({ contractId, context }: ChatAssistantProps) {
             ))}
             {isLoading && (
               <div className="flex gap-3">
-                <div className="p-2 bg-purple-100 rounded-full h-fit">
-                  <Bot className="h-4 w-4 text-purple-600" />
+                <div className="p-2 bg-violet-100 rounded-full h-fit">
+                  <Bot className="h-4 w-4 text-violet-600" />
                 </div>
                 <div className="bg-gray-100 rounded-lg p-3">
                   <Loader2 className="h-4 w-4 animate-spin text-gray-600" />

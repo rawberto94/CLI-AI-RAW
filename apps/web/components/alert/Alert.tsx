@@ -168,7 +168,7 @@ export function Banner({
     success: 'bg-violet-600 text-white',
     warning: 'bg-amber-500 text-white',
     error: 'bg-red-600 text-white',
-    promo: 'bg-gradient-to-r from-purple-600 to-purple-600 text-white',
+    promo: 'bg-gradient-to-r from-violet-600 to-purple-600 text-white',
   };
 
   const handleDismiss = () => {

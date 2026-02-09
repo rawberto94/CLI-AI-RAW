@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,13 +42,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
     const useMock = request.nextUrl.searchParams.get('mock') === 'true';
 
     if (useMock) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         executions: getMockExecutions(),
         source: 'mock'
@@ -64,10 +66,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get workflow executions for this contract
@@ -114,29 +113,18 @@ export async function GET(
       }))
     }));
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         executions: transformedExecutions,
         source: 'database'
       });
 
-    } catch {
-      return NextResponse.json({
-        success: true,
-        executions: getMockExecutions(),
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch workflow executions',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -148,6 +136,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
@@ -155,10 +144,7 @@ export async function POST(
     const { workflowId, initiatedBy } = body;
 
     if (!workflowId) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Workflow ID is required', 400);
     }
 
     const db = await getDb();
@@ -170,10 +156,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get workflow template
@@ -187,10 +170,7 @@ export async function POST(
     });
 
     if (!workflow || workflow.tenantId !== tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Workflow not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
     }
 
     // Create workflow execution
@@ -221,7 +201,7 @@ export async function POST(
       }
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       execution: {
         id: execution.id,
@@ -233,13 +213,6 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to start workflow execution',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

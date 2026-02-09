@@ -316,7 +316,7 @@ export function NPSScore({ value, onChange, className }: NPSScoreProps) {
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-all',
                 isSelected
-                  ? 'ring-2 ring-offset-2 ring-purple-500'
+                  ? 'ring-2 ring-offset-2 ring-violet-500'
                   : '',
                 colorClass
               )}

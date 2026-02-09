@@ -1,5 +1,9 @@
 # PostgreSQL Data Models Documentation
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §4 (Database Architecture) for current data model documentation. Retained for historical reference only.
+
+---
+
 This document explains all PostgreSQL tables in the CLI-AI contract management system, their purposes, relationships, and how they are populated.
 
 ---

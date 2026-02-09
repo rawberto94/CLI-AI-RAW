@@ -115,7 +115,7 @@ const AI_COMMANDS: CommandItem[] = [
     label: 'AI Summary',
     description: 'Generate an overview of filtered contracts',
     icon: Sparkles,
-    iconColor: 'text-purple-500',
+    iconColor: 'text-violet-500',
     category: 'ai',
     action: () => {},
   },

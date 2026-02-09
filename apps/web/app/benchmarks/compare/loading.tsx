@@ -54,7 +54,7 @@ export default function BenchmarkCompareLoading() {
                     transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-purple-600" />
+                  <Icon className="w-4 h-4 text-violet-600" />
                 </motion.div>
               );
             })}

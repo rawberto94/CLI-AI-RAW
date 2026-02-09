@@ -46,7 +46,7 @@ export default function ProcurementAnalyticsHub() {
         const [suppliersRes, savingsRes, renewalsRes] = await Promise.allSettled([
           fetch('/api/analytics/suppliers?mode=real'),
           fetch('/api/analytics/savings?mode=real'),
-          fetch('/api/analytics/renewals?mode=real'),
+          fetch('/api/renewals?mode=real'),
         ]);
 
         const suppliersData = suppliersRes.status === 'fulfilled' && suppliersRes.value.ok 
@@ -128,7 +128,7 @@ export default function ProcurementAnalyticsHub() {
       id: 'negotiation',
       title: 'Negotiation Preparation',
       description: 'Strategic insights and leverage points for successful negotiations',
-      color: 'from-purple-500 to-pink-600',
+      color: 'from-violet-500 to-pink-600',
       route: '/analytics/negotiation',
       features: [
         'Leverage analysis',
@@ -192,7 +192,7 @@ export default function ProcurementAnalyticsHub() {
           className="space-y-3"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl shadow-lg shadow-purple-500/25">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
               <LineChart className="w-7 h-7 text-white" />
             </div>
             <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">

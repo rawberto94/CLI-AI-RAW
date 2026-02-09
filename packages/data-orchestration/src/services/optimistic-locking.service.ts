@@ -7,7 +7,7 @@
  * Requirements: 6.1 - WHEN concurrent updates occur, THE System SHALL use optimistic locking to prevent conflicts
  */
 
-import { PrismaClient } from 'clients-db';
+import { prisma, PrismaClient } from '../lib/prisma';
 import { monitoringService } from './monitoring.service';
 
 export class OptimisticLockError extends Error {
@@ -41,7 +41,7 @@ class OptimisticLockingService {
   private db: PrismaClient;
 
   constructor() {
-    this.db = new PrismaClient();
+    this.db = prisma;
   }
 
   /**

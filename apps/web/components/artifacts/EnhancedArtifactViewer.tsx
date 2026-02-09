@@ -148,9 +148,9 @@ const TABS = [
     label: 'Clauses', 
     icon: FileCheck,
     color: 'indigo',
-    gradient: 'from-purple-500 to-purple-500',
-    bgColor: 'bg-purple-50',
-    textColor: 'text-purple-700',
+    gradient: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
     borderColor: 'border-indigo-200'
   },
   { 
@@ -188,10 +188,10 @@ const TABS = [
     label: 'Obligations', 
     icon: Clock,
     color: 'purple',
-    gradient: 'from-purple-500 to-fuchsia-500',
-    bgColor: 'bg-purple-50',
-    textColor: 'text-purple-700',
-    borderColor: 'border-purple-200'
+    gradient: 'from-violet-500 to-fuchsia-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200'
   },
   { 
     id: 'renewal', 
@@ -1020,7 +1020,7 @@ export function EnhancedArtifactViewer({
                 contractId: contractId
               } 
             }))}
-            className="mt-4 text-xs text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1.5"
+            className="mt-4 text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
             Ask AI to analyze this section
@@ -1590,16 +1590,16 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Obligation Context by Contract Type */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-purple-500/10 rounded-lg border border-purple-500/20">
+            <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-lg border border-violet-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <ListChecks className="w-4 h-4 text-purple-500" />
-                <span className="text-sm font-medium text-purple-400">
+                <ListChecks className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium text-violet-400">
                   Obligation Tracking for {detectedContractType.replace(/_/g, ' ')} Contracts
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div>
-                  <span className="text-purple-400 font-medium">Typical Obligations:</span>
+                  <span className="text-violet-400 font-medium">Typical Obligations:</span>
                   <ul className="mt-1 space-y-0.5">
                     {obligationContext.typicalObligations.map((o, i) => (
                       <li key={i}>• {o}</li>
@@ -1731,16 +1731,16 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Renewal Context by Contract Type */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-violet-500/10 rounded-lg border border-purple-500/20">
+            <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/10 to-violet-500/10 rounded-lg border border-violet-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <History className="w-4 h-4 text-purple-500" />
-                <span className="text-sm font-medium text-purple-400">
+                <History className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium text-violet-400">
                   Renewal Management for {detectedContractType.replace(/_/g, ' ')} Contracts
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div>
-                  <span className="text-purple-400 font-medium">Typical Terms:</span>
+                  <span className="text-violet-400 font-medium">Typical Terms:</span>
                   <ul className="mt-1 space-y-0.5">
                     {renewalContext.typicalTerms.map((t, i) => (
                       <li key={i}>• {t}</li>
@@ -2112,7 +2112,7 @@ export function EnhancedArtifactViewer({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
-                  <LayoutList className="h-4 w-4 text-purple-600" />
+                  <LayoutList className="h-4 w-4 text-violet-600" />
                   Executive Summary
                 </h3>
                 <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-slate-600 p-1">
@@ -2219,7 +2219,7 @@ export function EnhancedArtifactViewer({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
-                  <Target className="h-4 w-4 text-purple-600" />
+                  <Target className="h-4 w-4 text-violet-600" />
                   Action Items
                   <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">{actionItems.length}</span>
                 </h3>
@@ -2252,7 +2252,7 @@ export function EnhancedArtifactViewer({
                         <p className="text-[10px] text-slate-400">{item.category}</p>
                       </div>
                       <button
-                        className="text-[10px] text-purple-600 hover:text-purple-700 font-medium shrink-0"
+                        className="text-[10px] text-violet-600 hover:text-violet-700 font-medium shrink-0"
                         onClick={() => {
                           setActiveTab(item.source as TabId);
                           setShowActionItems(false);
@@ -2295,7 +2295,7 @@ export function EnhancedArtifactViewer({
       {/* Contract Type Badge */}
       {detectedContractType && detectedContractType !== 'OTHER' && (
         <div className="mb-3 flex items-center gap-1.5 flex-wrap">
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-700 border border-indigo-100 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-violet-50 text-violet-700 border border-indigo-100 rounded-md text-xs font-medium">
             <FileText className="h-3 w-3" />
             {detectedContractType.replace(/_/g, ' ')}
           </span>
@@ -2475,7 +2475,7 @@ export function EnhancedArtifactViewer({
             )}
           </button>
           {bookmarkedClauses.size > 0 && (
-            <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-purple-600 bg-purple-50 rounded-md">
+            <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-violet-600 bg-violet-50 rounded-md">
               <BookmarkPlus className="h-3 w-3" />
               {bookmarkedClauses.size}
             </span>
@@ -2518,7 +2518,7 @@ export function EnhancedArtifactViewer({
                     className={cn(
                       "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all shrink-0 rounded-md",
                       isActive 
-                        ? "bg-purple-50 text-purple-700 ring-1 ring-indigo-200"
+                        ? "bg-violet-50 text-violet-700 ring-1 ring-indigo-200"
                         : hasData
                         ? "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                         : "text-slate-400 hover:text-slate-500 hover:bg-slate-50"
@@ -2526,7 +2526,7 @@ export function EnhancedArtifactViewer({
                   >
                     <Icon className={cn(
                       "h-3.5 w-3.5",
-                      isActive ? "text-purple-600" : hasData ? "text-slate-500" : "text-slate-400"
+                      isActive ? "text-violet-600" : hasData ? "text-slate-500" : "text-slate-400"
                     )} />
                     <span>{tab.label}</span>
                     {/* Data indicator dot */}
@@ -2560,7 +2560,7 @@ export function EnhancedArtifactViewer({
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all",
                       viewMode === 'edit' 
-                        ? "bg-white text-purple-600 shadow-sm" 
+                        ? "bg-white text-violet-600 shadow-sm" 
                         : "text-slate-400 hover:text-slate-600"
                     )}
                   >
@@ -2636,7 +2636,7 @@ export function EnhancedArtifactViewer({
                   className={cn(
                     "w-1.5 h-1.5 rounded-full transition-all",
                     activeTab === tab.id 
-                      ? "w-4 bg-purple-500"
+                      ? "w-4 bg-violet-500"
                       : hasData
                       ? "bg-slate-300 hover:bg-slate-400"
                       : "bg-slate-200"

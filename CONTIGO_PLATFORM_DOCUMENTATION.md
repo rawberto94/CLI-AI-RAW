@@ -1,5 +1,9 @@
 # Contigo Platform - Comprehensive Documentation
 
+> **DEPRECATED:** This document is superseded by [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md). Retained for historical reference only.
+
+---
+
 ## Table of Contents
 1. [Executive Summary](#executive-summary)
 2. [Platform Overview](#platform-overview)

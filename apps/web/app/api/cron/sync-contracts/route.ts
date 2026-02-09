@@ -1,12 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300; // 5 minutes for comprehensive sync
-
-// Cron secret for security (set in environment)
-const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
 
 /**
  * Scheduled Contract Sync Job
@@ -39,19 +38,7 @@ interface SyncResult {
   };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization');
-    const providedSecret = authHeader?.replace('Bearer ', '') || request.nextUrl.searchParams.get('secret');
-    
-    if (providedSecret !== CRON_SECRET) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     const startTime = Date.now();
     const results: SyncResult = {
       expirations: { processed: 0, expired: 0, expiringSoon: 0 },
@@ -323,8 +310,7 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         ...results,
         duration: `${duration}ms`,
@@ -332,30 +318,9 @@ export async function POST(request: NextRequest) {
         completedAt: new Date().toISOString(),
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Sync failed',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // GET endpoint for manual trigger or health check
-export async function GET(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get('secret');
-  
-  if (secret !== CRON_SECRET) {
-    return NextResponse.json({
-      success: true,
-      message: 'Contract sync cron endpoint is active',
-      schedule: 'Every 6 hours recommended',
-      lastRun: null,
-    });
-  }
-
-  // If secret provided, trigger sync
+export const GET = withCronHandler(async (request, ctx) => {
   return POST(request);
-}
+});

@@ -27,9 +27,9 @@ function FloatingDocument({
       lines: ["bg-white/90", "bg-white/70", "bg-white/50"],
     },
     secondary: {
-      bg: "from-purple-500/80 via-violet-500/80 to-purple-500/80",
-      border: "border-purple-300/50",
-      shadow: "shadow-purple-500/40",
+      bg: "from-violet-500/80 via-purple-500/80 to-violet-500/80",
+      border: "border-violet-300/50",
+      shadow: "shadow-violet-500/40",
       lines: ["bg-white/80", "bg-white/60", "bg-white/40"],
     },
     accent: {
@@ -247,7 +247,7 @@ function AIChip({ x, y }: { x: number; y: number }) {
         style={{ transformStyle: "preserve-3d" }}
       >
         {/* Main chip body */}
-        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 shadow-2xl shadow-purple-500/50">
+        <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-violet-600 via-purple-600 to-fuchsia-600 shadow-2xl shadow-violet-500/50">
           {/* Circuit lines */}
           <svg className="absolute inset-0 w-full h-full p-2" viewBox="0 0 48 48">
             <motion.g stroke="rgba(255,255,255,0.6)" strokeWidth="1" fill="none">
@@ -291,7 +291,7 @@ function AIChip({ x, y }: { x: number; y: number }) {
           {([[12, 12], [36, 12], [12, 36], [36, 36]] as [number, number][]).map(([nx, ny], i) => (
             <motion.div
               key={i}
-              className="absolute w-2 h-2 rounded-full bg-purple-400"
+              className="absolute w-2 h-2 rounded-full bg-violet-400"
               style={{ left: (nx ?? 0) - 4, top: (ny ?? 0) - 4 }}
               animate={{ 
                 scale: [1, 1.5, 1], 
@@ -327,7 +327,7 @@ function AIChip({ x, y }: { x: number; y: number }) {
 
 // Data Flow Particles with enhanced dynamics
 function DataParticles() {
-  const colors = ["bg-purple-400", "bg-violet-400", "bg-fuchsia-400", "bg-violet-400", "bg-amber-400"];
+  const colors = ["bg-violet-400", "bg-violet-400", "bg-fuchsia-400", "bg-violet-400", "bg-amber-400"];
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {Array.from({ length: 20 }).map((_, i) => {
@@ -435,7 +435,7 @@ export function AuthHeroArt({ className }: { className?: string }) {
 
         {/* Floating orbs */}
         <FloatingOrb size={16} color="bg-violet-400/60" x={20} y={40} delay={0} />
-        <FloatingOrb size={10} color="bg-purple-400/60" x={280} y={150} delay={0.5} />
+        <FloatingOrb size={10} color="bg-violet-400/60" x={280} y={150} delay={0.5} />
         <FloatingOrb size={12} color="bg-fuchsia-400/60" x={240} y={15} delay={1} />
         <FloatingOrb size={8} color="bg-violet-400/60" x={60} y={170} delay={1.5} />
         
@@ -550,48 +550,34 @@ export function ConTigoLogo({ size = "lg" }: { size?: "sm" | "md" | "lg" | "xl" 
         whileHover={{ scale: 1.05 }}
         transition={{ duration: 0.3 }}
       >
-        <defs>
-          <linearGradient id="barGradient1" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#7C3AED" />
-            <stop offset="100%" stopColor="#8B5CF6" />
-          </linearGradient>
-          <linearGradient id="barGradient2" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#8B5CF6" />
-            <stop offset="100%" stopColor="#A78BFA" />
-          </linearGradient>
-          <linearGradient id="barGradient3" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#A78BFA" />
-            <stop offset="100%" stopColor="#C4B5FD" />
-          </linearGradient>
-        </defs>
-        {/* Three Stacked Bars */}
-        <g transform="translate(8, 10)">
+        {/* Three Stacked Bars — solid fills */}
+        <g transform="translate(4, 8)">
           <motion.rect 
-            x="0" y="0" width="32" height="8" rx="4" 
-            fill="url(#barGradient1)"
-            initial={{ x: -40 }}
+            x="0" y="0" width="40" height="9" rx="4.5" 
+            fill="#C4B5FD"
+            initial={{ x: -48 }}
             animate={{ x: 0 }}
             transition={{ delay: 0.1, duration: 0.4 }}
           />
           <motion.rect 
-            x="0" y="12" width="32" height="8" rx="4" 
-            fill="url(#barGradient2)"
-            initial={{ x: -40 }}
+            x="0" y="13" width="40" height="9" rx="4.5" 
+            fill="white" fillOpacity="0.65"
+            initial={{ x: -48 }}
             animate={{ x: 0 }}
             transition={{ delay: 0.2, duration: 0.4 }}
           />
           <motion.rect 
-            x="0" y="24" width="32" height="8" rx="4" 
-            fill="url(#barGradient3)"
-            initial={{ x: -40 }}
+            x="0" y="26" width="40" height="9" rx="4.5" 
+            fill="white" fillOpacity="0.35"
+            initial={{ x: -48 }}
             animate={{ x: 0 }}
             transition={{ delay: 0.3, duration: 0.4 }}
           />
         </g>
       </motion.svg>
-      <span className="font-bold tracking-tight" style={{ fontSize: s.fontSize }}>
-        <span className="text-violet-300">con</span>
-        <span className="text-white">tigo</span>
+      <span className="tracking-tight" style={{ fontSize: s.fontSize }}>
+        <span className="font-bold text-violet-300">con</span>
+        <span className="font-light text-white">tigo</span>
       </span>
     </motion.div>
   );

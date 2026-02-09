@@ -87,7 +87,7 @@ export function BulkActionBar({
               <MotionDiv
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
-                className="h-full bg-gradient-to-r from-purple-500 to-purple-500"
+                className="h-full bg-gradient-to-r from-violet-500 to-purple-500"
                 transition={{ duration: 0.3 }}
               />
             </div>
@@ -96,7 +96,7 @@ export function BulkActionBar({
           <div className="px-4 py-3 flex items-center gap-4">
             {/* Selection info */}
             <div className="flex items-center gap-3 pr-4 border-r border-slate-200">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-purple-200/50">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg shadow-violet-200/50">
                 {selectedCount}
               </div>
               <div>
@@ -107,7 +107,7 @@ export function BulkActionBar({
                   {selectedCount < totalCount ? (
                     <button
                       onClick={onSelectAll}
-                      className="text-purple-600 hover:text-indigo-800 font-medium"
+                      className="text-violet-600 hover:text-indigo-800 font-medium"
                       disabled={isProcessing}
                     >
                       Select all {totalCount}
@@ -126,7 +126,7 @@ export function BulkActionBar({
                 role="status"
                 aria-live="polite"
               >
-                <Loader2 className="w-5 h-5 animate-spin text-purple-600" aria-hidden="true" />
+                <Loader2 className="w-5 h-5 animate-spin text-violet-600" aria-hidden="true" />
                 <span>
                   {processingAction || 'Processing'} ({processedCount}/{selectedCount})...
                 </span>

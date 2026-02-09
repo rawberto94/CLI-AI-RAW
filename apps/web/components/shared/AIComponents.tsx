@@ -130,8 +130,8 @@ export function AIInsight({ title, description, confidence, category, impact = '
     <Card className={`${impactColors[impact]} border-2`}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-purple-600" />
+          <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Brain className="w-4 h-4 text-violet-600" />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
@@ -226,7 +226,7 @@ interface QuickActionProps {
 export function QuickAction({ title, description, icon, onClick, variant = 'primary' }: QuickActionProps) {
   const variantStyles = {
     primary: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-violet-800 border-violet-200',
-    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 text-purple-800 border-purple-200',
+    secondary: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-violet-800 border-violet-200',
     success: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-green-800 border-green-200',
     warning: 'bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 text-orange-800 border-orange-200',
   };
@@ -257,7 +257,7 @@ export function DemoNavBadge({ type, children }: DemoNavBadgeProps) {
   const badgeStyles = {
     live: 'bg-green-100 text-green-800 animate-pulse',
     demo: 'bg-violet-100 text-violet-800',
-    beta: 'bg-purple-100 text-purple-800',
+    beta: 'bg-violet-100 text-violet-800',
     new: 'bg-orange-100 text-orange-800',
   };
 

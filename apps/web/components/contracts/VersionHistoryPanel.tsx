@@ -173,7 +173,7 @@ export function VersionHistoryPanel({
                   <span className="font-medium">Change type:</span>{' '}
                   {(selectedVersion.reason && selectedVersion.reason.includes('AI Improvement')) || 
                    selectedVersion.changeType === 'ai_improvement' ? (
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-800">
                       <Sparkles className="h-3 w-3 mr-1" />
                       AI Improvement
                     </Badge>
@@ -290,7 +290,7 @@ export function VersionHistoryPanel({
                           </span>
                           {((version.reason && version.reason.includes('AI Improvement')) || 
                             version.changeType === 'ai_improvement') && (
-                            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                            <Badge variant="secondary" className="bg-violet-100 text-violet-800">
                               <Sparkles className="h-3 w-3 mr-1" />
                               AI Improved
                             </Badge>

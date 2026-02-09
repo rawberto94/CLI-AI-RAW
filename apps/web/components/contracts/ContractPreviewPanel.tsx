@@ -133,8 +133,8 @@ export interface ContractPreviewPanelProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+function formatCurrency(value: number, currency: string = "CHF"): string {
+  return new Intl.NumberFormat("de-CH", {
     style: "currency",
     currency,
     notation: value >= 1000000 ? "compact" : "standard",
@@ -608,12 +608,12 @@ const ActivityTab = memo(function ActivityTab({ activities }: ActivityTabProps) 
                 <div
                   className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center z-10",
-                    activity.type === "ai_analysis" && "bg-purple-100 text-purple-600",
+                    activity.type === "ai_analysis" && "bg-violet-100 text-violet-600",
                     activity.type === "created" && "bg-violet-100 text-violet-600",
                     activity.type === "updated" && "bg-violet-100 text-violet-600",
                     activity.type === "status_changed" && "bg-amber-100 text-amber-600",
                     activity.type === "comment" && "bg-gray-100 text-gray-600",
-                    activity.type === "attachment" && "bg-purple-100 text-purple-600"
+                    activity.type === "attachment" && "bg-violet-100 text-violet-600"
                   )}
                 >
                   <Icon className="w-4 h-4" />
@@ -853,7 +853,7 @@ export const ContractPreviewPanel = memo(function ContractPreviewPanel({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 text-purple-600"
+                  className="h-7 text-violet-600"
                   onClick={() => onAnalyze?.(contract.id)}
                 >
                   <Sparkles className="w-3.5 h-3.5 mr-1" />

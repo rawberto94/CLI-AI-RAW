@@ -69,11 +69,11 @@ const colorConfig = {
     highlight: 'ring-red-500/20',
   },
   purple: {
-    bg: 'bg-purple-50 dark:bg-purple-950/30',
-    border: 'border-purple-200 dark:border-purple-800',
-    icon: 'text-purple-600 dark:text-purple-400',
-    text: 'text-purple-900 dark:text-purple-100',
-    highlight: 'ring-purple-500/20',
+    bg: 'bg-violet-50 dark:bg-violet-950/30',
+    border: 'border-violet-200 dark:border-violet-800',
+    icon: 'text-violet-600 dark:text-violet-400',
+    text: 'text-violet-900 dark:text-violet-100',
+    highlight: 'ring-violet-500/20',
   },
   slate: {
     bg: 'bg-slate-50 dark:bg-slate-900/50',

@@ -182,7 +182,7 @@ function ApprovalCard({ item, isSelected, onSelect, isMultiSelected, onMultiSele
         <div className={cn(
           "w-12 h-12 rounded-xl flex items-center justify-center ml-8",
           item.type === 'contract' && "bg-violet-100 text-violet-600",
-          item.type === 'amendment' && "bg-purple-100 text-purple-600",
+          item.type === 'amendment' && "bg-violet-100 text-violet-600",
           item.type === 'renewal' && "bg-green-100 text-green-600"
         )}>
           <FileText className="w-6 h-6" />
@@ -270,7 +270,7 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
           <div className={cn(
             "w-14 h-14 rounded-xl flex items-center justify-center",
             item.type === 'contract' && "bg-violet-100 text-violet-600",
-            item.type === 'amendment' && "bg-purple-100 text-purple-600",
+            item.type === 'amendment' && "bg-violet-100 text-violet-600",
             item.type === 'renewal' && "bg-green-100 text-green-600"
           )}>
             <FileText className="w-7 h-7" />

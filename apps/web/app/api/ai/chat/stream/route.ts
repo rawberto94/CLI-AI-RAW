@@ -17,12 +17,10 @@ import { parallelMultiQueryRAG } from '@/lib/rag/parallel-rag.service';
 import { semanticCache } from '@/lib/ai/semantic-cache.service';
 import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
 import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
-import { getServerTenantId } from '@/lib/tenant-server';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 // Anthropic client for failover
 const anthropic = process.env.ANTHROPIC_API_KEY 
@@ -43,15 +41,15 @@ const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
   { provider: 'anthropic', model: 'claude-3-sonnet-20240229', priority: 4 },
 ];
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
     const { message, conversationHistory = [], context = {} } = await request.json();
 
     if (!message) {
       return new Response(JSON.stringify({ error: 'Message is required' }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json' },
-      });
+        headers: { 'Content-Type': 'application/json' } });
     }
 
     if (!process.env.OPENAI_API_KEY) {
@@ -60,11 +58,6 @@ export async function POST(request: NextRequest) {
         { status: 500, headers: { 'Content-Type': 'application/json' } }
       );
     }
-
-    const tenantId = await getServerTenantId();
-    const session = await getServerSession();
-    const userId = session?.user?.id || 'anonymous';
-
     // ============================================
     // STEP 1: CHECK SEMANTIC CACHE
     // ============================================
@@ -82,24 +75,20 @@ export async function POST(request: NextRequest) {
             suggestedActions: [
               { label: '🔄 Refresh', action: 'refresh-query' },
               { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
-            ],
-          });
+            ] });
           controller.enqueue(encoder.encode(`data: ${metadata}\n\n`));
           
           // Send full content immediately
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: cached.content })}\n\n`));
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ done: true, cached: true })}\n\n`));
           controller.close();
-        },
-      });
+        } });
 
       return new Response(readable, {
         headers: {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache',
-          'Connection': 'keep-alive',
-        },
-      });
+          'Connection': 'keep-alive' } });
     }
 
     // ============================================
@@ -112,8 +101,7 @@ export async function POST(request: NextRequest) {
         : Promise.resolve({ results: [], queryVariations: [], timingsMs: { total: 0, hyde: 0, expansion: 0, search: 0, fusion: 0 } }),
       retrieveRelevantMemories(userId, tenantId, message, conversationHistory, {
         maxMemories: 3,
-        types: ['preference', 'fact', 'decision'],
-      }),
+        types: ['preference', 'fact', 'decision'] }),
     ]);
 
     // Build RAG context
@@ -160,8 +148,7 @@ ${memoryContext}
       { role: 'system', content: systemPrompt },
       ...conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
         role: msg.role as 'user' | 'assistant',
-        content: msg.content,
-      })),
+        content: msg.content })),
       { role: 'user', content: message },
     ];
 
@@ -188,8 +175,7 @@ ${memoryContext}
               messages,
               temperature: 0.7,
               max_tokens: 2000,
-              stream: true,
-            });
+              stream: true });
             usedModel = config.model;
             usedProvider = 'openai';
             return { type: 'openai' as const, stream };
@@ -197,16 +183,14 @@ ${memoryContext}
             // Convert messages to Anthropic format
             const anthropicMessages = conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
               role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
-              content: msg.content,
-            }));
+              content: msg.content }));
             anthropicMessages.push({ role: 'user' as const, content: message });
             
             const stream = anthropic.messages.stream({
               model: config.model,
               max_tokens: 2000,
               system: systemPrompt,
-              messages: anthropicMessages,
-            });
+              messages: anthropicMessages });
             usedModel = config.model;
             usedProvider = 'anthropic';
             return { type: 'anthropic' as const, stream };
@@ -250,8 +234,7 @@ ${memoryContext}
             ] : [
               { label: '📋 Browse Contracts', action: 'navigate:/contracts' },
               { label: '📊 View Dashboard', action: 'navigate:/dashboard' },
-            ],
-          });
+            ] });
           controller.enqueue(encoder.encode(`data: ${metadata}\n\n`));
 
           // Stream the response content based on provider
@@ -296,14 +279,11 @@ ${memoryContext}
               contractId: r.contractId,
               contractName: r.contractName,
               score: r.score,
-              text: r.text.slice(0, 300),
-            })),
+              text: r.text.slice(0, 300) })),
             metadata: {
               intent: context.intent?.type,
               confidence: finalConfidence.confidence,
-              tokensUsed: Math.round(fullContent.length / 4),
-            },
-          }, tenantId).catch(() => { /* Ignore cache errors */ });
+              tokensUsed: Math.round(fullContent.length / 4) } }, tenantId).catch(() => { /* Ignore cache errors */ });
 
           // Store interaction as memory for future reference
           if (fullContent.length > 100) {
@@ -313,8 +293,7 @@ ${memoryContext}
               type: 'interaction',
               content: `Q: ${message.slice(0, 200)}\nA: ${fullContent.slice(0, 300)}`,
               context: firstResult?.contractName || detectTopic(message),
-              importance: searchResults.length > 0 ? 0.7 : 0.4,
-            }).catch(() => { /* Ignore memory errors */ });
+              importance: searchResults.length > 0 ? 0.7 : 0.4 }).catch(() => { /* Ignore memory errors */ });
           }
 
           // Send completion signal with model info
@@ -327,38 +306,27 @@ ${memoryContext}
             explanation: finalConfidence.explanation,
             model: usedModel,
             provider: usedProvider,
-            cached: false,
-          });
+            cached: false });
           controller.enqueue(encoder.encode(`data: ${doneData}\n\n`));
           controller.close();
         } catch (error) {
           const errorData = JSON.stringify({ 
             type: 'error',
             error: error instanceof Error ? error.message : 'Stream interrupted',
-            done: true,
-          });
+            done: true });
           controller.enqueue(encoder.encode(`data: ${errorData}\n\n`));
           controller.close();
         }
-      },
-    });
+      } });
 
     return new Response(readable, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+        'X-Accel-Buffering': 'no' } });
 
-  } catch (error: unknown) {
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Failed to process request' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-}
+  });
 
 function shouldUseRAG(query: string): boolean {
   const lowerQuery = query.toLowerCase();

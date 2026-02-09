@@ -175,12 +175,12 @@ const getNodeColor = (type: GraphNode['type'], status?: GraphNode['status']) => 
   
   switch (type) {
     case 'contract': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
-    case 'supplier': return { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white' };
+    case 'supplier': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
     case 'clause': return { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white' };
     case 'risk': return { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white' };
     case 'obligation': return { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white' };
     case 'category': return { bg: 'bg-slate-500', border: 'border-slate-600', text: 'text-white' };
-    case 'department': return { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white' };
+    case 'department': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
     default: return { bg: 'bg-slate-400', border: 'border-slate-500', text: 'text-white' };
   }
 };
@@ -591,7 +591,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
             <span className="text-sm text-slate-600">{stats.contracts} Contracts</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-purple-500" />
+            <div className="w-3 h-3 rounded-full bg-violet-500" />
             <span className="text-sm text-slate-600">{stats.suppliers} Suppliers</span>
           </div>
           <div className="flex items-center gap-2">

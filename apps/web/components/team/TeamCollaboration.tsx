@@ -104,7 +104,7 @@ const roleConfig: Record<UserRole, {
   owner: { 
     label: 'Owner', 
     icon: Crown, 
-    color: 'bg-purple-100 text-purple-700',
+    color: 'bg-violet-100 text-violet-700',
     description: 'Full access to all features and settings',
   },
   admin: { 

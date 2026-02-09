@@ -470,7 +470,7 @@ export function SupplierPerformanceDashboard() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-purple-600 h-2 rounded-full"
+                          className="bg-violet-600 h-2 rounded-full"
                           style={{ width: `${selectedSupplierData.responsiveness}%` }}
                         />
                       </div>

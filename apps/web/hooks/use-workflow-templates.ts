@@ -239,18 +239,18 @@ export const TEMPLATE_UI_CONFIG: Record<string, {
   iconName: string;
   popular?: boolean;
 }> = {
-  standard: { color: 'bg-gradient-to-br from-blue-500 to-indigo-600', iconName: 'CheckCircle', popular: true },
+  standard: { color: 'bg-gradient-to-br from-violet-500 to-purple-600', iconName: 'CheckCircle', popular: true },
   express: { color: 'bg-gradient-to-br from-green-500 to-emerald-600', iconName: 'Zap' },
   legal_review: { color: 'bg-gradient-to-br from-slate-500 to-slate-700', iconName: 'FileText' },
   executive: { color: 'bg-gradient-to-br from-purple-500 to-fuchsia-600', iconName: 'GitBranch', popular: true },
   amendment: { color: 'bg-gradient-to-br from-amber-500 to-orange-600', iconName: 'Edit' },
-  nda_fast_track: { color: 'bg-gradient-to-br from-cyan-500 to-blue-600', iconName: 'Zap' },
+  nda_fast_track: { color: 'bg-gradient-to-br from-cyan-500 to-violet-600', iconName: 'Zap' },
   vendor_onboarding: { color: 'bg-gradient-to-br from-teal-500 to-emerald-600', iconName: 'Activity' },
   termination: { color: 'bg-gradient-to-br from-red-500 to-rose-600', iconName: 'AlertTriangle' },
   renewal_opt_out: { color: 'bg-gradient-to-br from-orange-500 to-amber-600', iconName: 'RefreshCw' },
   risk_escalation: { color: 'bg-gradient-to-br from-rose-500 to-red-700', iconName: 'AlertTriangle' },
   multi_party: { color: 'bg-gradient-to-br from-violet-500 to-purple-700', iconName: 'GitBranch' },
-  procurement: { color: 'bg-gradient-to-br from-indigo-500 to-blue-700', iconName: 'FileText' },
+  procurement: { color: 'bg-gradient-to-br from-indigo-500 to-violet-700', iconName: 'FileText' },
 };
 
 /**

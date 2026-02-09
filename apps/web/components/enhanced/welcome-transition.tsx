@@ -29,7 +29,7 @@ const CyberGrid = React.memo(function CyberGrid() {
       <svg className="absolute inset-0 w-full h-full opacity-20">
         <defs>
           <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-purple-400" />
+            <path d="M 60 0 L 0 0 0 60" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-violet-400" />
           </pattern>
           <linearGradient id="gridFade" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" stopColor="white" stopOpacity="0" />
@@ -58,7 +58,7 @@ const CyberGrid = React.memo(function CyberGrid() {
 const GlowingOrbs = React.memo(function GlowingOrbs() {
   const orbs = useMemo(() => [
     { size: 300, color: "from-violet-600/30 to-purple-600/30", delay: 0, duration: 8, x: "20%", y: "20%" },
-    { size: 250, color: "from-purple-500/30 to-purple-500/30", delay: 1, duration: 10, x: "70%", y: "30%" },
+    { size: 250, color: "from-violet-500/30 to-purple-500/30", delay: 1, duration: 10, x: "70%", y: "30%" },
     { size: 200, color: "from-fuchsia-500/30 to-pink-500/30", delay: 2, duration: 12, x: "40%", y: "70%" },
     { size: 180, color: "from-violet-500/20 to-violet-500/20", delay: 0.5, duration: 9, x: "80%", y: "80%" },
   ], []);
@@ -141,7 +141,7 @@ const NeonRings = React.memo(function NeonRings() {
       {[1, 2, 3].map((ring) => (
         <motion.div
           key={ring}
-          className="absolute rounded-full border-2 border-purple-400/30"
+          className="absolute rounded-full border-2 border-violet-400/30"
           style={{
             width: 200 + ring * 150,
             height: 200 + ring * 150,
@@ -214,7 +214,7 @@ const logoVariants: Variants = {
 const features = [
   { icon: Shield, label: "Secure Access", color: "from-violet-400 to-violet-500" },
   { icon: BarChart3, label: "Analytics Ready", color: "from-violet-400 to-purple-500" },
-  { icon: Cpu, label: "AI Powered", color: "from-purple-400 to-violet-500" },
+  { icon: Cpu, label: "AI Powered", color: "from-violet-400 to-purple-500" },
   { icon: Globe, label: "Cloud Connected", color: "from-orange-400 to-red-500" },
 ];
 
@@ -299,7 +299,7 @@ export function WelcomeTransition({
           variants={logoVariants}
           className="relative mb-8"
         >
-          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-500 flex items-center justify-center shadow-2xl shadow-purple-500/50">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-3xl bg-gradient-to-br from-violet-500 via-purple-600 to-fuchsia-500 flex items-center justify-center shadow-2xl shadow-violet-500/50">
             <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-white" />
           </div>
           
@@ -336,7 +336,7 @@ export function WelcomeTransition({
           </motion.h1>
           
           <motion.p 
-            className="text-xl sm:text-2xl text-purple-200/90 font-medium"
+            className="text-xl sm:text-2xl text-violet-200/90 font-medium"
             variants={itemVariants}
           >
             Hello, <span className="text-white font-semibold">{greeting}</span>! 👋
@@ -411,7 +411,7 @@ export function WelcomeTransition({
             animate={{ x: [0, 4, 0] }}
             transition={{ duration: 1, repeat: Infinity }}
           >
-            <ChevronRight className="w-4 h-4 text-purple-400" />
+            <ChevronRight className="w-4 h-4 text-violet-400" />
           </motion.span>
           <span>Taking you to your dashboard</span>
           <motion.div
@@ -428,7 +428,7 @@ export function WelcomeTransition({
 
       {/* Corner decorations */}
       <motion.div
-        className="absolute top-8 left-8 text-purple-400/20"
+        className="absolute top-8 left-8 text-violet-400/20"
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1, rotate: 360 }}
         transition={{ duration: 2, delay: 0.5 }}
@@ -437,7 +437,7 @@ export function WelcomeTransition({
       </motion.div>
       
       <motion.div
-        className="absolute bottom-8 right-8 text-purple-400/20"
+        className="absolute bottom-8 right-8 text-violet-400/20"
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1, rotate: -360 }}
         transition={{ duration: 2, delay: 0.7 }}
@@ -491,13 +491,13 @@ export function QuickWelcome({ userName, duration = 1500, onComplete }: QuickWel
           animate={{ rotate: [0, 360] }}
           transition={{ duration: 1, ease: "easeInOut" }}
         >
-          <Sparkles className="w-16 h-16 text-purple-400" />
+          <Sparkles className="w-16 h-16 text-violet-400" />
         </motion.div>
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
           Welcome to ConTigo
         </h1>
         {displayName && (
-          <p className="text-purple-300 text-lg">
+          <p className="text-violet-300 text-lg">
             Hello, {displayName.charAt(0).toUpperCase() + displayName.slice(1)}!
           </p>
         )}

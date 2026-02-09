@@ -1,18 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currencyAdvancedService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const from = searchParams.get('from');
     const to = searchParams.get('to');
     const date = searchParams.get('date');
 
     if (!from || !to) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: from, to' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required parameters: from, to', 400);
     }
 
     let rate: number;
@@ -29,17 +26,11 @@ export async function GET(request: NextRequest) {
       timestamp = new Date();
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       from,
       to,
       rate,
       timestamp,
       source: 'exchangerate-api.io',
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch exchange rate' },
-      { status: 500 }
-    );
-  }
-}
+  });

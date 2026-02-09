@@ -40,9 +40,9 @@ function OrbitingIcon({ icon: Icon, delay, radius, colorClass }: OrbitingIconPro
 
 export default function TaxonomyAnalyticsLoading() {
   const orbitingIcons: OrbitingIconProps[] = [
-    { icon: Tag, delay: 0, radius: 80, colorClass: 'bg-purple-500/90' },
-    { icon: PieChart, delay: 2.67, radius: 80, colorClass: 'bg-purple-500/90' },
-    { icon: TrendingUp, delay: 5.33, radius: 80, colorClass: 'bg-purple-600/90' },
+    { icon: Tag, delay: 0, radius: 80, colorClass: 'bg-violet-500/90' },
+    { icon: PieChart, delay: 2.67, radius: 80, colorClass: 'bg-violet-500/90' },
+    { icon: TrendingUp, delay: 5.33, radius: 80, colorClass: 'bg-violet-600/90' },
   ];
 
   return (
@@ -61,7 +61,7 @@ export default function TaxonomyAnalyticsLoading() {
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.5 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-2xl"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-2xl"
           >
             <BarChart3 className="w-10 h-10 text-white" />
           </motion.div>
@@ -73,14 +73,14 @@ export default function TaxonomyAnalyticsLoading() {
           transition={{ delay: 0.4 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Taxonomy Analytics
           </h2>
           <div className="mt-3 flex items-center justify-center gap-1">
             {[0, 1, 2].map((i) => (
               <motion.div
                 key={i}
-                className="w-2 h-2 rounded-full bg-purple-500"
+                className="w-2 h-2 rounded-full bg-violet-500"
                 animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1, 0.8] }}
                 transition={{
                   duration: 1,

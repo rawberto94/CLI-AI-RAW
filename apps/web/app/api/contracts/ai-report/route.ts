@@ -4,10 +4,12 @@
  * POST /api/contracts/ai-report - Generate comprehensive AI report for multiple contracts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
@@ -57,7 +59,7 @@ interface AIReportResult {
   recommendations: string[];
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
 
   try {
@@ -65,17 +67,11 @@ export async function POST(request: NextRequest) {
     const { contractIds, reportType = 'comprehensive' } = body;
 
     if (!contractIds || !Array.isArray(contractIds) || contractIds.length === 0) {
-      return NextResponse.json(
-        { error: 'contractIds array is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'contractIds array is required', 400);
     }
 
     if (contractIds.length > 20) {
-      return NextResponse.json(
-        { error: 'Maximum 20 contracts per report' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Maximum 20 contracts per report', 400);
     }
 
     const tenantId = await getServerTenantId();
@@ -103,10 +99,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (contracts.length === 0) {
-      return NextResponse.json(
-        { error: 'No contracts found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'No contracts found', 404);
     }
 
     // Prepare contract summaries (used for both AI + mock flows)
@@ -123,7 +116,7 @@ export async function POST(request: NextRequest) {
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
       // Return mock report for demo purposes
-      return NextResponse.json(generateMockReport(contractSummaries));
+      return createSuccessResponse(ctx, generateMockReport(contractSummaries));
     }
 
     // Calculate portfolio stats
@@ -146,22 +139,15 @@ export async function POST(request: NextRequest) {
       portfolioAnalysis: portfolioStats,
     } satisfies AIReportResult;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       processingTime,
       report: result,
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Report generation failed',
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Report generation failed', 500);
   }
-}
+});
 
 /**
  * Contract input for report generation
@@ -378,8 +364,8 @@ Immediate action is recommended for contracts approaching expiration and those f
   };
 }
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return createSuccessResponse(ctx, {
     endpoint: '/api/contracts/ai-report',
     method: 'POST',
     description: 'Generate comprehensive AI report for multiple contracts',
@@ -402,4 +388,4 @@ export async function GET() {
       recommendations: 'Strategic recommendations',
     },
   });
-}
+});

@@ -1,11 +1,10 @@
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { RateCardBenchmarkingEngine } from './rate-card-benchmarking.service';
 import { SavingsOpportunityService } from './savings-opportunity.service';
 import { SupplierBenchmarkService } from './supplier-benchmark.service';
 import { notificationService } from './notification.service';
 
-const prisma = new PrismaClient();
 const rateCardBenchmarkingService = new RateCardBenchmarkingEngine(prisma);
 const savingsOpportunityService = new SavingsOpportunityService(prisma);
 const supplierBenchmarkService = new SupplierBenchmarkService(prisma);

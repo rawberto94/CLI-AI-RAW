@@ -202,7 +202,7 @@ export default function StateOfTheArtContractPage() {
           
           {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-500/10 rounded-full blur-2xl"></div>
         </motion.div>
 
         {/* Orchestrator Progress - Real-time updates */}
@@ -233,8 +233,8 @@ export default function StateOfTheArtContractPage() {
               label: 'Completeness', 
               value: `${Math.round(avgCompleteness)}%`, 
               icon: Target, 
-              color: 'from-purple-500 to-pink-500',
-              bgColor: 'bg-purple-50',
+              color: 'from-violet-500 to-pink-500',
+              bgColor: 'bg-violet-50',
               progress: avgCompleteness
             },
             { 
@@ -365,7 +365,7 @@ export default function StateOfTheArtContractPage() {
                                     setSelectedArtifactId(artifactId);
                                     setShowVersionHistory(true);
                                   }}
-                                  className="hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
+                                  className="hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300"
                                 >
                                   <History className="h-4 w-4 mr-2" />
                                   History
@@ -490,7 +490,7 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500"></div>
+                  <div className="h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500"></div>
                   <CardContent className="p-0">
                     <AIAnalysisPanel
                       contractId={contractId}
@@ -512,10 +512,10 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500"></div>
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <div className="h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-red-500"></div>
+                  <CardHeader className="bg-gradient-to-r from-violet-50 to-pink-50">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-600">
                         <Tags className="h-5 w-5 text-white" />
                       </div>
                       <div>
@@ -596,7 +596,7 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 to-purple-500"></div>
+                  <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500"></div>
                   <CardHeader>
                     <CardTitle>AI-Powered Insights</CardTitle>
                     <CardDescription>
@@ -629,11 +629,11 @@ export default function StateOfTheArtContractPage() {
                 className="w-full max-w-4xl"
               >
                 <Card className="border-0 shadow-2xl max-h-[90vh] overflow-auto">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <div className="h-1 bg-gradient-to-r from-violet-500 to-pink-500"></div>
+                  <CardHeader className="bg-gradient-to-r from-violet-50 to-pink-50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-600">
                           <History className="h-5 w-5 text-white" />
                         </div>
                         <CardTitle>Version History</CardTitle>
@@ -689,7 +689,7 @@ export default function StateOfTheArtContractPage() {
         >
           <Button
             onClick={() => setChatbotOpen(true)}
-            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 to-purple-600 hover:from-purple-700 hover:to-purple-700 relative group"
+            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 relative group"
           >
             <MessageSquare className="h-6 w-6 text-white" />
             <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />

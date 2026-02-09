@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { rateCardEntryService, rateCardManagementService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -7,16 +9,12 @@ import { prisma } from "@/lib/prisma";
  * POST /api/rate-cards/import/manual
  * Create a single rate card entry manually
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const data = await request.json();
     const { tenantId, ...rateCardData } = data;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400)
     }
 
     // Validate required fields
@@ -24,13 +22,7 @@ export async function POST(request: NextRequest) {
     const missingFields = requiredFields.filter(field => !rateCardData[field]);
 
     if (missingFields.length > 0) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: `Missing required fields: ${missingFields.join(', ')}` 
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Missing required fields: ${missingFields.join(', 400)
     }
 
     // Create rate card entry
@@ -69,15 +61,9 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: rateCardEntry
     });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
-  }
-}
+  });

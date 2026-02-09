@@ -52,7 +52,7 @@ const colorClasses = {
   amber: 'bg-amber-500',
   red: 'bg-red-500',
   violet: 'bg-violet-500',
-  cyan: 'bg-purple-500',
+  cyan: 'bg-violet-500',
 };
 
 const gradientClasses = {
@@ -61,7 +61,7 @@ const gradientClasses = {
   amber: 'bg-gradient-to-r from-amber-400 to-amber-600',
   red: 'bg-gradient-to-r from-red-400 to-red-600',
   violet: 'bg-gradient-to-r from-violet-400 to-violet-600',
-  cyan: 'bg-gradient-to-r from-purple-400 to-purple-600',
+  cyan: 'bg-gradient-to-r from-violet-400 to-purple-600',
 };
 
 const sizeClasses = {
@@ -156,7 +156,7 @@ const strokeColors = {
   amber: 'stroke-amber-500',
   red: 'stroke-red-500',
   violet: 'stroke-violet-500',
-  cyan: 'stroke-purple-500',
+  cyan: 'stroke-violet-500',
 };
 
 export const CircularProgress = memo(function CircularProgress({

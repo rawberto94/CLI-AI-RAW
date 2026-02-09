@@ -565,7 +565,7 @@ export function SmartMetadataValidator({
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 text-purple-600 animate-spin mx-auto mb-3" />
+          <Loader2 className="h-8 w-8 text-violet-600 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading metadata for validation...</p>
         </div>
       </div>
@@ -577,7 +577,7 @@ export function SmartMetadataValidator({
       {/* Header with Summary */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl">
+          <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
             <Shield className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -608,7 +608,7 @@ export function SmartMetadataValidator({
           <Button
             onClick={saveMetadata}
             disabled={saving || summary.pending > 0}
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-violet-600 hover:bg-violet-700"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -646,10 +646,10 @@ export function SmartMetadataValidator({
             <p className="text-xs text-violet-600">Modified</p>
           </CardContent>
         </Card>
-        <Card className="border-purple-200 bg-purple-50/50">
+        <Card className="border-violet-200 bg-violet-50/50">
           <CardContent className="p-4 text-center">
-            <p className="text-2xl font-bold text-purple-600">{Math.round(summary.overallConfidence)}%</p>
-            <p className="text-xs text-purple-600">AI Confidence</p>
+            <p className="text-2xl font-bold text-violet-600">{Math.round(summary.overallConfidence)}%</p>
+            <p className="text-xs text-violet-600">AI Confidence</p>
           </CardContent>
         </Card>
       </div>

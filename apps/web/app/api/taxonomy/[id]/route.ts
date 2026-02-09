@@ -9,10 +9,12 @@
  * ✅ Safe deletion with child handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { taxonomyService } from 'data-orchestration/services';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -75,13 +77,10 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: "Tenant ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const { searchParams } = new URL(request.url);
@@ -100,13 +99,7 @@ export async function GET(
     });
 
     if (!category) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Category not found",
-        },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
     }
 
     // Get contract count for this category
@@ -114,7 +107,7 @@ export async function GET(
       where: { tenantId, category: category.name },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         ...category,
@@ -123,14 +116,7 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch taxonomy category",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -144,13 +130,10 @@ export async function PUT(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: "Tenant ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const body: TaxonomyCategoryUpdate = await request.json();
@@ -161,13 +144,7 @@ export async function PUT(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Category not found",
-        },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
     }
 
     // Check for duplicate name if changing
@@ -182,14 +159,7 @@ export async function PUT(
       });
 
       if (duplicate) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Duplicate category",
-            details: `A category named "${body.name}" already exists at this level`,
-          },
-          { status: 409 }
-        );
+        return createErrorResponse(ctx, 'CONFLICT', 'Duplicate category', 409);
       }
     }
 
@@ -212,14 +182,7 @@ export async function PUT(
       } else {
         // Prevent circular reference
         if (effectiveParentId === id) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Invalid parent",
-              details: "Category cannot be its own parent",
-            },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid parent', 400);
         }
 
         const parent = await prisma.taxonomyCategory.findFirst({
@@ -227,26 +190,12 @@ export async function PUT(
         });
 
         if (!parent) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Invalid parent",
-              details: "Parent category not found",
-            },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid parent', 400);
         }
 
         // Check if parent is a descendant (would create circular reference)
         if (parent.path.startsWith(existing.path + "/")) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Invalid parent",
-              details: "Cannot move category under its own descendant",
-            },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid parent', 400);
         }
 
         newPath = `${parent.path}/${effectiveName}`;
@@ -294,7 +243,7 @@ export async function PUT(
       source: 'api:taxonomy/[id]',
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         ...updated,
@@ -303,14 +252,7 @@ export async function PUT(
       message: "Category updated successfully",
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to update taxonomy category",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -324,13 +266,10 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: "Tenant ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const { searchParams } = new URL(request.url);
@@ -348,29 +287,14 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Category not found",
-        },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
     }
 
     // Check for children
     const hasChildren = existing.children.length > 0;
 
     if (hasChildren && !deleteChildren && !reassignTo) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Category has children",
-          details:
-            "Use deleteChildren=true to delete all children, or reassignTo=[id] to move children to another category",
-          childCount: existing.children.length,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Category has children', 400);
     }
 
     // Handle children
@@ -397,13 +321,7 @@ export async function DELETE(
         });
 
         if (!target) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Reassign target not found",
-            },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Reassign target not found', 400);
         }
 
         // Move children to new parent
@@ -445,7 +363,7 @@ export async function DELETE(
       source: 'api:taxonomy/[id]',
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: "Category deleted successfully",
       childrenHandled: hasChildren
@@ -455,14 +373,7 @@ export async function DELETE(
         : "none",
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to delete taxonomy category",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

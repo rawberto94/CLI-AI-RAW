@@ -253,9 +253,9 @@ export function MetricCard({
       text: 'text-rose-600'
     },
     purple: {
-      bg: 'bg-purple-50',
-      iconBg: 'from-purple-500 to-pink-500',
-      text: 'text-purple-600'
+      bg: 'bg-violet-50',
+      iconBg: 'from-violet-500 to-pink-500',
+      text: 'text-violet-600'
     },
     slate: {
       bg: 'bg-slate-50',
@@ -479,7 +479,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
                 className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded font-medium">
+                  <span className="text-[10px] px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded font-medium">
                     {party.role}
                   </span>
                   <span className="text-xs font-medium text-slate-700">{party.name}</span>
@@ -563,9 +563,9 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
             {data.definitions.map((def, i) => (
               <div 
                 key={i}
-                className="px-2.5 py-2 bg-purple-50/50 rounded border border-indigo-100"
+                className="px-2.5 py-2 bg-violet-50/50 rounded border border-indigo-100"
               >
-                <span className="text-xs font-medium text-purple-700">&ldquo;{def.term}&rdquo;</span>
+                <span className="text-xs font-medium text-violet-700">&ldquo;{def.term}&rdquo;</span>
                 <p className="mt-0.5 text-[10px] text-slate-600">{def.meaning}</p>
               </div>
             ))}
@@ -602,7 +602,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
         <ExpandableSection 
           title="Additional Information" 
           icon={Sparkles}
-          badge={<Badge className="ml-2 text-[10px] bg-purple-100 text-purple-700">AI Extracted</Badge>}
+          badge={<Badge className="ml-2 text-[10px] bg-violet-100 text-violet-700">AI Extracted</Badge>}
         >
           <div className="space-y-2">
             {Object.entries(data.additionalData).map(([key, value], i) => {
@@ -612,9 +612,9 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
               return (
                 <div 
                   key={i}
-                  className="flex items-start gap-3 p-3 bg-purple-50/50 rounded-lg"
+                  className="flex items-start gap-3 p-3 bg-violet-50/50 rounded-lg"
                 >
-                  <span className="text-sm text-purple-600 font-medium capitalize shrink-0">
+                  <span className="text-sm text-violet-600 font-medium capitalize shrink-0">
                     {key.replace(/([A-Z])/g, ' $1').trim()}:
                   </span>
                   <span className="text-sm text-slate-700">{displayValue}</span>
@@ -762,7 +762,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
               layout
               className={cn(
                 "border rounded-lg overflow-hidden transition-colors",
-                isExpanded ? "border-indigo-200 bg-purple-50/30" : "border-slate-100 bg-white hover:border-slate-200"
+                isExpanded ? "border-indigo-200 bg-violet-50/30" : "border-slate-100 bg-white hover:border-slate-200"
               )}
             >
               <button
@@ -804,7 +804,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           <textarea
                             value={editContent}
                             onChange={(e) => setEditContent(e.target.value)}
-                            className="w-full min-h-[80px] p-2 text-xs border border-indigo-200 rounded focus:ring-1 focus:ring-purple-500 focus:border-purple-500 outline-none resize-y"
+                            className="w-full min-h-[80px] p-2 text-xs border border-indigo-200 rounded focus:ring-1 focus:ring-violet-500 focus:border-violet-500 outline-none resize-y"
                             autoFocus
                           />
                           <div className="flex items-center justify-end gap-1.5">
@@ -879,7 +879,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <div className="flex flex-wrap gap-1">
                             {clause.crossReferences.map((ref, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 text-[10px] text-purple-600 bg-purple-50 rounded px-1.5 py-0.5">
+                              <span key={i} className="inline-flex items-center gap-1 text-[10px] text-violet-600 bg-violet-50 rounded px-1.5 py-0.5">
                                 <span className="font-mono">{ref.from}</span>
                                 <ChevronRight className="h-2.5 w-2.5" />
                                 <span className="font-mono">{ref.to}</span>
@@ -897,7 +897,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <div className="flex flex-wrap gap-1">
                             {clause.definedTermsUsed.map((term, i) => (
-                              <Badge key={i} variant="outline" className="text-[10px] border-purple-200 text-purple-600">
+                              <Badge key={i} variant="outline" className="text-[10px] border-violet-200 text-violet-600">
                                 {term}
                               </Badge>
                             ))}
@@ -1006,7 +1006,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="text-xs text-slate-500">Custom clause types in this contract:</span>
           {data.customClauseTypes.map((type, i) => (
-            <Badge key={i} className="text-[10px] bg-purple-100 text-purple-700">
+            <Badge key={i} className="text-[10px] bg-violet-100 text-violet-700">
               {type}
             </Badge>
           ))}
@@ -1267,20 +1267,20 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
         <ExpandableSection 
           title="Payment Schedule" 
           icon={Calendar}
-          badge={<span className="ml-1 text-[10px] text-purple-600">{data.yearlyBreakdown.length}yr</span>}
+          badge={<span className="ml-1 text-[10px] text-violet-600">{data.yearlyBreakdown.length}yr</span>}
           defaultOpen
         >
           <div className="space-y-2">
             {data.yearlyBreakdown.map((yearData, yearIdx) => (
-              <div key={yearIdx} className="border border-purple-100 rounded overflow-hidden">
-                <div className="bg-purple-50/50 px-2.5 py-1.5 border-b border-purple-100 flex items-center justify-between">
+              <div key={yearIdx} className="border border-violet-100 rounded overflow-hidden">
+                <div className="bg-violet-50/50 px-2.5 py-1.5 border-b border-violet-100 flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-5 h-5 rounded-full bg-purple-600 text-white flex items-center justify-center font-bold text-[10px]">
+                    <span className="w-5 h-5 rounded-full bg-violet-600 text-white flex items-center justify-center font-bold text-[10px]">
                       {yearData.year}
                     </span>
-                    <span className="text-xs font-medium text-purple-800">{yearData.label}</span>
+                    <span className="text-xs font-medium text-violet-800">{yearData.label}</span>
                   </div>
-                  <span className="text-xs font-bold text-purple-700">
+                  <span className="text-xs font-bold text-violet-700">
                     {formatCurrency(yearData.subtotal, currency)}
                   </span>
                 </div>
@@ -1290,10 +1290,10 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
                     {yearData.payments.map((payment, paymentIdx) => (
                       <div 
                         key={paymentIdx} 
-                        className="flex items-center justify-between px-2 py-1.5 bg-white rounded border border-purple-50 text-xs"
+                        className="flex items-center justify-between px-2 py-1.5 bg-white rounded border border-violet-50 text-xs"
                       >
                         <div className="flex items-center gap-2">
-                          <span className="w-4 h-4 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-[10px] font-medium">
+                          <span className="w-4 h-4 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-[10px] font-medium">
                             {paymentIdx + 1}
                           </span>
                           <div>
@@ -1836,9 +1836,9 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
   const getObligationTypeConfig = (type: Obligation['type']) => {
     return {
       'deliverable': { bg: 'bg-violet-50', text: 'text-violet-600', label: 'Deliverable' },
-      'sla': { bg: 'bg-purple-50', text: 'text-purple-600', label: 'SLA' },
+      'sla': { bg: 'bg-violet-50', text: 'text-violet-600', label: 'SLA' },
       'milestone': { bg: 'bg-amber-50', text: 'text-amber-600', label: 'Milestone' },
-      'reporting': { bg: 'bg-purple-50', text: 'text-purple-600', label: 'Reporting' },
+      'reporting': { bg: 'bg-violet-50', text: 'text-violet-600', label: 'Reporting' },
       'compliance': { bg: 'bg-violet-50', text: 'text-violet-600', label: 'Compliance' },
       'other': { bg: 'bg-slate-50', text: 'text-slate-500', label: 'Other' }
     }[type] || { bg: 'bg-slate-50', text: 'text-slate-500', label: type };
@@ -1878,7 +1878,7 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
           </span>
         </div>
         <div className="flex gap-1">
-          <span className="text-[10px] px-1.5 py-0.5 bg-purple-50 text-purple-600 rounded">
+          <span className="text-[10px] px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded">
             {data.obligations.filter(o => o.type === 'sla').length} SLAs
           </span>
           <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded">
@@ -1990,7 +1990,7 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
                       </div>
                       <p className="text-[10px] text-slate-500 mt-0.5 line-clamp-2">{obl.description}</p>
                       {obl.slaCriteria && (
-                        <p className="text-[10px] text-purple-500 mt-0.5">
+                        <p className="text-[10px] text-violet-500 mt-0.5">
                           SLA: {obl.slaCriteria.metric} - {obl.slaCriteria.target}{obl.slaCriteria.unit || ''}
                         </p>
                       )}
@@ -2078,7 +2078,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Calendar className="h-4 w-4 text-purple-500" />
+          <Calendar className="h-4 w-4 text-violet-500" />
           <h3 className="text-sm font-semibold text-slate-800">Renewal & Termination</h3>
         </div>
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded", 
@@ -2090,7 +2090,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
 
       {/* Summary */}
       {data.summary && (
-        <div className="px-3 py-2 bg-purple-50/50 rounded border border-indigo-100">
+        <div className="px-3 py-2 bg-violet-50/50 rounded border border-indigo-100">
           <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
@@ -2139,9 +2139,9 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
           </div>
         )}
         {data.renewalTerms && (
-          <div className="px-2.5 py-2 bg-purple-50 rounded border border-indigo-100">
-            <p className="text-[10px] text-purple-500 uppercase">Period</p>
-            <p className="text-sm font-bold text-purple-600">{data.renewalTerms.renewalPeriod}</p>
+          <div className="px-2.5 py-2 bg-violet-50 rounded border border-indigo-100">
+            <p className="text-[10px] text-violet-500 uppercase">Period</p>
+            <p className="text-sm font-bold text-violet-600">{data.renewalTerms.renewalPeriod}</p>
           </div>
         )}
       </div>
@@ -2267,7 +2267,7 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Scale className="h-4 w-4 text-purple-500" />
+          <Scale className="h-4 w-4 text-violet-500" />
           <h3 className="text-sm font-semibold text-slate-800">Negotiation Intel</h3>
         </div>
         <span className={cn("text-[10px] px-1.5 py-0.5 rounded", leverageConfig.bg, leverageConfig.text)}>
@@ -2277,7 +2277,7 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
 
       {/* Summary */}
       {data.summary && (
-        <div className="px-3 py-2 bg-purple-50/50 rounded border border-purple-100">
+        <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
           <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
@@ -2468,7 +2468,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Edit3 className="h-4 w-4 text-purple-500" />
+          <Edit3 className="h-4 w-4 text-violet-500" />
           <h3 className="text-sm font-semibold text-slate-800">Amendments</h3>
           <span className="text-[10px] text-slate-400">{data.amendments?.length || 0} tracked</span>
         </div>
@@ -2481,7 +2481,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
 
       {/* Summary */}
       {data.summary && (
-        <div className="px-3 py-2 bg-purple-50/50 rounded border border-indigo-100">
+        <div className="px-3 py-2 bg-violet-50/50 rounded border border-indigo-100">
           <p className="text-xs text-slate-600 break-words">{data.summary}</p>
         </div>
       )}
@@ -2498,7 +2498,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
             {data.amendments.map((amendment) => (
               <div key={amendment.id} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] px-1 py-0.5 bg-purple-50 text-purple-600 rounded">
+                  <span className="text-[10px] px-1 py-0.5 bg-violet-50 text-violet-600 rounded">
                     #{amendment.amendmentNumber}
                   </span>
                   <span className="text-xs font-medium text-slate-700 truncate">{amendment.title}</span>
@@ -2714,7 +2714,7 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
               {data.escalationPath.map((level, i) => (
                 <div key={i} className="relative pl-6">
                   <div className="absolute left-0 w-4 h-4 rounded-full bg-white border border-indigo-400 flex items-center justify-center">
-                    <span className="text-[8px] font-bold text-purple-500">{level.level}</span>
+                    <span className="text-[8px] font-bold text-violet-500">{level.level}</span>
                   </div>
                   <div className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
                     <div className="flex items-center justify-between">

@@ -13,8 +13,9 @@
  * - Recommendations
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { customContractAnalysis } from '@/lib/ai/custom-analysis';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface SummarizeRequest {
   includeRisks?: boolean;
@@ -28,6 +29,7 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
+  const ctx = getApiContext(request);
   const contractId = params.id;
 
   try {
@@ -57,10 +59,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get contract text
@@ -77,10 +76,7 @@ export async function POST(
     }
 
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'No contract text available for summarization' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No contract text available for summarization', 400);
     }
 
     // Generate comprehensive summary using AI
@@ -214,7 +210,7 @@ Structure your response as JSON with the following format:
       };
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       summary,
       metadata: {
@@ -227,12 +223,6 @@ Structure your response as JSON with the following format:
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to generate summary',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -68,8 +68,8 @@ const MIME_TYPE_ICONS: Record<string, React.ReactNode> = {
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': <FileText className="h-5 w-5 text-violet-500" />,
   'application/vnd.ms-excel': <FileSpreadsheet className="h-5 w-5 text-green-500" />,
   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': <FileSpreadsheet className="h-5 w-5 text-green-500" />,
-  'image/jpeg': <FileImage className="h-5 w-5 text-purple-500" />,
-  'image/png': <FileImage className="h-5 w-5 text-purple-500" />,
+  'image/jpeg': <FileImage className="h-5 w-5 text-violet-500" />,
+  'image/png': <FileImage className="h-5 w-5 text-violet-500" />,
   'text/plain': <FileText className="h-5 w-5 text-gray-500" />,
   'text/csv': <FileSpreadsheet className="h-5 w-5 text-green-500" />,
 };

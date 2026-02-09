@@ -307,7 +307,7 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, icon: Icon, actions, badge }: PageHeaderProps) {
   const badgeStyles = {
     new: 'bg-green-100 text-green-700 border-green-200',
-    beta: 'bg-purple-100 text-purple-700 border-purple-200',
+    beta: 'bg-violet-100 text-violet-700 border-violet-200',
     updated: 'bg-violet-100 text-violet-700 border-violet-200',
   };
 

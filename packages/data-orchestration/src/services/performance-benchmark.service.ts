@@ -1,8 +1,7 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { Worker } from 'worker_threads';
 import { EventEmitter } from 'events';
 
-const prisma = new PrismaClient();
 
 interface BenchmarkCalculationOptions {
   tenantId: string;

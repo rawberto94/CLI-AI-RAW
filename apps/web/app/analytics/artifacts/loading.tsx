@@ -26,7 +26,7 @@ export default function ArtifactAnalyticsLoading() {
               <FileText className="h-4 w-4 text-violet-600" />
             </div>
             <div className="absolute -right-3 top-1/2 -translate-y-1/2 p-1.5 bg-white rounded-full shadow-lg">
-              <PieChart className="h-4 w-4 text-purple-600" />
+              <PieChart className="h-4 w-4 text-violet-600" />
             </div>
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-1.5 bg-white rounded-full shadow-lg">
               <TrendingUp className="h-4 w-4 text-violet-500" />

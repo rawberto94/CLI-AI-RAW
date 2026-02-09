@@ -1,5 +1,9 @@
 # External Contract Source Integrations
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for current integration documentation. Retained for historical reference only.
+
+---
+
 This document provides comprehensive guidance for configuring and using the Contract Source Integration system, which enables automatic synchronization of contracts from external storage systems.
 
 ## Table of Contents

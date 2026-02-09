@@ -306,7 +306,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
