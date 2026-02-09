@@ -3,7 +3,7 @@
  * Provides endpoints for monitoring and managing SSE connections
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { sseConnectionManager } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 export const runtime = 'nodejs';

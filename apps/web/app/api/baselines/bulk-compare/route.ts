@@ -4,7 +4,7 @@
  * Compare all rate card entries against baselines
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { baselineManagementService } from 'data-orchestration/services';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";

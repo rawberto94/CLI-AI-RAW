@@ -5,7 +5,7 @@
  * Returns notifications for benchmark updates and market shifts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { benchmarkNotificationService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';

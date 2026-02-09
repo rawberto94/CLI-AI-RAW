@@ -3,7 +3,7 @@
  * Provides performance metrics and optimization insights
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { performanceOptimizationService } from 'data-orchestration/services';
 import { queryOptimizerService } from 'data-orchestration/services';

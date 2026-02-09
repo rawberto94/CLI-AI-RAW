@@ -4,7 +4,7 @@
  * Calculate potential savings compared to the best rate in the market
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';

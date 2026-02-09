@@ -14,7 +14,7 @@
  * - Provides detailed import report
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";

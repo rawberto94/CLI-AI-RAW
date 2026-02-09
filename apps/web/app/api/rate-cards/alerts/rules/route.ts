@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { AlertManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';

@@ -5,7 +5,7 @@
  * Tokens are set as cookies and must be included in request headers.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { setCSRFCookie } from '@/lib/csrf';
 import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';

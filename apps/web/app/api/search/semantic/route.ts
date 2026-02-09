@@ -1,5 +1,5 @@
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { hybridSearch, crossContractSearch } from '@/lib/rag/advanced-rag.service'
 import { getServerTenantId } from '@/lib/tenant-server'
 import { getServerSession } from '@/lib/auth'

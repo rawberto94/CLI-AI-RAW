@@ -4,7 +4,7 @@
  * Manage individual saved filter presets
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';

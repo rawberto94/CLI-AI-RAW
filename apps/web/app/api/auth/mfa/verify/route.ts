@@ -3,7 +3,7 @@
  * Verify TOTP code and enable MFA
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 

@@ -3,7 +3,7 @@
  * Returns list of configured SSO providers for the login UI
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getConfiguredProviders } from "@/lib/auth";
 import { getApiContext, createSuccessResponse } from "@/lib/api-middleware";
 

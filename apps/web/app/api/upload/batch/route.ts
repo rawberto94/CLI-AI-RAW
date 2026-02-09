@@ -1,4 +1,3 @@
-import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getServerSession } from '@/lib/auth'

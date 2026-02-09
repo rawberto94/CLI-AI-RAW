@@ -10,7 +10,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Note: Uses customSettings JSON field in UserPreferences to store favorites
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 import { auditTrailService } from 'data-orchestration/services';

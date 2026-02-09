@@ -6,7 +6,7 @@
  * PUT: Test OCR provider connection
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 

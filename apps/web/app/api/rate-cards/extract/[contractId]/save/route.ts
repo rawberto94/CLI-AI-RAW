@@ -4,7 +4,7 @@
  * Saves reviewed and edited rate cards to the database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardExtractionService } from 'data-orchestration/services';

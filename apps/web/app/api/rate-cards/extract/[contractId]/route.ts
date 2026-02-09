@@ -4,7 +4,7 @@
  * Extracts rate cards from a contract using AI
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardExtractionService } from 'data-orchestration/services';
 import { roleStandardizationService } from 'data-orchestration/services';

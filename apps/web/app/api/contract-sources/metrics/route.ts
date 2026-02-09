@@ -4,7 +4,7 @@
  * Returns aggregated sync statistics and health metrics for all contract sources.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { subDays, subHours } from "date-fns";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';

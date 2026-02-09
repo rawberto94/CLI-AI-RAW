@@ -8,8 +8,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { BoxConnector } from '@/lib/integrations/connectors/box.connector';
 import { auditTrailService } from 'data-orchestration/services';
+import { withApiHandler } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (request: NextRequest) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
@@ -93,4 +94,4 @@ export async function GET(request: NextRequest) {
       new URL(`/settings/contract-sources?error=${encodeURIComponent(message)}`, request.url)
     );
   }
-}
+});

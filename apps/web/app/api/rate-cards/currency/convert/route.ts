@@ -4,7 +4,7 @@
  * Converts currency amounts for rate card preview
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Simple conversion rates (in production, use a real-time FX API)

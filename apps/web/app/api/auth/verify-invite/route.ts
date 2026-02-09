@@ -3,7 +3,7 @@
  * Validates invitation tokens and returns tenant info
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auditTrailService } from 'data-orchestration/services';
 import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';

@@ -4,7 +4,7 @@
  * Checks for similar existing rate card entries
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';

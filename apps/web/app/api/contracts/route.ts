@@ -11,7 +11,7 @@
  * MULTI-TENANT: Uses getTenantIdFromRequest for proper tenant isolation
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { ContractStatus, type Prisma } from '@prisma/client';
 import { contractService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from "@/lib/cache";

@@ -6,7 +6,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Provides insights into AI extraction performance based on user feedback
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'

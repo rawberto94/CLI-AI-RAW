@@ -6,7 +6,7 @@
  * contextual answers with source citations.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { hybridSearch, type SearchFilters } from '@/lib/rag/advanced-rag.service';
 import OpenAI from 'openai';

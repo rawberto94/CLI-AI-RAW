@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';

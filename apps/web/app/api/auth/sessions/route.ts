@@ -6,7 +6,7 @@
  * DELETE /api/auth/sessions - Revoke all sessions except current
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
