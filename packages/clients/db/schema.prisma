@@ -206,8 +206,8 @@ model User {
   contractAccess      ContractUserAccess[]
   assignedObligations Obligation[]          @relation("ObligationAssignee")
   calendarSyncTokens  CalendarSyncToken[]
-  accounts             Account[]
-  authSessions         Session[]
+  accounts            Account[]
+  authSessions        Session[]
 
   // OCR Review relations
   ocrReviewsAssigned OcrReviewItem[] @relation("OcrReviewAssignee")
@@ -257,25 +257,25 @@ model VerificationToken {
 }
 
 model PasswordResetToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([userId])
 }
 
 model EmailVerificationToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
-  token     String   @unique
+  token     String    @unique
   email     String
   expiresAt DateTime
   usedAt    DateTime?
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
 
   @@index([token])
   @@index([userId])
