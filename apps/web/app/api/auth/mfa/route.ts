@@ -134,7 +134,33 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       }
       
       case 'disable': {
-        // Disable MFA
+        // L21 FIX: Require current TOTP code or password to disable MFA
+        if (!token && !body.password) {
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Current TOTP code or password required to disable MFA', 400);
+        }
+
+        // Verify the user can disable (via TOTP or password)
+        if (token) {
+          const isValid = await verifyMFAToken(session.user.id, token);
+          if (!isValid) {
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid verification code', 400);
+          }
+        } else if (body.password) {
+          const { compare } = await import('bcryptjs');
+          const { prisma } = await import('@/lib/prisma');
+          const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { passwordHash: true },
+          });
+          if (!user?.passwordHash) {
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Password verification not available for SSO accounts', 400);
+          }
+          const valid = await compare(body.password, user.passwordHash);
+          if (!valid) {
+            return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid password', 400);
+          }
+        }
+
         await disableMFA(session.user.id);
         
         await auditLog({

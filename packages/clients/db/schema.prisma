@@ -175,7 +175,7 @@ model User {
   firstName     String?
   lastLoginAt   DateTime?
   lastName      String?
-  passwordHash  String
+  passwordHash  String? // Nullable for SSO-only users
   status        UserStatus @default(ACTIVE)
   tenantId      String
   role          String     @default("user") // Added for auth compatibility
@@ -206,6 +206,8 @@ model User {
   contractAccess      ContractUserAccess[]
   assignedObligations Obligation[]          @relation("ObligationAssignee")
   calendarSyncTokens  CalendarSyncToken[]
+  accounts             Account[]
+  authSessions         Session[]
 
   // OCR Review relations
   ocrReviewsAssigned OcrReviewItem[] @relation("OcrReviewAssignee")
@@ -214,6 +216,69 @@ model User {
   @@index([email])
   @@index([tenantId])
   @@index([status])
+}
+
+// NextAuth PrismaAdapter required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model EmailVerificationToken {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  email     String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
 }
 
 model Role {

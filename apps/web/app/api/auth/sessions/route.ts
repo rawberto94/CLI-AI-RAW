@@ -4,6 +4,13 @@
  * GET /api/auth/sessions - List active sessions
  * DELETE /api/auth/sessions/[id] - Revoke a specific session
  * DELETE /api/auth/sessions - Revoke all sessions except current
+ * 
+ * NOTE (L19): This uses the `UserSession` Prisma model for manual device/session
+ * tracking. This is SEPARATE from NextAuth's JWT-based session strategy.
+ * NextAuth does NOT populate UserSession — it is written to manually during
+ * login (via signIn callback) and cleaned up here.
+ * The NextAuth `Session` model (added for PrismaAdapter SSO support) is also
+ * separate; it would only be used if the session strategy were changed to "database".
  */
 
 import { NextRequest } from 'next/server';

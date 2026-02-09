@@ -19,7 +19,7 @@ import { cookies } from 'next/headers';
 // Configuration
 // ============================================================================
 
-const CSRF_COOKIE_NAME = '__csrf';
+const CSRF_COOKIE_NAME = 'csrf_token'; // L20 FIX: Aligned with middleware and csrf-constants.ts
 const CSRF_HEADER_NAME = 'x-csrf-token';
 const CSRF_FORM_FIELD = 'csrf_token';
 const TOKEN_LENGTH = 32;

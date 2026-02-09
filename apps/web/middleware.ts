@@ -28,7 +28,14 @@ const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
 // API routes exempt from CSRF enforcement
 const CSRF_EXEMPT_PATHS = [
-  '/api/auth',      // NextAuth callbacks need to work without CSRF header
+  '/api/auth/callback',      // NextAuth OAuth callbacks need to work without CSRF header
+  '/api/auth/session',       // NextAuth session endpoint
+  '/api/auth/csrf',          // NextAuth CSRF token endpoint  
+  '/api/auth/signin',        // NextAuth signin handler
+  '/api/auth/signout',       // NextAuth signout handler
+  '/api/auth/providers',     // NextAuth providers list
+  '/api/auth/error',         // NextAuth error handler
+  '/api/auth/mfa',           // MFA verify during login (half-authenticated state)
   '/api/health',
   '/api/monitoring/health',
   '/api/webhooks',
@@ -194,6 +201,7 @@ async function checkRateLimit(
 
 // Tiered rate limits by endpoint type and user role
 const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: number }> = {
+  'auth': { anonymous: 10, user: 20, admin: 50 },      // M14: Strict auth rate limits
   'ai': { anonymous: 10, user: 50, admin: 200 },
   'upload': { anonymous: 5, user: 20, admin: 100 },
   'export': { anonymous: 5, user: 30, admin: 100 },
@@ -202,6 +210,7 @@ const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: numb
 };
 
 function getEndpointCategory(pathname: string): string {
+  if (pathname.startsWith('/api/auth/')) return 'auth'; // M14: Auth-specific rate limits
   if (pathname.includes('/ai/')) return 'ai';
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
@@ -230,6 +239,8 @@ const publicPaths = [
   "/auth/error",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/verify-email",
+  "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
   "/api/auth",
 ];
 
@@ -296,7 +307,7 @@ export default auth((req) => {
         { 
           status: 429,
           headers: {
-            'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
+            'X-RateLimit-Limit': String(maxRequests), // M15: Show actual tiered limit, not global
             'X-RateLimit-Remaining': '0',
             'Retry-After': '60',
             'X-Request-ID': requestId,
@@ -310,6 +321,27 @@ export default auth((req) => {
   const addTracingHeaders = (response: NextResponse): NextResponse => {
     response.headers.set('X-Request-ID', requestId);
     response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
+    // M10-M12 FIX: Apply security headers to ALL responses (API + pages)
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    // M11: HSTS — enforce HTTPS in production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    // M12: Content-Security-Policy
+    response.headers.set('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: wss:",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '));
     return response;
   };
 
@@ -342,6 +374,24 @@ export default auth((req) => {
     const signInUrl = new URL("/auth/signin", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // C1 FIX: MFA enforcement — redirect to MFA verify if required but not verified
+  const mfaRequired = (req.auth.user as any)?.mfaRequired;
+  const mfaVerified = (req.auth.user as any)?.mfaVerified;
+  const mfaPendingPaths = ['/auth/mfa-verify', '/api/auth/mfa', '/api/auth/session', '/api/auth/signout', '/api/auth/csrf'];
+  
+  if (mfaRequired && !mfaVerified && !mfaPendingPaths.some(p => pathname.startsWith(p))) {
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json(
+        { error: "MFA Required", message: "Multi-factor authentication verification required", code: "MFA_REQUIRED", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
+    const mfaUrl = new URL("/auth/mfa-verify", req.url);
+    mfaUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(mfaUrl);
   }
 
   // CSRF enforcement for state-changing API requests
@@ -453,15 +503,9 @@ export default auth((req) => {
     return addTracingHeaders(response);
   }
 
-  // Apply security headers
+  // Apply security headers to page responses
   const response = NextResponse.next();
-  response.headers.set('X-Request-ID', requestId);
-  response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
-
-  return response;
+  return addTracingHeaders(response);
 });
 
 // Configure which routes require authentication
