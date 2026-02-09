@@ -305,6 +305,7 @@ export { sseConnectionManager, sseConnectionManager as sseConnectionManagerServi
 export { dataSanitizationService } from './data-sanitization.service';
 export { artifactValidationService } from './artifact-validation.service';
 export { conversationMemoryService } from './conversation-memory.service';
+export { knowledgeGraphService } from './knowledge-graph.service';
 
 // Real-time Extraction Streaming Services
 export {

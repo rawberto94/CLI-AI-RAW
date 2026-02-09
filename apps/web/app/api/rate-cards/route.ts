@@ -265,7 +265,6 @@ function returnMockRateCards(searchParams: URLSearchParams) {
  * Supports mock data mode via x-data-mode header
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
-  const ctx = getApiContext(request);
   try {
     const searchParams = request.nextUrl.searchParams;
     

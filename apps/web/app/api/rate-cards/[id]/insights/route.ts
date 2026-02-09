@@ -35,7 +35,7 @@ try {
       data: insights,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate insights',
-        message: error instanceof Error ? error.message : 'Unknown error', 500);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to generate insights: ${message}`, 500);
   }
 }

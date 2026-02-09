@@ -17,8 +17,12 @@ function isNextBuildProcess() {
 
 // Keep production builds clean by silencing server-side logs that can fire during
 // Next's "Collecting page data" phase (child processes won't always match argv heuristics).
-if (isNextBuildProcess() && !process.env.LOG_LEVEL) {
-  process.env.LOG_LEVEL = 'silent';
+if (isNextBuildProcess()) {
+  if (!process.env.LOG_LEVEL) {
+    process.env.LOG_LEVEL = 'silent';
+  }
+  // Signal to @repo/workers to skip worker initialization during build
+  process.env.NEXT_BUILD = 'true';
 }
 
 const __filename = fileURLToPath(import.meta.url);

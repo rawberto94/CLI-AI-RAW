@@ -155,8 +155,8 @@ export class ArtifactPopulationService {
           paymentTerms: this.generatePaymentTerms(contractType),
         },
         timeline: {
-          effectiveDate: new Date().toISOString().split('T')[0],
-          expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          effectiveDate: new Date().toISOString().split('T')[0]!,
+          expirationDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!,
           term: '12 months',
         },
       },
@@ -475,7 +475,7 @@ export class ArtifactPopulationService {
     const vendors = ['ServiceProvider LLC', 'DevStudio Inc.', 'CloudSolutions Corp', 'AnalyticsPro', 'TechVendor Ltd'];
     
     const names = type === 'client' ? clients : vendors;
-    return names[Math.floor(Math.random() * names.length)];
+    return names[Math.floor(Math.random() * names.length)]!;
   }
 
   private generateContractValue(contractType: string): number {
@@ -494,7 +494,7 @@ export class ArtifactPopulationService {
 
   private generatePaymentTerms(contractType: string): string {
     const terms = ['Net 30', 'Net 45', 'Net 60', 'Monthly', 'Quarterly', 'Upon delivery'];
-    return terms[Math.floor(Math.random() * terms.length)];
+    return terms[Math.floor(Math.random() * terms.length)]!;
   }
 
   private generateRiskFactors(contractType: string): Array<{
@@ -585,14 +585,14 @@ export class ArtifactPopulationService {
       {
         type: 'renewal',
         name: 'Contract Renewal Review',
-        dueDate: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 300 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!,
         description: 'Review contract terms for renewal',
         priority: 'high' as const,
       },
       {
         type: 'payment',
         name: 'Quarterly Payment Due',
-        dueDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        dueDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!,
         description: 'Quarterly payment milestone',
         priority: 'medium' as const,
       },

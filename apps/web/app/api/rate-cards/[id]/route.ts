@@ -158,7 +158,7 @@ try {
 
     return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', details: error instanceof Error ? error.message : String(error), 404);
+    return createErrorResponse(ctx, 'NOT_FOUND', `Rate card not found: ${error instanceof Error ? error.message : String(error)}`, 404);
   }
 }
 
@@ -193,7 +193,7 @@ try {
 
     return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update rate card', details: error instanceof Error ? error.message : String(error), 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to update rate card: ${error instanceof Error ? error.message : String(error)}`, 400);
   }
 }
 
@@ -219,6 +219,6 @@ try {
 
     return createSuccessResponse(ctx, { message: 'Rate card deleted' });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete rate card', details: error instanceof Error ? error.message : String(error), 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to delete rate card: ${error instanceof Error ? error.message : String(error)}`, 400);
   }
 }

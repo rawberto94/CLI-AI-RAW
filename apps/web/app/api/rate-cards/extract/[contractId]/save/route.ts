@@ -217,7 +217,7 @@ try {    const tenantId = ctx.tenantId;
       }`,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to save rate cards',
-        message: error instanceof Error ? error.message : 'Unknown error',, 500);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to save rate cards: ${message}`, 500);
   }
 }

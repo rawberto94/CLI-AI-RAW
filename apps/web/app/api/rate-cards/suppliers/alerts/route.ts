@@ -128,7 +128,7 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
         break;
 
       default:
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', `Invalid action: ${action, 400)
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', `Invalid action: ${action}`, 400);
     }
 
     return createSuccessResponse(ctx, {

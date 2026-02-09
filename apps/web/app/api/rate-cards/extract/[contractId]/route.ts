@@ -111,8 +111,8 @@ try {    const tenantId = ctx.tenantId;
 
     return createSuccessResponse(ctx, response);
   } catch (error) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to extract rate cards',
-        message: error instanceof Error ? error.message : 'Unknown error',, 500);
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to extract rate cards: ${msg}`, 500);
   }
 }
 
@@ -156,7 +156,7 @@ try {
       rateCards: existingRateCards,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to check existing rate cards',
-        message: error instanceof Error ? error.message : 'Unknown error',, 500);
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to check existing rate cards: ${msg}`, 500);
   }
 }

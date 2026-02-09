@@ -86,10 +86,11 @@ export class EntityNotFoundError extends Error {
 export abstract class AbstractRepository<T, CreateInput, UpdateInput, WhereInput>
   implements BaseRepository<T, CreateInput, UpdateInput, WhereInput> {
   
-  protected prisma: PrismaClient;
-  protected cache?: QueryCache;
-  protected abstract modelName: string;
-  protected config: Required<RepositoryConfig>;
+  // Public (not protected) to support mixin pattern in withSoftDelete
+  public prisma: PrismaClient;
+  public cache?: QueryCache;
+  public abstract modelName: string;
+  public config: Required<RepositoryConfig>;
 
   constructor(
     prisma: PrismaClient,
@@ -108,7 +109,7 @@ export abstract class AbstractRepository<T, CreateInput, UpdateInput, WhereInput
     };
   }
 
-  protected get model(): any {
+  public get model(): any {
     return (this.prisma as any)[this.modelName];
   }
 
@@ -517,11 +518,11 @@ export abstract class AbstractRepository<T, CreateInput, UpdateInput, WhereInput
   // PRIVATE HELPERS
   // =========================================================================
 
-  protected buildWhereWithId(id: string): Record<string, unknown> {
+  public buildWhereWithId(id: string): Record<string, unknown> {
     return { id };
   }
 
-  protected buildWhere(where?: WhereInput): Record<string, unknown> {
+  public buildWhere(where?: WhereInput): Record<string, unknown> {
     const baseWhere = (where ?? {}) as Record<string, unknown>;
 
     // Add soft delete filter if enabled
@@ -535,18 +536,18 @@ export abstract class AbstractRepository<T, CreateInput, UpdateInput, WhereInput
     return baseWhere;
   }
 
-  protected shouldUseCache(options?: QueryOptions): boolean {
+  public shouldUseCache(options?: QueryOptions): boolean {
     return !!(this.cache && (options?.cache?.enabled ?? true));
   }
 
-  protected isVersionConflictError(error: Error): boolean {
+  public isVersionConflictError(error: Error): boolean {
     return (
       error.message.includes('Record to update not found') ||
       error.message.includes('P2025')
     );
   }
 
-  protected isNotFoundOrVersionConflict(error: Error): boolean {
+  public isNotFoundOrVersionConflict(error: Error): boolean {
     return (
       (error as any)?.code === 'P2025' ||
       error.message.includes('Record to update not found')

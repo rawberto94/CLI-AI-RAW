@@ -22,7 +22,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const missingFields = requiredFields.filter(field => !rateCardData[field]);
 
     if (missingFields.length > 0) {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Missing required fields: ${missingFields.join(', 400)
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Missing required fields: ${missingFields.join(', ')}`, 400);
     }
 
     // Create rate card entry

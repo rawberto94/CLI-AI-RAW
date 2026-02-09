@@ -45,7 +45,7 @@ try {
       },
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to detect anomalies',
-        message: error instanceof Error ? error.message : 'Unknown error', 500);
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to detect anomalies: ${message}`, 500);
   }
 }

@@ -76,7 +76,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
     }
 
-    const tenantId = body.tenantId;
+    const bodyTenantId = body.tenantId;
 
     // Handle batch generation
     if (Array.isArray(body.artifactType)) {

@@ -24,7 +24,7 @@ try {
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'NOT_FOUND', 'Failed to get segment', details: error instanceof Error ? error.message : String(error), 404);
+    return createErrorResponse(ctx, 'NOT_FOUND', `Failed to get segment: ${error instanceof Error ? error.message : String(error)}`, 404);
   }
 }
 
@@ -61,7 +61,7 @@ try {
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update segment', details: error instanceof Error ? error.message : String(error), 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to update segment: ${error instanceof Error ? error.message : String(error)}`, 400);
   }
 }
 
@@ -86,6 +86,6 @@ try {
 
     return createSuccessResponse(ctx, { success: true });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete segment', details: error instanceof Error ? error.message : String(error), 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to delete segment: ${error instanceof Error ? error.message : String(error)}`, 400);
   }
 }

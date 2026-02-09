@@ -152,14 +152,14 @@ export async function GET(
               canFetchFromSource: true,
               message: 'Try adding ?source=true to fetch from original location'
             },
-            { status: 410 } // Gone);
+            { status: 410 }) // Gone
         }
         return createSuccessResponse(ctx, { 
             success: false, 
             error: 'Document has expired and is no longer available',
             retentionDays: storageConfig.retentionDays
           },
-          { status: 410 } // Gone);
+          { status: 410 }) // Gone
       }
     }
 

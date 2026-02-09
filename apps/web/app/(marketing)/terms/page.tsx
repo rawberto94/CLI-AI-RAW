@@ -5,6 +5,7 @@ import {
   CreditCard,
   Ban,
   FileCheck,
+  FileText,
   Gavel
 } from 'lucide-react';
 import Link from 'next/link';

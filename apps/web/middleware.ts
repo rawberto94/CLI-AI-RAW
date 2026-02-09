@@ -274,7 +274,7 @@ function hasAdminAccess(role: string | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const startTime = Date.now();
   

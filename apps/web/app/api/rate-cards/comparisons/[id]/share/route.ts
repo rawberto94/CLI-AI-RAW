@@ -66,6 +66,6 @@ try {
       shareUrl: `/rate-cards/comparisons/${params.id}`,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to share comparison', details: error instanceof Error ? error.message : String(error), 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to share comparison: ${error instanceof Error ? error.message : String(error)}`, 500);
   }
 }

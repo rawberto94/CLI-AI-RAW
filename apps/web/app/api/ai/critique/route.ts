@@ -14,7 +14,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { 
       response,
-      tenantId,
       contractId,
       contractText = '',
       artifactType = 'general',
