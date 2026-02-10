@@ -116,6 +116,7 @@ const navigationGroups: NavGroup[] = [
     items: [
       { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", tourId: "ai-assistant" },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
+      { href: "/search/saved", label: "Saved Searches", icon: Inbox, description: "Saved searches with alerts", isNew: true, tourId: "saved-searches" },
       { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side", tourId: "compare" },
     ],
   },
@@ -131,7 +132,9 @@ const navigationGroups: NavGroup[] = [
       { href: "/amendments", label: "Amendments", icon: FileSignature, description: "Contract amendment lifecycle", isNew: true, tourId: "amendments" },
       { href: "/templates", label: "Templates", icon: BookOpen, description: "Contract templates library", tourId: "templates" },
       { href: "/clauses/governance", label: "Clause Governance", icon: BookOpen, description: "Clause approval workflows", isNew: true, tourId: "clause-governance" },
+      { href: "/clauses/versions", label: "Clause Versions", icon: GitBranch, description: "Version history and diff viewer", isNew: true, tourId: "clause-versions" },
       { href: "/document-expiry", label: "Document Expiry", icon: CalendarClock, description: "Track document expirations", isNew: true, tourId: "document-expiry" },
+      { href: "/contracts/bulk", label: "Bulk Operations", icon: Archive, description: "Export, import, and bulk actions", isNew: true, tourId: "bulk-ops" },
     ],
   },
   {
@@ -159,6 +162,7 @@ const navigationGroups: NavGroup[] = [
       { href: "/rate-cards", label: "Rate Cards", icon: BarChart3, description: "Rate card tracking and compliance", tourId: "rate-cards" },
       { href: "/vendor-risk", label: "Vendor Risk", icon: AlertTriangle, description: "Vendor risk assessments", isNew: true, tourId: "vendor-risk" },
       { href: "/suppliers/performance", label: "Supplier Performance", icon: BarChart3, description: "Supplier scorecards", tourId: "suppliers" },
+      { href: "/analytics/rate-compliance", label: "Rate Compliance", icon: ShieldCheck, description: "Rate card compliance checker", isNew: true, tourId: "rate-compliance" },
     ],
   },
   {
@@ -181,6 +185,7 @@ const navigationGroups: NavGroup[] = [
     gradient: 'from-slate-600 to-slate-800',
     items: [
       { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", tourId: "workflows" },
+      { href: "/workflows/designer", label: "Workflow Designer", icon: Layers, description: "Visual drag-and-drop builder", isNew: true, tourId: "workflow-designer" },
       { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, description: "System activity and compliance tracking", tourId: "audit-logs" },
       { href: "/admin/api-keys", label: "API Keys", icon: Key, description: "External integration keys", isNew: true, tourId: "api-keys" },
       { href: "/admin/legal-holds", label: "Legal Holds", icon: Scale, description: "Litigation hold management", isNew: true, tourId: "legal-holds" },
