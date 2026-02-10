@@ -79,6 +79,7 @@ Die Nutzungslimits pro Plan dienen der Gewährleistung einer fairen Ressourcente
 ### 4.2 Überschreitung / Exceeding Limits
 
 Bei Überschreitung der Nutzungslimits wird ConTigo:
+
 1. Den Kunden benachrichtigen
 2. Eine 7-tägige Übergangsfrist gewähren
 3. Bei anhaltender Überschreitung ein Upgrade vorschlagen oder den Zugang einschränken
@@ -100,7 +101,7 @@ Bei Verstoss gegen diese AUP ist ConTigo berechtigt:
 
 ### 5.2 Meldung / Reporting
 
-Verstösse können gemeldet werden an: abuse@contigo-app.ch
+Verstösse können gemeldet werden an: <abuse@contigo-app.ch>
 
 ---
 

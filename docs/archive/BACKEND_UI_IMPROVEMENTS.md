@@ -1,6 +1,7 @@
 # Backend & UI Integration Improvements
 
 ## Overview
+
 This document summarizes the improvements made to integrate the frontend with backend APIs, eliminating static mock data and enabling real-time data fetching.
 
 ---
@@ -8,9 +9,11 @@ This document summarizes the improvements made to integrate the frontend with ba
 ## New Files Created
 
 ### 1. `/apps/web/hooks/useApiData.ts`
+
 Generic API data fetching hooks with built-in caching, refresh, and error handling.
 
 **Exports:**
+
 - `useApiData<T>` - Generic hook for fetching any API endpoint
 - `useMutation<T,V>` - Hook for POST/PUT/DELETE operations
 - `useDashboardStats` - Pre-configured hook for `/api/dashboard/stats`
@@ -21,6 +24,7 @@ Generic API data fetching hooks with built-in caching, refresh, and error handli
 - `useForecast` - Pre-configured hook for `/api/forecast`
 
 **Features:**
+
 - AbortController for request cancellation
 - Configurable refresh intervals
 - isStale tracking for cache invalidation
@@ -28,9 +32,11 @@ Generic API data fetching hooks with built-in caching, refresh, and error handli
 - Loading states
 
 ### 2. `/apps/web/app/api/intelligence/route.ts`
+
 Intelligence hub summary endpoint.
 
 **GET Response:**
+
 ```json
 {
   "healthScores": { "healthy": 18, "atRisk": 4, "critical": 2, "averageScore": 72 },
@@ -41,14 +47,17 @@ Intelligence hub summary endpoint.
 ```
 
 **POST Actions:**
+
 - `refresh-scores` - Recalculate health scores
 - `dismiss-insight` - Dismiss an AI insight
 - `act-on-insight` - Take action on an insight
 
 ### 3. `/apps/web/app/api/dashboard/widgets/route.ts`
+
 Aggregated widget data endpoint for efficient dashboard loading.
 
 **GET Response:**
+
 ```json
 {
   "approvals": { "pending": 4, "urgent": 1, "change": 2 },
@@ -66,6 +75,7 @@ Aggregated widget data endpoint for efficient dashboard loading.
 ### 1. `/apps/web/components/dashboard/CrossModuleWidgets.tsx`
 
 **Changes:**
+
 - Added `WidgetSkeleton` loading component with color variants
 - **IntelligenceWidget**: Now fetches from `/api/intelligence/health`
 - **ApprovalsWidget**: Now fetches from `/api/approvals`
@@ -82,6 +92,7 @@ Graceful fallback to sensible defaults if API calls fail.
 ### 2. `/apps/web/components/dashboard/ProfessionalDashboard.tsx`
 
 **Changes:**
+
 - Added `useDashboardData()` hook that fetches from multiple APIs:
   - `/api/dashboard/stats` - Main dashboard statistics
   - `/api/approvals?limit=5` - Recent approvals

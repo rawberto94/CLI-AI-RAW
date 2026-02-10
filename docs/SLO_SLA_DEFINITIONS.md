@@ -17,6 +17,7 @@ Availability = (Total Time - Downtime) / Total Time × 100%
 ```
 
 **Measurement**:
+
 - Synthetic monitoring: Health check every 30 seconds from multiple regions
 - Real user monitoring: Successful page loads / Total page loads
 - API monitoring: Successful requests (2xx/3xx) / Total requests
@@ -89,6 +90,7 @@ Error Rate = (5xx Errors + Client Timeout) / Total Requests × 100%
 Error budget = 100% - SLO target
 
 For a 99.9% availability SLO:
+
 - Error budget = 0.1% = 43.2 minutes/month
 
 ### Monthly Error Budgets
@@ -317,6 +319,7 @@ function calculateSLACredit(
 ### Weekly SLO Report
 
 Generated every Monday:
+
 - Current 30-day availability
 - Error budget remaining
 - P95/P99 latency trends
@@ -326,6 +329,7 @@ Generated every Monday:
 ### Monthly SLA Report (Customer-Facing)
 
 Generated first business day of month:
+
 - Previous month uptime percentage
 - Any SLA credits owed
 - Incident summary

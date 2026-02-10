@@ -34,6 +34,7 @@ Verfügbarkeit (%) = (Gesamtminuten − Ausfallminuten − Ausschlüsse) / (Gesa
 ### 2.3 Messung / Measurement
 
 Die Verfügbarkeit wird gemessen durch:
+
 - Synthetische Health-Check-Abfragen alle 1 Minute an `/api/health`
 - Ein Dienst gilt als nicht verfügbar, wenn 3 aufeinanderfolgende Prüfungen fehlschlagen
 - Das Monitoring-System ist die verbindliche Datenquelle
@@ -99,7 +100,7 @@ Die Gesamtgutschrift pro Monat ist auf **100% der monatlichen Abonnementgebühr*
 
 ### 5.3 Geltendmachung / Claiming Credits
 
-1. Der Kunde muss die Gutschrift innerhalb von **30 Tagen** nach dem betroffenen Monat schriftlich geltend machen an: sla@contigo-app.ch
+1. Der Kunde muss die Gutschrift innerhalb von **30 Tagen** nach dem betroffenen Monat schriftlich geltend machen an: <sla@contigo-app.ch>
 2. Die Anfrage muss enthalten: Datum/Uhrzeit des Ausfalls, betroffene Dienste, Auswirkung
 3. ConTigo bestätigt oder bestreitet den Anspruch innerhalb von **10 Werktagen**
 4. Genehmigte Gutschriften werden auf die nächste Rechnung angerechnet
@@ -177,10 +178,10 @@ Kunden können Status-Updates per E-Mail abonnieren.
 
 | Stufe / Level | Zeitrahmen / Timeframe | Kontakt / Contact |
 |---|---|---|
-| **Stufe 1: Support** | Sofort | support@contigo-app.ch |
-| **Stufe 2: Engineering Lead** | Nach 4 Stunden (P1) / 24 Stunden (P2) | engineering@contigo-app.ch |
-| **Stufe 3: CTO** | Nach 8 Stunden (P1) / 48 Stunden (P2) | cto@contigo-app.ch |
-| **Stufe 4: Geschäftsleitung** | Nach 24 Stunden (P1) | management@contigo-app.ch |
+| **Stufe 1: Support** | Sofort | <support@contigo-app.ch> |
+| **Stufe 2: Engineering Lead** | Nach 4 Stunden (P1) / 24 Stunden (P2) | <engineering@contigo-app.ch> |
+| **Stufe 3: CTO** | Nach 8 Stunden (P1) / 48 Stunden (P2) | <cto@contigo-app.ch> |
+| **Stufe 4: Geschäftsleitung** | Nach 24 Stunden (P1) | <management@contigo-app.ch> |
 
 ---
 
@@ -226,7 +227,7 @@ Für alle nicht in diesem SLA geregelten Punkte gelten die AGB. Bei Widersprüch
 
 ---
 
-**Kontakt / Contact:** sla@contigo-app.ch
+**Kontakt / Contact:** <sla@contigo-app.ch>
 
 ---
 

@@ -11,6 +11,7 @@
 > This document is a **structured framework and term sheet**, not a legally binding contract. It must be reviewed, adapted, and formalised by a **qualified Swiss attorney** (Rechtsanwalt) before execution. Swiss GmbH governance is regulated by OR Art. 772–827 and requires notarial involvement for certain corporate acts.
 >
 > Recommended law firms for Swiss startup founders' agreements:
+>
 > - Wenger Vieli (Zurich) — startup & tech team
 > - Vischer (Zurich/Basel) — venture & IP
 > - Kellerhals Carrard — national coverage
@@ -214,6 +215,7 @@ Given that the Technical Founder has **already created the product**, a modified
 | **Acceleration** | **Double-trigger:** (1) Change of control AND (2) termination without cause within 12 months post-acquisition → 100% acceleration. Single-trigger (change of control alone) → 50% of unvested shares accelerate. Termination without cause (no CoC) → 100% acceleration with 6-month post-termination exercise window |
 
 **Example (70% total equity):**
+
 - Day 0: 28% vested immediately (40% of 70%)
 - Month 1–36: 42% vests over 36 months (~1.17% per month)
 - By Month 36: 70% fully vested
@@ -230,6 +232,7 @@ Standard startup vesting applies — **the Co-Founder has no pre-existing contri
 | **Acceleration** | 50% upon change of control; 100% if terminated within 12 months post-acquisition | Double-trigger |
 
 **Example (25% total equity):**
+
 - Month 0–11: 0% vested
 - Month 12: 6.25% vested (cliff)
 - Month 13–48: 18.75% vests over 36 months (~0.52% per month)
@@ -280,10 +283,12 @@ This is consistent with Swiss OR Art. 332 (employer ownership of employee invent
 ### 4.3 IP Reversion on Bad Leaver Termination
 
 If the **Co-Founder** departs as a Bad Leaver (Section 11):
+
 - All IP created by the Co-Founder during their engagement reverts to (or remains with) the company.
 - No licence back is granted.
 
 If the **Technical Founder** is forced out without cause before full vesting:
+
 - The Technical Founder retains their vested shares but the IP remains with the company.
 - The Technical Founder receives a **12-month consulting retainer** at CHF [10,000–15,000]/month to ensure transition.
 
@@ -354,6 +359,7 @@ The following IP components are covered by this assignment:
 | **"ConTigo" EU trademark** | Unregistered | File with EUIPO within 12 months (budget: EUR 850–1,050) |
 
 **Trademark ownership terms:**
+
 1. All trademarks are registered in the name of **ConTigo GmbH** (not any individual founder)
 2. The Technical Founder is recognised as the **creator and originator** of the brand name and visual identity in the company’s IP register
 3. If the company is dissolved or the Technical Founder is forced out as a Bad Leaver by the other party, the trademark rights **revert to the Technical Founder** (same reversion logic as the domain in Section 4.5)
@@ -385,6 +391,7 @@ The following IP components are covered by this assignment:
 ### 5.2 Minimum Commitment
 
 Both founders commit to:
+
 - **Full-time dedication** (minimum 40 hours/week) to the company
 - **No competing activities** (see Section 8)
 - **Reside in Switzerland** (or have valid Swiss work permit)
@@ -458,6 +465,7 @@ The following decisions require **unanimous founder approval**:
 ### 6.5 Written Resolutions (Zirkularbeschlüsse)
 
 Resolutions of the Gesellschafterversammlung may be passed in writing (without a meeting) per OR Art. 805 para. 4, provided:
+
 - The resolution is circulated in writing to all founders
 - All founders sign the same text
 - No founder requests an oral discussion within 5 business days
@@ -588,6 +596,7 @@ Quotas are reviewed and adjusted **every 6 months** by mutual agreement. If no a
 ### 8.1 Full-Time Commitment
 
 Both founders commit to dedicate **100% of their professional time** to ConTigo GmbH. Side projects are only permitted if:
+
 1. They are unrelated to contract management, legal tech, or AI document analysis
 2. They do not exceed 5 hours/week
 3. They are disclosed to and approved by the other founder(s) in writing
@@ -605,6 +614,7 @@ During engagement and for **18 months** after departure:
 ### 8.3 Anti-Poaching
 
 For **24 months** after departure, neither founder may:
+
 - **Directly or indirectly recruit, solicit, or hire** any employee, contractor, or consultant of the company
 - **Encourage or facilitate** any employee to resign from the company
 - Offer employment or engagement to anyone who was employed by the company within the 6 months preceding the founder's departure
@@ -615,6 +625,7 @@ For **24 months** after departure, neither founder may:
 ### 8.4 Non-Solicitation of Clients
 
 For **24 months** after departure, neither founder may:
+
 - Solicit or attempt to do business with any customer or prospect of the company
 - Redirect any business opportunity away from the company
 - Use any customer list, contact information, or pipeline data obtained during their engagement
@@ -643,10 +654,12 @@ For **24 months** after departure, neither founder may:
 ### 9.1 Lock-Up Period
 
 Neither founder may **sell, transfer, pledge, or encumber** any shares for:
+
 - **24 months** from the date of GmbH incorporation (absolute lock-up)
 - **12 months** following any priced funding round (post-funding lock-up)
 
 Exceptions to lock-up:
+
 - Transfers to a wholly-owned personal holding company (Section 9.5)
 - Forced transfers under Bad Leaver provisions (Section 11)
 - Transfers upon death (to estate, subject to ROFR)
@@ -654,6 +667,7 @@ Exceptions to lock-up:
 ### 9.2 Right of First Refusal (ROFR)
 
 If any founder wishes to sell their shares after the lock-up period:
+
 1. They must first offer shares to the other founder(s) at the proposed price.
 2. Remaining founders have **60 days** to exercise ROFR.
 3. If not exercised, shares may be sold to the third party at the same or higher price.
@@ -667,6 +681,7 @@ If any founder sells >50% of their shares to a third party, the other founder(s)
 ### 9.4 Drag-Along Rights
 
 If founders holding >75% of equity agree to a sale of the company, they may compel the remaining founders to sell on the same terms, **subject to:**
+
 - **Pre-Series A:** Drag-along requires **both founders' consent** (unanimous), regardless of equity percentage
 - **Post-Series A:** Drag-along may be triggered by shareholders holding >75% of equity (including investors), subject to board approval
 - The drag-along price must be at least **Fair Market Value** as determined by an independent valuation or the price offered by the acquirer, whichever is higher
@@ -675,6 +690,7 @@ If founders holding >75% of equity agree to a sale of the company, they may comp
 ### 9.5 Permitted Transfers
 
 Shares may be transferred without ROFR restrictions to:
+
 - A holding company **wholly owned** by the founder (the founder must remain 100% owner of the holding; any change in holding ownership requires ROFR notification)
 - A trust for the benefit of the founder's family (with prior written consent of the other founder)
 - (With unanimous consent) An incoming strategic co-founder
@@ -682,6 +698,7 @@ Shares may be transferred without ROFR restrictions to:
 ### 9.6 Liquidation Preference
 
 In a liquidation or sale event:
+
 1. Debts and obligations are settled first
 2. Founders receive back their capital contributions (Stammeinlage)
 3. Remaining proceeds distributed pro-rata per equity
@@ -690,6 +707,7 @@ In a liquidation or sale event:
 ### 9.7 Change of Control Definition
 
 A **“Change of Control”** means any of the following:
+
 - Any person or group acquires >50% of the company’s share capital or voting rights
 - A merger, consolidation, or reorganisation where existing shareholders hold <50% of the surviving entity
 - Sale of all or substantially all company assets (>80% by value)
@@ -697,6 +715,7 @@ A **“Change of Control”** means any of the following:
 - A change in the composition of the Geschäftsführung such that neither original founder is a managing director
 
 Change of Control triggers:
+
 1. Acceleration provisions per Section 3 (vesting)
 2. ESOP acceleration per Section 13.2
 3. Mandatory review of all founder agreements within 30 days
@@ -709,22 +728,27 @@ Change of Control triggers:
 If the founders cannot reach agreement on a material decision (Section 6.2) after 30 days:
 
 ### Step 1: Mediation (Days 1–30)
+
 - Engage a neutral Swiss mediator (e.g., Swiss Chambers' Arbitration Institution)
 - Both founders participate in good faith
 - Cost shared equally
 
 ### Step 2: Advisory Board Input (Days 30–60)
+
 - If an advisory board exists, seek a non-binding recommendation
 - Both founders present their position
 
 ### Step 3: Swiss Arbitration (Days 60+)
+
 - Binding arbitration under the Swiss Rules of International Arbitration (Swiss Chambers)
 - Seat of arbitration: Zurich
 - Language: English (or German by agreement)
 - Decision is final and binding
 
 ### Step 4: Shotgun Clause (Last Resort)
+
 If arbitration fails or is disproportionate:
+
 - Either founder may invoke a **buy-sell (shotgun) clause**: Founder A offers to buy Founder B's shares at a stated price. Founder B must either accept or buy Founder A's shares at the same price.
 - **Cooling-off period:** The receiving founder has **60 days** (not less) to decide. During this period, both founders continue full-time duties.
 - **Financing transparency:** Before the shotgun can be invoked, both founders must disclose their **personal financial capacity** to fund the purchase (bank statement or financing commitment letter). A founder who invokes the shotgun without demonstrable ability to fund the purchase forfeits the right to invoke it.
@@ -739,11 +763,13 @@ If arbitration fails or is disproportionate:
 ### 11.1 Good Leaver Scenarios
 
 A founder is a **Good Leaver** if they depart due to:
+
 - Mutual agreement
 - Death or permanent disability (>6 months)
 - Constructive dismissal (material breach by the other founder)
 
 **Good Leaver treatment:**
+
 - Retains all vested shares
 - Unvested shares are repurchased at **Fair Market Value** (FMV), determined by an independent Swiss auditor (Revisionsstelle)
 - 6-month transition support (reasonable)
@@ -751,6 +777,7 @@ A founder is a **Good Leaver** if they depart due to:
 ### 11.2 Bad Leaver Scenarios
 
 A founder is a **Bad Leaver** if they:
+
 - Resign without cause before 24 months (Co-Founder) or 18 months (Technical Founder)
 - Are terminated for cause (fraud, gross negligence, breach of non-compete, criminal conviction)
 - Materially breach this agreement and fail to cure within 30 days of notice
@@ -758,6 +785,7 @@ A founder is a **Bad Leaver** if they:
 - Fail to serve the mandatory **notice period** (Section 11.4) or refuse to complete the **handover obligations** (Section 11.5)
 
 **Bad Leaver treatment:**
+
 - **All unvested shares** are repurchased at **nominal value** (CHF 1/share)
 - **50% of vested shares** are repurchased at nominal value
 - Remaining 50% of vested shares are repurchased at the **lower of** nominal value or FMV
@@ -789,6 +817,7 @@ A founder who **remains nominally active but materially fails to contribute** is
 | **4. Reclassification** | No meaningful improvement after 90-day period | Day 91+ | Gesellschafterversammlung may vote to reclassify the underperforming founder as a **Bad Leaver** (requires Advisory Board confirmation if available) |
 
 **Additional protections against passive departure:**
+
 - Each founder must log a **minimum of 35 billable/productive hours per week** (tracked via time-logging tool or written weekly summary)
 - Any absence exceeding **5 consecutive business days** requires written notice to the other founder
 - A founder who reduces their commitment below 50% of full-time for **4 consecutive weeks** without written agreement is deemed to have **constructively resigned** and is treated as a Bad Leaver
@@ -814,6 +843,7 @@ Any founder wishing to depart voluntarily must provide:
 Before or during the notice period, the departing founder must complete:
 
 #### Technical Founder Handover
+
 | Item | Deliverable |
 |---|---|
 | **System access** | Full credentials, API keys, infrastructure access transferred to successor or Co-Founder |
@@ -823,6 +853,7 @@ Before or during the notice period, the departing founder must complete:
 | **Third-party accounts** | Transfer ownership of all vendor/service accounts (Azure, GitHub, domain registrar, etc.) |
 
 #### Commercial Co-Founder Handover
+
 | Item | Deliverable |
 |---|---|
 | **Client relationships** | Warm introduction of all active clients to successor or Technical Founder |
@@ -836,6 +867,7 @@ Before or during the notice period, the departing founder must complete:
 ### 11.6 Cause for Termination
 
 Either founder may be removed as Geschäftsführer for cause (OR Art. 815), including:
+
 - Proven fraud or embezzlement
 - Conviction of a criminal offence related to business activities
 - Wilful breach of fiduciary duty
@@ -880,6 +912,7 @@ When shares must be repurchased under Bad Leaver or Good Leaver provisions:
 ### 12.1 Anti-Dilution on Future Rounds
 
 Both founders agree that:
+
 - All future equity rounds will be subject to **standard Swiss term sheet practices**
 - Founders will accept reasonable dilution for funding (typically 15–25% per round)
 - An **ESOP pool** of 5–10% will be established before the first priced round (to avoid founder-only dilution)
@@ -898,6 +931,7 @@ The Technical Founder retains a board seat as long as they hold >15% equity. The
 ### 12.3 Information Rights
 
 Both founders have full access to:
+
 - Monthly financial statements
 - Cap table and share register
 - All material contracts
@@ -907,6 +941,7 @@ Both founders have full access to:
 ### 12.4 Conversion to AG
 
 The founders agree that upon raising a **Series A** or upon reaching **CHF 2M ARR** (whichever comes first), the GmbH will be converted to an **AG (Aktiengesellschaft)** to facilitate:
+
 - Broader share issuance flexibility
 - ESOP implementation
 - Institutional investor requirements
@@ -1195,6 +1230,7 @@ If either founder is married or in a registered partnership at the time of incor
 ### 18.4 Force Majeure
 
 Neither founder is liable for failure to perform obligations due to events beyond reasonable control, including:
+
 - War, terrorism, civil unrest
 - Pandemic (lockdown, quarantine)
 - Natural disaster
@@ -1237,6 +1273,7 @@ An extraordinary review may be called by either founder if:
 ### 19.3 Amendment Mechanism
 
 This agreement may be amended through the annual or extraordinary review process, subject to:
+
 - Written proposal by either founder (minimum 7 days before review meeting)
 - Good-faith discussion
 - Unanimous agreement
@@ -1250,6 +1287,7 @@ This agreement may be amended through the annual or extraordinary review process
 ### 20.1 Scope
 
 All information exchanged between founders regarding the company, its technology, customers, finances, and strategy is **strictly confidential**. This includes:
+
 - Source code and architecture
 - Customer data and pipeline
 - Financial projections and actuals
@@ -1259,6 +1297,7 @@ All information exchanged between founders regarding the company, its technology
 ### 20.2 Duration
 
 Confidentiality obligations survive termination of this agreement:
+
 - **Trade secrets** (source code, AI architecture, prompt engineering, customer data): **perpetual** (until information becomes publicly available through no fault of the disclosing party)
 - **Business information** (financials, strategy, pricing, pipeline): **7 years** from departure
 - **This Agreement itself**: **5 years** from last amendment or company dissolution, whichever is later
@@ -1266,6 +1305,7 @@ Confidentiality obligations survive termination of this agreement:
 ### 20.3 Exceptions
 
 Disclosure is permitted:
+
 - To legal and financial advisors under professional privilege
 - As required by Swiss law or court order
 - To potential investors during due diligence (under NDA)
@@ -1289,6 +1329,7 @@ Breach of confidentiality obligations triggers:
 ### 20.5 Return of Confidential Information
 
 Upon departure for any reason, the departing founder must within **7 days**:
+
 1. Return all physical documents, devices, access badges, and company property
 2. Permanently delete all company data from personal devices, cloud storage, and email accounts
 3. Revoke all personal access to company systems (or cooperate with the remaining founder to do so)
@@ -1328,6 +1369,7 @@ Each party bears their own legal, tax, and advisory costs incurred in connection
 ### 21.7 Notices
 
 All notices under this agreement must be in writing and delivered via:
+
 - Registered mail (eingeschriebener Brief) to the last known address, OR
 - Email to the registered email addresses of each founder, with read-receipt or confirmation reply
 
@@ -1344,6 +1386,7 @@ This agreement may be executed in counterparts, each of which constitutes an ori
 ### 21.10 Survival
 
 The following provisions survive termination of this agreement and departure of any founder:
+
 - Section 4 (IP Assignment) — perpetual
 - Section 8 (Non-Compete, Non-Solicitation, Anti-Poaching) — per stated durations
 - Section 11 (Bad Leaver, share repurchase) — until fully settled

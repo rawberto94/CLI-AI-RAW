@@ -220,6 +220,7 @@ These are the actual issues worth fixing, ranked by impact:
 **Problem**: 507 route files is excessive. Many are duplicative, poorly organized, or serve niche features that no user has asked for.
 
 **Evidence**:
+
 - `/api/example-data-consistency` — test/example code in production routes
 - `/api/example-secure-route` — test/example code in production routes  
 - `/api/test` — test endpoint in production
@@ -239,6 +240,7 @@ These are the actual issues worth fixing, ranked by impact:
 **Impact**: Any change to lib/ theoretically affects every route. No clear dependency graph. Hard to test in isolation.
 
 **Fix**: Extract pure-server logic into `packages/data-orchestration/` services. The lib/ directory should contain only:
+
 - Client utilities (formatters, hooks helpers)
 - Thin server wrappers (auth config, prisma singleton)
 - Shared types
@@ -276,6 +278,7 @@ These are the actual issues worth fixing, ranked by impact:
 #### 6.7 Duplicate Infrastructure Configs
 
 **Problem**: 3 different K8s/deployment configs:
+
 - `k8s/deployment.yaml` (single file, 11K lines)
 - `kubernetes/*.yaml` (7 files, full setup)
 - `helm/contigo/` (Helm chart)

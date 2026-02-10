@@ -258,6 +258,7 @@ The API implements sliding window rate limiting:
 | Webhooks      | 500             |
 
 Response headers include:
+
 - `X-RateLimit-Limit`: Maximum requests allowed
 - `X-RateLimit-Remaining`: Remaining requests in window
 - `X-RateLimit-Reset`: Unix timestamp when limit resets
@@ -270,6 +271,7 @@ Configure email notifications for sync events:
 ### Failure Alerts
 
 Sent when a sync fails, includes:
+
 - Source details
 - Error message
 - Retry status
@@ -278,6 +280,7 @@ Sent when a sync fails, includes:
 ### Summary Reports
 
 Daily/weekly reports with:
+
 - Total syncs and success rate
 - Files processed
 - Top performing sources

@@ -1,6 +1,7 @@
 # Performance Quick Reference Card
 
 ## Current Status ✅
+
 - **System Health:** EXCELLENT
 - **Optimizations:** Active (caching, image optimization, production config)
 - **Resource Usage:** Optimal (43MB Postgres, 9MB Redis, <1% CPU)
@@ -21,21 +22,25 @@ cd apps/web && npm run build && npm run start
 ## What's Been Optimized
 
 ### ✅ API Caching
+
 - Healthz: 10-second cache
 - Contracts: 60-second cache  
 - Rate Cards: 5-minute cache
 
 ### ✅ Image Optimization
+
 - AVIF/WebP formats enabled
 - 1-year cache for static assets
 - Responsive image sizes
 
 ### ✅ Production Config
+
 - Console.log removal (prod only)
 - Advanced code splitting
 - Memory-optimized builds
 
 ### ✅ Already Excellent
+
 - 366 database indexes
 - Efficient Docker resource usage
 - Modern React optimization patterns
@@ -55,6 +60,7 @@ cd apps/web && npm run build && npm run start
 ## Quick Commands
 
 ### Test Performance
+
 ```bash
 # API response times
 curl -w "Time: %{time_total}s\n" http://localhost:3005/api/healthz
@@ -67,6 +73,7 @@ npx lighthouse http://localhost:3005 --view
 ```
 
 ### Analyze Bundle
+
 ```bash
 cd apps/web
 npm run build:analyze
@@ -74,6 +81,7 @@ npm run build:analyze
 ```
 
 ### Monitor Resources
+
 ```bash
 # Docker stats
 docker stats --no-stream
@@ -95,18 +103,21 @@ ps aux | grep next
 ## Next Steps by Priority
 
 ### HIGH (Do Now - 15 min)
+
 1. ✅ ~~Implement API caching~~ DONE
 2. ✅ ~~Configure image optimization~~ DONE
 3. **Build for production** ← Next step
 4. Test production build
 
 ### MEDIUM (This Week - 4 hours)
+
 - Add request deduplication
 - Implement React.memo on list components
 - Configure CDN/edge caching
 - Add performance monitoring dashboards
 
 ### LOW (Future - Ongoing)
+
 - Implement ISR (Incremental Static Regeneration)
 - Add service worker for offline support
 - Set up Redis caching layer
@@ -117,6 +128,7 @@ ps aux | grep next
 ## Troubleshooting
 
 ### If Build Fails
+
 ```bash
 # Clear cache and rebuild
 rm -rf apps/web/.next
@@ -125,6 +137,7 @@ npm run build
 ```
 
 ### If Performance Regresses
+
 ```bash
 # Check bundle size
 npm run build:analyze
@@ -137,6 +150,7 @@ curl -w "Time: %{time_total}s\n" http://localhost:3005/api/contracts
 ```
 
 ### If Memory Issues
+
 ```bash
 # Increase Node memory
 NODE_OPTIONS="--max-old-space-size=6144" npm run build
@@ -147,17 +161,20 @@ NODE_OPTIONS="--max-old-space-size=6144" npm run build
 ## Success Metrics
 
 ### Lighthouse Targets
+
 - **Performance:** >90
 - **Accessibility:** >95
 - **Best Practices:** >95
 - **SEO:** >90
 
 ### Core Web Vitals
+
 - **LCP (Largest Contentful Paint):** <2.5s
 - **FID (First Input Delay):** <100ms
 - **CLS (Cumulative Layout Shift):** <0.1
 
 ### Custom Metrics
+
 - **API Response (p50):** <500ms
 - **API Response (p95):** <1s
 - **Time to Interactive:** <3s

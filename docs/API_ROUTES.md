@@ -240,14 +240,17 @@ Simplified health endpoints for load balancers and external monitors.
 ### Deleted Routes (32 total)
 
 **Test/Example routes** (7):
+
 - `example-data-consistency`, `example-secure-route`, `test`, `web-health`
 - `admin/data-connections/test`, `contract-sources/test`, `ocr/test`
 
 **Mock data routes** (4):
+
 - `forecast` (Math.random() mock data)
 - `intelligence/search`, `intelligence/negotiate`, `intelligence/graph` (hardcoded arrays)
 
 **Duplicate routes** (21):
+
 - `metrics` → use `monitoring/prometheus`
 - `ai/compare-contracts` → use `ai/compare`
 - `ai/experiments` → use `ai/ab-test`

@@ -17,6 +17,7 @@
 ## 🔴 High Priority (Delete or Fix Immediately)
 
 ### Deprecated API Routes
+
 These routes redirect to new endpoints and should be removed after confirming no clients use them:
 
 | File | Reason | Action |
@@ -25,6 +26,7 @@ These routes redirect to new endpoints and should be removed after confirming no
 | `apps/web/app/api/upload/complete/route.ts` | Has `@deprecated` annotation | DELETE |
 
 ### Orphaned Root-Level Components
+
 These components in `/apps/web/components/` are not imported anywhere:
 
 | File | Lines | Reason | Action |
@@ -37,6 +39,7 @@ These components in `/apps/web/components/` are not imported anywhere:
 | `LoadingStates.tsx` | 509 | Redundant with `ui/` versions | DELETE |
 
 ### Duplicate ErrorBoundary Files (4 versions!)
+
 Keep only the canonical version:
 
 | File | Status |
@@ -47,6 +50,7 @@ Keep only the canonical version:
 | `app/components/ErrorBoundary.tsx` | CONSOLIDATE into errors/ |
 
 ### Empty Folders
+
 | Folder | Action |
 |--------|--------|
 | `components/_unused/` | DELETE (empty) |
@@ -56,6 +60,7 @@ Keep only the canonical version:
 ## 🟡 Medium Priority (Demo/Test Files)
 
 ### Demo & Test Pages
+
 These are not production code and could confuse developers:
 
 | File | Purpose | Action |
@@ -68,6 +73,7 @@ These are not production code and could confuse developers:
 | `apps/web/app/api/example/usage/route.ts` | Example API for docs | MOVE to docs or DELETE |
 
 ### Duplicate DataModeToggle Files (4 versions!)
+
 | File | Used By | Action |
 |------|---------|--------|
 | `components/analytics/DataModeToggle.tsx` | Analytics pages | ✅ KEEP |
@@ -80,6 +86,7 @@ These are not production code and could confuse developers:
 ## 🟢 Low Priority (Code Cleanup)
 
 ### UX Demo Components
+
 These are only used by the ux-demo page:
 
 | File | Action |
@@ -91,6 +98,7 @@ These are only used by the ux-demo page:
 | `components/ux-demo/FormDemo.tsx` | MOVE with demo page |
 
 ### Test Files in Wrong Locations
+
 | File | Action |
 |------|--------|
 | `packages/data-orchestration/test-ocr.ts` | MOVE to `__tests__/` folder |
@@ -98,22 +106,26 @@ These are only used by the ux-demo page:
 | `tmp/` folder | DELETE temporary files |
 
 ### Unused Onboarding Component
+
 | File | Reason | Action |
 |------|--------|--------|
 | `components/onboarding/WelcomeTour.tsx` | Orphaned - `OnboardingTour.tsx` is used | DELETE |
 
 ### Unused UI Index
+
 | File | Reason | Action |
 |------|--------|--------|
 | `components/enhanced-ui-index.ts` | Not imported anywhere | DELETE or integrate |
 
 ### Potentially Orphaned Shared Components
+
 | File | Action |
 |------|--------|
 | `components/shared/EmptyState.tsx` | REVIEW - may be orphaned |
 | `components/shared/StatusBadge.tsx` | REVIEW - may be orphaned |
 
 ### Package Utils Duplicates
+
 | File | Duplicate Of | Action |
 |------|--------------|--------|
 | `packages/utils/src/tracing-browser.ts` | `tracing.ts` | CONSOLIDATE |

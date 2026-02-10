@@ -11,6 +11,7 @@
 ## 1. Critical Issues Found
 
 ### 1.1 Prisma Schema Configuration
+
 **Status**: ✅ **NO ISSUE** (Using Prisma 5, not Prisma 7)
 
 **Clarification**: User confirmed they are using **Prisma 5**, which still supports the `url` property in datasource blocks. No action needed.
@@ -18,19 +19,23 @@
 ---
 
 ### 1.2 TypeScript Type Safety Issues
+
 **Status**: 🟡 **MEDIUM PRIORITY**
 
 **Problems Identified**:
+
 - Extensive use of `@ts-nocheck` (2 files)
 - Excessive `any` types (30+ occurrences)
 - Untyped Promise returns (`Promise<any>`)
 
 **Critical Files**:
+
 1. `/packages/data-orchestration/src/index.ts` - `@ts-nocheck` with intentional duplicate exports
-2. `/packages/data-orchestration/src/lineage/data-lineage.ts` - `@ts-nocheck` 
+2. `/packages/data-orchestration/src/lineage/data-lineage.ts` - `@ts-nocheck`
 3. `/apps/web/app/api/ai/chat/route.ts` - `@ts-nocheck` (7271 lines)
 
 **Recommendation**: Progressive type cleanup
+
 - Start with new code (strict types)
 - Add types to data-lineage.ts
 - Refactor chat route (see section 4)
@@ -42,12 +47,14 @@
 ### 2.1 Current Service Architecture
 
 **✅ STRENGTHS**:
+
 - **110+ Services** in data-orchestration package
 - Singleton pattern correctly implemented
 - Clear separation of concerns
 - Event-driven architecture with EventBus
 
 **Service Categories**:
+
 ```
 ├── Core Services (10)
 │   ├── contract.service.ts
@@ -102,14 +109,17 @@
 ### 2.2 Redundancies Identified
 
 #### ❌ **REDUNDANCY 1: Database Clients**
+
 **Problem**: Multiple Prisma client instances
 
 **Files**:
+
 - `/apps/web/lib/prisma.ts` - Main app client (exports singleton)
 - `/apps/web/lib/prisma.js` - JavaScript version (why?)
 - `/packages/clients/db/index.ts` - Shared client
 
 **Current State**:
+
 ```typescript
 // apps/web/lib/prisma.ts
 import getClient from '@repo/db';
@@ -126,9 +136,11 @@ export const prisma = new PrismaClient({ ... }); // ❌ Separate instance
 ---
 
 #### ❌ **REDUNDANCY 2: Orchestrator Services**
+
 **Problem**: 4 different orchestrator implementations
 
 **Files**:
+
 1. `/packages/agents/src/orchestrator.ts` - LangChain-based (158 lines)
 2. `/packages/data-orchestration/src/services/analytical-orchestrator.service.ts` - Stub
 3. `/packages/data-orchestration/src/services/event-orchestrator.service.ts` - Event-based
@@ -136,6 +148,7 @@ export const prisma = new PrismaClient({ ... }); // ❌ Separate instance
 5. `/packages/data-orchestration/src/services/real-time-benchmark-orchestrator.service.ts` - Rate card specific
 
 **Analysis**:
+
 - **Keep**: `/packages/agents/src/orchestrator.ts` (production-ready, used by workers)
 - **Keep**: `real-time-benchmark-orchestrator.service.ts` (domain-specific)
 - **Remove**: `unified-orchestration.service.ts` (stub with no implementation)
@@ -144,9 +157,11 @@ export const prisma = new PrismaClient({ ... }); // ❌ Separate instance
 ---
 
 #### ⚠️ **REDUNDANCY 3: Intelligence Services**
+
 **Problem**: Multiple intelligence/insights services
 
 **Files**:
+
 1. `/packages/data-orchestration/src/services/intelligence.service.ts` - Stub (30 lines)
 2. `/packages/data-orchestration/src/services/analytical-intelligence.service.ts`
 3. `/packages/data-orchestration/src/services/supplier-intelligence.service.ts`
@@ -154,15 +169,18 @@ export const prisma = new PrismaClient({ ... }); // ❌ Separate instance
 5. `/packages/data-orchestration/src/services/competitive-intelligence.service.ts`
 6. `/packages/data-orchestration/src/services/ai-insights-generator.service.ts`
 
-**Recommendation**: 
+**Recommendation**:
+
 - Keep domain-specific services (supplier, market, competitive)
 - Remove generic stub (`intelligence.service.ts`)
 - Use `ai-insights-generator.service.ts` as primary AI insights engine
 
 ---
 
-#### ✅ **NO REDUNDANCY: Report System** 
+#### ✅ **NO REDUNDANCY: Report System**
+
 **Status**: Successfully consolidated (see NEXT_LEVEL_ENHANCEMENTS.md)
+
 - Merged 3 duplicate systems into 1 unified system
 - Code reduction: 38% (3,694 → 2,280 lines)
 
@@ -173,6 +191,7 @@ export const prisma = new PrismaClient({ ... }); // ❌ Separate instance
 ### 3.1 Production-Ready Data Flows
 
 #### ✅ **CONTRACT PROCESSING PIPELINE**
+
 ```
 Upload → OCR Worker → Artifact Generation → RAG Indexing → Agent Orchestration
          ↓              ↓                     ↓              ↓
@@ -183,12 +202,14 @@ Upload → OCR Worker → Artifact Generation → RAG Indexing → Agent Orchest
 **Status**: 🟢 **PRODUCTION-READY**
 
 **Components**:
+
 - OCR Worker: `/packages/workers/src/ocr-artifact-worker.ts` (1,700+ lines)
 - Parallel Artifact Generator: `/packages/data-orchestration/src/services/parallel-artifact-generator.service.ts` (623 lines)
 - RAG Indexing Worker: `/packages/workers/src/rag-indexing-worker.ts`
 - Agent Orchestrator Worker: `/packages/workers/src/agent-orchestrator-worker.ts`
 
 **Features**:
+
 - ✅ Distributed job processing (BullMQ)
 - ✅ Retry logic with exponential backoff
 - ✅ Dead letter queue for failed jobs
@@ -199,6 +220,7 @@ Upload → OCR Worker → Artifact Generation → RAG Indexing → Agent Orchest
 ---
 
 #### ✅ **REAL-TIME ORCHESTRATOR DASHBOARD**
+
 ```
 Frontend (SSE) ← SSE Manager ← Event Bus ← Workers
      ↓                                        ↓
@@ -208,12 +230,14 @@ React State                            Processing Events
 **Status**: 🟢 **PRODUCTION-READY**
 
 **Components**:
+
 - SSE Connection Manager: `/packages/data-orchestration/src/services/sse-connection-manager.service.ts`
 - SSE Reconnection Service: `/packages/data-orchestration/src/services/sse-reconnection.service.ts`
 - Event Orchestrator: `/packages/data-orchestration/src/services/event-orchestrator.service.ts`
 - Dashboard: `/apps/web/app/orchestrator/page.tsx`
 
 **Features**:
+
 - ✅ Real-time job progress updates
 - ✅ Auto-reconnection with exponential backoff
 - ✅ Client-side state management
@@ -222,6 +246,7 @@ React State                            Processing Events
 ---
 
 #### ✅ **RAG SYSTEM (Hybrid Search)**
+
 ```
 User Query → Intent Detection → Hybrid Search → Context Assembly → LLM Response
               ↓                  ↓                ↓                 ↓
@@ -232,11 +257,13 @@ User Query → Intent Detection → Hybrid Search → Context Assembly → LLM R
 **Status**: 🟢 **PRODUCTION-READY**
 
 **Components**:
+
 - Advanced RAG Service: `/apps/web/lib/rag/advanced-rag.service.ts` (887 lines)
 - Knowledge Graph Service: `/packages/data-orchestration/src/services/knowledge-graph.service.ts` ✨ NEW
 - Contract Indexing: `/packages/data-orchestration/src/services/contract-indexing.service.ts`
 
 **Features**:
+
 - ✅ Hybrid search (vector + keyword)
 - ✅ Entity extraction (7 types)
 - ✅ Cross-contract relationship mapping
@@ -248,9 +275,11 @@ User Query → Intent Detection → Hybrid Search → Context Assembly → LLM R
 ### 3.2 Database Integration Status
 
 #### ✅ **PRISMA ORM**
+
 **Status**: 🟢 **WELL-INTEGRATED**
 
 **Models**: 25+ tables
+
 - Contract, Artifact, User, Tenant, ProcessingJob
 - RateCard, RateCardEntry, Baseline, SavingsOpportunity
 - Workflow, WorkflowExecution, WorkflowStep
@@ -258,6 +287,7 @@ User Query → Intent Detection → Hybrid Search → Context Assembly → LLM R
 - ✨ NEW: ConversationMemory, KnowledgeGraph entities (via metadata)
 
 **Connection Pooling**:
+
 ```typescript
 // Production config in lib/prisma.ts
 export const prisma = new PrismaClient({
@@ -267,6 +297,7 @@ export const prisma = new PrismaClient({
 ```
 
 **Recommendations**:
+
 - ✅ Already using connection pooling
 - ⚠️ Consider PgBouncer for horizontal scaling (docker-compose.pgbouncer.yml exists)
 - ⚠️ Monitor slow queries (already logged in dev mode)
@@ -274,20 +305,24 @@ export const prisma = new PrismaClient({
 ---
 
 #### ✅ **REDIS CACHING**
+
 **Status**: 🟢 **IMPLEMENTED**
 
 **Use Cases**:
+
 - Conversation memory (1-hour TTL)
 - Query results caching
 - Rate limiting
 - Session storage
 
 **Services Using Redis**:
+
 - `/packages/data-orchestration/src/services/conversation-memory.service.ts`
 - `/packages/data-orchestration/src/services/multi-level-cache.service.ts`
 - `/packages/data-orchestration/src/services/query-cache.service.ts`
 
 **Configuration**:
+
 ```typescript
 // Upstash Redis (production)
 const redis = new Redis({
@@ -299,9 +334,11 @@ const redis = new Redis({
 ---
 
 #### ✅ **VECTOR DATABASE**
+
 **Status**: 🟢 **INTEGRATED** (via hybrid approach)
 
 **Current Setup**:
+
 - PostgreSQL with pgvector extension
 - Hybrid search implementation in advanced-rag.service.ts
 - Weights: Vector (0.7) + Keyword (0.3)
@@ -315,17 +352,20 @@ const redis = new Redis({
 ### 4.1 Current Agentic Features
 
 #### ✅ **AUTONOMOUS CONTRACT PROCESSING**
+
 **Status**: 🟢 **FULLY IMPLEMENTED**
 
 **Agent**: ContractOrchestrator (`/packages/agents/src/orchestrator.ts`)
 
 **Capabilities**:
+
 - Autonomous document type detection
 - Multi-step artifact generation (overview, clauses, rates)
 - Self-healing with retry logic
 - Progress tracking and reporting
 
 **Execution Flow**:
+
 ```typescript
 const orchestrator = new ContractOrchestrator();
 await orchestrator.process(docId, text, {
@@ -341,11 +381,13 @@ await orchestrator.process(docId, text, {
 ---
 
 #### ✅ **CONVERSATIONAL AI WITH MEMORY** ✨ NEW
+
 **Status**: 🟢 **INTEGRATED**
 
 **Service**: ConversationMemoryService
 
 **Capabilities**:
+
 - Multi-turn conversation tracking (10-message window)
 - Reference resolution ("it" → actual entity)
 - Context retention (last contract, supplier, category)
@@ -357,11 +399,13 @@ await orchestrator.process(docId, text, {
 ---
 
 #### ✅ **INTELLIGENT CHATBOT** (7271 lines)
+
 **Status**: 🟢 **FEATURE-COMPLETE** (but needs refactoring)
 
 **File**: `/apps/web/app/api/ai/chat/route.ts`
 
 **Capabilities**:
+
 - Intent detection (15+ action types)
 - Entity extraction (contracts, suppliers, categories, dates, values)
 - Action execution (renew, generate, approve, create, analyze)
@@ -372,6 +416,7 @@ await orchestrator.process(docId, text, {
 - ✨ NEW: Conversation memory integration
 
 **Actions Supported**:
+
 ```typescript
 // Contract actions
 'renew' | 'generate' | 'approve' | 'create'
@@ -397,11 +442,13 @@ await orchestrator.process(docId, text, {
 ---
 
 #### ✅ **KNOWLEDGE GRAPH EXPLORATION** ✨ NEW
+
 **Status**: 🟢 **IMPLEMENTED**
 
 **Service**: KnowledgeGraphService
 
 **Capabilities**:
+
 - Entity extraction (companies, people, clauses, obligations, terms, locations, dates)
 - Relationship mapping (mentions, obligates, references, depends_on, similar_to)
 - Cross-contract entity resolution
@@ -409,6 +456,7 @@ await orchestrator.process(docId, text, {
 - Entity network analysis
 
 **API Endpoints**:
+
 - `GET /api/knowledge-graph?action=build` - Build full graph
 - `GET /api/knowledge-graph?action=find_related&entity=X` - Find related contracts
 - `GET /api/knowledge-graph?action=entity_network&entity=X` - Get entity connections
@@ -417,16 +465,19 @@ await orchestrator.process(docId, text, {
 ---
 
 #### ⚠️ **WORKFLOW AUTO-ASSIGNMENT**
+
 **Status**: 🟡 **PARTIALLY IMPLEMENTED**
 
 **File**: `/apps/web/lib/workflow-auto-assign.ts`
 
 **Capabilities**:
+
 - Role-based user selection
 - Round-robin distribution
 - Workload balancing
 
 **Missing**:
+
 - AI-driven workflow recommendations
 - Dynamic approval route suggestion based on risk
 - SLA-aware deadline management
@@ -438,6 +489,7 @@ await orchestrator.process(docId, text, {
 ### 4.2 Agent Architecture Strengths
 
 **✅ STRONG POINTS**:
+
 1. **Event-Driven**: EventBus for loose coupling
 2. **Observable**: Real-time progress tracking via SSE
 3. **Resilient**: Circuit breaker, retries, DLQ
@@ -446,6 +498,7 @@ await orchestrator.process(docId, text, {
 6. **Memory**: Conversation context retention
 
 **✅ PRODUCTION PATTERNS**:
+
 - Checkpointing for long-running jobs
 - Optimistic locking for concurrent updates
 - Transaction management for data consistency
@@ -458,18 +511,22 @@ await orchestrator.process(docId, text, {
 ### 5.1 Observability Gaps
 
 #### ⚠️ **METRICS COLLECTION**
+
 **Status**: 🟡 **PARTIAL**
 
 **Current**:
+
 - `/packages/workers/src/metrics.ts` - Basic worker metrics
 - `/packages/data-orchestration/src/services/monitoring.service.ts` - Stub
 
 **Missing**:
+
 - Prometheus metrics export
 - Grafana dashboards
 - Custom business metrics (contracts/hour, success rate, etc.)
 
 **Recommendation**:
+
 ```typescript
 // Add to metrics.ts
 export const contractMetrics = {
@@ -496,12 +553,14 @@ export const contractMetrics = {
 ---
 
 #### ⚠️ **DISTRIBUTED TRACING**
+
 **Status**: 🟡 **PARTIAL**
 
 **Current**: Trace IDs passed through jobs
 **Missing**: OpenTelemetry integration, span tracking
 
 **Recommendation**:
+
 ```typescript
 import { trace } from '@opentelemetry/api';
 
@@ -514,12 +573,14 @@ span.end();
 ---
 
 #### ⚠️ **ERROR TRACKING**
+
 **Status**: 🟡 **BASIC**
 
 **Current**: Console logging, database error logs
 **Missing**: Sentry/Bugsnag integration, error grouping, alerts
 
 **Recommendation**: Add Sentry SDK
+
 ```typescript
 import * as Sentry from "@sentry/node";
 
@@ -535,6 +596,7 @@ Sentry.init({
 ### 5.2 Security Enhancements Needed
 
 #### ✅ **TENANT ISOLATION**
+
 **Status**: 🟢 **IMPLEMENTED**
 
 All queries include tenant filtering. Recent audit complete (see `TENANT_ISOLATION_FINAL_STATUS.md`)
@@ -542,12 +604,14 @@ All queries include tenant filtering. Recent audit complete (see `TENANT_ISOLATI
 ---
 
 #### ⚠️ **API RATE LIMITING**
+
 **Status**: 🟡 **PARTIAL**
 
 **Current**: Some routes have basic limits
 **Missing**: Distributed rate limiting, per-tenant quotas
 
 **Recommendation**: Redis-based rate limiter
+
 ```typescript
 import { Ratelimit } from "@upstash/ratelimit";
 
@@ -561,12 +625,14 @@ const ratelimit = new Ratelimit({
 ---
 
 #### ⚠️ **INPUT VALIDATION**
+
 **Status**: 🟡 **INCONSISTENT**
 
 **Current**: `/packages/data-orchestration/src/services/input-validation.service.ts` exists
 **Issue**: Not consistently used across all API routes
 
 **Recommendation**: Middleware for automatic validation
+
 ```typescript
 import { z } from 'zod';
 
@@ -589,6 +655,7 @@ export function validateBody<T>(schema: z.ZodSchema<T>) {
 ### 5.3 Performance Optimizations
 
 #### ✅ **QUERY OPTIMIZATION**
+
 **Status**: 🟢 **SERVICE EXISTS**
 
 File: `/packages/data-orchestration/src/services/query-optimizer.service.ts`
@@ -596,14 +663,17 @@ File: `/packages/data-orchestration/src/services/query-optimizer.service.ts`
 ---
 
 #### ⚠️ **CACHING STRATEGY**
+
 **Status**: 🟡 **PARTIAL**
 
 **Current**:
+
 - Multi-level cache service exists
 - Query cache service exists
 - Not consistently applied
 
 **Recommendation**: Middleware for automatic caching
+
 ```typescript
 export function withCache(
   key: string,
@@ -623,10 +693,12 @@ export function withCache(
 ---
 
 #### ⚠️ **DATABASE CONNECTION POOLING**
+
 **Status**: 🟡 **BASIC**
 
 **Current**: Prisma default pool (10 connections)
 **Recommendation**: Increase for production
+
 ```typescript
 // prisma.config.ts
 export default defineConfig({
@@ -649,12 +721,14 @@ export default defineConfig({
 ### 6.1 TypeScript Coverage
 
 **Current State**:
+
 - **Core App**: ~85% typed (good)
 - **Data Orchestration**: ~90% typed (excellent)
 - **Chatbot**: Uses `@ts-nocheck` (needs cleanup)
 - **Agents**: ~95% typed (excellent)
 
 **Problem Areas**:
+
 1. Extensive `any` usage in:
    - Conversation memory metadata
    - Knowledge graph properties
@@ -666,7 +740,8 @@ export default defineConfig({
    - `/packages/data-orchestration/src/index.ts` - Intentional (duplicate exports)
    - `/packages/data-orchestration/src/lineage/data-lineage.ts` - Can be fixed
 
-**Recommendation**: 
+**Recommendation**:
+
 - Leave index.ts as-is (intentional)
 - Fix data-lineage.ts (low risk)
 - Refactor chatbot (high value, see section 7)
@@ -676,11 +751,13 @@ export default defineConfig({
 ### 6.2 Test Coverage
 
 **Current State**:
+
 - Integration tests exist (`/packages/data-orchestration/test/integration/`)
 - Load tests exist (`/packages/data-orchestration/test/load/`)
 - Unit tests sparse
 
 **Files with Tests**:
+
 - ✅ Authentication/authorization
 - ✅ Error responses  
 - ✅ Event emissions
@@ -688,6 +765,7 @@ export default defineConfig({
 - ✅ Production readiness load tests
 
 **Missing Tests**:
+
 - ❌ Knowledge graph service
 - ❌ Conversation memory service
 - ❌ Report generation services
@@ -695,6 +773,7 @@ export default defineConfig({
 - ❌ Agent orchestrator
 
 **Recommendation**: Add unit tests for new services (priority order)
+
 1. Conversation memory (critical for chatbot)
 2. Knowledge graph (complex logic)
 3. Report generation (business critical)
@@ -707,12 +786,14 @@ export default defineConfig({
 **Status**: 🟢 **EXCELLENT**
 
 **Available Docs**:
+
 - 40+ markdown files documenting features, architecture, testing
 - API documentation in route comments
 - Service-level comments in code
 - ✅ NEW: NEXT_LEVEL_ENHANCEMENTS.md (comprehensive)
 
 **Recent Additions**:
+
 - Real-time orchestrator implementation
 - Agentic enhancements
 - Production readiness guides
@@ -729,6 +810,7 @@ export default defineConfig({
 **Task**: Split 7271-line chat route into modular structure
 
 **Current Structure**:
+
 ```
 /apps/web/app/api/ai/chat/route.ts (7271 lines)
 ├── Intent detection (200 lines)
@@ -738,6 +820,7 @@ export default defineConfig({
 ```
 
 **Proposed Structure**:
+
 ```
 /apps/web/lib/chatbot/
 ├── intent-detector.ts
@@ -762,6 +845,7 @@ export default defineConfig({
 ```
 
 **Benefits**:
+
 - **Maintainability**: Easy to find and modify specific actions
 - **Testability**: Each handler can be unit tested independently
 - **Extensibility**: Add new actions without touching existing code
@@ -769,6 +853,7 @@ export default defineConfig({
 - **Code Reuse**: Share helpers between handlers
 
 **Migration Strategy**:
+
 1. Create new structure (keep old file)
 2. Move intent detection first
 3. Migrate one action handler at a time
@@ -777,12 +862,14 @@ export default defineConfig({
 6. Delete old file when complete
 
 **Status**: ✅ **STRUCTURE CREATED**
+
 - Created modular structure: types, constants, intent-detector
 - Implemented list-actions handler (fully functional)
 - Created handler stubs for remaining actions
 - Full documentation in [CHATBOT_REFACTORING_GUIDE.md](CHATBOT_REFACTORING_GUIDE.md)
 
 **Remaining Work**:
+
 - Extract contract actions from route.ts
 - Extract analytics actions
 - Status**: ✅ **COMPLETE**
@@ -800,6 +887,7 @@ export default defineConfig({
 **Task**: Remove `@ts-nocheck` and add proper types
 
 **Status**: ✅ **COMPLETE**
+
 - Removed `@ts-nocheck` from data-lineage.ts
 - Replaced `any` with `Record<string, unknown>` for metadata
 - Full type safety restored
@@ -807,11 +895,13 @@ export default defineConfig({
 ---
 
 ### 7.4 PRIORITY 4: Consolidate Database Clients ✅ **COMPLETE (N/A)**
+
 3. `/packages/data-orchestration/src/services/analytical-database.service.ts`
    - Stub returning empty arrays
    - Use Prisma for database queries
 
 **Files to Keep** (despite being small):
+
 - `/packages/data-orchestration/src/services/workflow.service.ts` - Used by other services
 - Event orchestrator services - Used for real-time features
 
@@ -825,6 +915,7 @@ export default defineConfig({
 **Task**: Remove duplicate Prisma client instantiation
 
 **Problem**: Two client files exist
+
 - Status**: ✅ **COMPLETE (NO DUPLICATE FOUND)**
 - Checked for `prisma.js` - file doesn't exist
 - Only `prisma.ts` exists (proper TypeScript version)
@@ -839,6 +930,7 @@ export default defineConfig({
 **Status**: ✅ **COMPLETE**
 
 **Created**:
+
 1. **Metrics Library** (`apps/web/lib/metrics/index.ts`):
    - Prometheus-compatible metrics
    - Contract processing metrics
@@ -859,6 +951,7 @@ export default defineConfig({
    - Usage examples
 
 **Available Metrics**:
+
 - 25+ metric types
 - Label-based filtering (tenant, type, status, etc.)
 - Histograms for latency tracking
@@ -866,6 +959,7 @@ export default defineConfig({
 - Gauges for state
 
 **Next Steps** (optional):
+
 - Install Prometheus & Grafana
 - Import dashboard configs
 - Configure alerting
@@ -874,10 +968,12 @@ export default defineConfig({
 ---
 
 ### 7.6 PRIORITY 6
+
 **Task**: Add AI-powered workflow recommendations
 
 **Current**: Manual workflow selection, basic role-based auto-assignment
 **Goal**: AI suggests optimal approval routes based on:
+
 - Contract type
 - Contract value
 - Risk score
@@ -885,6 +981,7 @@ export default defineConfig({
 - Supplier history
 
 **Implementation**:
+
 ```typescript
 // /packages/data-orchestration/src/services/workflow-suggester.service.ts
 
@@ -997,6 +1094,7 @@ Return JSON matching WorkflowSuggestion schema.`;
 - ✅ **CDN**: Static assets (Next.js built-in)
 - ⚠️ **Load Testing**: Exists but not automated
  ✅ **COMPLETE**
+
 1. ✅ **Prisma Schema** - No issue (using Prisma 5)
 2. ✅ **Remove prisma.js duplicate** - No duplicate found
 3. ✅ **Remove stub services** - 3 services removed
@@ -1005,18 +1103,21 @@ Return JSON matching WorkflowSuggestion schema.`;
 6. ✅ **Production monitoring** - Metrics system implemented
 
 ### Week 2 (High Priority)
+
 1. ⏳ **Complete chatbot handlers** - Extract from route.ts
 2. ⏳ **Add input validation middleware** (1 day)
 3. ⏳ **Implement Redis rate limiting** (1 day)
 4. ⏳ **Add Sentry error tracking** (1 hour)
 
 ### Week 3 (Medium Priority)
+
 1. ⏳ **Add unit tests for new services** (2 days)
 2. ⏳ **Configure CORS and CSP** (2 hours)
 3. ⏳ **Configure automated backups** (4 hours)
 4. ⏳ **Deploy Prometheus/Grafana** (2
 
 ### Production Readiness
+
 - **Infrastructure**: 🟡 70% ready
 - **Monitoring**: 🟡 50% ready
 - **Security**: 🟢 80% ready
@@ -1024,6 +1125,7 @@ Return JSON matching WorkflowSuggestion schema.`;
 - **Scalability**: 🟢 85% ready
 
 ### Redundancies
+
 - **Duplicate Systems Removed**: 3 (report systems)
 - **Duplicate Systems Remaining**: 3 (orchestrators, clients, intelligence)
 - **Stub Services to Remove**: 3
@@ -1033,24 +1135,28 @@ Return JSON matching WorkflowSuggestion schema.`;
 ## 10. Action Plan Priority
 
 ### Week 1 (Critical)
+
 1. ✅ **Fix Prisma Schema** (2 hours) - BLOCKING
 2. ✅ **Remove prisma.js duplicate** (30 min)
 3. ✅ **Add Sentry error tracking** (1 hour)
 4. ⏳ **Configure CORS and CSP** (2 hours)
 
 ### Week 2 (High Priority)
+
 1. ⏳ **Refactor chatbot** (2-3 days) - Start with intent detector
 2. ⏳ **Add input validation middleware** (1 day)
 3. ⏳ **Implement Redis rate limiting** (1 day)
 4. ⏳ **Add Prometheus metrics** (1 day)
 
 ### Week 3 (Medium Priority)
+
 1. ⏳ **Remove stub services** (1 hour)
 2. ⏳ **Add unit tests for new services** (2 days)
 3. ⏳ **Fix data-lineage.ts types** (2 hours)
 4. ⏳ **Configure automated backups** (4 hours)
 
 ### Week 4 (Enhancements)
+
 1. ⏳ **Add AI workflow suggestions** (1 day)
 2. ⏳ **OpenTelemetry integration** (1 day)
 3. ⏳ **Load testing automation** (1 day)
@@ -1061,12 +1167,14 @@ Return JSON matching WorkflowSuggestion schema.`;
 ## 11. Conclusion
 
 ### Strengths 🟢
+
 - **Solid Architecture**: Well-designed service layer, clear separation of concerns
 - **Production Patterns**: Event-driven, resilient, observable, traceable
 - **Advanced AI**: Knowledge graphs, conversation memory, agentic capabilities
 - **Clean Codebase**: Stub services removed, type safety improved
 
 ### Recent Improvements ✅
+
 - **Chatbot Modularization**: Created modular structure with handlers (foundation complete)
 - **Type Safety**: Removed `@ts-nocheck` from data-lineage.ts
 - **Code Cleanup**: Removed 3 stub services (unified-orchestration, intelligence, analytical-database)
@@ -1074,6 +1182,7 @@ Return JSON matching WorkflowSuggestion schema.`;
 - **Documentation**: Added CHATBOT_REFACTORING_GUIDE.md and PRODUCTION_MONITORING_SETUP.md
 
 ### Remaining Tasks 🟡
+
 - **Chatbot Handlers**: Extract remaining actions from monolithic route (contract, analytics, taxonomy, comparison, workflow)
 - **Type Safety**: Remove `@ts-nocheck` from chatbot route (will happen after refactoring complete)
 - **Monitoring Deployment**: Deploy Prometheus/Grafana infrastructure
@@ -1081,6 +1190,7 @@ Return JSON matching WorkflowSuggestion schema.`;
 - **Rate Limiting**: Implement Redis-based distributed rate limiting
 
 ### Critical Path ⚠️ **UPDATED**
+
 1. ~~Fix Prisma schema configuration~~ ✅ Not needed (Prisma 5)
 2. ~~Remove stub services~~ ✅ Complete
 3. ~~Fix type safety issues~~ ✅ Complete (data-lineage)
@@ -1089,9 +1199,11 @@ Return JSON matching WorkflowSuggestion schema.`;
 6. Implement input validation and rate limiting
 
 ### Overall Assessment
+
 **Grade**: 🟢 **A-** (Production-ready with recommended enhancements)
 
 The system is **fundamentally sound** with excellent architecture and comprehensive features. Major cleanup tasks completed:
+
 - ✅ Removed redundant code (3 stub services)
 - ✅ Improved type safety (data-lineage.ts)
 - ✅ Created modular chatbot structure (foundation ready)
@@ -1106,12 +1218,14 @@ The system is **fundamentally sound** with excellent architecture and comprehens
 ## 12. Next Steps
 
 **Immediate Action Required**:
+
 1. Create `prisma.config.ts` to fix Prisma v7 compatibility ← **DO THIS FIRST**
 2. Test database connections after fix
 3. Plan chatbot refactoring approach
 4. Set up Sentry for error tracking
 
 **Follow-up Actions**:
+
 - Schedule refactoring sprint for chatbot (Week 2)
 - Add monitoring and alerting (Week 2-3)
 - Clean up redundant services (Week 3)

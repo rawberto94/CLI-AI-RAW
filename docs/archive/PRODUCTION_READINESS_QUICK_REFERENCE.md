@@ -9,33 +9,39 @@ All 6 critical production improvements have been implemented and verified.
 ## 🚀 What's Ready
 
 ### 1. Background Job Queue (BullMQ)
+
 - **Files**: `packages/utils/src/queue/`, `packages/workers/src/`
 - **Status**: ✅ Production Ready
 - **Features**: Non-blocking processing, automatic retries, horizontal scaling
 - **Workers**: Contract processor, artifact generator, webhook delivery
 
 ### 2. Object Storage (MinIO/S3)
+
 - **Files**: `apps/web/lib/storage-service.ts`
 - **Status**: ✅ Production Ready
 - **Features**: S3-compatible API, signed URLs, metadata tracking, fallback to local
 
 ### 3. Real Authentication (NextAuth v5)
+
 - **Files**: `apps/web/lib/auth.ts`, `apps/web/middleware.ts`
 - **Status**: ✅ Production Ready
 - **Features**: JWT sessions, tenant isolation, protected routes, RBAC
-- **Demo**: demo@example.com / demo123
+- **Demo**: <demo@example.com> / demo123
 
 ### 4. Transaction Wrappers
+
 - **Files**: `apps/web/lib/transaction-service.ts`
 - **Status**: ✅ Production Ready
 - **Features**: Retry logic, idempotency keys, audit trails, transactional outbox
 
 ### 5. Webhook Delivery System
+
 - **Files**: `packages/workers/src/webhook-worker.ts`, `apps/web/lib/webhook-triggers.ts`
 - **Status**: ✅ Production Ready
 - **Features**: HMAC signatures, automatic retries, delivery tracking, event triggers
 
 ### 6. Docker & CI/CD
+
 - **Files**: `Dockerfile`, `Dockerfile.workers`, `.github/workflows/ci-cd.yml`
 - **Status**: ✅ Production Ready
 - **Features**: Multi-stage builds, automated testing, container registry, deployment automation
@@ -45,6 +51,7 @@ All 6 critical production improvements have been implemented and verified.
 ## 📦 Quick Start Commands
 
 ### Development
+
 ```bash
 # Start infrastructure
 docker compose -f docker-compose.dev.yml up -d
@@ -57,6 +64,7 @@ cd packages/workers && pnpm dev
 ```
 
 ### Production
+
 ```bash
 # Generate secrets
 openssl rand -base64 32  # AUTH_SECRET
@@ -74,6 +82,7 @@ docker compose -f docker-compose.prod.yml exec web pnpm prisma migrate deploy
 ```
 
 ### Verification
+
 ```bash
 # Run production readiness check
 bash scripts/verify-production-readiness.sh
@@ -88,6 +97,7 @@ docker compose -f docker-compose.dev.yml ps
 ## 🔍 Key Files Reference
 
 ### Infrastructure
+
 - `Dockerfile` - Next.js production image
 - `Dockerfile.workers` - Background workers image
 - `.dockerignore` - Build optimization
@@ -95,10 +105,12 @@ docker compose -f docker-compose.dev.yml ps
 - `docker-compose.prod.yml` - Production orchestration
 
 ### CI/CD
+
 - `.github/workflows/ci-cd.yml` - Automated pipeline
 - `scripts/verify-production-readiness.sh` - Verification script
 
 ### Queue System
+
 - `packages/utils/src/queue/queue-service.ts` - BullMQ wrapper
 - `packages/utils/src/queue/contract-queue.ts` - Queue manager
 - `packages/workers/src/contract-processor.ts` - Contract worker
@@ -107,22 +119,27 @@ docker compose -f docker-compose.dev.yml ps
 - `packages/workers/src/index.ts` - Worker startup
 
 ### Storage
+
 - `apps/web/lib/storage-service.ts` - S3-compatible storage
 - `apps/web/lib/queue-init.ts` - Queue initialization
 
 ### Authentication
+
 - `apps/web/lib/auth.ts` - NextAuth config
 - `apps/web/middleware.ts` - Route protection
 - `apps/web/app/auth/signin/page.tsx` - Sign-in UI
 - `scripts/create-demo-user.ts` - Demo user creation
 
 ### Transactions
+
 - `apps/web/lib/transaction-service.ts` - Transaction wrappers
 
 ### Webhooks
+
 - `apps/web/lib/webhook-triggers.ts` - Event triggers
 
 ### Documentation
+
 - `PRODUCTION_READINESS_COMPLETE.md` - Complete overview
 - `DEPLOYMENT_GUIDE.md` - Operations manual
 - `SECRETS_MANAGEMENT.md` - Security guide
@@ -133,6 +150,7 @@ docker compose -f docker-compose.dev.yml ps
 ## 🔐 Required Environment Variables
 
 ### Development (.env)
+
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/contracts
 REDIS_HOST=localhost
@@ -147,6 +165,7 @@ OPENAI_API_KEY=sk-...
 ```
 
 ### Production (.env.production)
+
 ```bash
 DATABASE_URL=postgresql://postgres:<PASSWORD>@postgres:5432/contract_intelligence
 REDIS_HOST=redis
@@ -200,6 +219,7 @@ Workers (2+ replicas)
 ## 🚨 Troubleshooting
 
 ### Workers Not Processing
+
 ```bash
 # Check Redis
 docker compose -f docker-compose.dev.yml exec redis redis-cli ping
@@ -212,6 +232,7 @@ docker compose -f docker-compose.dev.yml exec redis redis-cli KEYS "bull:*"
 ```
 
 ### MinIO Not Accessible
+
 ```bash
 # Check MinIO health
 curl http://localhost:9000/minio/health/live
@@ -224,6 +245,7 @@ docker compose -f docker-compose.dev.yml logs minio
 ```
 
 ### Authentication Issues
+
 ```bash
 # Verify AUTH_SECRET is set
 grep AUTH_SECRET apps/web/.env
@@ -273,6 +295,7 @@ curl -I http://localhost:3000/dashboard
 All 30 production readiness checks passed. The system is ready to deploy.
 
 **Next Steps**:
+
 1. Configure production secrets
 2. Build Docker images
 3. Deploy to production environment

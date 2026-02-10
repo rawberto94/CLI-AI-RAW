@@ -1256,7 +1256,7 @@ for enterprise clients.
 
 ### The Key Message
 
-> **"Your data is YOUR data. We're just a secure tool to help you work with it. 
+> **"Your data is YOUR data. We're just a secure tool to help you work with it.
 > When you leave, you take everything. We keep nothing."**
 
 ---
@@ -1449,6 +1449,7 @@ const rotator = new SecretsRotationService({
 PostgreSQL security features:
 
 **Row-Level Security (RLS):**
+
 ```sql
 -- Tenant isolation policy
 CREATE POLICY tenant_isolation ON contracts
@@ -1461,6 +1462,7 @@ CREATE POLICY admin_bypass ON contracts
 ```
 
 **Column-Level Encryption:**
+
 ```typescript
 // Encrypt sensitive fields
 const dbSecurity = new DatabaseSecurityService(prisma);
@@ -1476,6 +1478,7 @@ const hash = dbSecurity.hashForSearch(searchTerm);
 ```
 
 **Audit Triggers:**
+
 ```sql
 -- Automatic audit logging for all changes
 CREATE TRIGGER audit_contracts
@@ -1524,6 +1527,7 @@ backupService.scheduleBackups({
 **Location:** `/kubernetes/security-policies.yaml`
 
 Pod Security Standards (Restricted Level):
+
 - No privileged containers
 - No host network/PID/IPC access
 - Read-only root filesystem
@@ -1531,6 +1535,7 @@ Pod Security Standards (Restricted Level):
 - Limited capabilities
 
 Network Policies:
+
 ```yaml
 # Database only accessible from app pods
 apiVersion: networking.k8s.io/v1
@@ -1551,6 +1556,7 @@ spec:
 ```
 
 RBAC:
+
 ```yaml
 # Least privilege for worker processes
 apiVersion: rbac.authorization.k8s.io/v1

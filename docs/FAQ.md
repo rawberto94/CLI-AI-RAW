@@ -343,7 +343,7 @@ Yes. Changes take effect on your next billing cycle. Upgrades are prorated.
 
 ### Do you offer discounts for non-profits or startups?
 
-Yes — contact us at sales@contigo-app.ch for special pricing.
+Yes — contact us at <sales@contigo-app.ch> for special pricing.
 
 ---
 
@@ -436,7 +436,7 @@ Yes — Enterprise customers can use **SAML 2.0** or **OpenID Connect (OIDC)** t
 | Channel | Plan | Availability | Response Time |
 |---|---|---|---|
 | **Knowledge Base** | All | 24/7 | Self-service |
-| **Email** | All | support@contigo-app.ch | <24 hours |
+| **Email** | All | <support@contigo-app.ch> | <24 hours |
 | **In-app chat** | Professional+ | Business hours (CET) | <4 hours |
 | **Dedicated CSM** | Enterprise | Business hours (CET) | <1 hour |
 | **Phone** | Enterprise | Mon–Fri 08:00–18:00 CET | Immediate |
@@ -450,8 +450,8 @@ Yes — Enterprise customers can use **SAML 2.0** or **OpenID Connect (OIDC)** t
 
 ### How do I report a bug or request a feature?
 
-- **Bug:** In-app → Help → Report Issue (or email support@contigo-app.ch)
-- **Feature request:** In-app → Help → Feature Request (or email feedback@contigo-app.ch)
+- **Bug:** In-app → Help → Report Issue (or email <support@contigo-app.ch>)
+- **Feature request:** In-app → Help → Feature Request (or email <feedback@contigo-app.ch>)
 
 All feature requests are reviewed monthly and prioritised by customer impact.
 

@@ -221,6 +221,7 @@ This document outlines the comprehensive technical approach for migrating the Co
 ### Recommendation
 
 **Primary Choice: AWS** - Selected based on:
+
 - Mature Kubernetes (EKS) ecosystem
 - Aurora PostgreSQL for scalability
 - Extensive AI/ML integrations
@@ -228,6 +229,7 @@ This document outlines the comprehensive technical approach for migrating the Co
 - Cost optimization tools (Savings Plans, Spot)
 
 **Alternative: Azure** - If Microsoft ecosystem preferred:
+
 - Azure OpenAI Service integration
 - Active Directory integration
 - Enterprise support agreements
@@ -1770,8 +1772,8 @@ kubectl exec -it deployment/contigo-web -n production -- psql $DATABASE_URL
 | Role | Contact | Escalation Time |
 |------|---------|-----------------|
 | **On-call Engineer** | PagerDuty | Immediate |
-| **Platform Lead** | platform-lead@example.com | 15 minutes |
-| **CTO** | cto@example.com | 30 minutes |
+| **Platform Lead** | <platform-lead@example.com> | 15 minutes |
+| **CTO** | <cto@example.com> | 30 minutes |
 | **AWS Support** | Enterprise Support | As needed |
 
 ---

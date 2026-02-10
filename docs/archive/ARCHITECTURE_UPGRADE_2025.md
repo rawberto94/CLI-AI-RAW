@@ -7,6 +7,7 @@ This document outlines the architecture analysis and optimizations performed for
 ## Current Technology Stack
 
 ### Core Framework Versions (Latest Stable)
+
 | Package | Current | Latest Available | Status |
 |---------|---------|------------------|--------|
 | Next.js | 15.5.6 | 16.0.4 | ⚠️ Major update available |
@@ -16,6 +17,7 @@ This document outlines the architecture analysis and optimizations performed for
 | pnpm | 8.9.0 | 9.x | ⚠️ Major update available |
 
 ### Library Versions
+
 | Package | Current | Latest | Notes |
 |---------|---------|--------|-------|
 | Prisma | 5.22.0 | 7.0.1 | 🔒 Blocked - schema changes |
@@ -27,11 +29,13 @@ This document outlines the architecture analysis and optimizations performed for
 ## Upgrade Blockers
 
 ### Critical: LangChain/Zod Compatibility
+
 - **Issue**: `@langchain/core` 0.3+ requires Zod 4's new export paths (`zod/v3`, `zod/v4/core`)
 - **Current Fix**: pnpm override forces `zod-to-json-schema@3.23.5`
 - **Solution**: Wait for LangChain to stabilize Zod 4 support, then upgrade together
 
 ### Critical: Prisma 6+ Schema Changes
+
 - **Issue**: Prisma 6+ has TypeScript API changes affecting `data-orchestration` package
 - **Impact**: ~20+ services need refactoring
 - **Solution**: Dedicated migration sprint required
@@ -39,12 +43,14 @@ This document outlines the architecture analysis and optimizations performed for
 ## Applied Optimizations ✅
 
 ### 1. TypeScript Configuration
+
 - Upgraded target from ES2020 → ES2022
 - Added `noUncheckedIndexedAccess` for safer array access
 - Added `noImplicitOverride` for class inheritance safety
 - Added `DOM.Iterable` to lib for modern iteration
 
 ### 2. Next.js Performance
+
 - Enabled `webpackBuildWorker` for parallel builds
 - Enabled `parallelServerBuildTraces` and `parallelServerCompiles`
 - Extended `optimizePackageImports` to include:
@@ -55,6 +61,7 @@ This document outlines the architecture analysis and optimizations performed for
   - `clsx`
 
 ### 3. Security Headers Enhanced
+
 - Added `X-XSS-Protection: 1; mode=block`
 - Added `Strict-Transport-Security` for HSTS
 - Upgraded `Referrer-Policy` to `strict-origin-when-cross-origin`
@@ -62,6 +69,7 @@ This document outlines the architecture analysis and optimizations performed for
 - Added static asset caching headers
 
 ### 4. Turbo Build System
+
 - Daemon mode enabled for faster rebuilds
 - Task caching configured properly
 - Database generation task added
@@ -83,17 +91,20 @@ pnpm update -r
 ## Deferred Updates (Require Planning)
 
 ### Next.js 16 Migration
+
 ```bash
 # When ready (test thoroughly)
 pnpm update next@16 -r
 ```
 
 ### Tailwind CSS 4 Migration
+
 - Significant config changes required
 - CSS-first configuration approach
 - Lightning CSS engine integration
 
 ### LangChain + Zod 4 Migration
+
 1. Upgrade Zod to 4.x
 2. Update all schema definitions if needed
 3. Upgrade LangChain packages

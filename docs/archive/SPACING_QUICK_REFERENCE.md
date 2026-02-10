@@ -56,6 +56,7 @@ h-6+ w-6+    // 🎯 Large page headers, hero icons
 ```
 
 **Examples:**
+
 ```tsx
 // Badge icon
 <Badge className="px-3 py-1">
@@ -100,6 +101,7 @@ space-y-5    // Major sections
 ## 🎨 Common Patterns
 
 ### Status Badge
+
 ```tsx
 <Badge className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200">
   <CheckCircle className="h-3.5 w-3.5" />
@@ -108,6 +110,7 @@ space-y-5    // Major sections
 ```
 
 ### Stat Card
+
 ```tsx
 <Card>
   <CardContent className="p-5">
@@ -126,6 +129,7 @@ space-y-5    // Major sections
 ```
 
 ### Action Button Group
+
 ```tsx
 <div className="flex gap-2.5">
   <Button className="h-8">
@@ -140,6 +144,7 @@ space-y-5    // Major sections
 ```
 
 ### Table Row
+
 ```tsx
 <TableRow>
   <TableCell className="py-3.5">
@@ -160,6 +165,7 @@ space-y-5    // Major sections
 ## ⚠️ Common Mistakes
 
 ### ❌ DON'T
+
 ```tsx
 // Wrong badge padding
 <Badge className="px-2 py-0.5">
@@ -178,6 +184,7 @@ space-y-5    // Major sections
 ```
 
 ### ✅ DO
+
 ```tsx
 // Correct badge padding
 <Badge className="px-3 py-1">
@@ -200,6 +207,7 @@ space-y-5    // Major sections
 ## 🔍 Quick Checklist
 
 Before you commit:
+
 - [ ] All badges have `px-3 py-1`
 - [ ] Badge icons are `h-3.5 w-3.5`
 - [ ] CardContent uses `p-5`

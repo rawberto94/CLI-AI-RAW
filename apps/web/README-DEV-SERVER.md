@@ -5,17 +5,20 @@ The custom development server (`dev-server.js`) provides production-ready memory
 ## Quick Start
 
 ### Standard Launch
+
 ```bash
 chmod +x start-dev.sh check-health.sh
 ./start-dev.sh
 ```
 
 ### Using npm/pnpm
+
 ```bash
 pnpm dev:custom
 ```
 
 ### Check Server Health
+
 ```bash
 ./check-health.sh
 ```
@@ -23,17 +26,20 @@ pnpm dev:custom
 ## Features
 
 ### 1. Memory Management
+
 - **Soft Limit**: Throttles new requests when memory exceeds threshold
 - **Hard Limit**: Triggers graceful restart if memory continues to grow
 - **Automatic GC**: Forces garbage collection at soft limit
 - **Recovery Buffer**: Hysteresis to prevent rapid on/off cycling
 
 ### 2. Rate Limiting
+
 - Per-IP request tracking
 - Configurable time windows
 - Automatic cleanup of old entries
 
 ### 3. Connection Management
+
 - Concurrent request limits
 - Request timeouts (30s default)
 - Graceful connection handling
@@ -41,12 +47,15 @@ pnpm dev:custom
 ### 4. Health Endpoints
 
 #### `/api/health`
+
 Basic health check with uptime and memory pressure status:
+
 ```bash
 curl http://localhost:3005/api/health
 ```
 
 Response:
+
 ```json
 {
   "status": "ok",
@@ -62,12 +71,15 @@ Response:
 ```
 
 #### `/api/runtime-info`
+
 Detailed runtime diagnostics:
+
 ```bash
 curl http://localhost:3005/api/runtime-info
 ```
 
 Response:
+
 ```json
 {
   "memory": {
@@ -86,12 +98,15 @@ Response:
 ```
 
 #### Heap Snapshots (Optional)
+
 Enable heap snapshots for debugging:
+
 ```bash
 ALLOW_HEAP_SNAPSHOT=1 ./start-dev.sh
 ```
 
 Then capture a snapshot:
+
 ```bash
 curl "http://localhost:3005/api/runtime-info?snapshot=1"
 ```
@@ -103,6 +118,7 @@ The snapshot will be saved to `/tmp/heap-<timestamp>.heapsnapshot` and can be an
 All settings are configurable via environment variables:
 
 ### Memory Settings
+
 ```bash
 # Soft limit - starts throttling requests (MB)
 MEMORY_SOFT_LIMIT_MB=6144
@@ -121,6 +137,7 @@ MEMORY_CHECK_INTERVAL_MS=30000
 ```
 
 ### Connection Settings
+
 ```bash
 # Maximum concurrent requests
 MAX_CONCURRENT_REQUESTS=100
@@ -133,6 +150,7 @@ MAX_REQUESTS_PER_WINDOW=1000
 ```
 
 ### Server Settings
+
 ```bash
 # Server host
 HOST=0.0.0.0
@@ -148,6 +166,7 @@ MAX_HTTP_HEADER_SIZE=80000
 ```
 
 ### Cleanup Settings
+
 ```bash
 # Cleanup interval for rate limit entries (ms)
 CLEANUP_INTERVAL_MS=120000
@@ -159,6 +178,7 @@ MEMORY_PRESSURE_COOLDOWN_MS=120000
 ## Example Configurations
 
 ### Development (Low Memory)
+
 ```bash
 MAX_OLD_SPACE_SIZE=4096 \
 MEMORY_SOFT_LIMIT_MB=3072 \
@@ -167,6 +187,7 @@ MEMORY_HARD_LIMIT_MB=3584 \
 ```
 
 ### Production (High Traffic)
+
 ```bash
 MAX_OLD_SPACE_SIZE=8192 \
 MEMORY_SOFT_LIMIT_MB=6144 \
@@ -177,6 +198,7 @@ MAX_REQUESTS_PER_WINDOW=2000 \
 ```
 
 ### Debug Mode (With Heap Snapshots)
+
 ```bash
 ALLOW_HEAP_SNAPSHOT=1 \
 MAX_OLD_SPACE_SIZE=8192 \
@@ -186,12 +208,15 @@ MAX_OLD_SPACE_SIZE=8192 \
 ## Monitoring
 
 ### Watch Memory in Real-Time
+
 The server logs memory usage every 30 seconds:
+
 ```
 [Memory] Heap: 2048/4096MB, RSS: 3072MB, Active Requests: 15
 ```
 
 ### Health Checks in Scripts
+
 ```bash
 # Simple health check
 if curl -sf http://localhost:3005/api/health > /dev/null; then
@@ -205,6 +230,7 @@ fi
 ```
 
 ### Load Testing
+
 ```bash
 # Simple load test
 for i in {1..100}; do
@@ -219,24 +245,29 @@ wait
 ## Troubleshooting
 
 ### Port Already in Use
+
 ```bash
 # The script automatically handles this, but manual cleanup:
 lsof -ti:3005 | xargs kill -9
 ```
 
 ### High Memory Usage
+
 1. Check current usage: `./check-health.sh`
 2. Enable heap snapshots: `ALLOW_HEAP_SNAPSHOT=1`
 3. Capture snapshot: `curl "http://localhost:3005/api/runtime-info?snapshot=1"`
 4. Analyze in Chrome DevTools (Memory > Load Profile)
 
 ### Server Keeps Restarting
+
 - Lower `MEMORY_HARD_LIMIT_MB`
 - Increase `MAX_OLD_SPACE_SIZE`
 - Check for memory leaks in application code
 
 ### Rate Limit Errors
+
 Increase limits:
+
 ```bash
 MAX_REQUESTS_PER_WINDOW=2000 \
 RATE_LIMIT_WINDOW_MS=60000 \

@@ -178,6 +178,7 @@ Switzerland presents a uniquely attractive beachhead for CLM:
 | **Data sensitivity** | Requires Swiss/EU data residency — strong differentiator trigger |
 
 **Exclusion criteria (anti-persona):**
+
 - <50 contracts (too small — suggest free tools)
 - Multinational with existing Icertis/SAP CLM deployment (displacement too hard Year 1)
 - Public tenders requiring on-premise only (revisit when hybrid option launches)
@@ -275,36 +276,42 @@ Upload → Extract → Analyse → Track → Renew → Report
 ### 5.2 Core Modules
 
 #### Module 1: Intelligent Document Processing
+
 - Multi-format ingestion (PDF, DOCX, XLSX, images, scans)
 - OCR with 95%+ accuracy (Azure Vision + Mistral AI)
 - Automated metadata extraction (18+ artifact types)
 - Language detection (100+ languages)
 
 #### Module 2: AI-Powered Analysis
+
 - Multi-agent AI architecture (extraction, risk, compliance, rates)
 - RAG-based semantic search across entire portfolio
 - Natural language chat interface ("Show me expiring contracts over CHF 100K")
 - Risk scoring (0–100) with explainable reasoning
 
 #### Module 3: Obligation & Renewal Management
+
 - Automated obligation extraction from contract text
 - Proactive alerts at 90/60/30 days before expiration
 - Renewal workflow automation
 - Calendar integration
 
 #### Module 4: Rate Card Benchmarking
+
 - Rate extraction from SOWs and service agreements
 - Market benchmark comparison
 - Savings opportunity identification
 - AI-recommended negotiation points
 
 #### Module 5: Analytics & Reporting
+
 - Portfolio dashboards (value, risk, status distribution)
 - Spend analytics by vendor, department, category
 - AI-generated executive reports
 - Export to CSV, JSON, PDF
 
 #### Module 6: Collaboration & Workflow
+
 - Multi-user commenting and @mentions
 - Configurable approval workflows
 - Secure external sharing
@@ -340,6 +347,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 ### 6.2 Detailed Feature Roadmap
 
 #### Q1 2026 — Foundation
+
 - [ ] Contract extraction accuracy improvements (target: 97%+)
 - [ ] Bulk upload UX improvements (drag & drop, progress tracking)
 - [ ] Notification system (email + in-app alerts)
@@ -349,6 +357,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] Security hardening (pen test, CSP headers, rate limiting)
 
 #### Q2 2026 — Growth Phase 1
+
 - [ ] German-language complete UI translation (de-CH)
 - [ ] DocuSign e-signature integration
 - [ ] REST API v1 (read-only for Professional+)
@@ -358,6 +367,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] Mobile-responsive web (PWA foundation)
 
 #### Q3 2026 — Growth Phase 2
+
 - [ ] Adobe Sign integration
 - [ ] REST API v2 (read+write for Enterprise)
 - [ ] Custom fields (user-defined metadata)
@@ -367,6 +377,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] SAP integration (read-only)
 
 #### Q4 2026 — Enterprise Readiness
+
 - [ ] SSO (SAML 2.0, OAuth 2.0 / OpenID Connect)
 - [ ] LDAP / Active Directory sync
 - [ ] SOC 2 Type II audit preparation
@@ -377,6 +388,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] Quarterly Business Review automation
 
 #### Q1 2027 — Platform Foundations
+
 - [ ] Multi-entity / subsidiary management
 - [ ] Advanced RBAC (role-based access control)
 - [ ] French-language UI (fr-CH)
@@ -386,6 +398,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] AI model fine-tuning per tenant
 
 #### Q2–Q4 2027 — European Expansion
+
 - [ ] DACH market localisation (DE, AT variations)
 - [ ] Azure Marketplace listing
 - [ ] Partner / reseller portal
@@ -395,6 +408,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 - [ ] Regulatory compliance module (EU AI Act readiness)
 
 #### 2028+ — Platform Play
+
 - [ ] Integration marketplace (ISV partners)
 - [ ] Self-serve contract template builder
 - [ ] Public API with developer portal
@@ -473,6 +487,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 | **Content marketing** | Blog, whitepapers on FADP compliance and contract AI |
 
 **Target industries (Switzerland first):**
+
 1. IT & Software companies (complex MSAs, SOWs)
 2. Pharma & Life Sciences (regulatory compliance)
 3. Financial services (high-value, high-risk contracts)
@@ -801,6 +816,7 @@ Upload → Extract → Analyse → Track → Renew → Report
 ### 13.2 IP Assignment
 
 All IP created by the technical founder pre-incorporation **must be formally assigned** to the GmbH via an IP Assignment Agreement (see Founders' Pact §4). This is critical for investor due diligence. Additionally:
+
 - **Trademark** registration (“ConTigo”) with IGE within 60 days of incorporation (Founders' Pact §4.7)
 - **Domain** (contigo-app.ch) assigned to GmbH with founder reversion rights (Founders' Pact §4.5)
 - **Spousal acknowledgement** letters obtained from married founders (Founders' Pact §18.1.1)
@@ -1016,6 +1032,7 @@ The platform uses well-established open-source frameworks (Next.js, Prisma, Post
 **Strategic acquisition by a US CLM vendor or enterprise software company seeking European/Swiss market entry.**
 
 Rationale:
+
 - US CLMs (Ironclad, Icertis, DocuSign) all face data sovereignty barriers in EU/Swiss markets
 - Acquiring ConTigo gives immediate Swiss FADP compliance + EU customer base + Swiss-resident AI architecture
 - More cost-effective than building Swiss infra from scratch

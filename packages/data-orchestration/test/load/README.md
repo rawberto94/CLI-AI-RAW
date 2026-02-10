@@ -9,9 +9,11 @@ The load testing suite validates system performance under various load condition
 ## Test Files
 
 ### 1. `production-readiness-load-test.ts`
+
 **Primary load test suite for production readiness validation**
 
 Tests:
+
 - ✅ Concurrent User Load (100+ users)
 - ✅ SSE Connection Scaling (100+ connections)
 - ✅ Database Performance Under Load
@@ -20,10 +22,12 @@ Tests:
 - ✅ Sustained Load Test (60 seconds)
 
 **Requirements Covered:**
+
 - Requirement 8.1: Integration tests for critical workflows
 - Requirement 7.1: Support at least 100 concurrent SSE connections
 
 **Performance Targets:**
+
 - Page Load Time: <2 seconds
 - API Response Time: <200ms (P95)
 - Concurrent Users: 100+
@@ -31,9 +35,11 @@ Tests:
 - Success Rate: >95%
 
 ### 2. `rate-card-load-test.ts`
+
 Load tests specific to rate card functionality.
 
 ### 3. `enhanced-rate-card-load-test.ts`
+
 Advanced load tests for rate card engine enhancements.
 
 ## Running Load Tests
@@ -41,11 +47,13 @@ Advanced load tests for rate card engine enhancements.
 ### Prerequisites
 
 1. Ensure the application is running:
+
 ```bash
 npm run dev
 ```
 
 2. Set environment variables (optional):
+
 ```bash
 export TEST_BASE_URL=http://localhost:3005
 export TEST_TENANT_ID=your-tenant-id
@@ -93,32 +101,40 @@ Each test provides detailed metrics:
 ## Performance Targets
 
 ### API Response Times
+
 - **Target**: <200ms (P95)
 - **Critical**: <500ms (P99)
 
 ### Page Load Times
+
 - **Target**: <2 seconds
 - **Critical**: <5 seconds
 
 ### Concurrent Users
+
 - **Target**: 100+ concurrent users
 - **Critical**: 50+ concurrent users
 
 ### SSE Connections
+
 - **Target**: 100+ concurrent connections
 - **Critical**: 50+ concurrent connections
 
 ### Success Rate
+
 - **Target**: >95%
 - **Critical**: >90%
 
 ## Interpreting Results
 
 ### ✅ PASSED
+
 All performance targets met. System is production-ready.
 
 ### ❌ FAILED
+
 One or more targets not met. Review:
+
 1. Database query optimization
 2. Connection pool configuration
 3. Cache hit rates
@@ -128,24 +144,28 @@ One or more targets not met. Review:
 ## Troubleshooting
 
 ### High Latency (P95 > 200ms)
+
 - Check database query performance
 - Review connection pool settings
 - Verify cache configuration
 - Check for N+1 queries
 
 ### Low Success Rate (<95%)
+
 - Check error logs
 - Review rate limiting configuration
 - Verify database connection limits
 - Check for timeout issues
 
 ### SSE Connection Failures
+
 - Review connection manager configuration
 - Check max connection limits
 - Verify event bus performance
 - Review reconnection logic
 
 ### Database Performance Issues
+
 - Add missing indexes
 - Optimize slow queries
 - Increase connection pool size
@@ -198,6 +218,7 @@ After successful load tests:
 ## Support
 
 For issues or questions:
+
 - Review test output for specific failures
 - Check application logs
 - Review monitoring dashboards

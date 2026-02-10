@@ -21,12 +21,14 @@ Tenant management is **85% secure** but has **3 critical gaps** that could allow
 ## Gap 1: TaxonomyCategory Foreign Key Validation
 
 ### Current State
+
 ```typescript
 // Contract can reference ANY tenant's categories
 contractCategoryId String? // No FK validation
 ```
 
 ### Attack Vector
+
 ```typescript
 // Tenant A creates category
 POST /api/taxonomy
@@ -79,6 +81,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 ```
 
 **Files to Update:**
+
 - ✅ `/apps/web/app/api/contracts/[id]/categorize/route.ts`
 - ✅ `/apps/web/app/api/contracts/[id]/metadata/route.ts`
 - ✅ `/apps/web/app/api/contracts/upload/route.ts`
@@ -89,6 +92,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 ## Gap 2: Role/Permission Models Not Tenant-Scoped
 
 ### Current State
+
 ```prisma
 model Role {
   id   String @id
@@ -105,6 +109,7 @@ model Permission {
 ```
 
 ### Problems
+
 1. **Role name collisions:** Tenant A creates "Admin" → Tenant B can't
 2. **No custom permissions:** All tenants share same permission set
 3. **Role leakage risk:** UserRole doesn't validate tenant ownership
@@ -153,6 +158,7 @@ model Permission {
 ```
 
 **Migration SQL:**
+
 ```sql
 -- Add tenantId columns
 ALTER TABLE "Role" ADD COLUMN "tenantId" TEXT;
@@ -187,6 +193,7 @@ ALTER TABLE "Permission" ADD CONSTRAINT "Permission_tenantId_fkey"
 ```
 
 **Files to Update:**
+
 - ✅ Update all role/permission API routes to include tenantId
 - ✅ Update role creation to require tenantId
 - ✅ Update permission checks to validate tenant scope
@@ -198,6 +205,7 @@ ALTER TABLE "Permission" ADD CONSTRAINT "Permission_tenantId_fkey"
 ### Vulnerable Routes Found
 
 **1. `/apps/web/app/api/rate-cards/bulk-import/route.ts:32`**
+
 ```typescript
 // ❌ BEFORE
 const supplier = await prisma.rateCardSupplier.findFirst({
@@ -211,6 +219,7 @@ const supplier = await prisma.rateCardSupplier.findFirst({
 ```
 
 **2. `/apps/web/app/api/rate-cards/baselines/route.ts:14`**
+
 ```typescript
 // ❌ BEFORE
 const user = await prisma.user.findFirst({
@@ -224,6 +233,7 @@ const user = await prisma.user.findFirst({
 ```
 
 **3. `/apps/web/app/api/ai/chat/route.ts:3720`**
+
 ```typescript
 // ❌ BEFORE
 const contract = await prisma.contract.findFirst({
@@ -243,6 +253,7 @@ const contract = await prisma.contract.findFirst({
 ### Phase 1: Critical Fixes (P0) - Week 1
 
 **Day 1-2: API Validation Gaps**
+
 - [ ] Fix `/api/rate-cards/bulk-import/route.ts`
 - [ ] Fix `/api/rate-cards/baselines/route.ts`
 - [ ] Fix `/api/ai/chat/route.ts`
@@ -250,6 +261,7 @@ const contract = await prisma.contract.findFirst({
 - [ ] Deploy to staging
 
 **Day 3-4: TaxonomyCategory Validation**
+
 - [ ] Add `validateCategoryOwnership()` helper
 - [ ] Update contract categorize route
 - [ ] Update contract metadata route
@@ -259,6 +271,7 @@ const contract = await prisma.contract.findFirst({
 - [ ] Deploy to staging
 
 **Day 5: Testing & Validation**
+
 - [ ] Cross-tenant penetration testing
 - [ ] Multi-tenant load testing
 - [ ] Security audit
@@ -267,6 +280,7 @@ const contract = await prisma.contract.findFirst({
 ### Phase 2: Schema Migration (P1) - Week 2
 
 **Day 1-3: Role/Permission Migration**
+
 - [ ] Write migration script (with rollback)
 - [ ] Test on dev database
 - [ ] Run on staging database
@@ -274,6 +288,7 @@ const contract = await prisma.contract.findFirst({
 - [ ] Monitor for 24h
 
 **Day 4-5: API Updates**
+
 - [ ] Update role CRUD APIs
 - [ ] Update permission APIs
 - [ ] Update UserRole assignments
@@ -409,6 +424,7 @@ if (!query.tenantId) {
 ### If Issues Detected
 
 **Phase 1 Rollback (API Fixes):**
+
 ```bash
 # Revert API changes
 git revert <commit-hash>
@@ -419,6 +435,7 @@ npm run test:tenant-isolation
 ```
 
 **Phase 2 Rollback (Schema Changes):**
+
 ```sql
 -- Rollback Role/Permission migration
 BEGIN;

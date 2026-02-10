@@ -13,6 +13,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Pure semantic search misses exact keyword matches; pure keyword search misses semantic meaning. Hybrid search gets the best of both worlds.
 
 **Implementation:**
+
 - `vectorSearch()` - Uses pgvector for cosine similarity
 - `keywordSearch()` - Uses PostgreSQL full-text search (ts_rank_cd)
 - `reciprocalRankFusion()` - Merges rankings with k=60 constant
@@ -26,6 +27,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Initial retrieval is fast but approximate. Reranking with a cross-encoder significantly improves precision for the top results.
 
 **Implementation:**
+
 - `crossEncoderRerank()` - Uses GPT for scoring
 - `semanticRerank()` - Uses embedding similarity
 - `mmrRerank()` - Maximal Marginal Relevance for diversity
@@ -39,12 +41,14 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Fixed-size chunks often split sentences mid-thought. Semantic chunks preserve meaning and context.
 
 **Features:**
+
 - Detects headings, articles, sections, schedules
 - Respects paragraph boundaries
 - Extracts metadata (dates, amounts, percentages, clause types)
 - Token-aware chunking option
 
 **Implementation:**
+
 - `semanticChunk()` in advanced-rag.service.ts (basic)
 - `semanticChunk()` in semantic-chunker.service.ts (advanced)
 - `recursiveChunk()` for fallback splitting
@@ -58,6 +62,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Users may not use the exact terminology in the documents. Query expansion finds results that match the intent, not just the words.
 
 **Features:**
+
 - Query variation generation (3-5 alternatives)
 - HyDE - generates hypothetical answer text
 - Keyword extraction
@@ -66,6 +71,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 - Query decomposition for complex queries
 
 **Implementation:**
+
 - `expandQuery()` - Main expansion function
 - `generateHypotheticalAnswer()` - HyDE implementation
 - `extractQueryKeywords()` - Keyword extraction
@@ -80,6 +86,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Legal teams need to find similar clauses across all their contracts for consistency and risk analysis.
 
 **Implementation:**
+
 - `crossContractSearch()` - Main function
 - Filters by tenantId in vector and keyword search
 - Returns results with contract metadata
@@ -93,6 +100,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 **Why it matters:** Narrows search to relevant contracts without losing semantic matching.
 
 **Filters Available:**
+
 - `contractIds` - Specific contracts
 - `tenantId` - Tenant isolation
 - `dateFrom` / `dateTo` - Date range
@@ -131,6 +139,7 @@ The RAG (Retrieval-Augmented Generation) system has been upgraded to state-of-th
 ## 🔌 API Endpoints
 
 ### POST /api/rag/search
+
 State-of-the-art hybrid search with all features.
 
 ```json
@@ -149,6 +158,7 @@ State-of-the-art hybrid search with all features.
 ```
 
 ### POST /api/search/semantic
+
 Enhanced semantic search (backward compatible).
 
 ```json
@@ -163,6 +173,7 @@ Enhanced semantic search (backward compatible).
 ```
 
 ### POST /api/rag/batch-process
+
 Batch reprocess contracts with semantic chunking.
 
 ```json
@@ -174,6 +185,7 @@ Batch reprocess contracts with semantic chunking.
 ```
 
 ### POST /api/contracts/:id/rag-process
+
 Reprocess single contract.
 
 ```json
@@ -194,6 +206,7 @@ Reprocess single contract.
 | Semantic Chunking | +10% indexing | +10% retrieval quality |
 
 **Recommendations:**
+
 - Use `rerank: true` for precision-critical queries
 - Use `expandQuery: true` for recall-critical queries
 - For fast searches, use `mode: 'keyword'` without reranking
@@ -270,6 +283,7 @@ console.log(`Created ${result.chunksCreated} chunks`);
 To upgrade existing contracts to use semantic chunking:
 
 1. **Via API:**
+
    ```bash
    curl -X POST http://localhost:3005/api/rag/batch-process \
      -H "Content-Type: application/json" \
@@ -277,6 +291,7 @@ To upgrade existing contracts to use semantic chunking:
    ```
 
 2. **Check Status:**
+
    ```bash
    curl http://localhost:3005/api/rag/batch-process?batchId=<batchId>
    ```

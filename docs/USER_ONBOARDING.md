@@ -151,6 +151,7 @@ Forward contracts to your dedicated ConTigo email address:
 #### Method 4: Bulk Upload
 
 For migrating your existing contract library:
+
 1. Go to **Settings → Import**
 2. Upload a ZIP archive or select a folder
 3. ConTigo queues all files for processing
@@ -170,6 +171,7 @@ For migrating your existing contract library:
 ```
 
 The AI extracts:
+
 - **Parties** — Who is involved (names, roles)
 - **Key dates** — Start date, end date, renewal date
 - **Financial terms** — Contract value, payment terms, currency
@@ -316,6 +318,7 @@ Every change creates a new version. You can:
 ### Rate Card Comparison
 
 Select two or more rate cards to see:
+
 - Side-by-side rate comparison by role
 - Percentage differences highlighted
 - Recommended actions (negotiate, accept, escalate)
@@ -346,6 +349,7 @@ ConTigo automatically extracts obligations from your contracts:
 ### Calendar Integration
 
 Sync obligations to your calendar:
+
 - **Outlook** — One-click calendar sync
 - **Google Calendar** — OAuth integration
 - **iCal** — Standard calendar feed
@@ -572,7 +576,7 @@ ConTigo is fully responsive and works on:
 | Channel | Availability | Response Time |
 |---|---|---|
 | **In-app chat** | 24/7 (AI) + Business hours (human) | <5 min (AI), <4 hours (human) |
-| **Email** | support@contigo-app.ch | <24 hours |
+| **Email** | <support@contigo-app.ch> | <24 hours |
 | **Phone** | +41 44 XXX XX XX | Mon–Fri, 08:00–18:00 CET |
 | **Enterprise Slack** | Dedicated channel | <1 hour (business hours) |
 

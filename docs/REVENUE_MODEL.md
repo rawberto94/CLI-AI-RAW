@@ -280,6 +280,7 @@ The target blended ACV of **~CHF 30,000** is derived from the expected customer 
 | M12 | 3 | 20 | 8,500 | 0 | 49,500 | 217,300 |
 
 > **Notes:**
+>
 > - Subscription revenue in Year 1 = ~CHF 430K (M1–M12 cumulative MRR + annual prepays)
 > - M12 MRR of CHF 49.5K × 12 = **CHF 594K ARR run-rate** exiting Year 1
 > - No churn assumed in Year 1 (customers still in first contract period)
@@ -685,6 +686,7 @@ In a simplified world where the average customer pays ~CHF 30K/year:
 | Q3 2027 (mature product) | 100% | 98% | 95% | 89% | 84% |
 
 > **Why retention improves over time:**
+>
 > 1. Product maturity — fewer bugs, more features
 > 2. Better onboarding — learned from early churn causes
 > 3. Stronger ICP targeting — sales qualifies better

@@ -571,8 +571,8 @@ Schedule a personalized 30-minute demo:
 
 ### **Contact Information**
 
-- 🌐 **Website:** www.contigo-app.ch
-- 📧 **Email:** sales@contigo-app.ch
+- 🌐 **Website:** <www.contigo-app.ch>
+- 📧 **Email:** <sales@contigo-app.ch>
 - 📞 **Phone:** +41 XX XXX XX XX
 - 💬 **Chat:** Available on website 24/7
 

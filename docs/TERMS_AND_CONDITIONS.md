@@ -1,4 +1,5 @@
 # ConTigo — Allgemeine Geschäftsbedingungen (AGB)
+
 # Terms & Conditions
 
 **ConTigo GmbH — Zurich, Switzerland**
@@ -57,6 +58,7 @@ Allgemeine Geschäftsbedingungen des Kunden finden keine Anwendung, auch wenn Co
 ### 2.1 Zustandekommen / Formation
 
 Der Vertrag kommt zustande durch:
+
 - (a) Registrierung auf der Plattform und Akzeptanz dieser AGB; oder
 - (b) Unterzeichnung einer individuellen Auftragsbestätigung (Order Form).
 
@@ -140,6 +142,7 @@ Der Kunde benennt mindestens einen Administrator, der für die Verwaltung der Nu
 ### 4.4 Sperrung / Suspension
 
 ConTigo ist berechtigt, den Zugang vorübergehend zu sperren bei:
+
 - (a) Verstoss gegen diese AGB
 - (b) Zahlungsverzug von mehr als 30 Tagen
 - (c) Sicherheitsbedenken (z.B. kompromittiertes Konto)
@@ -153,6 +156,7 @@ ConTigo ist berechtigt, den Zugang vorübergehend zu sperren bei:
 ### 5.1 Nutzungsregeln / Acceptable Use
 
 Der Kunde verpflichtet sich:
+
 - (a) die Plattform nur für den vorgesehenen Zweck zu nutzen;
 - (b) keine rechtswidrigen Inhalte hochzuladen;
 - (c) keine automatisierten Zugriffe (Scraping, Bots) ohne schriftliche Genehmigung durchzuführen;
@@ -201,6 +205,7 @@ Alle Preise verstehen sich exklusive der gesetzlichen Mehrwertsteuer (MWST). Die
 ### 6.4 Verzug / Default
 
 Bei Zahlungsverzug ist ConTigo berechtigt:
+
 - (a) Verzugszinsen von 5% p.a. gemäss Art. 104 OR zu erheben;
 - (b) nach 30 Tagen Mahnung den Zugang zu sperren (Art. 4.4);
 - (c) nach 60 Tagen das Abonnement zu kündigen.
@@ -231,13 +236,14 @@ ConTigo ist berechtigt, die Preise mit einer Vorankündigungsfrist von 90 Tagen 
 | **Monatsabonnement** | 30 Tage zum Monatsende |
 | **Jahresabonnement** | 90 Tage vor Ablauf der aktuellen Periode |
 
-Die Kündigung erfolgt schriftlich (E-Mail genügt) an: cancel@contigo-app.ch
+Die Kündigung erfolgt schriftlich (E-Mail genügt) an: <cancel@contigo-app.ch>
 
-*Termination shall be in writing (email sufficient) to: cancel@contigo-app.ch*
+*Termination shall be in writing (email sufficient) to: <cancel@contigo-app.ch>*
 
 ### 7.3 Ausserordentliche Kündigung / Extraordinary Termination
 
 Jede Partei ist berechtigt, den Vertrag fristlos zu kündigen bei:
+
 - (a) wesentlicher Vertragsverletzung durch die andere Partei, die nicht innerhalb von 30 Tagen nach schriftlicher Abmahnung behoben wird;
 - (b) Insolvenz oder Liquidation der anderen Partei;
 - (c) anhaltender Nichtverfügbarkeit der Plattform (>72 Stunden, ausser höhere Gewalt).
@@ -247,6 +253,7 @@ Jede Partei ist berechtigt, den Vertrag fristlos zu kündigen bei:
 ### 7.4 Folgen der Kündigung / Consequences of Termination
 
 Nach Kündigung gilt:
+
 - (a) Der Kunde kann seine Daten innerhalb von 30 Tagen exportieren.
 - (b) Nach Ablauf der 30-Tage-Frist werden alle Kundendaten unwiderruflich gelöscht.
 - (c) Bereits bezahlte Abonnementsgebühren werden bei ordentlicher Kündigung nicht zurückerstattet.
@@ -268,6 +275,7 @@ Nach Kündigung gilt:
 ### 8.2 Anwendbares Recht / Applicable Law
 
 Die Datenverarbeitung unterliegt:
+
 - dem **nDSG** (Bundesgesetz über den Datenschutz, SR 235.1), in Kraft seit 1. September 2023;
 - der **VDSG** (Verordnung über den Datenschutz, SR 235.11);
 - soweit anwendbar, der **DSGVO/GDPR** (Verordnung (EU) 2016/679).
@@ -277,6 +285,7 @@ Die Datenverarbeitung unterliegt:
 ### 8.3 Auftragsverarbeitungsvertrag / Data Processing Agreement
 
 Für Enterprise-Kunden stellt ConTigo einen separaten Auftragsverarbeitungsvertrag (AVV / DPA) gemäss Art. 9 nDSG bzw. Art. 28 DSGVO zur Verfügung. Dieser regelt:
+
 - Gegenstand und Dauer der Verarbeitung
 - Art und Zweck der Verarbeitung
 - Art der personenbezogenen Daten
@@ -333,6 +342,7 @@ Allgemeines Feedback und Verbesserungsvorschläge des Kunden können von ConTigo
 ### 10.1 Gewährleistung / Warranty
 
 ConTigo gewährleistet, dass die Plattform im Wesentlichen der aktuellen Leistungsbeschreibung entspricht. ConTigo garantiert **nicht**:
+
 - (a) die fehlerfreie oder ununterbrochene Verfügbarkeit der Plattform;
 - (b) die Richtigkeit, Vollständigkeit oder Rechtsverbindlichkeit der KI-Ergebnisse;
 - (c) die Eignung für einen bestimmten Zweck über die Leistungsbeschreibung hinaus.
@@ -381,6 +391,7 @@ Der Kunde hält ConTigo schad- und klaglos von Ansprüchen Dritter, die aus der 
 ### 11.2 Ausschlüsse / Exclusions
 
 Die Verfügbarkeitsberechnung schliesst aus:
+
 - (a) geplante Wartungsfenster (mit 72 Stunden Vorankündigung);
 - (b) höhere Gewalt (Art. 13);
 - (c) Störungen auf der Kundenseite (Internetverbindung, Browser, Endgeräte);
@@ -529,7 +540,7 @@ c/o [Adresse] / [Address]
 Handelsregisternummer / Commercial Register No.: CHE-XXX.XXX.XXX
 UID: CHE-XXX.XXX.XXX MWST
 
-Kontakt / Contact: legal@contigo-app.ch
+Kontakt / Contact: <legal@contigo-app.ch>
 Website: [contigo-app.ch](https://contigo-app.ch)
 
 ---

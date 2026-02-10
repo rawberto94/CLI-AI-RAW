@@ -9,6 +9,7 @@
 ## 📊 Current Situation
 
 ### ✅ What's Working
+
 - **All Pages**: Loading correctly (/, /dashboard, /contracts, /analytics)
 - **Mock APIs**: Fully functional
   - `/api/contracts` → Returns 8 mock contracts
@@ -18,6 +19,7 @@
 - **Zero Errors**: No module parse failures
 
 ### ⚠️ What's Disabled
+
 - **Real Database Queries**: Rate cards and contracts using mock data
 - **Service Layer**: `RateCardEntryService`, `AdvancedFilterService` not imported
 - **Events Route**: `/api/events` disabled (SSE functionality)
@@ -29,23 +31,28 @@
 ### 1. **data-orchestration Package** (27 TypeScript Errors)
 
 #### Type Errors (Prisma Schema Mismatches)
+
 - **database.adaptor.ts** - Lines 89, 228: Tenant ID type conflicts
 - **ai-insights-generator.service.ts** - Lines 356, 360: `benchmarkSnapshot` vs `benchmarkSnapshots`
 
 #### Export/Import Errors
+
 - **index.ts** - Duplicate exports (ArtifactSchema, ArtifactType, RateCard, etc.)
 - **automated-reporting.service.ts** - Wrong service imports
 
 #### Event Name Mismatches
+
 - **artifact-change-propagation.service.ts** - Lines 79, 84, 102, 133, 150:
   - `ARTIFACT_BULK_UPDATED` → `ARTIFACT_UPDATED`
   - `RATE_CARD_ENTRY_UPDATED` → `RATE_CARD_UPDATED`
   - `ARTIFACT_PROPAGATION_*` → `PROPAGATION_*`
 
 #### Validation Schema Issues
+
 - **validation.schemas.ts** - Lines 54, 91: `.partial()` doesn't exist on ZodEffects
 
 #### Missing File
+
 - **rag-integration.service.ts** - Not in tsconfig file list
 
 ---
@@ -53,6 +60,7 @@
 ## 🚀 Implementation Steps
 
 ### Step 1: Fix Type Errors (15 minutes)
+
 ```bash
 cd /workspaces/CLI-AI-RAW/packages/data-orchestration
 
@@ -67,6 +75,7 @@ nano src/services/ai-insights-generator.service.ts
 ```
 
 ### Step 2: Fix Export/Import Issues (10 minutes)
+
 ```bash
 # Fix duplicate exports
 nano src/index.ts
@@ -78,30 +87,35 @@ nano src/services/automated-reporting.service.ts
 ```
 
 ### Step 3: Fix Event Names (5 minutes)
+
 ```bash
 nano src/services/artifact-change-propagation.service.ts
 # Update event names to match Events enum
 ```
 
 ### Step 4: Fix Validation Schemas (5 minutes)
+
 ```bash
 nano src/schemas/validation.schemas.ts
 # Apply .partial() before .refine() or restructure validation
 ```
 
 ### Step 5: Add Missing File to tsconfig (2 minutes)
+
 ```bash
 nano tsconfig.json
 # Ensure src/**/*.ts is included or add rag-integration.service.ts explicitly
 ```
 
 ### Step 6: Rebuild Package (2 minutes)
+
 ```bash
 pnpm run build
 # Should compile with 0 errors
 ```
 
 ### Step 7: Enable Real Data in APIs (3 minutes)
+
 ```bash
 # Edit rate-cards route
 nano /workspaces/CLI-AI-RAW/apps/web/app/api/rate-cards/route.ts
@@ -116,6 +130,7 @@ nano /workspaces/CLI-AI-RAW/apps/web/app/api/rate-cards/route.ts
 ## ⚡ Quick Enable (If You Just Want Real Data NOW)
 
 ### Option A: Test with Database Directly
+
 You can bypass the service layer temporarily:
 
 ```typescript
@@ -128,7 +143,9 @@ const rateCards = await prisma.rateCardEntry.findMany({
 ```
 
 ### Option B: Use x-data-mode Header
+
 The API already supports toggling:
+
 ```bash
 # Mock data (current default)
 curl http://localhost:3005/api/rate-cards
@@ -157,12 +174,14 @@ curl -H "x-data-mode: real" http://localhost:3005/api/rate-cards
 ## 🎯 Priority Recommendation
 
 ### For Development: ✅ **Keep Mock Data** (Current State)
+
 - Application is fully functional
 - No blockers for frontend development
 - Fast page loads, no database dependencies
 - Ideal for testing UI components
 
 ### For Production: 🔴 **Real Data Required**
+
 - Need to fix all 27 TypeScript errors
 - Rebuild data-orchestration package
 - Re-enable service layer in API routes

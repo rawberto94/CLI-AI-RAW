@@ -46,6 +46,7 @@ lib/
 ## Migration Target
 
 Server-only directories should eventually migrate to `packages/data-orchestration/`:
+
 - `lib/ai/` → `packages/data-orchestration/src/services/ai/`
 - `lib/rag/` → `packages/agents/src/rag/` or `packages/clients/rag/`
 - `lib/security/` → `packages/data-orchestration/src/security/`
@@ -53,6 +54,7 @@ Server-only directories should eventually migrate to `packages/data-orchestratio
 
 **Rule**: New server-only business logic should go in `packages/data-orchestration/`,
 not in `lib/`. lib/ should only contain:
+
 - Client utilities and React hooks
 - Auth/prisma singletons (Next.js config)
 - API middleware (Next.js-specific request/response handling)

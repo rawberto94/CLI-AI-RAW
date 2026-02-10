@@ -1,4 +1,5 @@
 # ConTigo CLM - Competitive Advantage Assessment
+
 ## AI-Extraction & Organization Platform
 
 *Last Updated: March 2024*
@@ -27,9 +28,11 @@ After-the-fact      →    Real-time intelligence
 ## ✅ What You Have (Confirmed)
 
 ### 1. AI Extraction Engine
+
 **File:** `apps/web/lib/ai/metadata-extractor.ts` (900+ lines)
 
 **Capabilities:**
+
 - Schema-aware extraction using tenant-specific field definitions
 - Multi-pass extraction (first pass + low-confidence refinement)
 - 70+ extractable field types (dates, currency, parties, obligations, terms)
@@ -40,6 +43,7 @@ After-the-fact      →    Real-time intelligence
 - OpenAI GPT-4-turbo for high-accuracy extraction
 
 **Differentiators:**
+
 - ✅ Tenant-customizable schemas
 - ✅ Field-level confidence thresholds
 - ✅ Context-aware prompts per field type
@@ -49,9 +53,11 @@ After-the-fact      →    Real-time intelligence
 ---
 
 ### 2. Autonomous Agent System
+
 **Files:** `packages/workers/src/agents/` (5 agents, 2000+ lines total)
 
 #### Agent 1: Goal-Oriented Reasoner
+
 - Detects user intent from query/role/actions
 - 7 user goals: NEGOTIATE, RISK_ASSESSMENT, COST_OPTIMIZATION, COMPLIANCE, RENEWAL_PREP, QUICK_REVIEW, DEEP_ANALYSIS
 - Prioritizes artifacts based on goal (100-point scale)

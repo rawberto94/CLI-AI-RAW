@@ -226,6 +226,7 @@ GET /api/integrations/google-drive
 ```
 
 Response:
+
 ```json
 {
   "success": true,

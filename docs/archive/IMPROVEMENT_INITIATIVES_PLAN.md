@@ -9,6 +9,7 @@ This document outlines comprehensive improvement initiatives to convert mock dat
 ## 🎯 Initiative 1: Template Manager Enhancement
 
 ### Current State
+
 - `TemplateManager.tsx` uses `mockTemplates` array
 - API exists at `/api/templates` with Prisma integration
 - Database schema includes `ContractTemplate` model
@@ -20,6 +21,7 @@ Priority: HIGH | Effort: Medium | Impact: High
 ```
 
 #### 1.1 Connect to Real API
+
 ```typescript
 // Replace mockTemplates with API call
 useEffect(() => {
@@ -33,17 +35,20 @@ useEffect(() => {
 ```
 
 #### 1.2 Add CRUD Operations
+
 - [ ] Create template API call
 - [ ] Update template API call
 - [ ] Delete template API call
 - [ ] Duplicate template API call (already exists: `/api/templates/[id]/duplicate`)
 
 #### 1.3 Add Real-time Features
+
 - [ ] Optimistic updates for better UX
 - [ ] SWR or React Query for caching
 - [ ] Mutation with automatic revalidation
 
 #### 1.4 Files to Modify
+
 - `apps/web/components/contract-generation/TemplateManager.tsx`
 - `apps/web/app/api/templates/route.ts` (enhance if needed)
 
@@ -52,6 +57,7 @@ useEffect(() => {
 ## 🎯 Initiative 2: Integration Hub Enhancement
 
 ### Current State
+
 - `IntegrationHub.tsx` uses `mockIntegrations`, `mockSyncLogs`, `mockWebhooks`
 - API exists at `/api/integrations` with mock data only
 - No database model for integrations
@@ -63,6 +69,7 @@ Priority: MEDIUM | Effort: High | Impact: High
 ```
 
 #### 2.1 Create Database Schema
+
 ```prisma
 model Integration {
   id              String   @id @default(cuid())
@@ -123,6 +130,7 @@ model Webhook {
 ```
 
 #### 2.2 Update API Routes
+
 - [ ] GET/POST/PUT/DELETE for integrations
 - [ ] GET sync logs with pagination
 - [ ] Webhook management endpoints
@@ -130,12 +138,14 @@ model Webhook {
 - [ ] Manual sync trigger endpoint
 
 #### 2.3 Security Considerations
+
 - [ ] Encrypt API keys/secrets at rest
 - [ ] OAuth2 flow for supported providers
 - [ ] Webhook signature verification
 - [ ] Rate limiting for sync operations
 
 #### 2.4 Files to Create/Modify
+
 - `prisma/schema.prisma` (add models)
 - `apps/web/app/api/integrations/route.ts` (enhance)
 - `apps/web/app/api/integrations/[id]/route.ts` (new)
@@ -148,6 +158,7 @@ model Webhook {
 ## 🎯 Initiative 3: Contract Editor Enhancement
 
 ### Current State
+
 - `ContractEditor.tsx` uses `mockClauses`, `mockLibraryClauses`, `mockVariables`
 - API exists at `/api/clauses` with Prisma integration
 - Database has `Clause` model
@@ -159,23 +170,27 @@ Priority: HIGH | Effort: Medium | Impact: Critical
 ```
 
 #### 3.1 Connect Clause Management
+
 - [ ] Fetch clauses from `/api/clauses`
 - [ ] Real-time clause updates
 - [ ] Version history tracking
 - [ ] Clause risk analysis integration
 
 #### 3.2 Add Collaborative Features
+
 - [ ] Real-time collaboration (WebSocket/Supabase Realtime)
 - [ ] User presence indicators
 - [ ] Comment system with threading
 - [ ] Change tracking with diff view
 
 #### 3.3 AI-Powered Features
+
 - [ ] Connect to `/api/ai/analyze` for clause risk assessment
 - [ ] AI suggestions for clause improvements
 - [ ] Automated compliance checking
 
 #### 3.4 Files to Modify
+
 - `apps/web/components/contract-generation/ContractEditor.tsx`
 - `apps/web/app/api/clauses/route.ts` (enhance)
 - `apps/web/app/api/clauses/[id]/route.ts` (enhance)
@@ -185,6 +200,7 @@ Priority: HIGH | Effort: Medium | Impact: Critical
 ## 🎯 Initiative 4: Workflow Builder Enhancement
 
 ### Current State
+
 - `WorkflowBuilder.tsx` uses `mockWorkflows`
 - API exists at `/api/workflows` with Prisma integration
 - Database has `ApprovalWorkflow` model
@@ -196,17 +212,20 @@ Priority: MEDIUM | Effort: Medium | Impact: High
 ```
 
 #### 4.1 Connect to Real API
+
 - [ ] Fetch workflows from `/api/workflows`
 - [ ] CRUD operations for workflows
 - [ ] Workflow execution tracking
 
 #### 4.2 Enhanced Features
+
 - [ ] Visual workflow designer with drag-drop
 - [ ] Conditional logic builder
 - [ ] Workflow templates
 - [ ] Execution history and analytics
 
 #### 4.3 Files to Modify
+
 - `apps/web/components/contract-generation/WorkflowBuilder.tsx`
 - Workflow API routes (already exist)
 
@@ -215,6 +234,7 @@ Priority: MEDIUM | Effort: Medium | Impact: High
 ## 🎯 Initiative 5: Smart Drafting Canvas Enhancement
 
 ### Current State
+
 - `SmartDraftingCanvas.tsx` uses:
   - `mockCollaborators`
   - `mockComments`
@@ -228,6 +248,7 @@ Priority: MEDIUM | Effort: High | Impact: High
 ```
 
 #### 5.1 Create Collaboration Models
+
 ```prisma
 model DraftCollaborator {
   id        String   @id @default(cuid())
@@ -289,12 +310,14 @@ model AISuggestion {
 ```
 
 #### 5.2 Create API Endpoints
+
 - [ ] `/api/drafts/[id]/collaborators`
 - [ ] `/api/drafts/[id]/comments`
 - [ ] `/api/drafts/[id]/versions`
 - [ ] `/api/drafts/[id]/suggestions`
 
 #### 5.3 Add Real-time Collaboration
+
 - [ ] WebSocket or Server-Sent Events for live updates
 - [ ] Cursor position sharing
 - [ ] Conflict resolution
@@ -304,6 +327,7 @@ model AISuggestion {
 ## 🎯 Initiative 6: Rate Card Components Enhancement
 
 ### Current State
+
 - `ExtractFromContracts.tsx` uses `mockContracts`
 - `RateCardDataRepository.tsx` uses `mockData`
 - APIs exist at `/api/rate-cards`
@@ -315,11 +339,13 @@ Priority: HIGH | Effort: Low | Impact: High
 ```
 
 #### 6.1 Connect to Existing APIs
+
 - [ ] Use `/api/rate-cards` for data repository
 - [ ] Use `/api/contracts` for extraction source
 - [ ] Integrate with rate card ingestion pipeline
 
 #### 6.2 Files to Modify
+
 - `apps/web/components/rate-cards/ExtractFromContracts.tsx`
 - `apps/web/components/rate-cards/RateCardDataRepository.tsx`
 
@@ -328,6 +354,7 @@ Priority: HIGH | Effort: Low | Impact: High
 ## 🎯 Initiative 7: Analytics & Forecasting Enhancement
 
 ### Current State
+
 - `ForecastingDashboard.tsx` uses:
   - `mockForecastData`
   - `mockScenarios`
@@ -341,12 +368,14 @@ Priority: LOW | Effort: High | Impact: Medium
 ```
 
 #### 7.1 Create Analytics API
+
 - [ ] `/api/analytics/forecast` - ML-based predictions
 - [ ] `/api/analytics/scenarios` - Cost scenarios
 - [ ] `/api/analytics/opportunities` - Savings opportunities
 - [ ] `/api/analytics/spend` - Supplier spend analysis
 
 #### 7.2 Data Aggregation
+
 - [ ] Create materialized views for performance
 - [ ] Implement caching layer
 - [ ] Schedule periodic recalculation
@@ -356,6 +385,7 @@ Priority: LOW | Effort: High | Impact: Medium
 ## 🎯 Initiative 8: Version Comparison Enhancement
 
 ### Current State
+
 - `VersionComparison.tsx` uses `mockDifferences`
 - No dedicated version comparison API
 
@@ -366,6 +396,7 @@ Priority: MEDIUM | Effort: Medium | Impact: Medium
 ```
 
 #### 8.1 Create Diff API
+
 - [ ] `/api/contracts/[id]/versions` - List versions
 - [ ] `/api/contracts/[id]/diff` - Compare versions
 - [ ] Store version metadata with diffs
@@ -375,6 +406,7 @@ Priority: MEDIUM | Effort: Medium | Impact: Medium
 ## 🎯 Initiative 9: Signature Workflow Tracker
 
 ### Current State
+
 - `SignatureWorkflowTracker.tsx` uses `mockWorkflows`
 - Integration with DocuSign/Adobe Sign needed
 
@@ -385,6 +417,7 @@ Priority: MEDIUM | Effort: High | Impact: High
 ```
 
 #### 9.1 Create Signature Models
+
 ```prisma
 model SignatureRequest {
   id            String   @id @default(cuid())
@@ -422,6 +455,7 @@ model Signer {
 ```
 
 #### 9.2 Provider Integration
+
 - [ ] DocuSign OAuth + API integration
 - [ ] Adobe Sign integration
 - [ ] Webhook handlers for status updates
@@ -431,20 +465,24 @@ model Signer {
 ## 📊 Implementation Roadmap
 
 ### Phase 1: Quick Wins (Week 1-2)
+
 - [ ] Initiative 1: Template Manager (API exists)
 - [ ] Initiative 6: Rate Card Components (API exists)
 - [ ] Initiative 4: Workflow Builder (API exists)
 
 ### Phase 2: Core Features (Week 3-4)
+
 - [ ] Initiative 3: Contract Editor clauses
 - [ ] Initiative 8: Version Comparison
 - [ ] Initiative 2: Integration Hub (schema + API)
 
 ### Phase 3: Advanced Features (Week 5-6)
+
 - [ ] Initiative 5: Smart Drafting Canvas (collaboration)
 - [ ] Initiative 9: Signature Workflow Tracker
 
 ### Phase 4: Analytics & AI (Week 7-8)
+
 - [ ] Initiative 7: Forecasting Dashboard
 - [ ] AI integration across all components
 
@@ -453,6 +491,7 @@ model Signer {
 ## 🔧 Technical Patterns to Apply
 
 ### 1. Data Fetching Pattern
+
 ```typescript
 // Use SWR for data fetching with caching
 import useSWR from 'swr';
@@ -471,6 +510,7 @@ function useTemplates() {
 ```
 
 ### 2. Optimistic Updates
+
 ```typescript
 async function deleteTemplate(id: string) {
   // Optimistically update UI
@@ -492,6 +532,7 @@ async function deleteTemplate(id: string) {
 ```
 
 ### 3. Error Handling with Fallback
+
 ```typescript
 const { data } = useSWR('/api/templates', fetcher, {
   fallbackData: { templates: mockTemplates },
@@ -502,6 +543,7 @@ const { data } = useSWR('/api/templates', fetcher, {
 ```
 
 ### 4. DataMode Integration
+
 ```typescript
 const { isMockData } = useDataMode();
 

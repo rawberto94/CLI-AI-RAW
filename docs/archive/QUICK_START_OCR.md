@@ -105,6 +105,7 @@ AWS is optional for "high" quality mode (99%+ accuracy).
 ### Q: What mode should I use?
 
 **A:** Start with **"balanced"** - it's the sweet spot:
+
 - 85-90% accuracy (15x better than before)
 - $0.023/doc average cost
 - Smart: uses fast extraction for simple docs, vision AI for complex ones
@@ -141,17 +142,20 @@ AWS is optional for "high" quality mode (99%+ accuracy).
 ## Cost Breakdown by Mode
 
 ### Fast Mode
+
 - **Cost:** $0.001 per document
 - **Use for:** High volume, simple text PDFs
 - **Accuracy:** 60-70%
 
 ### Balanced Mode (Recommended)
+
 - **Cost:** $0.023 per document (average)
 - **Use for:** Production, most contracts
 - **Accuracy:** 85-90%
 - **Smart:** Only uses vision AI when needed
 
 ### High Mode
+
 - **Cost:** $0.048 per document
 - **Use for:** Critical contracts, maximum accuracy
 - **Accuracy:** 95-99%
@@ -184,16 +188,19 @@ New System:
 ## Troubleshooting
 
 ### "Failed to extract document"
+
 - Check OpenAI API key is valid
 - Check file is not corrupted
 - System automatically falls back to basic extraction
 
 ### "AWS Textract error" (high mode only)
+
 - Verify AWS credentials in `.env`
 - Check AWS region is correct
 - System falls back to vision-only
 
 ### Chunked upload stuck
+
 - Check network connection
 - Upload auto-resumes when connection returns
 - Check browser console for details
@@ -203,16 +210,19 @@ New System:
 ## Next Steps
 
 ### Monitor Performance
+
 - Watch console logs during uploads
 - Track extraction confidence scores
 - Monitor costs in OpenAI dashboard
 
 ### Optimize Settings
+
 - Start with "balanced" mode
 - Switch to "high" for critical contracts
 - Use "fast" for high-volume simple documents
 
 ### Advanced Usage
+
 - See `IMPLEMENTATION_SUMMARY.md` for code examples
 - See `UPLOAD_OCR_AUDIT_REPORT.md` for technical details
 

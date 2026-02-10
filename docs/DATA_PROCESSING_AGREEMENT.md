@@ -101,6 +101,7 @@ Der Auftragsverarbeiter darf Unterauftragsverarbeiter gemäss der in **Anhang B*
 ### 5.5 Unterstützung / Assistance
 
 Der Auftragsverarbeiter unterstützt den Verantwortlichen bei:
+
 - (a) Erfüllung von Betroffenenrechten (Auskunft, Löschung, Berichtigung, Datenübertragung)
 - (b) Datenschutz-Folgenabschätzungen (DSFA / DPIA)
 - (c) Konsultation mit Aufsichtsbehörden
@@ -108,6 +109,7 @@ Der Auftragsverarbeiter unterstützt den Verantwortlichen bei:
 ### 5.6 Meldung von Datenschutzverletzungen / Data Breach Notification
 
 Der Auftragsverarbeiter meldet Datenschutzverletzungen dem Verantwortlichen **unverzüglich**, spätestens innerhalb von **48 Stunden** nach Kenntniserlangung. Die Meldung umfasst:
+
 - Art der Verletzung
 - Betroffene Datenkategorien und -mengen
 - Wahrscheinliche Folgen
@@ -120,6 +122,7 @@ Nach Beendigung des Hauptvertrags löscht der Auftragsverarbeiter alle personenb
 ### 5.8 Nachweise und Audits / Documentation and Audits
 
 Der Auftragsverarbeiter stellt dem Verantwortlichen alle erforderlichen Informationen zur Verfügung und ermöglicht Prüfungen (Audits):
+
 - **Self-Assessment:** Jährlicher Compliance-Bericht auf Anfrage
 - **Vor-Ort-Audit:** Mit 30 Tagen Vorankündigung, während Geschäftszeiten, auf Kosten des Verantwortlichen
 - **Drittanbieter-Audit:** SOC 2 Typ II Bericht (sobald verfügbar)
@@ -129,6 +132,7 @@ Der Auftragsverarbeiter stellt dem Verantwortlichen alle erforderlichen Informat
 ## 6. Pflichten des Verantwortlichen / Controller Obligations
 
 Der Verantwortliche:
+
 - (a) trägt die alleinige Verantwortung für die Rechtmässigkeit der Datenverarbeitung;
 - (b) stellt sicher, dass betroffene Personen über die Verarbeitung informiert werden;
 - (c) holt erforderliche Einwilligungen ein;
@@ -146,6 +150,7 @@ Alle Datenverarbeitungen erfolgen in der **Schweiz** (Azure Switzerland North).
 ### 7.2 Drittstaaten / Third Countries
 
 Soweit Unterauftragsverarbeiter personenbezogene Daten in Drittstaaten ausserhalb der Schweiz/EWR verarbeiten, werden folgende Garantien sichergestellt:
+
 - Angemessenheitsbeschluss (Art. 16 nDSG / Art. 45 DSGVO)
 - Standardvertragsklauseln (Standard Contractual Clauses, SCCs)
 - Ergänzende Schutzmassnahmen (Verschlüsselung)

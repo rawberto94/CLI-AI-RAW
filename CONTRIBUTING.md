@@ -176,11 +176,13 @@ security(auth): enforce CSRF token on all mutation endpoints
 
 1. **Rebase** on the latest target branch
 2. **Run checks locally:**
+
    ```bash
    pnpm lint
    pnpm typecheck
    pnpm test
    ```
+
 3. **Verify no regressions** in related functionality
 4. **Update documentation** if behaviour changes
 
@@ -283,7 +285,7 @@ pnpm typecheck
 
 ## Questions?
 
-Open a discussion or reach out to the engineering team at **dev@contigo-app.ch**.
+Open a discussion or reach out to the engineering team at **<dev@contigo-app.ch>**.
 
 ---
 

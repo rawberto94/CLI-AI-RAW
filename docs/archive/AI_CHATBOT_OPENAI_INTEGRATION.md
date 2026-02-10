@@ -1,6 +1,7 @@
 # AI Chatbot - OpenAI Integration Guide
 
 ## Overview
+
 The AI Chatbot now supports **both mock responses and real OpenAI API calls** with an easy-to-use toggle switch.
 
 ---
@@ -8,16 +9,19 @@ The AI Chatbot now supports **both mock responses and real OpenAI API calls** wi
 ## Features
 
 ### 🔄 **Dual Mode Support**
+
 - **Mock Mode**: Fast, deterministic responses using predefined templates (no API costs)
 - **Real AI Mode**: Powered by OpenAI GPT-4o-mini for intelligent, context-aware responses
 
 ### 🎛️ **Easy Toggle**
+
 - Switch between modes with a single click
 - Located in the chatbot header (top-right corner)
 - Persists during session
 - Visual indicator shows current mode
 
 ### 🧠 **Real OpenAI Integration**
+
 - Uses `gpt-4o-mini` model (configurable)
 - Context-aware system prompts
 - Conversation history support (last 10 messages)
@@ -71,12 +75,14 @@ grep "openai" apps/web/package.json
 ### **Switching Modes**
 
 #### **Enable Real AI Mode:**
+
 1. Click the **"Mock Mode" toggle** in the chatbot header
 2. Toggle turns OFF (unchecked)
 3. Status changes to **"Powered by GPT-4"**
 4. Next message will use OpenAI API
 
 #### **Return to Mock Mode:**
+
 1. Click the toggle again
 2. Toggle turns ON (checked)
 3. Status changes to **"Mock Mode"**
@@ -96,6 +102,7 @@ grep "openai" apps/web/package.json
 ### **Endpoint**: `POST /api/ai/chat`
 
 #### **Request Body**:
+
 ```typescript
 {
   message: string;           // User's question
@@ -107,6 +114,7 @@ grep "openai" apps/web/package.json
 ```
 
 #### **Response**:
+
 ```typescript
 {
   response: string;          // AI-generated response (markdown)
@@ -150,6 +158,7 @@ grep "openai" apps/web/package.json
 ## Real AI Mode
 
 ### **System Prompt**:
+
 ```
 You are an AI assistant for a Contract Lifecycle Management (CLM) system.
 You help users with:
@@ -169,12 +178,14 @@ When referencing contracts, use bullet points and bold for emphasis.
 ```
 
 ### **Model Configuration**:
+
 - **Model**: `gpt-4o-mini` (fast, cost-effective)
 - **Temperature**: 0.7 (balanced creativity/accuracy)
 - **Max Tokens**: 1000 (sufficient for detailed responses)
 - **History**: Last 10 messages (maintains conversation context)
 
 ### **Cost Estimation**:
+
 - **Input**: ~$0.15 per 1M tokens
 - **Output**: ~$0.60 per 1M tokens
 - **Average query**: ~500 input + 500 output tokens = **$0.000375** (~0.04¢ per query)
@@ -185,27 +196,33 @@ When referencing contracts, use bullet points and bold for emphasis.
 ## Error Handling
 
 ### **Missing API Key**:
+
 ```json
 {
   "error": "OpenAI API key not configured. Please add OPENAI_API_KEY to your .env file or enable mock mode."
 }
 ```
+
 **Status**: 500
 
 ### **API Failure**:
+
 ```json
 {
   "error": "OpenAI API error: {error_message}"
 }
 ```
+
 **Status**: 500
 
 ### **Invalid Request**:
+
 ```json
 {
   "error": "Message is required"
 }
 ```
+
 **Status**: 400
 
 ---
@@ -213,6 +230,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 ## Testing
 
 ### **Test Mock Mode**:
+
 1. Enable Mock Mode (toggle ON)
 2. Try these queries:
    - "Show me all high-risk contracts"
@@ -222,6 +240,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 3. Verify responses are instant and predefined
 
 ### **Test Real AI Mode**:
+
 1. Disable Mock Mode (toggle OFF)
 2. Try natural language queries:
    - "What are the biggest risks in my active contracts?"
@@ -235,6 +254,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 ## Code Locations
 
 ### **Component**: `/apps/web/components/AIChatbot.tsx`
+
 - Lines: 443 total
 - Key changes:
   - Line 57: `useMockMode` state
@@ -242,6 +262,7 @@ When referencing contracts, use bullet points and bold for emphasis.
   - Lines 282-293: Toggle UI in header
 
 ### **API Route**: `/apps/web/app/api/ai/chat/route.ts`
+
 - Lines: ~180 total
 - Key functions:
   - `getOpenAIResponse()`: Real AI integration
@@ -249,6 +270,7 @@ When referencing contracts, use bullet points and bold for emphasis.
   - `POST()`: Main handler with mode switching
 
 ### **Environment**: `/.env`
+
 - `OPENAI_API_KEY`: Your API key (already configured)
 - `OPENAI_MODEL`: Model selection (default: gpt-4o-mini)
 
@@ -257,6 +279,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 ## Advantages
 
 ### **Mock Mode**:
+
 ✅ **Instant responses** (no API latency)
 ✅ **Zero costs** (no OpenAI charges)
 ✅ **Predictable** (consistent responses)
@@ -264,6 +287,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 ✅ **Demo-friendly** (perfect for presentations)
 
 ### **Real AI Mode**:
+
 ✅ **Intelligent** (understands context and nuance)
 ✅ **Flexible** (handles any question)
 ✅ **Learning** (improves with conversation history)
@@ -275,6 +299,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 ## Best Practices
 
 ### **When to Use Mock Mode**:
+
 - Demos and presentations
 - Development without API costs
 - Testing UI/UX flows
@@ -282,6 +307,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 - Predictable response testing
 
 ### **When to Use Real AI Mode**:
+
 - Production environment
 - Complex user queries
 - Natural language understanding needed
@@ -289,6 +315,7 @@ When referencing contracts, use bullet points and bold for emphasis.
 - Creative problem-solving
 
 ### **Switching Strategy**:
+
 ```typescript
 // Development
 const useMockMode = process.env.NODE_ENV === 'development';
@@ -305,6 +332,7 @@ const useMockMode = localStorage.getItem('aiMode') === 'mock';
 ## Future Enhancements
 
 ### **Planned Features**:
+
 - [ ] **Persistent mode preference** (localStorage)
 - [ ] **Cost tracking** (OpenAI usage analytics)
 - [ ] **Streaming responses** (real-time token streaming)
@@ -315,6 +343,7 @@ const useMockMode = localStorage.getItem('aiMode') === 'mock';
 - [ ] **Multi-language support** (i18n)
 
 ### **Advanced Configuration**:
+
 ```typescript
 // Future: Custom AI configuration
 interface AIConfig {
@@ -333,25 +362,33 @@ interface AIConfig {
 ## Troubleshooting
 
 ### **Issue**: Toggle doesn't appear
+
 **Solution**: Clear browser cache, refresh page
 
 ### **Issue**: Real mode returns error
-**Solution**: 
+
+**Solution**:
+
 1. Check `.env` has valid `OPENAI_API_KEY`
 2. Verify API key has credits
 3. Check network connection
 4. Review browser console for errors
 
 ### **Issue**: Mock mode not working
+
 **Solution**: Ensure toggle is enabled (checked state)
 
 ### **Issue**: Responses are slow
-**Solution**: 
+
+**Solution**:
+
 - Mock mode: Should be instant (<1s)
 - Real mode: 2-5s is normal for OpenAI API
 
 ### **Issue**: "API key not configured" error
-**Solution**: 
+
+**Solution**:
+
 1. Check `.env` file exists in project root
 2. Verify `OPENAI_API_KEY` is set
 3. Restart dev server
@@ -362,12 +399,14 @@ interface AIConfig {
 ## Security Notes
 
 ### **API Key Protection**:
+
 ✅ **Server-side only** - API key never exposed to client
 ✅ **Environment variable** - Stored in `.env` (gitignored)
 ✅ **Request validation** - Input sanitization
 ✅ **Rate limiting** - Consider adding for production
 
 ### **Production Checklist**:
+
 - [ ] Use separate API key for production
 - [ ] Enable rate limiting (per user/IP)
 - [ ] Add request logging
@@ -388,6 +427,7 @@ interface AIConfig {
 ✅ **Ready for immediate use**
 
 **Total Implementation**:
+
 - Modified files: 2
 - New dependencies: 1 (openai)
 - Lines added: ~100

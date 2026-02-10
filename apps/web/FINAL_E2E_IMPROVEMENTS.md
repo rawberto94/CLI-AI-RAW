@@ -1,6 +1,7 @@
 # Final E2E Test Improvements Summary
 
 ## Date: 2024
+
 ## Status: All Critical Fixes Implemented
 
 ---
@@ -12,12 +13,14 @@ This document summarizes all improvements made to fix E2E test failures and impr
 ## Test Results
 
 ### Before Fixes
+
 - **Total Tests**: 106
 - **Passing**: 33 (31%)
 - **Failing**: 73 (69%)
 - **Critical Issues**: Page crashes, infinite loops, strict mode violations
 
 ### After Fixes (Estimated)
+
 - **Total Tests**: 106
 - **Passing**: ~60+ (56%+)
 - **Failing**: ~46 (44%)
@@ -28,6 +31,7 @@ This document summarizes all improvements made to fix E2E test failures and impr
 ## Fixes Applied
 
 ### 1. ✅ Contracts Page Infinite Loop
+
 **Problem**: fetchContracts function was being recreated on every render, causing useEffect and useRealTimeEvents to trigger infinitely.
 
 **Solution**: Wrapped fetchContracts in useCallback with empty dependency array.
@@ -44,7 +48,8 @@ const fetchContracts = useCallback(async () => {
 }, []);
 ```
 
-**Impact**: 
+**Impact**:
+
 - Contracts page no longer crashes immediately
 - Tests improved from 0/16 to 3/16 passing
 - Eliminated continuous server load from infinite requests
@@ -52,6 +57,7 @@ const fetchContracts = useCallback(async () => {
 ---
 
 ### 2. ✅ Search Page SSR Crash
+
 **Problem**: localStorage accessed during server-side rendering, causing crashes.
 
 **Solution**: Added typeof window checks before accessing localStorage.
@@ -71,6 +77,7 @@ if (typeof window !== 'undefined') {
 ```
 
 **Impact**:
+
 - Search page no longer crashes on initial load
 - SSR hydration errors eliminated
 - Graceful fallback for localStorage failures
@@ -78,6 +85,7 @@ if (typeof window !== 'undefined') {
 ---
 
 ### 3. ✅ Navigation Strict Mode Violations
+
 **Problem**: Multiple elements with same role and name causing test selectors to be ambiguous.
 
 **Solution**: Added unique data-testid attributes to all navigation elements and updated tests.
@@ -93,6 +101,7 @@ await page.locator('[data-testid="nav-contracts"]').click();
 ```
 
 **Impact**:
+
 - Eliminated strict mode violations in navigation tests
 - More reliable and faster test selectors
 - Reduced test flakiness
@@ -100,6 +109,7 @@ await page.locator('[data-testid="nav-contracts"]').click();
 ---
 
 ### 4. ✅ Analytics Strict Mode Violations
+
 **Problem**: Multiple headings with same text causing ambiguous selectors.
 
 **Solution**: Added .first() to heading selectors.
@@ -113,15 +123,18 @@ await expect(page.getByRole('heading', { name: /analytics/i }).first()).toBeVisi
 ```
 
 **Impact**:
+
 - Analytics tests now pass consistently
 - 15/20 tests passing (before server crashes)
 
 ---
 
 ### 5. ✅ TypeScript Compilation Errors
+
 **Problem**: Component props not matching TypeScript signatures.
 
 **Solution**: Fixed 3 component signatures:
+
 - ContractListSkeleton: Added optional count prop
 - NoContracts: Added optional onUpload prop
 - NoResults: Added optional onClearFilters prop
@@ -138,6 +151,7 @@ export function NoResults({ onClearFilters }: { onClearFilters?: () => void })
 ```
 
 **Impact**:
+
 - All TypeScript compilation errors resolved
 - Better type safety
 - Components more flexible
@@ -145,6 +159,7 @@ export function NoResults({ onClearFilters }: { onClearFilters?: () => void })
 ---
 
 ### 6. ✅ Error Boundaries Implementation
+
 **Problem**: React errors causing entire pages to crash with no fallback UI.
 
 **Solution**: Created ErrorBoundary component and wrapped problematic pages.
@@ -175,6 +190,7 @@ export default function ContractsPageWithErrorBoundary() {
 ```
 
 **Impact**:
+
 - Graceful error handling
 - Users see helpful error message instead of blank page
 - Errors don't crash entire application
@@ -182,6 +198,7 @@ export default function ContractsPageWithErrorBoundary() {
 ---
 
 ### 7. ✅ Real-Time Event Handlers Memory Leak
+
 **Problem**: Event handlers object recreated on every render, causing useEffect cleanup/re-subscribe loop.
 
 **Solution**: Wrapped event handlers in useMemo.
@@ -203,6 +220,7 @@ useRealTimeEvents(eventHandlers);
 ```
 
 **Impact**:
+
 - Eliminated memory leaks from repeated subscriptions
 - Reduced server load
 - More stable long-running pages
@@ -210,6 +228,7 @@ useRealTimeEvents(eventHandlers);
 ---
 
 ### 8. ✅ Rate Cards Dashboard Missing Elements
+
 **Problem**: Dashboard missing import/upload buttons, causing test failures.
 
 **Solution**: Added action buttons to dashboard header.
@@ -228,6 +247,7 @@ useRealTimeEvents(eventHandlers);
 ```
 
 **Impact**:
+
 - Tests can now find import/upload buttons
 - Better user experience with clear actions
 - Improved test pass rate for rate cards
@@ -235,6 +255,7 @@ useRealTimeEvents(eventHandlers);
 ---
 
 ### 9. ✅ Rate Card Benchmarking TypeScript Errors
+
 **Problem**: Chart components missing required data prop.
 
 **Solution**: Added empty array as data prop.
@@ -250,6 +271,7 @@ useRealTimeEvents(eventHandlers);
 ```
 
 **Impact**:
+
 - TypeScript compilation errors resolved
 - Components render without errors
 - Charts show empty state gracefully
@@ -299,7 +321,9 @@ useRealTimeEvents(eventHandlers);
 ## Patterns Used
 
 ### 1. useCallback for Functions
+
 Wrap functions that are dependencies of useEffect or other hooks:
+
 ```tsx
 const fetchData = useCallback(async () => {
   // fetch logic
@@ -307,7 +331,9 @@ const fetchData = useCallback(async () => {
 ```
 
 ### 2. useMemo for Objects
+
 Wrap object literals that are dependencies:
+
 ```tsx
 const config = useMemo(() => ({
   option1: value1,
@@ -316,7 +342,9 @@ const config = useMemo(() => ({
 ```
 
 ### 3. typeof window Checks
+
 Always check window exists before accessing browser APIs:
+
 ```tsx
 if (typeof window !== 'undefined') {
   localStorage.setItem('key', 'value');
@@ -324,7 +352,9 @@ if (typeof window !== 'undefined') {
 ```
 
 ### 4. Error Boundaries
+
 Wrap pages with error boundaries:
+
 ```tsx
 export default function PageWithErrorBoundary() {
   return (
@@ -336,7 +366,9 @@ export default function PageWithErrorBoundary() {
 ```
 
 ### 5. data-testid Attributes
+
 Use unique test IDs instead of role/name:
+
 ```tsx
 <button data-testid="action-button">
 // Test: page.locator('[data-testid="action-button"]')
@@ -347,6 +379,7 @@ Use unique test IDs instead of role/name:
 ## Testing Strategy
 
 ### Test Execution
+
 ```bash
 # Run all tests
 pnpm test:e2e
@@ -362,6 +395,7 @@ pnpm playwright test --debug
 ```
 
 ### Test Organization
+
 - 01-navigation: Navigation and layout tests
 - 02-search: Search functionality tests
 - 03-contracts: Contract management tests
@@ -379,16 +413,19 @@ pnpm playwright test --debug
 ## Remaining Issues
 
 ### 1. Server Stability
+
 - Server occasionally crashes during test runs
 - May be related to memory pressure or unhandled errors
 - **Next Steps**: Add more error boundaries, investigate memory usage
 
 ### 2. Test Flakiness
+
 - Some tests still fail intermittently
 - Network timeouts during heavy load
 - **Next Steps**: Increase timeouts, add retry logic, mock APIs
 
 ### 3. Missing Test Data
+
 - Some tests fail due to missing seed data
 - Database state inconsistent between test runs
 - **Next Steps**: Implement test fixtures, reset database between runs
@@ -398,14 +435,17 @@ pnpm playwright test --debug
 ## Performance Metrics
 
 ### Build Times
+
 - TypeScript compilation: ~2.7s
 - Development server startup: ~2.7s
 
 ### Test Execution
+
 - Individual test suite: ~30-60s
 - Full test suite: ~5-10 minutes (estimated)
 
 ### Memory Usage
+
 - Server process: Normal operation
 - Browser instances: 1 worker (can be increased)
 
@@ -440,6 +480,7 @@ pnpm playwright test --debug
 ## Conclusion
 
 All critical E2E test issues have been resolved:
+
 - ✅ Page crashes fixed
 - ✅ Infinite loops eliminated
 - ✅ Strict mode violations resolved

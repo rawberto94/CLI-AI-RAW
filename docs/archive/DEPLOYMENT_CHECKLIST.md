@@ -31,6 +31,7 @@
 ## Deployment Steps
 
 ### 1. Clone & Setup
+
 ```bash
 git clone https://github.com/your-org/CLI-AI-RAW.git
 cd CLI-AI-RAW
@@ -39,18 +40,21 @@ cp .env.example .env.production
 ```
 
 ### 2. Run Database Migrations
+
 ```bash
 cd /workspaces/CLI-AI-RAW
 DATABASE_URL="your-connection-string" npx prisma migrate deploy
 ```
 
 Expected output:
+
 ```
 ✔ Migration applied: 20251230113855_add_agentic_ai_models
 ✔ Generated Prisma Client
 ```
 
 ### 3. Verify Agent Tables Created
+
 ```bash
 npx prisma db execute --sql "
   SELECT tablename FROM pg_tables 
@@ -62,6 +66,7 @@ npx prisma db execute --sql "
 ```
 
 Expected: 4 tables returned
+
 - `agent_events`
 - `agent_recommendations`
 - `learning_records`
@@ -70,6 +75,7 @@ Expected: 4 tables returned
 ### 4. Choose Deployment Method
 
 #### Option A: Docker Compose (Recommended for Self-Hosted)
+
 ```bash
 # Build and deploy
 docker-compose -f docker-compose.prod.yml up -d --build
@@ -82,6 +88,7 @@ docker-compose -f docker-compose.prod.yml up -d --scale workers=3
 ```
 
 #### Option B: Kubernetes
+
 ```bash
 # Create secrets
 kubectl create secret generic app-secrets \
@@ -97,6 +104,7 @@ kubectl logs -f deployment/web -n contract-intelligence
 ```
 
 #### Option C: AWS ECS (via GitHub Actions)
+
 ```bash
 # Push to trigger deployment
 git push origin main
@@ -111,6 +119,7 @@ aws ecs describe-services \
 ```
 
 #### Option D: Manual Build & Deploy
+
 ```bash
 # Build on powerful machine
 cd apps/web
@@ -131,12 +140,14 @@ NODE_ENV=production node server.js
 ## Post-Deployment Verification
 
 ### 1. Health Check ✅
+
 ```bash
 curl https://your-domain.com/api/health
 # Expected: {"status":"ok","timestamp":"2025-12-30..."}
 ```
 
 ### 2. Agent Routes ✅
+
 ```bash
 # Check all 5 agent API endpoints
 curl https://your-domain.com/api/agents/status
@@ -149,6 +160,7 @@ curl https://your-domain.com/api/agents/dashboard-stats
 ```
 
 ### 3. Test Agent Execution ✅
+
 ```bash
 # Upload a test contract
 curl -X POST https://your-domain.com/api/contracts/upload \
@@ -172,6 +184,7 @@ LIMIT 10;
 ```
 
 ### 4. Database Verification ✅
+
 ```sql
 -- Check agent activity
 SELECT COUNT(*) as total_events FROM agent_events;
@@ -193,6 +206,7 @@ LIMIT 20;
 ```
 
 ### 5. Worker Health ✅
+
 ```bash
 # Check worker logs for agent registration
 docker logs <worker-container-id> 2>&1 | grep "agent"
@@ -209,6 +223,7 @@ docker logs <worker-container-id> 2>&1 | grep "agent"
 ## Monitoring Setup
 
 ### 1. Set Up Alerts
+
 ```bash
 # AWS CloudWatch
 aws cloudwatch put-metric-alarm \
@@ -221,12 +236,14 @@ aws cloudwatch put-metric-alarm \
 ```
 
 ### 2. Enable Logging
+
 - [ ] Application logs forwarded to CloudWatch/Stackdriver/Azure Monitor
 - [ ] Error tracking enabled (Sentry/Rollbar)
 - [ ] Performance monitoring enabled
 - [ ] Database slow query logging enabled
 
 ### 3. Set Up Backups
+
 ```bash
 # PostgreSQL automated backups
 # AWS RDS: Enable automated backups (7-35 days retention)
@@ -242,11 +259,15 @@ pg_dump $DATABASE_URL > backup-$(date +%Y%m%d-%H%M%S).sql
 ## Troubleshooting
 
 ### Issue: Build fails with memory error
+
 **Solution**: Use cloud CI/CD or machine with ≥16GB RAM
+
 - See [BUILD_MEMORY_WORKAROUND.md](BUILD_MEMORY_WORKAROUND.md)
 
 ### Issue: Agents not executing
+
 **Check**:
+
 ```bash
 # 1. Redis connection
 redis-cli -u $REDIS_URL ping
@@ -266,7 +287,9 @@ curl https://api.openai.com/v1/models \
 ```
 
 ### Issue: 404 on /api/agents/*
+
 **Check**:
+
 ```bash
 # Verify routes compiled
 ls -la apps/web/.next/server/app/api/agents/
@@ -277,6 +300,7 @@ ls -la apps/web/.next/server/app/api/agents/
 ```
 
 ### Issue: Database migration failed
+
 ```bash
 # Reset and reapply
 cd packages/clients/db
@@ -292,6 +316,7 @@ npx prisma db execute --sql "SELECT tablename FROM pg_tables WHERE schemaname='p
 ## Scaling
 
 ### Horizontal Scaling
+
 ```bash
 # Docker Compose
 docker-compose -f docker-compose.prod.yml up -d --scale workers=5
@@ -307,6 +332,7 @@ aws ecs update-service \
 ```
 
 ### Auto-Scaling Configuration
+
 ```yaml
 # Already configured in k8s/deployment.yaml
 # HPA scales based on CPU (70%) and Memory (80%)
@@ -360,6 +386,7 @@ Your deployment is successful when:
 ## Support
 
 For issues:
+
 1. Check [BUILD_MEMORY_WORKAROUND.md](BUILD_MEMORY_WORKAROUND.md)
 2. Check [CLOUD_DEPLOYMENT_GUIDE.md](CLOUD_DEPLOYMENT_GUIDE.md)
 3. Review logs: `docker logs <container>` or `kubectl logs <pod>`

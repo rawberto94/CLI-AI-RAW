@@ -1,6 +1,7 @@
 # Before & After - UI/UX Enhancements
 
 ## 📋 Overview
+
 This document shows the visual and functional improvements made to the Contigo platform on December 28, 2025.
 
 ---
@@ -8,6 +9,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ## 1. Upload Page - Lifecycle Selector
 
 ### ❌ BEFORE
+
 ```
 ┌─────────────────────────────────────────┐
 │           Upload Contracts              │
@@ -21,7 +23,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │                                         │
 └─────────────────────────────────────────┘
 ```
+
 **Issues**:
+
 - ❌ No way to specify if contract is NEW or EXISTING
 - ❌ Unclear when approval workflows trigger
 - ❌ Users confused about status after upload
@@ -29,6 +33,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ---
 
 ### ✅ AFTER
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │           Upload Contracts                                   │
@@ -49,7 +54,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │                                                              │
 └─────────────────────────────────────────────────────────────┘
 ```
+
 **Benefits**:
+
 - ✅ Clear classification before upload
 - ✅ Immediate feedback on approval requirements
 - ✅ Sets correct status from the start (DRAFT vs PROCESSING)
@@ -60,6 +67,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ## 2. Workflows Page - Bulk Approval Actions
 
 ### ❌ BEFORE
+
 ```
 ┌─────────────────────────────────────────┐
 │   Approval Queue                        │
@@ -79,7 +87,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │                                         │
 └─────────────────────────────────────────┘
 ```
+
 **Issues**:
+
 - ❌ Must approve each contract individually
 - ❌ 30+ clicks for 10 contracts
 - ❌ Tedious on high-volume days
@@ -87,6 +97,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ---
 
 ### ✅ AFTER
+
 ```
 ┌─────────────────────────────────────────┐
 │   Approval Queue                        │
@@ -111,7 +122,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │  [✓ Approve All] [✗ Reject All] [Clear]│
 └─────────────────────────────────────────┘
 ```
+
 **Benefits**:
+
 - ✅ Multi-select with checkboxes
 - ✅ Bulk approve/reject (2 clicks vs 30+)
 - ✅ Floating bar shows selection count
@@ -125,6 +138,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ## 3. Contracts Page - Status Badges
 
 ### ❌ BEFORE
+
 ```
 ┌─────────────────────────────────────────────────────┐
 │   Contract Title         Status     Value    Date   │
@@ -135,7 +149,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │   IT Infrastructure     draft       $200K   Apr 01  │
 └─────────────────────────────────────────────────────┘
 ```
+
 **Issues**:
+
 - ❌ Plain text status (inconsistent styling)
 - ❌ No visual hierarchy
 - ❌ Hard to scan quickly
@@ -144,6 +160,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ---
 
 ### ✅ AFTER
+
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │   Contract Title         Status              Value    Date      │
@@ -161,7 +178,9 @@ This document shows the visual and functional improvements made to the Contigo p
 │                         [📄 NEW]                                │
 └─────────────────────────────────────────────────────────────────┘
 ```
+
 **Benefits**:
+
 - ✅ Color-coded badges (blue/amber/purple/green/red)
 - ✅ Icons for instant recognition
 - ✅ Dual badges (status + document role)
@@ -176,6 +195,7 @@ This document shows the visual and functional improvements made to the Contigo p
 ## 4. Workflow Auto-Assignment (Backend)
 
 ### ❌ BEFORE
+
 ```
 User Action:
   Submit contract for approval
@@ -192,7 +212,9 @@ Workflow Created:
    - 5-10 minutes per workflow
    - Bottleneck during high volume
 ```
+
 **Issues**:
+
 - ❌ Manual assignment for every workflow
 - ❌ Time-consuming and error-prone
 - ❌ Workflow delays
@@ -201,6 +223,7 @@ Workflow Created:
 ---
 
 ### ✅ AFTER
+
 ```
 User Action:
   Submit contract for approval
@@ -222,7 +245,9 @@ Workflow Created:
    - Round-robin distribution
    - Fair workload balancing
 ```
+
 **Benefits**:
+
 - ✅ **Zero manual work** - fully automatic
 - ✅ Round-robin ensures fair distribution
 - ✅ Role mapping (legal → legal_review, legal_director, etc)
@@ -236,6 +261,7 @@ Workflow Created:
 ## 📊 Impact Summary
 
 ### Before (Pain Points)
+
 | Feature              | Issue                          | Impact           |
 |---------------------|--------------------------------|------------------|
 | Upload              | No lifecycle classification    | ⚠️ Confusion     |
@@ -244,6 +270,7 @@ Workflow Created:
 | Assignment          | Manual for every workflow      | ⏱️ 5-10 min each |
 
 ### After (Solutions)
+
 | Feature              | Solution                       | Impact           |
 |---------------------|--------------------------------|------------------|
 | Upload              | Lifecycle selector UI          | ✅ Clear         |
@@ -256,6 +283,7 @@ Workflow Created:
 ## 🎯 User Experience Improvements
 
 ### Before
+
 ```
 Upload → ??? (unclear status) → Manual approval → Manual assignment
   ↓         ↓                      ↓                    ↓
@@ -263,6 +291,7 @@ Confusion  Unclear               Tedious              Bottleneck
 ```
 
 ### After
+
 ```
 Upload → Clear lifecycle → Bulk approval → Auto-assign
   ↓         ↓                ↓                ↓
@@ -300,4 +329,4 @@ With these 4 improvements complete, the platform is ready for:
 
 **Implementation Date**: December 28, 2025  
 **Status**: ✅ Complete and Deployed  
-**Dev Server**: http://localhost:3005
+**Dev Server**: <http://localhost:3005>

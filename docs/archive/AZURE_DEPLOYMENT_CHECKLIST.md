@@ -8,12 +8,14 @@
 ## Phase 1: Azure Infrastructure Setup (Week 1)
 
 ### 1.1 Azure Account & Subscription
+
 - [ ] Create/access Azure subscription
 - [ ] Set up Resource Group: `rg-contigo-prod`
 - [ ] Configure Azure Cost Management alerts
 - [ ] Enable Azure Defender for Cloud
 
 ### 1.2 Azure Container Registry (ACR)
+
 ```bash
 # Create ACR
 az acr create \
@@ -36,6 +38,7 @@ docker push contigoacr.azurecr.io/contigo-websocket:latest
 ```
 
 ### 1.3 Azure Kubernetes Service (AKS)
+
 ```bash
 # Create AKS cluster
 az aks create \
@@ -59,6 +62,7 @@ kubectl get nodes
 ```
 
 ### 1.4 Azure Database for PostgreSQL Flexible Server
+
 ```bash
 # Create PostgreSQL server
 az postgres flexible-server create \
@@ -96,6 +100,7 @@ az postgres flexible-server firewall-rule create \
 ```
 
 ### 1.5 Azure Cache for Redis
+
 ```bash
 # Create Redis cache
 az redis create \
@@ -109,6 +114,7 @@ az redis create \
 ```
 
 ### 1.6 Azure Blob Storage
+
 ```bash
 # Create storage account
 az storage account create \
@@ -127,6 +133,7 @@ az storage container create \
 ```
 
 ### 1.7 Azure Key Vault
+
 ```bash
 # Create Key Vault
 az keyvault create \
@@ -159,6 +166,7 @@ az keyvault secret set --vault-name kv-contigo-prod --name "AZURE-STORAGE-KEY" \
 ### 2.1 Update Kubernetes Manifests for Azure
 
 Create `kubernetes/azure-secrets.yaml`:
+
 ```yaml
 apiVersion: secrets-store.csi.x-k8s.io/v1
 kind: SecretProviderClass
@@ -207,6 +215,7 @@ spec:
 ```
 
 ### 2.2 Update ConfigMap for Azure
+
 ```yaml
 apiVersion: v1
 kind: ConfigMap
@@ -223,6 +232,7 @@ data:
 ```
 
 ### 2.3 Update Deployments for ACR
+
 ```yaml
 # In kubernetes/deployment.yaml, update image references:
 spec:
@@ -232,6 +242,7 @@ spec:
 ```
 
 ### 2.4 Install Required AKS Add-ons
+
 ```bash
 # Enable Secrets Store CSI Driver
 az aks enable-addons \
@@ -257,6 +268,7 @@ helm install cert-manager jetstack/cert-manager \
 ## Phase 3: Deploy Application (Week 2-3)
 
 ### 3.1 Run Database Migrations
+
 ```bash
 # Create a migration job
 kubectl apply -f - <<EOF
@@ -286,6 +298,7 @@ kubectl logs -f job/prisma-migrate -n contract-intel
 ```
 
 ### 3.2 Deploy Application
+
 ```bash
 # Apply all manifests
 kubectl apply -f kubernetes/deployment.yaml
@@ -302,6 +315,7 @@ kubectl logs -l app=contract-intel-app -n contract-intel --tail=50
 ```
 
 ### 3.3 Configure DNS & TLS
+
 ```bash
 # Get Ingress IP
 kubectl get svc -n ingress-nginx
@@ -333,6 +347,7 @@ EOF
 ```
 
 ### 3.4 Verify Deployment
+
 ```bash
 # Health check
 curl https://contigo.yourdomain.com/api/health
@@ -349,6 +364,7 @@ wscat -c wss://contigo.yourdomain.com/ws
 ## Phase 4: Production Hardening
 
 ### 4.1 Enable Azure Monitor
+
 ```bash
 az aks enable-addons \
   --resource-group rg-contigo-prod \
@@ -358,6 +374,7 @@ az aks enable-addons \
 ```
 
 ### 4.2 Configure Backup
+
 ```bash
 # Enable PostgreSQL backup (automatic in Flexible Server)
 az postgres flexible-server update \
@@ -374,6 +391,7 @@ az storage account blob-service-properties update \
 ```
 
 ### 4.3 Set Up Azure Front Door (Optional - for CDN)
+
 ```bash
 az afd profile create \
   --resource-group rg-contigo-prod \
@@ -424,6 +442,7 @@ CORS_ORIGIN=https://contigo.yourdomain.com
 | **Total** | | **~$1,285/month** |
 
 > 💡 **Cost Optimization Tips:**
+>
 > - Use Reserved Instances (1-year) for 30-40% savings
 > - Enable autoscaling to scale down during off-hours
 > - Use Spot instances for non-critical workers

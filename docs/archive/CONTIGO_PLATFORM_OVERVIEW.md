@@ -520,8 +520,8 @@ pnpm dev
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| **Web Application** | http://localhost:3005 | Create account |
-| **MinIO Console** | http://localhost:9001 | minioadmin/minioadmin |
+| **Web Application** | <http://localhost:3005> | Create account |
+| **MinIO Console** | <http://localhost:9001> | minioadmin/minioadmin |
 | **Prisma Studio** | Run `pnpm db:studio` | N/A |
 
 ### 10.3 First Steps

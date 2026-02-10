@@ -9,6 +9,7 @@ This document describes the comprehensive agentic AI capabilities added to the c
 **Location**: `/packages/workers/src/agents/goal-oriented-reasoner.ts`
 
 ### Purpose
+
 Detects user intent and optimizes workflow based on goals rather than blindly processing everything.
 
 ### Key Features
@@ -80,6 +81,7 @@ const plan = reasoner.generateGoalPlan(intent, allArtifactTypes);
 **Location**: `/packages/workers/src/agents/multi-agent-coordinator.ts`
 
 ### Purpose
+
 5 specialist AI agents negotiate and collaborate to produce optimal results.
 
 ### Key Features
@@ -151,6 +153,7 @@ const plan = await coordinator.createExecutionPlan(negotiation);
 **Location**: `/packages/workers/src/agents/proactive-risk-detector.ts`
 
 ### Purpose
+
 Autonomous risk detection BEFORE problems occur, not after.
 
 ### Key Features
@@ -172,6 +175,7 @@ Autonomous risk detection BEFORE problems occur, not after.
    - `LOW`: Note for future reference (5 points)
 
 3. **Risk Scoring**:
+
    ```
    overallRiskScore = min(100, CRITICAL×40 + HIGH×20 + MEDIUM×10 + LOW×5)
    ```
@@ -235,6 +239,7 @@ const riskAnalysis = await detector.analyzeContract(
 **Location**: `/packages/workers/src/agents/user-feedback-learner.ts`
 
 ### Purpose
+
 Continuously improve based on user corrections and feedback.
 
 ### Key Features
@@ -306,6 +311,7 @@ await learner.processFeedback({
 **Location**: `/packages/workers/src/agents/ab-testing-engine.ts`
 
 ### Purpose
+
 Automatically optimize prompts and models through experimentation.
 
 ### Key Features
@@ -631,6 +637,7 @@ curl http://localhost:3000/api/admin/metrics/agentic
 ### Step 4: Tune Thresholds
 
 Adjust based on your tenant's needs:
+
 - Legal-focused: Higher compliance/risk thresholds
 - Procurement-focused: Higher cost/pricing thresholds
 - Quick reviews: Lower overall thresholds for speed

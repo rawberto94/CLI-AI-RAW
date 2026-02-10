@@ -13,6 +13,7 @@ This implementation adds **customizable AI artifact generation** and **smart met
 A powerful component that allows users to generate custom AI artifacts for specific topics.
 
 **Features:**
+
 - **8 Pre-defined Topics:**
   - Liability & Indemnification
   - Intellectual Property
@@ -39,6 +40,7 @@ A powerful component that allows users to generate custom AI artifacts for speci
   - Recommendations for each finding
 
 **Exports:**
+
 - `CustomArtifactGenerator` - Full component with all features
 - `QuickTopicGenerator` - Compact version for quick access
 
@@ -49,6 +51,7 @@ A powerful component that allows users to generate custom AI artifacts for speci
 An AI-assisted metadata validation component for ensuring data quality.
 
 **Features:**
+
 - **AI + Human Workflow:**
   - AI-extracted values with confidence scores
   - Human validation/rejection/modification
@@ -121,6 +124,7 @@ An AI-assisted metadata validation component for ensuring data quality.
 ```
 
 **Features:**
+
 - Topic-specific system prompts for accurate analysis
 - Falls back to mock data when OpenAI is not configured
 - Contract text extraction from database
@@ -179,6 +183,7 @@ An AI-assisted metadata validation component for ensuring data quality.
 ```
 
 **Features:**
+
 - AI validation with OpenAI GPT-4
 - Rule-based validation fallback
 - Confidence scoring algorithm
@@ -206,6 +211,7 @@ The contract details page (`/apps/web/app/contracts/[id]/page.tsx`) now includes
 ## Design System Integration
 
 All components use the existing design system:
+
 - **UI Components:** Card, Badge, Button from shadcn/ui
 - **Icons:** Lucide React icons
 - **Animations:** Framer Motion for smooth transitions
@@ -250,6 +256,7 @@ function ContractDetail({ contractId }) {
 ## Mock Data Support
 
 All features work in demo mode without requiring OpenAI API keys:
+
 - Custom artifact generation returns realistic mock data
 - Metadata validation uses rule-based validation
 - Confidence scores are generated algorithmically

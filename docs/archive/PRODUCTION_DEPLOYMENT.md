@@ -45,6 +45,7 @@ chmod +x scripts/deploy-production.sh
 ### Docker Compose (docker-compose.full.yml)
 
 Full production stack including:
+
 - **app**: Next.js application (port 3000)
 - **websocket**: Socket.io server (port 3001)
 - **postgres**: PostgreSQL with pgvector (port 5432)
@@ -54,6 +55,7 @@ Full production stack including:
 ### Nginx Configuration
 
 Located in `nginx/` directory:
+
 - `nginx.conf`: Main configuration with gzip, rate limiting
 - `conf.d/default.conf`: Server blocks with SSL, WebSocket proxy
 
@@ -62,7 +64,9 @@ Located in `nginx/` directory:
 ## Deployment Scripts
 
 ### deploy-production.sh
+
 Main deployment script with:
+
 - Pre-flight checks (Docker, environment)
 - Database backup
 - Image building
@@ -79,26 +83,34 @@ SKIP_BACKUP=1 ./scripts/deploy-production.sh
 ```
 
 ### setup-ssl.sh
+
 SSL certificate setup using Let's Encrypt:
+
 ```bash
 ./scripts/setup-ssl.sh
 ```
 
 ### backup.sh
+
 Database and configuration backup:
+
 ```bash
 ./scripts/backup.sh
 # Backups stored in ./backups/
 ```
 
 ### restore.sh
+
 Restore from backup:
+
 ```bash
 ./scripts/restore.sh ./backups/backup_20240115_120000.tar.gz
 ```
 
 ### health-check.sh
+
 System health monitoring:
+
 ```bash
 ./scripts/health-check.sh
 ```
@@ -154,6 +166,7 @@ kubectl logs -f deployment/app -n contract-intel
 ```
 
 Features:
+
 - Horizontal Pod Autoscaling (2-10 replicas)
 - Pod Disruption Budget
 - Persistent Volume Claims
@@ -172,6 +185,7 @@ Features:
 ### Docker Health Checks
 
 All containers have built-in health checks:
+
 ```bash
 docker compose -f docker-compose.full.yml ps
 ```
@@ -193,6 +207,7 @@ docker stats
 ### Automated Backups
 
 Set up cron job:
+
 ```bash
 # Add to crontab
 0 2 * * * /path/to/scripts/backup.sh >> /var/log/backup.log 2>&1
@@ -346,6 +361,7 @@ docker compose -f docker-compose.full.yml exec redis redis-cli
 ## Support
 
 For issues or questions:
+
 1. Check logs with `docker compose logs`
 2. Run health check: `./scripts/health-check.sh`
 3. Review this guide's troubleshooting section

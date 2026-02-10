@@ -7,6 +7,7 @@ This migration adds the database schema for production-ready webhook delivery an
 ## Models Added
 
 ### 1. Webhook
+
 Stores webhook configurations for tenants.
 
 ```prisma
@@ -31,6 +32,7 @@ model Webhook {
 **Purpose**: Configure webhooks for event notifications (contract.created, contract.processed, etc.)
 
 ### 2. WebhookDelivery
+
 Tracks webhook delivery attempts and results.
 
 ```prisma
@@ -55,6 +57,7 @@ model WebhookDelivery {
 **Purpose**: Audit trail of all webhook deliveries with retry tracking
 
 ### 3. IdempotencyKey
+
 Prevents duplicate operations using idempotency keys.
 
 ```prisma
@@ -73,6 +76,7 @@ model IdempotencyKey {
 **Purpose**: Ensure operations like file uploads are idempotent (24-hour expiry)
 
 ### 4. OutboxEvent
+
 Implements transactional outbox pattern for reliable event publishing.
 
 ```prisma
@@ -97,12 +101,14 @@ model OutboxEvent {
 ## How to Apply
 
 ### Development
+
 ```bash
 cd packages/clients/db
 npx prisma migrate dev
 ```
 
 ### Production
+
 ```bash
 cd packages/clients/db
 npx prisma migrate deploy
@@ -111,6 +117,7 @@ npx prisma migrate deploy
 ## Usage Examples
 
 ### Configure a Webhook
+
 ```typescript
 await prisma.webhook.create({
   data: {
@@ -126,6 +133,7 @@ await prisma.webhook.create({
 ```
 
 ### Create Idempotency Key
+
 ```typescript
 await prisma.idempotencyKey.create({
   data: {
@@ -140,6 +148,7 @@ await prisma.idempotencyKey.create({
 ```
 
 ### Create Outbox Event
+
 ```typescript
 await prisma.outboxEvent.create({
   data: {
@@ -155,6 +164,7 @@ await prisma.outboxEvent.create({
 ## Indexes
 
 All models include appropriate indexes for performance:
+
 - Tenant isolation (`tenantId`)
 - Status queries (`status`, `enabled`)
 - Time-based queries (`createdAt`, `expiresAt`)
@@ -163,6 +173,7 @@ All models include appropriate indexes for performance:
 ## Cleanup
 
 Idempotency keys expire after 24 hours. Set up a cron job to clean up:
+
 ```typescript
 await prisma.idempotencyKey.deleteMany({
   where: {
@@ -174,6 +185,7 @@ await prisma.idempotencyKey.deleteMany({
 ## Integration
 
 These models are used by:
+
 - **Webhook Worker** (`packages/workers/src/webhook-worker.ts`)
 - **Webhook Triggers** (`apps/web/lib/webhook-triggers.ts`)
 - **Transaction Service** (`apps/web/lib/transaction-service.ts`)
@@ -182,6 +194,7 @@ These models are used by:
 ## Rollback
 
 If needed, rollback with:
+
 ```bash
 cd packages/clients/db
 npx prisma migrate resolve --rolled-back 20251117101848_add_webhook_and_transaction_models

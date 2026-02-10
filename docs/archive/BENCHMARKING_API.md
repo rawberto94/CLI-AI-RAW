@@ -19,9 +19,11 @@ Calculate statistical benchmark for a specific rate card.
 **Endpoint:** `POST /api/benchmarking/calculate/:rateCardId`
 
 **Parameters:**
+
 - `rateCardId` (path): ID of the rate card to benchmark
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -86,17 +88,20 @@ Get market-wide intelligence for specific criteria.
 **Endpoint:** `GET /api/benchmarking/market`
 
 **Query Parameters:**
+
 - `role` (optional): Role name (e.g., "Java Developer")
 - `seniority` (optional): Seniority level (e.g., "Senior")
 - `country` (optional): Country name (e.g., "United States")
 - `lineOfService` (optional): Line of service (e.g., "Technology")
 
 **Example:**
+
 ```
 GET /api/benchmarking/market?role=Java%20Developer&seniority=Senior&country=United%20States
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -156,9 +161,11 @@ Detect savings opportunities for a rate card.
 **Endpoint:** `POST /api/benchmarking/opportunities/:rateCardId`
 
 **Parameters:**
+
 - `rateCardId` (path): ID of the rate card to analyze
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -201,11 +208,13 @@ Detect savings opportunities for a rate card.
 **List All Opportunities:** `GET /api/benchmarking/opportunities`
 
 **Query Parameters:**
+
 - `tenantId` (optional): Filter by tenant
 - `status` (optional): Filter by status (IDENTIFIED, IN_PROGRESS, COMPLETED, REJECTED)
 - `minSavings` (optional): Minimum savings amount
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -234,6 +243,7 @@ Process all rate cards for a tenant.
 **Endpoint:** `POST /api/benchmarking/bulk`
 
 **Request Body:**
+
 ```json
 {
   "tenantId": "tenant-123"
@@ -241,6 +251,7 @@ Process all rate cards for a tenant.
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -262,6 +273,7 @@ Process all rate cards for a tenant.
 **Get Bulk Status:** `GET /api/benchmarking/bulk?tenantId=tenant-123`
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -332,6 +344,7 @@ All endpoints return errors in this format:
 ```
 
 **Common HTTP Status Codes:**
+
 - `200`: Success
 - `400`: Bad request (missing required parameters)
 - `404`: Resource not found
@@ -344,21 +357,25 @@ All endpoints return errors in this format:
 ### cURL Examples
 
 **Calculate Benchmark:**
+
 ```bash
 curl -X POST http://localhost:3005/api/benchmarking/calculate/rc-123
 ```
 
 **Get Market Intelligence:**
+
 ```bash
 curl "http://localhost:3005/api/benchmarking/market?role=Java%20Developer&seniority=Senior"
 ```
 
 **Detect Opportunities:**
+
 ```bash
 curl -X POST http://localhost:3005/api/benchmarking/opportunities/rc-123
 ```
 
 **Bulk Benchmark:**
+
 ```bash
 curl -X POST http://localhost:3005/api/benchmarking/bulk \
   -H "Content-Type: application/json" \
@@ -427,6 +444,7 @@ await queue.add('benchmark-all-rates', {
 ### Caching
 
 Market intelligence results are cached for performance:
+
 - Cache duration: 1 hour
 - Cache key: `market-intel:{role}:{seniority}:{country}:{lineOfService}`
 
@@ -435,14 +453,17 @@ Market intelligence results are cached for performance:
 ## Performance
 
 **Benchmark Calculation:**
+
 - Single rate card: ~50-100ms
 - Bulk (100 rate cards): ~5-10 seconds
 
 **Market Intelligence:**
+
 - Typical query: ~100-200ms
 - Cached results: ~10ms
 
 **Savings Detection:**
+
 - Per rate card: ~100-150ms
 - Includes alternative supplier search
 
@@ -462,6 +483,7 @@ Market intelligence results are cached for performance:
 ## Support
 
 For issues or questions:
+
 - Check error messages in API responses
 - Review Next.js logs for detailed error traces
 - Verify database connections (PostgreSQL must be running)

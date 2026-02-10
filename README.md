@@ -127,7 +127,7 @@ pnpm dev
 pnpm dev:all
 ```
 
-Visit **http://localhost:3000**
+Visit **<http://localhost:3000>**
 
 ### Production Build
 
@@ -198,21 +198,25 @@ Supported endpoints: `POST /api/contracts/upload`, `GET /api/contracts/:id`, and
 All documentation lives in the [`docs/`](docs/) folder. See [docs/INDEX.md](docs/INDEX.md) for a complete table of contents.
 
 ### For Developers
+
 - [Technical Documentation](docs/TECHNICAL_DOCUMENTATION.md) — Stack, API, DB, deployment
 - [Architecture](docs/ARCHITECTURE.md) — System design, ADRs, scalability
 - [Roadmap & Scaling](docs/ROADMAP_SCALING.md) — Product roadmap, infra scaling
 
 ### For Users & Customers
+
 - [User Onboarding](docs/USER_ONBOARDING.md) — Getting started guide
 - [FAQ](docs/FAQ.md) — Frequently asked questions
 
 ### Business & Legal
+
 - [Business Plan](docs/BUSINESS_PLAN.md) — Market, strategy, financials
 - [Revenue Model](docs/REVENUE_MODEL.md) — P&L, unit economics, scenarios
 - [Pricing Strategy](docs/PRICING_STRATEGY.md) — Plans, rate cards, discounts
 - [Founders' Agreement](docs/FOUNDERS_AGREEMENT.md) — GmbH founders' pact
 
 ### Legal & Compliance (Swiss Law)
+
 - [Terms & Conditions (AGB)](docs/TERMS_AND_CONDITIONS.md) — Bilingual DE/EN
 - [Privacy Policy](docs/PRIVACY_POLICY.md) — nDSG + GDPR
 - [Data Processing Agreement (AVV)](docs/DATA_PROCESSING_AGREEMENT.md) — Art. 9 nDSG / Art. 28 GDPR
@@ -229,7 +233,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on development workflow, c
 
 ## Security
 
-See [SECURITY.md](SECURITY.md) for our responsible disclosure policy. To report a vulnerability, email **security@contigo-app.ch**.
+See [SECURITY.md](SECURITY.md) for our responsible disclosure policy. To report a vulnerability, email **<security@contigo-app.ch>**.
 
 ---
 

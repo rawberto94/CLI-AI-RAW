@@ -235,6 +235,7 @@ There are **10** health/monitoring endpoints doing overlapping work:
 ## SUMMARY — Action Items
 
 ### DELETE (14 routes)
+
 1. `/api/example-data-consistency/` — example code
 2. `/api/example-secure-route/` — example code
 3. `/api/test/send-email/` — test harness
@@ -251,6 +252,7 @@ There are **10** health/monitoring endpoints doing overlapping work:
 14. `/api/ai/rag/batch/` — duplicate of `/api/rag/batch-process`
 
 ### CONSOLIDATE (8 routes → 3 targets)
+
 1. `/api/healthz` → merge into `/api/health`
 2. `/api/monitoring/health` → merge into `/api/health`
 3. `/api/health/detailed` → merge into `/api/health?detail=full`
@@ -264,6 +266,7 @@ There are **10** health/monitoring endpoints doing overlapping work:
 11. `/api/ai/graph` → merge into `/api/knowledge-graph`
 
 ### REVIEW (3 routes)
+
 1. `/api/processing-status` — has mock fallback but may have real logic
 2. `/api/contact` — landing page form, check if actually used
 3. `/api/portal` — potential long-term merge with `/api/collaborate`

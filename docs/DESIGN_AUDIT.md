@@ -153,12 +153,14 @@ A user navigating between pages experiences **jarring visual mismatch** — ligh
 ### 3.3 Per-Page Issues
 
 #### Dashboard (663 lines)
+
 - **P3**: Hardcoded placeholder data ("Sample Contract 1-4") instead of real data
 - **P3**: Static "+12%" badge not derived from actual data
 - **P2**: KPI card icons lack `aria-hidden="true"` (decorative icons read by screen readers)
 - **P3**: Quick action gradient `from-violet-500 to-violet-500` produces no gradient
 
 #### Contracts List (3,479 lines)
+
 - **P0**: 3,479 lines — extreme maintainability problem
 - **P1**: `SignatureStatusBadge` and `DocumentTypeBadge` use hardcoded light-mode-only colors (`bg-green-50`, `text-green-700`, `bg-amber-50`) — no `dark:` variants
 - **P1**: `ContractRowSkeleton` uses `bg-white` with no dark variant
@@ -167,22 +169,26 @@ A user navigating between pages experiences **jarring visual mismatch** — ligh
 - **P3**: ~40 Lucide icons imported, many unused
 
 #### Contract Detail (1,537 lines)
+
 - **P1**: Still too large despite child component extraction
 - **P2**: 20+ `useState` hooks — complex state surface
 - **P3**: Keyboard shortcuts (1-4 keys) lack discoverability
 
 #### Contract Upload (1,121 lines)
+
 - **P1**: `getFileIcon()` uses hardcoded colors with no dark variants
 - **P2**: Upload progress simulation is artificial (`for (let i = 10; i <= 50; i += 10)`)
 - **P3**: Good `useDropzone` integration
 
 #### Admin (955 lines)
+
 - **P0**: **ZERO dark mode** — `bg-gradient-to-br from-slate-50 via-white to-slate-100`, `bg-white/90`, `text-gray-900` throughout. Completely unreadable in dark mode.
 - **P1**: `AIAccuracyDashboard` all hardcoded light colors
 - **P1**: Subscription card uses `indigo` instead of `violet` — inconsistent primary
 - **P2**: Uses `confirm()` for remove member — should use proper Radix `AlertDialog`
 
 #### Sign In (990 lines)
+
 - **P0**: 990 lines for a sign-in page — contains FloatingParticles, GradientOrbs, WavePattern, AnimatedCounter, TestimonialCarousel, 3 SSO icon components all inline
 - **P1**: Form panel has no dark mode: `bg-gradient-to-br from-slate-50 via-white to-purple-50/30`
 - **P2**: Hardcoded demo credentials (`admin@contigo.com` / `Admin123!`) as default values
@@ -190,18 +196,21 @@ A user navigating between pages experiences **jarring visual mismatch** — ligh
 - **P3**: Copyright says "© 2025" — should be dynamic
 
 #### Sign Up (943 lines)
+
 - **P0**: Same bloat — FloatingParticles, GradientOrbs, 3 SSO icons all duplicated from Sign In
 - **P1**: FloatingParticles does NOT check `prefers-reduced-motion` (Sign In version DOES)
 - **P1**: Form side no dark mode
 - **P2**: Uses `useState()` as an effect for invite token check — should be `useEffect`
 
 #### Templates (4,991 lines)
+
 - **P0**: **LARGEST FILE IN THE ENTIRE APP** — 30+ useState hooks. Must be decomposed urgently.
 - **P1**: `categoryColors` uses hardcoded `bg-violet-50`, `text-violet-700` — no dark variants
 - **P1**: `getHealthScoreColor` hardcoded light-mode classes
 - **P2**: Feature bloat — many state variables for cloud sync, scheduling, dependencies, audit trail appear partially implemented
 
 #### Workflows (711 lines) — **BEST REFERENCE**
+
 - ✅ Best dark mode: consistent `dark:` on every element
 - ✅ Best accessibility: `aria-hidden="true"` on decorative icons, `aria-label` on buttons, `motion-reduce:` classes
 - ✅ Proper Suspense fallback
@@ -233,6 +242,7 @@ A user navigating between pages experiences **jarring visual mismatch** — ligh
 ### 4.3 Component Library (125 UI Files — Bloated)
 
 **Core primitives are high quality:**
+
 - `Button` — cva + Radix Slot + 10 variants + loading state + dark mode + focus ring ✅
 - `Card` — Full dark mode + hover transition ✅
 - `Badge` — 10 variants + dark mode ✅
@@ -314,6 +324,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 ## 6. Improvement Plan
 
 ### Phase A — Critical SEO & Breaking Fixes (P0)
+
 **Estimated effort: 2-3 days**
 
 | # | Fix | File(s) | Impact |
@@ -326,6 +337,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | A6 | Define missing AI color CSS variables in globals.css | `app/globals.css` | `ai.*` Tailwind classes work |
 
 ### Phase B — Design System Unification (P0-P1)
+
 **Estimated effort: 3-4 days**
 
 | # | Fix | File(s) | Impact |
@@ -339,6 +351,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | B7 | Fix `AppLayout` header to support dark mode | `components/layout/AppLayout.tsx` | Layout doesn't break in dark mode |
 
 ### Phase C — Component Decomposition (P0-P1)
+
 **Estimated effort: 4-5 days**
 
 | # | Fix | File(s) | Impact |
@@ -350,6 +363,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | C5 | Extract shared Framer Motion variants to `lib/animations.ts` | New file + 8+ pages | Eliminates 8 copy-paste animation objects |
 
 ### Phase D — Dark Mode Completion (P1)
+
 **Estimated effort: 2-3 days**
 
 | # | Fix | Pages | Impact |
@@ -362,6 +376,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | D6 | Marketing pages — add theme-aware `dark:` classes (or at minimum make hardcoded dark pages toggle-aware) | All marketing pages | Marketing respects user preference |
 
 ### Phase E — Accessibility Fixes (P1-P2)
+
 **Estimated effort: 2 days**
 
 | # | Fix | Impact |
@@ -377,6 +392,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | E9 | Add text/icon alternatives to color-only status indicators | WCAG 1.4.1 |
 
 ### Phase F — Performance & Code Quality (P2)
+
 **Estimated effort: 2-3 days**
 
 | # | Fix | Impact |
@@ -392,6 +408,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | F9 | Remove hardcoded demo credentials from Sign In default values | Security hygiene |
 
 ### Phase G — Content & Legal Fixes (P2-P3)
+
 **Estimated effort: 1 day**
 
 | # | Fix | Impact |
@@ -408,6 +425,7 @@ Identical `containerVariants` / `itemVariants` stagger animation objects are cop
 | G10 | Replace same-color "gradients" (`violet-600 to violet-600`) with actual gradients or solid colors | Intentional design |
 
 ### Phase H — Component Library Cleanup (P2-P3)
+
 **Estimated effort: 2-3 days**
 
 | # | Fix | Impact |
@@ -453,6 +471,7 @@ Week 4:  Phase G (Content & legal)
 ### Reference Implementation
 
 The **Workflows page** (`app/workflows/page.tsx`, 711 lines) is the gold standard for how all pages should be built:
+
 - Consistent `dark:` variants on every element
 - `aria-hidden="true"` on decorative icons
 - `aria-label` on all interactive elements
@@ -471,6 +490,7 @@ All new pages and refactors should follow this pattern.
 <summary>All 156 pages + 7 layouts</summary>
 
 ### Marketing (9 pages, 1 layout)
+
 - `app/page.tsx` — Root landing
 - `app/(marketing)/layout.tsx` — Empty pass-through
 - `app/(marketing)/home/page.tsx` — Redirect to /
@@ -483,6 +503,7 @@ All new pages and refactors should follow this pattern.
 - `app/(marketing)/terms/page.tsx`
 
 ### Auth (5 pages, 1 layout)
+
 - `app/auth/layout.tsx`
 - `app/auth/signin/page.tsx`
 - `app/auth/signup/page.tsx`
@@ -491,6 +512,7 @@ All new pages and refactors should follow this pattern.
 - `app/auth/reset-password/page.tsx`
 
 ### Core App (140+ pages across ~40 sections)
+
 - `app/dashboard/page.tsx` + `layout.tsx`
 - `app/contracts/` — 18 pages (list, [id], upload, drafting, analytics, compare, obligations, etc.)
 - `app/rate-cards/` — 21 pages (dashboard, [id], analytics, compare, import, etc.)

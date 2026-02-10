@@ -5,6 +5,7 @@
 ### 1. Test Safe Contract Deletion
 
 **Individual Delete:**
+
 ```bash
 # Delete a single contract (safe cascade)
 curl -X DELETE http://localhost:3000/api/contracts/cm5jc48zd000008l32n8b6t0i \
@@ -28,6 +29,7 @@ curl -X DELETE http://localhost:3000/api/contracts/cm5jc48zd000008l32n8b6t0i \
 ```
 
 **Bulk Delete:**
+
 ```bash
 # Delete multiple contracts at once
 curl -X POST http://localhost:3000/api/contracts/bulk \
@@ -52,6 +54,7 @@ curl -X POST http://localhost:3000/api/contracts/bulk \
 ### 2. Check Contract Data Integrity
 
 **JSON Format:**
+
 ```bash
 curl http://localhost:3000/api/contracts/cm5jc48zd000008l32n8b6t0i/integrity \
   -H "x-tenant-id: your-tenant-id"
@@ -84,6 +87,7 @@ curl http://localhost:3000/api/contracts/cm5jc48zd000008l32n8b6t0i/integrity \
 ```
 
 **Human-Readable Format:**
+
 ```bash
 curl "http://localhost:3000/api/contracts/cm5jc48zd000008l32n8b6t0i/integrity?format=text" \
   -H "x-tenant-id: your-tenant-id"
@@ -113,6 +117,7 @@ SUGGESTED FIXES:
 ### 3. Monitor System Health
 
 **Contract System Health:**
+
 ```bash
 curl http://localhost:3000/api/admin/health/contracts
 
@@ -148,6 +153,7 @@ curl http://localhost:3000/api/admin/health/contracts
 ```
 
 **Taxonomy Metrics:**
+
 ```bash
 curl "http://localhost:3000/api/admin/metrics/taxonomy?tenantId=your-tenant-id"
 
@@ -199,6 +205,7 @@ curl "http://localhost:3000/api/admin/metrics/taxonomy?tenantId=your-tenant-id"
 **Automatic:** Runs every 4 hours via Vercel Cron
 
 **Manual (Development Only):**
+
 ```bash
 # Trigger migration manually
 curl http://localhost:3000/api/cron/migrate-taxonomy
@@ -431,6 +438,7 @@ echo "✅ All tests complete!"
 ```
 
 Make executable and run:
+
 ```bash
 chmod +x test-production-features.sh
 ./test-production-features.sh
@@ -441,6 +449,7 @@ chmod +x test-production-features.sh
 ## 🔒 Security Notes
 
 ### Cron Job Authentication
+
 The taxonomy migration cron job is protected by `CRON_SECRET`. Set this in your environment:
 
 ```bash
@@ -451,6 +460,7 @@ CRON_SECRET="your-random-secret-here-min-32-chars"
 Vercel will automatically inject this when calling the cron endpoint.
 
 ### Admin Endpoints
+
 Consider adding authentication middleware to `/api/admin/*` endpoints in production:
 
 ```typescript
@@ -475,15 +485,19 @@ export function middleware(request: NextRequest) {
 ## 📈 Monitoring Setup
 
 ### 1. Set up Vercel Cron Monitoring
+
 In Vercel Dashboard:
+
 - Go to Project Settings → Crons
 - Monitor execution logs for `/api/cron/migrate-taxonomy`
 - Set up alerts for failed executions
 
 ### 2. Create Health Check Dashboard
+
 Use the React components above or integrate with your existing dashboard.
 
 ### 3. Set up Alerts
+
 ```typescript
 // lib/monitoring/alerts.ts
 export async function checkAndAlert() {
@@ -500,6 +514,7 @@ export async function checkAndAlert() {
 ```
 
 Run this via another cron job:
+
 ```json
 // vercel.json
 {

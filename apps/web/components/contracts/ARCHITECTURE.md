@@ -604,6 +604,7 @@ const { state, actions, queryParams } = useContractsPage(config);
 | Total components | embedded | ~1500 lines (8 components) |
 
 The refactored architecture splits the monolithic page into:
+
 - 6 reusable hooks (~1000 lines)
 - 8 focused components (~1500 lines)
 - 1 streamlined page (~700 lines)

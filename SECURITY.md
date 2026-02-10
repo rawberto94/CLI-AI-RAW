@@ -79,12 +79,14 @@ ConTigo implements defence-in-depth across multiple layers:
 ## Security Practices
 
 ### Code
+
 - No secrets in source code — all via environment variables
 - Dependency scanning via `npm audit` and automated alerts
 - TypeScript strict mode with explicit types (no `any`)
 - All external input validated through Zod schemas
 
 ### Infrastructure
+
 - Docker images built from `node:22-alpine` (minimal attack surface)
 - Non-root container execution
 - Read-only file systems where possible
@@ -92,6 +94,7 @@ ConTigo implements defence-in-depth across multiple layers:
 - PgBouncer connection pooling to prevent connection exhaustion
 
 ### Data
+
 - Swiss data residency (Azure Switzerland North)
 - Per-tenant data isolation at the database level
 - Encrypted backups with 30-day retention
@@ -99,6 +102,7 @@ ConTigo implements defence-in-depth across multiple layers:
 - No customer data used for AI model training
 
 ### Compliance
+
 - Swiss FADP (nDSG) compliant
 - EU GDPR compliant
 - Preparing for SOC 2 Type II (target: Q4 2026)

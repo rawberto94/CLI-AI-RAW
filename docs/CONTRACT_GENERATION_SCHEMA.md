@@ -1,4 +1,5 @@
 /**
+
  * Contract Generation Database Schema
  * Phase 1: Foundation for contract creation, templates, and workflows
  */

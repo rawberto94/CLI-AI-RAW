@@ -37,7 +37,7 @@
 c/o [Adresse]
 8000 Zürich, Schweiz
 
-E-Mail: privacy@contigo-app.ch
+E-Mail: <privacy@contigo-app.ch>
 Website: [contigo-app.ch](https://contigo-app.ch)
 
 Handelsregister: CHE-XXX.XXX.XXX
@@ -50,6 +50,7 @@ UID-Nummer: CHE-XXX.XXX.XXX MWST
 ## 2. Geltungsbereich / Scope
 
 Diese Datenschutzerklärung gilt für:
+
 - die Website [contigo-app.ch](https://contigo-app.ch)
 - die ConTigo SaaS-Plattform
 - alle damit verbundenen Dienste, APIs und mobilen Zugriffe
@@ -201,9 +202,9 @@ ConTigo verkauft keine personenbezogenen Daten an Dritte.
 | **Stripe** | Zahlungsabwicklung | EU |
 | **Postmark / SendGrid** | Transaktions-E-Mails | EU / US (Angemessenheitsbeschluss) |
 
-Eine aktuelle Liste ist jederzeit bei privacy@contigo-app.ch erhältlich.
+Eine aktuelle Liste ist jederzeit bei <privacy@contigo-app.ch> erhältlich.
 
-*A current list is available at privacy@contigo-app.ch at any time.*
+*A current list is available at <privacy@contigo-app.ch> at any time.*
 
 ---
 
@@ -261,6 +262,7 @@ Soweit einzelne Unterauftragsverarbeiter (z.B. E-Mail-Dienste) Daten in Drittsta
 ### Löschung nach Vertragsende / Deletion after Termination
 
 Nach Vertragsende:
+
 1. **30 Tage Export-Frist** — Kunde kann alle Daten exportieren
 2. **Löschung** — Alle Kundendaten werden unwiderruflich gelöscht
 3. **Bestätigung** — Schriftliche Löschbestätigung auf Anfrage
@@ -293,7 +295,7 @@ Nach Vertragsende:
 
 ### Geltendmachung / Exercising Rights
 
-Anfragen richten Sie bitte an: **privacy@contigo-app.ch**
+Anfragen richten Sie bitte an: **<privacy@contigo-app.ch>**
 
 ConTigo wird Anfragen innerhalb von **30 Tagen** beantworten. Eine Verlängerung um weitere 60 Tage ist bei komplexen Anfragen möglich (mit Begründung).
 
@@ -363,7 +365,7 @@ Datenschutz / Privacy
 c/o [Adresse]
 8000 Zürich, Schweiz
 
-E-Mail: **privacy@contigo-app.ch**
+E-Mail: **<privacy@contigo-app.ch>**
 
 ---
 

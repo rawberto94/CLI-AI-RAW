@@ -46,6 +46,7 @@
 ### Swiss Market Pricing Context
 
 Swiss enterprise software buyers expect:
+
 - **Premium pricing** for quality — Switzerland is **not** a discount market
 - **Local invoicing in CHF** with Swiss VAT (MWST) compliance
 - **Swiss entity** on invoices (ConTigo GmbH, CHE-xxx.xxx.xxx)
@@ -187,6 +188,7 @@ Swiss enterprise software buyers expect:
 ### Overage Policy
 
 When limits are reached:
+
 1. **Soft limit notification** at 80% usage
 2. **Warning** at 100% — no service interruption
 3. **Grace period** of 30 days to upgrade or reduce usage
@@ -349,6 +351,7 @@ Use this model during sales conversations to demonstrate value. Input customer-s
 | **Monthly** | Annual | Switch effective at next billing date; annual price applied | No change |
 
 **Upgrade incentives:**
+
 - Mid-cycle upgrade: 10% off remaining period of new plan
 - Annual upgrade during trial: Additional 5% off Year 1
 
@@ -361,6 +364,7 @@ Use this model during sales conversations to demonstrate value. Input customer-s
 | **Annual** | Monthly | Effective at annual renewal only | No change |
 
 **Downgrade safeguards:**
+
 - If contract count exceeds new plan limit: excess contracts become **read-only** (not deleted)
 - Customer data is **never deleted** on downgrade — always accessible in read-only
 - 90-day re-upgrade window at original pricing
@@ -451,6 +455,7 @@ When quoting professional services, factor in Swiss fully-loaded costs:
 | **Data residency** | Azure Switzerland North | Azure Switzerland North (selling point) | Azure Switzerland North |
 
 **EUR pricing rationale:**
+
 - EUR prices set at ~92% of CHF equivalent (reflects lower purchasing power parity)
 - Annual review — adjust if CHF/EUR moves >5%
 - German/Austrian customers benefit from Swiss data residency (outside EU jurisdiction for extra privacy)

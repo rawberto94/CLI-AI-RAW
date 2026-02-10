@@ -8,6 +8,7 @@
 ## Executive Summary
 
 This comprehensive analysis identified **37 actionable issues** across the codebase. The most critical findings relate to:
+
 - **12 Critical** - Security gaps in tenant isolation and credential handling
 - **13 High** - Mock data in production APIs and incomplete features
 - **10 Medium** - Configuration and error handling improvements
@@ -29,6 +30,7 @@ Multiple API routes fall back to `'demo'` or `'default'` tenant when authenticat
 | `apps/web/lib/tenant-server.ts:56` | `getDefaultTenantId()` returns `'demo'` in dev | Throw error in all environments |
 
 **Recommended Fix:**
+
 ```typescript
 // Before (INSECURE)
 const tenantId = await getServerTenantId() || 'demo';
@@ -47,6 +49,7 @@ if (!tenantId) {
 **Risk:** Database URL as encryption key is predictable and compromises all stored credentials.
 
 **Fix:** Require `CREDENTIAL_ENCRYPTION_KEY` in all environments:
+
 ```typescript
 const ENCRYPTION_KEY = process.env.CREDENTIAL_ENCRYPTION_KEY;
 if (!ENCRYPTION_KEY) {
@@ -77,6 +80,7 @@ Several API routes include mock data modes that should be disabled in production
 | `apps/web/app/api/contracts/ai-report/route.ts` | 126 | Falls back to mock when no OpenAI key |
 
 **Recommended Fix:**
+
 ```typescript
 // Gate mock data behind environment check
 if (dataMode === 'mock' && process.env.NODE_ENV !== 'production') {
@@ -91,6 +95,7 @@ if (process.env.NODE_ENV === 'production') {
 ### 5. Incomplete Feature: AI Chatbot Feedback
 
 `apps/web/components/ai/AIChatbot.tsx:506`
+
 ```typescript
 // TODO: Send feedback to server for improvement
 ```
@@ -98,6 +103,7 @@ if (process.env.NODE_ENV === 'production') {
 The feedback collection is client-side only - no server integration.
 
 **Fix:** Implement feedback API call:
+
 ```typescript
 await fetch('/api/ai/chat/feedback', {
   method: 'POST',
@@ -130,6 +136,7 @@ await fetch('/api/ai/chat/feedback', {
 ### 8. Incomplete Schema Definitions
 
 `packages/schemas/sow.ts:5`
+
 ```typescript
 // TODO: Refine with actual properties from data analysis
 ```
@@ -137,6 +144,7 @@ await fetch('/api/ai/chat/feedback', {
 ### 9. Missing Cross-Artifact Consistency Checks
 
 `apps/web/lib/ai/quality-scoring.service.ts:150`
+
 ```typescript
 consistency: 1.0, // TODO: Cross-artifact consistency check
 ```
@@ -151,6 +159,7 @@ consistency: 1.0, // TODO: Cross-artifact consistency check
 ### 11. Inconsistent Authentication Patterns
 
 Found 3 different auth patterns:
+
 1. `getServerSession()` (50+ occurrences) ✓ Standard
 2. `getApiTenantId(request)` (10+ occurrences) - Missing auth check
 3. No auth (10+ routes) - Must be fixed
@@ -210,16 +219,19 @@ Found 20+ `console.log` statements in production code - should use structured lo
 ## Recommended Fix Priority
 
 ### Week 1 (Critical)
+
 - [ ] Remove all tenant fallbacks to 'demo'/'default'
 - [ ] Require CREDENTIAL_ENCRYPTION_KEY (no fallback)
 - [ ] Add authentication to unprotected routes
 
 ### Week 2 (High)
+
 - [ ] Gate mock data behind NODE_ENV check
 - [ ] Fix data-orchestration TypeScript errors
 - [ ] Implement AI chatbot feedback API
 
 ### Week 3 (Medium)
+
 - [ ] Complete TODO items
 - [ ] Standardize auth patterns
 - [ ] Add proper error logging
@@ -229,6 +241,7 @@ Found 20+ `console.log` statements in production code - should use structured lo
 ## Quick Wins
 
 1. **Add production guard for mock data:**
+
 ```typescript
 // Add to all routes with mock data
 if (process.env.NODE_ENV === 'production' && dataMode === 'mock') {
@@ -237,6 +250,7 @@ if (process.env.NODE_ENV === 'production' && dataMode === 'mock') {
 ```
 
 2. **Global tenant check middleware:**
+
 ```typescript
 // middleware.ts
 export function middleware(request: NextRequest) {
@@ -251,6 +265,7 @@ export function middleware(request: NextRequest) {
 ```
 
 3. **Environment validation at startup:**
+
 ```bash
 npx tsx scripts/validate-env.ts --strict
 ```

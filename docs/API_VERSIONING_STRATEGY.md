@@ -239,5 +239,6 @@ metrics.increment('api.request', {
 ```
 
 Dashboard alerts:
+
 - Alert when >50% of requests use deprecated version
 - Alert when any requests use version within 30 days of sunset
