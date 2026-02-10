@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import * as XLSX from 'xlsx';
 
 interface ExportConfig {
   format: 'csv' | 'xlsx' | 'json' | 'pdf';
@@ -127,13 +128,18 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       filename = `contracts-export-${Date.now()}.csv`;
       break;
       
-    case 'xlsx':
-      // For XLSX, we'd need a library like xlsx
-      // For now, return CSV-compatible data
-      content = generateCSV(data, config.includeFields);
-      contentType = 'text/csv';
-      filename = `contracts-export-${Date.now()}.csv`;
-      break;
+    case 'xlsx': {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(data, { header: config.includeFields });
+      XLSX.utils.book_append_sheet(wb, ws, 'Contracts');
+      const xlsxBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      return new Response(xlsxBuffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="contracts-export-${Date.now()}.xlsx"`,
+        },
+      });
+    }
       
     case 'pdf':
       // For PDF, we'd need a library like pdfkit

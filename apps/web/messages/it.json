@@ -1,0 +1,162 @@
+{
+  "common": {
+    "loading": "Caricamento...",
+    "save": "Salva",
+    "cancel": "Annulla",
+    "delete": "Elimina",
+    "edit": "Modifica",
+    "create": "Crea",
+    "search": "Cerca",
+    "filter": "Filtra",
+    "export": "Esporta",
+    "import": "Importa",
+    "refresh": "Aggiorna",
+    "back": "Indietro",
+    "next": "Avanti",
+    "previous": "Precedente",
+    "close": "Chiudi",
+    "confirm": "Conferma",
+    "submit": "Invia",
+    "reset": "Reimposta",
+    "yes": "Sì",
+    "no": "No",
+    "all": "Tutti",
+    "none": "Nessuno",
+    "actions": "Azioni",
+    "status": "Stato",
+    "date": "Data",
+    "name": "Nome",
+    "type": "Tipo",
+    "description": "Descrizione",
+    "noResults": "Nessun risultato trovato",
+    "error": "Si è verificato un errore",
+    "success": "Operazione riuscita"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "contracts": "Contratti",
+    "upload": "Carica",
+    "aiStudio": "Studio IA",
+    "generate": "Genera",
+    "obligations": "Obblighi",
+    "analytics": "Analisi",
+    "rateCards": "Tariffari",
+    "search": "Ricerca",
+    "templates": "Modelli",
+    "approvals": "Approvazioni",
+    "workflows": "Flussi di lavoro",
+    "admin": "Amministrazione",
+    "settings": "Impostazioni",
+    "sso": "SSO / SAML",
+    "governance": "Governance"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Il vostro centro di comando per la gestione dei contratti",
+    "customize": "Personalizza",
+    "refresh": "Aggiorna",
+    "addContract": "Aggiungi contratto",
+    "kpi": {
+      "totalContracts": "Contratti totali",
+      "activeContracts": "Contratti attivi",
+      "portfolioValue": "Valore del portafoglio",
+      "recentlyAdded": "Aggiunti di recente",
+      "renewalsDue": "Rinnovi in scadenza"
+    },
+    "quickActions": {
+      "upload": "Carica contratto",
+      "generate": "Genera contratto",
+      "obligations": "Obblighi",
+      "renewals": "Rinnovi",
+      "aiAssistant": "Assistente IA",
+      "search": "Ricerca"
+    },
+    "empty": {
+      "title": "Inizia in 2 minuti",
+      "uploadFirst": "Carica il tuo primo contratto",
+      "uploadDescription": "PDF o testo — estrarremo i metadati automaticamente."
+    }
+  },
+  "contracts": {
+    "title": "Contratti",
+    "description": "Gestisci il tuo portafoglio contratti",
+    "create": "Crea contratto",
+    "upload": "Carica contratto",
+    "esign": "Firma elettronica",
+    "status": {
+      "draft": "Bozza",
+      "active": "Attivo",
+      "pending": "In attesa",
+      "expired": "Scaduto",
+      "terminated": "Terminato",
+      "negotiation": "Negoziazione"
+    },
+    "fields": {
+      "title": "Titolo",
+      "vendor": "Fornitore",
+      "value": "Valore",
+      "startDate": "Data di inizio",
+      "endDate": "Data di fine",
+      "type": "Tipo"
+    }
+  },
+  "esignature": {
+    "title": "Firma elettronica",
+    "description": "Raccogli le firme digitali per i contratti",
+    "setup": "Configurazione",
+    "signers": "Firmatari",
+    "tracking": "Tracciamento",
+    "sendForSignature": "Invia per la firma",
+    "addSignatory": "Aggiungi firmatario",
+    "provider": {
+      "docusign": "DocuSign",
+      "adobeSign": "Adobe Sign",
+      "internal": "Interno"
+    },
+    "status": {
+      "draft": "Bozza",
+      "sent": "Inviato",
+      "inProgress": "In corso",
+      "completed": "Completato",
+      "declined": "Rifiutato",
+      "voided": "Annullato"
+    },
+    "roles": {
+      "signer": "Firmatario",
+      "approver": "Approvatore",
+      "cc": "Copia (CC)",
+      "witness": "Testimone"
+    }
+  },
+  "sso": {
+    "title": "Configurazione SSO",
+    "description": "Configura i provider Single Sign-On per la tua organizzazione",
+    "addProvider": "Aggiungi provider",
+    "editProvider": "Modifica provider",
+    "testConnection": "Testa connessione",
+    "spInfo": "Info Service Provider",
+    "noProviders": "Nessun provider SSO configurato",
+    "noProvidersDescription": "Configura i provider SAML 2.0 o OpenID Connect per il Single Sign-On aziendale",
+    "protocols": {
+      "saml": "SAML 2.0",
+      "oidc": "OpenID Connect"
+    }
+  },
+  "settings": {
+    "title": "Impostazioni",
+    "metadataSchema": "Schema metadati",
+    "fieldDependencies": "Dipendenze dei campi",
+    "conditionalLogic": "Logica condizionale",
+    "validationRules": "Regole di validazione"
+  },
+  "auth": {
+    "signIn": "Accedi",
+    "signOut": "Esci",
+    "signUp": "Registrati",
+    "email": "E-mail",
+    "password": "Password",
+    "forgotPassword": "Password dimenticata?",
+    "rememberMe": "Ricordami",
+    "mfa": "Autenticazione multi-fattore"
+  }
+}

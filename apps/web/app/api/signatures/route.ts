@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
+import { eSignatureService } from '@/lib/esignature/docusign.service';
 // Types
 interface Signer {
   id?: string;
@@ -19,15 +20,13 @@ interface CreateSignatureRequest {
   signers: Signer[];
   message?: string;
   expiresAt?: string;
+  expiresInDays?: number;
   provider?: 'docusign' | 'adobe_sign' | 'hellosign' | 'manual';
 }
 
 // GET /api/signatures - List signature requests
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   const { searchParams } = new URL(request.url);
   const contractId = searchParams.get('contractId');
@@ -83,13 +82,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST /api/signatures - Create signature request
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
-  const userId = session.user.id;
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const body: CreateSignatureRequest = await request.json();
-  const { contractId, signers, message, expiresAt, provider = 'manual' } = body;
+  const { contractId, signers, message, expiresAt, expiresInDays, provider = 'manual' } = body;
 
   // Validation
   if (!contractId) {
@@ -107,41 +103,38 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
   }
 
-  // Prepare signers with IDs and default status
-  const signersWithDefaults: Signer[] = signers.map((s, i) => ({
-    id: `signer-${Date.now()}-${i}`,
-    name: s.name,
-    email: s.email,
-    role: s.role || 'signer',
-    order: s.order ?? i + 1,
-    status: 'pending' as const,
-  }));
+  // Calculate expiry
+  const expiryDays = expiresInDays || (expiresAt
+    ? Math.ceil((new Date(expiresAt).getTime() - Date.now()) / 86400000)
+    : 14);
 
-  // Create in database
-  const signatureRequest = await prisma.signatureRequest.create({
-    data: {
-      tenantId,
-      contractId,
-      provider,
-      status: 'draft',
-      message: message || 'Please review and sign this contract',
-      createdBy: userId,
-      expiresAt: expiresAt ? new Date(expiresAt) : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      signers: JSON.parse(JSON.stringify(signersWithDefaults)),
-    },
-  });
-
-  // Update contract status
-  await prisma.contract.update({
-    where: { id: contractId },
-    data: { status: 'PENDING' }
+  // Use the e-signature service (DocuSign when configured, internal fallback)
+  const result = await eSignatureService.createEnvelope({
+    contractId,
+    tenantId,
+    userId,
+    signers: signers.map((s, i) => ({
+      name: s.name,
+      email: s.email,
+      role: s.role || 'signer',
+      order: s.order ?? i + 1,
+    })),
+    message,
+    expiresInDays: expiryDays,
+    provider: provider === 'hellosign' ? 'manual' : provider as 'docusign' | 'adobe_sign' | 'manual',
   });
 
   // Publish realtime event
   try {
     void publishRealtimeEvent({
       event: 'signature:created',
-      data: { tenantId, contractId, signatureRequestId: signatureRequest.id },
+      data: {
+        tenantId,
+        contractId,
+        signatureRequestId: result.envelopeId,
+        provider: result.provider,
+        externalEnvelopeId: result.externalEnvelopeId,
+      },
       source: 'api:signatures',
     });
   } catch {
@@ -151,10 +144,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return createSuccessResponse(ctx, {
     success: true,
     data: {
-      ...signatureRequest,
-      signers: signersWithDefaults,
+      id: result.envelopeId,
+      provider: result.provider,
+      status: result.status,
+      externalEnvelopeId: result.externalEnvelopeId,
+      signers: result.signers,
+      isDocuSignConfigured: eSignatureService.isDocuSignConfigured(),
     },
-    message: 'Signature request created successfully',
+    message: result.provider === 'docusign'
+      ? 'Signature request sent via DocuSign'
+      : 'Signature request created — signing links sent to signers',
     source: 'database'
   }, { status: 201 });
 
