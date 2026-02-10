@@ -9,7 +9,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 import { 
   artifactConfigService,
   DEFAULT_ARTIFACT_TYPES,
@@ -22,11 +22,7 @@ import {
  * Get current artifact configuration for the tenant
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const config = await artifactConfigService.getTenantConfig(tenantId);
   const enabledTypes = await artifactConfigService.getEnabledArtifactTypes(tenantId);
   const generationConfig = await artifactConfigService.getGenerationConfig(tenantId);
@@ -60,11 +56,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  * Update artifact configuration for the tenant
  */
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const body = await request.json();
 
   const { artifactTypes, generationConfig } = body;
@@ -74,7 +66,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const validTypes = DEFAULT_ARTIFACT_TYPES.map(t => t.type);
     for (const type of Object.keys(artifactTypes)) {
       if (!validTypes.includes(type as any) && type !== 'CUSTOM') {
-        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid artifact type: ${type}', 400);
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid artifact type: ${type}`, 400);
       }
     }
   }
@@ -110,11 +102,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Bulk operations: toggle types, add custom types, reset to defaults
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const body = await request.json();
 
   const { action, payload } = body;
@@ -209,6 +197,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     default:
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown action: ${action}', 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   }
 });

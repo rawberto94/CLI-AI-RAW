@@ -53,15 +53,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build where conditions
-    const conditions: string[] = [`tenant_id = '${tenantId}'`];
-    if (alertLevel) conditions.push(`alert_level = '${alertLevel}'`);
-    if (trendDirection) conditions.push(`trend_direction = '${trendDirection}'`);
-    if (minScore) conditions.push(`overall_score >= ${parseInt(minScore)}`);
-    if (maxScore) conditions.push(`overall_score <= ${parseInt(maxScore)}`);
-    if (contractId) conditions.push(`contract_id = '${contractId}'`);
-
-    const _whereClause = conditions.join(' AND ');
+    // Build where conditions (validated; unused _whereClause removed — query uses tagged template below)
+    // Filters are applied via the tagged template query which auto-parameterizes
 
     // Query health scores
     const healthScores = await prisma.$queryRaw<Array<{

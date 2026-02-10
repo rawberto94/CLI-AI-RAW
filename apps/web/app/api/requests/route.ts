@@ -16,14 +16,16 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     const { prisma } = await import('@/lib/prisma');
 
-    let whereClause = `WHERE tenant_id = '${ctx.tenantId}'`;
-    if (view === 'my-requests') whereClause += ` AND requester_id = '${ctx.userId}'`;
-    if (status) whereClause += ` AND status = '${status}'`;
-    if (assignedTo) whereClause += ` AND assigned_to = '${assignedTo}'`;
+    const conditions = [`tenant_id = $1`];
+    const params: unknown[] = [ctx.tenantId];
+    if (view === 'my-requests') { params.push(ctx.userId); conditions.push(`requester_id = $${params.length}`); }
+    if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+    if (assignedTo) { params.push(assignedTo); conditions.push(`assigned_to = $${params.length}`); }
+    const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const [items, countResult, metrics] = await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT * FROM contract_requests ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`),
-      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total FROM contract_requests ${whereClause}`),
+      prisma.$queryRawUnsafe(`SELECT * FROM contract_requests ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`, ...params),
+      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total FROM contract_requests ${whereClause}`, ...params),
       prisma.$queryRawUnsafe(`SELECT
         COUNT(*)::int as total,
         COUNT(*) FILTER(WHERE status = 'SUBMITTED')::int as submitted,
@@ -34,7 +36,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         COUNT(*) FILTER(WHERE status = 'REJECTED')::int as rejected,
         COUNT(*) FILTER(WHERE escalated = true AND status NOT IN ('COMPLETED','REJECTED'))::int as escalated,
         COUNT(*) FILTER(WHERE sla_deadline < NOW() AND status NOT IN ('COMPLETED','REJECTED','CANCELLED'))::int as sla_breached
-      FROM contract_requests WHERE tenant_id = '${ctx.tenantId}'`),
+      FROM contract_requests WHERE tenant_id = $1`, ctx.tenantId),
     ]);
 
     return createSuccessResponse(ctx, {

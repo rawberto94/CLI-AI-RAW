@@ -169,7 +169,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const invalidEvents = events.filter((e: string) => !WEBHOOK_EVENTS.includes(e as WebhookEvent));
   if (invalidEvents.length > 0) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid events: ${invalidEvents.join(\', \')}', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid events: ${invalidEvents.join(', ')}`, 400);
   }
 
   const secret = crypto.randomBytes(32).toString('hex');

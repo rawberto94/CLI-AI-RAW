@@ -15,6 +15,7 @@ import { contractService } from 'data-orchestration/services';
 import { triggerArtifactGeneration } from '@/lib/artifact-trigger';
 import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
+import { initializeStorage } from '@/lib/storage-service';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
@@ -48,15 +49,6 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
     return createErrorResponse(ctx, 'NOT_FOUND', 'Upload session not found', 404);
   }
 
-  // Create uploads directory
-  const uploadsDir = join(process.cwd(), 'uploads', tenantId);
-  if (!existsSync(uploadsDir)) {
-    await mkdir(uploadsDir, { recursive: true });
-  }
-
-  // Combine all chunks
-  const finalFilePath = join(uploadsDir, safeFileName);
-  
   // Find all chunks
   const files = await readdir(chunksDir);
   const chunks = files
@@ -77,7 +69,6 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
 
   // Write combined file
   const finalBuffer = Buffer.concat(chunkBuffers);
-  await writeFile(finalFilePath, finalBuffer);
 
   const fileSize = finalBuffer.length;
 
@@ -91,12 +82,53 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
   };
   const mimeType = mimeTypes[ext] || 'application/octet-stream';
 
+  // Generate object key for storage
+  const objectKey = `contracts/${tenantId}/${Date.now()}-${safeFileName}`;
+
+  let storagePath = objectKey;
+  let storageProvider = 's3';
+
+  // Try to upload to object storage (MinIO/S3)
+  try {
+    const storageService = initializeStorage();
+    if (storageService) {
+      const uploadResult = await storageService.upload({
+        fileName: objectKey,
+        buffer: finalBuffer,
+        contentType: mimeType,
+        metadata: {
+          tenantId,
+          originalName: fileName,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Upload to object storage failed');
+      }
+      storagePath = objectKey;
+      storageProvider = 's3';
+    } else {
+      throw new Error('Storage service not available');
+    }
+  } catch {
+    // Fallback to local filesystem
+    const uploadsDir = join(process.cwd(), 'uploads', tenantId);
+    if (!existsSync(uploadsDir)) {
+      await mkdir(uploadsDir, { recursive: true });
+    }
+    const finalFilePath = join(uploadsDir, safeFileName);
+    await writeFile(finalFilePath, finalBuffer);
+    storagePath = finalFilePath;
+    storageProvider = 'local';
+  }
+
   // Create contract in database
   const contract = await prisma.contract.create({
     data: {
       tenantId,
       status: 'PROCESSING',
-      storagePath: finalFilePath,
+      storagePath,
       fileName: safeFileName,
       fileSize: BigInt(fileSize),
       mimeType,
@@ -121,9 +153,9 @@ export const POST = withAuthApiHandler(async (req, ctx) => {
   await triggerArtifactGeneration({
     contractId: contract.id,
     tenantId,
-    filePath: finalFilePath,
+    filePath: storagePath,
     mimeType,
-    useQueue: false,
+    useQueue: true,
   });
 
   // Clean up chunks

@@ -4,6 +4,7 @@ import { getApiTenantId } from '@/lib/tenant-server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import crypto from 'crypto';
+import { initializeStorage } from '@/lib/storage-service';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
@@ -172,7 +173,7 @@ export async function POST(
       }
 
       if (file) {
-        // Save file to uploads directory
+        // Save file to object storage (MinIO/S3) with local fallback
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
         
@@ -180,15 +181,38 @@ export async function POST(
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').substring(0, 16);
         const ext = file.name.split('.').pop() || 'pdf';
         const filename = `${contractId}_v${newVersionNumber}_${hash}.${ext}`;
-        
-        // Ensure uploads directory exists
-        const uploadsDir = join(process.cwd(), 'uploads', 'versions');
-        await mkdir(uploadsDir, { recursive: true });
-        
-        const filePath = join(uploadsDir, filename);
-        await writeFile(filePath, buffer);
-        
-        fileUrl = `/api/files/versions/${filename}`;
+        const objectKey = `versions/${tenantId}/${filename}`;
+
+        try {
+          const storageService = initializeStorage();
+          if (storageService) {
+            const uploadResult = await storageService.upload({
+              fileName: objectKey,
+              buffer,
+              contentType: file.type || 'application/pdf',
+              metadata: {
+                tenantId,
+                contractId,
+                versionNumber: String(newVersionNumber),
+              },
+            });
+
+            if (uploadResult.success) {
+              fileUrl = `/api/files/versions/${filename}`;
+            } else {
+              throw new Error(uploadResult.error || 'Upload failed');
+            }
+          } else {
+            throw new Error('Storage service not available');
+          }
+        } catch {
+          // Fallback to local filesystem
+          const uploadsDir = join(process.cwd(), 'uploads', 'versions');
+          await mkdir(uploadsDir, { recursive: true });
+          const filePath = join(uploadsDir, filename);
+          await writeFile(filePath, buffer);
+          fileUrl = `/api/files/versions/${filename}`;
+        }
       }
     } else {
       // Handle JSON request (metadata-only version / snapshot)

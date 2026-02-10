@@ -18,11 +18,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
          FROM document_expiry_items WHERE tenant_id = $1 AND expiry_date BETWEEN NOW() AND NOW() + INTERVAL '90 days' ORDER BY expiry_date ASC`, ctx.tenantId
       );
     } else {
-      let where = `WHERE tenant_id = '${ctx.tenantId}'`;
-      if (vendorName) where += ` AND vendor_name ILIKE '%${vendorName}%'`;
+      const conditions = [`tenant_id = $1`];
+      const params: unknown[] = [ctx.tenantId];
+      if (vendorName) { params.push(`%${vendorName}%`); conditions.push(`vendor_name ILIKE $${params.length}`); }
       items = await prisma.$queryRawUnsafe(
         `SELECT *, CASE WHEN expiry_date < NOW() THEN 'EXPIRED' WHEN expiry_date < NOW() + INTERVAL '30 days' THEN 'EXPIRING_SOON' ELSE 'ACTIVE' END as computed_status
-         FROM document_expiry_items ${where} ORDER BY expiry_date ASC`
+         FROM document_expiry_items WHERE ${conditions.join(' AND ')} ORDER BY expiry_date ASC`, ...params
       );
     }
 

@@ -76,7 +76,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
           break;
 
         default:
-          return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown template: ${template}', 400);
+          return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown template: ${template}`, 400);
       }
     } else {
       // Send raw email

@@ -172,7 +172,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Get the email template
   const templateFn = emailTemplates[notification.type];
   if (!templateFn) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown notification type: ${notification.type}', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown notification type: ${notification.type}`, 400);
   }
 
   const emailContent = templateFn(notification);
@@ -217,7 +217,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const templateFn = emailTemplates[type];
   if (!templateFn) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown notification type: ${type}', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown notification type: ${type}`, 400);
   }
 
   // Return a preview with sample data

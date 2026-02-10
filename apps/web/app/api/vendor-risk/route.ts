@@ -11,11 +11,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     const where = riskTier
-      ? `WHERE tenant_id = $1 AND risk_tier = '${riskTier}'`
+      ? `WHERE tenant_id = $1 AND risk_tier = $2`
       : `WHERE tenant_id = $1`;
+    const queryParams: unknown[] = riskTier ? [ctx.tenantId, riskTier] : [ctx.tenantId];
 
     const [items, metrics] = await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT * FROM vendor_risk_profiles ${where} ORDER BY overall_score DESC`, ctx.tenantId),
+      prisma.$queryRawUnsafe(`SELECT * FROM vendor_risk_profiles ${where} ORDER BY overall_score DESC`, ...queryParams),
       prisma.$queryRawUnsafe(`SELECT
         COUNT(*)::int as total,
         COUNT(*) FILTER(WHERE risk_tier = 'HIGH')::int as high_risk,

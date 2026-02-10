@@ -57,19 +57,24 @@ interface DashboardData {
   complianceScore: number;
 }
 
-const fetchDashboardData = async (): Promise<{ stats: DashboardData | null }> => {
+const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; recentContracts: Array<{ id: string; fileName: string; status: string; createdAt: string }> }> => {
   const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
   const headers = { 'x-data-mode': dataMode };
   
   try {
-    const statsRes = await fetch('/api/dashboard/stats', { headers });
+    const [statsRes, contractsRes] = await Promise.all([
+      fetch('/api/dashboard/stats', { headers }),
+      fetch('/api/contracts?limit=4&sortBy=createdAt&sortOrder=desc', { headers }),
+    ]);
     const statsData = statsRes.ok ? await statsRes.json() : { success: false };
+    const contractsData = contractsRes.ok ? await contractsRes.json() : { success: false, data: [] };
     
     return {
       stats: statsData.success ? statsData.data : null,
+      recentContracts: contractsData.success ? (contractsData.data?.contracts || contractsData.data || []).slice(0, 4) : [],
     };
   } catch {
-    return { stats: null };
+    return { stats: null, recentContracts: [] };
   }
 };
 
@@ -151,6 +156,7 @@ export default function DashboardPage() {
   });
 
   const dashboardData = data?.stats || null;
+  const recentContracts = data?.recentContracts || [];
 
   // Real-time updates
   const eventHandlers = useMemo(() => ({
@@ -523,9 +529,9 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="p-5">
                 <div className="space-y-3">
-                  {[1, 2, 3, 4].map((_, idx) => (
+                  {recentContracts.length > 0 ? recentContracts.map((contract: { id: string; fileName?: string; originalName?: string; status?: string; createdAt?: string }, idx: number) => (
                     <motion.div
-                      key={idx}
+                      key={contract.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1 * idx }}
@@ -536,18 +542,24 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate text-slate-900 dark:text-white">
-                          Sample Contract {idx + 1}
+                          {contract.originalName || contract.fileName || `Contract ${contract.id.slice(0, 8)}`}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
                           <Clock className="h-3 w-3" />
-                          Added recently
+                          {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'Recently added'}
                         </p>
                       </div>
                       <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
-                        Active
+                        {contract.status || 'Active'}
                       </Badge>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No contracts yet</p>
+                      <p className="text-xs mt-1">Upload your first contract to get started</p>
+                    </div>
+                  )}
                 </div>
                 <Button 
                   variant="outline" 

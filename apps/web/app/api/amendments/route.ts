@@ -61,11 +61,13 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
     const { id, status } = body;
 
-    const extras = status === 'APPROVED' ? `, approved_by = '${ctx.userId}', approved_at = NOW()` : status === 'EXECUTED' ? `, executed_at = NOW()` : '';
+    const extras = status === 'APPROVED' ? `, approved_by = $4, approved_at = NOW()` : status === 'EXECUTED' ? `, executed_at = NOW()` : '';
+    const baseParams = [status, id, ctx.tenantId];
+    const queryParams = status === 'APPROVED' ? [...baseParams, ctx.userId] : baseParams;
 
     const result = await prisma.$queryRawUnsafe(
       `UPDATE amendments SET status = $1 ${extras}, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
-      status, id, ctx.tenantId
+      ...queryParams
     );
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });

@@ -244,7 +244,7 @@ function useDashboardData() {
         totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
         avgRiskScore: riskScore,
         pendingApprovals: approvalsJson?.data?.items?.length ?? mockMetrics.pendingApprovals,
-        expiringThisMonth: (d.expirations?.criticalRisk + d.expirations?.highRisk) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
+        expiringThisMonth: ((d.expirations?.criticalRisk ?? 0) + (d.expirations?.highRisk ?? 0)) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
         contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
         aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
         trends: {

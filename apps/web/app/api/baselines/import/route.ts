@@ -30,7 +30,7 @@ export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 
     const validTypes = ['TARGET_RATE', 'MARKET_BENCHMARK', 'HISTORICAL_BEST', 'COMPETITIVE_BID', 'NEGOTIATED_CAP', 'INDUSTRY_STANDARD', 'REGULATORY_LIMIT', 'CUSTOM'];
     if (!validTypes.includes(baseline.baselineType)) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid baseline type: ${baseline.baselineType}. Valid types: ${validTypes.join(\', \')}', 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid baseline type: ${baseline.baselineType}. Valid types: ${validTypes.join(', ')}`, 400);
     }
   }
 

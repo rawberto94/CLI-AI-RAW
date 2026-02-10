@@ -10,15 +10,15 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const status = searchParams.get('status');
     const { prisma } = await import('@/lib/prisma');
 
-    const where = status
-      ? `WHERE ca.tenant_id = '${ctx.tenantId}' AND ca.status = '${status}'`
-      : `WHERE ca.tenant_id = '${ctx.tenantId}'`;
+    const conditions = [`ca.tenant_id = $1`];
+    const params: unknown[] = [ctx.tenantId];
+    if (status) { params.push(status); conditions.push(`ca.status = $${params.length}`); }
 
     const items = await prisma.$queryRawUnsafe(
       `SELECT ca.*, cl.title as clause_title, cl.category as clause_category, cl.risk_level as clause_risk
        FROM clause_approvals ca
        LEFT JOIN clause_library cl ON ca.clause_id = cl.id
-       ${where} ORDER BY ca.submitted_at DESC`
+       WHERE ${conditions.join(' AND ')} ORDER BY ca.submitted_at DESC`, ...params
     );
 
     return createSuccessResponse(ctx, { approvals: items });

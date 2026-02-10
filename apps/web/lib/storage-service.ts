@@ -338,11 +338,11 @@ export function initializeStorage(): StorageService | null {
     const config: StorageConfig = {
       endPoint: process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost',
       port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || '9000'),
-      useSSL: process.env.S3_USE_SSL === 'true',
+      useSSL: (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
       accessKey: process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || 'minioadmin',
       secretKey: process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || 'minioadmin',
       region: process.env.S3_REGION || 'us-east-1',
-      bucket: process.env.S3_BUCKET || 'contracts',
+      bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts',
     };
 
     return getStorageService(config);

@@ -13,25 +13,28 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     if (type === 'purchase-orders') {
-      let where = `WHERE tenant_id = '${ctx.tenantId}'`;
-      if (status) where += ` AND status = '${status}'`;
-      if (contractId) where += ` AND contract_id = '${contractId}'`;
-      const items = await prisma.$queryRawUnsafe(`SELECT * FROM purchase_orders ${where} ORDER BY created_at DESC LIMIT 100`);
+      const conditions = [`tenant_id = $1`];
+      const params: unknown[] = [ctx.tenantId];
+      if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+      if (contractId) { params.push(contractId); conditions.push(`contract_id = $${params.length}`); }
+      const items = await prisma.$queryRawUnsafe(`SELECT * FROM purchase_orders WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 100`, ...params);
       return createSuccessResponse(ctx, { purchaseOrders: items });
     }
 
     if (type === 'invoices') {
-      let where = `WHERE tenant_id = '${ctx.tenantId}'`;
-      if (status) where += ` AND match_status = '${status}'`;
-      if (contractId) where += ` AND contract_id = '${contractId}'`;
-      const items = await prisma.$queryRawUnsafe(`SELECT * FROM invoices ${where} ORDER BY created_at DESC LIMIT 100`);
+      const conditions = [`tenant_id = $1`];
+      const params: unknown[] = [ctx.tenantId];
+      if (status) { params.push(status); conditions.push(`match_status = $${params.length}`); }
+      if (contractId) { params.push(contractId); conditions.push(`contract_id = $${params.length}`); }
+      const items = await prisma.$queryRawUnsafe(`SELECT * FROM invoices WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 100`, ...params);
       return createSuccessResponse(ctx, { invoices: items });
     }
 
     if (type === 'exceptions') {
-      let where = `WHERE tenant_id = '${ctx.tenantId}'`;
-      if (status) where += ` AND status = '${status}'`;
-      const items = await prisma.$queryRawUnsafe(`SELECT * FROM spend_exceptions ${where} ORDER BY created_at DESC LIMIT 100`);
+      const conditions = [`tenant_id = $1`];
+      const params: unknown[] = [ctx.tenantId];
+      if (status) { params.push(status); conditions.push(`status = $${params.length}`); }
+      const items = await prisma.$queryRawUnsafe(`SELECT * FROM spend_exceptions WHERE ${conditions.join(' AND ')} ORDER BY created_at DESC LIMIT 100`, ...params);
       return createSuccessResponse(ctx, { exceptions: items });
     }
 

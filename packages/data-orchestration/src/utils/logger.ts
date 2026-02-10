@@ -26,6 +26,6 @@ function isBuildPhase(): boolean {
 }
 
 export function createLogger(name: string, options: LoggerOptions = {}) {
-  const level = isBuildPhase() ? 'silent' : options.level ?? process.env.LOG_LEVEL;
+  const level = isBuildPhase() ? 'silent' : options.level ?? process.env.LOG_LEVEL ?? 'info';
   return pino({ ...options, name, level });
 }

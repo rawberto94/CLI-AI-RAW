@@ -130,11 +130,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         };
 
         try {
-          // Build query with incremental filter if configured
-          let _whereClause = '';
-          if (schedule.options.incrementalField && schedule.options.lastSyncValue) {
-            _whereClause = ` WHERE "${schedule.options.incrementalField}" > '${schedule.options.lastSyncValue}'`;
-          }
+          // Note: incremental filtering is handled within importFromExternalDatabase
 
           // Run the import
           const result = await importFromExternalDatabase(

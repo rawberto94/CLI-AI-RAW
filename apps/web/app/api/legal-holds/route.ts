@@ -11,11 +11,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     const where = status
-      ? `WHERE tenant_id = $1 AND status = '${status}'`
+      ? `WHERE tenant_id = $1 AND status = $2`
       : `WHERE tenant_id = $1`;
+    const queryParams: unknown[] = status ? [ctx.tenantId, status] : [ctx.tenantId];
 
     const items = await prisma.$queryRawUnsafe(
-      `SELECT * FROM legal_holds ${where} ORDER BY issued_at DESC`, ctx.tenantId
+      `SELECT * FROM legal_holds ${where} ORDER BY issued_at DESC`, ...queryParams
     );
 
     return createSuccessResponse(ctx, { holds: items });

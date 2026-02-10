@@ -13,6 +13,9 @@ import {
   startProcessingJob,
 } from "@/lib/contract-processing";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { initializeStorage } from "@/lib/storage-service";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
 
 function isFile(value: unknown): value is File {
@@ -52,6 +55,47 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   const userId = "user"; // From session when authenticated
 
   for (const file of files) {
+    // Read file bytes
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
+
+    // Generate storage key
+    const storedFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
+    const objectKey = `contracts/${tenantId}/${storedFileName}`;
+
+    let storagePath = objectKey;
+
+    // Try to upload to object storage (MinIO/S3)
+    try {
+      const storageService = initializeStorage();
+      if (storageService) {
+        const uploadResult = await storageService.upload({
+          fileName: objectKey,
+          buffer,
+          contentType: file.type || 'application/pdf',
+          metadata: {
+            tenantId,
+            originalName: file.name,
+            uploadedAt: new Date().toISOString(),
+          },
+        });
+
+        if (!uploadResult.success) {
+          throw new Error(uploadResult.error || 'Upload failed');
+        }
+        storagePath = objectKey;
+      } else {
+        throw new Error('Storage service not available');
+      }
+    } catch {
+      // Fallback to local filesystem
+      const uploadDir = join(process.cwd(), 'uploads', 'contracts', tenantId);
+      await mkdir(uploadDir, { recursive: true });
+      const localPath = join(uploadDir, storedFileName);
+      await writeFile(localPath, buffer);
+      storagePath = localPath;
+    }
+
     // Create contract using real service
     const result = await contractService.createContract({
       tenantId,
@@ -60,6 +104,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       fileSize: BigInt(file.size),
       uploadedBy: userId,
       status: "UPLOADED",
+      storagePath,
       contractType: formData.get(`${file.name}_type`) as string | undefined,
     });
 

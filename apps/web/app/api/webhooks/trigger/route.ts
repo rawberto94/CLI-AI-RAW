@@ -50,7 +50,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
   const { event, data } = body;
 
   if (!event || !WEBHOOK_EVENTS.includes(event)) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid event: ${event}', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Invalid event: ${event}`, 400);
   }
 
   if (!data || typeof data !== 'object') {

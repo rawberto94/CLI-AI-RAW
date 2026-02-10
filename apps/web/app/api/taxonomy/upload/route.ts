@@ -413,7 +413,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Excel format not yet supported. Please convert to CSV or JSON.', 400);
     } else {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Unsupported file format: ${fileName}. Use .csv or .json', 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Unsupported file format: ${fileName}. Use .csv or .json`, 400);
     }
   } 
   // Handle JSON body (direct API call)

@@ -116,7 +116,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     default:
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown action: ${action}', 400);
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   }
 });
 
