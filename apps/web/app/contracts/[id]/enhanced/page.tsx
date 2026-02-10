@@ -135,7 +135,8 @@ export default function EnhancedContractDetailPage() {
         throw new Error(`Failed to load contract: ${response.status}`)
       }
 
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       setContract(data)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')

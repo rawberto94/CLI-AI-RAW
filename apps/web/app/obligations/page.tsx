@@ -220,8 +220,9 @@ export default function ObligationsDashboardPage() {
       
       const response = await fetch(`/api/obligations?${params.toString()}`);
       if (response.ok) {
-        const data = await response.json();
-        // API returns { obligations, pagination, metrics } directly
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        // API returns { obligations, pagination, metrics } in data envelope
         setObligations(data.obligations || []);
       }
     } catch (error) {
@@ -235,8 +236,9 @@ export default function ObligationsDashboardPage() {
     try {
       const response = await fetch('/api/obligations/metrics');
       if (response.ok) {
-        const data = await response.json();
-        // API returns metrics at root level
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        // API returns metrics in data envelope
         if (!data.error) {
           // Transform API response to match expected DashboardMetrics interface
           setMetrics({
@@ -279,7 +281,8 @@ export default function ObligationsDashboardPage() {
     try {
       const response = await fetch('/api/contracts?limit=100');
       if (response.ok) {
-        const data = await response.json();
+        const raw = await response.json();
+        const data = raw.data ?? raw;
         const contractList = (data.contracts || []).map((c: Record<string, unknown>) => ({
           id: c.id as string,
           title: (c.contractTitle || c.title || 'Untitled Contract') as string,

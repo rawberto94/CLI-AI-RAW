@@ -91,12 +91,14 @@ export function useCategorization(
         }),
       });
 
-      const data = await response.json();
+      const rawData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Categorization failed');
+        const err = rawData.error;
+        throw new Error((typeof err === 'object' ? err?.message : err) || 'Categorization failed');
       }
 
+      const data = rawData.data ?? rawData;
       setState(prev => ({
         ...prev,
         isLoading: false,
@@ -138,12 +140,14 @@ export function useCategorization(
         }),
       });
 
-      const data = await response.json();
+      const rawData = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Quick categorization failed');
+        const err = rawData.error;
+        throw new Error((typeof err === 'object' ? err?.message : err) || 'Quick categorization failed');
       }
 
+      const data = rawData.data ?? rawData;
       setState(prev => ({
         ...prev,
         isQuickLoading: false,
@@ -313,7 +317,8 @@ export function useBatchCategorization(
           });
 
           const data = await response.json();
-          const contractType: string | undefined = data.result?.contractType;
+          const payload = data.data ?? data;
+          const contractType: string | undefined = payload.result?.contractType;
 
           results.push({
             id: contractId,

@@ -156,7 +156,8 @@ export default function ContractRenewalPage() {
           headers: { 'x-tenant-id': getTenantId() },
         });
         if (response.ok) {
-          const data = await response.json();
+          const raw = await response.json();
+          const data = raw.data ?? raw;
           // Filter for renewal-appropriate templates
           const allTemplates = data.templates || [];
           setTemplates(allTemplates);
@@ -209,7 +210,8 @@ export default function ContractRenewalPage() {
           throw new Error('Failed to load contract');
         }
         
-        const data = await response.json();
+        const raw = await response.json();
+        const data = raw.data ?? raw;
         setOriginalContract({
           id: data.id,
           title: data.document_title || data.contractTitle || data.filename || 'Contract',
@@ -337,15 +339,17 @@ export default function ContractRenewalPage() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create renewal');
+        const errResp = await response.json();
+        const err = errResp.error;
+        throw new Error((typeof err === 'object' ? err?.message : err) || 'Failed to create renewal');
       }
       
       const result = await response.json();
+      const payload = result.data ?? result;
       toast.success('Renewal contract created successfully!');
       
       // Navigate to the new contract
-      router.push(`/contracts/${result.renewal.id}`);
+      router.push(`/contracts/${payload.renewal?.id || payload.id}`);
       
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to create renewal');
@@ -1246,7 +1250,8 @@ function ContentStep({
           headers: { 'x-tenant-id': getTenantId() },
         });
         if (response.ok) {
-          const data = await response.json();
+          const raw = await response.json();
+          const data = raw.data ?? raw;
           setLibraryClauses(data.clauses || []);
         }
       } catch {

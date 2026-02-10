@@ -152,8 +152,9 @@ export const RelatedContracts = memo(function RelatedContracts({
       
       if (!response.ok) throw new Error('Failed to fetch')
       
-      const data = await response.json()
-      setContracts(data.contracts || [])
+      const raw = await response.json()
+      const data = raw.data ?? raw
+      setContracts(data.contracts || data || [])
     } catch (_err) {
       setError('Unable to load related contracts')
       // Fallback to empty for graceful degradation

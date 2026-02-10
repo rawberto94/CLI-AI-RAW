@@ -40,9 +40,10 @@ function useVersions(contractId: string) {
     try {
       setLoading(true);
       const response = await fetch(`/api/contracts/${contractId}/versions`);
-      const json: VersionsResponse = await response.json();
+      const raw: Record<string, unknown> = await response.json();
+      const json = (raw.data ?? raw) as VersionsResponse;
 
-      if (json.success && json.versions) {
+      if (json.success !== false && json.versions) {
         // Store raw versions for timeline
         setTimelineVersions(json.versions);
 

@@ -105,7 +105,8 @@ export const DashboardOverview = memo(function DashboardOverview({
     try {
       const response = await fetch('/api/dashboard/metrics');
       if (response.ok) {
-        const data = await response.json();
+        const raw = await response.json();
+        const data = raw.data ?? raw;
         setMetrics(data);
       } else {
         setMetrics(getEmptyMetrics());

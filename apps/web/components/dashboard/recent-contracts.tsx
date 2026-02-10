@@ -128,7 +128,8 @@ export function RecentContracts() {
       const res = await fetch('/api/contracts')
       if (res.ok) {
         const data = await res.json()
-        const items = Array.isArray(data) ? data : (data?.items || [])
+        const payload = data.data ?? data
+        const items = Array.isArray(payload) ? payload : (payload?.items || [])
         setContracts(items)
         setIsLoading(false)
       } else {

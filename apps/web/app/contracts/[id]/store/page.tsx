@@ -204,17 +204,18 @@ export default function StoragePage({ params }: { params: Promise<{ id: string }
       try {
         const res = await fetch(`/api/contracts/${id}`);
         if (res.ok) {
-          const data = await res.json();
-          if (data.success && data.contract) {
+          const raw = await res.json();
+          const data = raw.data ?? raw;
+          if (data.id) {
             setContract({
-              id: data.contract.id,
-              title: data.contract.contractTitle || data.contract.filename || 'Untitled Contract',
-              supplier: data.contract.supplierName || 'Unknown Supplier',
-              value: data.contract.totalValue || 0,
-              status: data.contract.status,
+              id: data.id,
+              title: data.contractTitle || data.filename || 'Untitled Contract',
+              supplier: data.supplierName || 'Unknown Supplier',
+              value: data.totalValue || 0,
+              status: data.status,
               signedAt: new Date().toISOString(),
             });
-            setFolderName(data.contract.supplierName || 'Contracts');
+            setFolderName(data.supplierName || 'Contracts');
           }
         }
       } catch {

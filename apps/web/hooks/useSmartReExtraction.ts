@@ -104,11 +104,13 @@ export function useSmartReExtraction({
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Re-extraction failed");
+        const err = errorData.error;
+        throw new Error((typeof err === 'object' ? err?.message : err) || "Re-extraction failed");
       }
 
       const result = await response.json();
-      const fields = result.fields as ExtractedField[];
+      const payload = result.data ?? result;
+      const fields = payload.fields as ExtractedField[];
 
       // Calculate improvement stats
       let improved = 0;

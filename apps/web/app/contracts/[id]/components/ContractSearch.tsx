@@ -101,7 +101,8 @@ export const ContractSearch = memo(function ContractSearch({
       
       if (!response.ok) throw new Error('Search failed')
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       setResults(data.results || [])
       setCurrentIndex(0)
     } catch {

@@ -295,7 +295,8 @@ export default function VersionComparePage() {
         
         if (!response.ok) throw new Error('Failed to load versions')
         
-        const data = await response.json()
+        const raw = await response.json()
+        const data = raw.data ?? raw
         setVersions(data.versions || [])
         
         // Set default versions if not provided

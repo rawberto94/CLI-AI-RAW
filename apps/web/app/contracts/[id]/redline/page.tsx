@@ -55,14 +55,15 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
       try {
         const response = await fetch(`/api/contracts/${id}`);
         if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.contract) {
-            setContractTitle(data.contract.contractTitle || data.contract.filename || 'Contract - Redline');
+          const raw = await response.json();
+          const data = raw.data ?? raw;
+          if (data.id) {
+            setContractTitle(data.contractTitle || data.filename || 'Contract - Redline');
             
             // Try to get text content from various sources
-            const rawText = data.contract.rawText 
-              || data.contract.extractedData?.rawText 
-              || data.contract.extractedData?.overview?.summary
+            const rawText = data.rawText 
+              || data.extractedData?.rawText 
+              || data.extractedData?.overview?.summary
               || null;
             
             if (rawText && rawText.length > 100) {

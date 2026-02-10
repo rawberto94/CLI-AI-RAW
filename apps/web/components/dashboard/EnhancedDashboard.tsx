@@ -75,8 +75,9 @@ export function EnhancedDashboard() {
     try {
       const response = await fetch(`/api/analytics/dashboard?timeframe=${timeframe}`);
       if (response.ok) {
-        const data = await response.json();
-        setMetrics(data.metrics);
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        setMetrics(data.metrics ?? data);
       } else {
         setMetrics(mockMetrics);
       }
