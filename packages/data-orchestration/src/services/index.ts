@@ -610,3 +610,14 @@ export {
   type AutoStartRule,
   type AutoStartCondition,
 } from './workflow-auto-start.service';
+
+// Feature Integration Services
+export { ContractRequestService } from './contract-request.service';
+export { DelegationOfAuthorityService } from './delegation-of-authority.service';
+export { EvidenceService } from './evidence.service';
+export { AmendmentService } from './amendment.service';
+export { VendorRiskService } from './vendor-risk.service';
+export { SpendManagementService } from './spend-management.service';
+export { EnterpriseSecurityService } from './enterprise-security.service';
+export { AIGovernanceService } from './ai-governance.service';
+export { DocumentExpiryService } from './document-expiry.service';
