@@ -57,7 +57,7 @@ interface RiskItem {
 
 // Tenant isolation helper
 function getTenantId(request: NextRequest): string | null {
-  return ctx.tenantId;
+  return request.headers.get('x-tenant-id');
 }
 
 // Simple XLSX generator (no external dependencies)
