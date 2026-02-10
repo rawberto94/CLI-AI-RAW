@@ -3,27 +3,36 @@
  * 
  * Issues CSRF tokens for client-side protection.
  * Tokens are set as cookies and must be included in request headers.
+ * 
+ * NOTE: This route does NOT require authentication. The CSRF token must be
+ * obtainable before or during login so that subsequent mutation requests
+ * (which ARE auth-protected) can include the token in headers.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { setCSRFCookie } from '@/lib/csrf';
-import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+export async function GET(_request: NextRequest) {
   try {
-    const session = await getServerSession();
-    const userId = session?.user?.id;
+    // Optionally bind token to user if authenticated
+    let userId: string | undefined;
+    try {
+      const session = await getServerSession();
+      userId = session?.user?.id;
+    } catch {
+      // Not authenticated — that's fine, issue an unbound token
+    }
     
-    // Generate and set CSRF token
-    const _token = await setCSRFCookie(userId);
+    // Generate and set CSRF token cookie
+    await setCSRFCookie(userId);
     
-    return createSuccessResponse(
-      ctx,
+    return NextResponse.json(
       { success: true, message: 'CSRF token set' },
       { 
+        status: 200,
         headers: {
           'Cache-Control': 'no-store, no-cache, must-revalidate',
         },
@@ -31,6 +40,9 @@ export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
     );
   } catch (error) {
     console.error('CSRF token generation failed:', error);
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate CSRF token', 500);
+    return NextResponse.json(
+      { error: 'Failed to generate CSRF token' },
+      { status: 500 }
+    );
   }
-});
+}

@@ -256,6 +256,7 @@ const publicApiPaths = [
   "/api/monitoring/health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
+  "/api/csrf", // CSRF token must be obtainable before/during login
 ];
 
 // Static/public assets that bypass auth
