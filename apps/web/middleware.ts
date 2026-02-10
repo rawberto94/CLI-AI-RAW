@@ -228,8 +228,9 @@ function getRateLimit(pathname: string, role?: string): number {
 }
 
 // Paths that don't require authentication (only auth-related pages)
+// IMPORTANT: Use exact paths or paths that won't prefix-match unrelated routes.
+// "/" MUST be exact-matched to avoid matching every route.
 const publicPaths = [
-  "/",              // Landing page
   "/about",         // About page
   "/pricing",       // Pricing page
   "/features",      // Features page
@@ -243,6 +244,11 @@ const publicPaths = [
   "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
   "/api/auth",
 ];
+
+// Exact-match paths (no prefix matching)
+const publicExactPaths = new Set([
+  "/",              // Landing page only — must NOT prefix-match other routes
+]);
 
 // API routes that don't require authentication (health checks only)
 const publicApiPaths = [
@@ -354,7 +360,7 @@ export default auth(async (req) => {
   }
 
   // Allow public paths (auth pages only)
-  if (publicPaths.some((path) => pathname.startsWith(path))) {
+  if (publicExactPaths.has(pathname) || publicPaths.some((path) => pathname.startsWith(path))) {
     return addTracingHeaders(NextResponse.next());
   }
 
