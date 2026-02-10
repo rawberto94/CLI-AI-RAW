@@ -188,7 +188,7 @@ export default function UploadPage() {
         })
         if (response.ok) {
           const data = await response.json()
-          setAiStatus(data)
+          setAiStatus(data.data ?? data)
         }
       } catch (error) {
         console.error('Failed to check AI status:', error)
@@ -284,23 +284,27 @@ export default function UploadPage() {
       const responseData = await uploadResponse.json()
       
       if (!uploadResponse.ok) {
-        const errorMessage = responseData.details 
-          ? `${responseData.error}: ${responseData.details}` 
-          : (responseData.error || 'Upload failed');
+        const err = responseData.error || {};
+        const errorMessage = typeof err === 'string' ? err
+          : err.details ? `${err.message}: ${err.details}`
+          : (err.message || 'Upload failed');
         throw new Error(errorMessage);
       }
 
+      // API wraps response in { success, data, meta } envelope
+      const result = responseData.data ?? responseData;
+
       // Check for duplicate
-      if (responseData.isDuplicate) {
+      if (result.isDuplicate) {
         setFiles(prev => prev.map(f =>
           f.id === uploadFile.id
             ? { 
                 ...f, 
                 status: 'completed', 
                 progress: 100, 
-                contractId: responseData.contractId,
+                contractId: result.contractId,
                 isDuplicate: true,
-                existingContractId: responseData.contractId,
+                existingContractId: result.contractId,
                 endTime: Date.now(),
               }
             : f
@@ -308,7 +312,7 @@ export default function UploadPage() {
         return
       }
 
-      const { contractId } = responseData
+      const { contractId } = result
       
       // Debug log the contract ID received from server
       console.log(`[Upload] Received contractId from server: ${contractId}, File: ${uploadFile.file.name}`);
