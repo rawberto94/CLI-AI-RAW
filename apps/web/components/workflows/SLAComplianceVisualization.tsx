@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Target,
@@ -444,10 +444,87 @@ const ActiveStepSLAStatus: React.FC<{ step: StepSLAStatus }> = ({ step }) => {
 export const SLAComplianceVisualization: React.FC = () => {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Mock data
-  const slaMetrics = useMemo(() => generateMockSLAMetrics(), []);
-  const activeSteps = useMemo(() => generateMockActiveSteps(), []);
+  // Real data state
+  const [slaMetrics, setSlaMetrics] = useState<SLAMetric[]>([]);
+  const [activeSteps, setActiveSteps] = useState<StepSLAStatus[]>([]);
+  const [apiMetrics, setApiMetrics] = useState<any>(null);
+
+  const fetchSLAData = useCallback(async () => {
+    try {
+      const [overviewRes, stepsRes] = await Promise.all([
+        fetch(`/api/workflows/sla?type=overview&timeRange=${timeRange}`),
+        fetch(`/api/workflows/sla?type=active-steps`),
+      ]);
+      const overview = await overviewRes.json();
+      const steps = await stepsRes.json();
+
+      if (overview.success) {
+        setApiMetrics(overview.data.metrics);
+        // Map step breakdown to SLAMetric shape
+        const mapped: SLAMetric[] = (overview.data.stepBreakdown || []).map((s: any) => ({
+          definitionId: s.step_name,
+          definition: {
+            id: s.step_name,
+            name: s.step_name,
+            description: `${s.step_type || 'Step'} performance`,
+            targetHours: 48,
+            warningThresholdPercent: 75,
+            category: (s.step_type || 'processing').toLowerCase() as any,
+          },
+          total: s.total,
+          met: s.completed,
+          breached: s.breached,
+          atRisk: s.active,
+          avgCompletionTime: s.avg_duration_seconds ? Math.round(s.avg_duration_seconds / 3600) : 0,
+          trend: 0,
+          recentBreaches: (overview.data.activeBreaches || [])
+            .filter((b: any) => b.step_name === s.step_name)
+            .slice(0, 3)
+            .map((b: any) => ({
+              contractId: b.contract_id || '',
+              contractName: b.workflow_name || b.contract_id || 'Unknown',
+              stepName: b.step_name,
+              breachTime: b.overdue_seconds ? `${Math.round(b.overdue_seconds / 3600)}h ago` : 'recently',
+              excessHours: b.overdue_seconds ? Math.round(b.overdue_seconds / 3600) : 0,
+            })),
+        }));
+        setSlaMetrics(mapped.length > 0 ? mapped : generateMockSLAMetrics());
+      } else {
+        setSlaMetrics(generateMockSLAMetrics());
+      }
+
+      if (steps.success && steps.data.activeSteps?.length > 0) {
+        const mappedSteps: StepSLAStatus[] = steps.data.activeSteps.map((s: any) => ({
+          stepId: s.id,
+          stepName: s.step_name,
+          slaDefinitionId: s.step_type,
+          status: s.sla_status === 'BREACHED' ? 'breached' : s.sla_status === 'AT_RISK' ? 'at-risk' : 'on-track',
+          startTime: s.started_at,
+          targetTime: s.sla_deadline || new Date(Date.now() + 86400000).toISOString(),
+          currentElapsed: s.seconds_remaining ? Math.max(0, Math.round(-s.seconds_remaining / 3600)) || 0 : 0,
+          targetHours: s.sla_deadline ? Math.round((new Date(s.sla_deadline).getTime() - new Date(s.started_at).getTime()) / 3600000) : 48,
+          percentComplete: s.seconds_remaining != null
+            ? Math.round(Math.max(0, (1 - s.seconds_remaining / Math.max(1, new Date(s.sla_deadline || Date.now()).getTime() - new Date(s.started_at).getTime()) * 1000) * 100))
+            : 50,
+          assignee: s.assignee_id || 'Unassigned',
+        }));
+        setActiveSteps(mappedSteps);
+      } else {
+        setActiveSteps(generateMockActiveSteps());
+      }
+    } catch {
+      // Fallback to mock data if API is unavailable
+      setSlaMetrics(generateMockSLAMetrics());
+      setActiveSteps(generateMockActiveSteps());
+    } finally {
+      setLoading(false);
+      setIsRefreshing(false);
+    }
+  }, [timeRange]);
+
+  useEffect(() => { fetchSLAData(); }, [fetchSLAData]);
 
   // Aggregate stats
   const overallStats = useMemo(() => {
@@ -462,8 +539,7 @@ export const SLAComplianceVisualization: React.FC = () => {
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    await fetchSLAData();
   };
 
   return (

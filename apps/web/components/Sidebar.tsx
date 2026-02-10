@@ -34,6 +34,19 @@ import {
   Rocket,
   PlayCircle,
   GitBranch,
+  FileSignature,
+  Scale,
+  DollarSign,
+  AlertTriangle,
+  Key,
+  Brain,
+  Cog,
+  Archive,
+  RefreshCw,
+  Layers,
+  ShieldCheck,
+  Inbox,
+  CalendarClock,
 } from "lucide-react";
 import {
   Tooltip,
@@ -67,8 +80,7 @@ interface NavItem {
   tourId?: string; // For onboarding tour targeting
 }
 
-// Navigation groups - ONLY showing currently active features
-// See UNUSED_FILES.md for future upgrades (Renewals, Approvals, etc.)
+// Navigation groups - Full feature set
 const navigationGroups: NavGroup[] = [
   {
     id: 'getting-started',
@@ -92,6 +104,7 @@ const navigationGroups: NavGroup[] = [
       { href: "/dashboard", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
       { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts", tourId: "contracts" },
       { href: "/upload", label: "Upload", icon: Upload, description: "Add new contracts", tourId: "upload" },
+      { href: "/notifications", label: "Notifications", icon: Bell, description: "Alerts, reminders, and updates", tourId: "notifications" },
     ],
   },
   {
@@ -107,13 +120,57 @@ const navigationGroups: NavGroup[] = [
     ],
   },
   {
+    id: 'management',
+    label: 'Management',
+    icon: Layers,
+    defaultOpen: false,
+    gradient: 'from-emerald-500 to-teal-500',
+    items: [
+      { href: "/requests", label: "Requests", icon: Inbox, description: "Contract request intake and triage", isNew: true, tourId: "requests" },
+      { href: "/renewals", label: "Renewals", icon: RefreshCw, description: "Track contract renewals", tourId: "renewals" },
+      { href: "/amendments", label: "Amendments", icon: FileSignature, description: "Contract amendment lifecycle", isNew: true, tourId: "amendments" },
+      { href: "/templates", label: "Templates", icon: BookOpen, description: "Contract templates library", tourId: "templates" },
+      { href: "/clauses/governance", label: "Clause Governance", icon: BookOpen, description: "Clause approval workflows", isNew: true, tourId: "clause-governance" },
+      { href: "/document-expiry", label: "Document Expiry", icon: CalendarClock, description: "Track document expirations", isNew: true, tourId: "document-expiry" },
+    ],
+  },
+  {
+    id: 'governance',
+    label: 'Governance',
+    icon: Shield,
+    defaultOpen: false,
+    gradient: 'from-blue-500 to-indigo-500',
+    items: [
+      { href: "/governance/delegation", label: "Delegation Matrix", icon: Scale, description: "Delegation of authority rules", isNew: true, tourId: "doa" },
+      { href: "/governance/signature-policies", label: "Signature Policies", icon: FileSignature, description: "E-signature configuration", isNew: true, tourId: "sig-policies" },
+      { href: "/governance/pre-approval-gates", label: "Pre-Approval Gates", icon: Shield, description: "Required approval checkpoints", isNew: true, tourId: "pre-approval" },
+      { href: "/governance/routing-rules", label: "Routing Rules", icon: GitBranch, description: "Auto-routing configuration", isNew: true, tourId: "routing" },
+      { href: "/evidence", label: "Evidence Vault", icon: ClipboardList, description: "Obligation evidence repository", isNew: true, tourId: "evidence" },
+    ],
+  },
+  {
+    id: 'procurement',
+    label: 'Procurement & Risk',
+    icon: DollarSign,
+    defaultOpen: false,
+    gradient: 'from-amber-500 to-orange-500',
+    items: [
+      { href: "/spend", label: "Spend Management", icon: DollarSign, description: "POs, invoices, and 3-way matching", isNew: true, tourId: "spend" },
+      { href: "/rate-cards", label: "Rate Cards", icon: BarChart3, description: "Rate card tracking and compliance", tourId: "rate-cards" },
+      { href: "/vendor-risk", label: "Vendor Risk", icon: AlertTriangle, description: "Vendor risk assessments", isNew: true, tourId: "vendor-risk" },
+      { href: "/suppliers/performance", label: "Supplier Performance", icon: BarChart3, description: "Supplier scorecards", tourId: "suppliers" },
+    ],
+  },
+  {
     id: 'analytics',
-    label: 'Analytics',
+    label: 'Analytics & Reports',
     icon: BarChart3,
     defaultOpen: false,
     gradient: 'from-amber-500 to-orange-500',
     items: [
-      { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports", tourId: "analytics" },
+      { href: "/analytics", label: "Analytics", icon: Presentation, description: "Dashboards and insights", tourId: "analytics" },
+      { href: "/reports", label: "Reports", icon: BarChart3, description: "Custom and scheduled reports", tourId: "reports" },
+      { href: "/workflows/sla", label: "SLA Monitoring", icon: _Clock, description: "SLA compliance tracking", tourId: "sla" },
     ],
   },
   {
@@ -125,22 +182,15 @@ const navigationGroups: NavGroup[] = [
     items: [
       { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", tourId: "workflows" },
       { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, description: "System activity and compliance tracking", tourId: "audit-logs" },
+      { href: "/admin/api-keys", label: "API Keys", icon: Key, description: "External integration keys", isNew: true, tourId: "api-keys" },
+      { href: "/admin/legal-holds", label: "Legal Holds", icon: Scale, description: "Litigation hold management", isNew: true, tourId: "legal-holds" },
+      { href: "/admin/dlp", label: "DLP Policies", icon: ShieldCheck, description: "Data loss prevention", isNew: true, tourId: "dlp" },
+      { href: "/admin/ai-governance", label: "AI Governance", icon: Brain, description: "AI model management and drift", isNew: true, tourId: "ai-governance" },
+      { href: "/admin/job-monitor", label: "Job Monitor", icon: Cog, description: "Background job queue status", isNew: true, tourId: "job-monitor" },
+      { href: "/admin/records", label: "Records", icon: Archive, description: "Archival and defensible deletion", isNew: true, tourId: "records" },
+      { href: "/settings", label: "Settings", icon: Settings, description: "Platform configuration", tourId: "settings" },
     ],
   },
-  // FUTURE UPGRADES - Uncomment when ready:
-  // {
-  //   id: 'management',
-  //   label: 'Management',
-  //   icon: Calendar,
-  //   defaultOpen: false,
-  //   gradient: 'from-violet-500 to-violet-500',
-  //   items: [
-  //     { href: "/renewals", label: "Renewals", icon: Clock, description: "Track contract renewals" },
-  //     { href: "/approvals", label: "Approvals", icon: Shield, description: "Pending approvals queue" },
-  //     { href: "/compliance", label: "Compliance", icon: Shield, description: "Compliance monitoring" },
-  //     { href: "/governance", label: "Governance", icon: Shield, description: "Policies & compliance" },
-  //   ],
-  // },
 ];
 
 function isPathActive(pathname: string, href: string) {

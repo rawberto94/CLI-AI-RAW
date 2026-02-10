@@ -33,6 +33,7 @@ import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
+import ContractLifecyclePipeline from "@/components/dashboard/ContractLifecyclePipeline";
 
 interface DashboardData {
   overview: {
@@ -429,6 +430,11 @@ export default function DashboardPage() {
             </Card>
           </motion.div>
         </div>
+
+        {/* Contract Lifecycle Pipeline */}
+        <motion.div variants={itemVariants}>
+          <ContractLifecyclePipeline />
+        </motion.div>
 
         {/* Quick Actions */}
         <motion.div variants={itemVariants}>
