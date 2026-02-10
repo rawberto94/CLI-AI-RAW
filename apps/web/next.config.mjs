@@ -2,6 +2,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import createNextIntlPlugin from "next-intl/plugin";
 
 function isNextBuildProcess() {
   const argv = process.argv ?? [];
@@ -421,4 +422,6 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(withBundleAnalyzer(nextConfig));

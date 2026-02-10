@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,12 +28,14 @@ import {
   FileUp,
   Bot,
   Target,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
 import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 import ContractLifecyclePipeline from "@/components/dashboard/ContractLifecyclePipeline";
+import CustomDashboardBuilder, { type DashboardWidget} from "@/components/dashboard/CustomDashboardBuilder";
 
 interface DashboardData {
   overview: {
@@ -137,6 +139,8 @@ const quickActions = [
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+  const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>([]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -179,6 +183,16 @@ export default function DashboardPage() {
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
         >
+          <Button 
+            size="sm" 
+            variant="outline" 
+            onClick={() => setCustomizerOpen(true)}
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            aria-label="Customize dashboard layout"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" aria-hidden="true" />
+            Customize
+          </Button>
           <Button 
             size="sm" 
             variant="outline" 
@@ -663,6 +677,14 @@ export default function DashboardPage() {
 
       {/* Floating AI Assistant */}
       <FloatingAIBubble />
+
+      {/* Dashboard Customizer Dialog */}
+      <CustomDashboardBuilder
+        open={customizerOpen}
+        onOpenChange={setCustomizerOpen}
+        onSave={setDashboardWidgets}
+        currentWidgets={dashboardWidgets.length > 0 ? dashboardWidgets : undefined}
+      />
     </DashboardLayout>
   );
 }

@@ -68,6 +68,20 @@ interface ValidationRule {
   message: string;
 }
 
+interface FieldDependencyRule {
+  sourceFieldId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty' | 'in' | 'not_in';
+  value: any;
+  action: 'show' | 'hide' | 'require' | 'disable' | 'set_value';
+  actionValue?: any;
+}
+
+interface ConditionalLogic {
+  enabled: boolean;
+  matchType: 'all' | 'any';
+  rules: FieldDependencyRule[];
+}
+
 interface MetadataFieldDefinition {
   id: string;
   name: string;
@@ -96,6 +110,9 @@ interface MetadataFieldDefinition {
   showInCard?: boolean;
   searchable?: boolean;
   filterable?: boolean;
+  dependsOn?: FieldDependencyRule[];
+  conditionalLogic?: ConditionalLogic;
+  validationRules?: ValidationRule[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -1099,6 +1116,173 @@ function FieldEditorModal({
                 Searchable
               </span>
             </label>
+          </div>
+
+          {/* Validation Rules */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Validation Rules
+            </h4>
+            <div className="space-y-2">
+              {(formData.validationRules || []).map((rule, idx) => (
+                <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                  <select
+                    value={rule.type}
+                    onChange={(e) => {
+                      const rules = [...(formData.validationRules || [])];
+                      rules[idx] = { ...rule, type: e.target.value as ValidationRule['type'] };
+                      setFormData({ ...formData, validationRules: rules });
+                    }}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    <option value="required">Required</option>
+                    <option value="min">Min Value</option>
+                    <option value="max">Max Value</option>
+                    <option value="minLength">Min Length</option>
+                    <option value="maxLength">Max Length</option>
+                    <option value="pattern">Regex Pattern</option>
+                    <option value="custom">Custom Rule</option>
+                  </select>
+                  {rule.type !== 'required' && (
+                    <input
+                      type="text"
+                      value={rule.value || ''}
+                      onChange={(e) => {
+                        const rules = [...(formData.validationRules || [])];
+                        rules[idx] = { ...rule, value: e.target.value };
+                        setFormData({ ...formData, validationRules: rules });
+                      }}
+                      placeholder="Value"
+                      className="flex-1 px-2 py-1 border rounded text-xs"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={rule.message || ''}
+                    onChange={(e) => {
+                      const rules = [...(formData.validationRules || [])];
+                      rules[idx] = { ...rule, message: e.target.value };
+                      setFormData({ ...formData, validationRules: rules });
+                    }}
+                    placeholder="Error message"
+                    className="flex-1 px-2 py-1 border rounded text-xs"
+                  />
+                  <button onClick={() => { const r = [...(formData.validationRules || [])]; r.splice(idx, 1); setFormData({ ...formData, validationRules: r }); }} className="p-1 hover:bg-red-100 rounded text-red-500">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setFormData({ ...formData, validationRules: [...(formData.validationRules || []), { type: 'required', message: 'This field is required' }] })}
+                className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" /> Add validation rule
+              </button>
+            </div>
+          </div>
+
+          {/* Field Dependency / Conditional Logic */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Conditional Logic
+            </h4>
+            <label className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={formData.conditionalLogic?.enabled || false}
+                onChange={(e) => setFormData({ ...formData, conditionalLogic: { enabled: e.target.checked, matchType: formData.conditionalLogic?.matchType || 'all', rules: formData.conditionalLogic?.rules || [] } })}
+                className="rounded"
+              />
+              <span className="text-sm">Enable conditional display</span>
+            </label>
+            {formData.conditionalLogic?.enabled && (
+              <div className="pl-4 border-l-2 border-violet-200 space-y-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <span>Show this field when</span>
+                  <select
+                    value={formData.conditionalLogic?.matchType || 'all'}
+                    onChange={(e) => setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, matchType: e.target.value as 'all' | 'any' } })}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    <option value="all">ALL</option>
+                    <option value="any">ANY</option>
+                  </select>
+                  <span>conditions are met:</span>
+                </div>
+                {(formData.conditionalLogic?.rules || []).map((rule, idx) => (
+                  <div key={idx} className="flex items-center gap-2 p-2 bg-violet-50 rounded border border-violet-100">
+                    <input
+                      type="text"
+                      value={rule.sourceFieldId || ''}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, sourceFieldId: e.target.value };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      placeholder="Source field name"
+                      className="w-28 px-2 py-1 border rounded text-xs"
+                    />
+                    <select
+                      value={rule.operator}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, operator: e.target.value as FieldDependencyRule['operator'] };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      className="px-2 py-1 border rounded text-xs"
+                    >
+                      <option value="equals">equals</option>
+                      <option value="not_equals">not equals</option>
+                      <option value="contains">contains</option>
+                      <option value="not_contains">not contains</option>
+                      <option value="greater_than">greater than</option>
+                      <option value="less_than">less than</option>
+                      <option value="is_empty">is empty</option>
+                      <option value="is_not_empty">is not empty</option>
+                    </select>
+                    {!['is_empty', 'is_not_empty'].includes(rule.operator) && (
+                      <input
+                        type="text"
+                        value={rule.value || ''}
+                        onChange={(e) => {
+                          const rules = [...(formData.conditionalLogic?.rules || [])];
+                          rules[idx] = { ...rule, value: e.target.value };
+                          setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                        }}
+                        placeholder="Value"
+                        className="w-24 px-2 py-1 border rounded text-xs"
+                      />
+                    )}
+                    <select
+                      value={rule.action}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, action: e.target.value as FieldDependencyRule['action'] };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      className="px-2 py-1 border rounded text-xs"
+                    >
+                      <option value="show">Show</option>
+                      <option value="hide">Hide</option>
+                      <option value="require">Require</option>
+                      <option value="disable">Disable</option>
+                      <option value="set_value">Set Value</option>
+                    </select>
+                    <button onClick={() => { const r = [...(formData.conditionalLogic?.rules || [])]; r.splice(idx, 1); setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules: r } }); }} className="p-1 hover:bg-red-100 rounded text-red-500">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules: [...(formData.conditionalLogic?.rules || []), { sourceFieldId: '', operator: 'equals', value: '', action: 'show' }] } })}
+                  className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add condition
+                </button>
+              </div>
+            )}
           </div>
 
           {/* AI Extraction Hint */}

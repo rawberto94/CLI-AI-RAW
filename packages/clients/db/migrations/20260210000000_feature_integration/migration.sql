@@ -1,10 +1,8 @@
 -- Feature Integration Migration
 -- Adds all models needed for the 67-feature integration backlog (Phases 0-5)
-
 -- ============================================================================
 -- A) INTAKE / TRIAGE
 -- ============================================================================
-
 -- Contract Request (intake form submissions from requester users)
 CREATE TABLE IF NOT EXISTS "contract_requests" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -16,7 +14,7 @@ CREATE TABLE IF NOT EXISTS "contract_requests" (
   "urgency" TEXT NOT NULL DEFAULT 'MEDIUM',
   "department" TEXT,
   "cost_center" TEXT,
-  "estimated_value" DECIMAL(15,2),
+  "estimated_value" DECIMAL(15, 2),
   "currency" TEXT DEFAULT 'USD',
   "counterparty_name" TEXT,
   "counterparty_email" TEXT,
@@ -40,13 +38,11 @@ CREATE TABLE IF NOT EXISTS "contract_requests" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "contract_requests_tenant_id_idx" ON "contract_requests"("tenant_id");
 CREATE INDEX IF NOT EXISTS "contract_requests_requester_id_idx" ON "contract_requests"("requester_id");
 CREATE INDEX IF NOT EXISTS "contract_requests_status_idx" ON "contract_requests"("status");
 CREATE INDEX IF NOT EXISTS "contract_requests_assigned_to_idx" ON "contract_requests"("assigned_to");
 CREATE INDEX IF NOT EXISTS "contract_requests_sla_idx" ON "contract_requests"("tenant_id", "status", "sla_deadline");
-
 -- Triage / Routing Rules
 CREATE TABLE IF NOT EXISTS "routing_rules" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -66,10 +62,8 @@ CREATE TABLE IF NOT EXISTS "routing_rules" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "routing_rules_tenant_id_idx" ON "routing_rules"("tenant_id");
 CREATE INDEX IF NOT EXISTS "routing_rules_active_idx" ON "routing_rules"("tenant_id", "is_active");
-
 -- Pre-Approval Gates
 CREATE TABLE IF NOT EXISTS "pre_approval_gates" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -80,19 +74,16 @@ CREATE TABLE IF NOT EXISTS "pre_approval_gates" (
   "is_active" BOOLEAN DEFAULT true,
   "conditions" JSONB NOT NULL DEFAULT '{}',
   "required_approver_role" TEXT,
-  "auto_pass_below" DECIMAL(15,2),
+  "auto_pass_below" DECIMAL(15, 2),
   "currency" TEXT DEFAULT 'USD',
   "created_by" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "pre_approval_gates_tenant_id_idx" ON "pre_approval_gates"("tenant_id");
-
 -- ============================================================================
 -- B) CLAUSE GOVERNANCE
 -- ============================================================================
-
 CREATE TABLE IF NOT EXISTS "clause_approvals" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
   "tenant_id" TEXT NOT NULL,
@@ -108,15 +99,12 @@ CREATE TABLE IF NOT EXISTS "clause_approvals" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "clause_approvals_tenant_id_idx" ON "clause_approvals"("tenant_id");
 CREATE INDEX IF NOT EXISTS "clause_approvals_clause_idx" ON "clause_approvals"("clause_id");
 CREATE INDEX IF NOT EXISTS "clause_approvals_status_idx" ON "clause_approvals"("tenant_id", "status");
-
 -- ============================================================================
 -- D) APPROVAL GOVERNANCE
 -- ============================================================================
-
 -- Delegation of Authority Matrix
 CREATE TABLE IF NOT EXISTS "delegation_of_authority" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -125,7 +113,7 @@ CREATE TABLE IF NOT EXISTS "delegation_of_authority" (
   "role" TEXT NOT NULL,
   "department" TEXT,
   "contract_types" JSONB DEFAULT '[]',
-  "max_value" DECIMAL(15,2),
+  "max_value" DECIMAL(15, 2),
   "currency" TEXT DEFAULT 'USD',
   "requires_counter_sign" BOOLEAN DEFAULT false,
   "counter_sign_role" TEXT,
@@ -139,10 +127,8 @@ CREATE TABLE IF NOT EXISTS "delegation_of_authority" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "doa_tenant_id_idx" ON "delegation_of_authority"("tenant_id");
 CREATE INDEX IF NOT EXISTS "doa_role_idx" ON "delegation_of_authority"("tenant_id", "role");
-
 -- Signature Policy Rules
 CREATE TABLE IF NOT EXISTS "signature_policies" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -150,8 +136,8 @@ CREATE TABLE IF NOT EXISTS "signature_policies" (
   "name" TEXT NOT NULL,
   "description" TEXT,
   "contract_types" JSONB DEFAULT '[]',
-  "min_value" DECIMAL(15,2),
-  "max_value" DECIMAL(15,2),
+  "min_value" DECIMAL(15, 2),
+  "max_value" DECIMAL(15, 2),
   "currency" TEXT DEFAULT 'USD',
   "required_signatories" JSONB NOT NULL DEFAULT '[]',
   "signing_order" TEXT DEFAULT 'SEQUENTIAL',
@@ -163,13 +149,10 @@ CREATE TABLE IF NOT EXISTS "signature_policies" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "sig_policies_tenant_id_idx" ON "signature_policies"("tenant_id");
-
 -- ============================================================================
 -- E) POST-SIGNATURE EXECUTION
 -- ============================================================================
-
 -- Evidence Repository
 CREATE TABLE IF NOT EXISTS "evidence_items" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -193,11 +176,9 @@ CREATE TABLE IF NOT EXISTS "evidence_items" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "evidence_tenant_id_idx" ON "evidence_items"("tenant_id");
 CREATE INDEX IF NOT EXISTS "evidence_obligation_idx" ON "evidence_items"("obligation_id");
 CREATE INDEX IF NOT EXISTS "evidence_contract_idx" ON "evidence_items"("contract_id");
-
 -- Amendment Workflows
 CREATE TABLE IF NOT EXISTS "amendments" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -211,7 +192,7 @@ CREATE TABLE IF NOT EXISTS "amendments" (
   "status" TEXT NOT NULL DEFAULT 'DRAFT',
   "changes_summary" JSONB DEFAULT '[]',
   "effective_date" TIMESTAMP(3),
-  "financial_impact" DECIMAL(15,2),
+  "financial_impact" DECIMAL(15, 2),
   "currency" TEXT DEFAULT 'USD',
   "requires_re_signature" BOOLEAN DEFAULT true,
   "initiated_by" TEXT NOT NULL,
@@ -221,15 +202,12 @@ CREATE TABLE IF NOT EXISTS "amendments" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "amendments_tenant_id_idx" ON "amendments"("tenant_id");
 CREATE INDEX IF NOT EXISTS "amendments_contract_idx" ON "amendments"("original_contract_id");
 CREATE INDEX IF NOT EXISTS "amendments_status_idx" ON "amendments"("tenant_id", "status");
-
 -- ============================================================================
 -- F) SUPPLIER LIFECYCLE
 -- ============================================================================
-
 -- Vendor Risk Profiles
 CREATE TABLE IF NOT EXISTS "vendor_risk_profiles" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -253,11 +231,9 @@ CREATE TABLE IF NOT EXISTS "vendor_risk_profiles" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "vrp_tenant_id_idx" ON "vendor_risk_profiles"("tenant_id");
 CREATE INDEX IF NOT EXISTS "vrp_risk_tier_idx" ON "vendor_risk_profiles"("tenant_id", "risk_tier");
 CREATE INDEX IF NOT EXISTS "vrp_vendor_name_idx" ON "vendor_risk_profiles"("tenant_id", "vendor_name");
-
 -- Document Expiry Monitoring
 CREATE TABLE IF NOT EXISTS "document_expiry_items" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -279,15 +255,12 @@ CREATE TABLE IF NOT EXISTS "document_expiry_items" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "doc_expiry_tenant_idx" ON "document_expiry_items"("tenant_id");
 CREATE INDEX IF NOT EXISTS "doc_expiry_date_idx" ON "document_expiry_items"("expiry_date");
 CREATE INDEX IF NOT EXISTS "doc_expiry_status_idx" ON "document_expiry_items"("tenant_id", "status");
-
 -- ============================================================================
 -- G) SPEND / PO LINKAGE
 -- ============================================================================
-
 -- Purchase Orders
 CREATE TABLE IF NOT EXISTS "purchase_orders" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -296,7 +269,7 @@ CREATE TABLE IF NOT EXISTS "purchase_orders" (
   "contract_id" TEXT,
   "vendor_name" TEXT NOT NULL,
   "status" TEXT NOT NULL DEFAULT 'DRAFT',
-  "total_amount" DECIMAL(15,2) NOT NULL,
+  "total_amount" DECIMAL(15, 2) NOT NULL,
   "currency" TEXT DEFAULT 'USD',
   "line_items" JSONB DEFAULT '[]',
   "department" TEXT,
@@ -312,12 +285,10 @@ CREATE TABLE IF NOT EXISTS "purchase_orders" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "po_tenant_idx" ON "purchase_orders"("tenant_id");
 CREATE INDEX IF NOT EXISTS "po_number_idx" ON "purchase_orders"("tenant_id", "po_number");
 CREATE INDEX IF NOT EXISTS "po_contract_idx" ON "purchase_orders"("contract_id");
 CREATE UNIQUE INDEX IF NOT EXISTS "po_number_unique" ON "purchase_orders"("tenant_id", "po_number");
-
 -- Invoices
 CREATE TABLE IF NOT EXISTS "invoices" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -327,7 +298,7 @@ CREATE TABLE IF NOT EXISTS "invoices" (
   "contract_id" TEXT,
   "vendor_name" TEXT NOT NULL,
   "status" TEXT NOT NULL DEFAULT 'PENDING',
-  "total_amount" DECIMAL(15,2) NOT NULL,
+  "total_amount" DECIMAL(15, 2) NOT NULL,
   "currency" TEXT DEFAULT 'USD',
   "line_items" JSONB DEFAULT '[]',
   "invoice_date" TIMESTAMP(3),
@@ -341,12 +312,10 @@ CREATE TABLE IF NOT EXISTS "invoices" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "inv_tenant_idx" ON "invoices"("tenant_id");
 CREATE INDEX IF NOT EXISTS "inv_po_idx" ON "invoices"("po_id");
 CREATE INDEX IF NOT EXISTS "inv_contract_idx" ON "invoices"("contract_id");
 CREATE INDEX IF NOT EXISTS "inv_match_idx" ON "invoices"("tenant_id", "match_status");
-
 -- Spend Exceptions
 CREATE TABLE IF NOT EXISTS "spend_exceptions" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -357,9 +326,9 @@ CREATE TABLE IF NOT EXISTS "spend_exceptions" (
   "contract_id" TEXT,
   "po_id" TEXT,
   "invoice_id" TEXT,
-  "expected_amount" DECIMAL(15,2),
-  "actual_amount" DECIMAL(15,2),
-  "deviation_percent" DECIMAL(5,2),
+  "expected_amount" DECIMAL(15, 2),
+  "actual_amount" DECIMAL(15, 2),
+  "deviation_percent" DECIMAL(5, 2),
   "currency" TEXT DEFAULT 'USD',
   "status" TEXT NOT NULL DEFAULT 'OPEN',
   "severity" TEXT NOT NULL DEFAULT 'MEDIUM',
@@ -370,14 +339,11 @@ CREATE TABLE IF NOT EXISTS "spend_exceptions" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "se_tenant_idx" ON "spend_exceptions"("tenant_id");
 CREATE INDEX IF NOT EXISTS "se_status_idx" ON "spend_exceptions"("tenant_id", "status");
-
 -- ============================================================================
 -- H) ENTERPRISE IDENTITY & SECURITY
 -- ============================================================================
-
 -- API Keys (public API key management)
 CREATE TABLE IF NOT EXISTS "api_keys" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -395,11 +361,9 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "api_keys_tenant_idx" ON "api_keys"("tenant_id");
 CREATE INDEX IF NOT EXISTS "api_keys_hash_idx" ON "api_keys"("key_hash");
 CREATE INDEX IF NOT EXISTS "api_keys_prefix_idx" ON "api_keys"("key_prefix");
-
 -- SCIM Sync Records
 CREATE TABLE IF NOT EXISTS "scim_sync_records" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -416,10 +380,8 @@ CREATE TABLE IF NOT EXISTS "scim_sync_records" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE UNIQUE INDEX IF NOT EXISTS "scim_unique" ON "scim_sync_records"("tenant_id", "scim_id");
 CREATE INDEX IF NOT EXISTS "scim_tenant_idx" ON "scim_sync_records"("tenant_id");
-
 -- Tenant AI Policies
 CREATE TABLE IF NOT EXISTS "tenant_ai_policies" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -429,9 +391,9 @@ CREATE TABLE IF NOT EXISTS "tenant_ai_policies" (
   "enable_extraction" BOOLEAN DEFAULT true,
   "enable_generation" BOOLEAN DEFAULT true,
   "enable_chat" BOOLEAN DEFAULT true,
-  "confidence_threshold" DECIMAL(3,2) DEFAULT 0.7,
+  "confidence_threshold" DECIMAL(3, 2) DEFAULT 0.7,
   "require_human_review" BOOLEAN DEFAULT false,
-  "review_threshold" DECIMAL(3,2) DEFAULT 0.5,
+  "review_threshold" DECIMAL(3, 2) DEFAULT 0.5,
   "data_retention_days" INTEGER DEFAULT 90,
   "pii_masking" BOOLEAN DEFAULT false,
   "audit_all_requests" BOOLEAN DEFAULT true,
@@ -440,7 +402,6 @@ CREATE TABLE IF NOT EXISTS "tenant_ai_policies" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 -- DLP Policies
 CREATE TABLE IF NOT EXISTS "dlp_policies" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -456,13 +417,10 @@ CREATE TABLE IF NOT EXISTS "dlp_policies" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "dlp_tenant_idx" ON "dlp_policies"("tenant_id");
-
 -- ============================================================================
 -- I) RECORDS MANAGEMENT
 -- ============================================================================
-
 -- Legal Holds
 CREATE TABLE IF NOT EXISTS "legal_holds" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -483,10 +441,8 @@ CREATE TABLE IF NOT EXISTS "legal_holds" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "lh_tenant_idx" ON "legal_holds"("tenant_id");
 CREATE INDEX IF NOT EXISTS "lh_status_idx" ON "legal_holds"("tenant_id", "status");
-
 -- Archived Contracts
 CREATE TABLE IF NOT EXISTS "archived_contracts" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -500,10 +456,8 @@ CREATE TABLE IF NOT EXISTS "archived_contracts" (
   "archived_by" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "ac_tenant_idx" ON "archived_contracts"("tenant_id");
 CREATE INDEX IF NOT EXISTS "ac_retention_idx" ON "archived_contracts"("retention_until");
-
 -- Deletion Certificates
 CREATE TABLE IF NOT EXISTS "deletion_certificates" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -520,13 +474,10 @@ CREATE TABLE IF NOT EXISTS "deletion_certificates" (
   "metadata" JSONB DEFAULT '{}',
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "dc_tenant_idx" ON "deletion_certificates"("tenant_id");
-
 -- ============================================================================
 -- K) AI GOVERNANCE
 -- ============================================================================
-
 -- Evaluation Datasets
 CREATE TABLE IF NOT EXISTS "evaluation_datasets" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -538,16 +489,14 @@ CREATE TABLE IF NOT EXISTS "evaluation_datasets" (
   "total_items" INTEGER DEFAULT 0,
   "last_run_at" TIMESTAMP(3),
   "last_run_results" JSONB DEFAULT '{}',
-  "precision_score" DECIMAL(5,4),
-  "recall_score" DECIMAL(5,4),
-  "f1_score" DECIMAL(5,4),
+  "precision_score" DECIMAL(5, 4),
+  "recall_score" DECIMAL(5, 4),
+  "f1_score" DECIMAL(5, 4),
   "created_by" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "ed_tenant_idx" ON "evaluation_datasets"("tenant_id");
-
 -- Drift Metrics
 CREATE TABLE IF NOT EXISTS "drift_metrics" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -555,8 +504,8 @@ CREATE TABLE IF NOT EXISTS "drift_metrics" (
   "metric_type" TEXT NOT NULL DEFAULT 'ACCURACY',
   "model_name" TEXT NOT NULL,
   "operation" TEXT NOT NULL,
-  "score" DECIMAL(5,4) NOT NULL,
-  "baseline_score" DECIMAL(5,4),
+  "score" DECIMAL(5, 4) NOT NULL,
+  "baseline_score" DECIMAL(5, 4),
   "sample_size" INTEGER DEFAULT 0,
   "drift_detected" BOOLEAN DEFAULT false,
   "drift_severity" TEXT,
@@ -564,10 +513,8 @@ CREATE TABLE IF NOT EXISTS "drift_metrics" (
   "measured_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "dm_tenant_idx" ON "drift_metrics"("tenant_id");
 CREATE INDEX IF NOT EXISTS "dm_measured_idx" ON "drift_metrics"("tenant_id", "measured_at");
-
 -- Training Data Exports
 CREATE TABLE IF NOT EXISTS "training_exports" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -583,13 +530,10 @@ CREATE TABLE IF NOT EXISTS "training_exports" (
   "created_by" TEXT NOT NULL,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "te_tenant_idx" ON "training_exports"("tenant_id");
-
 -- ============================================================================
 -- L) PLATFORM SCALE
 -- ============================================================================
-
 -- Event Store (for event sourcing)
 CREATE TABLE IF NOT EXISTS "event_store" (
   "id" TEXT NOT NULL PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -604,7 +548,6 @@ CREATE TABLE IF NOT EXISTS "event_store" (
   "created_by" TEXT,
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-
 CREATE INDEX IF NOT EXISTS "es_aggregate_idx" ON "event_store"("aggregate_type", "aggregate_id");
 CREATE INDEX IF NOT EXISTS "es_tenant_idx" ON "event_store"("tenant_id");
 CREATE INDEX IF NOT EXISTS "es_type_idx" ON "event_store"("event_type");

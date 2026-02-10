@@ -40,6 +40,8 @@ import {
   Bot,
   Zap,
   FilePlus,
+  PenLine,
+  Key,
 } from 'lucide-react'
 import { ApprovalNotificationBell } from '@/components/workflows/ApprovalNotificationBell'
 
@@ -233,6 +235,33 @@ const navigationItems: NavigationItem[] = [
         href: '/workflows/sla',
         icon: Target,
         description: 'SLA monitoring'
+      }
+    ]
+  },
+  {
+    name: 'Admin',
+    href: '/admin/sso',
+    icon: Settings,
+    description: 'System settings',
+    children: [
+      {
+        name: 'SSO / SAML',
+        href: '/admin/sso',
+        icon: Key,
+        description: 'Single sign-on',
+        badge: 'NEW'
+      },
+      {
+        name: 'Governance',
+        href: '/governance',
+        icon: Shield,
+        description: 'Policies & compliance'
+      },
+      {
+        name: 'Settings',
+        href: '/settings',
+        icon: Settings,
+        description: 'Platform settings'
       }
     ]
   }
