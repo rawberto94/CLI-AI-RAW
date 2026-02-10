@@ -136,7 +136,7 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getApiContext(req);
   const params = await context.params;
   const startTime = Date.now();
 
@@ -489,7 +489,7 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getApiContext(req);
   const params = await context.params;
   try {
     const contractId = params.id;
@@ -581,7 +581,7 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getApiContext(req);
   const params = await context.params;
   try {
     const contractId = params.id;
