@@ -731,14 +731,18 @@ How can I help you today?`;
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
-                if (data.content) {
+                if (data.type === 'content' && data.content) {
+                  fullContent += data.content;
+                  setStreamingText(fullContent);
+                } else if (data.content && !data.type) {
+                  // Legacy format compatibility
                   fullContent += data.content;
                   setStreamingText(fullContent);
                 }
                 if (data.sources) sources = data.sources;
                 if (data.suggestedActions) suggestedActions = data.suggestedActions;
                 if (data.contractPreviews) contractPreviews = data.contractPreviews;
-                if (data.done) break;
+                if (data.done || data.type === 'done') break;
               } catch (_e) {
                 // Ignore parse errors for incomplete chunks
               }

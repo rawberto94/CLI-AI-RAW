@@ -101,6 +101,7 @@ interface Message {
   contractPreviews?: ContractPreviewCard[];
   clarificationNeeded?: boolean;
   clarificationPrompts?: string[];
+  toolProgress?: ToolProgressEntry[];
   metadata?: {
     source?: string;
     confidence?: number;
@@ -109,7 +110,16 @@ interface Message {
     usedRAG?: boolean;
     intent?: string;
     isError?: boolean;
+    toolsUsed?: string[];
   };
+}
+
+interface ToolProgressEntry {
+  toolName: string;
+  status: 'running' | 'done' | 'error';
+  summary?: string;
+  navigation?: { url: string; label: string };
+  executionTimeMs?: number;
 }
 
 interface RAGSource {
@@ -268,6 +278,28 @@ const formatContent = (content: string) => {
     .replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>')
     .replace(/\n/g, "<br />");
 };
+
+/** Format a snake_case tool name into a human-friendly label */
+function formatToolName(name: string): string {
+  const labels: Record<string, string> = {
+    search_contracts: '🔍 Searching contracts',
+    get_contract_details: '📄 Loading contract',
+    list_expiring_contracts: '📅 Checking expirations',
+    get_spend_analysis: '💰 Analyzing spend',
+    get_risk_assessment: '🔴 Assessing risk',
+    get_supplier_info: '🏢 Looking up supplier',
+    start_workflow: '▶️ Starting workflow',
+    list_workflows: '📋 Loading workflows',
+    get_pending_approvals: '⏳ Checking approvals',
+    approve_or_reject_step: '✅ Processing approval',
+    create_contract: '📝 Creating contract',
+    update_contract: '✏️ Updating contract',
+    navigate_to_page: '🔗 Navigating',
+    get_compliance_summary: '✅ Checking compliance',
+    get_contract_stats: '📊 Loading statistics',
+  };
+  return labels[name] || name.replace(/_/g, ' ');
+}
 
 // Get page context for better RAG targeting
 function getPageContext(pathname: string | null): string {
@@ -938,8 +970,52 @@ export function FloatingAIBubble() {
                           : m
                       )
                     );
+                  } else if (data.type === 'tool_start') {
+                    // Show tool execution in progress
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? {
+                              ...m,
+                              toolProgress: [
+                                ...(m.toolProgress || []),
+                                { toolName: data.toolName, status: 'running' as const },
+                              ],
+                            }
+                          : m
+                      )
+                    );
+                  } else if (data.type === 'tool_done') {
+                    // Update tool progress to done
+                    setMessages((prev) =>
+                      prev.map((m) =>
+                        m.id === assistantMessageId
+                          ? {
+                              ...m,
+                              toolProgress: (m.toolProgress || []).map((tp) =>
+                                tp.toolName === data.toolName
+                                  ? {
+                                      ...tp,
+                                      status: (data.success ? 'done' : 'error') as 'done' | 'error',
+                                      summary: data.summary,
+                                      navigation: data.navigation,
+                                      executionTimeMs: data.executionTimeMs,
+                                    }
+                                  : tp
+                              ),
+                            }
+                          : m
+                      )
+                    );
+                    // If tool returned navigation, add to suggested actions
+                    if (data.suggestedActions) {
+                      finalMetadata.suggestedActions = [
+                        ...((finalMetadata.suggestedActions as Array<{ label: string; action: string }>) || []),
+                        ...data.suggestedActions,
+                      ];
+                    }
                   } else if (data.type === 'metadata') {
-                    finalMetadata = data.metadata || {};
+                    finalMetadata = data || {};
                     // Update token usage for cost widget
                     if (data.metadata?.usage) {
                       const usage = data.metadata.usage;
@@ -958,7 +1034,7 @@ export function FloatingAIBubble() {
                   } else if (data.type === 'done') {
                     const processingTime = Date.now() - startTime;
                     
-                    // Finalize the message with full metadata
+                    // Finalize the message with full metadata including tools
                     setMessages((prev) =>
                       prev.map((m) =>
                         m.id === assistantMessageId
@@ -966,19 +1042,24 @@ export function FloatingAIBubble() {
                               ...m,
                               content: accumulatedContent,
                               suggestions: data.suggestions,
+                              actions: (data.suggestedActions || (finalMetadata.suggestedActions as Array<{ label: string; action: string }>))?.map((a: { label: string; action: string }) => ({
+                                label: a.label,
+                                action: a.action,
+                              })),
                               metadata: {
-                                confidence: finalMetadata.confidence as number || 0.95,
+                                confidence: data.confidence as number || finalMetadata.confidence as number || 0.95,
                                 processingTime,
-                                source: "ai-stream",
-                                usedRAG: finalMetadata.usedRAG as boolean || false,
+                                source: "ai-stream-v2",
+                                usedRAG: (finalMetadata.sources as string[])?.length > 0,
                                 ragSources: finalMetadata.ragSources as RAGSource[],
+                                toolsUsed: data.toolsUsed as string[],
                               },
                             }
                           : m
                       )
                     );
                   } else if (data.type === 'error') {
-                    throw new Error(data.message || 'Stream error');
+                    throw new Error(data.message || data.error || 'Stream error');
                   }
                 } catch {
                   // Parse error, continue
@@ -1859,6 +1940,41 @@ export function FloatingAIBubble() {
                                       : "bg-white/95 backdrop-blur-sm text-gray-800 rounded-bl-md shadow-md border border-gray-100/80 hover:shadow-lg transition-shadow"
                                   }`}
                                 >
+                                  {/* Tool Progress Indicators */}
+                                  {message.toolProgress && message.toolProgress.length > 0 && (
+                                    <div className="mb-3 space-y-1.5">
+                                      {message.toolProgress.map((tp, idx) => (
+                                        <div key={idx} className="flex items-center gap-2 text-xs">
+                                          {tp.status === 'running' ? (
+                                            <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+                                          ) : tp.status === 'done' ? (
+                                            <Check className="h-3 w-3 text-green-500" />
+                                          ) : (
+                                            <X className="h-3 w-3 text-red-400" />
+                                          )}
+                                          <span className="text-gray-500 font-medium">
+                                            {formatToolName(tp.toolName)}
+                                          </span>
+                                          {tp.summary && (
+                                            <span className="text-gray-400">— {tp.summary}</span>
+                                          )}
+                                          {tp.navigation && (
+                                            <a
+                                              href={tp.navigation.url}
+                                              className="text-violet-500 hover:underline ml-auto"
+                                              onClick={(e) => { e.preventDefault(); window.location.href = tp.navigation!.url; }}
+                                            >
+                                              {tp.navigation.label} →
+                                            </a>
+                                          )}
+                                          {tp.executionTimeMs !== undefined && tp.status === 'done' && (
+                                            <span className="text-gray-300 ml-auto text-[10px]">{tp.executionTimeMs}ms</span>
+                                          )}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+
                                   <div
                                     className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-violet-600"
                                     dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
