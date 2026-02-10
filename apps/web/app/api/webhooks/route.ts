@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { webhookService } from 'data-orchestration/services';
 // Supported webhook events
 export const WEBHOOK_EVENTS = [

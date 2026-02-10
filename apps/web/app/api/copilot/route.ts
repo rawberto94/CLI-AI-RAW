@@ -14,7 +14,7 @@ import {
   type CopilotContext,
   type RealtimeSuggestion as _RealtimeSuggestion 
 } from 'data-orchestration/services';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Get real-time suggestions

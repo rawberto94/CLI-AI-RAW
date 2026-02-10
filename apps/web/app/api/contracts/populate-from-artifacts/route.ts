@@ -15,7 +15,7 @@ import { contractService } from 'data-orchestration/services';
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { queueBatchRAGReindex } from "@/lib/rag/reindex-helper";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

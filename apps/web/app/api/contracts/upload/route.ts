@@ -20,7 +20,7 @@ import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-t
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { contractUploadSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -586,5 +586,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
  * Handle CORS preflight requests
  */
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "POST, OPTIONS");
 }

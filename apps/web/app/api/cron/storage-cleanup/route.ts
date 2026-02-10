@@ -13,7 +13,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withCronHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { runScheduledCleanup } from '@/lib/storage/cleanup-service';
 import { goalPersistenceService } from '@repo/workers/agents/goal-persistence-service';
 

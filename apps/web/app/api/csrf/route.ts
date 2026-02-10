@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { setCSRFCookie } from '@/lib/csrf';
-import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

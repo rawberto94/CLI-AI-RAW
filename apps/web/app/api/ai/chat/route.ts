@@ -6,7 +6,7 @@ import OpenAI from 'openai'
 import { hybridSearch } from '@/lib/rag/advanced-rag.service'
 import { prisma } from '@/lib/prisma'
 import { conversationMemoryService } from 'data-orchestration/services'
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '' })
 

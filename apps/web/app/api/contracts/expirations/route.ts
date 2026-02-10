@@ -12,7 +12,7 @@ import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
 // TODO: Migrate $queryRaw/$executeRaw calls to contractService when raw query support is added
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

@@ -10,7 +10,7 @@ import { rateCardExtractionService } from 'data-orchestration/services';
 import { roleStandardizationService } from 'data-orchestration/services';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-export async function POST(_request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
+export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
     const ctx = getApiContext(request);
 try {    const tenantId = ctx.tenantId;

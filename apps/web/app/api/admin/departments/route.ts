@@ -5,7 +5,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { auditTrailService } from 'data-orchestration/services';
 import { hasPermission } from '@/lib/permissions';
@@ -226,6 +226,7 @@ export async function getContractsByDepartmentAccess(
   userId: string,
   tenantId: string
 ): Promise<{ departmentIds: string[]; contractFilter: any }> {
+  const ctx = getApiContext(userId);
   // Get user's departments
   const userDepartments = await prisma.userDepartment.findMany({
     where: { userId },

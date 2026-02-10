@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withCronHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 

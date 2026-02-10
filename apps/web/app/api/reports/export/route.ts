@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { withAuthApiHandler, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 interface ExportRequest {
   type: "supplier" | "rate-card" | "contract" | "performance" | "financial";

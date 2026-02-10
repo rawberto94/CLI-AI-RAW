@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withCronHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { AdvancedNotificationService, NotificationPayload } from '@/lib/notifications/notification.service';

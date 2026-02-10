@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
  * @endpoint GET /api/docs/openapi
  */
 
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 const openApiSpec = {
   openapi: '3.0.3',

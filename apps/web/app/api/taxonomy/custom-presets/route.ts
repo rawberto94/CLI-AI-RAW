@@ -19,6 +19,7 @@ import { Prisma } from "@prisma/client";
 import { withAuthApiHandler, withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from "@/lib/api-middleware";
 import type { AuthenticatedApiContext } from "@/lib/api-middleware";
 import { taxonomyService } from 'data-orchestration/services';
+import { getApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPE DEFINITIONS

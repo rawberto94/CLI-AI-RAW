@@ -75,6 +75,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -128,6 +129,7 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -264,6 +266,7 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -382,5 +385,6 @@ export async function DELETE(
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "GET, PUT, DELETE, OPTIONS");
 }

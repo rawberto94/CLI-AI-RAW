@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * POST /api/admin/queue-control

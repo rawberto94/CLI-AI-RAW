@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { Redis } from '@upstash/redis';
 import { alerts } from '@/lib/alerting';
 import { monitoringService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 interface HealthCheck {
   status: 'healthy' | 'degraded' | 'unhealthy';

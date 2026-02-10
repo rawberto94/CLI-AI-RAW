@@ -7,7 +7,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withCronHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 

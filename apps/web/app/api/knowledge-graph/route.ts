@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { knowledgeGraphService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 /**
  * Knowledge Graph API

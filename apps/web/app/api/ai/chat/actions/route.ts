@@ -13,7 +13,7 @@ import { NextRequest } from 'next/server';
 import { executeAction, detectUpdateIntent } from '@/lib/chatbot/action-handlers';
 import { getPendingAction } from '@/lib/chatbot/action-handlers/update-actions';
 import type { ChatContext, DetectedIntent } from '@/lib/chatbot/types';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

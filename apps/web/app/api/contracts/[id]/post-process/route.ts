@@ -49,6 +49,7 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
@@ -301,5 +302,6 @@ export async function POST(
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "POST, OPTIONS");
 }

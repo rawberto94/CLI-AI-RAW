@@ -14,6 +14,7 @@ import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, handleApiError } from "@/lib/api-middleware";
 import { taxonomyService } from 'data-orchestration/services';
+import { getApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // GET - Category Analytics
@@ -190,5 +191,6 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "GET, OPTIONS");
 }

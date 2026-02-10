@@ -8,7 +8,7 @@
 
 import { NextRequest } from 'next/server';
 import { getAvailableProviders, logProviderStatus as _logProviderStatus } from '@/lib/ai/eu-compliant-ocr';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // Types

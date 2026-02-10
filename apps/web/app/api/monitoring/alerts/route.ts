@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { alertingService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/monitoring/alerts

@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
 type ActivityType = 
   | 'contract_created'
@@ -196,6 +196,7 @@ export async function logActivity(
     metadata?: Record<string, any>;
   }
 ): Promise<void> {
+  const ctx = getApiContext(type);
   try {
     if (!options.tenantId) {
       console.error('[logActivity] tenantId is required');

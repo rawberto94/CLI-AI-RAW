@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { monitoringService } from 'data-orchestration/services';
 import { randomUUID } from 'crypto';

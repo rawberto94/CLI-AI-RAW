@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 import { getSessionTenantId } from '@/lib/tenant-server';
 import { getWorkflowManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (!session?.user) {

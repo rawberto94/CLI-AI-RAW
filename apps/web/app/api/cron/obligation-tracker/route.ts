@@ -8,7 +8,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { withCronHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { optionalImport } from '@/lib/server/optional-module';
 
 export const dynamic = 'force-dynamic';

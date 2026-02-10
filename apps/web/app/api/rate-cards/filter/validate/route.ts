@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { AdvancedFilterService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const advancedFilterService = new AdvancedFilterService(prisma);
 

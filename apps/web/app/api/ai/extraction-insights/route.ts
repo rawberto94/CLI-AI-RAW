@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import { getExtractionAnalytics } from '@/lib/ai/extraction-analytics';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/ai/extraction-insights

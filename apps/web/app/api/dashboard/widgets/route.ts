@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * Dashboard Widgets API

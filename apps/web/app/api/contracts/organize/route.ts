@@ -16,7 +16,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";

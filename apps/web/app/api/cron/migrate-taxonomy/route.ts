@@ -10,7 +10,7 @@
  */
 
 import { NextRequest } from 'next/server'
-import { withCronHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware'
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware'
 import { prisma } from '@/lib/prisma'
 import { classifyContract } from '@/lib/ai/contract-classifier-taxonomy'
 import { taxonomyService } from 'data-orchestration/services';

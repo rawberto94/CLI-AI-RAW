@@ -13,7 +13,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
 import { Prisma } from '@prisma/client';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';
 
 /**

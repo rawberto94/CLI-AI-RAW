@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // Contact form submission handler
 // In production, this would send to email service (SendGrid, Resend, etc.)

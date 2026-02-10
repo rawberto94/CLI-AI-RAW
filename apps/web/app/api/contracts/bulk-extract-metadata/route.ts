@@ -11,7 +11,7 @@ import { contractService } from 'data-orchestration/services';
 import type { Prisma } from '@prisma/client';
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { getApiTenantId } from '@/lib/tenant-server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   // Auth check

@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import prisma from '@/lib/prisma';
 
 // GET /api/workflows/sla - SLA definitions, metrics, breaches, active steps

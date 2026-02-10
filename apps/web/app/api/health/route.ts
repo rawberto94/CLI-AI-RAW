@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { healthCheckService } from 'data-orchestration/services';
-import { withApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';

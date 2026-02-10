@@ -3,7 +3,7 @@
  * GET /api/admin/metrics/taxonomy - Get taxonomy adoption and classification metrics
  */
 
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { taxonomyService } from 'data-orchestration/services';
 import { Prisma } from '@prisma/client';

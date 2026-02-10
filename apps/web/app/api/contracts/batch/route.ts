@@ -16,7 +16,7 @@ import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { initializeStorage } from "@/lib/storage-service";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 function isFile(value: unknown): value is File {
   return typeof File !== "undefined" && value instanceof File;

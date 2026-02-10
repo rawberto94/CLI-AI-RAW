@@ -6,7 +6,7 @@
 import { NextRequest } from 'next/server';
 import { calculateContractHealth, calculatePortfolioHealth } from '@/lib/health/contract-health-score';
 import { getApiTenantId } from '@/lib/tenant-server';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

@@ -7,7 +7,7 @@
 import { NextRequest } from 'next/server';
 import { costSavingsAnalyzerService as _costSavingsAnalyzerService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/analytics/cost-savings

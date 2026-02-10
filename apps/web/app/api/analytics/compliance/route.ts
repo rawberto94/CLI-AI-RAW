@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { analyticalIntelligenceService } from "@/lib/services/analytical-intelligence.service";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const { searchParams } = new URL(request.url);

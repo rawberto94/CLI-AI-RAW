@@ -9,7 +9,7 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
  * Get all notes for a contract
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getApiContext(request);
@@ -128,7 +128,6 @@ export async function POST(
     })
     
     return createSuccessResponse(ctx, {
-      success: true,
       note: {
         id: note.id,
         content: note.content,

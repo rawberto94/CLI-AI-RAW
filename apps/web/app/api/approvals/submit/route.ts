@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { requiresApprovalWorkflow, getContractLifecycle, suggestWorkflow } from '@/lib/contract-helpers';
 import { autoAssignWorkflowSteps } from '@/lib/workflow-auto-assign';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';

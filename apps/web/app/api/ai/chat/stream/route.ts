@@ -31,7 +31,7 @@ import { semanticCache } from '@/lib/ai/semantic-cache.service';
 import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
 import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
 import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streaming-tools';
-import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 

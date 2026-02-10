@@ -14,7 +14,7 @@ import { getSessionTenantId } from '@/lib/tenant-server';
 // Services for enhanced orchestration (available when needed)
 // import { getWorkflowManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // GET - Get orchestrator workflow status and metrics

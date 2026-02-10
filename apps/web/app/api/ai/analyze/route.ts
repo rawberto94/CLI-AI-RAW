@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '' });

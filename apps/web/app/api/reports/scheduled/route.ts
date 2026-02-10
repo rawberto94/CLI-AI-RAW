@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { getScheduledReportsService, ReportSchedule } from '@/lib/reports/scheduled-reports.service';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 // GET /api/reports/scheduled
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {

@@ -7,7 +7,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { rateCardClusteringService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma

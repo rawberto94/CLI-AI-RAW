@@ -9,7 +9,7 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
  * Get a single note
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   const ctx = getApiContext(request);
@@ -163,7 +163,7 @@ export async function PATCH(
  * Delete a note
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
   const ctx = getApiContext(request);

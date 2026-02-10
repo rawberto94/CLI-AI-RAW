@@ -10,7 +10,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { parseWordDocument } from '@/lib/templates/document-service';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {

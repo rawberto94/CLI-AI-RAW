@@ -20,7 +20,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
 let advancedIntelligence: any = null;

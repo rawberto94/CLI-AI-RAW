@@ -12,7 +12,7 @@ import {
   getExtractionQueue,
   type BatchExtractionResult,
 } from "@/lib/ai";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Queue bulk extraction
@@ -192,5 +192,6 @@ export const DELETE = withAuthApiHandler(async (request, ctx) => {
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "GET, POST, DELETE, OPTIONS");
 }

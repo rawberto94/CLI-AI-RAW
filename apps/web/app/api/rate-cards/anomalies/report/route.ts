@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { anomalyExplainerService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 

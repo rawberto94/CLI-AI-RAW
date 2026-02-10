@@ -35,6 +35,7 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = ctx.tenantId;
@@ -94,6 +95,7 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);

@@ -9,7 +9,7 @@
 
 import { NextRequest } from 'next/server';
 import { abTestingService, type ABTestConfig } from '@/lib/ai/ab-testing.service';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 

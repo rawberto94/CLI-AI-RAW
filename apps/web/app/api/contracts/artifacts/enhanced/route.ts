@@ -16,7 +16,7 @@ import { aiArtifactGeneratorService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { dataSanitizationService } from 'data-orchestration/services';
 import { auditTrailService } from 'data-orchestration/services';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/artifacts/enhanced

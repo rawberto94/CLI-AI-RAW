@@ -50,6 +50,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession()
     if (!session?.user) {
@@ -175,6 +176,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession()
     if (!session?.user) {

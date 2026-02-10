@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import OpenAI from 'openai';
 import type { Contract, ContractStatus, Prisma } from '@prisma/client';
 import { getErrorMessage } from '@/lib/types/common';
-import { withAuthApiHandler, createSuccessResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
 
 const openai = new OpenAI({

@@ -3,7 +3,7 @@
  * GET /api/admin/health/contracts - Check health of contract system
  */
 
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { healthCheckService } from 'data-orchestration/services';
 

@@ -110,7 +110,7 @@ export async function POST(
  * Check if a contract is favorited by the current user
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const ctx = getApiContext(request);

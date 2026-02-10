@@ -7,7 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getErrorMessage, JsonRecord } from '@/lib/types/common';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 

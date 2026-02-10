@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import EmailService from '@/lib/services/email.service';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // Internal API secret for authentication - MUST be set in production
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;

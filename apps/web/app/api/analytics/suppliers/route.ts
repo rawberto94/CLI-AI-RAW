@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getDataProviderFactory } from 'data-orchestration';
 import { DataMode } from 'data-orchestration/types';
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * Supplier Analytics API Endpoints

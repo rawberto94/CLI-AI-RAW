@@ -15,7 +15,7 @@ import { prisma } from '@/lib/prisma';
 import { getApiTenantId, getTenantContext } from '@/lib/tenant-server';
 import { ContractSourceProvider, SyncMode } from '@prisma/client';
 import { z } from 'zod';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 // Validation schemas
 const createSourceSchema = z.object({

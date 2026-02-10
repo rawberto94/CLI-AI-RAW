@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/tenant-server';
 // TODO: Migrate contractComment/contractActivity operations to dedicated comment service
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Response type that maps to ContractComment model
 interface CommentResponse {

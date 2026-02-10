@@ -5,7 +5,7 @@
 
 import { NextRequest } from 'next/server';
 import { agentRegistry } from '@repo/workers/agents';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();

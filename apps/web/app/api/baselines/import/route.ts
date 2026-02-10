@@ -8,7 +8,7 @@ import { NextRequest } from 'next/server';
 import { baselineManagementService } from 'data-orchestration';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 

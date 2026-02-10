@@ -8,7 +8,7 @@
  * 3. Historical accuracy from ExtractionCorrection feedback
  */
 
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
@@ -29,6 +29,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession()
     if (!session?.user) {
@@ -156,16 +157,13 @@ export async function GET(
     const totalFeedback = corrections.length
 
     return createSuccessResponse(ctx, {
-      success: true,
-      data: {
-        contractId,
-        fields,
-        summary: {
-          averageConfidence: avgConfidence,
-          lowConfidenceFields,
-          totalFeedback,
-          lastFeedback: corrections[0]?.createdAt || null,
-        }
+      contractId,
+      fields,
+      summary: {
+        averageConfidence: avgConfidence,
+        lowConfidenceFields,
+        totalFeedback,
+        lastFeedback: corrections[0]?.createdAt || null,
       }
     });
   } catch (error) {

@@ -12,7 +12,7 @@ import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
   const ctx = getApiContext(request);

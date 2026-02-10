@@ -9,7 +9,7 @@ import { NextRequest } from 'next/server';
 import { getSessionTenantId } from '@/lib/tenant-server';
 import { getWorkflowManagementService } from 'data-orchestration/services';
 import { getAutonomousOrchestrator } from '@repo/agents';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // GET - Get pending approvals for the current user

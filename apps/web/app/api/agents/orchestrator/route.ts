@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { getAutonomousOrchestrator, AgentGoalStatus } from '@repo/agents';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // GET - Get orchestrator status, goals, triggers, or notifications

@@ -3,7 +3,7 @@
  * List and manage team members
  */
 
-import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { monitoringService } from 'data-orchestration/services';
 

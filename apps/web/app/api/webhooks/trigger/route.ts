@@ -5,7 +5,7 @@
 import { NextRequest } from 'next/server';
 import crypto from 'crypto';
 import { WEBHOOK_EVENTS, WebhookEvent, WebhookConfigType, webhookStore } from '../route';
-import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 interface TriggerPayload {
   event: WebhookEvent;

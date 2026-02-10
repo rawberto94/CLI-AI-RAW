@@ -11,7 +11,7 @@
 
 import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 import {
   initializeMFASetup,
