@@ -314,10 +314,33 @@ export async function GET(
       effectiveDate: contract.effectiveDate?.toISOString() || null,
       expirationDate: contract.expirationDate?.toISOString() || null,
 
+      // Pass through start/end dates as well (some contracts use startDate/endDate instead of effectiveDate)
+      startDate: contract.startDate?.toISOString?.() ?? (contract as any).startDate ?? null,
+      endDate: contract.endDate?.toISOString?.() ?? (contract as any).endDate ?? null,
+
+      // Build contract_short_description server-side for reliability
+      contract_short_description: (() => {
+        const overviewArt = artifactsByType['overview'] || artifactsByType['metadata'];
+        const execArt = artifactsByType['executive_summary'];
+        // Prefer executive summary (should be prose)
+        const execText = execArt?.executiveSummary || execArt?.summary;
+        if (execText && typeof execText === 'string' && execText.length > 80 && !execText.startsWith('STATEMENT OF WORK.')) {
+          return execText;
+        }
+        // Overview summary
+        const overviewText = overviewArt?.summary;
+        if (overviewText && typeof overviewText === 'string' && overviewText.length > 80 && !overviewText.startsWith('STATEMENT OF WORK.')) {
+          return overviewText;
+        }
+        // DB description
+        if (contract.description) return contract.description;
+        return null;
+      })(),
+
       // Build external_parties array directly so the hook finds it immediately
       external_parties: (() => {
         const parties: Array<{ legalName: string; role: string }> = [];
-        // First try OVERVIEW artifact parties
+        // 1. Try OVERVIEW artifact parties
         const overviewArtifact = artifactsByType['overview'] || artifactsByType['metadata'];
         if (overviewArtifact?.parties && Array.isArray(overviewArtifact.parties)) {
           overviewArtifact.parties.forEach((p: { name?: string; legalName?: string; role?: string }) => {
@@ -325,10 +348,28 @@ export async function GET(
             if (name) parties.push({ legalName: name, role: p.role || '' });
           });
         }
-        // Fallback to DB fields
+        // 2. Try PARTIES artifact
+        if (parties.length === 0) {
+          const partiesArtifact = artifactsByType['parties'];
+          if (partiesArtifact?.parties && Array.isArray(partiesArtifact.parties)) {
+            partiesArtifact.parties.forEach((p: { name?: string; legalName?: string; role?: string }) => {
+              const name = p.legalName || p.name;
+              if (name) parties.push({ legalName: name, role: p.role || '' });
+            });
+          }
+        }
+        // 3. Fallback to DB fields
         if (parties.length === 0) {
           if (contract.clientName) parties.push({ legalName: contract.clientName, role: 'Client' });
           if (contract.supplierName) parties.push({ legalName: contract.supplierName, role: 'Service Provider' });
+        }
+        // 4. Last resort: parse from documentInfo.preview text
+        if (parties.length === 0 && overviewArtifact?.documentInfo?.preview) {
+          const preview = overviewArtifact.documentInfo.preview as string;
+          const clientMatch = preview.match(/Client:\s*(.+?)(?:\n|$)/);
+          const providerMatch = preview.match(/(?:Service Provider|Vendor|Supplier|Provider):\s*(.+?)(?:\n|$)/);
+          if (clientMatch) parties.push({ legalName: clientMatch[1].trim(), role: 'Client' });
+          if (providerMatch) parties.push({ legalName: providerMatch[1].trim(), role: 'Service Provider' });
         }
         return parties.length > 0 ? parties : undefined;
       })(),

@@ -498,21 +498,27 @@ function extractBasicFieldsFromText(contractText: string): {
     result.paymentTerms = paymentMatch[1].trim();
   }
 
-  // --- Build summary ---
-  const summaryParts: string[] = [];
-  if (result.title) summaryParts.push(result.title);
-  if (result.contractType) summaryParts.push(`Type: ${result.contractType}`);
-  if (result.clientName && result.supplierName) {
-    summaryParts.push(`Between ${result.clientName} and ${result.supplierName}`);
-  }
-  if (result.totalValue) {
-    summaryParts.push(`Value: ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()}`);
-  }
-  if (result.startDate && result.endDate) {
-    summaryParts.push(`Period: ${result.startDate} to ${result.endDate}`);
-  }
-  if (summaryParts.length > 0) {
-    result.summary = summaryParts.join('. ') + '.';
+  // --- Build summary as prose ---
+  if (result.clientName && result.supplierName && result.totalValue && result.title) {
+    const typeLabel = result.contractType ? ` (${result.contractType})` : '';
+    const periodStr = result.startDate && result.endDate ? `, effective from ${result.startDate} through ${result.endDate}` : '';
+    result.summary = `This ${result.title}${typeLabel} establishes an agreement between ${result.clientName} (Client) and ${result.supplierName} (Service Provider) with a total contract value of ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()} ${result.currency || 'USD'}${periodStr}.`;
+  } else {
+    const summaryParts: string[] = [];
+    if (result.title) summaryParts.push(result.title);
+    if (result.contractType) summaryParts.push(`Type: ${result.contractType}`);
+    if (result.clientName && result.supplierName) {
+      summaryParts.push(`Between ${result.clientName} and ${result.supplierName}`);
+    }
+    if (result.totalValue) {
+      summaryParts.push(`Value: ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()}`);
+    }
+    if (result.startDate && result.endDate) {
+      summaryParts.push(`Period: ${result.startDate} to ${result.endDate}`);
+    }
+    if (summaryParts.length > 0) {
+      result.summary = summaryParts.join('. ') + '.';
+    }
   }
 
   // --- Key Points ---
