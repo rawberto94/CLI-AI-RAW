@@ -280,17 +280,7 @@ export async function GET(request: NextRequest) {
       });
 
     } catch {
-      return createSuccessResponse(ctx, {
-        deadlines: getMockDeadlines(),
-        source: 'mock-fallback',
-        stats: {
-          total: 4,
-          overdue: 1,
-          dueSoon: 2,
-          upcoming: 1,
-          completed: 0
-        }
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Database temporarily unavailable. Please retry.', 503);
     }
 
   } catch (error: unknown) {

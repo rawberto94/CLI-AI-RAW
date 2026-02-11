@@ -126,12 +126,7 @@ export async function POST(
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      // Return mock data if no API key
-      return createSuccessResponse(ctx, {
-        success: true,
-        artifact: generateMockArtifact(topic, focusArea),
-        message: 'Generated using mock data (OpenAI not configured)'
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured. Please set OPENAI_API_KEY.', 503);
     }
 
     // Fetch contract text (mock for now, would fetch from database)
@@ -399,45 +394,9 @@ async function getContractText(contractId: string, tenantId: string): Promise<st
       return data.rawText || data.content || data.extractedText || null;
     }
   } catch {
-    // Could not fetch contract text, using mock
+    // Could not fetch contract text
   }
   
-  // Return mock text for demo
-  return `
-    MASTER SERVICES AGREEMENT
-    
-    This Master Services Agreement ("Agreement") is entered into as of the Effective Date
-    by and between Company A ("Client") and Company B ("Provider").
-    
-    1. SERVICES
-    Provider shall provide the services described in each Statement of Work.
-    
-    2. TERM
-    This Agreement shall commence on the Effective Date and continue for a period of
-    three (3) years, unless earlier terminated.
-    
-    3. FEES AND PAYMENT
-    Client shall pay Provider the fees set forth in each Statement of Work.
-    Payment is due within thirty (30) days of invoice date.
-    
-    4. CONFIDENTIALITY
-    Each party agrees to maintain the confidentiality of the other party's
-    Confidential Information for a period of five (5) years.
-    
-    5. LIMITATION OF LIABILITY
-    Neither party's liability shall exceed the total fees paid in the preceding
-    twelve (12) month period.
-    
-    6. INDEMNIFICATION
-    Each party shall indemnify the other against third-party claims arising from
-    their breach of this Agreement.
-    
-    7. TERMINATION
-    Either party may terminate this Agreement with thirty (30) days written notice.
-    Termination for material breach may be immediate upon notice.
-    
-    8. INTELLECTUAL PROPERTY
-    All work product created under this Agreement shall be owned by Client.
-    Provider retains ownership of pre-existing materials and tools.
-  `;
+  // No mock fallback — return null so the caller can return a proper error
+  return null;
 }

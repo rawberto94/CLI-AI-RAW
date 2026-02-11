@@ -16,7 +16,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
   try {
     tenantId = await getTenantIdFromRequest(request)
   } catch {
-    tenantId = 'demo'
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unable to resolve tenant', 401)
   }
 
   const { searchParams } = new URL(request.url)

@@ -62,9 +62,14 @@ export async function POST(request: NextRequest) {
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
 
     // In production, send email. In dev, log to console.
-    if (process.env.NODE_ENV === "production" && process.env.SMTP_HOST) {
-      // TODO: Integrate with email service (SendGrid, Resend, etc.)
-      console.log(`[Auth] Password reset email queued for: ${email}`);
+    if (process.env.NODE_ENV === "production") {
+      if (!process.env.SMTP_HOST && !process.env.SENDGRID_API_KEY && !process.env.RESEND_API_KEY) {
+        console.error(`[Auth] CRITICAL: No email provider configured (SMTP_HOST, SENDGRID_API_KEY, or RESEND_API_KEY). Password reset email NOT sent for: ${email}`);
+        // Still return success to prevent user enumeration, but log the failure
+      } else {
+        // TODO: Integrate with email service (SendGrid, Resend, SMTP)
+        console.log(`[Auth] Password reset email queued for: ${email}`);
+      }
     } else {
       console.log(`\n========================================`);
       console.log(`PASSWORD RESET LINK (dev mode)`);

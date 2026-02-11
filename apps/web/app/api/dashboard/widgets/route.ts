@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
 
 /**
  * Dashboard Widgets API
@@ -10,14 +11,13 @@ import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext
 export const dynamic = 'force-dynamic';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  // In production, these would be parallel database queries
-  // For now, we aggregate mock data from different sources
+  const tenantId = ctx.tenantId;
   
   const [approvals, renewals, intelligence, governance] = await Promise.all([
-    getApprovalsStats(),
-    getRenewalsStats(),
-    getIntelligenceStats(),
-    getGovernanceStats(),
+    getApprovalsStats(tenantId),
+    getRenewalsStats(tenantId),
+    getIntelligenceStats(tenantId),
+    getGovernanceStats(tenantId),
   ]);
 
   return createSuccessResponse(ctx, {
@@ -29,117 +29,119 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   });
 });
 
-async function getApprovalsStats() {
+async function getApprovalsStats(tenantId: string) {
+  const now = new Date();
+  const contracts = await prisma.contract.findMany({
+    where: {
+      tenantId,
+      isDeleted: false,
+      status: { in: ['PENDING_REVIEW', 'PENDING_APPROVAL'] },
+    },
+    select: {
+      id: true,
+      contractTitle: true,
+      totalValue: true,
+      status: true,
+      expirationDate: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 5,
+  });
+
+  const overdue = contracts.filter(c => c.expirationDate && c.expirationDate < now).length;
+
   return {
-    pending: 4,
-    urgent: 2,
-    overdue: 0,
-    avgProcessingTime: '2.3 days',
-    recentItems: [
-      { 
-        id: 'appr1', 
-        title: 'Master Agreement - Acme Corp', 
-        priority: 'high', 
-        dueDate: '2024-03-15',
-        type: 'contract',
-        value: 1200000,
-      },
-      { 
-        id: 'appr2', 
-        title: 'Cloud Services SLA Amendment', 
-        priority: 'critical', 
-        dueDate: '2024-03-14',
-        type: 'amendment',
-        value: 450000,
-      },
-    ],
+    pending: contracts.length,
+    urgent: contracts.filter(c => c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000)).length,
+    overdue,
+    avgProcessingTime: null, // Requires processing-time tracking
+    recentItems: contracts.map(c => ({
+      id: c.id,
+      title: c.contractTitle || 'Untitled Contract',
+      priority: c.expirationDate && c.expirationDate < new Date(Date.now() + 3 * 86400000) ? 'critical' : 'high',
+      dueDate: c.expirationDate?.toISOString() || null,
+      type: 'contract',
+      value: c.totalValue ? Number(c.totalValue) : null,
+    })),
   };
 }
 
-async function getRenewalsStats() {
-  const _now = new Date();
+async function getRenewalsStats(tenantId: string) {
+  const now = new Date();
+  const ninetyDaysOut = new Date(Date.now() + 90 * 86400000);
+
+  const expiringContracts = await prisma.contract.findMany({
+    where: {
+      tenantId,
+      isDeleted: false,
+      expirationDate: { gte: now, lte: ninetyDaysOut },
+      status: { notIn: ['EXPIRED', 'TERMINATED'] },
+    },
+    select: {
+      id: true,
+      contractTitle: true,
+      expirationDate: true,
+      totalValue: true,
+      autoRenewal: true,
+      status: true,
+    },
+    orderBy: { expirationDate: 'asc' },
+  });
+
+  const thisMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+
   return {
-    total: 5,
-    urgentCount: 2,
-    expiringThisMonth: 2,
-    autoRenewalCount: 2,
-    totalValue: 2450000,
-    recentItems: [
-      {
-        id: 'ren1',
-        contractName: 'Software License Agreement',
-        daysUntil: 1,
-        value: 180000,
-        autoRenewal: false,
-        status: 'urgent',
-      },
-      {
-        id: 'ren2',
-        contractName: 'Master Agreement - Acme Corp',
-        daysUntil: 18,
-        value: 1200000,
-        autoRenewal: false,
-        status: 'in-negotiation',
-      },
-      {
-        id: 'ren3',
-        contractName: 'Cloud Services SLA',
-        daysUntil: 79,
-        value: 450000,
-        autoRenewal: true,
-        status: 'pending-review',
-      },
-    ],
+    total: expiringContracts.length,
+    urgentCount: expiringContracts.filter(c => c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000)).length,
+    expiringThisMonth: expiringContracts.filter(c => c.expirationDate && c.expirationDate <= thisMonthEnd).length,
+    autoRenewalCount: expiringContracts.filter(c => c.autoRenewal).length,
+    totalValue: expiringContracts.reduce((sum, c) => sum + (c.totalValue ? Number(c.totalValue) : 0), 0),
+    recentItems: expiringContracts.slice(0, 5).map(c => ({
+      id: c.id,
+      contractName: c.contractTitle || 'Untitled Contract',
+      daysUntil: c.expirationDate ? Math.ceil((c.expirationDate.getTime() - now.getTime()) / 86400000) : null,
+      value: c.totalValue ? Number(c.totalValue) : null,
+      autoRenewal: c.autoRenewal ?? false,
+      status: c.expirationDate && c.expirationDate < new Date(Date.now() + 7 * 86400000) ? 'urgent' : 'pending-review',
+    })),
   };
 }
 
-async function getIntelligenceStats() {
+async function getIntelligenceStats(tenantId: string) {
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId, isDeleted: false },
+    select: { riskScore: true },
+  });
+
+  const withScore = contracts.filter(c => c.riskScore !== null && c.riskScore !== undefined);
+  const avgScore = withScore.length > 0
+    ? Math.round(withScore.reduce((sum, c) => sum + Number(c.riskScore), 0) / withScore.length)
+    : null;
+
   return {
-    avgScore: 72,
-    healthy: 18,
-    atRisk: 4,
-    critical: 2,
-    improving: 8,
-    declining: 3,
-    recentInsights: [
-      {
-        id: 'ins1',
-        type: 'risk',
-        title: 'High-value contract expiring',
-        severity: 'high',
-      },
-      {
-        id: 'ins2',
-        type: 'opportunity',
-        title: 'Vendor consolidation savings',
-        severity: 'medium',
-      },
-    ],
+    avgScore,
+    healthy: withScore.filter(c => Number(c.riskScore) >= 70).length,
+    atRisk: withScore.filter(c => Number(c.riskScore) >= 40 && Number(c.riskScore) < 70).length,
+    critical: withScore.filter(c => Number(c.riskScore) < 40).length,
+    totalContracts: contracts.length,
+    scoredContracts: withScore.length,
+    recentInsights: [], // Populated from insights table when available
   };
 }
 
-async function getGovernanceStats() {
+async function getGovernanceStats(tenantId: string) {
+  const [totalContracts, pendingReviewCount] = await Promise.all([
+    prisma.contract.count({ where: { tenantId, isDeleted: false } }),
+    prisma.contract.count({ where: { tenantId, isDeleted: false, status: { in: ['PENDING_REVIEW', 'PENDING_APPROVAL'] } } }),
+  ]);
+
   return {
-    complianceScore: 94,
-    activePolicies: 12,
-    openViolations: 3,
-    pendingReviews: 7,
-    criticalFlags: 1,
-    recentFlags: [
-      {
-        id: 'flg1',
-        type: 'deviation',
-        title: 'Unlimited Liability Clause',
-        severity: 'critical',
-        contract: 'MSA - Acme Corp',
-      },
-      {
-        id: 'flg2',
-        type: 'compliance',
-        title: 'Missing DPA Clause',
-        severity: 'high',
-        contract: 'SLA - CloudTech',
-      },
-    ],
+    complianceScore: null, // Needs compliance tracking feature
+    activePolicies: null,  // Needs policy management feature
+    openViolations: null,  // Needs violation tracking
+    pendingReviews: pendingReviewCount,
+    totalContracts,
+    recentFlags: [], // Populated from governance flags table when available
   };
 }

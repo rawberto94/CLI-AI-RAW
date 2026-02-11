@@ -70,11 +70,7 @@ export async function POST(
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        data: generateMockExtraction(schema, documentText),
-        message: 'Extraction completed using mock data (OpenAI not configured)'
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI extraction service not configured. Please set OPENAI_API_KEY.', 503);
     }
 
     // Create extractor

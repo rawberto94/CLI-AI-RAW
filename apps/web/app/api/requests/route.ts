@@ -24,7 +24,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const whereClause = `WHERE ${conditions.join(' AND ')}`;
 
     const [items, countResult, metrics] = await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT * FROM contract_requests ${whereClause} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`, ...params),
+      prisma.$queryRawUnsafe(`SELECT * FROM contract_requests ${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`, ...params, limit, offset),
       prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as total FROM contract_requests ${whereClause}`, ...params),
       prisma.$queryRawUnsafe(`SELECT
         COUNT(*)::int as total,

@@ -1,55 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
-
-// Mock signature workflows
-const mockSignatureWorkflows = [
-  {
-    id: 'sig-workflow-001',
-    contractId: 'contract-001',
-    contractName: 'Master Service Agreement',
-    provider: 'docusign',
-    status: 'in_progress',
-    signers: [
-      {
-        id: 'signer-1',
-        name: 'Roberto Ostojic',
-        email: 'roberto@acmecorp.com',
-        role: 'Client Signatory',
-        status: 'signed',
-        order: 1,
-        sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        viewedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        signedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        ipAddress: '192.168.1.100',
-      },
-      {
-        id: 'signer-2',
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@vendor.com',
-        role: 'Vendor Representative',
-        status: 'viewed',
-        order: 2,
-        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        viewedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'signer-3',
-        name: 'Michael Brown',
-        email: 'michael.brown@legal.com',
-        role: 'Witness',
-        status: 'pending',
-        order: 3,
-      },
-    ],
-    createdBy: 'Alice Anderson',
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    message: 'Please review and sign this Master Service Agreement at your earliest convenience.',
-  },
-];
 
 // GET /api/contracts/[id]/signatures - Get signature workflows for a contract
 export async function GET(
@@ -85,17 +37,13 @@ export async function GET(
         }
       }
     } catch {
-      // Database lookup failed, will use fallback
+      // Database lookup failed
     }
 
-    // Fallback to mock data - filter by contractId or return all if it's a specific contract
-    const workflows = contractId === 'contract-001' 
-      ? mockSignatureWorkflows 
-      : mockSignatureWorkflows.map(w => ({ ...w, contractId }));
-    
+    // No signature workflows found — return empty
     return createSuccessResponse(ctx, { 
-      workflows,
-      source: 'mock'
+      workflows: [],
+      source: 'database'
     });
   } catch (error) {
     return handleApiError(ctx, error);
@@ -168,13 +116,11 @@ export async function POST(
         });
       }
     } catch {
-      // Database update failed, will use fallback
+      // Database update failed — return the workflow without persistence
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to persist signature workflow', 500);
     }
 
-    return createSuccessResponse(ctx, { 
-      workflow: newWorkflow,
-      source: 'mock'
-    });
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
   } catch (error) {
     return handleApiError(ctx, error);
   }

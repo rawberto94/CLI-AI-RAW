@@ -119,6 +119,14 @@ Output your analysis in the following markdown format:
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
+        let aborted = false;
+        
+        // Handle client disconnect to stop wasting OpenAI tokens
+        request.signal.addEventListener('abort', () => {
+          aborted = true;
+          try { controller.close(); } catch { /* already closed */ }
+        });
+
         try {
           // Send initial metadata
           controller.enqueue(
@@ -134,6 +142,7 @@ Output your analysis in the following markdown format:
           let fullContent = '';
           
           for await (const chunk of stream) {
+            if (aborted) break;
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
               fullContent += content;

@@ -22,7 +22,7 @@ export async function GET(
     try {
       tenantId = await getTenantIdFromRequest(request)
     } catch {
-      tenantId = 'demo'
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unable to resolve tenant', 401)
     }
 
     // Fetch the contract with its hierarchy
