@@ -94,38 +94,103 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Create new tenant
-      const tenant = await prisma.tenant.create({
-        data: {
-          name: validated.organizationName,
-          slug: validated.organizationSlug,
-          status: "ACTIVE",
-          configuration: {
-            create: {
-              aiModels: {},
-              securitySettings: {},
-              integrations: {},
-              workflowSettings: {},
+      // Hash password before transaction
+      const passwordHash = await hash(validated.password, 12);
+
+      // Wrap entire creation in a transaction to prevent orphaned records
+      const result = await prisma.$transaction(async (tx) => {
+        // Create new tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name: validated.organizationName!,
+            slug: validated.organizationSlug!,
+            status: "ACTIVE",
+            configuration: {
+              create: {
+                aiModels: {},
+                securitySettings: {},
+                integrations: {},
+                workflowSettings: {},
+              },
+            },
+            subscription: {
+              create: {
+                plan: "FREE",
+                status: "ACTIVE",
+                billingCycle: "MONTHLY",
+                startDate: new Date(),
+              },
+            },
+            usage: {
+              create: {
+                resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
             },
           },
-          subscription: {
-            create: {
-              plan: "FREE",
-              status: "ACTIVE",
-              billingCycle: "MONTHLY",
-              startDate: new Date(),
+        });
+
+        // Create user
+        const user = await tx.user.create({
+          data: {
+            email: validated.email,
+            firstName: validated.firstName,
+            lastName: validated.lastName,
+            passwordHash,
+            tenantId: tenant.id,
+            role: "owner",
+            status: "ACTIVE",
+            emailVerified: false,
+          },
+        });
+
+        // Find or create the role
+        let roleRecord = await tx.role.findFirst({
+          where: { name: "owner" },
+        });
+        if (!roleRecord) {
+          roleRecord = await tx.role.create({
+            data: {
+              name: "owner",
+              description: "Owner role",
+              isSystem: true,
+            },
+          });
+        }
+
+        // Assign role to user
+        await tx.userRole.create({
+          data: { userId: user.id, roleId: roleRecord.id },
+        });
+
+        // Create audit log
+        await tx.auditLog.create({
+          data: {
+            tenantId: tenant.id,
+            userId: user.id,
+            action: "USER_REGISTERED",
+            entityType: "USER",
+            entityId: user.id,
+            metadata: {
+              email: validated.email,
+              role: "owner",
+              method: "self-registration",
             },
           },
-          usage: {
-            create: {
-              resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            },
-          },
-        },
+        });
+
+        return { user, tenantId: tenant.id };
       });
 
-      tenantId = tenant.id;
-      userRole = "owner"; // Creator becomes owner
+      return createSuccessResponse(ctx, {
+        success: true,
+        message: "Account created successfully",
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+        },
+      });
     } else {
       return createErrorResponse(
         ctx, 'BAD_REQUEST',
@@ -133,6 +198,8 @@ export async function POST(request: NextRequest) {
         400
       );
     }
+
+    // --- Invite-based signup path (non-transactional since tenant already exists) ---
 
     // Hash password
     const passwordHash = await hash(validated.password, 12);
@@ -147,7 +214,7 @@ export async function POST(request: NextRequest) {
         tenantId,
         role: userRole,
         status: "ACTIVE",
-        emailVerified: false, // Would need email verification flow
+        emailVerified: false,
       },
     });
 
@@ -185,7 +252,7 @@ export async function POST(request: NextRequest) {
         metadata: {
           email: validated.email,
           role: userRole,
-          method: validated.inviteToken ? "invitation" : "self-registration",
+          method: "invitation",
         },
       },
     });
@@ -198,6 +265,8 @@ export async function POST(request: NextRequest) {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
+      },
+    });
       },
     });
   } catch (error: unknown) {

@@ -3,7 +3,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 
 /**
  * POST /api/admin/queue-control
- * Control queue operations (pause, resume, clear, retry)
+ * Control queue operations (pause, resume, clear, retry) via real BullMQ APIs
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const body = await request.json();
@@ -13,76 +13,111 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Action is required', 400);
   }
 
+  // Dynamically import BullMQ Queue to connect to Redis
+  const { Queue } = await import('bullmq');
+  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const url = new URL(redisUrl);
+  const connection = {
+    host: url.hostname,
+    port: parseInt(url.port || '6379'),
+    password: url.password || undefined,
+  };
+
   let message = '';
 
-  switch (action) {
-    case 'pause':
-      if (!queueName) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+  try {
+    switch (action) {
+      case 'pause': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        await queue.pause();
+        await queue.close();
+        message = `Queue "${queueName}" has been paused`;
+        break;
       }
-      message = `Queue "${queueName}" has been paused`;
-      break;
 
-    case 'resume':
-      if (!queueName) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+      case 'resume': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        await queue.resume();
+        await queue.close();
+        message = `Queue "${queueName}" has been resumed`;
+        break;
       }
-      message = `Queue "${queueName}" has been resumed`;
-      break;
 
-    case 'clear-completed':
-      if (!queueName) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+      case 'clear-completed': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        await queue.clean(0, 0, 'completed');
+        await queue.close();
+        message = `Completed jobs cleared from "${queueName}"`;
+        break;
       }
-      message = `Completed jobs cleared from "${queueName}"`;
-      break;
 
-    case 'clear-failed':
-      if (!queueName) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+      case 'clear-failed': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        await queue.clean(0, 0, 'failed');
+        await queue.close();
+        message = `Failed jobs cleared from "${queueName}"`;
+        break;
       }
-      message = `Failed jobs cleared from "${queueName}"`;
-      break;
 
-    case 'retry-job':
-      if (!jobId) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Job ID is required', 400);
+      case 'retry-job': {
+        if (!jobId || !queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Job ID and queue name are required', 400);
+        const queue = new Queue(queueName, { connection });
+        const job = await queue.getJob(jobId);
+        if (!job) {
+          await queue.close();
+          return createErrorResponse(ctx, 'NOT_FOUND', `Job "${jobId}" not found in "${queueName}"`, 404);
+        }
+        await job.retry();
+        await queue.close();
+        message = `Job "${jobId}" has been queued for retry`;
+        break;
       }
-      message = `Job "${jobId}" has been queued for retry`;
-      break;
 
-    case 'retry-all-failed':
-      if (!queueName) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+      case 'retry-all-failed': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        const failed = await queue.getFailed(0, 1000);
+        let retried = 0;
+        for (const job of failed) {
+          try { await job.retry(); retried++; } catch { /* skip non-retryable */ }
+        }
+        await queue.close();
+        message = `${retried} failed jobs in "${queueName}" queued for retry`;
+        break;
       }
-      message = `All failed jobs in "${queueName}" queued for retry`;
-      break;
 
-    case 'cancel-job':
-      if (!jobId) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Job ID is required', 400);
+      case 'drain': {
+        if (!queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name is required', 400);
+        const queue = new Queue(queueName, { connection });
+        await queue.drain();
+        await queue.close();
+        message = `Queue "${queueName}" has been drained (all waiting jobs removed)`;
+        break;
       }
-      message = `Job "${jobId}" has been cancelled`;
-      break;
 
-    case 'cancel-batch':
-      if (!batchId) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Batch ID is required', 400);
+      case 'cancel-job': {
+        if (!jobId || !queueName) return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Job ID and queue name are required', 400);
+        const queue = new Queue(queueName, { connection });
+        const job = await queue.getJob(jobId);
+        if (!job) {
+          await queue.close();
+          return createErrorResponse(ctx, 'NOT_FOUND', `Job "${jobId}" not found in "${queueName}"`, 404);
+        }
+        await job.remove();
+        await queue.close();
+        message = `Job "${jobId}" has been cancelled`;
+        break;
       }
-      message = `Batch "${batchId}" has been cancelled`;
-      break;
 
-    case 'set-rate-limit': {
-      const { jobsPerInterval, interval } = body;
-      if (!queueName || !jobsPerInterval || !interval) {
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Queue name, jobsPerInterval, and interval are required', 400);
-      }
-      message = `Rate limit for "${queueName}" set to ${jobsPerInterval} jobs per ${interval}ms`;
-      break;
+      default:
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown action: ${action}`, 400);
     }
-
-    default:
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown action: ${action}`, 400);
+  } catch (error: any) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Queue operation failed: ${error.message}`, 500);
   }
 
   return createSuccessResponse(ctx, {

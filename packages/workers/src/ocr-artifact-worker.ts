@@ -3926,16 +3926,25 @@ if (isMainModule) {
   
   registerOCRArtifactWorker();
   
-  // Keep process alive
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully...');
+  // Graceful shutdown — wait for in-progress jobs before exiting
+  const shutdown = async (signal: string) => {
+    logger.info({ signal }, 'Received shutdown signal, closing worker gracefully...');
+    const queueService = getQueueService();
+    try {
+      // worker.close() waits for active jobs to finish
+      await Promise.race([
+        queueService.close(),
+        new Promise(resolve => setTimeout(resolve, 30000)), // 30s timeout
+      ]);
+      logger.info('Worker shutdown complete');
+    } catch (err) {
+      logger.error({ err }, 'Error during worker shutdown');
+    }
     process.exit(0);
-  });
+  };
 
-  process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully...');
-    process.exit(0);
-  });
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 /**

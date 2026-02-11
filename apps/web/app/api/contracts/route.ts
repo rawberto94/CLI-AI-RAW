@@ -539,10 +539,10 @@ async function handler(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     return await handler(request);
-  } catch {
-    // Fallback to mock data on any error
-    const { searchParams } = new URL(request.url);
+  } catch (error) {
+    // Return proper error instead of silently serving mock data
+    console.error('Contracts GET error:', error);
     const ctx = getApiContext(request);
-    return returnMockContracts(searchParams, ctx);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch contracts. Please try again.', 500);
   }
 }

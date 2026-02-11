@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 // TODO: Migrate $queryRaw calls to contractService when raw query support is added
 import type { Prisma as _Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
@@ -44,6 +45,14 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       newValue: unknown;
       description?: string;
     }
+
+    // Build composable SQL fragments for optional filters
+    const contractFilter = contractId 
+      ? Prisma.sql`AND contract_id = ${contractId}` 
+      : Prisma.empty;
+    const typeFilter = renewalType 
+      ? Prisma.sql`AND renewal_type = ${renewalType}` 
+      : Prisma.empty;
 
     // Query renewal history
     const renewals = await prisma.$queryRaw<Array<{
@@ -85,8 +94,8 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         completed_by, completed_at, status, notes, created_at
       FROM renewal_history
       WHERE tenant_id = ${tenantId}
-        ${contractId ? prisma.$queryRaw`AND contract_id = ${contractId}` : prisma.$queryRaw``}
-        ${renewalType ? prisma.$queryRaw`AND renewal_type = ${renewalType}` : prisma.$queryRaw``}
+        ${contractFilter}
+        ${typeFilter}
       ORDER BY completed_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;

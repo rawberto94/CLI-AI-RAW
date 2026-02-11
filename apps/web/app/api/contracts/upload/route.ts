@@ -400,45 +400,49 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       });
     } catch {
       
-      // Fallback to direct creation
-      const contract = await prisma.contract.create({
-        data: {
-          tenantId: tenantId,
-          fileName: file.name,
-          originalName: file.name,
-          fileSize: BigInt(file.size),
-          mimeType: file.type || "application/octet-stream",
-          storagePath: filePath,
-          storageProvider: storageProvider,
-          status: "PROCESSING",
-          uploadedBy: metadata.uploadedBy || "anonymous",
-          contractType: metadata.contractType || "UNKNOWN",
-          contractTitle: metadata.contractTitle || file.name,
-          clientName: metadata.clientName || undefined,
-          supplierName: metadata.supplierName || undefined,
-          description: metadata.description || undefined,
-          category: metadata.category || undefined,
-          uploadedAt: new Date(),
-          checksum: contentHash, // Add checksum for deduplication
-        },
-      });
+      // Fallback to direct creation — use transaction for atomicity
+      const txResult = await prisma.$transaction(async (tx) => {
+        const contract = await tx.contract.create({
+          data: {
+            tenantId: tenantId,
+            fileName: file.name,
+            originalName: file.name,
+            fileSize: BigInt(file.size),
+            mimeType: file.type || "application/octet-stream",
+            storagePath: filePath,
+            storageProvider: storageProvider,
+            status: "PROCESSING",
+            uploadedBy: metadata.uploadedBy || "anonymous",
+            contractType: metadata.contractType || "UNKNOWN",
+            contractTitle: metadata.contractTitle || file.name,
+            clientName: metadata.clientName || undefined,
+            supplierName: metadata.supplierName || undefined,
+            description: metadata.description || undefined,
+            category: metadata.category || undefined,
+            uploadedAt: new Date(),
+            checksum: contentHash, // Add checksum for deduplication
+          },
+        });
 
-      const processingJob = await prisma.processingJob.create({
-        data: {
-          contractId: contract.id,
-          tenantId: contract.tenantId,
-          status: "PENDING",
-          progress: 0,
-          currentStep: "uploaded",
-          totalStages: 5,
-          priority: 5,
-          maxRetries: 3,
-          retryCount: 0,
-        },
+        const processingJob = await tx.processingJob.create({
+          data: {
+            contractId: contract.id,
+            tenantId: contract.tenantId,
+            status: "PENDING",
+            progress: 0,
+            currentStep: "uploaded",
+            totalStages: 5,
+            priority: 5,
+            maxRetries: 3,
+            retryCount: 0,
+          },
+        });
+
+        return { contract, processingJob, outboxEvent: null };
       });
 
       return {
-        result: { contract, processingJob, outboxEvent: null },
+        result: txResult,
         wasExecuted: true,
       };
     }

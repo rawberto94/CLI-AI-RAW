@@ -243,8 +243,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
                   updatedAt: true
                 }
               }),
-              shouldCheckStatus ? prisma.contract.findUnique({
-                where: { id: contractId },
+              shouldCheckStatus ? prisma.contract.findFirst({
+                where: { id: contractId, tenantId },
                 select: { 
                   status: true
                 }

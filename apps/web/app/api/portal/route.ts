@@ -293,7 +293,12 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       tid: ctx.tenantId,
       exp: Date.now() + 7 * 86400000,
     };
-    const token = Buffer.from(JSON.stringify(tokenPayload)).toString('base64url');
+    // HMAC-sign the token to prevent forgery
+    const crypto = await import('crypto');
+    const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
+    const payloadStr = JSON.stringify(tokenPayload);
+    const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
+    const token = Buffer.from(`${payloadStr}.${signature}`).toString('base64url');
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3005';
     return createSuccessResponse(ctx, {
       success: true,

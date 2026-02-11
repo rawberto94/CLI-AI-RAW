@@ -25,10 +25,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'JSON payloads only' }, { status: 400 });
     }
 
-    // Verify HMAC signature if configured
+    // Verify HMAC signature — fail closed if secret not configured
     const hmacHeader = request.headers.get('x-docusign-signature-1');
     const hmacSecret = process.env.DOCUSIGN_WEBHOOK_SECRET;
-    if (hmacSecret && hmacHeader) {
+    if (!hmacSecret) {
+      logger.error('DOCUSIGN_WEBHOOK_SECRET not configured — rejecting all webhooks for security');
+      return NextResponse.json({ error: 'Webhook verification not configured' }, { status: 503 });
+    }
+    if (!hmacHeader) {
+      logger.warn('DocuSign webhook missing HMAC signature header');
+      return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
+    }
+    {
       const crypto = await import('crypto');
       const computed = crypto
         .createHmac('sha256', hmacSecret)

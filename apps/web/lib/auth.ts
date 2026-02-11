@@ -71,12 +71,20 @@ declare module "next-auth/jwt" {
 
 const MFA_TOKEN_TTL = 5 * 60 * 1000; // 5 minutes
 
+function getAuthSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
+  if (!secret) {
+    throw new Error('CRITICAL: NEXTAUTH_SECRET or AUTH_SECRET must be configured. MFA tokens cannot be secured without a signing secret.');
+  }
+  return secret;
+}
+
 /**
  * Generate a signed MFA verification token.
  * Used to securely propagate MFA verification into the JWT via session update.
  */
 export function generateMfaVerificationToken(userId: string): string {
-  const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "";
+  const secret = getAuthSecret();
   const payload = JSON.stringify({ userId, timestamp: Date.now() });
   const signature = crypto.createHmac("sha256", secret).update(payload).digest("hex");
   return Buffer.from(`${payload}.${signature}`).toString("base64");
@@ -87,7 +95,7 @@ export function generateMfaVerificationToken(userId: string): string {
  */
 export function verifyMfaVerificationToken(token: string, expectedUserId: string): boolean {
   try {
-    const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || "";
+    const secret = getAuthSecret();
     const decoded = Buffer.from(token, "base64").toString("utf-8");
     const dotIndex = decoded.lastIndexOf(".");
     if (dotIndex === -1) return false;

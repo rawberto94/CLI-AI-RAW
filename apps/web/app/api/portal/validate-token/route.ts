@@ -1,9 +1,10 @@
 /**
  * Portal Token Validation API
- * Validates magic link tokens for supplier portal access
+ * Validates HMAC-signed magic link tokens for supplier portal access
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 interface TokenPayload {
   sid: string; // Supplier ID
@@ -25,11 +26,32 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Decode and validate token
+    // Decode and verify HMAC signature
     let payload: TokenPayload;
     try {
       const decoded = Buffer.from(token, 'base64url').toString();
-      payload = JSON.parse(decoded);
+      const dotIndex = decoded.lastIndexOf('.');
+      if (dotIndex === -1) {
+        return NextResponse.json(
+          { error: { code: 'INVALID_TOKEN', message: 'Token format is invalid' } },
+          { status: 401 }
+        );
+      }
+
+      const payloadStr = decoded.substring(0, dotIndex);
+      const signature = decoded.substring(dotIndex + 1);
+
+      // Verify HMAC signature
+      const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
+      const expectedSignature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
+      if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expectedSignature, 'hex'))) {
+        return NextResponse.json(
+          { error: { code: 'INVALID_TOKEN', message: 'Token signature is invalid' } },
+          { status: 401 }
+        );
+      }
+
+      payload = JSON.parse(payloadStr);
     } catch {
       return NextResponse.json(
         { error: { code: 'INVALID_TOKEN', message: 'Token format is invalid' } },

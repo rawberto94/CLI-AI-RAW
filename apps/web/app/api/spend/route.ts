@@ -96,7 +96,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       let matchStatus = 'MATCHED';
 
       if (invoice[0].po_id) {
-        const po = await prisma.$queryRawUnsafe(`SELECT * FROM purchase_orders WHERE id = $1`, invoice[0].po_id) as any[];
+        const po = await prisma.$queryRawUnsafe(`SELECT * FROM purchase_orders WHERE id = $1 AND tenant_id = $2`, invoice[0].po_id, ctx.tenantId) as any[];
         if (po[0]) {
           const deviation = Math.abs(Number(invoice[0].total_amount) - Number(po[0].total_amount)) / Number(po[0].total_amount) * 100;
           if (deviation > 5) {
@@ -109,8 +109,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       }
 
       await prisma.$queryRawUnsafe(
-        `UPDATE invoices SET match_status = $1, match_discrepancies = $2, updated_at = NOW() WHERE id = $3`,
-        matchStatus, JSON.stringify(discrepancies), data.invoiceId
+        `UPDATE invoices SET match_status = $1, match_discrepancies = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4`,
+        matchStatus, JSON.stringify(discrepancies), data.invoiceId, ctx.tenantId
       );
 
       return createSuccessResponse(ctx, { matchStatus, discrepancies });
