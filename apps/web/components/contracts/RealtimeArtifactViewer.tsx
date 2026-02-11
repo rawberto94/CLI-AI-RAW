@@ -19,7 +19,11 @@ import {
   Loader2,
   Wifi,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Lock,
+  ClipboardList,
+  Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -49,6 +53,12 @@ const artifactIcons: Record<string, React.ReactNode> = {
   DELIVERABLES: <FileCheck className="h-5 w-5" />,
   EXECUTIVE_SUMMARY: <FileText className="h-5 w-5" />,
   RATES: <TrendingUp className="h-5 w-5" />,
+  PROACTIVE_RISKS: <AlertTriangle className="h-5 w-5" />,
+  PRICING: <DollarSign className="h-5 w-5" />,
+  INTELLECTUAL_PROPERTY: <Scale className="h-5 w-5" />,
+  DATA_PRIVACY: <Lock className="h-5 w-5" />,
+  AUDIT_TRAIL: <Eye className="h-5 w-5" />,
+  ACTION_ITEMS: <ClipboardList className="h-5 w-5" />,
 };
 
 const artifactLabels: Record<string, string> = {
@@ -67,9 +77,15 @@ const artifactLabels: Record<string, string> = {
   DELIVERABLES: 'Deliverables',
   EXECUTIVE_SUMMARY: 'Executive Summary',
   RATES: 'Rate Cards',
+  PROACTIVE_RISKS: 'Proactive Risk Detection',
+  PRICING: 'Pricing Analysis',
+  INTELLECTUAL_PROPERTY: 'Intellectual Property',
+  DATA_PRIVACY: 'Data Privacy',
+  AUDIT_TRAIL: 'Audit Trail',
+  ACTION_ITEMS: 'Action Items',
 };
 
-const artifactOrder = ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES', 'RATES'];
+const artifactOrder = ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'PROACTIVE_RISKS', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES', 'RATES', 'PRICING', 'INTELLECTUAL_PROPERTY', 'DATA_PRIVACY', 'AUDIT_TRAIL', 'ACTION_ITEMS'];
 
 const stageLabels: Record<string, string> = {
   'TEXT_EXTRACTION': 'Extracting text from document...',

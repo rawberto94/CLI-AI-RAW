@@ -431,10 +431,7 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 const prisma = getClient();
 
 // Use distributed Redis cache instead of in-memory cache
-import { ocrCache, artifactCache } from '@repo/utils/cache/distributed-cache';
-
-// TTL values for reference (applied via the distributed cache)
-const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
+import { ocrCache } from '@repo/utils/cache/distributed-cache';
 
 // ============ IMAGE PREPROCESSING UTILITIES ============
 
@@ -2761,7 +2758,7 @@ async function callMistralForArtifact(
           { role: 'user', content: prompt }
         ],
         temperature: 0.2,
-        maxTokens: 4000,
+        maxTokens: 8192,
         responseFormat: { type: 'json_object' },
       });
 
@@ -2815,6 +2812,7 @@ async function callOpenAIForArtifact(
   }
 
   let lastError: Error | null = null;
+  let isDowngraded = false;
   
   for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
     try {
@@ -2823,13 +2821,17 @@ async function callOpenAIForArtifact(
       
       logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
       
+      // Model downgrade cascade: gpt-4o → gpt-4o-mini on rate limit retries
+      const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o';
+      const currentModel = (attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
+      
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o',
+        model: currentModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 8192,
+        max_tokens: currentModel === 'gpt-4o-mini' ? 4096 : 8192,
         temperature: 0.2,
         response_format: { type: 'json_object' }
       });
@@ -2841,7 +2843,7 @@ async function callOpenAIForArtifact(
 
       const artifactData = JSON.parse(content);
       const usage = response.usage;
-      logger.info({ type, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
+      logger.info({ type, model: currentModel, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
       
       return { 
         success: true, 
@@ -2849,7 +2851,7 @@ async function callOpenAIForArtifact(
         tokensUsed: usage?.total_tokens || 0,
         promptTokens: usage?.prompt_tokens || 0,
         completionTokens: usage?.completion_tokens || 0,
-        model: process.env.OPENAI_MODEL || 'gpt-4o',
+        model: currentModel,
       };
       
     } catch (error) {
@@ -2861,8 +2863,14 @@ async function callOpenAIForArtifact(
       const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
       const isRetryable = isRateLimited || isServerError;
       
+      // Downgrade model on rate limit to increase chance of success
+      if (isRateLimited && !isDowngraded) {
+        isDowngraded = true;
+        logger.warn({ type, attempt }, 'Rate limited on primary model, will downgrade to gpt-4o-mini on next attempt');
+      }
+      
       if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
-        logger.warn({ type, attempt, error: errorMsg }, 'OpenAI artifact generation failed');
+        logger.warn({ type, attempt, error: errorMsg, wasDowngraded: isDowngraded }, 'OpenAI artifact generation failed');
         return { success: false, error: errorMsg };
       }
       

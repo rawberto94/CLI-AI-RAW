@@ -84,7 +84,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Maximum 1000 contracts per batch', 400);
     }
 
-    const artifactTypes = body.artifactTypes || ['overview', 'financial', 'parties', 'terms', 'risk'];
+    const artifactTypes = body.artifactTypes || ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES'];
     const totalItems = body.contractIds.length * artifactTypes.length;
 
     // Create job in database
@@ -390,7 +390,8 @@ async function processArtifact(
     const existingArtifact = await prisma.artifact.findFirst({
       where: {
         contractId,
-        type: artifactType.toUpperCase() as 'INGESTION' | 'OVERVIEW' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'BENCHMARK' | 'RISK' | 'REPORT' | 'TEMPLATE' | 'FINANCIAL' | 'TERMINATION_CLAUSE' | 'LIABILITY_CLAUSE' | 'SLA_TERMS' | 'OBLIGATIONS' | 'RENEWAL' | 'NEGOTIATION_POINTS' | 'AMENDMENTS' | 'CONTACTS' },
+        type: artifactType.toUpperCase() as any,
+      },
       orderBy: { generationVersion: 'desc' } });
 
     if (existingArtifact?.isEdited) {
@@ -468,7 +469,8 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
       const existingArtifact = await prisma.artifact.findFirst({
         where: {
           contractId: r.contractId,
-          type: r.artifactType.toUpperCase() as 'INGESTION' | 'OVERVIEW' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'BENCHMARK' | 'RISK' | 'REPORT' | 'TEMPLATE' | 'FINANCIAL' | 'TERMINATION_CLAUSE' | 'LIABILITY_CLAUSE' | 'SLA_TERMS' | 'OBLIGATIONS' | 'RENEWAL' | 'NEGOTIATION_POINTS' | 'AMENDMENTS' | 'CONTACTS' } });
+          type: r.artifactType.toUpperCase() as any,
+        } });
 
       if (existingArtifact) {
         // Update artifact to indicate rollback
