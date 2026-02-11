@@ -32,6 +32,8 @@ import { calculateDynamicConfidence } from '@/lib/ai/confidence-calibration';
 import { retrieveRelevantMemories, storeMemory } from '@/lib/ai/episodic-memory-integration';
 import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streaming-tools';
 import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
+import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -49,12 +51,24 @@ interface ModelConfig {
   priority: number;
 }
 
+// Build failover chain dynamically based on available API keys
 const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
   { provider: 'openai', model: process.env.OPENAI_MODEL || 'gpt-4o-mini', priority: 1 },
   { provider: 'openai', model: 'gpt-4o', priority: 2 },
-  { provider: 'anthropic', model: 'claude-3-haiku-20240307', priority: 3 },
-  { provider: 'anthropic', model: 'claude-3-sonnet-20240229', priority: 4 },
+  // Only include Anthropic models if API key is configured
+  ...(process.env.ANTHROPIC_API_KEY ? [
+    { provider: 'anthropic' as const, model: 'claude-3-haiku-20240307', priority: 3 },
+    { provider: 'anthropic' as const, model: 'claude-3-sonnet-20240229', priority: 4 },
+  ] : []),
 ];
+
+// Log available models at startup
+if (typeof window === 'undefined') {
+  console.log(`[AI Chat Stream] Available models: ${MODEL_FAILOVER_CHAIN.map(c => `${c.provider}/${c.model}`).join(', ')}`);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.log('[AI Chat Stream] Anthropic failover disabled (ANTHROPIC_API_KEY not set)');
+  }
+}
 
 // ─── Role-based tool permissions ────────────────────────────────────────
 
@@ -187,12 +201,85 @@ You have access to tools that let you search contracts, view details, analyze sp
 ${ragContext}
 ${memoryContext}`;
 
+  // ═══════════════════════════════════════════════════════════════════════
+  // STEP 3.5 — AGENT DECISION & TOKEN BUDGET
+  // ═══════════════════════════════════════════════════════════════════════
+  
+  // Check if query should use ReAct agent for complex multi-step reasoning
+  const agentDecision = shouldUseAgent(message);
+  
+  if (agentDecision.useAgent && agentDecision.agentType === 'react') {
+    // Route to ReAct agent for complex queries
+    const agentResponse = await executeWithAgent({
+      query: message,
+      tenantId,
+      userId,
+      conversationHistory,
+    });
+    
+    if (agentResponse.agentUsed && agentResponse.response) {
+      // Stream agent response
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'metadata',
+            sources: ragSources,
+            agentUsed: true,
+            agentSteps: agentResponse.steps,
+            toolsUsed: agentResponse.toolsUsed,
+            reasoning: agentResponse.reasoning,
+            confidence: agentResponse.confidence,
+          })}\n\n`));
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'content',
+            content: agentResponse.response,
+          })}\n\n`));
+          
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'done',
+            done: true,
+            agentUsed: true,
+            processingTimeMs: agentResponse.processingTimeMs,
+          })}\n\n`));
+          
+          controller.close();
+        },
+      });
+      
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive',
+        },
+      });
+    }
+  }
+  
+  // Apply token budget management to prevent context overflow
+  const budgetAllocation = allocateBudget(
+    process.env.OPENAI_MODEL || 'gpt-4o-mini',
+    {
+      systemPrompt,
+      ragContext,
+      conversationHistory: conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
+        role: msg.role as 'system' | 'user' | 'assistant',
+        content: msg.content,
+      })),
+      memoryContext,
+    }
+  );
+  
+  const budgetStats = getBudgetStats(budgetAllocation.totalUsed, process.env.OPENAI_MODEL || 'gpt-4o-mini');
+  if (budgetStats.status === 'warning') {
+    console.warn(`[Stream v2] Token budget at ${budgetStats.percentage}% - approaching limit`);
+  }
+
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemPrompt },
-    ...conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content,
-    })),
+    { role: 'system', content: budgetAllocation.systemPrompt.content || systemPrompt },
+    ...JSON.parse(budgetAllocation.conversationHistory.content || '[]').filter((m: { role: string }) => m.role !== 'system'),
     { role: 'user', content: message },
   ];
 
