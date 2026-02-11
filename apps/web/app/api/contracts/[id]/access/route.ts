@@ -162,8 +162,8 @@ export async function POST(
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },
         });
-        results.usersGranted++;
       }
+      results.usersGranted = validUsers.length;
     }
     
     // Grant group access
@@ -174,15 +174,29 @@ export async function POST(
         select: { id: true },
       });
       
-      for (const group of validGroups) {
-        await prisma.contractGroupAccess.upsert({
-          where: {
-            contractId_groupId: { contractId, groupId: group.id },
-          },
-          create: {
-            contractId,
-            groupId: group.id,
-            accessLevel,
+      // Batch upserts in a single transaction for performance
+      await prisma.$transaction(
+        validGroups.map(group =>
+          prisma.contractGroupAccess.upsert({
+            where: {
+              contractId_groupId: { contractId, groupId: group.id },
+            },
+            create: {
+              contractId,
+              groupId: group.id,
+              accessLevel,
+              grantedBy: session.user.id,
+              expiresAt: expiresAt ? new Date(expiresAt) : null,
+            },
+            update: {
+              accessLevel,
+              grantedBy: session.user.id,
+              expiresAt: expiresAt ? new Date(expiresAt) : null,
+            },
+          })
+        )
+      );
+      results.groupsGranted = validGroups.length;
             grantedBy: session.user.id,
             expiresAt: expiresAt ? new Date(expiresAt) : null,
           },

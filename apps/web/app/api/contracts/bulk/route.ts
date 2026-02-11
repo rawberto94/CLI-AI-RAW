@@ -312,28 +312,31 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     case 'ai-analyze':
     case 'analyze':
       // Trigger AI analysis for multiple contracts
-      const _aiAnalyzeResults: Array<{ contractId: string; status: string; error?: string }> = []
-      for (const contractId of contractIds.slice(0, 10)) { // Limit to 10 at a time
-        try {
-          // Queue analysis job or run inline
-          await prisma.contract.update({
+      // Batch status updates in a single transaction
+      const analysisContractIds = contractIds.slice(0, 10);
+      await prisma.$transaction(
+        analysisContractIds.map(contractId =>
+          prisma.contract.update({
             where: { id: contractId },
             data: { 
               status: 'PROCESSING',
               updatedAt: new Date() 
             }
           })
+        )
+      );
 
-          await publishRealtimeEvent({
+      // Fire realtime events in parallel (non-blocking)
+      void Promise.allSettled(
+        analysisContractIds.map(contractId =>
+          publishRealtimeEvent({
             event: 'contract:updated',
             data: { tenantId, contractId, status: 'PROCESSING' },
             source: 'api:contracts/bulk',
           })
-          analyzeResults.push({ contractId, status: 'queued' })
-        } catch (e) {
-          analyzeResults.push({ contractId, status: 'failed', error: (e as Error).message })
-        }
-      }
+        )
+      );
+      const analyzeResults = analysisContractIds.map(contractId => ({ contractId, status: 'queued' }));
       
       return createSuccessResponse(ctx, {
         message: `Analysis queued for ${analyzeResults.filter(r => r.status === 'queued').length} contracts`,

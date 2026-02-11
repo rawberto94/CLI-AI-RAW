@@ -127,6 +127,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     return null;
   };
   
+  const pendingUpdates: Array<{ id: string; data: Record<string, any> }> = [];
+  
   for (const contract of contracts) {
     const overviewData = artifactMap.get(contract.id) as any;
     
@@ -244,17 +246,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
     }
     
-    // Apply updates
+    // Collect updates for batching
     if (Object.keys(contractUpdate).length > 0) {
-      if (!dryRun) {
-        await prisma.contract.update({
-          where: { id: contract.id },
-          data: {
-            ...contractUpdate,
-            updatedAt: new Date(),
-          },
-        });
-      }
+      pendingUpdates.push({ id: contract.id, data: contractUpdate });
       totalUpdated++;
       results.push({
         contractId: contract.id,
@@ -268,6 +262,18 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         success: true,
       });
     }
+  }
+
+  // Batch all updates in a single transaction instead of N+1 individual queries
+  if (!dryRun && pendingUpdates.length > 0) {
+    await prisma.$transaction(
+      pendingUpdates.map(u =>
+        prisma.contract.update({
+          where: { id: u.id },
+          data: { ...u.data, updatedAt: new Date() },
+        })
+      )
+    );
   }
 
   if (!dryRun && totalUpdated > 0) {
