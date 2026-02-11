@@ -164,18 +164,28 @@ export function RealtimeArtifactViewer({
           const data = await response.json();
           // Check if all artifacts are complete - response is { success, data: [...] }
           const artifactList = data.data || data.artifacts || [];
-          if (artifactList.length >= 10) {
-            // The artifacts API returns transformed data, count items with content
+          if (artifactList.length > 0) {
+            // Count items with actual content
             const completed = artifactList.filter((a: any) => 
               a.data && Object.keys(a.data || {}).length > 0
             ).length;
-            if (completed >= 10) {
+            if (completed >= artifactList.length) {
+              // All artifacts complete — update state instead of full page reload
               setIsPollingFallback(false);
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
               }
-              // Force reload the page to get fresh state
-              window.location.reload();
+              setArtifacts(artifactList.map((a: any) => ({
+                id: a.id,
+                type: a.type,
+                status: 'COMPLETED',
+                hasContent: true,
+                contentLength: JSON.stringify(a.data).length,
+                metadata: {},
+                createdAt: a.createdAt,
+                updatedAt: a.updatedAt,
+              })));
+              setIsComplete(true);
             }
           }
         }

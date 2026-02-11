@@ -7,7 +7,7 @@
  * It extracts text from the contract file and generates AI-powered artifacts.
  */
 
-import { PrismaClient, ArtifactType } from '@prisma/client';
+import { PrismaClient, ArtifactType } from 'clients-db';
 import fs from 'fs/promises';
 import path from 'path';
 import pino from 'pino';

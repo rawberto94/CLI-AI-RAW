@@ -299,7 +299,7 @@ export async function generateArtifactsJob(
         // Persist detected type
         if (detectedContractType !== 'OTHER') {
           await prisma.contract.update({
-            where: { id: contractId },
+            where: { id: contractId, tenantId },
             data: { contractType: detectedContractType },
           });
         }
@@ -558,7 +558,7 @@ export async function generateArtifactsJob(
 
     // Update contract status based on outcome
     await prisma.contract.update({
-      where: { id: contractId },
+      where: { id: contractId, tenantId },
       data: {
         status: finalStatus,
         updatedAt: new Date(),
@@ -608,7 +608,7 @@ export async function generateArtifactsJob(
 
     // Update contract status
     await prisma.contract.update({
-      where: { id: contractId },
+      where: { id: contractId, tenantId },
       data: {
         status: 'FAILED',
         updatedAt: new Date(),

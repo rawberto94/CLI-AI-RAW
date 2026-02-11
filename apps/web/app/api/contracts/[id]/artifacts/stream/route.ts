@@ -199,8 +199,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
         
         // Also timeout if we have some artifacts but processing seems stuck
-      if (updateCount >= maxPolls && lastArtifactCount > 0) {
-        // Send what we have and mark as partial
+        if (updateCount >= maxPolls && lastArtifactCount > 0) {
+          sendEvent({
             type: 'complete', 
             contractId,
             status: 'PARTIAL',
