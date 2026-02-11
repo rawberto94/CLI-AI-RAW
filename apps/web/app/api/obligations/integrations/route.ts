@@ -171,8 +171,32 @@ function formatTeamsObligation(obligation: Record<string, unknown>): TeamsMessag
   };
 }
 
+/**
+ * Validate webhook URL to prevent SSRF attacks.
+ * Only HTTPS URLs to non-private hosts are allowed.
+ */
+function isAllowedWebhookUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') return false;
+    const host = parsed.hostname.toLowerCase();
+    // Block private/reserved ranges and metadata endpoints
+    if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0' || host === '[::1]') return false;
+    if (host.startsWith('169.254.') || host.startsWith('10.') || host.startsWith('192.168.')) return false;
+    if (host.startsWith('172.') && parseInt(host.split('.')[1], 10) >= 16 && parseInt(host.split('.')[1], 10) <= 31) return false;
+    if (host.endsWith('.internal') || host.endsWith('.local')) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 // Send Slack notification
 async function sendSlackNotification(webhookUrl: string, message: SlackMessage): Promise<boolean> {
+  if (!isAllowedWebhookUrl(webhookUrl)) {
+    console.error('Slack webhook URL rejected by SSRF validation:', webhookUrl);
+    return false;
+  }
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',
@@ -188,6 +212,10 @@ async function sendSlackNotification(webhookUrl: string, message: SlackMessage):
 
 // Send Teams notification
 async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage): Promise<boolean> {
+  if (!isAllowedWebhookUrl(webhookUrl)) {
+    console.error('Teams webhook URL rejected by SSRF validation:', webhookUrl);
+    return false;
+  }
   try {
     const response = await fetch(webhookUrl, {
       method: 'POST',

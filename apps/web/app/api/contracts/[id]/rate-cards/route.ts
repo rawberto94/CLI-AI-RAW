@@ -9,6 +9,16 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   try {
     const { id } = params;
 
+    // Verify contract belongs to caller's tenant before returning rate cards
+    const tenantId = ctx.tenantId;
+    const contract = await prisma.contract.findFirst({
+      where: { id, tenantId },
+      select: { id: true },
+    });
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
+
     // Get all rate cards for this contract
     const rateCards = await prisma.rateCardEntry.findMany({
       where: {

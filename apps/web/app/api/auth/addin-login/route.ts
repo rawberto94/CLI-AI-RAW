@@ -8,7 +8,10 @@ import { prisma } from '@/lib/prisma';
 import { compare } from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'contigo-word-addin-secret';
+const JWT_SECRET = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('CRITICAL: JWT_SECRET or NEXTAUTH_SECRET must be configured for Word Add-in authentication');
+}
 
 export async function POST(req: NextRequest) {
   try {

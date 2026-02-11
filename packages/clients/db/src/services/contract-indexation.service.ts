@@ -316,12 +316,15 @@ export class ContractIndexationService {
         paramIndex++;
       }
 
-      // Build ORDER BY clause
+      // Build ORDER BY clause — whitelist column names to prevent SQL injection
+      const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'contract_type', 'total_value', 'risk_score', 'expiration_date', 'start_date', 'end_date', 'title'];
+      const safeSortBy = ALLOWED_SORT_COLUMNS.includes(searchQuery.sortBy || '') ? searchQuery.sortBy! : 'created_at';
+      const safeSortOrder = searchQuery.sortOrder === 'ASC' ? 'ASC' : 'DESC';
       let orderClause = 'ORDER BY ';
       if (searchQuery.query) {
         orderClause += `ts_rank(cm.search_vector, plainto_tsquery('english', $${params.length})) DESC, `;
       }
-      orderClause += `cm.${searchQuery.sortBy || 'created_at'} ${searchQuery.sortOrder || 'DESC'}`;
+      orderClause += `cm.${safeSortBy} ${safeSortOrder}`;
 
       // Build LIMIT and OFFSET
       const limit = searchQuery.limit || 50;

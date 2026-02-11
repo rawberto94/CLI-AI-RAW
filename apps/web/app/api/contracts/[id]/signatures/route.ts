@@ -60,10 +60,11 @@ export async function GET(
   try {
     const { id: contractId } = await params;
 
-    // Try database first
+    // Verify contract belongs to the caller's tenant
+    const tenantId = ctx.tenantId;
     try {
-      const contract = await prisma.contract.findUnique({
-        where: { id: contractId },
+      const contract = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
         select: { 
           id: true, 
           contractTitle: true,
@@ -131,10 +132,11 @@ export async function POST(
       message,
     };
 
-    // Try to store in database
+    // Store in database — verify tenant ownership
+    const tenantId = ctx.tenantId;
     try {
-      const contract = await prisma.contract.findUnique({
-        where: { id: contractId },
+      const contract = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
         select: { tenantId: true, searchMetadata: true },
       });
 

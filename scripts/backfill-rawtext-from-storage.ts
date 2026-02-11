@@ -27,13 +27,17 @@ const limitIdx = args.indexOf('--limit');
 const limitNum = limitIdx >= 0 ? parseInt(args[limitIdx + 1], 10) : undefined;
 const skipRag = args.includes('--skip-rag');
 
-// MinIO/S3 configuration
+// MinIO/S3 configuration — require explicit credentials
+if (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY) {
+  console.error('ERROR: MINIO_ACCESS_KEY and MINIO_SECRET_KEY environment variables must be set');
+  process.exit(1);
+}
 const s3Client = new S3Client({
   endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
   region: 'us-east-1',
   credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin123',
+    accessKeyId: process.env.MINIO_ACCESS_KEY,
+    secretAccessKey: process.env.MINIO_SECRET_KEY,
   },
   forcePathStyle: true,
 });

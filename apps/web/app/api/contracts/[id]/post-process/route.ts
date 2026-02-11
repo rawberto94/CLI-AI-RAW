@@ -74,9 +74,9 @@ export async function POST(
           overwriteExisting: !(metadataOptions.onlyEmptyFields ?? true),
         };
         
-        // Get contract text for extraction
-        const contract = await prisma.contract.findUnique({
-          where: { id: contractId },
+        // Get contract text for extraction — scoped to caller's tenant
+        const contract = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
           select: { rawText: true },
         });
         

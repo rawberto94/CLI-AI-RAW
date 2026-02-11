@@ -288,9 +288,14 @@ export default auth(async (req) => {
   const requestId = req.headers.get('x-request-id') || generateRequestId();
 
   // Rate limiting for API routes with tiered limits
-  // Skip rate limiting for NextAuth internal routes (session, csrf, callback, providers)
-  // These are called multiple times per page load and during login flows
-  const isNextAuthInternal = pathname.startsWith("/api/auth/");
+  // Only skip rate limiting for NextAuth's own internal routes (session, csrf, callback, providers)
+  // Custom auth endpoints (addin-login, mfa/verify-login, signup, forgot-password) MUST be rate-limited
+  const NEXTAUTH_INTERNAL_PREFIXES = [
+    '/api/auth/session', '/api/auth/csrf', '/api/auth/providers',
+    '/api/auth/callback', '/api/auth/signin', '/api/auth/signout',
+    '/api/auth/error',
+  ];
+  const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => pathname.startsWith(p));
   if (pathname.startsWith("/api/") && !isNextAuthInternal) {
     // Periodically prune expired entries
     cleanupRateLimitStore();

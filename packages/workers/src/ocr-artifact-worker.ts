@@ -748,7 +748,10 @@ let mistralModule: any = null;
   }
 })();
 
-// Initialize S3 client for MinIO
+// Initialize S3 client for MinIO — fail fast if credentials are missing in production
+if (process.env.NODE_ENV === 'production' && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+  throw new Error('CRITICAL: MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be configured in production');
+}
 const s3Client = new S3Client({
   endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
   region: 'us-east-1',
