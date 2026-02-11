@@ -8,6 +8,11 @@
  * - Expiration timeline analysis
  * - Category distribution
  * - Party statistics
+ * 
+ * Performance:
+ * - Redis caching (60s TTL)
+ * - Parallel database queries
+ * - SWR cache headers
  */
 
 import { NextRequest } from "next/server";
@@ -16,6 +21,8 @@ import { contractService } from 'data-orchestration/services';
 // TODO: Migrate count/groupBy calls to contractService.queryContracts()
 import { getApiTenantId } from "@/lib/tenant-server";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { withCache, CacheKeys } from '@/lib/cache';
+import { CacheTTL, createTimer, makeCacheKey } from '@/lib/api-performance';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -70,7 +77,7 @@ interface ContractStats {
 }
 
 export const GET = withAuthApiHandler(async (request, ctx) => {
-  const startTime = Date.now();
+  const timer = createTimer();
   
   try {
     const tenantId = await getApiTenantId(request);
@@ -79,11 +86,37 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
-    const now = new Date();
-    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
-    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // Use Redis cache for expensive aggregations (60s TTL)
+    const cacheKey = makeCacheKey('contracts:stats', tenantId);
+    
+    const { stats, fromCache } = await withCache(
+      cacheKey,
+      async () => {
+        const result = await fetchContractStats(tenantId);
+        return { stats: result, fromCache: false };
+      },
+      { ttl: CacheTTL.short }
+    ).then(cached => cached || fetchContractStats(tenantId).then(s => ({ stats: s, fromCache: false })));
+
+    return createSuccessResponse(ctx, stats, {
+      headers: {
+        "X-Response-Time": timer.format(),
+        "X-Cache": fromCache ? "HIT" : "MISS",
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
+      },
+    });
+  } catch (error) {
+    return handleApiError(ctx, error);
+  }
+});
+
+// Extracted function for cacheability
+async function fetchContractStats(tenantId: string): Promise<ContractStats> {
+  const now = new Date();
+  const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
+  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     // Fetch all stats in parallel for performance
     const [
@@ -356,15 +389,6 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       },
     };
 
-    const responseTime = Date.now() - startTime;
+    return stats;
+}
 
-    return createSuccessResponse(ctx, stats, {
-      headers: {
-        "X-Response-Time": `${responseTime}ms`,
-        "Cache-Control": "private, max-age=60",
-      },
-    });
-  } catch (error) {
-    return handleApiError(ctx, error);
-  }
-});
