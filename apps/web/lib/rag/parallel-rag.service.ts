@@ -131,9 +131,8 @@ export async function parallelMultiQueryRAG(
     // STEP 2: GENERATE EMBEDDINGS FOR ALL QUERIES
     // ========================================
     const embeddingsResponse = await openai.embeddings.create({
-      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-large',
+      model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
       input: allQueries,
-      dimensions: 1024, // Use larger model with reduced dimensions
     });
 
     const queryEmbeddings = embeddingsResponse.data.map(d => d.embedding);
@@ -211,7 +210,69 @@ export async function parallelMultiQueryRAG(
       timingsMs: timings,
     };
   } catch (error) {
-    console.error('[ParallelRAG] Error:', error);
+    console.warn('[ParallelRAG] Vector search failed, falling back to keyword-only:', (error as Error).message);
+    // Fallback: keyword-only search when OpenAI is unavailable (quota, key issues)
+    try {
+      const keywordResults = await keywordSearch(query, tenantId, k * 2);
+      if (keywordResults.length > 0) {
+        const contractIds = [...new Set(keywordResults.map(r => r.contractId))];
+        const contracts = await prisma.contract.findMany({
+          where: { id: { in: contractIds } },
+          select: { id: true, contractTitle: true, fileName: true, supplierName: true, status: true },
+        });
+        const contractMap = new Map(contracts.map(c => [c.id, c]));
+        return {
+          results: keywordResults.slice(0, k).map(r => {
+            const contract = contractMap.get(r.contractId);
+            return {
+              contractId: r.contractId,
+              contractName: contract?.contractTitle || contract?.fileName || 'Unknown',
+              supplierName: contract?.supplierName || undefined,
+              text: r.text,
+              score: 1 / (60 + r.rank + 1),
+              matchType: 'keyword' as const,
+              sources: ['keyword-fallback'],
+            };
+          }),
+          queryVariations: [query],
+          timingsMs: { total: Date.now() - startTime, hyde: 0, expansion: 0, search: 0, fusion: 0 },
+        };
+      }
+    } catch (fallbackError) {
+      console.error('[ParallelRAG] Keyword fallback also failed:', fallbackError);
+    }
+    
+    // Last resort: rawText search
+    try {
+      const tenantFilter = tenantId ? Prisma.sql`AND "tenantId" = ${tenantId}` : Prisma.empty;
+      const rawResults = await prisma.$queryRaw<Array<{ id: string; contractTitle: string | null; fileName: string; supplierName: string | null; rawText: string }>>`
+        SELECT id, "contractTitle", "fileName" as "fileName", "supplierName", LEFT("rawText", 2000) as "rawText"
+        FROM "Contract"
+        WHERE "rawText" IS NOT NULL
+          AND to_tsvector('english', "rawText") @@ plainto_tsquery('english', ${query})
+          ${tenantFilter}
+        ORDER BY ts_rank_cd(to_tsvector('english', "rawText"), plainto_tsquery('english', ${query})) DESC
+        LIMIT ${k}
+      `;
+      if (rawResults.length > 0) {
+        return {
+          results: rawResults.map((r, i) => ({
+            contractId: r.id,
+            contractName: r.contractTitle || r.fileName || 'Unknown',
+            supplierName: r.supplierName || undefined,
+            text: r.rawText,
+            score: 1 / (60 + i + 1),
+            matchType: 'keyword' as const,
+            sources: ['rawtext-fallback'],
+          })),
+          queryVariations: [query],
+          timingsMs: { total: Date.now() - startTime, hyde: 0, expansion: 0, search: 0, fusion: 0 },
+        };
+      }
+    } catch (rawError) {
+      console.error('[ParallelRAG] rawText fallback also failed:', rawError);
+    }
+    
     return {
       results: [],
       queryVariations: [query],

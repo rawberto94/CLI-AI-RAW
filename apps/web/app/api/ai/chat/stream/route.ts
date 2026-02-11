@@ -51,7 +51,7 @@ interface ModelConfig {
 
 const MODEL_FAILOVER_CHAIN: ModelConfig[] = [
   { provider: 'openai', model: process.env.OPENAI_MODEL || 'gpt-4o-mini', priority: 1 },
-  { provider: 'openai', model: 'gpt-4o-mini', priority: 2 },
+  { provider: 'openai', model: 'gpt-4o', priority: 2 },
   { provider: 'anthropic', model: 'claude-3-haiku-20240307', priority: 3 },
   { provider: 'anthropic', model: 'claude-3-sonnet-20240229', priority: 4 },
 ];
@@ -259,7 +259,7 @@ ${memoryContext}`;
                   messages,
                   tools: STREAMING_TOOLS,
                   tool_choice: 'auto',
-                  temperature: 0.7,
+                  temperature: 0.3,
                   max_tokens: 2000,
                 });
 

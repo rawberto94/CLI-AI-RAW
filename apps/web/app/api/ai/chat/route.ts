@@ -6235,8 +6235,8 @@ ${intentEntities?.isClarificationRequest ? '- User seems to be following up or c
     const completion = await openai.chat.completions.create({
       model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
-      max_tokens: 1500 });
+      temperature: 0.3,
+      max_tokens: 2000 });
 
     const responseContent = completion.choices[0]?.message?.content || 'I apologize, but I could not generate a response.';
 

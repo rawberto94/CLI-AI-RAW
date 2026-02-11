@@ -33,7 +33,6 @@ import {
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
-import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
 import ContractLifecyclePipeline from "@/components/dashboard/ContractLifecyclePipeline";
 import CustomDashboardBuilder, { type DashboardWidget} from "@/components/dashboard/CustomDashboardBuilder";
 
@@ -686,9 +685,6 @@ export default function DashboardPage() {
           </Card>
         </motion.div>
       </motion.div>
-
-      {/* Floating AI Assistant */}
-      <FloatingAIBubble />
 
       {/* Dashboard Customizer Dialog */}
       <CustomDashboardBuilder
