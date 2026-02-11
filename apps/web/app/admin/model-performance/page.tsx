@@ -33,6 +33,7 @@ import {
   Sparkles,
   Brain,
   Scale,
+  AlertTriangle,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -296,6 +297,15 @@ export default function ModelPerformancePage() {
 
   return (
     <div className="space-y-6">
+      {/* Preview banner */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-amber-800">Preview Mode</p>
+          <p className="text-xs text-amber-700">This page shows illustrative data. Model performance metrics will be connected to real inference logs in a future release.</p>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

@@ -334,6 +334,15 @@ export default function ABTestingPage() {
 
   return (
     <div className="space-y-6">
+      {/* Preview banner */}
+      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
+        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+        <div>
+          <p className="text-sm font-medium text-amber-800">Preview Mode</p>
+          <p className="text-xs text-amber-700">This page shows illustrative data. A/B testing analytics will be connected to real experiment data in a future release.</p>
+        </div>
+      </div>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

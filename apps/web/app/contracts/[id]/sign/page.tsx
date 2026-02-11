@@ -221,7 +221,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
   const [showAddSigner, setShowAddSigner] = useState(false);
   const [newSigner, setNewSigner] = useState({ name: '', email: '', role: 'signer' });
 
-  // Fetch contract details
+  // Fetch contract details and existing signature request
   useEffect(() => {
     async function fetchContract() {
       try {
@@ -242,25 +242,31 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
         // Error handled silently
       }
       
-      // Demo signers
-      setSigners([
-        {
-          id: 's1',
-          name: 'John Smith',
-          email: 'john.smith@company.com',
-          role: 'signer',
-          order: 1,
-          status: 'pending',
-        },
-        {
-          id: 's2',
-          name: 'Sarah Johnson',
-          email: 'sarah.johnson@supplier.com',
-          role: 'signer',
-          order: 2,
-          status: 'pending',
-        },
-      ]);
+      // Load existing signature request for this contract
+      try {
+        const sigRes = await fetch(`/api/signatures?contractId=${id}&limit=1`);
+        if (sigRes.ok) {
+          const sigData = await sigRes.json();
+          const items = sigData?.data?.items || [];
+          if (items.length > 0) {
+            const existing = items[0];
+            const existingSigners = (existing.signers || []).map((s: Record<string, unknown>, i: number) => ({
+              id: (s.id as string) || `s_${i}`,
+              name: s.name as string,
+              email: s.email as string,
+              role: (s.role as Signer['role']) || 'signer',
+              order: (s.order as number) || i + 1,
+              status: (s.status as Signer['status']) || 'pending',
+              signedAt: s.signedAt as string | undefined,
+            }));
+            if (existingSigners.length > 0) {
+              setSigners(existingSigners);
+            }
+          }
+        }
+      } catch {
+        // If fetching existing signatures fails, start with empty list
+      }
       
       setLoading(false);
     }
@@ -296,8 +302,35 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
     toast.success('Signer removed');
   };
 
-  const handleResendInvite = (_signerId: string) => {
-    toast.success('Invitation resent');
+  const handleResendInvite = async (signerId: string) => {
+    try {
+      // Find the signature request for this contract to get the workflow ID
+      const sigRes = await fetch(`/api/signatures?contractId=${id}&limit=1`);
+      if (!sigRes.ok) throw new Error('Failed to find signature request');
+      
+      const sigData = await sigRes.json();
+      const items = sigData?.data?.items || [];
+      if (items.length === 0) {
+        toast.error('No active signature request found');
+        return;
+      }
+
+      const workflowId = items[0].id;
+      const response = await fetch(`/api/signatures/${workflowId}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signerId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to resend invitation');
+      }
+
+      toast.success('Invitation resent');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to resend invitation');
+    }
   };
 
   const handleSendForSignature = async () => {

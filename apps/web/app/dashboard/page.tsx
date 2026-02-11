@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -144,7 +144,29 @@ const quickActions = [
 export default function DashboardPage() {
   const queryClient = useQueryClient();
   const [customizerOpen, setCustomizerOpen] = useState(false);
-  const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>([]);
+  const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>(() => {
+    // Load persisted widget configuration from localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('contigo-dashboard-widgets');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return [];
+  });
+
+  // Persist widget configuration to localStorage on change
+  useEffect(() => {
+    if (dashboardWidgets.length > 0) {
+      try {
+        localStorage.setItem('contigo-dashboard-widgets', JSON.stringify(dashboardWidgets));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [dashboardWidgets]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],

@@ -459,7 +459,8 @@ function AIChatPageContent() {
     }
 
     try {
-      const response = await fetch("/api/ai/chat", {
+      // Use streaming endpoint for real-time token-by-token display
+      const response = await fetch("/api/ai/chat/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -469,7 +470,7 @@ function AIChatPageContent() {
           message: messageText,
           contractId,
           conversationId: activeConversationId,
-          history: messages.slice(-10), // Last 10 messages for context
+          conversationHistory: messages.slice(-10),
         }),
       });
 
@@ -477,19 +478,57 @@ function AIChatPageContent() {
         throw new Error("Failed to get AI response");
       }
 
-      const data = await response.json();
+      // Parse SSE stream
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let sources: string[] = [];
+      let confidence: number | undefined;
+      let suggestions: string[] = [];
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                if (data.type === 'content' && data.content) {
+                  fullContent += data.content;
+                  setStreamingContent(fullContent);
+                } else if (data.content && !data.type) {
+                  fullContent += data.content;
+                  setStreamingContent(fullContent);
+                }
+                if (data.sources) sources = data.sources;
+                if (data.confidence) confidence = data.confidence;
+                if (data.suggestedActions) {
+                  suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
+                }
+                if (data.done || data.type === 'done') break;
+              } catch {
+                // Ignore parse errors for incomplete SSE chunks
+              }
+            }
+          }
+        }
+      }
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: data.response || data.message || "I apologize, but I couldn't process that request. Please try again.",
+        content: fullContent || "I apologize, but I couldn't process that request. Please try again.",
         timestamp: new Date(),
-        suggestions: data.suggestions,
+        suggestions: suggestions.length > 0 ? suggestions : undefined,
         conversationId: activeConversationId || undefined,
         metadata: {
-          sources: data.sources,
-          confidence: data.confidence,
-          processingTime: data.processingTime,
+          sources,
+          confidence,
         },
       };
 
@@ -997,7 +1036,7 @@ function AIChatPageContent() {
                 </motion.div>
               ))}
 
-              {/* Typing indicator */}
+              {/* Typing / Streaming indicator */}
               {isTyping && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -1007,12 +1046,19 @@ function AIChatPageContent() {
                   <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
-                  <div className="bg-white dark:bg-slate-800 border shadow-sm rounded-xl p-4">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
+                  <div className="bg-white dark:bg-slate-800 border shadow-sm rounded-xl p-4 max-w-[80%]">
+                    {streamingContent ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                        {streamingContent}
+                        <span className="inline-block w-1.5 h-4 bg-violet-500 animate-pulse ml-0.5 align-text-bottom" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}

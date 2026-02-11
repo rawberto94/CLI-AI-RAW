@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,8 +110,53 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
   const [envelope, setEnvelope] = useState<SignatureEnvelope>(createMockEnvelope(contractId));
   const [activeTab, setActiveTab] = useState('setup');
   const [sending, setSending] = useState(false);
+  const [loadingEnvelope, setLoadingEnvelope] = useState(true);
   const [addSignerOpen, setAddSignerOpen] = useState(false);
   const [newSigner, setNewSigner] = useState<Partial<Signatory>>({ role: 'signer', authMethod: 'email' });
+
+  // Load existing signature request for this contract on mount
+  useEffect(() => {
+    async function loadExistingEnvelope() {
+      try {
+        const res = await fetch(`/api/signatures?contractId=${contractId}&limit=1`);
+        if (res.ok) {
+          const data = await res.json();
+          const items = data?.data?.items || [];
+          if (items.length > 0) {
+            const existing = items[0];
+            setEnvelope(prev => ({
+              ...prev,
+              id: existing.id,
+              status: existing.status || prev.status,
+              subject: existing.subject || prev.subject,
+              message: existing.message || prev.message,
+              provider: existing.provider || prev.provider,
+              signatories: (existing.signers || []).map((s: Record<string, unknown>, i: number) => ({
+                id: (s.id as string) || `s_${i}`,
+                name: s.name as string,
+                email: s.email as string,
+                role: (s.role as Signatory['role']) || 'signer',
+                order: (s.order as number) || i + 1,
+                status: (s.status as Signatory['status']) || 'pending',
+                signedAt: s.signedAt as string | undefined,
+                authMethod: (s.authMethod as Signatory['authMethod']) || 'email',
+              })),
+              createdAt: existing.createdAt || prev.createdAt,
+              updatedAt: existing.updatedAt || prev.updatedAt,
+            }));
+            if (existing.status && existing.status !== 'draft') {
+              setActiveTab('tracking');
+            }
+          }
+        }
+      } catch {
+        // If fetch fails, start with a fresh draft envelope
+      } finally {
+        setLoadingEnvelope(false);
+      }
+    }
+    loadExistingEnvelope();
+  }, [contractId]);
 
   const completedCount = envelope.signatories.filter(s => s.status === 'signed').length;
   const totalSigners = envelope.signatories.filter(s => s.role === 'signer' || s.role === 'approver').length;
@@ -162,29 +207,92 @@ export default function ESignatureWorkflow({ contractId, contractTitle, classNam
       return;
     }
     setSending(true);
-    // Simulate API call
-    await new Promise(r => setTimeout(r, 2000));
-    setEnvelope(prev => ({
-      ...prev,
-      status: 'sent',
-      signatories: prev.signatories.map(s => s.role !== 'cc' ? { ...s, status: 'sent' } : s),
-    }));
-    setSending(false);
-    setActiveTab('tracking');
-    toast.success('Signature request sent successfully');
+    try {
+      const response = await fetch('/api/signatures', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contractId,
+          signers: envelope.signatories.map(s => ({
+            name: s.name,
+            email: s.email,
+            role: s.role,
+            order: s.order,
+          })),
+          message: envelope.message || envelope.subject,
+          provider: envelope.provider === 'internal' ? 'manual' : envelope.provider,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.error || 'Failed to send signature request');
+      }
+
+      setEnvelope(prev => ({
+        ...prev,
+        id: data.data?.id || prev.id,
+        status: 'sent',
+        signatories: prev.signatories.map(s => s.role !== 'cc' ? { ...s, status: 'sent' } : s),
+      }));
+      setActiveTab('tracking');
+      toast.success('Signature request sent successfully');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send signature request');
+    } finally {
+      setSending(false);
+    }
   };
 
-  const voidEnvelope = () => {
-    setEnvelope(prev => ({
-      ...prev,
-      status: 'voided',
-      signatories: prev.signatories.map(s => ({ ...s, status: 'voided' })),
-    }));
-    toast.info('Envelope has been voided');
+  const voidEnvelope = async () => {
+    if (!envelope.id) {
+      toast.error('No active signature request to void');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/signatures/${envelope.id}/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to void envelope');
+      }
+
+      setEnvelope(prev => ({
+        ...prev,
+        status: 'voided',
+        signatories: prev.signatories.map(s => ({ ...s, status: 'voided' })),
+      }));
+      toast.info('Envelope has been voided');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to void envelope');
+    }
   };
 
-  const resendToSigner = (signerId: string) => {
-    toast.success('Reminder sent');
+  const resendToSigner = async (signerId: string) => {
+    if (!envelope.id) {
+      toast.error('No active signature request');
+      return;
+    }
+    try {
+      const response = await fetch(`/api/signatures/${envelope.id}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signerId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to send reminder');
+      }
+
+      toast.success('Reminder sent');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to send reminder');
+    }
   };
 
   return (

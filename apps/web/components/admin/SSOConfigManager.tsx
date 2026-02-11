@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -83,12 +83,33 @@ export default function SSOConfigManager({ className }: { className?: string }) 
   const [activeTab, setActiveTab] = useState('providers');
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [loadingProviders, setLoadingProviders] = useState(true);
   const [newDomain, setNewDomain] = useState('');
   const [showSecret, setShowSecret] = useState(false);
 
   const spEntityId = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/metadata` : '';
   const acsUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/callback` : '';
   const sloCallbackUrl = typeof window !== 'undefined' ? `${window.location.origin}/api/auth/saml/slo` : '';
+
+  // Load SSO providers from backend on mount
+  useEffect(() => {
+    async function loadProviders() {
+      try {
+        const res = await fetch('/api/admin/sso');
+        if (res.ok) {
+          const data = await res.json();
+          if (data?.providers) {
+            setProviders(data.providers);
+          }
+        }
+      } catch {
+        // Failed to load providers
+      } finally {
+        setLoadingProviders(false);
+      }
+    }
+    loadProviders();
+  }, []);
 
   const openEditor = (provider?: SSOProvider) => {
     setEditingProvider(provider ? { ...provider } : createEmptyProvider());
@@ -100,30 +121,63 @@ export default function SSOConfigManager({ className }: { className?: string }) 
   const saveProvider = async () => {
     if (!editingProvider?.name) { toast.error('Name is required'); return; }
     setSaving(true);
-    await new Promise(r => setTimeout(r, 800));
+    try {
+      const isUpdate = !!editingProvider.id;
+      const response = await fetch('/api/admin/sso', {
+        method: isUpdate ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingProvider),
+      });
 
-    if (editingProvider.id) {
-      setProviders(prev => prev.map(p => p.id === editingProvider.id ? { ...p, ...editingProvider, updatedAt: new Date().toISOString() } as SSOProvider : p));
-    } else {
-      const newProvider: SSOProvider = {
-        ...editingProvider as SSOProvider,
-        id: 'sso_' + Date.now().toString(36),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        attributeMapping: editingProvider.attributeMapping || { email: 'email' },
-        allowedDomains: editingProvider.allowedDomains || [],
-        groupMapping: editingProvider.groupMapping || [],
-      };
-      setProviders(prev => [...prev, newProvider]);
+      const data = await response.json();
+
+      if (response.status === 501) {
+        toast.error('SSO configuration is not yet available. Contact support to configure SSO.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || `Failed to ${isUpdate ? 'update' : 'create'} SSO provider`);
+      }
+
+      // Success — update local state from server response
+      if (isUpdate) {
+        setProviders(prev => prev.map(p => p.id === editingProvider.id ? { ...p, ...editingProvider, updatedAt: new Date().toISOString() } as SSOProvider : p));
+      } else if (data.provider) {
+        setProviders(prev => [...prev, data.provider]);
+      }
+      setIsEditing(false);
+      toast.success(`SSO provider ${isUpdate ? 'updated' : 'created'}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save SSO provider');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
-    setIsEditing(false);
-    toast.success(`SSO provider ${editingProvider.id ? 'updated' : 'created'}`);
   };
 
-  const deleteProvider = (id: string) => {
-    setProviders(prev => prev.filter(p => p.id !== id));
-    toast.info('Provider removed');
+  const deleteProvider = async (id: string) => {
+    try {
+      const response = await fetch('/api/admin/sso', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+
+      if (response.status === 501) {
+        toast.error('SSO provider deletion is not yet available. Contact support.');
+        return;
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete provider');
+      }
+
+      setProviders(prev => prev.filter(p => p.id !== id));
+      toast.info('Provider removed');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete provider');
+    }
   };
 
   const testConnection = async () => {
@@ -137,12 +191,35 @@ export default function SSOConfigManager({ className }: { className?: string }) 
     });
   };
 
-  const toggleProviderStatus = (id: string) => {
-    setProviders(prev => prev.map(p => {
-      if (p.id !== id) return p;
-      const newStatus = p.status === 'active' ? 'inactive' : 'active';
-      return { ...p, status: newStatus, updatedAt: new Date().toISOString() };
-    }));
+  const toggleProviderStatus = async (id: string) => {
+    const provider = providers.find(p => p.id === id);
+    if (!provider) return;
+
+    try {
+      const newStatus = provider.status === 'active' ? 'inactive' : 'active';
+      const response = await fetch('/api/admin/sso', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: newStatus }),
+      });
+
+      if (response.status === 501) {
+        toast.error('SSO provider update is not yet available. Contact support.');
+        return;
+      }
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to toggle provider status');
+      }
+
+      setProviders(prev => prev.map(p => {
+        if (p.id !== id) return p;
+        return { ...p, status: newStatus, updatedAt: new Date().toISOString() };
+      }));
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to toggle provider');
+    }
   };
 
   const addDomain = () => {
