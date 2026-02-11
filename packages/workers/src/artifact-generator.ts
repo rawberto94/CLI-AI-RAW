@@ -18,6 +18,14 @@ import { ensureProcessingJob, updateStep } from './workflow/processing-job';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 import { AdaptiveRetryStrategy, chunkTextForModel } from './utils/adaptive-retry-strategy';
+import {
+  ContractType as ProfileContractType,
+  detectContractType,
+  detectContractTypeWithAI,
+  getContractProfile,
+  isArtifactApplicable,
+  getEnhancedPromptHints,
+} from './contract-type-profiles';
 
 // Default artifact types configuration (flexible per-tenant config loaded dynamically)
 interface ArtifactTypeConfig {
@@ -272,21 +280,62 @@ export async function generateArtifactsJob(
       throw new Error(`Contract ${contractId} not found`);
     }
 
+    // ── Contract Type Detection ─────────────────────────────────────────
+    let detectedContractType: ProfileContractType = (contract.contractType as ProfileContractType) || 'OTHER';
+    if (detectedContractType === 'OTHER' || (contract.contractType as string) === 'UNKNOWN') {
+      try {
+        const keywordResult = detectContractType(contractText);
+        if (keywordResult.confidence >= 0.5) {
+          detectedContractType = keywordResult.type;
+          logger.info({ contractId, type: detectedContractType, confidence: keywordResult.confidence, method: 'keyword' }, 'Contract type detected');
+        } else {
+          // AI-based detection for low-confidence keyword results
+          const aiResult = await detectContractTypeWithAI(contractText);
+          if (aiResult && aiResult.confidence >= 0.4) {
+            detectedContractType = aiResult.type;
+            logger.info({ contractId, type: detectedContractType, confidence: aiResult.confidence, method: 'ai' }, 'Contract type detected via AI');
+          }
+        }
+        // Persist detected type
+        if (detectedContractType !== 'OTHER') {
+          await prisma.contract.update({
+            where: { id: contractId },
+            data: { contractType: detectedContractType },
+          });
+        }
+      } catch (typeDetectionError) {
+        logger.warn({ contractId, error: typeDetectionError }, 'Contract type detection failed, using OTHER');
+      }
+    }
+    const contractTypeProfile = getContractProfile(detectedContractType);
+    logger.info({ contractId, detectedContractType, profileName: contractTypeProfile.displayName }, 'Using contract type profile for artifact extraction');
+
     // Load tenant-configurable artifact types (sorted by priority)
     const tenantConfig = await loadTenantArtifactConfig(tenantId);
-    const artifactTypes = tenantConfig.artifactTypes.map(config => ({
+    const allArtifactTypes = tenantConfig.artifactTypes.map(config => ({
       type: config.type,
       weight: config.weight,
       config,
     }));
     const generationConfig = tenantConfig.generationConfig;
-    
-    logger.info({ 
-      tenantId, 
-      contractId, 
+
+    // Filter artifacts by contract type relevance (skip not-applicable)
+    const artifactTypes = allArtifactTypes.filter(({ type }) =>
+      isArtifactApplicable(detectedContractType, type as any)
+    );
+    const skippedArtifacts = allArtifactTypes
+      .filter(({ type }) => !isArtifactApplicable(detectedContractType, type as any))
+      .map(a => a.type);
+
+    logger.info({
+      tenantId,
+      contractId,
+      contractType: detectedContractType,
       enabledArtifacts: artifactTypes.map(a => a.type),
-      totalArtifacts: artifactTypes.length,
-    }, 'Using tenant-configured artifact types');
+      skippedArtifacts,
+      totalEnabled: artifactTypes.length,
+      totalSkipped: skippedArtifacts.length,
+    }, 'Using type-filtered artifact types');
 
     let progressBase = 10;
     const failedArtifacts: string[] = [];
@@ -324,7 +373,7 @@ export async function generateArtifactsJob(
             const result = await adaptiveRetry.executeWithRetry(
               async (model) => {
                 modelUsed = model.name;
-                const data = await generateArtifactData(type, contractText, contractId, model.name);
+                const data = await generateArtifactData(type, contractText, contractId, model.name, detectedContractType);
                 return { data, model: model.name };
               },
               `Generate ${type} artifact`
@@ -661,7 +710,8 @@ async function generateArtifactData(
   type: string,
   contractText: string,
   contractId: string,
-  modelName?: string
+  modelName?: string,
+  contractType?: string
 ): Promise<Record<string, any>> {
   const apiKey = process.env.OPENAI_API_KEY;
   
@@ -675,11 +725,40 @@ async function generateArtifactData(
     const OpenAI = (await import('openai')).default;
     const openai = new OpenAI({ apiKey });
     
-    // Limit contract text to avoid token limits
-    const truncatedText = contractText.substring(0, 15000);
+    // Limit contract text to avoid token limits (50k chars ≈ 12k tokens)
+    const truncatedText = contractText.substring(0, 50000);
 
-    // Anti-hallucination system prompt
-    const systemPrompt = `You are a contract analysis expert. Return ONLY valid JSON.
+    // Build contract-type-specific context for enhanced extraction
+    let typeContext = '';
+    if (contractType && contractType !== 'OTHER' && contractType !== 'UNKNOWN') {
+      try {
+        const profile = getContractProfile(contractType as ProfileContractType);
+        const parts: string[] = [
+          `\nCONTRACT TYPE CONTEXT:`,
+          `This is a ${profile.displayName} (${contractType}).`,
+          profile.description ? profile.description : '',
+        ];
+        if (profile.extractionHints) parts.push(`Extraction guidance: ${profile.extractionHints}`);
+        if (profile.clauseCategories.length > 0)
+          parts.push(`Key clause categories: ${profile.clauseCategories.slice(0, 8).join(', ')}`);
+        if (profile.riskCategories.length > 0)
+          parts.push(`Risk areas to assess: ${profile.riskCategories.slice(0, 6).join(', ')}`);
+        if (profile.financialFields.length > 0)
+          parts.push(`Financial fields to extract: ${profile.financialFields.slice(0, 6).join(', ')}`);
+        if (profile.keyTermsToExtract.length > 0)
+          parts.push(`Key terms to extract: ${profile.keyTermsToExtract.join(', ')}`);
+        if (profile.mandatoryFields.length > 0)
+          parts.push(`Mandatory fields: ${profile.mandatoryFields.join(', ')}`);
+        if (profile.expectedSections.length > 0)
+          parts.push(`Expected sections: ${profile.expectedSections.join(', ')}`);
+        typeContext = parts.filter(Boolean).join('\n');
+      } catch {
+        // Ignore profile lookup errors — degrade gracefully
+      }
+    }
+
+    // Anti-hallucination system prompt with contract-type-specific context
+    const systemPrompt = `You are a contract analysis expert. Return ONLY valid JSON.${typeContext ? `\n${typeContext}` : ''}
 
 CRITICAL ANTI-HALLUCINATION RULES:
 1. ONLY extract information explicitly stated in the contract text

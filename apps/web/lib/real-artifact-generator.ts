@@ -386,7 +386,8 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
 async function generateAIArtifact(
   type: ArtifactType,
   contractText: string,
-  contractId: string
+  contractId: string,
+  contractType?: string
 ): Promise<Record<string, any> | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   
@@ -502,7 +503,7 @@ async function generateAIArtifact(
       messages: [
         {
           role: 'system',
-          content: 'You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation.',
+          content: `You are a contract analysis expert. Always respond with valid JSON only, no markdown or explanation.${contractType && contractType !== 'OTHER' ? `\nThis document is a ${contractType.replace(/_/g, ' ')}. Focus your analysis on elements typical of this contract type.` : ''}`,
         },
         {
           role: 'user',
@@ -720,12 +721,19 @@ export async function generateRealArtifacts(
     const totalTypes = ARTIFACT_TYPES.length;
     let completed = 0;
 
+    // Query contract type for type-aware prompt enhancement
+    const contractRecord = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { contractType: true },
+    });
+    const contractType = contractRecord?.contractType || 'OTHER';
+
     for (const type of ARTIFACT_TYPES) {
       try {
         logger.info({ contractId, type }, `Generating ${type} artifact`);
         
         // Try AI generation first, fall back to basic
-        let artifactData = await generateAIArtifact(type, contractText, contractId);
+        let artifactData = await generateAIArtifact(type, contractText, contractId, contractType);
         
         if (!artifactData) {
           logger.info({ type }, 'Using basic artifact generation (no AI)');
