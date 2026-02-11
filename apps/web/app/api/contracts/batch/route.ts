@@ -6,16 +6,17 @@
  */
 
 import { NextRequest } from "next/server";
+import { createHash } from "crypto";
 import { contractService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
-import {
-  ensureProcessingJob,
-  startProcessingJob,
-} from "@/lib/contract-processing";
+import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { initializeStorage } from "@/lib/storage-service";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
+import clientsDb from 'clients-db';
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+const prisma = getClient();
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 function isFile(value: unknown): value is File {
@@ -48,8 +49,14 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     contractId: string;
     fileName: string;
     status: string;
-    jobId: string;
+    jobId: string | null;
   }>;
+  const duplicates = [] as Array<{
+    fileName: string;
+    existingContractId: string;
+  }>;
+
+  const skipDupCheck = request.headers.get('x-skip-duplicate-check') === 'true';
 
   const tenantId = await getServerTenantId();
   const userId = "user"; // From session when authenticated
@@ -58,6 +65,29 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // Read file bytes
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // File-level deduplication via SHA-256 checksum
+    const contentHash = createHash('sha256').update(buffer).digest('hex');
+
+    if (!skipDupCheck) {
+      try {
+        const existing = await prisma.contract.findFirst({
+          where: {
+            tenantId,
+            checksum: contentHash,
+            isDeleted: false,
+            status: { notIn: ['FAILED', 'DELETED'] },
+          },
+          select: { id: true, fileName: true },
+        });
+        if (existing) {
+          duplicates.push({ fileName: file.name, existingContractId: existing.id });
+          continue;
+        }
+      } catch {
+        // Dedup check failed — proceed with upload
+      }
+    }
 
     // Generate storage key
     const storedFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9._-]/g, '_')}`;
@@ -105,6 +135,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       uploadedBy: userId,
       status: "UPLOADED",
       storagePath,
+      checksum: contentHash,
       contractType: formData.get(`${file.name}_type`) as string | undefined,
     });
 
@@ -125,21 +156,45 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       source: "api:contracts/batch",
     });
 
-    ensureProcessingJob(contract.id);
-    const job = startProcessingJob(contract.id);
-    if (!job.id) continue;
+    // Create ProcessingJob DB record for tracking
+    try {
+      await prisma.processingJob.create({
+        data: {
+          tenantId,
+          contractId: contract.id,
+          status: 'QUEUED',
+          progress: 0,
+          startedAt: new Date(),
+        },
+      });
+    } catch {
+      // ProcessingJob creation is best-effort
+    }
+
+    // Queue for real BullMQ processing with LOW priority (batch = background)
+    const queueResult = await triggerArtifactGeneration({
+      contractId: contract.id,
+      tenantId,
+      filePath: storagePath,
+      mimeType: file.type || 'application/pdf',
+      useQueue: true,
+      priority: PROCESSING_PRIORITY.LOW,
+      source: 'bulk',
+    });
 
     results.push({
       contractId: contract.id,
       fileName: file.name,
-      status: job.status,
-      jobId: job.id,
+      status: queueResult.status,
+      jobId: queueResult.jobId || null,
     });
   }
 
   return createSuccessResponse(ctx, {
       processed: results.length,
       results,
+      duplicates: duplicates.length > 0 ? duplicates : undefined,
+      duplicateCount: duplicates.length,
   });
 });
 

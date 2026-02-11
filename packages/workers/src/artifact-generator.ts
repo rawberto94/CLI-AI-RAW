@@ -50,6 +50,10 @@ const DEFAULT_ARTIFACT_TYPES: ArtifactTypeConfig[] = [
   { type: 'NEGOTIATION_POINTS' as ArtifactType, enabled: true, priority: 8, weight: 8, qualityThreshold: 0.65, maxRetries: 2, label: 'Negotiation', category: 'advanced' },
   { type: 'AMENDMENTS' as ArtifactType, enabled: true, priority: 9, weight: 7, qualityThreshold: 0.65, maxRetries: 2, label: 'Amendments', category: 'advanced' },
   { type: 'CONTACTS' as ArtifactType, enabled: true, priority: 10, weight: 7, qualityThreshold: 0.65, maxRetries: 2, label: 'Contacts', category: 'advanced' },
+  { type: 'PARTIES' as ArtifactType, enabled: true, priority: 11, weight: 8, qualityThreshold: 0.65, maxRetries: 2, label: 'Parties', category: 'advanced' },
+  { type: 'TIMELINE' as ArtifactType, enabled: true, priority: 12, weight: 8, qualityThreshold: 0.65, maxRetries: 2, label: 'Timeline', category: 'advanced' },
+  { type: 'DELIVERABLES' as ArtifactType, enabled: true, priority: 13, weight: 8, qualityThreshold: 0.65, maxRetries: 2, label: 'Deliverables', category: 'advanced' },
+  { type: 'EXECUTIVE_SUMMARY' as ArtifactType, enabled: true, priority: 14, weight: 10, qualityThreshold: 0.70, maxRetries: 3, label: 'Executive Summary', category: 'core' },
 ];
 
 // Dynamic artifact config loader (fetches tenant-specific settings from DB)
@@ -1097,6 +1101,67 @@ Contract text:
 ${truncatedText}`
     };
 
+    // Prompts for extended artifact types
+    prompts['PARTIES'] = `Extract comprehensive party information from this contract. Return a JSON object with:
+{
+  "parties": [{"name": "Full legal entity name", "role": "Client/Vendor/etc", "type": "corporation/llc/individual/etc", "address": "if mentioned", "jurisdiction": "if mentioned", "signatoryName": "if mentioned", "signatoryTitle": "if mentioned"}],
+  "relationships": [{"partyA": "Name", "partyB": "Name", "relationship": "Description"}],
+  "thirdParties": [{"name": "Third party name", "role": "Their role"}],
+  "certainty": 0.85
+}
+
+CRITICAL: Extract party names EXACTLY as written. Do NOT invent party information.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['TIMELINE'] = `Extract all dates, deadlines, milestones, and temporal events from this contract. Return a JSON object with:
+{
+  "contractTimeline": {"executionDate": "YYYY-MM-DD or null", "effectiveDate": "YYYY-MM-DD or null", "expirationDate": "YYYY-MM-DD or null", "totalDuration": "Human-readable"},
+  "milestones": [{"name": "Milestone", "date": "YYYY-MM-DD or relative", "type": "delivery/payment/review/other", "owner": "Party name", "consequences": "if missed"}],
+  "deadlines": [{"description": "Deadline", "date": "YYYY-MM-DD or relative", "type": "notice/payment/delivery/other", "consequences": "if missed"}],
+  "paymentSchedule": [{"description": "Payment", "amount": "if specified", "dueDate": "YYYY-MM-DD or relative", "frequency": "one-time/monthly/etc"}],
+  "noticePeriods": [{"type": "termination/renewal/other", "period": "e.g. 30 days", "method": "how notice is given"}],
+  "criticalPath": ["Ordered list of most important dates"],
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract dates explicitly stated. Do NOT calculate or estimate dates.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['DELIVERABLES'] = `Extract all deliverables, work products, and services from this contract. Return a JSON object with:
+{
+  "deliverables": [{"name": "Deliverable name", "description": "2-3 sentences", "type": "document/software/service/report/other", "owner": "Responsible party", "recipient": "Receiving party", "dueDate": "if specified", "acceptanceCriteria": ["list"], "priority": "critical/high/medium/low"}],
+  "servicelevels": [{"metric": "SLA metric", "target": "Target value", "measurement": "How measured", "penalty": "Non-compliance penalty"}],
+  "acceptanceProcess": {"reviewPeriod": "Duration", "approvalAuthority": "Who approves", "rejectionProcess": "What happens on rejection"},
+  "workBreakdown": ["High-level work phases"],
+  "exclusions": ["Explicitly excluded items"],
+  "certainty": 0.85
+}
+
+CRITICAL: Only extract deliverables explicitly mentioned. Do NOT invent deliverables.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['EXECUTIVE_SUMMARY'] = `Generate a comprehensive executive summary of this contract. Return a JSON object with:
+{
+  "headline": "One-line headline (< 100 chars)",
+  "strategicSummary": "3-4 paragraph strategic summary (400-600 words): purpose and scope, key commercial terms, main obligations, notable risks and opportunities",
+  "keyMetrics": {"totalContractValue": "with currency", "contractDuration": "human-readable", "keyDeadlines": ["most important dates"], "numberOfParties": 0, "numberOfDeliverables": 0},
+  "businessImpact": {"revenueImpact": "Description", "operationalImpact": "Description", "resourceRequirements": "Key resources needed"},
+  "riskProfile": {"overallRisk": "low/medium/high/critical", "topRisks": [{"risk": "Description", "severity": "high/medium/low", "mitigation": "Existing or suggested"}], "missingProtections": ["Standard protections not found"]},
+  "recommendedActions": [{"action": "What to do", "priority": "immediate/short-term/long-term", "rationale": "Why"}],
+  "certainty": 0.85
+}
+
+CRITICAL: The strategicSummary must be 400-600 words. Focus on business impact. Do NOT invent information.
+
+Contract text:
+${truncatedText}`;
+
     const prompt = prompts[type];
     if (!prompt) {
       return getFallbackArtifactData(type, contractId);
@@ -1104,7 +1169,7 @@ ${truncatedText}`
 
     logger.info({ type, contractId, textLength: truncatedText.length }, 'Calling OpenAI for artifact');
 
-    const model = modelName || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const model = modelName || process.env.OPENAI_MODEL || 'gpt-4o';
     const response = await openaiBreaker.execute(() =>
       openai.chat.completions.create({
         model,
@@ -1112,7 +1177,7 @@ ${truncatedText}`
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt },
         ],
-        max_tokens: 4000,
+        max_tokens: 8192,
         temperature: 0.1,
         response_format: { type: 'json_object' },
       })
@@ -1154,6 +1219,10 @@ function getFallbackArtifactData(type: string, contractId: string): Record<strin
     NEGOTIATION_POINTS: { leveragePoints: [], weakClauses: [], benchmarkGaps: [], negotiationScript: [], overallLeverage: null, summary: null, certainty: 0, _meta: { fallback: true } },
     AMENDMENTS: { amendments: [], supersededClauses: [], changeLog: [], consolidatedTerms: null, summary: null, certainty: 0, _meta: { fallback: true } },
     CONTACTS: { primaryContacts: [], escalationPath: [], notificationAddresses: [], keyPersonnel: [], summary: null, certainty: 0, _meta: { fallback: true } },
+    PARTIES: { parties: [], relationships: [], thirdParties: [], certainty: 0, _meta: { fallback: true, reason: 'AI unavailable' } },
+    TIMELINE: { contractTimeline: { executionDate: null, effectiveDate: null, expirationDate: null, totalDuration: null }, milestones: [], deadlines: [], paymentSchedule: [], noticePeriods: [], criticalPath: [], certainty: 0, _meta: { fallback: true, reason: 'AI unavailable' } },
+    DELIVERABLES: { deliverables: [], servicelevels: [], acceptanceProcess: null, workBreakdown: [], exclusions: [], certainty: 0, _meta: { fallback: true, reason: 'AI unavailable' } },
+    EXECUTIVE_SUMMARY: { headline: null, strategicSummary: null, keyMetrics: {}, businessImpact: {}, riskProfile: { overallRisk: 'Unknown', topRisks: [], missingProtections: [] }, recommendedActions: [], certainty: 0, _meta: { fallback: true, reason: 'AI unavailable' } },
   };
   return templates[type] || { type, certainty: 0, _meta: { fallback: true } };
 }

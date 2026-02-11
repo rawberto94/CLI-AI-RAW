@@ -6,10 +6,7 @@
 import { NextRequest } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
-import {
-  ensureProcessingJob,
-  startProcessingJob,
-} from "@/lib/contract-processing";
+import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
@@ -34,16 +31,27 @@ export async function POST(
       return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
-    ensureProcessingJob(contractId);
-    const job = startProcessingJob(contractId);
+    const contract = result.data;
+
+    // Queue for real BullMQ processing with HIGH priority (interactive reprocess)
+    const queueResult = await triggerArtifactGeneration({
+      contractId,
+      tenantId,
+      filePath: contract.storagePath || '',
+      mimeType: contract.mimeType || 'application/pdf',
+      useQueue: true,
+      priority: PROCESSING_PRIORITY.HIGH,
+      isReprocess: true,
+      source: 'reprocess',
+    });
 
     return createSuccessResponse(ctx, {
         success: true,
         contractId,
         message:
           "Processing started - AI analysis is running in the background",
-        status: job.status,
-        jobId: job.id,
+        status: queueResult.status,
+        jobId: queueResult.jobId || null,
       });
   } catch (error) {
     return handleApiError(ctx, error);

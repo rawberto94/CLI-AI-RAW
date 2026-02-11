@@ -13,7 +13,22 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const Redis = (await import('ioredis')).default;
       const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { connectTimeout: 3000 });
 
-      const queueNames = ['contract-processing', 'ai-extraction', 'document-analysis', 'notification', 'obligation-check', 'webhook-delivery', 'vector-embedding'];
+      const queueNames = [
+        'contract-processing',
+        'artifact-generation',
+        'rag-indexing',
+        'metadata-extraction',
+        'contract-categorization',
+        'agent-orchestration',
+        'webhook-delivery',
+        'rate-card-import',
+        'benchmark-calculation',
+        // Dead letter queues
+        'contract-processing-dlq',
+        'artifact-generation-dlq',
+        'rag-indexing-dlq',
+        'metadata-extraction-dlq',
+      ];
 
       const queues = await Promise.all(queueNames.map(async (name) => {
         try {

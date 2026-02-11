@@ -129,6 +129,32 @@ async function startWorkers() {
     logger.info('✅ All workers registered successfully');
     logger.info('📊 Metrics collection enabled');
     logger.info('🛡️ Resilience patterns active: circuit breaker, retry, backpressure');
+
+    // Wire DLQ: move jobs to dead-letter queue when all retries are exhausted
+    const workerQueueMap = [
+      { worker: ocrArtifactWorker, queue: 'contract-processing' },
+      { worker: artifactWorker, queue: 'artifact-generation' },
+      { worker: webhookWorker, queue: 'webhook-delivery' },
+      { worker: ragWorker, queue: 'rag-indexing' },
+      { worker: metadataWorker, queue: 'metadata-extraction' },
+      { worker: categorizationWorker, queue: 'contract-categorization' },
+      { worker: agentOrchestratorWorker, queue: 'agent-orchestration' },
+    ];
+
+    for (const { worker, queue } of workerQueueMap) {
+      (worker as any).on('failed', async (job: any, error: Error) => {
+        const maxAttempts = job?.opts?.attempts || 3;
+        if (job && job.attemptsMade >= maxAttempts) {
+          try {
+            await dlqManager.moveToDeadLetter(job, error?.message || 'Unknown error', queue);
+            logger.warn({ jobId: job.id, queue, attemptsMade: job.attemptsMade, error: error?.message }, '📮 Job moved to Dead Letter Queue after exhausting retries');
+          } catch (dlqError) {
+            logger.error({ dlqError, jobId: job.id, queue }, 'Failed to move job to DLQ');
+          }
+        }
+      });
+    }
+    logger.info('📮 DLQ auto-move wired for all workers');
     logger.info({
       workers: [
         'ocr-artifact-processing (contract-processing queue)',

@@ -302,7 +302,7 @@ async function extractContractMetadata(
       const truncatedText = contractText.substring(0, 50000); // First 50k chars for metadata
 
       const response = await openai.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
@@ -813,7 +813,7 @@ async function generateAIArtifact(
     const prompt = prompts[type] || `Analyze the ${type} aspects of this contract and return relevant information as JSON.`;
 
     const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
       messages: [
         {
           role: 'system',

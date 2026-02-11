@@ -58,6 +58,7 @@ import {
 import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
+import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 
 // Check if we're in build mode - skip worker initialization
 const isBuildTime = process.env.NEXT_BUILD === 'true';
@@ -1626,11 +1627,18 @@ export async function processOCRArtifactJob(
       'NEGOTIATION_POINTS',
       'AMENDMENTS',
       'CONTACTS',
+      'PARTIES',
+      'TIMELINE',
+      'DELIVERABLES',
+      'EXECUTIVE_SUMMARY',
     ];
 
     // Filter to relevant artifacts based on contract type
     const relevantArtifacts = getRelevantArtifacts(detectedContractType);
-    const artifactTypes = allArtifactTypes.filter(type => relevantArtifacts.includes(type));
+    // Include all types — if getRelevantArtifacts doesn't know about new types, include them anyway
+    const artifactTypes = allArtifactTypes.filter(type => 
+      relevantArtifacts.includes(type) || ['PARTIES', 'TIMELINE', 'DELIVERABLES', 'EXECUTIVE_SUMMARY'].includes(type)
+    );
     
     // Track non-applicable artifacts
     const notApplicableArtifacts = allArtifactTypes.filter(type => !relevantArtifacts.includes(type));
@@ -1643,36 +1651,98 @@ export async function processOCRArtifactJob(
     const failedArtifacts: string[] = [];
     const successfulArtifacts: string[] = [];
 
-    // Generate relevant artifacts in parallel with retry logic
+    // Quality validator for artifact content validation
+    const qualityValidator = new ArtifactQualityValidator({
+      overall: 0.65,
+      completeness: 0.55,
+      accuracy: 0.65,
+      consistency: 0.60,
+      confidence: 0.55,
+    });
+
+    // Generate relevant artifacts in parallel with retry + quality validation
     const artifactPromises = artifactTypes.map(async (artifactType) => {
       const maxRetries = 2;
+      const maxRegenerations = 1; // Allow 1 quality-based regeneration
       let lastError: Error | null = null;
+      let bestArtifactData: Record<string, any> | null = null;
+      let bestQualityScore = 0;
+      let tokensUsed = 0;
+      let modelUsed = 'unknown';
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const artifactData = await generateArtifactWithAI(
+          const artifactResult = await generateArtifactWithAI(
             artifactType, 
             extractedText, 
             contract,
             detectedContractType // Pass detected type for adaptive prompts
           );
-          successfulArtifacts.push(artifactType);
-          return {
-            contractId,
-            tenantId,
-            type: artifactType,
-            data: {
-              ...artifactData,
-              _extractionMeta: {
-                contractType: detectedContractType,
-                contractTypeConfidence: contractTypeDetection.confidence,
-                isApplicable: true,
+          
+          // Track token usage from the result metadata
+          if (artifactResult._meta) {
+            tokensUsed = artifactResult._meta.tokensUsed || 0;
+            modelUsed = artifactResult._meta.model || 'unknown';
+          }
+          
+          // Quality validation — check if generated content meets quality thresholds
+          let qualityScore;
+          try {
+            qualityScore = await qualityValidator.validateArtifact(
+              artifactType,
+              artifactResult,
+              extractedText
+            );
+            
+            jobLogger.info({
+              artifactType,
+              qualityScore: qualityScore.overall.toFixed(2),
+              passesThreshold: qualityScore.passesThreshold,
+              issues: qualityScore.issues.length,
+            }, 'Artifact quality validation');
+            
+            // If quality is acceptable, use this result
+            if (qualityScore.passesThreshold || qualityScore.overall >= 0.65) {
+              bestArtifactData = artifactResult;
+              bestQualityScore = qualityScore.overall;
+              break;
+            }
+            
+            // Quality is low — try self-critique if this is our first attempt
+            if (attempt === 1 && maxRegenerations > 0) {
+              try {
+                const critique = await selfCritiqueArtifact(artifactType, artifactResult, extractedText);
+                if (critique.shouldRegenerate) {
+                  jobLogger.warn({
+                    artifactType,
+                    qualityScore: qualityScore.overall.toFixed(2),
+                    critiqueIssues: critique.issues.length,
+                  }, 'Low quality detected, regenerating artifact');
+                  // Keep track of best so far in case regeneration also fails
+                  if (qualityScore.overall > bestQualityScore) {
+                    bestArtifactData = artifactResult;
+                    bestQualityScore = qualityScore.overall;
+                  }
+                  continue; // Retry with another attempt
+                }
+              } catch {
+                // Self-critique failed, accept current result
               }
-            },
-            validationStatus: 'valid',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+            }
+            
+            // Accept what we have (quality check ran but didn't meet threshold)
+            if (!bestArtifactData || qualityScore.overall > bestQualityScore) {
+              bestArtifactData = artifactResult;
+              bestQualityScore = qualityScore.overall;
+            }
+            break;
+            
+          } catch {
+            // Quality validation failed — accept the artifact as-is
+            bestArtifactData = artifactResult;
+            break;
+          }
+          
         } catch (error) {
           lastError = error as Error;
           jobLogger.warn({ error, artifactType, attempt }, `Artifact generation attempt ${attempt} failed`);
@@ -1681,6 +1751,30 @@ export async function processOCRArtifactJob(
             await new Promise(resolve => setTimeout(resolve, 500 * attempt));
           }
         }
+      }
+      
+      // If we got a valid result (even low quality), use it
+      if (bestArtifactData) {
+        successfulArtifacts.push(artifactType);
+        return {
+          contractId,
+          tenantId,
+          type: artifactType,
+          data: {
+            ...bestArtifactData,
+            _extractionMeta: {
+              contractType: detectedContractType,
+              contractTypeConfidence: contractTypeDetection.confidence,
+              isApplicable: true,
+              qualityScore: bestQualityScore,
+              tokensUsed,
+              modelUsed,
+            }
+          },
+          validationStatus: bestQualityScore >= 0.65 ? 'valid' : 'low-quality',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
       }
       
       // Track failed artifact for partial success reporting
@@ -2730,12 +2824,12 @@ async function callOpenAIForArtifact(
       logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
       
       const response = await openai.chat.completions.create({
-        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        max_tokens: 4000,
+        max_tokens: 8192,
         temperature: 0.2,
         response_format: { type: 'json_object' }
       });
@@ -2746,9 +2840,17 @@ async function callOpenAIForArtifact(
       }
 
       const artifactData = JSON.parse(content);
-      logger.info({ type, keys: Object.keys(artifactData) }, 'OpenAI artifact generation succeeded');
+      const usage = response.usage;
+      logger.info({ type, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
       
-      return { success: true, data: artifactData };
+      return { 
+        success: true, 
+        data: artifactData,
+        tokensUsed: usage?.total_tokens || 0,
+        promptTokens: usage?.prompt_tokens || 0,
+        completionTokens: usage?.completion_tokens || 0,
+        model: process.env.OPENAI_MODEL || 'gpt-4o',
+      };
       
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error));
@@ -2801,8 +2903,8 @@ async function generateArtifactWithAI(
     const contractType = detectedContractType || 'OTHER';
     const profile = getContractProfile(contractType);
     
-    // Adjust text limit based on contract complexity
-    const textLimit = contractType === 'MSA' || contractType === 'LOAN' ? 20000 : 15000;
+    // Adjust text limit based on contract complexity — use generous limits for comprehensive analysis
+    const textLimit = contractType === 'MSA' || contractType === 'LOAN' || contractType === 'SOW' || contractType === 'LEASE' ? 60000 : 50000;
     const truncatedText = contractText.substring(0, textLimit);
     
     // Build contract-type-specific extraction hints
@@ -2828,25 +2930,27 @@ EXPECTED SECTIONS: ${profile.expectedSections.join(', ')}
       : 'Analyze general contract risks';
     
     const prompts: Record<string, string> = {
-      OVERVIEW: `Analyze this contract and extract key information. Return a JSON object with:
+      OVERVIEW: `Analyze this contract COMPREHENSIVELY and extract all key information. Return a JSON object with:
 {
-  "summary": "A 2-3 sentence executive summary of what this contract is about",
-  "executiveBriefing": "A one-paragraph (4-5 sentences) briefing suitable for executives highlighting: 1) what this contract does, 2) key value proposition, 3) main obligations, 4) notable risks or opportunities",
+  "summary": "A thorough executive summary of 8-12 sentences covering: what the contract is, who the parties are and their roles, the core purpose and scope, key commercial terms (value, duration, payment structure), the most important obligations on each side, notable risks or unusual provisions, and any critical deadlines. This should be detailed enough that a reader understands the contract without reading it.",
+  "executiveBriefing": "A detailed 2-3 paragraph briefing suitable for C-level executives highlighting: 1) What this contract does and why it matters, 2) Key value proposition and commercial terms, 3) Main obligations and deliverables, 4) Notable risks, opportunities, or unusual provisions, 5) Recommended actions or decisions needed",
   "contractType": "The type of contract (e.g., Service Agreement, NDA, MSA, SOW, Employment, Lease)",
   "contractTypeConfidence": number 0-100 indicating confidence in type classification,
-  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc", "address": "if mentioned"}],
+  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc", "address": "if mentioned", "jurisdiction": "Country/State if mentioned"}],
   "effectiveDate": "YYYY-MM-DD or null if not found",
   "expirationDate": "YYYY-MM-DD or null if not found",
   "totalValue": numeric value or 0 if not found,
-  "currency": "USD/EUR/GBP/etc",
+  "currency": "USD/EUR/GBP/CHF/etc",
   "keyTerms": ["list", "of", "key", "terms", "or", "topics"],
   "jurisdiction": "Legal jurisdiction if mentioned",
   "governingLaw": "Applicable law/state",
   "definedTerms": [{"term": "Definition name", "definition": "Brief definition"}],
   "documentStructure": ["List of main sections/headings found"],
-  "keyDates": [{"event": "Event name (signing, start, end, renewal)", "date": "YYYY-MM-DD", "description": "Brief description"}],
-  "keyNumbers": [{"metric": "Metric name", "value": "Value with units", "context": "What this number represents"}],
-  "redFlags": ["Any immediate concerns or issues spotted in first pass"],
+  "keyDates": [{"event": "Event name (signing, start, end, renewal, milestone)", "date": "YYYY-MM-DD", "description": "Brief description", "source": "Section/clause where found"}],
+  "keyNumbers": [{"metric": "Metric name", "value": "Value with units", "context": "What this number represents", "source": "Section where found"}],
+  "redFlags": [{"issue": "Description of concern", "severity": "high/medium/low", "location": "Where in the document", "recommendation": "What to do about it"}],
+  "scopeOfWork": "Detailed description of what work/services/goods the contract covers (3-5 sentences minimum). Null if not applicable.",
+  "termAndTermination": "Summary of contract duration, renewal terms, and termination rights (2-3 sentences)",
   "additionalFindings": [
     {
       "field": "Auto-discovered field name not in schema above",
@@ -2869,6 +2973,9 @@ IMPORTANT EXTRACTION RULES:
 5. If you discover important information that doesn't fit the schema above, add it to additionalFindings. Never discard relevant contract details.
 6. KeyNumbers should capture any significant metrics (headcount, quantities, limits, thresholds).
 7. The executiveBriefing should be actionable - what would an executive need to know to make decisions?
+8. The summary MUST be comprehensive (8-12 sentences) - this is the primary description users will see.
+9. For every extracted fact, mentally verify it exists in the source text. Do NOT invent or assume information.
+10. Include source section references where possible for traceability.
 
 Contract text:
 ${truncatedText}`,
@@ -3291,13 +3398,255 @@ Contract text:
 ${truncatedText}`
     };
 
+    // Add prompts for extended artifact types
+    prompts['PARTIES'] = `Extract comprehensive party information from this contract. Return a JSON object with:
+{
+  "parties": [
+    {
+      "name": "Full legal entity name exactly as written in the contract",
+      "role": "Client/Vendor/Contractor/Employer/Employee/Licensor/Licensee/Landlord/Tenant/etc",
+      "type": "corporation/llc/partnership/individual/government/nonprofit/other",
+      "address": "Full address if mentioned",
+      "jurisdiction": "State/Country of incorporation or residence",
+      "registrationNumber": "Company registration/tax ID if mentioned",
+      "signatoryName": "Name of the person signing on behalf of this party",
+      "signatoryTitle": "Title/role of the signatory",
+      "contactInfo": {"email": "if mentioned", "phone": "if mentioned", "website": "if mentioned"},
+      "obligations": ["Key obligations this party has under the contract"],
+      "rights": ["Key rights this party has under the contract"],
+      "source": "Section/clause where this party is first introduced"
+    }
+  ],
+  "relationships": [
+    {
+      "partyA": "Name",
+      "partyB": "Name",
+      "relationship": "Description of the contractual relationship",
+      "powerDynamic": "equal/partyA-dominant/partyB-dominant"
+    }
+  ],
+  "thirdParties": [
+    {
+      "name": "Any third parties mentioned (subcontractors, beneficiaries, guarantors)",
+      "role": "Their role in the contract",
+      "source": "Where mentioned"
+    }
+  ],
+  "guarantors": [{"name": "Guarantor name", "guaranteeScope": "What they guarantee"}],
+  "additionalFindings": [{"field": "Party-related finding", "value": "Detail", "source": "Section"}],
+  "openEndedNotes": "Any notable observations about party relationships, affiliates, or organizational structure."
+}
+
+${typeContext}
+
+CRITICAL RULES:
+1. Extract party names EXACTLY as written in the contract - do not paraphrase or abbreviate.
+2. Every party field must reference where in the document the information was found.
+3. Include ALL parties - primary, secondary, third-party beneficiaries, guarantors, agents.
+4. Do NOT invent party information. If a field is not mentioned, use null.
+5. Look carefully for "defined as" or "hereinafter referred to as" constructs.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['TIMELINE'] = `Extract a comprehensive timeline of all dates, deadlines, milestones, and temporal events from this contract. Return a JSON object with:
+{
+  "contractTimeline": {
+    "executionDate": {"date": "YYYY-MM-DD or null", "source": "Section reference"},
+    "effectiveDate": {"date": "YYYY-MM-DD or null", "source": "Section reference"},
+    "expirationDate": {"date": "YYYY-MM-DD or null", "source": "Section reference"},
+    "totalDuration": "Human-readable duration (e.g., '3 years', '36 months')",
+    "renewalDates": [{"date": "YYYY-MM-DD", "description": "Renewal event", "source": "Section"}]
+  },
+  "milestones": [
+    {
+      "name": "Milestone name/description",
+      "date": "YYYY-MM-DD or relative description (e.g., '30 days after effective date')",
+      "type": "delivery/payment/review/approval/transition/go-live/other",
+      "owner": "Which party is responsible",
+      "dependencies": ["Any prerequisites"],
+      "deliverables": ["What must be completed"],
+      "consequences": "What happens if missed",
+      "source": "Section/clause reference"
+    }
+  ],
+  "deadlines": [
+    {
+      "description": "Deadline description",
+      "date": "YYYY-MM-DD or relative",
+      "type": "notice/filing/delivery/payment/response/other",
+      "consequences": "What happens if deadline is missed",
+      "source": "Section reference"
+    }
+  ],
+  "paymentSchedule": [
+    {
+      "description": "Payment description",
+      "amount": "Amount if specified",
+      "dueDate": "YYYY-MM-DD or relative or recurring description",
+      "frequency": "one-time/monthly/quarterly/annually/milestone-based/other",
+      "source": "Section reference"
+    }
+  ],
+  "noticePeriods": [
+    {
+      "type": "termination/renewal/breach/change/other",
+      "period": "Duration (e.g., '30 days', '90 days')",
+      "method": "How notice must be given",
+      "source": "Section reference"
+    }
+  ],
+  "criticalPath": ["Ordered list of the most important dates/events that determine the contract's lifecycle"],
+  "additionalFindings": [{"field": "Timeline finding", "value": "Detail", "source": "Section"}],
+  "openEndedNotes": "Any temporal observations, implied deadlines, or scheduling concerns."
+}
+
+${typeContext}
+
+CRITICAL RULES:
+1. Extract ALL dates mentioned anywhere in the contract, even in appendices.
+2. Convert relative dates to absolute where possible (e.g., "30 days after January 1" = "January 31").
+3. Always cite the source section for every date and deadline.
+4. For recurring events, specify the frequency and first occurrence.
+5. Do NOT invent dates. If a date is unclear, note the ambiguity.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['DELIVERABLES'] = `Extract all deliverables, work products, services, and outputs from this contract. Return a JSON object with:
+{
+  "deliverables": [
+    {
+      "name": "Deliverable name/title",
+      "description": "Detailed description of what must be delivered (2-3 sentences)",
+      "type": "document/software/service/report/hardware/training/milestone/other",
+      "owner": "Which party is responsible for delivering",
+      "recipient": "Which party receives the deliverable",
+      "dueDate": "YYYY-MM-DD or relative or null",
+      "acceptanceCriteria": ["List of acceptance criteria if specified"],
+      "qualityStandards": ["Quality requirements or standards referenced"],
+      "dependencies": ["Prerequisites or dependent deliverables"],
+      "status": "defined/implied/conditional",
+      "priority": "critical/high/medium/low",
+      "source": "Section/clause where specified"
+    }
+  ],
+  "servicelevels": [
+    {
+      "metric": "SLA metric name",
+      "target": "Target value",
+      "measurement": "How it's measured",
+      "penalty": "Penalty for non-compliance",
+      "source": "Section reference"
+    }
+  ],
+  "acceptanceProcess": {
+    "reviewPeriod": "Duration for review/acceptance",
+    "approvalAuthority": "Who approves deliverables",
+    "rejectionProcess": "What happens if deliverable is rejected",
+    "disputes": "How disputes about acceptance are resolved"
+  },
+  "workBreakdown": ["High-level breakdown of work phases or streams if identifiable"],
+  "exclusions": ["Explicitly excluded items or services"],
+  "assumptions": ["Stated assumptions about deliverables"],
+  "additionalFindings": [{"field": "Deliverable finding", "value": "Detail", "source": "Section"}],
+  "openEndedNotes": "Any observations about deliverable scope, gaps, or ambiguities."
+}
+
+${typeContext}
+
+CRITICAL RULES:
+1. Extract EVERY deliverable mentioned, including those in appendices, SOWs, and schedules.
+2. Distinguish between explicitly defined and implied deliverables.
+3. Note acceptance criteria and quality standards where specified.
+4. Capture dependencies between deliverables.
+5. Do NOT invent deliverables. Only extract what is explicitly or clearly implied in the text.
+
+Contract text:
+${truncatedText}`;
+
+    prompts['EXECUTIVE_SUMMARY'] = `Generate a comprehensive executive summary of this contract suitable for senior leadership review. Return a JSON object with:
+{
+  "headline": "One-line headline capturing the essence of the contract (< 100 chars)",
+  "strategicSummary": "A 3-4 paragraph strategic summary (400-600 words) covering: 1) Purpose and scope of the agreement, 2) Business context and strategic value, 3) Key commercial terms and financial impact, 4) Risk profile and recommended actions",
+  "keyMetrics": {
+    "totalContractValue": "Total value with currency",
+    "contractDuration": "Duration in human-readable format",
+    "keyDeadlines": ["Most important dates/deadlines"],
+    "numberOfParties": number,
+    "numberOfDeliverables": number or "N/A"
+  },
+  "businessImpact": {
+    "revenueImpact": "Description of revenue/cost implications",
+    "operationalImpact": "How this affects operations",
+    "strategicAlignment": "How this aligns with business objectives (if inferrable)",
+    "resourceRequirements": "Key resources or commitments needed"
+  },
+  "riskProfile": {
+    "overallRisk": "low/medium/high/critical",
+    "topRisks": [
+      {
+        "risk": "Risk description",
+        "severity": "high/medium/low",
+        "mitigation": "Suggested mitigation or existing protection",
+        "source": "Section reference"
+      }
+    ],
+    "missingProtections": ["Standard protections not found in this contract"]
+  },
+  "recommendedActions": [
+    {
+      "action": "What needs to be done",
+      "priority": "immediate/short-term/long-term",
+      "owner": "Who should take this action",
+      "rationale": "Why this action is recommended"
+    }
+  ],
+  "negotiationInsights": {
+    "favorability": "Score 1-10, 1=heavily favors counterparty, 10=heavily favors our side",
+    "leveragePoints": ["Areas where we have negotiation leverage"],
+    "concessions": ["Areas where concessions were made"],
+    "improvementOpportunities": ["Terms that could be improved in future negotiations"]
+  },
+  "additionalFindings": [{"field": "Finding", "value": "Detail", "source": "Section"}],
+  "openEndedNotes": "Any strategic observations, concerns, or opportunities not captured above."
+}
+
+${typeContext}
+
+CRITICAL RULES:
+1. The strategicSummary must be comprehensive (400-600 words) - this is the primary document executives will read.
+2. Focus on business impact and actionable insights, not legal jargon.
+3. Every risk and recommendation must cite its source in the contract.
+4. Be specific about numbers, dates, and obligations - avoid vague language.
+5. Do NOT invent information. Base all analysis solely on what appears in the contract text.
+6. The headline should be memorable and capture the deal's significance.
+
+Contract text:
+${truncatedText}`;
+
     const prompt = prompts[type];
     if (!prompt) {
       logger.warn({ type }, 'Unknown artifact type, using fallback');
       return getFallbackArtifact(type, contractText, contract);
     }
 
-    const systemPrompt = 'You are a contract analysis expert. Analyze contracts and return ONLY valid JSON (no markdown, no explanation). Be thorough and accurate.';
+    const systemPrompt = `You are an expert contract analyst with deep legal and commercial expertise. Analyze contracts and return ONLY valid JSON (no markdown, no explanation, no code fences).
+
+ANTI-HALLUCINATION RULES (CRITICAL):
+1. ONLY extract information that is explicitly stated in the contract text. Do NOT infer, assume, or fabricate any data.
+2. If a field cannot be determined from the text, use null or an empty array — NEVER guess.
+3. For dates: only extract dates that appear verbatim in the text. Do not calculate or estimate dates.
+4. For monetary values: only extract amounts explicitly stated. Do not calculate totals unless the math is straightforward from stated figures.
+5. For party names: use the EXACT legal names as written in the contract.
+6. For clauses and provisions: quote or closely paraphrase the actual text. Do not rephrase in ways that change meaning.
+7. Confidence scores must honestly reflect certainty. If you're unsure, score below 70.
+
+OUTPUT QUALITY RULES:
+1. Be thorough — scan the ENTIRE provided text, including headers, footers, appendices, and exhibits.
+2. Prefer completeness over brevity. It is better to include too much detail than too little.
+3. Summaries should be substantive and specific, not generic boilerplate.
+4. Use precise language. Replace vague terms like "various" or "certain" with specifics from the text.`;
     let usedProvider = 'none';
     let artifactData: Record<string, any> | null = null;
 
@@ -3321,7 +3670,13 @@ ${truncatedText}`
       
       if (openaiResult.success && openaiResult.data) {
         artifactData = openaiResult.data;
-        usedProvider = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        usedProvider = openaiResult.model || process.env.OPENAI_MODEL || 'gpt-4o';
+        // Capture token usage from OpenAI
+        artifactData._tokenUsage = {
+          tokensUsed: openaiResult.tokensUsed || 0,
+          promptTokens: openaiResult.promptTokens || 0,
+          completionTokens: openaiResult.completionTokens || 0,
+        };
       } else {
         logger.warn({ type, error: openaiResult.error }, 'OpenAI also failed');
       }
@@ -3333,21 +3688,42 @@ ${truncatedText}`
       return getFallbackArtifact(type, contractText, contract);
     }
 
-    // Add metadata
+    // Add metadata including token usage tracking
+    const tokenUsage = artifactData._tokenUsage || {};
+    delete artifactData._tokenUsage; // Remove temp field
+    
     artifactData._meta = {
       generatedAt: new Date().toISOString(),
       model: usedProvider,
       aiGenerated: true,
-      textAnalyzed: truncatedText.length
+      textAnalyzed: truncatedText.length,
+      tokensUsed: tokenUsage.tokensUsed || 0,
+      promptTokens: tokenUsage.promptTokens || 0,
+      completionTokens: tokenUsage.completionTokens || 0,
+      estimatedCost: estimateTokenCost(usedProvider, tokenUsage.promptTokens || 0, tokenUsage.completionTokens || 0),
     };
 
-    logger.info({ type, provider: usedProvider }, 'Successfully generated artifact with AI');
+    logger.info({ type, provider: usedProvider, tokensUsed: tokenUsage.tokensUsed || 0 }, 'Successfully generated artifact with AI');
     return artifactData;
 
   } catch (error) {
     logger.error({ error, type }, 'AI artifact generation failed unexpectedly, using fallback');
     return getFallbackArtifact(type, contractText, contract);
   }
+}
+
+/**
+ * Estimate token cost in USD based on model pricing (approximate, as of 2025)
+ */
+function estimateTokenCost(model: string, promptTokens: number, completionTokens: number): number {
+  const pricing: Record<string, { input: number; output: number }> = {
+    'gpt-4o':       { input: 2.50 / 1_000_000, output: 10.00 / 1_000_000 },
+    'gpt-4o-mini':  { input: 0.15 / 1_000_000, output: 0.60 / 1_000_000 },
+    'gpt-4-turbo':  { input: 10.00 / 1_000_000, output: 30.00 / 1_000_000 },
+    'mistral-large-latest': { input: 2.00 / 1_000_000, output: 6.00 / 1_000_000 },
+  };
+  const rate = pricing[model] || pricing['gpt-4o'];
+  return Number(((promptTokens * rate.input) + (completionTokens * rate.output)).toFixed(6));
 }
 
 /**
@@ -3443,6 +3819,40 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
       signatories: [],
       noticeAddresses: [],
       summary: 'Contact extraction requires AI analysis',
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    PARTIES: {
+      parties: [],
+      relationships: [],
+      thirdParties: [],
+      guarantors: [],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    TIMELINE: {
+      contractTimeline: { executionDate: null, effectiveDate: null, expirationDate: null, totalDuration: null },
+      milestones: [],
+      deadlines: [],
+      paymentSchedule: [],
+      noticePeriods: [],
+      criticalPath: [],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    DELIVERABLES: {
+      deliverables: [],
+      servicelevels: [],
+      acceptanceProcess: null,
+      workBreakdown: [],
+      exclusions: [],
+      assumptions: [],
+      _meta: { fallback: true, reason: 'AI unavailable' }
+    },
+    EXECUTIVE_SUMMARY: {
+      headline: null,
+      strategicSummary: null,
+      keyMetrics: {},
+      businessImpact: {},
+      riskProfile: { overallRisk: 'Unknown', topRisks: [], missingProtections: [] },
+      recommendedActions: [],
       _meta: { fallback: true, reason: 'AI unavailable' }
     },
   };
