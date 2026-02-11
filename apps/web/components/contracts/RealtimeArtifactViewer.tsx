@@ -37,21 +37,39 @@ const artifactIcons: Record<string, React.ReactNode> = {
   OVERVIEW: <FileText className="h-5 w-5" />,
   FINANCIAL: <DollarSign className="h-5 w-5" />,
   CLAUSES: <FileCheck className="h-5 w-5" />,
-  RATES: <TrendingUp className="h-5 w-5" />,
+  RISK: <AlertTriangle className="h-5 w-5" />,
   COMPLIANCE: <Shield className="h-5 w-5" />,
-  RISK: <AlertTriangle className="h-5 w-5" />
+  OBLIGATIONS: <FileCheck className="h-5 w-5" />,
+  RENEWAL: <Clock className="h-5 w-5" />,
+  NEGOTIATION_POINTS: <TrendingUp className="h-5 w-5" />,
+  AMENDMENTS: <FileText className="h-5 w-5" />,
+  CONTACTS: <FileText className="h-5 w-5" />,
+  PARTIES: <FileText className="h-5 w-5" />,
+  TIMELINE: <Clock className="h-5 w-5" />,
+  DELIVERABLES: <FileCheck className="h-5 w-5" />,
+  EXECUTIVE_SUMMARY: <FileText className="h-5 w-5" />,
+  RATES: <TrendingUp className="h-5 w-5" />,
 };
 
 const artifactLabels: Record<string, string> = {
   OVERVIEW: 'Overview',
   FINANCIAL: 'Financial Analysis',
   CLAUSES: 'Key Clauses',
-  RATES: 'Rate Cards',
+  RISK: 'Risk Assessment',
   COMPLIANCE: 'Compliance Check',
-  RISK: 'Risk Assessment'
+  OBLIGATIONS: 'Obligations',
+  RENEWAL: 'Renewal Terms',
+  NEGOTIATION_POINTS: 'Negotiation Points',
+  AMENDMENTS: 'Amendments',
+  CONTACTS: 'Contacts & Signatories',
+  PARTIES: 'Contract Parties',
+  TIMELINE: 'Timeline & Milestones',
+  DELIVERABLES: 'Deliverables',
+  EXECUTIVE_SUMMARY: 'Executive Summary',
+  RATES: 'Rate Cards',
 };
 
-const artifactOrder = ['OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'RATES'];
+const artifactOrder = ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES', 'RATES'];
 
 const stageLabels: Record<string, string> = {
   'TEXT_EXTRACTION': 'Extracting text from document...',
@@ -111,7 +129,8 @@ export function RealtimeArtifactViewer({
 
   // Compute completedCount and isEffectivelyComplete early (before callbacks that need them)
   const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-  const isEffectivelyComplete = isComplete || (completedCount >= 10);
+  // Complete when the stream says so, or when all received artifacts are done
+  const isEffectivelyComplete = isComplete || (artifacts.length > 0 && completedCount >= artifacts.length);
 
   // Animate new artifacts
   useEffect(() => {
@@ -244,9 +263,9 @@ export function RealtimeArtifactViewer({
     return aIndex - bIndex;
   });
 
-  // Use actual artifact count, with a minimum of 10 (we generate 10 artifact types)
-  const totalCount = Math.max(10, artifacts.length);
-  const progressPercent = Math.min(100, (completedCount / totalCount) * 100);
+  // Use actual artifact count from the stream (varies by contract type)
+  const totalCount = Math.max(artifacts.length, 1);
+  const progressPercent = totalCount > 0 ? Math.min(100, (completedCount / totalCount) * 100) : 0;
 
   // Early return if contract not found - don't render anything
   if (contractNotFound) {

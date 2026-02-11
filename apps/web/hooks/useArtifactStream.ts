@@ -3,8 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 // Bulletproof constants
 const MAX_RECONNECT_ATTEMPTS = 5;
 const STALE_CONNECTION_TIMEOUT = 45000; // 45s without update = stale
-const FORCE_COMPLETE_TIMEOUT = 180000; // 3 min max processing time
-const EXPECTED_ARTIFACT_COUNT = 10;
+const FORCE_COMPLETE_TIMEOUT = 300000; // 5 min max processing time (large docs can take 3-4 min)
 const HEARTBEAT_EXPECTED_INTERVAL = 20000; // Heartbeat every 15s, allow 20s buffer
 
 export interface ArtifactUpdate {
@@ -71,11 +70,13 @@ export function useArtifactStream({
   const streamStartTimeRef = useRef<number>(Date.now());
   const maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
 
-  // Also mark complete if all artifacts are done (fallback)
+  // Also mark complete if all received artifacts are done (fallback)
+  // Don't hardcode a count — contract-type filtering may produce fewer than 10
   useEffect(() => {
-    if (!isComplete && artifacts.length >= EXPECTED_ARTIFACT_COUNT) {
+    if (!isComplete && artifacts.length > 0) {
       const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-      if (completedCount >= EXPECTED_ARTIFACT_COUNT) {
+      if (completedCount >= artifacts.length) {
+        // All artifacts the server told us about are complete
         setIsComplete(true);
         // Clean up connection
         if (eventSourceRef.current) {
@@ -185,14 +186,6 @@ export function useArtifactStream({
             lastUpdateTimeRef.current = Date.now();
             if (data.artifacts) {
               setArtifacts(data.artifacts);
-              // Auto-complete if all artifacts are done (immediate detection)
-              const completed = data.artifacts.filter((a: ArtifactUpdate) => a.status === 'COMPLETED').length;
-              if (completed >= EXPECTED_ARTIFACT_COUNT) {
-                setIsComplete(true);
-                eventSource.close();
-                if (onComplete) onComplete(data.artifacts);
-                return;
-              }
             }
             if (data.contractStatus) {
               setContractStatus(data.contractStatus);

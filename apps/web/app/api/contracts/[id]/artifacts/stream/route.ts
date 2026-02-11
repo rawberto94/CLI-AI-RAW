@@ -8,7 +8,6 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
 const POLL_INTERVAL_MS = 1000; // Poll every 1 second
 const _HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
 const MAX_POLL_SECONDS = 300; // 5 minute timeout (increased from 3)
-const EXPECTED_ARTIFACT_COUNT = 10;
 const MAX_CONSECUTIVE_ERRORS = 5;
 
 /**
@@ -37,7 +36,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
   // Check initial contract status - if already completed, we can send data immediately
   let contract: { id: string; status: string } | null = null;
-  let useMockData = false;
   let isInitiallyCompleted = false;
   
   try {
@@ -60,7 +58,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       isInitiallyCompleted = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     }
   } catch {
-    useMockData = true;
+    // Database error - return 503 instead of silently using mock data
+    return new Response(
+      JSON.stringify({ error: 'Database unavailable' }),
+      { 
+        status: 503,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' }
+      }
+    );
   }
 
   // Create SSE stream
@@ -111,7 +116,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       let consecutiveErrors = 0;
       
       // If already completed, send data once and close immediately
-      if (isInitiallyCompleted && !useMockData) {
+      if (isInitiallyCompleted) {
         try {
           const dbArtifacts = await prisma.artifact.findMany({
             where: { contractId, tenantId },
@@ -194,9 +199,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
         
         // Also timeout if we have some artifacts but processing seems stuck
-        if (updateCount >= maxPolls && lastArtifactCount > 0 && lastArtifactCount < EXPECTED_ARTIFACT_COUNT) {
-          // Send what we have and mark as complete
-          sendEvent({ 
+      if (updateCount >= maxPolls && lastArtifactCount > 0) {
+        // Send what we have and mark as partial
             type: 'complete', 
             contractId,
             status: 'PARTIAL',
@@ -221,32 +225,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           let artifacts: StreamArtifact[] = [];
           let contractStatus = 'PROCESSING';
           
-          if (useMockData) {
-            // Mock data for when database is unavailable
-            const progress = Math.min(updateCount * 10, 100);
-            
-            // Simulate artifact generation
-            const mockArtifacts = [
-              { type: 'OVERVIEW', status: progress >= 20 ? 'valid' : 'pending' },
-              { type: 'CLAUSES', status: progress >= 40 ? 'valid' : 'pending' },
-              { type: 'FINANCIAL', status: progress >= 60 ? 'valid' : 'pending' },
-              { type: 'RISK', status: progress >= 80 ? 'valid' : 'pending' },
-              { type: 'COMPLIANCE', status: progress >= 100 ? 'valid' : 'pending' },
-            ].filter(a => progress >= 20 || a.type === 'OVERVIEW');
-            
-            artifacts = mockArtifacts.map((a, i) => ({
-              id: `mock-artifact-${i}`,
-              type: a.type,
-              status: a.status,
-              hasContent: a.status === 'valid',
-              contentLength: a.status === 'valid' ? 1024 : 0,
-              metadata: {},
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }));
-            
-            contractStatus = progress >= 100 ? 'COMPLETED' : 'PROCESSING';
-          } else {
+          {
             // If initially completed, we can skip contract status check after first fetch
             const shouldCheckStatus = !isInitiallyCompleted || updateCount === 0;
             
@@ -307,9 +286,9 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
 
           // If contract is completed or failed, close stream
-          // Also close if we have 10 completed artifacts (all artifacts generated)
+          // Also close if all fetched artifacts are complete (dynamic, not hardcoded)
           const completedArtifacts = artifacts.filter((a: StreamArtifact) => a.status === 'COMPLETED').length;
-          const allArtifactsComplete = completedArtifacts >= 10;
+          const allArtifactsComplete = artifacts.length > 0 && completedArtifacts >= artifacts.length;
           
           if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED' || allArtifactsComplete) {
             // Send final update with artifacts
