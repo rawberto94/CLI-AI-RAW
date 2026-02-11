@@ -129,7 +129,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           const artifacts = dbArtifacts.map(a => ({
             id: a.id,
             type: a.type,
-            status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
+            status: (!!a.data && JSON.stringify(a.data).length > 2) ? 'COMPLETED' : 'PROCESSING',
             hasContent: !!a.data,
             contentLength: JSON.stringify(a.data).length || 0,
             metadata: {},
@@ -275,7 +275,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             artifacts = dbArtifacts.map(a => ({
               id: a.id,
               type: a.type,
-              status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
+              status: (!!a.data && JSON.stringify(a.data).length > 2) ? 'COMPLETED' : 'PROCESSING',
               hasContent: !!a.data,
               contentLength: JSON.stringify(a.data).length || 0,
               metadata: {},

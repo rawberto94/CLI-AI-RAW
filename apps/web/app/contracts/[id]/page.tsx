@@ -380,7 +380,8 @@ export default function ContractDetailPage() {
         throw new Error(`Failed to load contract: ${response.status}`)
       }
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.error) throw new Error(data.error)
       
       setContract(data)
@@ -404,7 +405,8 @@ export default function ContractDetailPage() {
       
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.versions && Array.isArray(data.versions)) {
         setContractVersions(data.versions.map((v: any) => ({
           id: v.id,
@@ -438,7 +440,8 @@ export default function ContractDetailPage() {
       
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.notes && Array.isArray(data.notes)) {
         setNotes(data.notes.map((n: any) => ({
           id: n.id,
@@ -459,7 +462,8 @@ export default function ContractDetailPage() {
       const response = await fetch(`/api/contracts/${params.id}/family-health`)
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.success !== false) {
         setHealthData({
           healthScore: data.healthScore ?? 100,

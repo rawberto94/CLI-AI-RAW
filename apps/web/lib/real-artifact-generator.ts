@@ -602,6 +602,7 @@ export async function generateRealArtifacts(
         status: 'RUNNING',
         currentStep: 'extracting_text',
         progress: 10,
+        startedAt: new Date(),
       },
     });
 
