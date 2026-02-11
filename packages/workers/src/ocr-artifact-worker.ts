@@ -1587,6 +1587,29 @@ export async function processOCRArtifactJob(
       displayName: profile.displayName,
     }, 'Contract type detected using AI analysis');
 
+    // Persist detected contract type + classification metadata to the Contract record
+    try {
+      await prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
+        data: {
+          contractType: detectedContractType,
+          classificationConf: contractTypeDetection.confidence,
+          classificationMeta: {
+            method: 'ocr-artifact-worker-ai',
+            reasoning: contractTypeDetection.reasoning,
+            matchedKeywords: contractTypeDetection.matchedKeywords || [],
+            profileDisplayName: profile.displayName,
+            detectedAt: new Date().toISOString(),
+          },
+          classifiedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      jobLogger.info({ contractId, contractType: detectedContractType }, 'Contract type persisted to contract record');
+    } catch (typeUpdateError) {
+      jobLogger.warn({ error: typeUpdateError }, 'Failed to persist contract type, continuing');
+    }
+
     // 4. Generate artifacts using AI with partial success tracking
     // Use contract type to determine which artifacts to generate
     jobLogger.info('Generating AI artifacts (adaptive based on contract type)');

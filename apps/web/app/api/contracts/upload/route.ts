@@ -517,6 +517,31 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // Silently handle taxonomy classifier import errors
   }
 
+  // Fast keyword-based contract type detection at upload time
+  // This gives an immediate contractType (e.g., "SOW", "NDA", "MSA") without an API call.
+  // The OCR worker will later refine this with AI-based detection for higher accuracy.
+  try {
+    const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
+    const { detectContractType } = await import("@repo/workers/contract-type-profiles");
+    const detection = detectContractType(textContent);
+    if (detection.type !== 'OTHER' && detection.confidence >= 0.4) {
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: {
+          contractType: detection.type,
+          classificationMeta: {
+            method: 'upload-keyword-detection',
+            confidence: detection.confidence,
+            matchedKeywords: detection.matchedKeywords,
+            detectedAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+  } catch {
+    // Silently handle - OCR worker will detect type later
+  }
+
   // Trigger artifact generation via queue (non-blocking)
   try {
     // Initialize queue service if not already done

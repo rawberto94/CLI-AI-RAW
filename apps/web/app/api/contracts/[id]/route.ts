@@ -159,6 +159,29 @@ export async function GET(
         tenantId: tenantId,
       },
       include: {
+        contractMetadata: {
+          select: {
+            dataQualityScore: true,
+            riskScore: true,
+            complexityScore: true,
+            complianceStatus: true,
+            artifactSummary: true,
+            aiSummary: true,
+            aiKeyInsights: true,
+            aiRiskFactors: true,
+            aiRecommendations: true,
+            lastAiAnalysis: true,
+            aiAnalysisVersion: true,
+            priority: true,
+            importance: true,
+            department: true,
+            negotiationStatus: true,
+            performanceScore: true,
+            renewalPriority: true,
+            renewalDeadline: true,
+            searchKeywords: true,
+          },
+        },
         parentContract: {
           select: {
             id: true,
@@ -443,6 +466,12 @@ export async function GET(
       relationshipNote: contract.relationshipNote,
       linkedAt: contract.linkedAt?.toISOString(),
       
+      // Contract Type & AI Classification
+      contractType: contract.contractType || null,
+      contractSubtype: contract.contractSubtype || null,
+      classificationConf: contract.classificationConf || null,
+      classificationMeta: contract.classificationMeta || null,
+      
       // Taxonomy Category Classification
       category: categoryInfo,
       categoryL1: contract.categoryL1,
@@ -452,6 +481,31 @@ export async function GET(
       
       // Raw text for intelligent analysis
       rawText: contract.rawText || null,
+      
+      // AI-powered metadata & quality scores (from ContractMetadata)
+      qualityMetrics: contract.contractMetadata ? {
+        dataQualityScore: contract.contractMetadata.dataQualityScore,
+        riskScore: contract.contractMetadata.riskScore,
+        complexityScore: contract.contractMetadata.complexityScore,
+        complianceStatus: contract.contractMetadata.complianceStatus,
+        performanceScore: contract.contractMetadata.performanceScore,
+        priority: contract.contractMetadata.priority,
+        importance: contract.contractMetadata.importance,
+        department: contract.contractMetadata.department,
+        negotiationStatus: contract.contractMetadata.negotiationStatus,
+        renewalPriority: contract.contractMetadata.renewalPriority,
+        renewalDeadline: contract.contractMetadata.renewalDeadline,
+        lastAiAnalysis: contract.contractMetadata.lastAiAnalysis,
+        aiAnalysisVersion: contract.contractMetadata.aiAnalysisVersion,
+      } : null,
+      aiInsights: contract.contractMetadata ? {
+        summary: contract.contractMetadata.aiSummary,
+        keyInsights: contract.contractMetadata.aiKeyInsights,
+        riskFactors: contract.contractMetadata.aiRiskFactors,
+        recommendations: contract.contractMetadata.aiRecommendations,
+        artifactSummary: contract.contractMetadata.artifactSummary,
+        searchKeywords: contract.contractMetadata.searchKeywords,
+      } : null,
     };
 
     const responseTime = Date.now() - startTime;
