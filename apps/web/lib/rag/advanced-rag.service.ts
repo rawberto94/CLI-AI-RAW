@@ -715,8 +715,22 @@ export async function hybridSearch(
         highlights: extractHighlights(r.text, query),
       }));
       
-  } catch {
-    return [];
+  } catch (error: any) {
+    // If OpenAI fails (429 quota, network error, etc.), fall back to keyword-only search
+    // instead of silently returning empty results
+    const errorMsg = error?.message || 'Unknown error';
+    console.warn(`[RAG] Hybrid search failed: ${errorMsg.substring(0, 200)}. Falling back to keyword-only search.`);
+    
+    try {
+      // Fall back to keyword search on ContractEmbedding.chunkText
+      const keywordFallback = await keywordOnlySearch(query, filters, k);
+      if (keywordFallback.length > 0) return keywordFallback;
+      
+      // If no ContractEmbedding chunks exist, search Contract.rawText directly
+      return rawTextFallbackSearch(query, filters, k);
+    } catch {
+      return [];
+    }
   }
 }
 
@@ -729,6 +743,11 @@ async function keywordOnlySearch(
   k: number
 ): Promise<SearchResult[]> {
   const results = await keywordSearch(query, filters, k);
+  
+  // If keyword search on chunks returns nothing, try rawText fallback
+  if (results.length === 0) {
+    return rawTextFallbackSearch(query, filters, k);
+  }
   
   const contractIds = [...new Set(results.map(r => r.contractId))];
   const contracts = await prisma.contract.findMany({
@@ -753,6 +772,66 @@ async function keywordOnlySearch(
     },
     highlights: extractHighlights(r.chunkText, query),
   }));
+}
+
+/**
+ * Last-resort fallback: search Contract.rawText directly when no ContractEmbedding chunks exist.
+ * This enables search even when OpenAI is unavailable and no chunks have been stored.
+ */
+async function rawTextFallbackSearch(
+  query: string,
+  filters: SearchFilters,
+  k: number
+): Promise<SearchResult[]> {
+  try {
+    const where: any = {
+      rawText: { not: null },
+      NOT: { rawText: '' },
+    };
+    
+    if (filters.tenantId) where.tenantId = filters.tenantId;
+    if (filters.contractIds?.length) where.id = { in: filters.contractIds };
+    if (filters.status?.length) where.status = { in: filters.status };
+    if (filters.contractTypes?.length) where.contractType = { in: filters.contractTypes };
+    
+    // Use PostgreSQL full-text search on rawText
+    const contracts = await prisma.$queryRaw<Array<{
+      id: string;
+      fileName: string;
+      rawText: string;
+      rank: number;
+    }>>`
+      SELECT c.id, c."fileName", 
+             substring(c."rawText" from 1 for 2000) as "rawText",
+             ts_rank_cd(to_tsvector('english', c."rawText"), plainto_tsquery('english', ${query})) as rank
+      FROM "Contract" c
+      WHERE c."rawText" IS NOT NULL 
+        AND length(c."rawText") > 50
+        AND to_tsvector('english', c."rawText") @@ plainto_tsquery('english', ${query})
+        ${filters.tenantId ? Prisma.sql`AND c."tenantId" = ${filters.tenantId}` : Prisma.empty}
+      ORDER BY rank DESC
+      LIMIT ${k}
+    `;
+    
+    return contracts.map((c, i) => ({
+      contractId: c.id,
+      contractName: c.fileName || 'Unknown',
+      chunkIndex: 0,
+      text: c.rawText,
+      score: Math.min(c.rank, 1.0),
+      matchType: 'keyword' as const,
+      metadata: {
+        chunkType: 'paragraph' as const,
+        startChar: 0,
+        endChar: c.rawText.length,
+        wordCount: c.rawText.split(/\s+/).length,
+      },
+      highlights: extractHighlights(c.rawText, query),
+    }));
+  } catch (error) {
+    console.warn('[RAG] rawText fallback search failed:', error);
+    return [];
+  }
 }
 
 /**

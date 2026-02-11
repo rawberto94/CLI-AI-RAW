@@ -6089,6 +6089,50 @@ async function getOpenAIResponse(message: string, conversationHistory: Array<{ r
       } catch {
         // Continue without RAG results
       }
+      
+      // FALLBACK: If RAG search returned nothing and we have a tenant, search rawText directly
+      if (ragSearchResults.length === 0 && context?.tenantId) {
+        try {
+          const rawTextResults = await prisma.contract.findMany({
+            where: {
+              tenantId: context.tenantId,
+              rawText: { not: null },
+              NOT: { rawText: '' },
+            },
+            select: {
+              id: true,
+              fileName: true,
+              rawText: true,
+              supplierName: true,
+              contractType: true,
+              status: true,
+            },
+            take: 5,
+            orderBy: { updatedAt: 'desc' },
+          });
+          
+          // Simple keyword matching on rawText
+          const queryTerms = message.toLowerCase().split(/\s+/).filter((t: string) => t.length > 2);
+          const matched = rawTextResults
+            .filter(c => c.rawText && queryTerms.some((term: string) => c.rawText!.toLowerCase().includes(term)))
+            .slice(0, 3);
+          
+          if (matched.length > 0) {
+            ragContext = `\n\n**📄 Contract Content (keyword match from rawText):**\n\n`;
+            matched.forEach((c, i) => {
+              const excerpt = c.rawText!.substring(0, 800);
+              ragContext += `---\n`;
+              ragContext += `**Match ${i + 1}: [${c.fileName}](/contracts/${c.id})**`;
+              if (c.contractType) ragContext += ` (${c.contractType})`;
+              if (c.supplierName) ragContext += ` • ${c.supplierName}`;
+              ragContext += `\n`;
+              ragContext += `> ${excerpt.replace(/\n/g, '\n> ')}${c.rawText!.length > 800 ? '...' : ''}\n\n`;
+            });
+          }
+        } catch {
+          // Silently continue without rawText fallback
+        }
+      }
     }
 
     const systemPrompt = `You are ConTigo AI, a friendly and intelligent contract management assistant for the ConTigo platform. You can understand and respond to ANY question or request - whether it's about contracts, general topics, or just casual conversation.

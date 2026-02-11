@@ -430,19 +430,108 @@ export async function processRAGIndexingJob(
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    jobLogger.error({ error: errorMessage, traceId: trace.traceId }, 'RAG indexing failed');
+    const isQuotaError = errorMessage.includes('429') || errorMessage.includes('quota') || errorMessage.includes('billing');
+    const isMissingKey = errorMessage.includes('OPENAI_API_KEY');
+    
+    jobLogger.error({ error: errorMessage, traceId: trace.traceId, isQuotaError }, 'RAG indexing embedding failed');
+
+    // FALLBACK: Store chunks WITHOUT embeddings so BM25 keyword search still works
+    // This mirrors the pattern in rag-integration.service.ts
+    if (!isMissingKey) {
+      try {
+        const contract = await prisma.contract.findFirst({
+          where: { id: contractId, tenantId },
+          select: { rawText: true },
+        });
+        
+        if (contract?.rawText) {
+          const fallbackChunks = semanticChunk(contract.rawText);
+          if (fallbackChunks.length > 0) {
+            jobLogger.info({ chunkCount: fallbackChunks.length }, 'Storing chunks WITHOUT embeddings for BM25 keyword search fallback');
+            
+            // Delete existing embeddings
+            await prisma.contractEmbedding.deleteMany({ where: { contractId } });
+            
+            // Insert chunks without vector embeddings (embedding column is nullable)
+            for (const chunk of fallbackChunks) {
+              await prisma.contractEmbedding.create({
+                data: {
+                  contractId,
+                  chunkIndex: chunk.index,
+                  chunkText: chunk.text,
+                  chunkType: chunk.metadata.chunkType,
+                  section: chunk.metadata.section || null,
+                },
+              });
+            }
+            
+            // Mark as partially indexed (chunks stored, no vectors)
+            await prisma.contractMetadata.upsert({
+              where: { contractId },
+              update: {
+                embeddingVersion: 'text-only',
+                embeddingCount: fallbackChunks.length,
+                lastEmbeddingAt: new Date(),
+                systemFields: {
+                  ragIndexing: {
+                    rawTextHash: sha256(contract.rawText),
+                    model: 'text-only',
+                    indexedAt: new Date().toISOString(),
+                    embeddingFailed: true,
+                    failureReason: errorMessage.substring(0, 500),
+                  },
+                },
+              },
+              create: {
+                contractId,
+                tenantId,
+                updatedBy: 'system',
+                embeddingVersion: 'text-only',
+                embeddingCount: fallbackChunks.length,
+                lastEmbeddingAt: new Date(),
+                systemFields: {
+                  ragIndexing: {
+                    rawTextHash: sha256(contract.rawText),
+                    model: 'text-only',
+                    indexedAt: new Date().toISOString(),
+                    embeddingFailed: true,
+                    failureReason: errorMessage.substring(0, 500),
+                  },
+                },
+              },
+            });
+            
+            jobLogger.info({ chunksStored: fallbackChunks.length }, 'Text-only chunks stored for BM25 fallback');
+          }
+        }
+      } catch (fallbackError) {
+        jobLogger.error({ error: fallbackError }, 'Failed to store text-only chunks fallback');
+      }
+    }
 
     await updateStep({
       tenantId,
       contractId,
       step: 'rag.indexing',
-      status: 'failed',
+      status: isQuotaError ? 'partial' : 'failed',
       progress: 100,
       currentStep: 'rag.indexing',
-      error: errorMessage,
+      error: isQuotaError ? `Chunks stored without vectors (${errorMessage})` : errorMessage,
     });
 
-    // Let BullMQ handle retries/backoff; only swallow if you truly want "best-effort".
+    // For quota errors, don't burn through retries — the issue won't resolve in seconds
+    if (isQuotaError) {
+      jobLogger.warn('OpenAI quota exceeded — chunks stored for BM25, skipping vector generation');
+      return {
+        success: false,
+        contractId,
+        chunksCreated: 0,
+        embeddingsGenerated: 0,
+        processingTime: Date.now() - startTime,
+      } as any;
+    }
+
+    // Let BullMQ handle retries/backoff for transient errors
     if (isRetryableError(error)) {
       throw error;
     }
