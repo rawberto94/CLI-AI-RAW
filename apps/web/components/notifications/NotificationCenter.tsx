@@ -139,7 +139,7 @@ export function NotificationCenter({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="NotificationCenter-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -401,7 +401,7 @@ function NotificationItem({
       {/* Hover Actions */}
       <AnimatePresence>
         {showActions && (
-          <motion.div
+          <motion.div key="actions"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}

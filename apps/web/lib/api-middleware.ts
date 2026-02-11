@@ -101,9 +101,13 @@ export type ContractQueryParams = z.infer<typeof contractQuerySchema>;
  * Extract and validate API context from request
  */
 export function getApiContext(request: NextRequest): ApiContext {
+  const tenantId = request.headers.get('x-tenant-id');
+  if (!tenantId && process.env.NODE_ENV === 'production') {
+    throw new Error('Tenant ID required. Provide x-tenant-id header.');
+  }
   return {
     requestId: request.headers.get('x-request-id') || nanoid(),
-    tenantId: request.headers.get('x-tenant-id') || 'demo',
+    tenantId: tenantId || 'demo', // Only used in development
     startTime: Date.now(),
     dataMode: (request.headers.get('x-data-mode') || 'real') as 'real' | 'mock',
   };
@@ -122,9 +126,13 @@ export function getAuthenticatedApiContext(request: NextRequest): AuthenticatedA
     return null;
   }
 
+  // In production, require explicit tenant
+  if (!tenantId && process.env.NODE_ENV === 'production') {
+    throw new Error('Tenant ID required for authenticated requests');
+  }
   return {
     requestId: request.headers.get('x-request-id') || nanoid(),
-    tenantId: tenantId || 'demo',
+    tenantId: tenantId || 'demo', // Only used in development
     userId,
     userRole: request.headers.get('x-user-role') || undefined,
     startTime: Date.now(),

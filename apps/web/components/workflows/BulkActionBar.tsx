@@ -67,7 +67,7 @@ export function BulkActionBar({
   return (
     <AnimatePresence>
       {selectedCount > 0 && (
-        <MotionDiv
+        <MotionDiv key="selected-count"
           initial={{ opacity: 0, y: 100, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 100, scale: 0.95 }}
@@ -276,7 +276,7 @@ export function BulkActionConfirmDialog({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <MotionDiv
             initial={{ opacity: 0 }}
@@ -343,7 +343,7 @@ export function BulkActionConfirmDialog({
               </button>
             </div>
           </MotionDiv>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

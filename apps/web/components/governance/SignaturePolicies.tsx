@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { PenTool, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function SignaturePolicies() {
   const [policies, setPolicies] = useState<any[]>([]);
@@ -64,7 +65,18 @@ export default function SignaturePolicies() {
             </CardContent>
           </Card>
         ))}
-        {policies.length === 0 && <Card className="p-12 text-center text-muted-foreground">No signature policies configured</Card>}
+        {policies.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No signature policies"
+            description="Define signature policies to control how contracts are signed."
+            primaryAction={{
+              label: 'Add Policy',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

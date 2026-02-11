@@ -464,7 +464,7 @@ export function ObligationsCalendar({ obligations, onStatusUpdate, onComplete }:
             {selectedDate ? (
               <AnimatePresence mode="wait">
                 {selectedDateObligations.length > 0 ? (
-                  <motion.div
+                  <motion.div key="selected-date-obligations-length"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}

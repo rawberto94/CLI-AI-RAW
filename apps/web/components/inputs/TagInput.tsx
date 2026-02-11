@@ -255,7 +255,7 @@ export function TagInput({
       {/* Suggestions Dropdown */}
       <AnimatePresence>
         {isOpen && (filteredSuggestions.length > 0 || (inputValue.trim() && allowCreate)) && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

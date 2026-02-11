@@ -308,7 +308,7 @@ export function NetworkStatusBanner({
   return (
     <AnimatePresence>
       {shouldShow && (
-        <motion.div
+        <motion.div key="should-show"
           initial={{ opacity: 0, y: position === 'top' ? -50 : 50 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: position === 'top' ? -50 : 50 }}

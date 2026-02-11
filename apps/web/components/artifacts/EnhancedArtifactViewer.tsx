@@ -2031,7 +2031,7 @@ export function EnhancedArtifactViewer({
       {/* Keyboard Help Modal */}
       <AnimatePresence>
         {showKeyboardHelp && (
-          <motion.div
+          <motion.div key="keyboard-help"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2096,7 +2096,7 @@ export function EnhancedArtifactViewer({
       {/* Executive Summary Modal */}
       <AnimatePresence>
         {showSummary && (
-          <motion.div
+          <motion.div key="summary"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2146,7 +2146,7 @@ export function EnhancedArtifactViewer({
       {/* Timeline Modal */}
       <AnimatePresence>
         {showTimeline && (
-          <motion.div
+          <motion.div key="timeline"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2203,7 +2203,7 @@ export function EnhancedArtifactViewer({
       {/* Action Items Modal */}
       <AnimatePresence>
         {showActionItems && (
-          <motion.div
+          <motion.div key="action-items"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

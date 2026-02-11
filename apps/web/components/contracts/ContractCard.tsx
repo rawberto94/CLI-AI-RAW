@@ -459,7 +459,7 @@ export function ContractCard({
 
                 <AnimatePresence>
                   {isExpanded && (
-                    <MotionDiv
+                    <MotionDiv key="expanded"
                       variants={expandCollapse}
                       initial="collapsed"
                       animate="expanded"

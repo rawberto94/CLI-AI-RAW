@@ -150,7 +150,7 @@ export function DropdownMenu({
 
         <AnimatePresence>
           {isOpen && (
-            <motion.div
+            <motion.div key="open"
               ref={menuRef}
               initial={{ opacity: 0, scale: 0.95, y: side === 'bottom' ? -8 : 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -323,7 +323,7 @@ export function DropdownSubmenu({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, x: -8 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
@@ -385,7 +385,7 @@ export function ContextMenu({ children, menu }: ContextMenuProps) {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             ref={menuRef}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}

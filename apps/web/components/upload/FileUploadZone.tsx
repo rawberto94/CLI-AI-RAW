@@ -380,7 +380,7 @@ export function FileUploadZone({
       {/* File List */}
       <AnimatePresence mode="popLayout">
         {files.length > 0 && (
-          <motion.div
+          <motion.div key="files-length"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

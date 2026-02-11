@@ -436,7 +436,7 @@ export function CustomArtifactGenerator({
         {/* Add Custom Topic Form */}
         <AnimatePresence>
           {showAddCustom && (
-            <motion.div
+            <motion.div key="add-custom"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
@@ -521,7 +521,7 @@ export function CustomArtifactGenerator({
       {/* Generation Progress */}
       <AnimatePresence>
         {isGenerating && (
-          <motion.div
+          <motion.div key="generating"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

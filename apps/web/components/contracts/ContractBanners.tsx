@@ -50,7 +50,7 @@ export const UncategorizedBanner = memo(function UncategorizedBanner({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ContractBanners-ap-1"
         initial={{ opacity: 0, y: -10, height: 0 }}
         animate={{ opacity: 1, y: 0, height: 'auto' }}
         exit={{ opacity: 0, y: -10, height: 0 }}
@@ -143,7 +143,7 @@ export const ExpiringBanner = memo(function ExpiringBanner({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ContractBanners-ap-2"
         initial={{ opacity: 0, y: -10, height: 0 }}
         animate={{ opacity: 1, y: 0, height: 'auto' }}
         exit={{ opacity: 0, y: -10, height: 0 }}
@@ -244,7 +244,7 @@ export const HighRiskBanner = memo(function HighRiskBanner({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ContractBanners-ap-3"
         initial={{ opacity: 0, y: -10, height: 0 }}
         animate={{ opacity: 1, y: 0, height: 'auto' }}
         exit={{ opacity: 0, y: -10, height: 0 }}
@@ -317,7 +317,7 @@ export const SuccessBanner = memo(function SuccessBanner({
 }: SuccessBannerProps) {
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ContractBanners-ap-4"
         initial={{ opacity: 0, y: -10, height: 0 }}
         animate={{ opacity: 1, y: 0, height: 'auto' }}
         exit={{ opacity: 0, y: -10, height: 0 }}

@@ -360,7 +360,7 @@ export function IconToggle({
       {tooltip && (
         <AnimatePresence>
           {showTooltip && (
-            <motion.div
+            <motion.div key="tooltip"
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 5 }}

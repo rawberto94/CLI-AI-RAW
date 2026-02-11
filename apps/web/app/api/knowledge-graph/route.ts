@@ -1,7 +1,8 @@
 import { NextRequest } from 'next/server';
 import { knowledgeGraphService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { getCached, setCached } from '@/lib/cache';
 
 /**
  * Knowledge Graph API
@@ -12,17 +13,13 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * POST /api/knowledge-graph (action: extract_entities, contractId)
  */
 
-export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = (session.user as any).tenantId;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const tenantId = ctx.tenantId;
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'No tenant ID found', 400);
   }
 
-  const { searchParams } = new URL(req.url);
+  const { searchParams } = new URL(request.url);
   const action = searchParams.get('action');
 
   switch (action) {
@@ -31,9 +28,16 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
       const contractIdsParam = searchParams.get('contractIds');
       const contractIds = contractIdsParam ? contractIdsParam.split(',') : undefined;
 
+      // Check cache (10 minute TTL for graph data)
+      const cacheKey = `kg:graph:${tenantId}:${contractIds?.join(',') || 'all'}`;
+      const cached = await getCached<{ success: boolean; graph: unknown; stats: unknown }>(cacheKey);
+      if (cached) {
+        return createSuccessResponse(ctx, cached);
+      }
+
       const graph = await knowledgeGraphService.buildKnowledgeGraph(tenantId, contractIds);
 
-      return createSuccessResponse(ctx, {
+      const result = {
         success: true,
         graph,
         stats: {
@@ -41,7 +45,10 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
           edges: graph.edges.length,
           nodeTypes: [...new Set(graph.nodes.map((n) => n.type))],
         },
-      });
+      };
+
+      await setCached(cacheKey, result, { ttl: 600 }); // 10 minutes
+      return createSuccessResponse(ctx, result);
     }
 
     case 'find_related': {
@@ -108,17 +115,13 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   }
 });
 
-export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const tenantId = ctx.tenantId;
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'No tenant ID found', 400);
   }
 
-  const body = await req.json();
+  const body = await request.json();
   const { action, contractId, text } = body;
 
   switch (action) {

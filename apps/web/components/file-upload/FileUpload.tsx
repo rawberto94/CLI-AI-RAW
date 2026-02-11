@@ -208,7 +208,7 @@ function FilePreviewCard({ file, onRemove, onRetry }: FilePreviewCardProps) {
         {/* Status overlay */}
         <AnimatePresence>
           {file.status === 'uploading' && (
-            <motion.div
+            <motion.div key="file-status"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

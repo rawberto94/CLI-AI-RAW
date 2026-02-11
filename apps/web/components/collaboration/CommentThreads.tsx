@@ -336,7 +336,7 @@ export function CommentThreads({ contractId, className }: CommentThreadsProps) {
           {/* Mentions Dropdown */}
           <AnimatePresence>
             {showMentions && filteredMembers.length > 0 && (
-              <motion.div
+              <motion.div key="mentions"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 10 }}

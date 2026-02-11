@@ -665,7 +665,7 @@ const ChatbotInner = memo(({
       {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && isMaximized && (
-          <motion.div
+          <motion.div key="sidebar"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 'auto', opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -699,7 +699,7 @@ const ChatbotInner = memo(({
         {/* Settings panel */}
         <AnimatePresence>
           {showSettings && (
-            <SettingsPanel
+            <SettingsPanel key="settings"
               settings={settings}
               onUpdateSettings={onUpdateSettings}
               onClose={onToggleSettings}

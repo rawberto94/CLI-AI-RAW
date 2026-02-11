@@ -114,6 +114,19 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   const results: PopulateResult[] = [];
   let totalUpdated = 0;
   
+  // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+  const unwrap = (val: any) => val?.value !== undefined ? val.value : val;
+  const unwrapNumber = (val: any): number | null => {
+    const unwrapped = unwrap(val);
+    if (typeof unwrapped === 'number') return unwrapped;
+    if (typeof unwrapped === 'string') {
+      const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? null : parsed;
+    }
+    return null;
+  };
+  
   for (const contract of contracts) {
     const overviewData = artifactMap.get(contract.id) as any;
     
@@ -130,81 +143,101 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     const contractUpdate: Record<string, any> = {};
     const fieldsPopulated: string[] = [];
     
-    // Extract contract type
-    if (overviewData.contractType && 
-        overviewData.contractType !== 'Unknown' &&
+    // Extract contract type - handle wrapped values
+    const contractType = unwrap(overviewData.contractType);
+    if (contractType && 
+        contractType !== 'Unknown' &&
         (overwrite || !contract.contractType || contract.contractType === 'UNKNOWN')) {
-      contractUpdate.contractType = overviewData.contractType;
+      contractUpdate.contractType = contractType;
       fieldsPopulated.push('contractType');
     }
     
-    // Extract parties
+    // Extract parties - handle wrapped values
     if (overviewData.parties && Array.isArray(overviewData.parties)) {
-      const clientParty = overviewData.parties.find((p: PartyData) => 
-        p.role?.toLowerCase().includes('client') || 
-        p.role?.toLowerCase().includes('buyer') ||
-        p.role?.toLowerCase().includes('customer')
-      );
-      const supplierParty = overviewData.parties.find((p: PartyData) => 
-        p.role?.toLowerCase().includes('supplier') || 
-        p.role?.toLowerCase().includes('vendor') ||
-        p.role?.toLowerCase().includes('provider') ||
-        p.role?.toLowerCase().includes('contractor')
-      );
+      const getPartyName = (p: any) => unwrap(p.name) || unwrap(p.legalName);
+      const getPartyRole = (p: any) => (unwrap(p.role) || '').toLowerCase();
       
-      if (clientParty?.name && (overwrite || !contract.clientName)) {
-        contractUpdate.clientName = clientParty.name;
+      const clientParty = overviewData.parties.find((p: PartyData) => {
+        const role = getPartyRole(p);
+        return role.includes('client') || role.includes('buyer') || role.includes('customer');
+      });
+      const supplierParty = overviewData.parties.find((p: PartyData) => {
+        const role = getPartyRole(p);
+        return role.includes('supplier') || role.includes('vendor') || 
+               role.includes('provider') || role.includes('contractor');
+      });
+      
+      const clientName = clientParty ? getPartyName(clientParty) : null;
+      const supplierName = supplierParty ? getPartyName(supplierParty) : null;
+      
+      if (clientName && (overwrite || !contract.clientName)) {
+        contractUpdate.clientName = clientName;
         fieldsPopulated.push('clientName');
       }
-      if (supplierParty?.name && (overwrite || !contract.supplierName)) {
-        contractUpdate.supplierName = supplierParty.name;
+      if (supplierName && (overwrite || !contract.supplierName)) {
+        contractUpdate.supplierName = supplierName;
         fieldsPopulated.push('supplierName');
       }
       
       // If only one party found and no supplier set, use it
       if (!contractUpdate.supplierName && !contract.supplierName && 
           overviewData.parties.length > 0 && !clientParty) {
-        contractUpdate.supplierName = overviewData.parties[0].name;
-        fieldsPopulated.push('supplierName');
+        const name = getPartyName(overviewData.parties[0]);
+        if (name) {
+          contractUpdate.supplierName = name;
+          fieldsPopulated.push('supplierName');
+        }
       }
     }
     
-    // Extract total value
-    if (overviewData.totalValue && 
-        typeof overviewData.totalValue === 'number' && 
-        overviewData.totalValue > 0 &&
-        (overwrite || !contract.totalValue)) {
-      contractUpdate.totalValue = overviewData.totalValue;
+    // Extract total value - handle wrapped values and strings
+    const totalValue = unwrapNumber(overviewData.totalValue);
+    if (totalValue && totalValue > 0 && (overwrite || !contract.totalValue)) {
+      contractUpdate.totalValue = totalValue;
       fieldsPopulated.push('totalValue');
     }
-    if (overviewData.currency && (overwrite || !contractUpdate.currency)) {
-      contractUpdate.currency = overviewData.currency;
+    const currency = unwrap(overviewData.currency);
+    if (currency && (overwrite || !contractUpdate.currency)) {
+      contractUpdate.currency = currency;
       if (!fieldsPopulated.includes('currency')) fieldsPopulated.push('currency');
     }
     
-    // Extract dates
-    if (overviewData.effectiveDate && (overwrite || !contract.effectiveDate)) {
+    // Helper to unwrap and parse dates
+    const unwrapDate = (val: any): Date | null => {
+      const raw = unwrap(val);
+      if (!raw) return null;
       try {
-        const effDate = new Date(overviewData.effectiveDate);
-        if (!isNaN(effDate.getTime()) && effDate.getFullYear() > 1990) {
-          contractUpdate.effectiveDate = effDate;
-          fieldsPopulated.push('effectiveDate');
+        const date = new Date(raw);
+        if (!isNaN(date.getTime()) && date.getFullYear() > 1990) {
+          return date;
         }
       } catch { /* ignore */ }
+      return null;
+    };
+    
+    // Extract dates - handle wrapped values
+    const effDate = unwrapDate(overviewData.effectiveDate) || 
+                    unwrapDate(overviewData.effective_date) ||
+                    unwrapDate(overviewData.startDate) ||
+                    unwrapDate(overviewData.start_date);
+    if (effDate && (overwrite || !contract.effectiveDate)) {
+      contractUpdate.effectiveDate = effDate;
+      fieldsPopulated.push('effectiveDate');
     }
-    if (overviewData.expirationDate && (overwrite || !contract.expirationDate)) {
-      try {
-        const expDate = new Date(overviewData.expirationDate);
-        if (!isNaN(expDate.getTime()) && expDate.getFullYear() > 1990) {
-          contractUpdate.expirationDate = expDate;
-          fieldsPopulated.push('expirationDate');
-        }
-      } catch { /* ignore */ }
+    
+    const expDate = unwrapDate(overviewData.expirationDate) || 
+                    unwrapDate(overviewData.expiration_date) ||
+                    unwrapDate(overviewData.endDate) ||
+                    unwrapDate(overviewData.end_date);
+    if (expDate && (overwrite || !contract.expirationDate)) {
+      contractUpdate.expirationDate = expDate;
+      fieldsPopulated.push('expirationDate');
     }
     
     // Extract title from summary
-    if (overviewData.summary && !contract.contractTitle) {
-      const title = overviewData.summary.split('.')[0].substring(0, 100);
+    const summary = unwrap(overviewData.summary);
+    if (summary && !contract.contractTitle) {
+      const title = summary.split('.')[0].substring(0, 100);
       if (title.length > 10) {
         contractUpdate.contractTitle = title;
         fieldsPopulated.push('contractTitle');

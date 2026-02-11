@@ -597,7 +597,7 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
 
       <AnimatePresence>
         {expanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -752,7 +752,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
           {/* Cross-Module Actions */}
           <AnimatePresence>
             {showActions && (
-              <motion.div
+              <motion.div key="actions"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}

@@ -152,7 +152,7 @@ export function MobileDrawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -189,7 +189,7 @@ export function MobileDrawer({
               {children}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

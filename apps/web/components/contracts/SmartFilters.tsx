@@ -970,7 +970,7 @@ export const SmartFilters = memo(function SmartFilters({
       {/* Active Filter Chips */}
       <AnimatePresence>
         {filterChips.length > 0 && (
-          <motion.div
+          <motion.div key="filter-chips-length"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
@@ -999,7 +999,7 @@ export const SmartFilters = memo(function SmartFilters({
       {/* Advanced Filters Panel */}
       <AnimatePresence>
         {isAdvancedOpen && (
-          <motion.div
+          <motion.div key="advanced-open"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}

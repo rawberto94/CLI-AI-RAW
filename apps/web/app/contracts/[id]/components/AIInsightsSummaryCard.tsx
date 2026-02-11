@@ -210,9 +210,9 @@ export const AIInsightsSummaryCard = memo(function AIInsightsSummaryCard({
               Key Terms
             </span>
             <div className="flex flex-wrap gap-2">
-              {keyTerms.slice(0, 6).map((item, idx) => (
+              {keyTerms.slice(0, 6).map((item) => (
                 <div
-                  key={idx}
+                  key={item.term}
                   className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-slate-50 border border-slate-100"
                 >
                   <span className="text-[10px] sm:text-xs font-medium text-slate-600">{item.term}:</span>

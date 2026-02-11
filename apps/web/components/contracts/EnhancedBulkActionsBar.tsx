@@ -752,7 +752,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
   return (
     <>
       <AnimatePresence>
-        <motion.div
+        <motion.div key="EnhancedBulkActionsBar-ap-1"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}

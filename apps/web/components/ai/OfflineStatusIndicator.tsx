@@ -77,7 +77,7 @@ export function OfflineStatusIndicator({
     <div className={`${positionClass} ${className}`}>
       <AnimatePresence>
         {isExpanded ? (
-          <motion.div
+          <motion.div key="OfflineStatusIndicator-ap-1"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}

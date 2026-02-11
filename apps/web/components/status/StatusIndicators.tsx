@@ -200,7 +200,7 @@ export function SystemHealth({ metrics: propMetrics, compact = true }: SystemHea
         
         <AnimatePresence>
           {expanded && (
-            <motion.div
+            <motion.div key="expanded"
               initial={{ opacity: 0, y: 10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -321,7 +321,7 @@ export function AutoSaveIndicator({ status, lastSaved }: AutoSaveIndicatorProps)
   return (
     <AnimatePresence>
       {(status !== 'saved' || showSaved) && (
-        <motion.div
+        <motion.div key="StatusIndicators-ap-1"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
@@ -357,7 +357,7 @@ export function ProcessingStatus({ isProcessing, message, progress, onCancel }: 
   return (
     <AnimatePresence>
       {isProcessing && (
-        <motion.div
+        <motion.div key="processing"
           initial={{ height: 0, opacity: 0 }}
           animate={{ height: 'auto', opacity: 1 }}
           exit={{ height: 0, opacity: 0 }}

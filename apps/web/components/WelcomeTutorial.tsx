@@ -244,7 +244,7 @@ export function WelcomeTutorial() {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div 
+      <motion.div key="WelcomeTutorial-ap-1" 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

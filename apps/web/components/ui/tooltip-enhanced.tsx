@@ -167,7 +167,7 @@ export function TooltipEnhanced({
       {/* Tooltip */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial="hidden"
             animate="visible"
             exit="exit"

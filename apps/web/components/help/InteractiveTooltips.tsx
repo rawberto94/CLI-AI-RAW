@@ -134,7 +134,7 @@ export function InteractiveTooltip({
 
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -278,7 +278,7 @@ export function FeatureSpotlight({
       
       <AnimatePresence>
         {showSpotlight && (
-          <>
+          <div key="spotlight" className="contents">
             {/* Pulse ring */}
             <motion.div
               initial={{ scale: 0.8, opacity: 0 }}
@@ -323,7 +323,7 @@ export function FeatureSpotlight({
               {/* Arrow */}
               <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-8 border-r-8 border-b-8 border-l-transparent border-r-transparent border-b-violet-600" />
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -354,7 +354,10 @@ export default function CategoryAnalyticsPage() {
     return `$${value.toFixed(0)}`;
   };
 
-  const maxCategoryCount = Math.max(...analytics.distribution.map((c) => c.count), 1);
+  const maxCategoryCount = Math.max(
+    ...(Array.isArray(analytics.distribution) ? analytics.distribution.map((c) => c.count) : []),
+    1
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
@@ -500,7 +503,7 @@ export default function CategoryAnalyticsPage() {
               </Link>
             </div>
 
-            {analytics.distribution.length === 0 ? (
+            {(!Array.isArray(analytics.distribution) || analytics.distribution.length === 0) ? (
               <div className="text-center py-12 text-white/50">
                 <Tag className="w-12 h-12 mx-auto mb-4 opacity-50" />
                 <p>No categorized contracts yet</p>
@@ -532,7 +535,7 @@ export default function CategoryAnalyticsPage() {
         </div>
 
         {/* Top Categories by Value */}
-        {analytics.topByValue.length > 0 && (
+        {Array.isArray(analytics.topByValue) && analytics.topByValue.length > 0 && (
           <div className="mt-6 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
             <h3 className="text-lg font-semibold mb-6 flex items-center gap-2">
               <DollarSign className="w-5 h-5 text-amber-400" />

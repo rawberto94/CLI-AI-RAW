@@ -744,7 +744,7 @@ export function EnhancedArtifactEditor({
       {/* Alerts */}
       <AnimatePresence>
         {error && (
-          <motion.div
+          <motion.div key="error"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -814,7 +814,7 @@ export function EnhancedArtifactEditor({
               
               <AnimatePresence initial={false}>
                 {expandedSections.has(group) && (
-                  <motion.div
+                  <motion.div key="EnhancedArtifactEditor-ap-1"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}

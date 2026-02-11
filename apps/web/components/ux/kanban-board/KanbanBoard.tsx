@@ -399,7 +399,7 @@ function KanbanCard<T extends KanbanItem>({
         {/* Dropdown Menu */}
         <AnimatePresence>
           {showMenu && (
-            <motion.div
+            <motion.div key="menu"
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}

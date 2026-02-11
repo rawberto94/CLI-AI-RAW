@@ -116,7 +116,7 @@ export const SectionNavigator = memo(function SectionNavigator({
     <div className={cn("fixed right-4 top-1/2 -translate-y-1/2 z-40", className)}>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
             animate={{ opacity: 1, x: 0, scale: 1 }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}

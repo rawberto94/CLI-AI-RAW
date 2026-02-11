@@ -666,7 +666,7 @@ function PartyCard({
       
       <AnimatePresence>
         {isEditing && (
-          <motion.div 
+          <motion.div key="editing" 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -1465,7 +1465,7 @@ function MetadataField({
         {/* Inline save/cancel buttons */}
         <AnimatePresence>
           {isFieldEditing && (
-            <motion.div 
+            <motion.div key="field-editing" 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -1590,6 +1590,32 @@ export function EnhancedContractMetadataSection({
     }));
   }, []);
   
+  // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+  const unwrapValue = useCallback((val: unknown): unknown => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'object' && val !== null && 'value' in val) {
+      return (val as { value: unknown }).value;
+    }
+    return val;
+  }, []);
+  
+  const unwrapNumber = useCallback((val: unknown): number => {
+    const unwrapped = unwrapValue(val);
+    if (unwrapped === null || unwrapped === undefined) return 0;
+    if (typeof unwrapped === 'number') return unwrapped;
+    if (typeof unwrapped === 'string') {
+      const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, [unwrapValue]);
+  
+  const unwrapString = useCallback((val: unknown): string => {
+    const unwrapped = unwrapValue(val);
+    if (unwrapped === null || unwrapped === undefined) return '';
+    return String(unwrapped);
+  }, [unwrapValue]);
   
   // Merge legacy data with new schema
   const mergedInitial = useMemo(() => {
@@ -1609,34 +1635,37 @@ export function EnhancedContractMetadataSection({
       if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate ? String(contract.expirationDate || contract.endDate) : null;
     }
     
-    // Map overview data from AI extraction (lowest priority)
+    // Map overview data from AI extraction (lowest priority) - handle wrapped values
     if (overviewData) {
-      if (!base.document_title) base.document_title = String(overviewData.contractTitle || '');
-      if (!base.contract_short_description) base.contract_short_description = String(overviewData.summary || overviewData.description || '');
-      if (!base.jurisdiction) base.jurisdiction = String(overviewData.jurisdiction || '');
-      if (!base.contract_language) base.contract_language = String(overviewData.language || 'en');
-      if (!base.tcv_amount) base.tcv_amount = Number(overviewData.totalValue) || 0;
-      if (!base.start_date) base.start_date = String(overviewData.effectiveDate || '');
-      if (!base.end_date) base.end_date = overviewData.expirationDate ? String(overviewData.expirationDate) : null;
+      if (!base.document_title) base.document_title = unwrapString(overviewData.contractTitle);
+      if (!base.contract_short_description) base.contract_short_description = unwrapString(overviewData.summary) || unwrapString(overviewData.description);
+      if (!base.jurisdiction) base.jurisdiction = unwrapString(overviewData.jurisdiction);
+      if (!base.contract_language) base.contract_language = unwrapString(overviewData.language) || 'en';
+      if (!base.tcv_amount) base.tcv_amount = unwrapNumber(overviewData.totalValue);
+      if (!base.start_date) base.start_date = unwrapString(overviewData.effectiveDate) || unwrapString(overviewData.effective_date) || unwrapString(overviewData.startDate);
+      if (!base.end_date) {
+        const endDate = unwrapString(overviewData.expirationDate) || unwrapString(overviewData.expiration_date) || unwrapString(overviewData.endDate);
+        base.end_date = endDate || null;
+      }
       
-      // Map parties
+      // Map parties - handle wrapped values
       if (!base.external_parties?.length && overviewData.parties && Array.isArray(overviewData.parties)) {
         base.external_parties = (overviewData.parties as Array<Record<string, unknown>>).map((p) => ({
-          legalName: String(p.name || ''),
-          role: String(p.role || ''),
-          registeredAddress: String(p.address || '')
+          legalName: unwrapString(p.name) || unwrapString(p.legalName),
+          role: unwrapString(p.role) || unwrapString(p.type),
+          registeredAddress: unwrapString(p.address)
         }));
       }
     }
     
-    // Map financial data from AI extraction
+    // Map financial data from AI extraction - handle wrapped values
     if (financialData) {
-      base.tcv_amount = base.tcv_amount || Number(financialData.totalValue) || 0;
-      base.tcv_text = financialData.totalValue ? formatCurrency(Number(financialData.totalValue), base.currency) : '';
-      base.currency = base.currency || String(financialData.currency || 'USD');
+      base.tcv_amount = base.tcv_amount || unwrapNumber(financialData.totalValue);
+      base.tcv_text = financialData.totalValue ? formatCurrency(unwrapNumber(financialData.totalValue), base.currency) : '';
+      base.currency = base.currency || unwrapString(financialData.currency) || 'USD';
       
       // Map payment terms to payment_type (ensure string conversion for safety)
-      const paymentTerms = String(financialData.paymentTerms || '').toLowerCase();
+      const paymentTerms = unwrapString(financialData.paymentTerms).toLowerCase();
       if (paymentTerms.includes('milestone')) {
         base.payment_type = 'milestone';
       } else if (paymentTerms.includes('time') || paymentTerms.includes('hourly')) {
@@ -1676,7 +1705,7 @@ export function EnhancedContractMetadataSection({
     
     // Override with explicit initial metadata
     return { ...base, ...initialMetadata };
-  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI]);
+  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber]);
   
   const [metadata, setMetadata] = useState<Partial<ContractMetadataSchema>>(mergedInitial);
   const [isEditing, setIsEditing] = useState(false);
@@ -2022,7 +2051,7 @@ export function EnhancedContractMetadataSection({
           {/* 100% completion badge */}
           <AnimatePresence>
             {overallProgress === 100 && (
-              <motion.div
+              <motion.div key="overall-progress"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
@@ -2178,7 +2207,7 @@ export function EnhancedContractMetadataSection({
         {/* Success Message */}
         <AnimatePresence>
           {saveSuccess && (
-            <motion.div
+            <motion.div key="save-success"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}

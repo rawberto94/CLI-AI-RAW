@@ -278,7 +278,7 @@ function TableRowComponent<T>({
 
             <AnimatePresence>
               {showActions && (
-                <motion.div
+                <motion.div key="actions"
                   initial={{ opacity: 0, scale: 0.95, y: -5 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
@@ -487,7 +487,7 @@ function ToolbarComponent<T>({
         {/* Bulk actions */}
         <AnimatePresence>
           {selectedCount > 0 && (
-            <motion.div
+            <motion.div key="selected-count"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
@@ -766,7 +766,7 @@ export function EnhancedDataTable<T>({
             <tbody>
               <AnimatePresence mode="popLayout">
                 {paginatedData.length === 0 ? (
-                  <tr>
+                  <tr key="paginated-data-length">
                     <td
                       colSpan={columns.filter(c => !c.hidden).length + (selectable ? 1 : 0) + (actions ? 1 : 0)}
                       className="px-4 py-12 text-center text-slate-500 dark:text-slate-400"

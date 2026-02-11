@@ -156,11 +156,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     ? categoriesWithCounts
     : buildCategoryTree(categoriesWithCounts as TaxonomyCategoryResponse[]);
 
-  return createSuccessResponse(ctx, {
-    success: true,
-    data: result,
-    total: categories.length,
-  });
+  return createSuccessResponse(ctx, result);
 });
 
 // ============================================================================

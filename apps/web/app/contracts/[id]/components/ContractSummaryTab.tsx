@@ -86,7 +86,7 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keyTerms.map((term, i) => (
-                <KeyTermBadge key={i} term={term} />
+                <KeyTermBadge key={term.name || term.label || `term-${i}`} term={term} />
               ))}
             </div>
           </div>
@@ -130,7 +130,7 @@ const PartiesCard = memo(function PartiesCard({ parties }: { parties: Party[] })
             
             return (
               <div 
-                key={i}
+                key={party.id || party.legalName || party.name || `party-${i}`}
                 className={cn(
                   "flex items-center gap-3 p-3 rounded-lg border",
                   isClient ? "bg-violet-50 border-violet-100" : "bg-violet-50 border-violet-100"
@@ -303,7 +303,7 @@ const RisksCard = memo(function RisksCard({
       <CardContent>
         <div className="space-y-2">
           {risks.slice(0, 3).map((risk, i) => (
-            <div key={i} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-lg">
+            <div key={risk.id || `${risk.category}-${i}`} className="flex items-start gap-2.5 p-2.5 bg-slate-50 rounded-lg">
               <div className={cn(
                 "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
                 risk.level?.toLowerCase() === 'low' ? 'bg-violet-500' : 

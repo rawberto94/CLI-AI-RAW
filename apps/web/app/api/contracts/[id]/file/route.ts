@@ -22,16 +22,25 @@ import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-
 import { createConnector } from '@/lib/integrations/connectors/factory';
 import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-// Initialize S3 client for MinIO
-const s3Client = new S3Client({
-  endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
-  region: 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true,
-});
+// Initialize S3 client for MinIO - credentials required in production
+const getS3Client = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // In production, require explicit credentials
+  if (isProduction && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+    throw new Error('MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in production');
+  }
+  
+  return new S3Client({
+    endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY || (isProduction ? '' : 'minioadmin'),
+      secretAccessKey: process.env.MINIO_SECRET_KEY || (isProduction ? '' : 'minioadmin'),
+    },
+    forcePathStyle: true,
+  });
+};
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'contracts';
 
@@ -177,6 +186,7 @@ export async function GET(
           Key: s3Key,
         });
         
+        const s3Client = getS3Client();
         const response = await s3Client.send(command);
         const bodyBytes = await response.Body?.transformToByteArray();
         

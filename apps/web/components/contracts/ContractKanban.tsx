@@ -368,7 +368,7 @@ function KanbanColumnComponent({
         <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)]">
           <AnimatePresence mode="popLayout">
             {column.contracts.length === 0 ? (
-              <motion.div
+              <motion.div key="column-contracts"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center justify-center py-8 text-center"

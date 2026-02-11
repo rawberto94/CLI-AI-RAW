@@ -221,7 +221,7 @@ function FilterDropdown({
 
       <AnimatePresence>
         {isOpen && (
-          <MotionDiv
+          <MotionDiv key="open"
             variants={fadeIn}
             initial="initial"
             animate="animate"

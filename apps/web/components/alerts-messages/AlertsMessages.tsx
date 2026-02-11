@@ -68,7 +68,7 @@ export function AlertBanner({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
@@ -211,7 +211,7 @@ export function Callout({
       
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

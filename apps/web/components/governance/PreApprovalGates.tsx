@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { GripVertical, Plus, Lock, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function PreApprovalGates() {
   const [gates, setGates] = useState<any[]>([]);
@@ -66,7 +67,18 @@ export default function PreApprovalGates() {
             </CardContent>
           </Card>
         ))}
-        {gates.length === 0 && <Card className="p-12 text-center text-muted-foreground">No pre-approval gates configured</Card>}
+        {gates.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No pre-approval gates"
+            description="Configure checkpoints that contracts must pass through before approval."
+            primaryAction={{
+              label: 'Add Gate',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

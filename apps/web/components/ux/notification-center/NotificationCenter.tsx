@@ -385,7 +385,7 @@ const NotificationItem = memo(({
         {/* Quick actions */}
         <AnimatePresence>
           {showActions && (
-            <motion.div
+            <motion.div key="actions"
               initial={{ opacity: 0, x: 10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 10 }}
@@ -628,7 +628,7 @@ export const NotificationCenter = memo(({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="NotificationCenter-ap-1"
         initial={{ opacity: 0, x: position === 'right' ? 20 : -20 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, x: position === 'right' ? 20 : -20 }}
@@ -713,7 +713,7 @@ export const NotificationCenter = memo(({
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
-            <SettingsPanel
+            <SettingsPanel key="settings"
               settings={settings}
               onUpdate={updateSettings}
               onClose={() => setShowSettings(false)}
@@ -726,7 +726,7 @@ export const NotificationCenter = memo(({
           <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
             <AnimatePresence mode="popLayout">
               {filteredNotifications.length === 0 ? (
-                <motion.div
+                <motion.div key="filtered-notifications-length"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   className="flex flex-col items-center justify-center py-12 px-4"
@@ -793,7 +793,7 @@ export const NotificationBell = memo(({ onClick, className }: NotificationBellPr
       <Bell className="h-5 w-5 text-slate-600 dark:text-slate-400" />
       <AnimatePresence>
         {unreadCount > 0 && (
-          <motion.span
+          <motion.span key="unread-count"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}

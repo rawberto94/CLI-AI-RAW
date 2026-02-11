@@ -57,7 +57,7 @@ export const UndoToast = memo(function UndoToast({ action, onDismiss }: UndoToas
   return (
     <AnimatePresence>
       {action && (
-        <motion.div
+        <motion.div key="action"
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}

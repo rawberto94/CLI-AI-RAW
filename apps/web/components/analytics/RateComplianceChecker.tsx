@@ -203,8 +203,8 @@ export default function RateComplianceChecker() {
             <CardContent>
               <ScrollArea className="h-[450px]">
                 <div className="space-y-3">
-                  {violations.map((v, idx) => (
-                    <div key={idx} className={cn(
+                  {violations.map((v) => (
+                    <div key={v.contractId || `${v.contractTitle}-${v.supplierName}`} className={cn(
                       'p-4 rounded-lg border',
                       v.severity === 'HIGH' ? 'border-red-300 bg-red-50' : 'border-yellow-300 bg-yellow-50'
                     )}>

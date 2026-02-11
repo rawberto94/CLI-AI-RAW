@@ -273,7 +273,7 @@ export function BenchmarkVisualization({
                     {/* Expanded Details */}
                     <AnimatePresence>
                       {isSelected && (
-                        <motion.div
+                        <motion.div key="selected"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}

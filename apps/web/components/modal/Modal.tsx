@@ -124,7 +124,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalContext.Provider value={{ close: onClose }}>
+        <ModalContext.Provider key="open" value={{ close: onClose }}>
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -307,7 +307,7 @@ export function Drawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -346,7 +346,7 @@ export function Drawer({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">{children}</div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

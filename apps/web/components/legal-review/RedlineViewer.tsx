@@ -504,7 +504,7 @@ export function RedlineViewer({
               {/* Section Content */}
               <AnimatePresence>
                 {(expandedSections.has(section) || expandedSections.has('all')) && (
-                  <motion.div
+                  <motion.div key="RedlineViewer-ap-1"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -644,7 +644,7 @@ export function RedlineViewer({
                           {/* Negotiation Panel */}
                           <AnimatePresence>
                             {selectedChange === change.id && change.status === 'pending' && (
-                              <motion.div
+                              <motion.div key="selected-change"
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}

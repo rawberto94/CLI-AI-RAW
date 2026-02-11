@@ -1029,7 +1029,7 @@ export default function CreateContractPage() {
           {/* Preview Panel */}
           <AnimatePresence>
             {showPreview && (
-              <motion.div
+              <motion.div key="preview"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}

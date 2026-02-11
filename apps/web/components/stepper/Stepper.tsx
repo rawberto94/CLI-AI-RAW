@@ -299,7 +299,7 @@ export function VerticalStepper({
                 {/* Step Content */}
                 <AnimatePresence mode="wait">
                   {children && index === currentStep && (
-                    <motion.div
+                    <motion.div key="children"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}

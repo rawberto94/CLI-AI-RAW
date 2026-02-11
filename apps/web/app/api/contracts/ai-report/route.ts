@@ -115,7 +115,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      // Return mock report for demo purposes
+      // In production, AI service must be configured
+      if (process.env.NODE_ENV === 'production') {
+        return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured', 503);
+      }
+      // Return mock report for demo purposes (dev only)
       return createSuccessResponse(ctx, generateMockReport(contractSummaries));
     }
 

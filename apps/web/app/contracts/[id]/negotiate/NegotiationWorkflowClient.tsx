@@ -219,7 +219,7 @@ export default function NegotiationWorkflowClient({ contractId }: NegotiationWor
                           {round.message && <p className="text-sm text-muted-foreground mb-2">{round.message}</p>}
                           <div className="space-y-1.5">
                             {round.changes.map((change, j) => (
-                              <div key={j} className="flex items-center gap-2 text-xs bg-muted/50 rounded p-2">
+                              <div key={`${round.id}-change-${j}`} className="flex items-center gap-2 text-xs bg-muted/50 rounded p-2">
                                 <span className="font-medium">{change.clause}:</span>
                                 <span className="text-red-600 line-through">{change.original}</span>
                                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
@@ -270,7 +270,7 @@ export default function NegotiationWorkflowClient({ contractId }: NegotiationWor
               </div>
               <div className="space-y-2">
                 {proposalChanges.map((change, i) => (
-                  <div key={i} className="grid grid-cols-3 gap-2">
+                  <div key={`proposal-change-${i}`} className="grid grid-cols-3 gap-2">
                     <Input placeholder="Clause name" value={change.clause} onChange={e => updateChangeRow(i, 'clause', e.target.value)} className="text-xs h-8" />
                     <Input placeholder="Original text" value={change.original} onChange={e => updateChangeRow(i, 'original', e.target.value)} className="text-xs h-8" />
                     <Input placeholder="Proposed text" value={change.proposed} onChange={e => updateChangeRow(i, 'proposed', e.target.value)} className="text-xs h-8" />

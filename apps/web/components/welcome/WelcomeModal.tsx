@@ -208,7 +208,7 @@ export function WelcomeModal() {
   return (
     <AnimatePresence>
       {isWelcomeModalOpen && (
-        <motion.div
+        <motion.div key="welcome-modal-open"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

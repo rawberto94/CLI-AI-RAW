@@ -496,6 +496,34 @@ export default function ContractDetailPage() {
     loadContract()
   }, [loadContract])
 
+  // Auto-refresh when contract is still processing
+  useEffect(() => {
+    if (!isProcessing || !contract) return
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/contracts/${params.id}`, {
+          headers: { 'x-data-mode': dataMode }
+        })
+        if (!response.ok) return
+        
+        const raw = await response.json()
+        const data = raw.data ?? raw
+        
+        // If status changed from processing, do a full reload
+        const newStatus = data.status?.toLowerCase()
+        if (newStatus && newStatus !== 'processing' && newStatus !== 'uploaded') {
+          clearInterval(pollInterval)
+          loadContract()
+        }
+      } catch {
+        // Silent fail - will retry on next interval
+      }
+    }, 5000) // Poll every 5 seconds
+    
+    return () => clearInterval(pollInterval)
+  }, [isProcessing, contract, params.id, dataMode, loadContract])
+
   // ============ ACTION HANDLERS ============
   const handleDownload = useCallback(async () => {
     try {
@@ -619,12 +647,27 @@ export default function ContractDetailPage() {
       if (!response.ok) throw new Error('Failed to categorize')
       
       const data = await response.json()
-      if (data.data?.results?.[0]?.success) {
-        toast.success('Contract categorized by AI')
+      const result = data.data?.results?.[0]
+      if (result?.success && result?.category) {
+        toast.success(`Contract categorized as "${result.category}" (${result.confidence}% confidence)`)
         crossModule.onTaxonomyChange()
         await loadContract()
       } else {
-        toast.warning('AI could not determine a category')
+        // Show specific error reason from API response
+        const errorReason = result?.error || ''
+        if (errorReason.includes('No taxonomy categories')) {
+          toast.error('No categories defined. Go to Settings → Taxonomy to set up categories.', { duration: 5000 })
+        } else if (errorReason.includes('No text available')) {
+          toast.warning('Contract has no text to analyze. Try uploading a document first.')
+        } else if (errorReason.includes('AI not configured')) {
+          toast.error('AI service not available. Please configure OpenAI API key or add keywords to categories.', { duration: 5000 })
+        } else if (errorReason.includes('No category keywords')) {
+          toast.warning('Add keywords to your categories in Settings → Taxonomy for automatic categorization.', { duration: 5000 })
+        } else if (errorReason) {
+          toast.warning(errorReason, { duration: 5000 })
+        } else {
+          toast.warning('Could not determine category. Try selecting one manually.')
+        }
       }
     } catch {
       toast.error('Failed to run AI categorization')
@@ -861,7 +904,7 @@ export default function ContractDetailPage() {
             {/* Processing Banner */}
             <AnimatePresence>
               {isProcessing && (
-                <motion.div
+                <motion.div key="processing"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}

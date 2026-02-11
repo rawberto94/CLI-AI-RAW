@@ -548,7 +548,7 @@ export const SuccessCheck = memo(function SuccessCheck({
   return (
     <AnimatePresence>
       {show && (
-        <motion.div
+        <motion.div key="show"
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           exit={{ scale: 0, opacity: 0 }}
@@ -684,7 +684,7 @@ export const HoverHighlight = memo(function HoverHighlight({
       {children}
       <AnimatePresence>
         {isHovered && (
-          <motion.div
+          <motion.div key="hovered"
             className="absolute pointer-events-none"
             style={{
               left: mousePosition.x,

@@ -343,7 +343,7 @@ export function MobileApprovalList({
       {/* Pull to refresh indicator */}
       <AnimatePresence>
         {pullDistance > 0 && (
-          <motion.div 
+          <motion.div key="pull-distance" 
             className="flex items-center justify-center py-4"
             style={{ height: pullDistance }}
             initial={{ opacity: 0 }}

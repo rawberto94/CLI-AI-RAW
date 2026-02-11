@@ -600,7 +600,7 @@ function AIChatPageContent() {
       {/* Conversation History Sidebar */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
-          <motion.aside
+          <motion.aside key="sidebar-open"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 280, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -774,7 +774,7 @@ function AIChatPageContent() {
         {/* Keyboard Shortcuts Modal */}
         <AnimatePresence>
           {showShortcuts && (
-            <motion.div
+            <motion.div key="shortcuts"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

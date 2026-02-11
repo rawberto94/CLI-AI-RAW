@@ -388,7 +388,7 @@ export function NotificationBell({ className }: { className?: string }) {
 
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             <div 
               className="fixed inset-0 z-40" 
               onClick={() => setIsOpen(false)} 
@@ -401,7 +401,7 @@ export function NotificationBell({ className }: { className?: string }) {
             >
               <NotificationCenter onClose={() => setIsOpen(false)} />
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

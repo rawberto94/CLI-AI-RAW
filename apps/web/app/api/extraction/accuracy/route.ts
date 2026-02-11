@@ -8,20 +8,13 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from '@/lib/auth'
-import { getSessionTenantId } from '@/lib/tenant-server'
-import { analyticsService } from 'data-orchestration/services';
 
 // ============================================================================
 // GET - Get accuracy statistics
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-
-  const tenantId = getSessionTenantId(session)
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url)
   const view = searchParams.get('view') || 'summary'
   const contractType = searchParams.get('contractType')

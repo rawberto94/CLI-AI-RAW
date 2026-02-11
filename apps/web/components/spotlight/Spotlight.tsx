@@ -273,7 +273,7 @@ export function SpotlightTour({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[200]">
+      <div key="Spotlight-ap-1" className="fixed inset-0 z-[200]">
         {/* Overlay with spotlight cutout */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -398,9 +398,9 @@ export function SpotlightTour({
 
               {/* Step indicators */}
               <div className="px-4 py-2 flex items-center justify-center gap-1.5">
-                {steps.map((_, index) => (
+                {steps.map((step, index) => (
                   <button
-                    key={index}
+                    key={step.title || `step-${index}`}
                     onClick={() => setCurrentIndex(index)}
                     className={cn(
                       'w-2 h-2 rounded-full transition-all',

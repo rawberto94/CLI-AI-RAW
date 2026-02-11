@@ -190,7 +190,7 @@ function ConfirmDialog({ isOpen, options, onConfirm, onCancel }: ConfirmDialogPr
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -277,7 +277,7 @@ function ConfirmDialog({ isOpen, options, onConfirm, onCancel }: ConfirmDialogPr
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

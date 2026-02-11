@@ -258,7 +258,7 @@ export const ContractNotes = memo(function ContractNotes({
         {/* Add Note Input */}
         <AnimatePresence>
           {showInput && (
-            <motion.div
+            <motion.div key="input"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}

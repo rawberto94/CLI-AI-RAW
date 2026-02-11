@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 // Helper to get date range from timeframe
 function getDateRange(timeframe: string): { start: Date; end: Date; previousStart: Date; previousEnd: Date } {
@@ -40,6 +41,13 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
   if (!tenantId) {
     return createErrorResponse(ctx, 'TENANT_REQUIRED', 'Tenant ID required', 400);
+  }
+
+  // Check cache first (5 minute TTL for dashboard data)
+  const cacheKey = `analytics:dashboard:${tenantId}:${timeframe}`;
+  const cached = await getCached<{ metrics: unknown; timeframe: string; period: unknown }>(cacheKey);
+  if (cached) {
+    return createSuccessResponse(ctx, cached);
   }
   
   const { start, end, previousStart, previousEnd } = getDateRange(timeframe);
@@ -173,9 +181,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     statusDistribution,
   };
 
-  return createSuccessResponse(ctx, {
+  const result = {
     metrics,
     timeframe,
     period: { start: start.toISOString(), end: end.toISOString() },
-  });
+  };
+
+  // Cache for 5 minutes
+  await setCached(cacheKey, result, { ttl: 300 });
+
+  return createSuccessResponse(ctx, result);
 });

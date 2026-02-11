@@ -259,7 +259,7 @@ const NavGroupSection = memo(function NavGroupSection({
       
       <AnimatePresence initial={false}>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -397,7 +397,7 @@ function MobileSidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -479,7 +479,7 @@ function MobileSidebar({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -585,7 +585,7 @@ export function Sidebar() {
         {/* Welcome Tutorial Banner */}
         <AnimatePresence>
           {showTutorial && (
-            <motion.div 
+            <motion.div key="tutorial" 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

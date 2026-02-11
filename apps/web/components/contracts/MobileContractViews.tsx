@@ -804,7 +804,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
       {/* Expanded View */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

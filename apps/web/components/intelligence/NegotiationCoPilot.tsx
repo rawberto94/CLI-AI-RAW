@@ -318,7 +318,7 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
       {/* Expanded Content */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -723,7 +723,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
         {/* Chat Panel */}
         <AnimatePresence>
           {showChat && (
-            <motion.div
+            <motion.div key="chat"
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 384, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}

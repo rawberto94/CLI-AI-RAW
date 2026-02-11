@@ -776,7 +776,7 @@ export default function ContractsPageRefactored() {
         {/* Bulk Actions Bar */}
         <AnimatePresence>
           {selectedIds.size > 0 && (
-            <motion.div
+            <motion.div key="selected-ids-size"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}

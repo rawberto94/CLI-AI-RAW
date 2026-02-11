@@ -3,6 +3,14 @@
  * Handles fetching real contract data from the API
  */
 
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
 export interface Contract {
   id: string;
   filename: string;
@@ -239,16 +247,16 @@ export function getContractSummary(contract: Contract) {
   const extractedData = contract.extractedData || {};
 
   return {
-    parties: extractedData.metadata?.parties || contract.parties || [],
-    totalValue: extractedData.financial?.totalValue || contract.totalValue,
-    currency: extractedData.financial?.currency || contract.currency || "USD",
+    parties: unwrapValue(extractedData.metadata?.parties) || contract.parties || [],
+    totalValue: unwrapValue(extractedData.financial?.totalValue) || contract.totalValue,
+    currency: unwrapValue(extractedData.financial?.currency) || contract.currency || "USD",
     effectiveDate:
-      extractedData.metadata?.effectiveDate || contract.effectiveDate,
+      unwrapValue(extractedData.metadata?.effectiveDate) || contract.effectiveDate,
     expirationDate:
-      extractedData.metadata?.expirationDate || contract.expirationDate,
-    contractType: extractedData.metadata?.contractType || contract.contractType,
-    riskScore: extractedData.risk?.overallScore || contract.riskScore,
+      unwrapValue(extractedData.metadata?.expirationDate) || contract.expirationDate,
+    contractType: unwrapValue(extractedData.metadata?.contractType) || contract.contractType,
+    riskScore: unwrapValue(extractedData.risk?.overallScore) || contract.riskScore,
     complianceScore:
-      extractedData.compliance?.score || contract.complianceScore,
+      unwrapValue(extractedData.compliance?.score) || contract.complianceScore,
   };
 }

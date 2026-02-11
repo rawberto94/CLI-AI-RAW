@@ -80,7 +80,7 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <motion.div key="open"
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 50, scale: 0.95 }}
@@ -190,7 +190,7 @@ export const EnhancedBulkProgress = memo(function EnhancedBulkProgress({
             {/* Details List */}
             <AnimatePresence>
               {showDetails && results.length > 0 && (
-                <motion.div
+                <motion.div key="details"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}

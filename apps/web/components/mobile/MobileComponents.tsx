@@ -257,7 +257,7 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -298,7 +298,7 @@ export function BottomSheet({
               {children}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -653,7 +653,7 @@ export const TouchCheckbox = memo(function TouchCheckbox({
       >
         <AnimatePresence>
           {checked && (
-            <motion.div
+            <motion.div key="checked"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}

@@ -595,7 +595,7 @@ export default function SSOConfigManager({ className }: { className?: string }) 
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium">Group → Role Mapping</h4>
                   {editingProvider.groupMapping?.map((mapping, idx) => (
-                    <div key={idx} className="flex items-center gap-2">
+                    <div key={`group-${mapping.ssoGroup || idx}`} className="flex items-center gap-2">
                       <Input
                         value={mapping.ssoGroup}
                         onChange={(e) => {

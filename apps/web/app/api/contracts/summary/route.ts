@@ -10,7 +10,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Returns a summary of contracts for the dashboard
  */
 export const GET = withAuthApiHandler(async (request, ctx) => {
-  const tenantId = ctx.tenantId || 'demo';
+  const tenantId = ctx.tenantId; // Already validated by withAuthApiHandler
 
   // Get total contracts count
   const totalContracts = await prisma.contract.count({

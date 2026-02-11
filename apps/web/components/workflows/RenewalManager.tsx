@@ -827,7 +827,7 @@ export const RenewalManager: React.FC = () => {
       {/* Initiate Renewal Modal */}
       <AnimatePresence>
         {initiateModalOpen && selectedRenewalForInitiate && (
-          <motion.div
+          <motion.div key="initiate-modal-open"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

@@ -60,7 +60,7 @@ export function KeyboardShortcutsModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -140,7 +140,7 @@ export function KeyboardShortcutsModal({
               </div>
             </motion.div>
           </div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

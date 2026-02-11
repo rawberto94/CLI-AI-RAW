@@ -477,7 +477,7 @@ export function EnhancedUploadProgress({
       {/* Expanded Details */}
       <AnimatePresence>
         {expanded && (status === 'uploading' || status === 'processing' || status === 'error') && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -570,7 +570,7 @@ export function EnhancedUploadProgress({
       {/* Success Animation Overlay */}
       <AnimatePresence>
         {showSuccess && (
-          <motion.div
+          <motion.div key="success"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

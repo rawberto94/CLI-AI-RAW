@@ -235,8 +235,8 @@ const MessageBubble = memo(function MessageBubble({
               {message.metadata.ragSources.length} source(s) referenced
             </summary>
             <div className="mt-2 space-y-1">
-              {message.metadata.ragSources.map((source, i) => (
-                <div key={i} className="text-xs text-slate-500 flex items-center gap-2">
+              {message.metadata.ragSources.map((source) => (
+                <div key={source.id || source.contractTitle} className="text-xs text-slate-500 flex items-center gap-2">
                   <span className="w-8 text-right">{Math.round(source.relevance * 100)}%</span>
                   <span className="truncate">{source.contractTitle || source.id}</span>
                 </div>
@@ -538,7 +538,7 @@ export const UnifiedChatbot = memo(function UnifiedChatbot({
       {/* Trigger button */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.button
+          <motion.button key="UnifiedChatbot-ap-1"
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
@@ -565,7 +565,7 @@ export const UnifiedChatbot = memo(function UnifiedChatbot({
       {/* Chat window */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -634,7 +634,7 @@ export const UnifiedChatbot = memo(function UnifiedChatbot({
             {/* Settings panel */}
             <AnimatePresence>
               {showSettings && (
-                <motion.div
+                <motion.div key="settings"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -709,9 +709,9 @@ export const UnifiedChatbot = memo(function UnifiedChatbot({
             {messages.length <= 2 && settings.showSuggestions && (
               <div className="px-4 pb-2">
                 <div className="flex flex-wrap gap-2">
-                  {QUICK_ACTIONS.map((action, i) => (
+                  {QUICK_ACTIONS.map((action) => (
                     <button
-                      key={i}
+                      key={action.label}
                       onClick={() => handleQuickAction(action.query)}
                       className="text-xs px-3 py-1.5 rounded-full bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 hover:bg-violet-200 dark:hover:bg-violet-900/50 transition-colors"
                     >

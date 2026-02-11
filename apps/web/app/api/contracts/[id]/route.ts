@@ -303,6 +303,36 @@ export async function GET(
     // Add some computed fields for the UI
     const enrichedData = {
       ...contractData,
+
+      // Contract metadata from DB (needed by useContractMetadata hook)
+      totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+      currency: contract.currency || null,
+      clientName: contract.clientName || null,
+      supplierName: contract.supplierName || null,
+      contractTitle: contract.contractTitle || null,
+      description: contract.description || null,
+      effectiveDate: contract.effectiveDate?.toISOString() || null,
+      expirationDate: contract.expirationDate?.toISOString() || null,
+
+      // Build external_parties array directly so the hook finds it immediately
+      external_parties: (() => {
+        const parties: Array<{ legalName: string; role: string }> = [];
+        // First try OVERVIEW artifact parties
+        const overviewArtifact = artifactsByType['overview'] || artifactsByType['metadata'];
+        if (overviewArtifact?.parties && Array.isArray(overviewArtifact.parties)) {
+          overviewArtifact.parties.forEach((p: { name?: string; legalName?: string; role?: string }) => {
+            const name = p.legalName || p.name;
+            if (name) parties.push({ legalName: name, role: p.role || '' });
+          });
+        }
+        // Fallback to DB fields
+        if (parties.length === 0) {
+          if (contract.clientName) parties.push({ legalName: contract.clientName, role: 'Client' });
+          if (contract.supplierName) parties.push({ legalName: contract.supplierName, role: 'Service Provider' });
+        }
+        return parties.length > 0 ? parties : undefined;
+      })(),
+
       processingDuration: contractData.processing.completedAt
         ? new Date(contractData.processing.completedAt).getTime() -
           new Date(contractData.processing.startTime).getTime()
@@ -393,7 +423,7 @@ export async function GET(
         ? contractData.extractedData.find(
             (a: ExtractedDataArtifact) => a.type === "OVERVIEW" || a.type === "metadata"
           )?.data
-        : contractData.extractedData?.metadata,
+        : contractData.extractedData?.overview || contractData.extractedData?.metadata,
       risk: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
             (a: ExtractedDataArtifact) => a.type === "RISK" || a.type === "risk"

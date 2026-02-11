@@ -296,7 +296,7 @@ and
 
                 <AnimatePresence>
                   {showCollaborators && (
-                    <motion.div
+                    <motion.div key="collaborators"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -460,7 +460,7 @@ and
             {/* AI Panel */}
             <AnimatePresence>
               {showAIPanel && (
-                <motion.div
+                <motion.div key="a-i-panel"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -599,7 +599,7 @@ and
                         
                         <AnimatePresence>
                           {selectedSuggestion === suggestion.id && (
-                            <motion.div
+                            <motion.div key="selected-suggestion"
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}

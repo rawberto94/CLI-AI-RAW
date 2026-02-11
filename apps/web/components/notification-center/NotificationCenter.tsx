@@ -168,7 +168,7 @@ export function NotificationBell({ className }: NotificationBellProps) {
         {/* Badge */}
         <AnimatePresence>
           {unreadCount > 0 && (
-            <motion.span
+            <motion.span key="unread-count"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
@@ -208,7 +208,7 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <div 
             className="fixed inset-0 z-40" 
@@ -296,7 +296,7 @@ function NotificationDropdown({ isOpen, onClose }: NotificationDropdownProps) {
               </button>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

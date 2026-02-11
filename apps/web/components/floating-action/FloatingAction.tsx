@@ -128,7 +128,7 @@ export function FloatingActionButton({
     return (
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
@@ -147,7 +147,7 @@ export function FloatingActionButton({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -211,7 +211,7 @@ export function ExpandableFAB({
       {/* Action Buttons */}
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -267,7 +267,7 @@ export function ExpandableFAB({
                 )}
               </motion.div>
             ))}
-          </>
+          </div>
         )}
       </AnimatePresence>
 
@@ -430,7 +430,7 @@ export function ContextMenuFAB({
       {/* Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -525,7 +525,7 @@ export function ScrollToTopFAB({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.button
+        <motion.button key="visible"
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}

@@ -96,7 +96,7 @@ export function EnhancedTooltip({
       
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -238,7 +238,7 @@ export function Popover({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             ref={contentRef}
             initial={{ opacity: 0, y: position === 'top' ? 10 : -10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -467,7 +467,7 @@ export function ContextMenu({ items, children }: ContextMenuProps) {
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             ref={menuRef}
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -568,7 +568,7 @@ export function CommandMenu({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -649,7 +649,7 @@ export function CommandMenu({
               )}
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

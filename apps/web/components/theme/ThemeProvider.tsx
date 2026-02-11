@@ -173,7 +173,7 @@ export function ThemeSelector({ className }: { className?: string }) {
 
       <AnimatePresence>
         {open && (
-          <>
+          <div key="open" className="contents">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -208,7 +208,7 @@ export function ThemeSelector({ className }: { className?: string }) {
                 </button>
               ))}
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

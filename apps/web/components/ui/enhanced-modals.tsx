@@ -81,7 +81,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalContext.Provider value={{ zIndex: 50, closeModal: onClose }}>
+        <ModalContext.Provider key="open" value={{ zIndex: 50, closeModal: onClose }}>
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             {/* Backdrop */}
             <motion.div
@@ -414,7 +414,7 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50">
+        <div key="open" className="fixed inset-0 z-50">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -522,7 +522,7 @@ export function Drawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex">
+        <div key="open" className="fixed inset-0 z-50 flex">
           {/* Overlay */}
           {showOverlay && (
             <motion.div
@@ -608,7 +608,7 @@ export function ImagePreview({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div key="open" className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -681,7 +681,7 @@ export function FullPageModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <motion.div key="open"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

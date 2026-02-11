@@ -620,7 +620,7 @@ export function CopilotDraftingCanvas({
             {/* AI Panel */}
             <AnimatePresence>
               {showAIPanel && (
-                <motion.div
+                <motion.div key="a-i-panel"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -720,7 +720,7 @@ export function CopilotDraftingCanvas({
               {/* Auto-completion Popup */}
               <AnimatePresence>
                 {showCompletionPopup && autoCompletions.length > 0 && (
-                  <motion.div
+                  <motion.div key="completion-popup"
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}
@@ -890,7 +890,7 @@ export function CopilotDraftingCanvas({
 
                               <AnimatePresence>
                                 {selectedSuggestion === suggestion.id && (
-                                  <motion.div
+                                  <motion.div key="selected-suggestion"
                                     initial={{ opacity: 0, height: 0 }}
                                     animate={{ opacity: 1, height: 'auto' }}
                                     exit={{ opacity: 0, height: 0 }}

@@ -169,7 +169,7 @@ export function FloatingActionButton({
       {/* Speed Dial Actions */}
       <AnimatePresence>
         {isOpen && hasActions && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -311,7 +311,7 @@ export function ScrollToTopButton({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.button
+        <motion.button key="visible"
           initial={{ opacity: 0, y: 20, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.8 }}

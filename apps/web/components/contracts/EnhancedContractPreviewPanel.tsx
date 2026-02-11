@@ -182,7 +182,7 @@ export const EnhancedContractPreviewPanel = memo(function EnhancedContractPrevie
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <motion.div key="open"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: 20 }}

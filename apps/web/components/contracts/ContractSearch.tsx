@@ -179,7 +179,7 @@ export function ContractSearch({
       {/* Dropdown with Suggestions and Recent Searches */}
       <AnimatePresence>
         {showDropdown && hasDropdownContent && (
-          <MotionDiv
+          <MotionDiv key="dropdown"
             ref={dropdownRef}
             variants={fadeIn}
             initial="initial"

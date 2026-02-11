@@ -722,7 +722,7 @@ function ArtifactSectionComponent({
 
       <AnimatePresence>
         {!isCollapsed && (
-          <motion.div
+          <motion.div key="SmartEditableArtifact-ap-1"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

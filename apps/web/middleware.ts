@@ -10,13 +10,12 @@
  * - Performance timing
  */
 
-// Note: Using nodejs runtime requires Next.js experimental feature
-// For dev mode, this is handled by Next.js turbopack
+// Using Node.js runtime for full Node.js API support
 export const runtime = 'nodejs';
 
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
-import crypto from 'crypto';
+import { createHmac, timingSafeEqual } from 'node:crypto';
 
 // CSRF constants (inline to avoid server-only import chain)
 const CSRF_TOKEN_NAME = 'csrf_token';
@@ -59,12 +58,11 @@ function verifyCSRFToken(token: string, userId?: string): boolean {
     const signature = decoded.substring(dotIndex + 1);
     if (!data || !signature) return false;
 
-    const expectedSignature = crypto
-      .createHmac('sha256', secret)
+    const expectedSignature = createHmac('sha256', secret)
       .update(data)
       .digest('hex');
 
-    if (!crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
+    if (!timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature))) {
       return false;
     }
 
@@ -257,6 +255,7 @@ const publicApiPaths = [
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
   "/api/csrf", // CSRF token must be obtainable before/during login
+  "/api/taxonomy/presets", // Industry preset templates (read-only, public)
 ];
 
 // Static/public assets that bypass auth

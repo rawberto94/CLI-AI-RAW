@@ -109,7 +109,7 @@ export function Tooltip({
       {children}
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, ...placementStyles.initial }}
             animate={{ opacity: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, ...placementStyles.initial }}
@@ -226,7 +226,7 @@ export function Popover({
       </div>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, scale: 0.95, ...placementStyles.initial }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, ...placementStyles.initial }}
@@ -364,7 +364,7 @@ export function HoverCard({ trigger, content, delay = 500, placement = 'bottom' 
       {trigger}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, scale: 0.95, ...placementStyles.initial }}
             animate={{ opacity: 1, scale: 1, x: 0, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}

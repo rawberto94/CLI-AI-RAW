@@ -446,7 +446,7 @@ export function SatisfactionSurvey({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -568,7 +568,7 @@ export function SatisfactionSurvey({
               )}
             </AnimatePresence>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

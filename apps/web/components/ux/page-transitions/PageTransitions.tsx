@@ -58,7 +58,7 @@ interface ProgressBarProps {
 const ProgressBar = memo(({ isActive, progress, color = 'bg-violet-600', height = 3 }: ProgressBarProps) => (
   <AnimatePresence>
     {isActive && (
-      <motion.div
+      <motion.div key="active"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

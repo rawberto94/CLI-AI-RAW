@@ -342,7 +342,7 @@ function HistoryEntryCard({ entry, showContract = true }: { entry: HistoryEntry;
 
         <AnimatePresence>
           {isExpanded && entry.metadata?.supplier && (
-            <MotionDiv
+            <MotionDiv key="expanded"
               id={`details-${entry.id}`}
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}

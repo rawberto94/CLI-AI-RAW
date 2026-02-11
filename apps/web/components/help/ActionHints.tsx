@@ -204,7 +204,7 @@ export function ActionHints({ context, className }: ActionHintsProps) {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ActionHints-ap-1"
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: -10 }}

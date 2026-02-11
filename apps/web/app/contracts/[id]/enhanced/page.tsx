@@ -39,6 +39,19 @@ import {
 import { ContractMetadataEditor as _ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
 import Link from 'next/link'
 
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+function unwrapString(val: string | { value: string; source?: string } | undefined): string {
+  const unwrapped = unwrapValue(val);
+  return typeof unwrapped === 'string' ? unwrapped : '';
+}
+
 interface EnhancedContractData {
   id: string
   filename: string
@@ -496,48 +509,51 @@ export default function EnhancedContractDetailPage() {
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Contract Details</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {contract.metadata.summary && (
+                        {unwrapValue(contract.metadata.summary) && (
                           <div className="md:col-span-2">
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Summary</h4>
-                            <p className="text-gray-900">{contract.metadata.summary}</p>
+                            <p className="text-gray-900">{unwrapString(contract.metadata.summary)}</p>
                           </div>
                         )}
                         
-                        {contract.metadata.contractType && (
+                        {unwrapValue(contract.metadata.contractType) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Contract Type</h4>
-                            <p className="text-gray-900 font-medium">{contract.metadata.contractType}</p>
+                            <p className="text-gray-900 font-medium">{unwrapString(contract.metadata.contractType)}</p>
                           </div>
                         )}
 
-                        {contract.metadata.parties && contract.metadata.parties.length > 0 && (
+                        {unwrapValue(contract.metadata.parties) && (unwrapValue(contract.metadata.parties) as any[]).length > 0 && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Contracting Parties</h4>
                             <div className="space-y-1">
-                              {contract.metadata.parties.map((party: string, idx: number) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                  <Users className="w-4 h-4 text-violet-500" />
-                                  <span className="text-gray-900">{party}</span>
-                                </div>
-                              ))}
+                              {(unwrapValue(contract.metadata.parties) as any[]).map((party: any, idx: number) => {
+                                const partyName = typeof party === 'string' ? party : unwrapString(party?.name) || party;
+                                return (
+                                  <div key={`party-${partyName}-${idx}`} className="flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-violet-500" />
+                                    <span className="text-gray-900">{partyName}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
 
-                        {contract.metadata.effectiveDate && (
+                        {unwrapValue(contract.metadata.effectiveDate) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Effective Date</h4>
                             <p className="text-gray-900">
-                              {new Date(contract.metadata.effectiveDate).toLocaleDateString()}
+                              {new Date(unwrapValue(contract.metadata.effectiveDate) as string).toLocaleDateString()}
                             </p>
                           </div>
                         )}
 
-                        {contract.metadata.expirationDate && (
+                        {unwrapValue(contract.metadata.expirationDate) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Expiration Date</h4>
                             <p className="text-gray-900">
-                              {new Date(contract.metadata.expirationDate).toLocaleDateString()}
+                              {new Date(unwrapValue(contract.metadata.expirationDate) as string).toLocaleDateString()}
                             </p>
                           </div>
                         )}

@@ -291,7 +291,7 @@ function ObligationCard({
 
         <AnimatePresence>
           {isExpanded && (
-            <motion.div
+            <motion.div key="expanded"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -600,7 +600,7 @@ export function ObligationTracker({
       <div className="space-y-3">
         <AnimatePresence mode="popLayout">
           {filteredObligations.length === 0 ? (
-            <motion.div
+            <motion.div key="filtered-obligations-length"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               className="text-center py-12 bg-white rounded-xl border border-slate-200/50"

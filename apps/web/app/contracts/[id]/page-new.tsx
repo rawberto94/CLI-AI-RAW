@@ -341,7 +341,7 @@ export default function ContractDetailPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {overviewData.parties?.map((party: any, idx: number) => (
-                  <div key={idx} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
+                  <div key={party.name || party.role || `party-${idx}`} className="flex items-start gap-3 p-4 bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl border border-gray-100 dark:border-slate-700">
                     <div className="p-2 bg-white dark:bg-slate-800 rounded-lg shadow-sm">
                       {['Client', 'Buyer', 'Customer', 'Purchaser'].includes(party.role) ? (
                         <Building className="h-5 w-5 text-violet-600" />
@@ -423,7 +423,7 @@ export default function ContractDetailPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {contract.insights.map((insight: any, idx: number) => (
-                  <div key={idx} className={`p-6 rounded-xl border-l-4 shadow-md ${
+                  <div key={insight.id || insight.title || `insight-${idx}`} className={`p-6 rounded-xl border-l-4 shadow-md ${
                     insight.color === 'green' ? 'bg-green-50 border-green-500' :
                     insight.color === 'yellow' ? 'bg-yellow-50 border-yellow-500' :
                     insight.color === 'red' ? 'bg-red-50 border-red-500' :

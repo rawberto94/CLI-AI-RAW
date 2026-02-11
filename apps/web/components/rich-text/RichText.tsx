@@ -517,7 +517,7 @@ export function MentionInput({
 
       <AnimatePresence>
         {showSuggestions && filteredMentions.length > 0 && (
-          <motion.div
+          <motion.div key="suggestions"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -644,7 +644,7 @@ export function TagEditor({
 
       <AnimatePresence>
         {showSuggestions && filteredSuggestions.length > 0 && (
-          <motion.div
+          <motion.div key="suggestions"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

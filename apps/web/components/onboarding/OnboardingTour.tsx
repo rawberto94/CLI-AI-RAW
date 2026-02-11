@@ -324,7 +324,7 @@ export function OnboardingTour({
       {/* Confetti effect on completion */}
       {showConfetti && <ConfettiBurst />}
       
-      <div className="fixed inset-0 z-[100]">
+      <div key="confetti" className="fixed inset-0 z-[100]">
         {/* Overlay with spotlight cutout */}
         <svg
           className="absolute inset-0 w-full h-full pointer-events-none"

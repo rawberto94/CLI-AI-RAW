@@ -113,12 +113,12 @@ export function MarketIntelligence({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {trends.map((trend, index) => {
+            {trends.map((trend) => {
               const variance = ((trend.currentRate - trend.marketAverage) / trend.marketAverage) * 100;
               const isAboveMarket = variance > 0;
               
               return (
-                <div key={index} className="space-y-2">
+                <div key={trend.category} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{trend.category}</span>
                     <div className="flex items-center gap-2">
@@ -177,8 +177,8 @@ export function MarketIntelligence({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {competitors.map((competitor, index) => (
-              <div key={index} className="space-y-2">
+            {competitors.map((competitor) => (
+              <div key={competitor.name} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{competitor.name}</span>

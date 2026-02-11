@@ -9,6 +9,19 @@ import {
   Scale, Award, Target, Sparkles
 } from 'lucide-react';
 
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+function unwrapString(val: string | { value: string; source?: string } | undefined): string {
+  const unwrapped = unwrapValue(val);
+  return typeof unwrapped === 'string' ? unwrapped : '';
+}
+
 interface ArtifactViewerProps {
   type: string;
   data: any;
@@ -25,7 +38,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
           <FileText className="h-6 w-6 text-violet-600 flex-shrink-0 mt-1" />
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">Summary</h4>
-            <p className="text-gray-700 leading-relaxed">{data.summary}</p>
+            <p className="text-gray-700 leading-relaxed">{unwrapString(data.summary)}</p>
           </div>
         </div>
       </div>
@@ -70,8 +83,8 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
           <CardContent className="space-y-3">
             {data.parties?.map((party: any, idx: number) => (
               <div key={idx} className="bg-violet-50 rounded-lg p-3 border border-violet-200">
-                <div className="font-medium text-gray-900">{party.name || party}</div>
-                {party.role && <div className="text-sm text-gray-600">{party.role}</div>}
+                <div className="font-medium text-gray-900">{unwrapString(party.name) || party}</div>
+                {party.role && <div className="text-sm text-gray-600">{unwrapString(party.role)}</div>}
                 {party.address && (
                   <div className="text-sm text-gray-500 flex items-start gap-1 mt-1">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -179,7 +192,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-gray-900">{rate.role}</h4>
+                        <h4 className="font-semibold text-gray-900">{unwrapString(rate.role)}</h4>
                         {rate.seniority && (
                           <Badge variant="outline" className="bg-white">
                             {rate.seniority}
@@ -563,7 +576,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Summary:</p>
-                <p className="text-sm text-gray-700">{clause.summary}</p>
+                <p className="text-sm text-gray-700">{unwrapString(clause.summary)}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 border">
                 <p className="text-sm font-medium text-gray-600 mb-1">Full Text:</p>

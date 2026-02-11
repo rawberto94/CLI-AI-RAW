@@ -584,7 +584,7 @@ export default function UploadPage() {
             {/* Processing Config (collapsible) */}
             <AnimatePresence>
               {showSettings && (
-                <motion.div
+                <motion.div key="settings"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}

@@ -104,7 +104,7 @@ export function MetadataFieldSelector({
 
   // Filter fields
   const filteredFields = useMemo(() => {
-    if (!schema) return [];
+    if (!schema || !Array.isArray(schema.fields)) return [];
     return schema.fields.filter(field => {
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -151,7 +151,9 @@ export function MetadataFieldSelector({
   }, [groupedFields, selectedFields, onFieldsChange]);
 
   const getCategoryColor = (categoryName: string) => {
-    const category = schema?.categories.find(c => c.name === categoryName);
+    const category = Array.isArray(schema?.categories) 
+      ? schema.categories.find(c => c.name === categoryName)
+      : undefined;
     const colors: Record<string, string> = {
       blue: 'bg-violet-100 text-violet-800',
       green: 'bg-green-100 text-green-800',

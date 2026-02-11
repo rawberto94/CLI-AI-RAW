@@ -142,7 +142,7 @@ const ToolCallDisplay: React.FC<{
       
       <AnimatePresence>
         {expanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -321,7 +321,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
         
         <AnimatePresence>
           {isVisible && (
-            <motion.div
+            <motion.div key="visible"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -390,7 +390,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
       {/* Content */}
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

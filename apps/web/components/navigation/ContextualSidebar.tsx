@@ -118,7 +118,7 @@ export function ContextualSidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -239,7 +239,7 @@ export function ContextualSidebar({
               </div>
             )}
           </motion.aside>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

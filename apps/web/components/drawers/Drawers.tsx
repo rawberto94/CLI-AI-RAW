@@ -136,7 +136,7 @@ export function BottomSheet({
     <DrawerContext.Provider value={contextValue}>
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             {/* Overlay */}
             {overlay && (
               <motion.div
@@ -186,7 +186,7 @@ export function BottomSheet({
                 {children}
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </DrawerContext.Provider>
@@ -240,7 +240,7 @@ export function SideDrawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Overlay */}
           {overlay && (
             <motion.div
@@ -294,7 +294,7 @@ export function SideDrawer({
               </div>
             )}
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -649,7 +649,7 @@ export function MinimizableWindow({
       {/* Content */}
       <AnimatePresence>
         {!isMinimized && (
-          <motion.div
+          <motion.div key="Drawers-ap-1"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

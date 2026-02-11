@@ -357,7 +357,7 @@ export function NotificationCenter({
       {/* Dropdown */}
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             <div
               className="fixed inset-0 z-40"
               onClick={() => setIsOpen(false)}
@@ -483,7 +483,7 @@ export function NotificationCenter({
                 </div>
               )}
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>
@@ -535,7 +535,7 @@ export function InlineAlert({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, height: 0 }}

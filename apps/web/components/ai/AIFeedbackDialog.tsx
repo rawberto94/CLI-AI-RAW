@@ -150,7 +150,7 @@ export function AIFeedbackDialog({
 
         <AnimatePresence mode="wait">
           {submitted ? (
-            <motion.div
+            <motion.div key="AIFeedbackDialog-ap-1"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -212,7 +212,7 @@ export function AIFeedbackDialog({
               {/* Category (shown for negative feedback) */}
               <AnimatePresence>
                 {rating === "dislike" && (
-                  <motion.div
+                  <motion.div key="rating"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
@@ -245,7 +245,7 @@ export function AIFeedbackDialog({
               {/* Correction */}
               <AnimatePresence>
                 {rating === "dislike" && (
-                  <motion.div
+                  <motion.div key="rating"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}

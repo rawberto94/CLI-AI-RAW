@@ -614,7 +614,7 @@ export default function StateOfTheArtContractPage() {
         {/* Version History Modal */}
         <AnimatePresence>
           {showVersionHistory && selectedArtifactId && (
-            <motion.div
+            <motion.div key="version-history"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

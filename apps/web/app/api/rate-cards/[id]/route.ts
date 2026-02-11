@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEntryService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext } from '@/lib/api-middleware';
 
 const rateCardService = new rateCardEntryService(prisma);
 
@@ -9,10 +9,10 @@ const rateCardService = new rateCardEntryService(prisma);
  * GET /api/rate-cards/[id]
  * Get a single rate card entry by ID
  */
-export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+export const GET = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const params = await props.params;
-    const ctx = getApiContext(request);
-try {
+  const ctx = getApiContext(request);
+  try {
     const { id } = params;
     
     // Check data mode from header - mock only allowed in development
@@ -24,6 +24,11 @@ try {
     }
     
     // If mock mode (dev only), return mock data
+    // Production mode requires real tenant authentication
+    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+    }
+    
     if (dataMode === 'mock') {
       const mockRateCards = [
         {
@@ -166,12 +171,17 @@ try {
  * PUT /api/rate-cards/[id]
  * Update a rate card entry
  */
-export async function PUT(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+export const PUT = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const params = await props.params;
-    const ctx = getApiContext(request);
-try {
+  const ctx = getApiContext(request);
+  try {
     const { id } = params;
     const body = await request.json();
+    
+    // Production mode requires authentication
+    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+    }
     
     // Get authenticated user from session
     const tenantId = ctx.tenantId || ctx.tenantId;
@@ -201,11 +211,16 @@ try {
  * DELETE /api/rate-cards/[id]
  * Delete a rate card entry
  */
-export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+export const DELETE = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const params = await props.params;
-    const ctx = getApiContext(request);
-try {
+  const ctx = getApiContext(request);
+  try {
     const { id } = params;
+    
+    // Production mode requires authentication
+    if (process.env.NODE_ENV === 'production' && !ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+    }
     
     // Get authenticated user from session
     const tenantId = ctx.tenantId || ctx.tenantId;

@@ -413,7 +413,7 @@ export function CollaborativeEditorWrapper({
       {/* Collaboration Side Panel */}
       <AnimatePresence>
         {showCollabPanel && (
-          <motion.div
+          <motion.div key="collab-panel"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}

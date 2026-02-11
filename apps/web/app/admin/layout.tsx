@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { AutoBreadcrumbs } from '@/components/navigation/AutoBreadcrumbs';
 import {
   LayoutDashboard,
   Users,
@@ -276,7 +277,8 @@ export default function AdminLayout({
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 overflow-auto bg-background">
+        <main className="flex-1 overflow-auto bg-background p-6">
+          <AutoBreadcrumbs homeHref="/admin" homeLabel="Admin" />
           {children}
         </main>
 

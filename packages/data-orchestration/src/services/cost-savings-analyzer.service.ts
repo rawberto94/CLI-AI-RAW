@@ -9,6 +9,14 @@ import { createLogger } from '../utils/logger';
 
 const logger = createLogger('cost-savings-analyzer');
 
+// Unwrap potentially wrapped AI values
+function unwrap<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
 export interface CostSavingsOpportunity {
   id: string;
   category: 'rate_optimization' | 'payment_terms' | 'volume_discount' | 'supplier_consolidation' | 'contract_optimization';
@@ -93,7 +101,7 @@ export class CostSavingsAnalyzerService {
 
       // Calculate totals
       const totalSavings = opportunities.reduce((sum, opp) => sum + opp.potentialSavings.amount, 0);
-      const currency = artifacts.financial?.currency || 'USD';
+      const currency = unwrap(artifacts.financial?.currency) || 'USD';
 
       // Categorize opportunities
       const quickWins = opportunities.filter(
@@ -106,12 +114,14 @@ export class CostSavingsAnalyzerService {
 
       const highConfidenceCount = opportunities.filter(opp => opp.confidence === 'high').length;
 
+      const totalValue = unwrap(artifacts.financial?.totalValue);
+      
       return {
         totalPotentialSavings: {
           amount: totalSavings,
           currency,
-          percentage: artifacts.financial?.totalValue 
-            ? (totalSavings / artifacts.financial.totalValue) * 100 
+          percentage: totalValue && typeof totalValue === 'number'
+            ? (totalSavings / totalValue) * 100 
             : 0
         },
         opportunities: opportunities.sort((a, b) => b.priority - a.priority),

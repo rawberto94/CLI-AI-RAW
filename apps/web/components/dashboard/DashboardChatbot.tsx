@@ -213,9 +213,9 @@ export function DashboardChatbot() {
                 {/* Suggestions */}
                 {message.suggestions && message.role === 'assistant' && (
                   <div className="flex flex-wrap gap-2 pl-2">
-                    {message.suggestions.map((suggestion, idx) => (
+                    {message.suggestions.map((suggestion) => (
                       <Button
-                        key={idx}
+                        key={suggestion}
                         variant="outline"
                         size="sm"
                         className="text-xs h-7"
@@ -244,9 +244,9 @@ export function DashboardChatbot() {
         <div>
           <p className="text-xs text-muted-foreground mb-2">Quick actions:</p>
           <div className="grid grid-cols-2 gap-2">
-            {QUICK_ACTIONS.map((action, idx) => (
+            {QUICK_ACTIONS.map((action) => (
               <Button
-                key={idx}
+                key={action.label}
                 variant="outline"
                 size="sm"
                 className="h-auto py-2 flex items-center gap-2 justify-start text-left"

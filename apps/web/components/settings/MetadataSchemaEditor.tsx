@@ -452,7 +452,7 @@ export function MetadataSchemaEditor({
   };
 
   const getFieldsByCategory = (categoryName: string) => {
-    if (!schema) return [];
+    if (!schema || !Array.isArray(schema.fields)) return [];
     return schema.fields
       .filter(f => f.category === categoryName)
       .filter(f => !searchQuery || 
@@ -602,7 +602,7 @@ export function MetadataSchemaEditor({
         {/* Categories & Fields */}
         <div className={cn("flex-1 p-6", showPreview && "w-1/2")}>
           <div className="space-y-4">
-            {schema.categories.map((category) => {
+            {Array.isArray(schema.categories) && schema.categories.map((category) => {
               const fields = getFieldsByCategory(category.name);
               const isExpanded = expandedCategories.has(category.name);
               const foundColor = CATEGORY_COLORS.find(c => c.value === category.color);
@@ -676,7 +676,7 @@ export function MetadataSchemaEditor({
               Field Preview
             </h3>
             <div className="bg-white rounded-lg border p-4 space-y-4">
-              {schema.fields.slice(0, 8).map((field) => (
+              {Array.isArray(schema.fields) && schema.fields.slice(0, 8).map((field) => (
                 <FieldPreview key={field.id} field={field} />
               ))}
             </div>
@@ -688,7 +688,7 @@ export function MetadataSchemaEditor({
       {(editingField || isAddingField) && (
         <FieldEditorModal
           field={editingField}
-          categories={schema.categories}
+          categories={Array.isArray(schema.categories) ? schema.categories : []}
           onSave={(field) => {
             if (editingField) {
               handleUpdateField(field as MetadataFieldDefinition);
@@ -1007,7 +1007,7 @@ function FieldEditorModal({
               </label>
               <div className="space-y-2">
                 {formData.options?.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={`option-${index}`} className="flex items-center gap-2">
                     <input
                       type="text"
                       value={option.label}
@@ -1126,7 +1126,7 @@ function FieldEditorModal({
             </h4>
             <div className="space-y-2">
               {(formData.validationRules || []).map((rule, idx) => (
-                <div key={idx} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                <div key={`rule-${rule.type}-${idx}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
                   <select
                     value={rule.type}
                     onChange={(e) => {
@@ -1212,7 +1212,7 @@ function FieldEditorModal({
                   <span>conditions are met:</span>
                 </div>
                 {(formData.conditionalLogic?.rules || []).map((rule, idx) => (
-                  <div key={idx} className="flex items-center gap-2 p-2 bg-violet-50 rounded border border-violet-100">
+                  <div key={`cond-${rule.sourceFieldId || idx}-${idx}`} className="flex items-center gap-2 p-2 bg-violet-50 rounded border border-violet-100">
                     <input
                       type="text"
                       value={rule.sourceFieldId || ''}

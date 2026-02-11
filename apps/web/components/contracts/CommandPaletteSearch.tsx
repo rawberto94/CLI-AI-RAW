@@ -378,7 +378,7 @@ export const CommandPaletteSearch = memo(function CommandPaletteSearch({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100]">
+      <div key="CommandPaletteSearch-ap-1" className="fixed inset-0 z-[100]">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}

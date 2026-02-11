@@ -256,7 +256,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       {/* Quick commands dropdown */}
       <AnimatePresence>
         {showCommands && (
-          <motion.div
+          <motion.div key="commands"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

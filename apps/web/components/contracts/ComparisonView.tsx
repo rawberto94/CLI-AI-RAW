@@ -24,6 +24,14 @@ import {
 } from "@/lib/contracts/comparison";
 import { formatCurrency, formatDateTime } from "@/lib/utils/formatters";
 
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
 interface ComparisonViewProps {
   contracts: Contract[];
   onClose: () => void;
@@ -237,7 +245,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
               >
                 <ComparisonField
                   label="Parties"
-                  value={contract.extractedData?.parties}
+                  value={unwrapValue(contract.extractedData?.parties)}
                   difference={comparison.differences.find(
                     (d) => d.field === "extractedData.parties"
                   )}
@@ -247,10 +255,10 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Contract Value"
                   value={
-                    contract.extractedData?.financial?.totalValue
+                    unwrapValue(contract.extractedData?.financial?.totalValue)
                       ? formatCurrency(
-                          contract.extractedData.financial.totalValue,
-                          contract.extractedData.financial.currency
+                          unwrapValue(contract.extractedData.financial.totalValue),
+                          unwrapValue(contract.extractedData.financial.currency)
                         )
                       : "Not specified"
                   }
@@ -263,9 +271,9 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Effective Date"
                   value={
-                    contract.extractedData?.dates?.effectiveDate
+                    unwrapValue(contract.extractedData?.dates?.effectiveDate)
                       ? formatDateTime(
-                          contract.extractedData.dates.effectiveDate
+                          unwrapValue(contract.extractedData.dates.effectiveDate)
                         )
                       : "Not specified"
                   }
@@ -278,9 +286,9 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Expiration Date"
                   value={
-                    contract.extractedData?.dates?.expirationDate
+                    unwrapValue(contract.extractedData?.dates?.expirationDate)
                       ? formatDateTime(
-                          contract.extractedData.dates.expirationDate
+                          unwrapValue(contract.extractedData.dates.expirationDate)
                         )
                       : "Not specified"
                   }
@@ -293,7 +301,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Payment Terms"
                   value={
-                    contract.extractedData?.terms?.paymentTerms ||
+                    unwrapValue(contract.extractedData?.terms?.paymentTerms) ||
                     "Not specified"
                   }
                   difference={comparison.differences.find(
@@ -305,7 +313,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Termination Clause"
                   value={
-                    contract.extractedData?.terms?.terminationClause ||
+                    unwrapValue(contract.extractedData?.terms?.terminationClause) ||
                     "Not specified"
                   }
                   difference={comparison.differences.find(
@@ -316,7 +324,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
 
                 <ComparisonField
                   label="Risk Score"
-                  value={contract.extractedData?.risk?.overallScore || "N/A"}
+                  value={unwrapValue(contract.extractedData?.risk?.overallScore) || "N/A"}
                   difference={comparison.differences.find(
                     (d) => d.field === "extractedData.risk.overallScore"
                   )}
@@ -326,7 +334,7 @@ export function ComparisonView({ contracts, onClose }: ComparisonViewProps) {
                 <ComparisonField
                   label="Compliance Score"
                   value={
-                    contract.extractedData?.compliance?.overallScore || "N/A"
+                    unwrapValue(contract.extractedData?.compliance?.overallScore) || "N/A"
                   }
                   difference={comparison.differences.find(
                     (d) => d.field === "extractedData.compliance.overallScore"

@@ -320,7 +320,7 @@ const GoalCard: React.FC<{
         
         <AnimatePresence>
           {expanded && goal.plan && (
-            <motion.div
+            <motion.div key="expanded"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -780,7 +780,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
           <div className="space-y-3">
             <AnimatePresence>
               {activeGoals.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+                <div key="active-goals-length" className="text-center py-12 text-gray-500 dark:text-slate-400">
                   <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>No active goals</p>
                   <p className="text-sm">Create a new goal or enable triggers to get started</p>

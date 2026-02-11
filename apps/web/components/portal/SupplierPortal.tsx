@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Building2,
@@ -278,13 +278,79 @@ const getPriorityColor = (priority: Task['priority']) => {
   }
 };
 
-export function SupplierPortal() {
+interface SupplierPortalProps {
+  supplierId?: string;
+  tenantId?: string;
+  contractId?: string;
+}
+
+export function SupplierPortal({ supplierId, tenantId, contractId }: SupplierPortalProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'contracts' | 'documents' | 'messages' | 'tasks'>('overview');
-  const [selectedContract, setSelectedContract] = useState<string | null>(null);
+  const [selectedContract, setSelectedContract] = useState<string | null>(contractId || null);
   const [newMessage, setNewMessage] = useState('');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(!!supplierId);
+  const [portalData, setPortalData] = useState<{
+    supplier: typeof supplierInfo;
+    contracts: typeof mockContracts;
+    tasks: typeof mockTasks;
+    messages: typeof mockMessages;
+    documents: typeof mockDocuments;
+  } | null>(null);
 
-  const supplierInfo = {
+  // Fetch real data if supplierId is provided
+  useEffect(() => {
+    if (supplierId) {
+      fetchPortalData();
+    }
+  }, [supplierId, tenantId]);
+
+  const fetchPortalData = async () => {
+    setIsLoading(true);
+    try {
+      const token = sessionStorage.getItem('portalToken');
+      const res = await fetch(`/api/portal?supplierId=${supplierId}&token=${token}`);
+      const data = await res.json();
+      
+      if (data.success && data.data) {
+        // Map API data to component format
+        setPortalData({
+          supplier: {
+            name: data.data.supplier?.name || 'Unknown Supplier',
+            contact: 'Contact via Portal',
+            email: '',
+            phone: '',
+            address: '',
+            rating: 4.5,
+            activeContracts: data.data.contracts?.length || 0,
+            totalValue: data.data.contracts?.reduce((sum: number, c: { value?: number }) => sum + (c.value || 0), 0) || 0,
+            relationship: 'Active',
+          },
+          contracts: (data.data.contracts || []).map((c: PortalContract) => ({
+            ...c,
+            type: 'Contract',
+            startDate: new Date().toISOString().split('T')[0],
+            endDate: c.expiryDate || new Date().toISOString().split('T')[0],
+            lastUpdated: 'Recently',
+            pendingItems: c.actionRequired ? 1 : 0,
+          })),
+          tasks: (data.data.pendingTasks || []).map((t: Task) => ({
+            ...t,
+            description: t.title,
+            status: 'pending',
+          })),
+          messages: mockMessages, // Use mock for now
+          documents: mockDocuments, // Use mock for now
+        });
+      }
+    } catch (err) {
+      console.error('Failed to fetch portal data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const supplierInfo = portalData?.supplier || {
     name: 'TechVendor Solutions Inc.',
     contact: 'John Smith',
     email: 'john.smith@techvendor.com',
@@ -296,8 +362,25 @@ export function SupplierPortal() {
     relationship: '3 years',
   };
 
-  const pendingActions = mockTasks.filter(t => t.status !== 'completed').length;
-  const unreadMessages = mockMessages.filter(m => !m.read && m.fromRole === 'buyer').length;
+  const tasks = portalData?.tasks || mockTasks;
+  const messages = portalData?.messages || mockMessages;
+  const contracts = portalData?.contracts || mockContracts;
+  const documents = portalData?.documents || mockDocuments;
+
+  const pendingActions = tasks.filter(t => t.status !== 'completed').length;
+  const unreadMessages = messages.filter(m => !m.read && m.fromRole === 'buyer').length;
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto mb-4" />
+          <p className="text-gray-500">Loading portal data...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -443,7 +526,7 @@ export function SupplierPortal() {
             </div>
 
             {/* Urgent Actions */}
-            {mockTasks.filter(t => t.priority === 'critical' || t.priority === 'high').length > 0 && (
+            {tasks.filter(t => t.priority === 'critical' || t.priority === 'high').length > 0 && (
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-red-500" />
@@ -495,7 +578,7 @@ export function SupplierPortal() {
                   </button>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  {mockContracts.slice(0, 3).map((contract) => (
+                  {contracts.slice(0, 3).map((contract) => (
                     <div key={contract.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
                       <div>
                         <div className="flex items-center gap-2">
@@ -528,7 +611,7 @@ export function SupplierPortal() {
                   </button>
                 </div>
                 <div className="divide-y divide-gray-100">
-                  {mockMessages.slice(0, 3).map((message) => (
+                  {messages.slice(0, 3).map((message) => (
                     <div
                       key={message.id}
                       className={`px-6 py-4 hover:bg-gray-50 ${!message.read && message.fromRole === 'buyer' ? 'bg-violet-50' : ''}`}
@@ -600,7 +683,7 @@ export function SupplierPortal() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {mockContracts.map((contract) => (
+                  {contracts.map((contract) => (
                     <tr key={contract.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -679,7 +762,7 @@ export function SupplierPortal() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {mockDocuments.map((doc) => (
+                  {documents.map((doc) => (
                     <tr key={doc.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -731,7 +814,7 @@ export function SupplierPortal() {
             
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="divide-y divide-gray-100 max-h-[500px] overflow-y-auto">
-                {mockMessages.map((message) => (
+                {messages.map((message) => (
                   <div
                     key={message.id}
                     className={`p-6 ${!message.read && message.fromRole === 'buyer' ? 'bg-violet-50' : ''}`}
@@ -804,7 +887,7 @@ export function SupplierPortal() {
             <h2 className="text-xl font-bold text-gray-900">Pending Tasks</h2>
             
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 divide-y divide-gray-100">
-              {mockTasks.map((task) => (
+              {tasks.map((task) => (
                 <div key={task.id} className="p-6 flex items-start gap-4">
                   <div className={`p-3 rounded-lg ${getPriorityColor(task.priority)}`}>
                     {task.type === 'signature' && <Edit3 className="h-5 w-5" />}
@@ -849,7 +932,7 @@ export function SupplierPortal() {
       {/* Upload Modal */}
       <AnimatePresence>
         {showUploadModal && (
-          <motion.div
+          <motion.div key="upload-modal"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

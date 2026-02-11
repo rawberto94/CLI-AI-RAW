@@ -706,7 +706,7 @@ export function SmartMetadataValidator({
 
               <AnimatePresence>
                 {isExpanded && (
-                  <motion.div
+                  <motion.div key="expanded"
                     initial={{ height: 0 }}
                     animate={{ height: 'auto' }}
                     exit={{ height: 0 }}

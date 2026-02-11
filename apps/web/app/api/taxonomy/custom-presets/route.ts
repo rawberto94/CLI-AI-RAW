@@ -179,13 +179,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     },
   });
   
-  return createSuccessResponse(ctx, {
-    data: presets.map((p) => ({
-      ...p,
-      isOwn: p.tenantId === tenantId,
-    })),
-    total: presets.length,
-  });
+  return createSuccessResponse(ctx, presets.map((p) => ({
+    ...p,
+    isOwn: p.tenantId === tenantId,
+  })));
 });
 
 // ============================================================================

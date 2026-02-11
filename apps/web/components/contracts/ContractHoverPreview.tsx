@@ -144,7 +144,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
       
       <AnimatePresence>
         {showPreview && (
-          <motion.div
+          <motion.div key="preview"
             initial={{ opacity: 0, scale: 0.95, y: side === 'bottom' ? -5 : side === 'top' ? 5 : 0, x: side === 'right' ? -5 : side === 'left' ? 5 : 0 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}

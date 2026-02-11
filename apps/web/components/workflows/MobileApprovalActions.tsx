@@ -126,7 +126,7 @@ export function MobileApprovalActions({
       {/* More actions bottom sheet */}
       <AnimatePresence>
         {showMore && (
-          <>
+          <div key="more" className="contents">
             {/* Backdrop */}
             <MotionDiv
               initial={{ opacity: 0 }}
@@ -254,7 +254,7 @@ export function MobileApprovalActions({
                 </button>
               </div>
             </MotionDiv>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>

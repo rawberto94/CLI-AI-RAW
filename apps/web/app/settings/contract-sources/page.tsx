@@ -131,7 +131,8 @@ export default function ContractSourcesPage() {
       const res = await fetch("/api/contract-sources");
       const data = await res.json();
       if (data.success) {
-        setSources(data.data.sources);
+        const sourcesData = data.data?.sources;
+        setSources(Array.isArray(sourcesData) ? sourcesData : []);
       }
     } catch {
       toast.error("Failed to fetch contract sources");

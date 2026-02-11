@@ -1780,17 +1780,55 @@ export async function processOCRArtifactJob(
     
     // Use transaction to ensure artifacts and contract update are atomic
     const artifacts = await prisma.$transaction(async (tx: any) => {
-      // Batch create all artifacts at once
-      const result = await tx.artifact.createMany({
-        data: artifactDataArray as any,
-        skipDuplicates: true,
-      });
+      // Upsert all artifacts to support both initial processing and reprocessing
+      // This allows us to update existing artifacts with new AI-generated data
+      const upsertPromises = artifactDataArray.map((artifact: any) => 
+        tx.artifact.upsert({
+          where: {
+            contractId_type: {
+              contractId: artifact.contractId,
+              type: artifact.type,
+            },
+          },
+          create: artifact,
+          update: {
+            data: artifact.data,
+            validationStatus: artifact.validationStatus || 'valid',
+            updatedAt: new Date(),
+          },
+        })
+      );
+      
+      await Promise.all(upsertPromises);
+      
+      jobLogger.info({ artifactCount: artifactDataArray.length }, 'Artifacts upserted (created or updated)');
       
       // 4b. Apply OVERVIEW artifact data to contract record for display
       const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW') as any;
       if (overviewArtifact?.data && !overviewArtifact.data?.error) {
         const overviewData = overviewArtifact.data as any;
         const contractUpdate: Record<string, any> = {};
+        
+        // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+        const unwrap = (val: any) => val?.value !== undefined ? val.value : val;
+        const unwrapNumber = (val: any): number | null => {
+          const unwrapped = unwrap(val);
+          if (typeof unwrapped === 'number') return unwrapped;
+          if (typeof unwrapped === 'string') {
+            const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
+            const parsed = parseFloat(cleaned);
+            return isNaN(parsed) ? null : parsed;
+          }
+          return null;
+        };
+        const unwrapDate = (val: any): Date | null => {
+          const unwrapped = unwrap(val);
+          if (!unwrapped) return null;
+          try {
+            const d = new Date(unwrapped);
+            return isNaN(d.getTime()) ? null : d;
+          } catch { return null; }
+        };
         
         // IMPROVEMENT: Use keyword-detected contract type (more reliable) with fallback to AI
         // Prefer our keyword detection over AI-generated type since it's validated against our enum
@@ -1804,67 +1842,71 @@ export async function processOCRArtifactJob(
             detectedType: detectedContractType,
             confidence: contractTypeDetection.confidence,
             matchedKeywords: contractTypeDetection.matchedKeywords,
-            aiSuggestedType: overviewData.contractType,
+            aiSuggestedType: unwrap(overviewData.contractType),
             needsHumanReview: contractTypeDetection.confidence < 0.6,
             detectedAt: new Date().toISOString(),
           }
         };
         
-        // Extract parties
+        // Extract parties - handle various structures
         if (overviewData.parties && Array.isArray(overviewData.parties)) {
-          const clientParty = overviewData.parties.find((p: any) => 
-            p.role?.toLowerCase().includes('client') || 
-            p.role?.toLowerCase().includes('buyer') ||
-            p.role?.toLowerCase().includes('customer')
-          );
-          const supplierParty = overviewData.parties.find((p: any) => 
-            p.role?.toLowerCase().includes('supplier') || 
-            p.role?.toLowerCase().includes('vendor') ||
-            p.role?.toLowerCase().includes('provider') ||
-            p.role?.toLowerCase().includes('contractor')
-          );
+          const getPartyName = (p: any) => unwrap(p.name) || unwrap(p.legalName) || p;
+          const getPartyRole = (p: any) => (unwrap(p.role) || '').toLowerCase();
           
-          if (clientParty?.name) contractUpdate.clientName = clientParty.name;
-          if (supplierParty?.name) contractUpdate.supplierName = supplierParty.name;
+          const clientParty = overviewData.parties.find((p: any) => {
+            const role = getPartyRole(p);
+            return role.includes('client') || role.includes('buyer') || role.includes('customer');
+          });
+          const supplierParty = overviewData.parties.find((p: any) => {
+            const role = getPartyRole(p);
+            return role.includes('supplier') || role.includes('vendor') || role.includes('provider') || role.includes('contractor');
+          });
+          
+          if (clientParty) {
+            const name = getPartyName(clientParty);
+            if (name && typeof name === 'string') contractUpdate.clientName = name;
+          }
+          if (supplierParty) {
+            const name = getPartyName(supplierParty);
+            if (name && typeof name === 'string') contractUpdate.supplierName = name;
+          }
           
           // If only one party found, use it as supplier
           if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
-            contractUpdate.supplierName = overviewData.parties[0].name;
+            const name = getPartyName(overviewData.parties[0]);
+            if (name && typeof name === 'string') contractUpdate.supplierName = name;
           }
         }
         
-        // Extract total value
-        if (overviewData.totalValue && typeof overviewData.totalValue === 'number' && overviewData.totalValue > 0) {
-          contractUpdate.totalValue = overviewData.totalValue;
+        // Extract total value - handle wrapped values and strings
+        const totalValue = unwrapNumber(overviewData.totalValue);
+        if (totalValue && totalValue > 0) {
+          contractUpdate.totalValue = totalValue;
         }
-        if (overviewData.currency) {
-          contractUpdate.currency = overviewData.currency;
+        const currency = unwrap(overviewData.currency);
+        if (currency && typeof currency === 'string') {
+          contractUpdate.currency = currency;
         }
         
-        // Extract dates
-        if (overviewData.effectiveDate) {
-          try {
-            const effDate = new Date(overviewData.effectiveDate);
-            if (!isNaN(effDate.getTime())) {
-              contractUpdate.effectiveDate = effDate;
-            }
-          } catch { /* ignore invalid dates */ }
+        // Extract dates - handle wrapped values
+        const effectiveDate = unwrapDate(overviewData.effectiveDate);
+        if (effectiveDate) {
+          contractUpdate.effectiveDate = effectiveDate;
         }
-        if (overviewData.expirationDate) {
-          try {
-            const expDate = new Date(overviewData.expirationDate);
-            if (!isNaN(expDate.getTime())) {
-              contractUpdate.expirationDate = expDate;
-            }
-          } catch { /* ignore invalid dates */ }
+        const expirationDate = unwrapDate(overviewData.expirationDate);
+        if (expirationDate) {
+          contractUpdate.expirationDate = expirationDate;
         }
         
         // Extract contract title if we have a summary
         if (overviewData.summary && !contract.contractTitle) {
           // Use first sentence of summary as title, max 100 chars
-          const title = overviewData.summary.split('.')[0].substring(0, 100);
-          if (title.length > 10) {
-            contractUpdate.contractTitle = title;
+          const summaryText = unwrap(overviewData.summary);
+          if (summaryText && typeof summaryText === 'string') {
+            const title = summaryText.split('.')[0].substring(0, 100);
+            if (title.length > 10) {
+              contractUpdate.contractTitle = title;
+            }
           }
         }
         
@@ -1883,7 +1925,7 @@ export async function processOCRArtifactJob(
         }
       }
       
-      return result;
+      return { count: artifactDataArray.length };
     }, {
       maxWait: 10000, // 10s max wait for transaction
       timeout: 30000, // 30s timeout for transaction
@@ -1905,15 +1947,19 @@ export async function processOCRArtifactJob(
     const complianceData: any = complianceArtifact?.data || {};
     const contactsData: any = contactsArtifact?.data || {};
 
+    // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+    const unwrapVal = (val: any) => val?.value !== undefined ? val.value : val;
+
     // Build external parties array from overview
     const externalParties: Array<{legalName: string; role: string; registeredAddress?: string}> = [];
     if (overviewArtifactData.parties && Array.isArray(overviewArtifactData.parties)) {
       for (const party of overviewArtifactData.parties) {
-        if (party.name) {
+        const partyName = unwrapVal(party.name) || unwrapVal(party.legalName);
+        if (partyName && typeof partyName === 'string') {
           externalParties.push({
-            legalName: party.name,
-            role: party.role || 'Party',
-            registeredAddress: party.address || party.contact || '',
+            legalName: partyName,
+            role: unwrapVal(party.role) || 'Party',
+            registeredAddress: unwrapVal(party.address) || unwrapVal(party.contact) || '',
           });
         }
       }
@@ -1971,33 +2017,46 @@ export async function processOCRArtifactJob(
     const enterpriseMetadata = {
       // Document identification
       document_number: contractId,
-      document_title: overviewArtifactData.contractTitle || overviewArtifactData.summary?.split('.')[0]?.substring(0, 100) || '',
-      contract_short_description: overviewArtifactData.summary || '',
+      document_title: unwrapVal(overviewArtifactData.contractTitle) || 
+        (unwrapVal(overviewArtifactData.summary) || '').split('.')[0]?.substring(0, 100) || '',
+      contract_short_description: unwrapVal(overviewArtifactData.summary) || '',
       
       // Parties
       external_parties: externalParties,
       
-      // Financial
-      tcv_amount: overviewArtifactData.totalValue || financialData.totalValue || 0,
-      tcv_text: financialData.totalValueText || (overviewArtifactData.totalValue ? `$${overviewArtifactData.totalValue.toLocaleString()}` : ''),
+      // Financial - handle wrapped values
+      tcv_amount: (() => {
+        const val = unwrapVal(overviewArtifactData.totalValue) || unwrapVal(financialData.totalValue);
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          const cleaned = val.replace(/[$€£¥,]/g, '').trim();
+          const parsed = parseFloat(cleaned);
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        return 0;
+      })(),
+      tcv_text: unwrapVal(financialData.totalValueText) || 
+        (unwrapVal(overviewArtifactData.totalValue) ? 
+          `$${Number(unwrapVal(overviewArtifactData.totalValue) || 0).toLocaleString()}` : ''),
       payment_type: paymentType,
       billing_frequency_type: billingFrequency,
       periodicity: billingFrequency || '',
-      currency: overviewArtifactData.currency || financialData.currency || 'USD',
+      currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || 'USD',
       
       // Dates
-      execution_date: overviewArtifactData.executionDate || overviewArtifactData.effectiveDate || null,
-      contract_effective_date: overviewArtifactData.effectiveDate || null,
-      contract_end_date: overviewArtifactData.expirationDate || null,
+      execution_date: unwrapVal(overviewArtifactData.executionDate) || 
+        unwrapVal(overviewArtifactData.effectiveDate) || null,
+      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || null,
+      contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || null,
       
       // Signature status (from CONTACTS artifact)
-      signature_status: contactsData.signatureStatus || 'unknown',
-      signature_date: contactsData.signatureDate || 
+      signature_status: unwrapVal(contactsData.signatureStatus) || 'unknown',
+      signature_date: unwrapVal(contactsData.signatureDate) || 
         (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
-        overviewArtifactData.executionDate || null,
-      signature_required_flag: contactsData.signatureStatus === 'unsigned' || 
-        contactsData.signatureStatus === 'partially_signed' ||
-        (!contactsData.signatureDate && contactsData.signatureStatus !== 'signed'),
+        unwrapVal(overviewArtifactData.executionDate) || null,
+      signature_required_flag: unwrapVal(contactsData.signatureStatus) === 'unsigned' || 
+        unwrapVal(contactsData.signatureStatus) === 'partially_signed' ||
+        (!unwrapVal(contactsData.signatureDate) && unwrapVal(contactsData.signatureStatus) !== 'signed'),
       signatories: contactsData.signatories || [],
       signature_analysis: contactsData.signatureAnalysis || null,
       
@@ -2007,15 +2066,16 @@ export async function processOCRArtifactJob(
       final_reminder_days: 30,
       
       // Contract details
-      auto_renewing: overviewArtifactData.autoRenewal === true || clausesData.autoRenewal === true,
+      auto_renewing: unwrapVal(overviewArtifactData.autoRenewal) === true || 
+        unwrapVal(clausesData.autoRenewal) === true,
       notice_period: noticePeriod,
-      jurisdiction: overviewArtifactData.jurisdiction || '',
+      jurisdiction: unwrapVal(overviewArtifactData.jurisdiction) || '',
       
       // Internal tracking
       owner_name: '',
       owner_email: '',
       internal_organization: '',
-      is_inbound: overviewArtifactData.isInbound ?? null,
+      is_inbound: unwrapVal(overviewArtifactData.isInbound) ?? null,
       
       // Extraction metadata
       _extractedAt: new Date().toISOString(),
@@ -2026,8 +2086,8 @@ export async function processOCRArtifactJob(
       _confidence: {
         overall: successfulArtifacts.length / artifactDataArray.length,
         parties: externalParties.length > 0 ? 0.9 : 0.3,
-        financial: financialData.totalValue ? 0.9 : 0.5,
-        dates: overviewArtifactData.effectiveDate ? 0.9 : 0.5,
+        financial: unwrapVal(financialData.totalValue) ? 0.9 : 0.5,
+        dates: unwrapVal(overviewArtifactData.effectiveDate) ? 0.9 : 0.5,
       },
     };
 
@@ -2568,8 +2628,158 @@ export async function processOCRArtifactJob(
 }
 
 /**
- * Generate artifact data using OpenAI API - REAL AI ANALYSIS
- * Now adaptive based on detected contract type
+ * AI provider configuration for artifact generation
+ */
+const AI_RETRY_CONFIG = {
+  maxAttempts: 4,
+  baseDelay: 2000,
+  maxDelay: 30000,
+  backoffMultiplier: 2,
+  jitter: true,
+};
+
+/**
+ * Call Mistral AI for artifact generation with retry logic
+ */
+async function callMistralForArtifact(
+  prompt: string,
+  systemPrompt: string,
+  type: string
+): Promise<{ success: boolean; data?: Record<string, any>; error?: string }> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: 'MISTRAL_API_KEY not configured' };
+  }
+
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
+    try {
+      const Mistral = mistralModule || (await import('@mistralai/mistralai')).Mistral;
+      const client = new Mistral({ apiKey });
+      
+      logger.info({ type, attempt }, 'Calling Mistral for artifact generation');
+      
+      const response = await client.chat.complete({
+        model: 'mistral-large-latest',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        maxTokens: 4000,
+        responseFormat: { type: 'json_object' },
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      if (!content || typeof content !== 'string') {
+        throw new Error('Empty response from Mistral');
+      }
+
+      const artifactData = JSON.parse(content);
+      logger.info({ type, keys: Object.keys(artifactData) }, 'Mistral artifact generation succeeded');
+      
+      return { success: true, data: artifactData };
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMsg = lastError.message;
+      
+      // Check if retryable (rate limits, server errors)
+      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota');
+      const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
+      const isRetryable = isRateLimited || isServerError;
+      
+      if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
+        logger.warn({ type, attempt, error: errorMsg }, 'Mistral artifact generation failed');
+        return { success: false, error: errorMsg };
+      }
+      
+      // Calculate backoff delay with jitter
+      const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1);
+      const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
+      
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'Mistral rate limited, retrying');
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  
+  return { success: false, error: lastError?.message || 'Unknown Mistral error' };
+}
+
+/**
+ * Call OpenAI for artifact generation with retry logic
+ */
+async function callOpenAIForArtifact(
+  prompt: string,
+  systemPrompt: string,
+  type: string
+): Promise<{ success: boolean; data?: Record<string, any>; error?: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: 'OPENAI_API_KEY not configured' };
+  }
+
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
+    try {
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey });
+      
+      logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
+      
+      const response = await openai.chat.completions.create({
+        model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: 4000,
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('Empty response from OpenAI');
+      }
+
+      const artifactData = JSON.parse(content);
+      logger.info({ type, keys: Object.keys(artifactData) }, 'OpenAI artifact generation succeeded');
+      
+      return { success: true, data: artifactData };
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMsg = lastError.message;
+      
+      // Check if retryable (rate limits, server errors)
+      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate_limit') || errorMsg.includes('quota');
+      const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
+      const isRetryable = isRateLimited || isServerError;
+      
+      if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
+        logger.warn({ type, attempt, error: errorMsg }, 'OpenAI artifact generation failed');
+        return { success: false, error: errorMsg };
+      }
+      
+      // Calculate backoff delay with jitter (longer for rate limits)
+      const multiplier = isRateLimited ? 3 : 1;
+      const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1) * multiplier;
+      const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
+      
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'OpenAI rate limited, retrying');
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  
+  return { success: false, error: lastError?.message || 'Unknown OpenAI error' };
+}
+
+/**
+ * Generate artifact data using AI (Mistral first, OpenAI fallback)
+ * Now adaptive based on detected contract type with retry logic for rate limits
  */
 async function generateArtifactWithAI(
   type: string,
@@ -2577,18 +2787,16 @@ async function generateArtifactWithAI(
   contract: any,
   detectedContractType?: ContractType
 ): Promise<Record<string, any>> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
   
-  // If no API key, use fallback templates
-  if (!apiKey) {
-    logger.warn('OPENAI_API_KEY not configured, using fallback templates');
+  // If no AI keys, use fallback templates
+  if (!mistralKey && !openaiKey) {
+    logger.warn('No AI API keys configured, using fallback templates');
     return getFallbackArtifact(type, contractText, contract);
   }
-
+  
   try {
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
-    
     // Get contract type profile for adaptive extraction
     const contractType = detectedContractType || 'OTHER';
     const profile = getContractProfile(contractType);
@@ -3089,45 +3297,55 @@ ${truncatedText}`
       return getFallbackArtifact(type, contractText, contract);
     }
 
-    logger.info({ type, textLength: truncatedText.length }, 'Calling OpenAI for artifact generation');
+    const systemPrompt = 'You are a contract analysis expert. Analyze contracts and return ONLY valid JSON (no markdown, no explanation). Be thorough and accurate.';
+    let usedProvider = 'none';
+    let artifactData: Record<string, any> | null = null;
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a contract analysis expert. Analyze contracts and return ONLY valid JSON (no markdown, no explanation). Be thorough and accurate.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 4000,
-      temperature: 0.2, // Low temperature for consistent, accurate extraction
-      response_format: { type: 'json_object' }
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from OpenAI');
+    // Try Mistral first (if configured)
+    if (mistralKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Trying Mistral for artifact generation');
+      const mistralResult = await callMistralForArtifact(prompt, systemPrompt, type);
+      
+      if (mistralResult.success && mistralResult.data) {
+        artifactData = mistralResult.data;
+        usedProvider = 'mistral-large-latest';
+      } else {
+        logger.warn({ type, error: mistralResult.error }, 'Mistral failed, trying OpenAI fallback');
+      }
     }
 
-    const artifactData = JSON.parse(content);
-    logger.info({ type, keys: Object.keys(artifactData) }, 'Successfully generated artifact with AI');
-    
+    // Fall back to OpenAI if Mistral failed or not configured
+    if (!artifactData && openaiKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Trying OpenAI for artifact generation');
+      const openaiResult = await callOpenAIForArtifact(prompt, systemPrompt, type);
+      
+      if (openaiResult.success && openaiResult.data) {
+        artifactData = openaiResult.data;
+        usedProvider = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+      } else {
+        logger.warn({ type, error: openaiResult.error }, 'OpenAI also failed');
+      }
+    }
+
+    // If both AI providers failed, use fallback templates
+    if (!artifactData) {
+      logger.error({ type }, 'All AI providers failed, using fallback templates');
+      return getFallbackArtifact(type, contractText, contract);
+    }
+
     // Add metadata
     artifactData._meta = {
       generatedAt: new Date().toISOString(),
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model: usedProvider,
       aiGenerated: true,
       textAnalyzed: truncatedText.length
     };
 
+    logger.info({ type, provider: usedProvider }, 'Successfully generated artifact with AI');
     return artifactData;
 
   } catch (error) {
-    logger.error({ error, type }, 'OpenAI artifact generation failed, using fallback');
+    logger.error({ error, type }, 'AI artifact generation failed unexpectedly, using fallback');
     return getFallbackArtifact(type, contractText, contract);
   }
 }

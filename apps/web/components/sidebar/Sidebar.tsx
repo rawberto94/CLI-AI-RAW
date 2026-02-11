@@ -129,7 +129,7 @@ export function SidebarContainer({ children, className = '' }: SidebarContainerP
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobile && isOpen && (
-          <motion.div
+          <motion.div key="mobile"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -191,7 +191,7 @@ export function SidebarHeader({ logo, title, className = '' }: SidebarHeaderProp
         {logo && <div className="flex-shrink-0">{logo}</div>}
         <AnimatePresence>
           {(!isCollapsed || isMobile) && title && (
-            <motion.span
+            <motion.span key="Sidebar-ap-1"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -266,7 +266,7 @@ export function NavGroup({ label, children, className = '' }: NavGroupProps) {
     <div className={`px-3 mb-4 ${className}`}>
       <AnimatePresence>
         {label && (!isCollapsed || isMobile) && (
-          <motion.h3
+          <motion.h3 key="label"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -359,7 +359,7 @@ export function NavItem({
 
         <AnimatePresence>
           {showLabel && (
-            <motion.span
+            <motion.span key="label"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -398,7 +398,7 @@ export function NavItem({
       {/* Children */}
       <AnimatePresence>
         {hasChildren && isExpanded && showLabel && (
-          <motion.div
+          <motion.div key="has-children"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -506,7 +506,7 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
 
         <AnimatePresence>
           {showFull && (
-            <motion.div
+            <motion.div key="full"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -523,7 +523,7 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

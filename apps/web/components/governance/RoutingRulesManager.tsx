@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Route, Plus, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function RoutingRulesManager() {
   const [rules, setRules] = useState<any[]>([]);
@@ -76,7 +77,18 @@ export default function RoutingRulesManager() {
             </CardContent>
           </Card>
         ))}
-        {rules.length === 0 && <Card className="p-12 text-center text-muted-foreground">No routing rules configured</Card>}
+        {rules.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No routing rules"
+            description="Create rules to automatically route contracts to the right teams."
+            primaryAction={{
+              label: 'Add Rule',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

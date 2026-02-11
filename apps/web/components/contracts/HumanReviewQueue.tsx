@@ -823,7 +823,7 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
           {/* Items List */}
           <AnimatePresence mode="popLayout">
             {loading ? (
-              <div className="flex items-center justify-center py-12">
+              <div key="HumanReviewQueue-ap-1" className="flex items-center justify-center py-12">
                 <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
               </div>
             ) : filteredItems.length === 0 ? (

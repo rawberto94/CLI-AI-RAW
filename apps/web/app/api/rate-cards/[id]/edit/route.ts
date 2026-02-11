@@ -5,23 +5,31 @@ import { rateCardManagementService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
+export const PATCH = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const params = await props.params;
-    const ctx = getApiContext(request);
-try {
+  const ctx = getApiContext(request);
+  try {
     const { id } = params;
     const body = await request.json();
     const tenantId = ctx.tenantId;
     
-    // Require tenant ID for security
+    // Require tenant ID for security - stricter in production
     if (!tenantId) {
+      if (process.env.NODE_ENV === 'production') {
+        return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
+      }
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     // Check data mode from header
     const dataMode = request.headers.get('x-data-mode') || 'real';
     
-    // If mock mode, return success without updating database
+    // Block mock mode in production
+    if (dataMode === 'mock' && process.env.NODE_ENV === 'production') {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Mock mode not available in production', 400);
+    }
+    
+    // If mock mode (dev only), return success without updating database
     if (dataMode === 'mock') {
       return createSuccessResponse(ctx, {
         success: true,

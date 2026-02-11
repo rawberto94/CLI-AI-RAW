@@ -14,7 +14,7 @@
 import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { withAuthApiHandler, withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { taxonomyService } from 'data-orchestration/services';
 // ============================================================================
 // PRESET TAXONOMIES
@@ -799,7 +799,7 @@ const PRESET_TAXONOMIES = {
 // GET - List available presets
 // ============================================================================
 
-export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+export const GET = withApiHandler(async (_request, ctx) => {
   const presets = Object.values(PRESET_TAXONOMIES).map((preset) => ({
     id: preset.id,
     name: preset.name,
@@ -810,10 +810,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
     ),
   }));
 
-  return createSuccessResponse(ctx, {
-    success: true,
-    data: presets,
-  });
+  return createSuccessResponse(ctx, presets);
 });
 
 // ============================================================================

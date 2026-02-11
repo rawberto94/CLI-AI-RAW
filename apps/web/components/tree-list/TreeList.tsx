@@ -192,7 +192,7 @@ function TreeNode({
       
       <AnimatePresence>
         {isExpanded && hasChildren && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -390,7 +390,7 @@ export function CollapsibleSection({
       
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -471,7 +471,7 @@ export function Accordion({
           
           <AnimatePresence>
             {openIds.has(item.id) && (
-              <motion.div
+              <motion.div key="TreeList-ap-1"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}

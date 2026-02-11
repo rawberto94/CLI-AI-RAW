@@ -211,7 +211,7 @@ export const MobileDrawer = memo(function MobileDrawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Overlay */}
           {showOverlay && (
             <motion.div
@@ -314,7 +314,7 @@ export const MobileDrawer = memo(function MobileDrawer({
               </div>
             )}
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

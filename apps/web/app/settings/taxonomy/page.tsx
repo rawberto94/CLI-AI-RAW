@@ -144,16 +144,17 @@ function KeywordInput({
   onChange: (keywords: string[]) => void;
 }) {
   const [input, setInput] = useState("");
+  const safeKeywords = Array.isArray(keywords) ? keywords : [];
 
   const addKeyword = () => {
-    if (input.trim() && !keywords.includes(input.trim())) {
-      onChange([...keywords, input.trim()]);
+    if (input.trim() && !safeKeywords.includes(input.trim())) {
+      onChange([...safeKeywords, input.trim()]);
       setInput("");
     }
   };
 
   const removeKeyword = (keyword: string) => {
-    onChange(keywords.filter((k) => k !== keyword));
+    onChange(safeKeywords.filter((k) => k !== keyword));
   };
 
   return (
@@ -179,7 +180,7 @@ function KeywordInput({
         </button>
       </div>
       <div className="flex flex-wrap gap-2">
-        {keywords.map((keyword) => (
+        {safeKeywords.map((keyword) => (
           <span
             key={keyword}
             className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-700 rounded-full text-xs"
@@ -196,7 +197,7 @@ function KeywordInput({
             </button>
           </span>
         ))}
-        {keywords.length === 0 && (
+        {safeKeywords.length === 0 && (
           <span className="text-slate-400 text-xs">No keywords yet</span>
         )}
       </div>
@@ -226,7 +227,7 @@ function CategoryTreeNode({
   onSelect: (id: string | null) => void;
 }) {
   const [isExpanded, setIsExpanded] = useState(level < 2);
-  const hasChildren = category.children && category.children.length > 0;
+  const hasChildren = Array.isArray(category.children) && category.children.length > 0;
   const isSelected = selectedId === category.id;
 
   return (
@@ -283,7 +284,7 @@ function CategoryTreeNode({
         </div>
 
         {/* Keywords indicator */}
-        {category.keywords.length > 0 && (
+        {Array.isArray(category.keywords) && category.keywords.length > 0 && (
           <div className="flex items-center gap-1 text-slate-400">
             <Tag className="w-3 h-3" />
             <span className="text-xs">{category.keywords.length}</span>
@@ -328,12 +329,12 @@ function CategoryTreeNode({
       {/* Children */}
       <AnimatePresence>
         {isExpanded && hasChildren && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
           >
-            {category.children!.map((child) => (
+            {Array.isArray(category.children) && category.children.map((child) => (
               <CategoryTreeNode
                 key={child.id}
                 category={child}
@@ -607,7 +608,7 @@ function DeleteConfirmModal({
   onConfirm: (deleteChildren: boolean) => Promise<void>;
   isLoading: boolean;
 }) {
-  const hasChildren = category?.children && category.children.length > 0;
+  const hasChildren = Array.isArray(category?.children) && category.children.length > 0;
 
   if (!isOpen || !category) return null;
 
@@ -630,7 +631,7 @@ function DeleteConfirmModal({
             </p>
             {hasChildren && (
               <p className="text-amber-600 text-sm mt-2">
-                ⚠️ This category has {category.children!.length} sub-categories
+                ⚠️ This category has {category.children?.length || 0} sub-categories
               </p>
             )}
             {category.contractCount !== undefined && category.contractCount > 0 && (
@@ -870,7 +871,7 @@ export default function TaxonomyPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setCustomPresets(data.data || []);
+        setCustomPresets(Array.isArray(data.data) ? data.data : []);
       }
     } catch {
       // Error handled silently
@@ -883,7 +884,7 @@ export default function TaxonomyPage() {
       const response = await fetch("/api/taxonomy/presets");
       if (response.ok) {
         const data = await response.json();
-        setPresets(data.data || []);
+        setPresets(Array.isArray(data.data) ? data.data : []);
       }
     } catch {
       // Error handled silently
@@ -1006,7 +1007,7 @@ export default function TaxonomyPage() {
       if (!response.ok) throw new Error("Failed to fetch categories");
 
       const data = await response.json();
-      setCategories(data.data || []);
+      setCategories(Array.isArray(data.data) ? data.data : []);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load categories");
@@ -1032,6 +1033,7 @@ export default function TaxonomyPage() {
     id: string,
     cats: TaxonomyCategory[] = categories
   ): TaxonomyCategory | null => {
+    if (!Array.isArray(cats)) return null;
     for (const cat of cats) {
       if (cat.id === id) return cat;
       if (cat.children) {
@@ -1157,25 +1159,25 @@ export default function TaxonomyPage() {
     return cats
       .map((cat) => ({
         ...cat,
-        children: cat.children ? filterCategories(cat.children, query) : [],
+        children: Array.isArray(cat.children) ? filterCategories(cat.children, query) : [],
       }))
       .filter(
         (cat) =>
           cat.name.toLowerCase().includes(query.toLowerCase()) ||
           cat.description?.toLowerCase().includes(query.toLowerCase()) ||
-          cat.keywords.some((k) => k.toLowerCase().includes(query.toLowerCase())) ||
-          (cat.children && cat.children.length > 0)
+          (Array.isArray(cat.keywords) && cat.keywords.some((k) => k.toLowerCase().includes(query.toLowerCase()))) ||
+          (Array.isArray(cat.children) && cat.children.length > 0)
       );
   };
 
-  const filteredCategories = filterCategories(categories, searchQuery);
+  const filteredCategories = Array.isArray(categories) ? filterCategories(categories, searchQuery) : [];
 
   // Stats
-  const totalCategories = categories.reduce((acc, cat) => {
+  const totalCategories = Array.isArray(categories) ? categories.reduce((acc, cat) => {
     const countChildren = (c: TaxonomyCategory): number =>
       1 + (c.children?.reduce((a, child) => a + countChildren(child), 0) || 0);
     return acc + countChildren(cat);
-  }, 0);
+  }, 0) : 0;
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
@@ -1212,7 +1214,7 @@ export default function TaxonomyPage() {
               </Link>
               
               {/* Export Dropdown */}
-              {categories.length > 0 && (
+              {Array.isArray(categories) && categories.length > 0 && (
                 <div className="relative group">
                   <button
                     className="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200
@@ -1389,7 +1391,7 @@ export default function TaxonomyPage() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-slate-600">Root Categories</span>
-                  <span className="font-semibold text-slate-900">{categories.length}</span>
+                  <span className="font-semibold text-slate-900">{Array.isArray(categories) ? categories.length : 0}</span>
                 </div>
               </div>
             </div>
@@ -1442,7 +1444,7 @@ export default function TaxonomyPage() {
                         <p className="text-sm text-slate-600 mb-4">{selected.description}</p>
                       )}
 
-                      {selected.keywords.length > 0 && (
+                      {Array.isArray(selected.keywords) && selected.keywords.length > 0 && (
                         <div className="mb-4">
                           <p className="text-xs text-slate-500 mb-2">Keywords:</p>
                           <div className="flex flex-wrap gap-1">
@@ -1534,7 +1536,7 @@ export default function TaxonomyPage() {
       {/* Presets Modal */}
       <AnimatePresence>
         {showPresetsModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div key="presets-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -1566,7 +1568,7 @@ export default function TaxonomyPage() {
 
               <div className="p-6 overflow-y-auto flex-1">
                 {/* Custom Presets Section */}
-                {customPresets.length > 0 && (
+                {Array.isArray(customPresets) && customPresets.length > 0 && (
                   <div className="mb-6">
                     <h4 className="text-sm font-medium text-slate-500 mb-3 uppercase tracking-wider">
                       Your Saved Presets
@@ -1625,7 +1627,7 @@ export default function TaxonomyPage() {
                     Industry Templates
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
-                    {presets.map((preset) => (
+                    {Array.isArray(presets) && presets.map((preset) => (
                       <motion.button
                         key={preset.id}
                         whileHover={{ scale: 1.02 }}
@@ -1670,7 +1672,7 @@ export default function TaxonomyPage() {
       {/* Save Preset Modal */}
       <AnimatePresence>
         {showSavePresetModal && (
-          <SavePresetModal
+          <SavePresetModal key="save-preset-modal"
             isOpen={showSavePresetModal}
             onClose={() => setShowSavePresetModal(false)}
             onSave={saveAsPreset}
@@ -1683,7 +1685,7 @@ export default function TaxonomyPage() {
       {/* Notification */}
       <AnimatePresence>
         {notification && (
-          <motion.div
+          <motion.div key="notification"
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}

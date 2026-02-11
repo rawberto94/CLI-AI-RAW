@@ -263,7 +263,7 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
       {/* Dropdown */}
       <AnimatePresence>
         {showDropdown && (
-          <motion.div
+          <motion.div key="dropdown"
             ref={dropdownRef}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}

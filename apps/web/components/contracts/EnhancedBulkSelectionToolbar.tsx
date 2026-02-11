@@ -139,7 +139,7 @@ export const EnhancedBulkSelectionToolbar = memo(function EnhancedBulkSelectionT
   return (
     <>
       <AnimatePresence>
-        <motion.div
+        <motion.div key="EnhancedBulkSelectionToolbar-ap-1"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}

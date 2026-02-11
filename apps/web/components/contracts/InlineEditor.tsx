@@ -496,7 +496,7 @@ export function InlineEditor({
       {/* Edit History Panel */}
       <AnimatePresence>
         {showHistory && editHistory.length > 0 && (
-          <motion.div
+          <motion.div key="history"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -534,7 +534,7 @@ export function InlineEditor({
       {/* Comment Panel */}
       <AnimatePresence>
         {showComment && (
-          <motion.div
+          <motion.div key="comment"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

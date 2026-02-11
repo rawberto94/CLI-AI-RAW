@@ -1849,7 +1849,7 @@ export const ApprovalsQueue: React.FC = () => {
       {/* Keyboard Shortcuts Help Modal */}
       <AnimatePresence>
         {showShortcuts && (
-          <motion.div
+          <motion.div key="shortcuts"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

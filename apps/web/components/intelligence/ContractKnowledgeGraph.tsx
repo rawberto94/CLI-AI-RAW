@@ -608,7 +608,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
       {/* Filter Panel */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div
+          <motion.div key="filters"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -780,7 +780,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                 {/* Node Label on Hover/Select */}
                 <AnimatePresence>
                   {(isHovered || isSelected) && (
-                    <motion.div
+                    <motion.div key="ContractKnowledgeGraph-ap-1"
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
@@ -833,7 +833,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
       {/* Node Detail Panel */}
       <AnimatePresence>
         {selectedNode && (
-          <NodeDetailPanel
+          <NodeDetailPanel key="selected-node"
             node={selectedNode}
             onClose={() => setSelectedNode(null)}
             relatedNodes={relatedNodes}

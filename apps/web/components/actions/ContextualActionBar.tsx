@@ -172,7 +172,7 @@ export function ContextualActionBar({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, y: position === 'bottom' ? 20 : -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: position === 'bottom' ? 20 : -20 }}
@@ -209,7 +209,7 @@ export function ContextualActionBar({
             {/* Actions */}
             <AnimatePresence>
               {isExpanded && (
-                <motion.div
+                <motion.div key="expanded"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}

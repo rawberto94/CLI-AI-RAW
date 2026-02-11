@@ -183,7 +183,12 @@ export function createApiHandler<TInput, TOutput>(
       // 3. Get session for handler context
       const session = await auth() as Session | null;
       const user = session?.user;
-      const tenantId = user?.tenantId || request.headers.get('x-tenant-id') || 'default';
+      const rawTenantId = user?.tenantId || request.headers.get('x-tenant-id');
+      if (!rawTenantId && process.env.NODE_ENV === 'production') {
+        logger.warn('Missing tenant ID in production', { url, method });
+        return apiError('Authentication required', 'AUTH_REQUIRED', 401);
+      }
+      const tenantId = rawTenantId || 'demo'; // Only used in development
       
       // 4. Parse and validate request body
       let data: TInput = {} as TInput;

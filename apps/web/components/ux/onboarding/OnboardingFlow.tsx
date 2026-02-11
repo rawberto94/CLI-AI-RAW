@@ -259,7 +259,7 @@ const OnboardingModal = memo(function OnboardingModal() {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="OnboardingFlow-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -631,7 +631,7 @@ export const OnboardingChecklist = memo(function OnboardingChecklist({
       {/* Items */}
       <AnimatePresence>
         {!collapsed && (
-          <motion.div
+          <motion.div key="OnboardingFlow-ap-2"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

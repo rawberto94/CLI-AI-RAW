@@ -627,7 +627,7 @@ export default function VersionComparePage() {
               <div className="space-y-3">
                 <AnimatePresence mode="popLayout">
                   {changes.length === 0 ? (
-                    <div className="text-center py-8">
+                    <div key="changes-length" className="text-center py-8">
                       <GitCompare className="h-10 w-10 text-slate-300 mx-auto mb-3" />
                       <p className="text-slate-600">No changes detected between these versions</p>
                     </div>

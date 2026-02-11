@@ -159,7 +159,7 @@ export function Lightbox({
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
+        <motion.div key="open"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -578,7 +578,7 @@ export function VideoPlayer({
       {/* Controls */}
       <AnimatePresence>
         {showControls && (
-          <motion.div
+          <motion.div key="controls"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

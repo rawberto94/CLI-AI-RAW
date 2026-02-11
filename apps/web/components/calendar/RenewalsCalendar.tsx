@@ -471,7 +471,7 @@ export function RenewalsCalendar({ renewals, onSelect, selectedId }: RenewalsCal
             {selectedDate ? (
               <AnimatePresence mode="wait">
                 {(selectedDateRenewals.length > 0 || selectedDateNotices.length > 0) ? (
-                  <motion.div
+                  <motion.div key="RenewalsCalendar-ap-1"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -10 }}

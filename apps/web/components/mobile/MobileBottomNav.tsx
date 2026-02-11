@@ -91,7 +91,7 @@ export function MobileBottomNav() {
       {/* Quick Actions Overlay */}
       <AnimatePresence>
         {showQuickActions && (
-          <>
+          <div key="quick-actions" className="contents">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -134,7 +134,7 @@ export function MobileBottomNav() {
                 </div>
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
 

@@ -354,7 +354,7 @@ export const AISuggestionFeedback: React.FC<AISuggestionFeedbackProps> = ({
 
         <AnimatePresence>
           {showDetailedForm && !submitted && (
-            <DetailedFeedbackForm
+            <DetailedFeedbackForm key="detailed-form"
               initialType={currentFeedback || 'not_helpful'}
               onSubmit={handleDetailedSubmit}
               onCancel={() => {
@@ -434,7 +434,7 @@ export const AISuggestionFeedback: React.FC<AISuggestionFeedbackProps> = ({
 
         <AnimatePresence>
           {showDetailedForm && !submitted && (
-            <DetailedFeedbackForm
+            <DetailedFeedbackForm key="detailed-form"
               initialType={currentFeedback || 'partially_helpful'}
               onSubmit={handleDetailedSubmit}
               onCancel={() => setShowDetailedForm(false)}

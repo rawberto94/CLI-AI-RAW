@@ -349,7 +349,7 @@ const MessageBubble: React.FC<{
                 
                 <AnimatePresence>
                   {showSources && (
-                    <motion.div 
+                    <motion.div key="sources" 
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
@@ -692,7 +692,7 @@ export function ContractAIAnalyst({
           {/* Quick Query Templates */}
           <AnimatePresence>
             {showTemplates && messages.length === 0 && (
-              <motion.div
+              <motion.div key="templates"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}

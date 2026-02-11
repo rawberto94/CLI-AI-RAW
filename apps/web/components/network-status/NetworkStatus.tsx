@@ -204,7 +204,7 @@ function NetworkBanner({ isOnline, showReconnected }: NetworkBannerProps) {
   return (
     <AnimatePresence>
       {!isOnline && (
-        <motion.div
+        <motion.div key="NetworkStatus-ap-1"
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
@@ -408,7 +408,7 @@ export function SlowConnectionWarning({
     <>
       <AnimatePresence>
         {showWarning && (
-          <motion.div
+          <motion.div key="warning"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

@@ -239,6 +239,52 @@ const navigationItems: NavigationItem[] = [
     ]
   },
   {
+    name: 'Renewals',
+    href: '/renewals',
+    icon: Calendar,
+    description: 'Contract renewals',
+    badge: 'NEW'
+  },
+  {
+    name: 'Deadlines',
+    href: '/deadlines',
+    icon: AlertTriangle,
+    description: 'Key dates tracking'
+  },
+  {
+    name: 'Clauses',
+    href: '/clauses',
+    icon: Scale,
+    description: 'Clause library'
+  },
+  {
+    name: 'Intelligence',
+    href: '/intelligence/health',
+    icon: Activity,
+    description: 'AI insights',
+    isPremium: true,
+    children: [
+      {
+        name: 'Health Score',
+        href: '/intelligence/health',
+        icon: Activity,
+        description: 'Contract health'
+      },
+      {
+        name: 'Knowledge Graph',
+        href: '/knowledge-graph',
+        icon: GitBranch,
+        description: 'Entity relationships'
+      },
+      {
+        name: 'Risk Analysis',
+        href: '/risk',
+        icon: AlertTriangle,
+        description: 'Risk assessment'
+      }
+    ]
+  },
+  {
     name: 'Admin',
     href: '/admin/sso',
     icon: Settings,
@@ -421,7 +467,7 @@ function MainNavigation() {
                     {/* Children */}
                     <AnimatePresence>
                       {isExpanded && item.children && (
-                        <motion.div 
+                        <motion.div key="expanded" 
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
@@ -538,7 +584,7 @@ function MainNavigation() {
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobileMenuOpen && (
-          <motion.div
+          <motion.div key="mobile-menu-open"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

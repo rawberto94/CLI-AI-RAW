@@ -127,6 +127,22 @@ async function extractTextFromFile(
 }
 
 /**
+ * Try to parse a date string into ISO format (YYYY-MM-DD)
+ */
+function tryParseDate(dateStr: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) {
+      return d.toISOString().split('T')[0];
+    }
+  } catch {
+    // ignore
+  }
+  return dateStr;
+}
+
+/**
  * Extract key metadata from contract text
  */
 async function extractContractMetadata(
@@ -154,27 +170,127 @@ async function extractContractMetadata(
     parties?: string[];
   } = {};
 
-  // Try to extract dates with regex
-  const datePatterns = [
-    /effective\s*(?:date|as\s*of)[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    /(?:commencing|starting|begins?)\s*(?:on)?[:\s]*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
-    /(?:january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{1,2},?\s+\d{4}/i,
+  // Try to extract title
+  const titlePatterns = [
+    /^[\s\n]*(.+?(?:AGREEMENT|CONTRACT|STATEMENT OF WORK|SOW|NDA|AMENDMENT|ADDENDUM|MOU|MEMORANDUM))/im,
+    /(?:title|re|subject|regarding)[:\s]+(.+?)(?:\n|$)/i,
   ];
-  
-  for (const pattern of datePatterns) {
+  for (const pattern of titlePatterns) {
     const match = contractText.match(pattern);
     if (match) {
-      basicMetadata.startDate = match[1] || match[0];
+      basicMetadata.title = match[1].trim().replace(/\s+/g, ' ');
+      break;
+    }
+  }
+
+  // Try to extract contract type
+  const typePatterns: Array<[RegExp, string]> = [
+    [/statement\s+of\s+work|SOW/i, 'SOW'],
+    [/master\s+service\s+agreement|MSA/i, 'MSA'],
+    [/non[- ]?disclosure\s+agreement|NDA|confidentiality/i, 'NDA'],
+    [/employment\s+(?:agreement|contract)/i, 'EMPLOYMENT'],
+    [/service\s+(?:agreement|contract)/i, 'SERVICE'],
+    [/lease\s+(?:agreement|contract)/i, 'LEASE'],
+    [/purchase\s+(?:order|agreement)/i, 'PURCHASE_ORDER'],
+    [/software\s+license/i, 'SOFTWARE_LICENSE'],
+    [/subscription\s+agreement/i, 'SUBSCRIPTION'],
+    [/amendment/i, 'AMENDMENT'],
+  ];
+  for (const [pattern, cType] of typePatterns) {
+    if (pattern.test(contractText)) {
+      basicMetadata.contractType = cType;
+      break;
+    }
+  }
+
+  // Try to extract dates - multiple formats
+  const monthNames = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
+
+  // Effective/Start date patterns  
+  const startDatePatterns = [
+    new RegExp(`effective\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`effective\\s*(?:date)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`start\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`start\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+  ];
+  for (const pattern of startDatePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      basicMetadata.startDate = tryParseDate(match[1]);
+      break;
+    }
+  }
+
+  // Expiration/End date patterns
+  const endDatePatterns = [
+    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`through\\s+(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+  ];
+  for (const pattern of endDatePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      basicMetadata.endDate = tryParseDate(match[1]);
       break;
     }
   }
 
   // Try to extract monetary values
-  const moneyPattern = /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD|dollars?)?/i;
-  const moneyMatch = contractText.match(moneyPattern);
-  if (moneyMatch) {
-    basicMetadata.totalValue = parseFloat(moneyMatch[1].replace(/,/g, ''));
-    basicMetadata.currency = 'USD';
+  const moneyPatterns = [
+    /(?:total\s+(?:contract\s+)?value|contract\s+(?:value|amount|price))[:\s]*\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD)?/i,
+    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD|dollars?)?/i,
+  ];
+  for (const pattern of moneyPatterns) {
+    const moneyMatch = contractText.match(pattern);
+    if (moneyMatch) {
+      basicMetadata.totalValue = parseFloat(moneyMatch[1].replace(/,/g, ''));
+      basicMetadata.currency = 'USD';
+      break;
+    }
+  }
+  // Also check for other currencies
+  if (!basicMetadata.totalValue) {
+    const eurMatch = contractText.match(/€\s*([\d,.]+)/);
+    if (eurMatch) {
+      basicMetadata.totalValue = parseFloat(eurMatch[1].replace(/,/g, ''));
+      basicMetadata.currency = 'EUR';
+    }
+    const gbpMatch = contractText.match(/£\s*([\d,.]+)/);
+    if (gbpMatch) {
+      basicMetadata.totalValue = parseFloat(gbpMatch[1].replace(/,/g, ''));
+      basicMetadata.currency = 'GBP';
+    }
+  }
+
+  // Try to extract party names
+  const partyPatterns = [
+    /(?:client|customer|buyer|purchaser)[:\s]+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV)?)/gm,
+    /(?:service\s+provider|vendor|supplier|contractor|seller)[:\s]+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV)?)/gm,
+    /(?:between|by\s+and\s+between)\s+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?))\s+(?:and|,)\s+([A-Z][A-Za-z\s&.,]+(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?))/i,
+  ];
+  const extractedParties: string[] = [];
+  for (const pattern of partyPatterns) {
+    let match;
+    const regex = new RegExp(pattern.source, pattern.flags);
+    while ((match = regex.exec(contractText)) !== null) {
+      const partyName = match[1]?.trim().replace(/\s+/g, ' ');
+      if (partyName && partyName.length > 2 && partyName.length < 100 && !extractedParties.includes(partyName)) {
+        extractedParties.push(partyName);
+      }
+      if (match[2]) {
+        const party2 = match[2].trim().replace(/\s+/g, ' ');
+        if (party2 && party2.length > 2 && party2.length < 100 && !extractedParties.includes(party2)) {
+          extractedParties.push(party2);
+        }
+      }
+    }
+  }
+  if (extractedParties.length > 0) {
+    basicMetadata.parties = extractedParties.slice(0, 10);
   }
 
   // Try AI extraction if available
@@ -236,7 +352,182 @@ ${truncatedText}`,
 }
 
 /**
+ * Extract basic structured fields from contract text using regex patterns
+ * Used by generateBasicArtifact to populate artifacts with real data from the document
+ */
+function extractBasicFieldsFromText(contractText: string): {
+  title: string | null;
+  contractType: string | null;
+  summary: string | null;
+  totalValue: number | null;
+  currency: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  clientName: string | null;
+  supplierName: string | null;
+  parties: Array<{ name: string; role: string }>;
+  keyPoints: string[];
+  paymentTerms: string | null;
+} {
+  const result = {
+    title: null as string | null,
+    contractType: null as string | null,
+    summary: null as string | null,
+    totalValue: null as number | null,
+    currency: null as string | null,
+    startDate: null as string | null,
+    endDate: null as string | null,
+    clientName: null as string | null,
+    supplierName: null as string | null,
+    parties: [] as Array<{ name: string; role: string }>,
+    keyPoints: [] as string[],
+    paymentTerms: null as string | null,
+  };
+
+  if (!contractText || contractText.length < 10) return result;
+
+  const monthNames = '(?:january|february|march|april|may|june|july|august|september|october|november|december)';
+
+  // --- Title ---
+  const titlePatterns = [
+    /^[\s\n]*((?:STATEMENT\s+OF\s+WORK|MASTER\s+SERVICE\s+AGREEMENT|NON[- ]?DISCLOSURE\s+AGREEMENT|SERVICE\s+AGREEMENT|EMPLOYMENT\s+(?:AGREEMENT|CONTRACT)|LEASE\s+AGREEMENT|SOFTWARE\s+LICENSE\s+AGREEMENT|SUBSCRIPTION\s+AGREEMENT|PURCHASE\s+(?:ORDER|AGREEMENT)|AMENDMENT)[^\n]*)/im,
+    /(?:^|\n)\s*(?:title|re|subject)[:\s]+([^\n]+)/im,
+  ];
+  for (const pattern of titlePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.title = match[1].trim().replace(/\s+/g, ' ');
+      break;
+    }
+  }
+
+  // --- Contract Type ---
+  const typePatterns: Array<[RegExp, string]> = [
+    [/statement\s+of\s+work|SOW/i, 'SOW'],
+    [/master\s+service\s+agreement|MSA/i, 'MSA'],
+    [/non[- ]?disclosure\s+agreement|NDA|confidentiality\s+agreement/i, 'NDA'],
+    [/employment\s+(?:agreement|contract)/i, 'EMPLOYMENT'],
+    [/professional\s+services?\s+agreement/i, 'SERVICE'],
+    [/service\s+(?:agreement|contract)/i, 'SERVICE'],
+    [/lease\s+(?:agreement|contract)/i, 'LEASE'],
+    [/purchase\s+(?:order|agreement)/i, 'PURCHASE_ORDER'],
+    [/software\s+license/i, 'SOFTWARE_LICENSE'],
+    [/subscription\s+agreement/i, 'SUBSCRIPTION'],
+    [/amendment/i, 'AMENDMENT'],
+  ];
+  for (const [pattern, cType] of typePatterns) {
+    if (pattern.test(contractText)) {
+      result.contractType = cType;
+      break;
+    }
+  }
+
+  // --- Dates ---
+  const startDatePatterns = [
+    new RegExp(`effective\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`effective\\s*(?:date)?[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`start\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`(?:commencing|starting|begins?)\\s*(?:on)?[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+  ];
+  for (const pattern of startDatePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.startDate = tryParseDate(match[1]);
+      break;
+    }
+  }
+
+  const endDatePatterns = [
+    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(?:is\\s+)?(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`expir(?:ation|y|es?)\\s*date[:\\s]*(\\d{1,2}[/\\-]\\d{1,2}[/\\-]\\d{2,4})`, 'i'),
+    new RegExp(`(?:terminat(?:ion|es?)|end)\\s*date[:\\s]*(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+    new RegExp(`through\\s+(${monthNames}\\s+\\d{1,2},?\\s+\\d{4})`, 'i'),
+  ];
+  for (const pattern of endDatePatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.endDate = tryParseDate(match[1]);
+      break;
+    }
+  }
+
+  // --- Total Value ---
+  const moneyPatterns = [
+    /(?:total\s+(?:contract\s+)?value|contract\s+(?:value|amount|price))[:\s]*\$\s*([\d,]+(?:\.\d{2})?)/i,
+    /\$\s*([\d,]+(?:\.\d{2})?)\s*(?:USD)?/i,
+  ];
+  for (const pattern of moneyPatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.totalValue = parseFloat(match[1].replace(/,/g, ''));
+      result.currency = 'USD';
+      break;
+    }
+  }
+
+  // --- Parties ---
+  // Client/Buyer
+  const clientPatterns = [
+    /(?:client|customer|buyer|purchaser)[:\s]+([A-Z][A-Za-z\s&.,]+?\b(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV))/m,
+  ];
+  for (const pattern of clientPatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.clientName = match[1].trim();
+      result.parties.push({ name: result.clientName, role: 'Client' });
+      break;
+    }
+  }
+
+  // Supplier/Vendor/Service Provider
+  const supplierPatterns = [
+    /(?:service\s+provider|vendor|supplier|contractor|seller)[:\s]+([A-Z][A-Za-z\s&.,]+?\b(?:Inc\.?|LLC|Ltd\.?|Corp(?:oration)?\.?|Co\.?|LP|LLP|PLC|GmbH|AG|SA|SAS|BV|NV))/m,
+  ];
+  for (const pattern of supplierPatterns) {
+    const match = contractText.match(pattern);
+    if (match) {
+      result.supplierName = match[1].trim();
+      result.parties.push({ name: result.supplierName, role: 'Service Provider' });
+      break;
+    }
+  }
+
+  // --- Payment Terms ---
+  const paymentMatch = contractText.match(/(?:payment\s+(?:terms?|schedule|conditions?))[:\s]+([^\n]{10,200})/i);
+  if (paymentMatch) {
+    result.paymentTerms = paymentMatch[1].trim();
+  }
+
+  // --- Build summary ---
+  const summaryParts: string[] = [];
+  if (result.title) summaryParts.push(result.title);
+  if (result.contractType) summaryParts.push(`Type: ${result.contractType}`);
+  if (result.clientName && result.supplierName) {
+    summaryParts.push(`Between ${result.clientName} and ${result.supplierName}`);
+  }
+  if (result.totalValue) {
+    summaryParts.push(`Value: ${result.currency === 'USD' ? '$' : result.currency || ''}${result.totalValue.toLocaleString()}`);
+  }
+  if (result.startDate && result.endDate) {
+    summaryParts.push(`Period: ${result.startDate} to ${result.endDate}`);
+  }
+  if (summaryParts.length > 0) {
+    result.summary = summaryParts.join('. ') + '.';
+  }
+
+  // --- Key Points ---
+  if (result.clientName) result.keyPoints.push(`Client: ${result.clientName}`);
+  if (result.supplierName) result.keyPoints.push(`Service Provider: ${result.supplierName}`);
+  if (result.totalValue) result.keyPoints.push(`Total Value: ${result.currency === 'USD' ? '$' : ''}${result.totalValue.toLocaleString()} ${result.currency || ''}`);
+  if (result.startDate) result.keyPoints.push(`Effective: ${result.startDate}`);
+  if (result.endDate) result.keyPoints.push(`Expires: ${result.endDate}`);
+
+  return result;
+}
+
+/**
  * Generate basic artifact data without AI (fallback mode)
+ * Now performs regex-based extraction from the document text
  */
 function generateBasicArtifact(type: ArtifactType, contractText: string, contractId: string): Record<string, any> {
   const now = new Date().toISOString();
@@ -250,12 +541,26 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
     _wordCount: wordCount,
   };
 
+  // Extract basic metadata from text for enriching artifacts
+  const basicExtracted = extractBasicFieldsFromText(contractText);
+
   switch (type) {
     case 'OVERVIEW':
       return {
         ...baseData,
-        summary: `Contract document with ${wordCount} words. Detailed AI analysis pending.`,
-        keyPoints: ['Document uploaded and processed', 'Full analysis requires AI processing'],
+        summary: basicExtracted.summary || `Contract document with ${wordCount} words. Detailed AI analysis pending.`,
+        contractType: basicExtracted.contractType || null,
+        title: basicExtracted.title || null,
+        totalValue: basicExtracted.totalValue || null,
+        currency: basicExtracted.currency || null,
+        effectiveDate: basicExtracted.startDate || null,
+        startDate: basicExtracted.startDate || null,
+        expirationDate: basicExtracted.endDate || null,
+        endDate: basicExtracted.endDate || null,
+        parties: basicExtracted.parties.length > 0 ? basicExtracted.parties : [],
+        clientName: basicExtracted.clientName || null,
+        supplierName: basicExtracted.supplierName || null,
+        keyPoints: basicExtracted.keyPoints.length > 0 ? basicExtracted.keyPoints : ['Document uploaded and processed', 'Full analysis requires AI processing'],
         documentInfo: {
           estimatedPages: Math.ceil(wordCount / 250),
           hasText: contractText.length > 0,
@@ -274,11 +579,11 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
     case 'FINANCIAL':
       return {
         ...baseData,
-        amounts: [],
-        currency: null,
-        totalValue: null,
-        paymentTerms: null,
-        note: 'Financial extraction requires AI analysis',
+        amounts: basicExtracted.totalValue ? [{ amount: basicExtracted.totalValue, currency: basicExtracted.currency || 'USD', description: 'Total Contract Value' }] : [],
+        currency: basicExtracted.currency || null,
+        totalValue: basicExtracted.totalValue || null,
+        paymentTerms: basicExtracted.paymentTerms || null,
+        note: basicExtracted.totalValue ? undefined : 'Financial extraction requires AI analysis',
       };
 
     case 'RISK':
@@ -341,9 +646,12 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
     case 'PARTIES':
       return {
         ...baseData,
-        parties: [],
-        partyRoles: {},
-        note: 'Party extraction requires AI processing',
+        parties: basicExtracted.parties.length > 0 ? basicExtracted.parties : [],
+        partyRoles: basicExtracted.clientName || basicExtracted.supplierName ? {
+          ...(basicExtracted.clientName ? { client: basicExtracted.clientName } : {}),
+          ...(basicExtracted.supplierName ? { supplier: basicExtracted.supplierName } : {}),
+        } : {},
+        note: basicExtracted.parties.length > 0 ? undefined : 'Party extraction requires AI processing',
       };
 
     case 'TIMELINE':
@@ -366,10 +674,10 @@ function generateBasicArtifact(type: ArtifactType, contractText: string, contrac
     case 'EXECUTIVE_SUMMARY':
       return {
         ...baseData,
-        executiveSummary: `Contract document with ${wordCount} words uploaded for review.`,
-        keyTakeaways: [],
+        executiveSummary: basicExtracted.summary || `Contract document with ${wordCount} words uploaded for review.`,
+        keyTakeaways: basicExtracted.keyPoints.length > 0 ? basicExtracted.keyPoints : [],
         recommendations: [],
-        note: 'Executive summary requires AI processing',
+        note: basicExtracted.summary ? undefined : 'Executive summary requires AI processing',
       };
 
     default:
@@ -647,12 +955,21 @@ export async function generateRealArtifacts(
           
           logger.info({ endpoint }, 'Using S3 endpoint');
           
+          const isProduction = process.env.NODE_ENV === 'production';
+          const accessKeyId = process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID;
+          const secretAccessKey = process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY;
+          
+          // In production, require explicit credentials
+          if (isProduction && (!accessKeyId || !secretAccessKey)) {
+            throw new Error('S3/MinIO credentials required in production');
+          }
+          
           const s3Client = new S3Client({
             endpoint,
             region: process.env.S3_REGION || process.env.AWS_REGION || 'us-east-1',
             credentials: {
-              accessKeyId: process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || process.env.AWS_ACCESS_KEY_ID || 'minioadmin',
-              secretAccessKey: process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || process.env.AWS_SECRET_ACCESS_KEY || 'minioadmin',
+              accessKeyId: accessKeyId || (isProduction ? '' : 'minioadmin'),
+              secretAccessKey: secretAccessKey || (isProduction ? '' : 'minioadmin'),
             },
             forcePathStyle: true, // Required for MinIO
           });

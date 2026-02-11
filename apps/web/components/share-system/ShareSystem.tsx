@@ -163,7 +163,7 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -230,7 +230,7 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -369,7 +369,7 @@ export function QRShareButton({ url, className = '' }: QRShareButtonProps) {
 
       <AnimatePresence>
         {showQR && (
-          <>
+          <div key="q-r" className="contents">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -407,7 +407,7 @@ export function QRShareButton({ url, className = '' }: QRShareButtonProps) {
                 Scan with your phone to open
               </p>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>
@@ -484,7 +484,7 @@ export function ShareSheet({ isOpen, onClose, data, additionalActions = [] }: Sh
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -549,7 +549,7 @@ export function ShareSheet({ isOpen, onClose, data, additionalActions = [] }: Sh
               </button>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

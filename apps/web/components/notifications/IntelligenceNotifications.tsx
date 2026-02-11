@@ -173,7 +173,7 @@ export function IntelligenceNotifications() {
         {/* Unread Badge */}
         <AnimatePresence>
           {unreadCount > 0 && (
-            <motion.span
+            <motion.span key="unread-count"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
@@ -188,7 +188,7 @@ export function IntelligenceNotifications() {
       {/* Dropdown */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}

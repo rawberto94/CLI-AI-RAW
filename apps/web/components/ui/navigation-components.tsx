@@ -152,7 +152,7 @@ export function TabPanel({ children, value, activeValue }: TabPanelProps) {
   return (
     <AnimatePresence mode="wait">
       {value === activeValue && (
-        <motion.div
+        <motion.div key="value"
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}

@@ -1516,7 +1516,7 @@ export function FloatingAIBubble() {
         {/* Floating Bubble Button - Draggable with better animations */}
         <AnimatePresence>
           {!isOpen && (
-            <motion.div
+            <motion.div key="FloatingAIBubble-ap-1"
               initial={{ scale: 0, opacity: 0, rotate: -180 }}
               animate={{ scale: 1, opacity: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0, rotate: 180 }}
@@ -1616,7 +1616,7 @@ export function FloatingAIBubble() {
                     {/* Notification badge with bounce */}
                     <AnimatePresence>
                       {unreadCount > 0 && (
-                        <motion.span
+                        <motion.span key="unread-count"
                           initial={{ scale: 0, y: 10 }}
                           animate={{ scale: 1, y: 0 }}
                           exit={{ scale: 0, y: 10 }}
@@ -1652,7 +1652,7 @@ export function FloatingAIBubble() {
         {/* Chat Panel - Draggable with glassmorphism and better visual hierarchy */}
         <AnimatePresence>
           {isOpen && (
-            <motion.div
+            <motion.div key="open"
               initial={{ opacity: 0, scale: 0.9, y: 30 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 30 }}
@@ -1863,7 +1863,7 @@ export function FloatingAIBubble() {
                   {/* Conversation History Panel - Round 3 Enhancement */}
                   <AnimatePresence>
                     {showHistoryPanel && (
-                      <ConversationHistoryPanel
+                      <ConversationHistoryPanel key="history-panel"
                         conversations={persistence.conversationList?.map(c => ({
                           id: c.id,
                           title: c.title,
@@ -2532,7 +2532,7 @@ export function FloatingAIBubble() {
         {/* Keyboard shortcuts modal - Enhanced */}
         <AnimatePresence>
           {showShortcuts && (
-            <motion.div
+            <motion.div key="shortcuts"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2587,7 +2587,7 @@ export function FloatingAIBubble() {
         {/* Example prompts modal - Enhanced */}
         <AnimatePresence>
           {showExamples && (
-            <motion.div
+            <motion.div key="examples"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -2670,7 +2670,7 @@ export function FloatingAIBubble() {
         {/* Chat History Search Dialog */}
         <AnimatePresence>
           {showSearchDialog && (
-            <motion.div
+            <motion.div key="search-dialog"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

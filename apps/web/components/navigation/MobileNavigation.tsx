@@ -191,7 +191,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -266,7 +266,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

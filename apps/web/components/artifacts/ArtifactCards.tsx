@@ -33,6 +33,25 @@ import {
 import { cn } from '@/lib/utils'
 import { getRiskColor, getComplianceColor, formatCurrency, formatDate } from '@/lib/design-tokens'
 
+// ============ HELPER TO UNWRAP AI VALUES ============
+
+/**
+ * AI extraction may return values as { value: X, source: '...' } or just X
+ * This helper unwraps them consistently
+ */
+function unwrapValue<T = string>(val: unknown): T | undefined {
+  if (val === null || val === undefined) return undefined;
+  if (typeof val === 'object' && val !== null && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+function unwrapString(val: unknown): string {
+  const unwrapped = unwrapValue<string>(val);
+  return typeof unwrapped === 'string' ? unwrapped : '';
+}
+
 // ============ TYPES ============
 
 interface ArtifactBaseProps {
@@ -194,7 +213,7 @@ function ExpandableSection({
       </button>
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -460,7 +479,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2.5 bg-slate-50 rounded-lg border border-slate-100">
-          <p className="text-xs text-slate-600 leading-relaxed break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 leading-relaxed break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
       
@@ -480,12 +499,12 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
               >
                 <div className="flex items-center gap-1.5">
                   <span className="text-[10px] px-1.5 py-0.5 bg-violet-50 text-violet-600 rounded font-medium">
-                    {party.role}
+                    {unwrapString(party.role) || 'Party'}
                   </span>
-                  <span className="text-xs font-medium text-slate-700">{party.name}</span>
+                  <span className="text-xs font-medium text-slate-700">{unwrapString(party.name) || unwrapString(party.legalName)}</span>
                 </div>
                 {party.email && (
-                  <p className="text-[10px] text-slate-400 mt-1">{party.email}</p>
+                  <p className="text-[10px] text-slate-400 mt-1">{unwrapString(party.email)}</p>
                 )}
               </div>
             ))}
@@ -791,7 +810,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
               
               <AnimatePresence>
                 {isExpanded && (
-                  <motion.div
+                  <motion.div key="expanded"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -1075,7 +1094,7 @@ export function RiskArtifact({ data, className, isLoading }: RiskArtifactProps) 
           levelConfig.bg,
           levelConfig.border
         )}>
-          <p className="text-xs text-slate-600">{data.summary}</p>
+          <p className="text-xs text-slate-600">{unwrapString(data.summary)}</p>
         </div>
       )}
       
@@ -1239,7 +1258,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
-          <p className="text-xs text-slate-600">{data.summary}</p>
+          <p className="text-xs text-slate-600">{unwrapString(data.summary)}</p>
         </div>
       )}
       
@@ -1729,7 +1748,7 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
       
@@ -1890,7 +1909,7 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
 
@@ -2091,7 +2110,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-indigo-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
 
@@ -2278,7 +2297,7 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
 
@@ -2482,7 +2501,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-indigo-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
 
@@ -2657,7 +2676,7 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
       {/* Summary */}
       {data.summary && (
         <div className="px-3 py-2 bg-violet-50/50 rounded border border-violet-100">
-          <p className="text-xs text-slate-600 break-words">{data.summary}</p>
+          <p className="text-xs text-slate-600 break-words">{unwrapString(data.summary)}</p>
         </div>
       )}
 

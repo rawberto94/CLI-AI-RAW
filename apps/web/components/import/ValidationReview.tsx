@@ -156,7 +156,7 @@ export function ValidationReview({
                     <div className="flex gap-1">
                       {issues.map((issue, i) => (
                         <span
-                          key={i}
+                          key={`${issue.field}-${issue.severity}-${i}`}
                           className={`px-2 py-0.5 text-xs rounded ${getSeverityColor(issue.severity)}`}
                         >
                           {getSeverityIcon(issue.severity)}
@@ -174,7 +174,7 @@ export function ValidationReview({
                   <div className="px-4 py-3 bg-gray-50 border-t space-y-3">
                     {issues.map((issue, i) => (
                       <div
-                        key={i}
+                        key={`detail-${issue.field}-${issue.severity}-${i}`}
                         className={`p-3 border rounded ${getSeverityColor(issue.severity)}`}
                       >
                         <div className="flex items-start justify-between">

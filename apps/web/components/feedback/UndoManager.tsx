@@ -207,7 +207,7 @@ export function UndoManagerProvider({
       {/* Floating Undo Bar */}
       <AnimatePresence>
         {showUndoBar && latestAction && (
-          <UndoBar
+          <UndoBar key="undo-bar"
             action={latestAction}
             onUndo={undo}
             onDismiss={() => {

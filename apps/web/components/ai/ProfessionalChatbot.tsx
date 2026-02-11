@@ -648,7 +648,7 @@ What would you like to know about your contracts?`,
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ProfessionalChatbot-ap-1"
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -754,7 +754,7 @@ What would you like to know about your contracts?`,
             {/* Scroll to bottom button */}
             <AnimatePresence>
               {showScrollButton && (
-                <motion.button
+                <motion.button key="scroll-button"
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 10 }}

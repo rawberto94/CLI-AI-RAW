@@ -175,7 +175,7 @@ export function KeyboardShortcutsOverlay({ isOpen, onClose }: KeyboardShortcutsO
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -247,7 +247,7 @@ export function KeyboardShortcutsOverlay({ isOpen, onClose }: KeyboardShortcutsO
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

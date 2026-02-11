@@ -275,7 +275,7 @@ export function CommandPalette({ isOpen, onClose }: CommandPaletteProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50">
+        <div key="open" className="fixed inset-0 z-50">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

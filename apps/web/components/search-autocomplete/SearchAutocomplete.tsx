@@ -204,7 +204,7 @@ export function SearchAutocomplete({
       {/* Dropdown */}
       <AnimatePresence>
         {showDropdown && (
-          <motion.div
+          <motion.div key="dropdown"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -407,7 +407,7 @@ export function SearchSpotlight({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[200]">
+        <div key="open" className="fixed inset-0 z-[200]">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}

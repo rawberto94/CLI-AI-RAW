@@ -471,7 +471,7 @@ export function ColorPickerSetting({
 
         <AnimatePresence>
           {showPicker && (
-            <motion.div
+            <motion.div key="picker"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}

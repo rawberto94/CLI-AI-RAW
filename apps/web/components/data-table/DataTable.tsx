@@ -259,7 +259,7 @@ export function DataTable<T>({
 
               <AnimatePresence>
                 {showColumnSettings && (
-                  <motion.div
+                  <motion.div key="column-settings"
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 10 }}
@@ -297,7 +297,7 @@ export function DataTable<T>({
       {/* Filter Row */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div
+          <motion.div key="filters"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -522,7 +522,7 @@ export function DataTable<T>({
       {/* Selection Summary */}
       <AnimatePresence>
         {selectedRows.length > 0 && (
-          <motion.div
+          <motion.div key="selected-rows-length"
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}

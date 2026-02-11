@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
-import { Shield, Plus, DollarSign, Users, CheckCircle2, AlertTriangle, Trash2 } from 'lucide-react';
+import { Shield, Plus, DollarSign, Users, CheckCircle2, AlertTriangle, Trash2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 interface DoAEntry {
   id: string; name: string; role: string; department: string | null;
@@ -87,7 +88,23 @@ export default function DoAMatrix() {
                 <td className="p-3 text-right"><Button size="sm" variant="ghost" className="text-red-500 hover:text-red-700" onClick={() => handleDelete(e.id)}><Trash2 className="h-4 w-4" /></Button></td>
               </tr>
             ))}
-            {entries.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted-foreground">No delegation entries configured</td></tr>}
+            {entries.length === 0 && (
+              <tr>
+                <td colSpan={7}>
+                  <EmptyState
+                    variant="no-data"
+                    title="No delegation entries"
+                    description="Configure delegation of authority entries to define approval limits."
+                    primaryAction={{
+                      label: 'Add Entry',
+                      onClick: () => setShowAdd(true),
+                      icon: Plus,
+                    }}
+                    compact
+                  />
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>

@@ -351,7 +351,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {/* Tooltip */}
         <AnimatePresence>
           {showTooltip && !isDisabled && (
-            <motion.div
+            <motion.div key="tooltip"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -695,7 +695,7 @@ export function SplitButton({
 
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -729,7 +729,7 @@ export function SplitButton({
                 </button>
               ))}
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -594,7 +594,7 @@ export const UniversalRAGSearch: React.FC = () => {
         {/* Filters Panel */}
         <AnimatePresence>
           {showFilters && (
-            <motion.div
+            <motion.div key="filters"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

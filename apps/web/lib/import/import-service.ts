@@ -193,7 +193,10 @@ export class ImportService {
       // Get tenant from server context (cookies/headers)
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
-      const tenantId = cookieStore.get('tenantId')?.value || 'default';
+      const tenantId = cookieStore.get('tenantId')?.value;
+      if (!tenantId) {
+        throw new Error('Authentication required: Missing tenant context for import');
+      }
       
       // Create import job record
       const importJob = await prisma.importJob.create({

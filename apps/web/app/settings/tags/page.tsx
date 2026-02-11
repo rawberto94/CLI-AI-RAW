@@ -124,7 +124,8 @@ export default function TagManagementPage() {
       }
 
       const data = await response.json();
-      setTags(data.data?.tags || []);
+      const tagsData = data.data?.tags;
+      setTags(Array.isArray(tagsData) ? tagsData : []);
       setSummary(data.data?.summary || { totalTags: 0, totalUsage: 0 });
     } catch {
       toast.error("Failed to load tags");
@@ -222,9 +223,9 @@ export default function TagManagementPage() {
   };
 
   // Filter tags by search
-  const filteredTags = tags.filter((tag) =>
+  const filteredTags = Array.isArray(tags) ? tags.filter((tag) =>
     tag.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -443,7 +444,7 @@ export default function TagManagementPage() {
         {/* Create/Edit Form Modal */}
         <AnimatePresence>
           {showForm && (
-            <motion.div
+            <motion.div key="form"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}

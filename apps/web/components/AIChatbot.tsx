@@ -1151,7 +1151,7 @@ Would you like me to notify the first approver or do anything else?`,
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="AIChatbot-ap-1"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1364,7 +1364,7 @@ Would you like me to notify the first approver or do anything else?`,
       {/* Offline Banner */}
       <AnimatePresence>
         {!isOnline && (
-          <motion.div
+          <motion.div key="AIChatbot-ap-2"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -1710,7 +1710,7 @@ Would you like me to notify the first approver or do anything else?`,
       {/* Scroll to bottom button */}
       <AnimatePresence>
         {showScrollButton && (
-          <motion.button
+          <motion.button key="scroll-button"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}

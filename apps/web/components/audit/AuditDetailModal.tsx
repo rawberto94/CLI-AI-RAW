@@ -198,8 +198,8 @@ export default function AuditDetailModal({ entryId, open, onOpenChange }: AuditD
               <TabsContent value="diff" className="flex-1 overflow-hidden mt-4">
                 <ScrollArea className="h-[50vh]">
                   <div className="space-y-1">
-                    {diffs.filter(d => d.type !== 'unchanged').map((d, idx) => (
-                      <div key={idx} className={cn(
+                    {diffs.filter(d => d.type !== 'unchanged').map((d) => (
+                      <div key={d.key} className={cn(
                         'p-3 rounded-lg border text-sm',
                         d.type === 'added' && 'bg-green-50 border-green-200',
                         d.type === 'removed' && 'bg-red-50 border-red-200',

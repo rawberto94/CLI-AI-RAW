@@ -183,7 +183,7 @@ export const TextInput = forwardRef<HTMLInputElement, TextInputProps>(({
       {/* Message */}
       <AnimatePresence mode="wait">
         {message && (
-          <motion.p
+          <motion.p key="message"
             id={`${id}-message`}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -357,7 +357,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(({
       
       <AnimatePresence mode="wait">
         {message && (
-          <motion.p
+          <motion.p key="message"
             id={`${id}-message`}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -463,7 +463,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(({
       
       <AnimatePresence mode="wait">
         {message && (
-          <motion.p
+          <motion.p key="message"
             id={`${id}-message`}
             initial={{ opacity: 0, y: -5 }}
             animate={{ opacity: 1, y: 0 }}

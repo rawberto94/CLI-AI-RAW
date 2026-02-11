@@ -564,7 +564,7 @@ export function AIDraftAssistant() {
           {/* Draft Panel */}
           <AnimatePresence>
             {showDraftPanel && currentDraft && (
-              <motion.div
+              <motion.div key="draft-panel"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}

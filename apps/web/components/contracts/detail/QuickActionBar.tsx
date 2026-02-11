@@ -181,7 +181,7 @@ export const QuickActionBar = memo(function QuickActionBar({
     <TooltipProvider>
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -240,7 +240,7 @@ export const QuickActionBar = memo(function QuickActionBar({
                 {/* More Actions Toggle */}
                 <AnimatePresence mode="popLayout">
                   {isExpanded && (
-                    <motion.div
+                    <motion.div key="expanded"
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 'auto' }}
                       exit={{ opacity: 0, width: 0 }}

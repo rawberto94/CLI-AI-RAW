@@ -353,7 +353,7 @@ export function WelcomeTransition({
         {/* Feature icons */}
         <AnimatePresence>
           {showFeatures && (
-            <motion.div
+            <motion.div key="features"
               className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

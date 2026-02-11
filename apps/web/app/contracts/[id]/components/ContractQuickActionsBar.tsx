@@ -219,7 +219,7 @@ export const ContractQuickActionsBar = memo(function ContractQuickActionsBar({
       {/* Processing indicator */}
       <AnimatePresence>
         {isProcessing && (
-          <motion.div
+          <motion.div key="processing"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -236,7 +236,7 @@ export const ContractQuickActionsBar = memo(function ContractQuickActionsBar({
       {/* Unsaved changes indicator */}
       <AnimatePresence>
         {hasUnsavedChanges && (
-          <motion.div
+          <motion.div key="has-unsaved-changes"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}

@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Scale, Plus, ShieldOff, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function LegalHoldManager() {
   const [holds, setHolds] = useState<any[]>([]);
@@ -73,7 +74,18 @@ export default function LegalHoldManager() {
             </CardContent>
           </Card>
         ))}
-        {holds.length === 0 && <Card className="p-12 text-center text-muted-foreground">No legal holds</Card>}
+        {holds.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No legal holds"
+            description="Create legal holds to preserve contracts for litigation or regulatory purposes."
+            primaryAction={{
+              label: 'Create Hold',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

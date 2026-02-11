@@ -92,7 +92,12 @@ export async function GET(request: NextRequest) {
     const type = queryParams.type || null;
     const useMock = queryParams.mock === 'true';
 
-    // Return mock data if requested
+    // Block mock mode in production
+    if (useMock && process.env.NODE_ENV === 'production') {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Mock mode not available in production', 400);
+    }
+
+    // Return mock data if requested (dev only)
     if (useMock) {
       return createSuccessResponse(ctx, {
         deadlines: getMockDeadlines(),

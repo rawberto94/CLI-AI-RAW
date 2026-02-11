@@ -337,7 +337,7 @@ export function ApprovalNotificationBell() {
           <Bell className="h-5 w-5 text-gray-600" />
           <AnimatePresence>
             {unreadCount > 0 && (
-              <MotionDiv
+              <MotionDiv key="unread-count"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}

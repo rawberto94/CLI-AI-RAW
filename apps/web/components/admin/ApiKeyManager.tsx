@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Key, Plus, Copy, Trash2, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function ApiKeyManager() {
   const [keys, setKeys] = useState<any[]>([]);
@@ -74,7 +75,18 @@ export default function ApiKeyManager() {
             </div>
           </CardContent></Card>
         ))}
-        {keys.length === 0 && <Card className="p-12 text-center text-muted-foreground">No API keys</Card>}
+        {keys.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No API keys"
+            description="Generate API keys for external integrations and automation."
+            primaryAction={{
+              label: 'Generate Key',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

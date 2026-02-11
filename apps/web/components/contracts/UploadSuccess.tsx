@@ -131,8 +131,8 @@ export function UploadSuccess({
                   { label: 'Structure Analysis', done: progress >= 40 },
                   { label: 'Artifact Extraction', done: progress >= 60 },
                   { label: 'Insight Generation', done: progress >= 80 },
-                ].map((step, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                ].map((step) => (
+                  <div key={step.label} className="flex items-center gap-2">
                     <div className={`w-2 h-2 rounded-full ${step.done ? 'bg-green-500' : 'bg-gray-300'}`} />
                     <span className={`text-sm ${step.done ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
                       {step.label}
@@ -167,8 +167,8 @@ export function UploadSuccess({
                   'Important Clauses',
                   'Payment Schedule',
                   'Obligations'
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center gap-2 text-sm">
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-2 text-sm">
                     <CheckCircle2 className="w-4 h-4 text-green-600" />
                     <span className="text-gray-700">{item}</span>
                   </div>

@@ -9,9 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { ClipboardList, Plus, Filter, Clock, AlertTriangle, CheckCircle2, XCircle, BarChart3, ArrowRight, Users } from 'lucide-react';
+import { ClipboardList, Plus, Filter, Clock, AlertTriangle, CheckCircle2, XCircle, BarChart3, ArrowRight, Users, FileX } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 interface ContractRequest {
   id: string;
@@ -159,7 +160,16 @@ export default function ContractRequestsHub() {
 
         <TabsContent value={tab} className="space-y-3 mt-4">
           {requests.length === 0 ? (
-            <Card className="p-12 text-center text-muted-foreground">No requests found</Card>
+            <EmptyState
+              variant="no-results"
+              title="No requests found"
+              description={filterStatus !== 'all' ? 'Try adjusting your filters to see more results.' : 'Create a new contract request to get started.'}
+              primaryAction={{
+                label: 'New Request',
+                href: '/requests/new',
+                icon: Plus,
+              }}
+            />
           ) : requests.map((req) => (
             <Card key={req.id} className={cn('hover:shadow-md transition-shadow', isOverdue(req.sla_deadline) && req.status !== 'COMPLETED' && req.status !== 'REJECTED' && 'border-red-300 dark:border-red-800')}>
               <CardContent className="py-4 px-5">

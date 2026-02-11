@@ -475,7 +475,7 @@ export function VersionTimeline({
       {/* Selected version detail panel */}
       <AnimatePresence>
         {selectedVersion && !compareMode && (
-          <VersionDetailPanel
+          <VersionDetailPanel key="selected-version"
             version={selectedVersion}
             onCompare={() => handleCompareClick(selectedVersion)}
             onRevert={() => handleRevert(selectedVersion)}

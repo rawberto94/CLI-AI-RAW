@@ -119,7 +119,7 @@ export function ContextMenuProvider({ children }: ContextMenuProviderProps) {
       {children}
       <AnimatePresence>
         {state.isOpen && (
-          <ContextMenuPopup
+          <ContextMenuPopup key="ContextMenu-ap-1"
             items={state.items}
             position={state.position}
             onClose={hide}
@@ -226,7 +226,7 @@ function ContextMenuItemComponent({ item, onClose }: ContextMenuItemComponentPro
       {/* Submenu */}
       <AnimatePresence>
         {showSubmenu && item.submenu && (
-          <motion.div
+          <motion.div key="submenu"
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -10 }}
@@ -322,7 +322,7 @@ export function DropdownMenu({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}

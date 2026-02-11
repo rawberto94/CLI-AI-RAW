@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ShieldCheck, Plus, Eye } from 'lucide-react';
 import { toast } from 'sonner';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 export default function DlpPoliciesManager() {
   const [policies, setPolicies] = useState<any[]>([]);
@@ -55,7 +56,18 @@ export default function DlpPoliciesManager() {
             <Badge className={p.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>{p.is_active ? 'Active' : 'Inactive'}</Badge>
           </CardContent></Card>
         ))}
-        {policies.length === 0 && <Card className="p-12 text-center text-muted-foreground">No DLP policies</Card>}
+        {policies.length === 0 && (
+          <EmptyState
+            variant="no-data"
+            title="No DLP policies"
+            description="Create data loss prevention policies to protect sensitive information."
+            primaryAction={{
+              label: 'Add Policy',
+              onClick: () => setShowAdd(true),
+              icon: Plus,
+            }}
+          />
+        )}
       </div>
 
       <Dialog open={showAdd} onOpenChange={setShowAdd}>

@@ -123,7 +123,7 @@ export function SelectableCard({
         >
           <AnimatePresence>
             {selected && (
-              <motion.div
+              <motion.div key="selected"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
@@ -146,7 +146,7 @@ export function SelectableCard({
         >
           <AnimatePresence>
             {selected && (
-              <motion.div
+              <motion.div key="selected"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
@@ -317,7 +317,7 @@ export function ExpandableCard({
 
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -670,7 +670,7 @@ export function CardWithActions({
 
             <AnimatePresence>
               {showMenu && (
-                <>
+                <div key="menu" className="contents">
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -703,7 +703,7 @@ export function CardWithActions({
                       </button>
                     ))}
                   </motion.div>
-                </>
+                </div>
               )}
             </AnimatePresence>
           </div>

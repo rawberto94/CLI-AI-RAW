@@ -471,7 +471,7 @@ const CompactContractRow = memo(function CompactContractRow({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.15, delay: index * 0.015 }}
       className={cn(
-        "flex items-center gap-2 px-4 py-3 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative",
+        "flex items-center gap-4 px-5 py-4 cursor-pointer transition-colors duration-150 group border-b border-slate-100 dark:border-slate-700 relative",
         isSelected 
           ? "bg-slate-50 dark:bg-slate-800 ring-1 ring-slate-300 dark:ring-slate-600" 
           : "hover:bg-slate-50/80 dark:hover:bg-slate-800/50",
@@ -559,7 +559,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </ContractHoverPreview>
 
       {/* Category */}
-      <div className="hidden lg:block w-[100px] truncate">
+      <div className="hidden lg:block w-[120px] truncate">
         {contract.category ? (
           <CategoryBadge 
             category={contract.category.name} 
@@ -577,7 +577,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Contract Type */}
-      <div className="hidden lg:block w-[80px]">
+      <div className="hidden lg:block w-[90px]">
         {contract.type && contract.type !== 'OTHER' ? (
           <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 truncate" title={contract.type}>
             {contract.type}
@@ -590,7 +590,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Party */}
-      <div className="hidden md:block w-[120px]">
+      <div className="hidden md:block w-[140px]">
         {(contract.parties?.supplier || contract.parties?.client) ? (
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center flex-shrink-0">
@@ -609,7 +609,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Value */}
-      <div className="hidden lg:block w-[90px] text-right">
+      <div className="hidden lg:block w-[100px] text-right">
         {contract.value ? (
           <span className="text-[13px] font-medium tabular-nums text-slate-800">
             {formatCurrency(contract.value)}
@@ -620,7 +620,7 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Expiration Date */}
-      <div className="hidden md:block w-[90px]">
+      <div className="hidden md:block w-[100px]">
         {contract.expirationDate ? (
           <div className="flex flex-col">
             <span className={cn(
@@ -649,12 +649,12 @@ const CompactContractRow = memo(function CompactContractRow({
       </div>
 
       {/* Signature Status */}
-      <div className="hidden lg:block w-[70px]">
+      <div className="hidden lg:block w-[80px]">
         <SignatureStatusBadge status={contract.signatureStatus} />
       </div>
 
       {/* Status */}
-      <div className="w-[90px]">
+      <div className="w-[100px]">
         <ContractStatusBadge 
           status={contract.status} 
           documentRole={contract.documentRole}
@@ -1308,9 +1308,19 @@ export default function ContractsPage() {
       if (!response.ok) throw new Error('Categorization failed');
       
       const data = await response.json();
-      const successCount = data.data?.results?.filter((r: any) => r.success).length || 0;
+      const results = data.data?.results || [];
+      const successCount = results.filter((r: any) => r.success && r.category).length;
+      const failedCount = results.filter((r: any) => !r.success || !r.category).length;
       
-      toast.success(`Categorized ${successCount} of ${selectedContracts.size} contracts`);
+      if (successCount > 0 && failedCount === 0) {
+        toast.success(`Categorized ${successCount} contract${successCount > 1 ? 's' : ''}`);
+      } else if (successCount > 0) {
+        toast.success(`Categorized ${successCount} of ${selectedContracts.size} contracts. ${failedCount} could not be auto-categorized.`);
+      } else if (results[0]?.error?.includes('No taxonomy categories')) {
+        toast.error('No categories defined. Go to Settings → Taxonomy to set up categories.', { duration: 5000 });
+      } else {
+        toast.warning('AI could not categorize the selected contracts. Try setting up keywords in your taxonomy.');
+      }
       refetch();
       setSelectedContracts(new Set());
     } catch {
@@ -2507,6 +2517,7 @@ export default function ContractsPage() {
         <AnimatePresence>
           {selectedContracts.size > 0 && (
             <motion.div
+              key="bulk-actions-bar"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -2713,21 +2724,25 @@ export default function ContractsPage() {
 
         {/* Processing Contracts Live Tracker */}
         <AnimatePresence>
-          <ProcessingContractTracker 
-            contracts={contracts} 
-            onContractComplete={(id) => {
-              toast.success('Contract processing completed!', {
-                icon: <CheckCircle className="h-4 w-4 text-green-500" />,
-              });
-              refetch();
-            }}
-          />
+          {contracts.some(c => c.status === 'processing') && (
+            <ProcessingContractTracker 
+              key="processing-tracker"
+              contracts={contracts} 
+              onContractComplete={(id) => {
+                toast.success('Contract processing completed!', {
+                  icon: <CheckCircle className="h-4 w-4 text-green-500" />,
+                });
+                refetch();
+              }}
+            />
+          )}
         </AnimatePresence>
 
         {/* Advanced Filter Panel - Inline & Collapsible */}
         <AnimatePresence>
           {showAdvancedFilters && (
             <motion.div
+              key="advanced-filter-panel"
               initial={{ opacity: 0, height: 0, marginBottom: 0 }}
               animate={{ opacity: 1, height: 'auto', marginBottom: 12 }}
               exit={{ opacity: 0, height: 0, marginBottom: 0 }}
@@ -3074,7 +3089,7 @@ export default function ContractsPage() {
             >
               <Card className="overflow-hidden bg-white border-slate-200 shadow-sm rounded-xl" role="table" aria-label="Contracts list">
                 {/* Table Header */}
-                <div role="row" className="flex items-center gap-2 px-5 py-3 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
+                <div role="row" className="flex items-center gap-4 px-5 py-4 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-500 uppercase tracking-wider sticky top-16 lg:top-0 z-10">
                   <div role="columnheader" className="w-10 flex-shrink-0 flex items-center justify-center">
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -3097,13 +3112,13 @@ export default function ContractsPage() {
                     </Tooltip>
                   </div>
                   <div role="columnheader" className="flex-1 min-w-[200px]">Contract</div>
-                  <div role="columnheader" className="hidden lg:block w-[100px]">Category</div>
-                  <div role="columnheader" className="hidden lg:block w-[80px]">Type</div>
-                  <div role="columnheader" className="hidden md:block w-[120px]">Party</div>
-                  <div role="columnheader" className="hidden lg:block w-[90px] text-right">Value</div>
-                  <div role="columnheader" className="hidden md:block w-[90px]">Expires</div>
-                  <div role="columnheader" className="hidden lg:block w-[70px]">Signed</div>
-                  <div role="columnheader" className="w-[90px]">Status</div>
+                  <div role="columnheader" className="hidden lg:block w-[120px]">Category</div>
+                  <div role="columnheader" className="hidden lg:block w-[90px]">Type</div>
+                  <div role="columnheader" className="hidden md:block w-[140px]">Party</div>
+                  <div role="columnheader" className="hidden lg:block w-[100px] text-right">Value</div>
+                  <div role="columnheader" className="hidden md:block w-[100px]">Expires</div>
+                  <div role="columnheader" className="hidden lg:block w-[80px]">Signed</div>
+                  <div role="columnheader" className="w-[100px]">Status</div>
                   <div role="columnheader" className="w-10 flex-shrink-0"></div>
                 </div>
                 

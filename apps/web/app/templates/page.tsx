@@ -1314,7 +1314,7 @@ export default function TemplatesPage() {
       {/* Loading progress bar */}
       <AnimatePresence>
         {loading && (
-          <motion.div
+          <motion.div key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1624,7 +1624,7 @@ export default function TemplatesPage() {
         {/* Bulk Actions Toolbar */}
         <AnimatePresence>
           {(bulkActionMode || selectedTemplates.size > 0) && (
-            <motion.div
+            <motion.div key="page-ap-1"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -1892,7 +1892,7 @@ export default function TemplatesPage() {
                   {/* Search suggestions dropdown */}
                   <AnimatePresence>
                     {showSearchSuggestions && (recentSearches.length > 0 || searchQuery) && (
-                      <motion.div
+                      <motion.div key="search-suggestions"
                         initial={{ opacity: 0, y: -10, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.98 }}
@@ -2337,7 +2337,7 @@ export default function TemplatesPage() {
                     {/* Quick Action Overlay on Hover */}
                     <AnimatePresence>
                       {hoveredTemplate === template.id && !bulkActionMode && (
-                        <motion.div
+                        <motion.div key="hovered-template"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
@@ -2679,7 +2679,7 @@ export default function TemplatesPage() {
                       {/* Quick Actions Hover Overlay */}
                       <AnimatePresence>
                         {hoveredTemplate === template.id && !bulkActionMode && (
-                          <motion.div
+                          <motion.div key="hovered-template"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -2828,7 +2828,7 @@ export default function TemplatesPage() {
         {/* ============= PREVIEW MODAL ============= */}
         <AnimatePresence>
           {showPreviewModal && previewTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="preview-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -2946,7 +2946,7 @@ export default function TemplatesPage() {
         {/* ============= AI SUGGESTIONS MODAL ============= */}
         <AnimatePresence>
           {showAISuggestions && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="a-i-suggestions" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3080,7 +3080,7 @@ export default function TemplatesPage() {
         {/* ============= VERSION HISTORY MODAL ============= */}
         <AnimatePresence>
           {showVersionHistory && versionHistoryTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="version-history" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3167,7 +3167,7 @@ export default function TemplatesPage() {
         {/* ============= COMPARISON MODAL ============= */}
         <AnimatePresence>
           {showComparison && comparisonTemplates.length === 2 && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="comparison" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3266,7 +3266,7 @@ export default function TemplatesPage() {
         {/* ============= EXPORT MODAL ============= */}
         <AnimatePresence>
           {showExportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="export-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3412,7 +3412,7 @@ export default function TemplatesPage() {
         {/* ============= IMPORT MODAL ============= */}
         <AnimatePresence>
           {showImportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="import-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3578,7 +3578,7 @@ export default function TemplatesPage() {
         {/* ============= CLOUD SYNC MODAL ============= */}
         <AnimatePresence>
           {showCloudSyncModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="cloud-sync-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3778,7 +3778,7 @@ export default function TemplatesPage() {
         {/* ============= SCHEDULE MODAL ============= */}
         <AnimatePresence>
           {showScheduleModal && scheduleTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="schedule-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3872,7 +3872,7 @@ export default function TemplatesPage() {
         {/* ============= DEPENDENCIES MODAL ============= */}
         <AnimatePresence>
           {showDependenciesModal && dependenciesTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="dependencies-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3958,7 +3958,7 @@ export default function TemplatesPage() {
         {/* ============= AUDIT TRAIL MODAL ============= */}
         <AnimatePresence>
           {showAuditTrail && auditTrailTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="audit-trail" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4035,7 +4035,7 @@ export default function TemplatesPage() {
         {/* ============= SMART TAGS MODAL ============= */}
         <AnimatePresence>
           {showTagSuggestions && tagSuggestionTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="tag-suggestions" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4121,7 +4121,7 @@ export default function TemplatesPage() {
         {/* ============= QUICK DUPLICATE MODAL ============= */}
         <AnimatePresence>
           {showQuickDuplicate && duplicateTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="quick-duplicate" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4195,7 +4195,7 @@ export default function TemplatesPage() {
         {/* ============= KEYBOARD SHORTCUTS MODAL ============= */}
         <AnimatePresence>
           {showKeyboardShortcuts && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="keyboard-shortcuts" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4269,7 +4269,7 @@ export default function TemplatesPage() {
         {/* ============= ANALYTICS MODAL ============= */}
         <AnimatePresence>
           {showAnalytics && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="analytics" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4425,7 +4425,7 @@ export default function TemplatesPage() {
         {/* ============= ONBOARDING MODAL ============= */}
         <AnimatePresence>
           {showOnboarding && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="onboarding" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4486,7 +4486,7 @@ export default function TemplatesPage() {
         {/* ============= PREVIEW SIDEBAR (Slide-in Panel) ============= */}
         <AnimatePresence>
           {previewSidebarOpen && sidebarTemplate && (
-            <>
+            <div key="preview-sidebar-open" className="contents">
               {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -4620,14 +4620,14 @@ export default function TemplatesPage() {
                   </Button>
                 </div>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
         {/* ============= CONTEXT MENU ============= */}
         <AnimatePresence>
           {contextMenu && (
-            <>
+            <div key="context-menu" className="contents">
               <div 
                 className="fixed inset-0 z-40" 
                 onClick={closeContextMenu}
@@ -4717,14 +4717,14 @@ export default function TemplatesPage() {
                   Delete
                 </button>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
         {/* ============= ACTIVITY PANEL ============= */}
         <AnimatePresence>
           {showActivityPanel && (
-            <>
+            <div key="activity-panel" className="contents">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4784,7 +4784,7 @@ export default function TemplatesPage() {
                   )}
                 </div>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
@@ -4826,7 +4826,7 @@ export default function TemplatesPage() {
         {/* ============= SCHEDULED ACTIONS INDICATOR ============= */}
         <AnimatePresence>
           {scheduledActions.filter(s => s.status === 'pending').length > 0 && (
-            <motion.div
+            <motion.div key="page-ap-2"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
@@ -4865,7 +4865,7 @@ export default function TemplatesPage() {
         {/* ============= QUICK ACTIONS FLOATING BAR ============= */}
         <AnimatePresence>
           {showQuickActions && templates.length > 0 && (
-            <motion.div
+            <motion.div key="quick-actions"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
@@ -4956,7 +4956,7 @@ export default function TemplatesPage() {
         {/* Show Quick Actions Toggle when hidden */}
         <AnimatePresence>
           {!showQuickActions && templates.length > 0 && (
-            <motion.button
+            <motion.button key="page-ap-3"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -4972,7 +4972,7 @@ export default function TemplatesPage() {
         {/* ============= SCROLL TO TOP BUTTON ============= */}
         <AnimatePresence>
           {filteredAndSortedTemplates.length > 6 && (
-            <motion.button
+            <motion.button key="filtered-and-sorted-templates-length"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}

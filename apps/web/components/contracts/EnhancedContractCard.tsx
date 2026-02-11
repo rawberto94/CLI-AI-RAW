@@ -815,7 +815,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
         <AnimatePresence>
           {contract.isFavorite && (
-            <motion.div
+            <motion.div key="EnhancedContractCard-ap-1"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
@@ -974,7 +974,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       {/* Quick Actions Bar (appears on hover) - Premium Glassmorphism */}
       <AnimatePresence>
         {isHovered && (
-          <motion.div
+          <motion.div key="hovered"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}

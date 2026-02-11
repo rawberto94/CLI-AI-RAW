@@ -165,7 +165,7 @@ function TourOverlay() {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="Onboarding-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -572,7 +572,7 @@ export function WelcomeModal({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="Onboarding-ap-2"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -719,7 +719,7 @@ export function Coachmark({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="Onboarding-ap-3"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}

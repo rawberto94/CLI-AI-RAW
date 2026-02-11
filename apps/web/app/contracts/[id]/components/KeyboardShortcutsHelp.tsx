@@ -85,18 +85,18 @@ export const KeyboardShortcutsHelp = memo(function KeyboardShortcutsHelp() {
                 {categoryLabels[category as keyof typeof categoryLabels]}
               </h4>
               <div className="space-y-2">
-                {items.map((shortcut, idx) => (
+                {items.map((shortcut) => (
                   <motion.div
-                    key={idx}
+                    key={shortcut.description}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: 0.03 }}
                     className="flex items-center justify-between py-1.5"
                   >
                     <span className="text-sm text-slate-700">{shortcut.description}</span>
                     <div className="flex items-center gap-1">
                       {shortcut.keys.map((key, keyIdx) => (
-                        <React.Fragment key={keyIdx}>
+                        <React.Fragment key={key}>
                           <KeyboardKey>{key}</KeyboardKey>
                           {keyIdx < shortcut.keys.length - 1 && (
                             <span className="text-slate-400 text-xs">+</span>

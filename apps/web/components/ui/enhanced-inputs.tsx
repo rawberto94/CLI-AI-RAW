@@ -233,7 +233,7 @@ export const EnhancedInput = forwardRef<HTMLInputElement, EnhancedInputProps>(
         {/* Error/Success messages */}
         <AnimatePresence>
           {error && (
-            <motion.p
+            <motion.p key="error"
               id={`${inputId}-error`}
               initial={{ opacity: 0, y: -10, height: 0 }}
               animate={{ opacity: 1, y: 0, height: 'auto' }}
@@ -375,7 +375,7 @@ export const FloatingLabelInput = forwardRef<HTMLInputElement, FloatingLabelInpu
         {/* Error message */}
         <AnimatePresence>
           {error && (
-            <motion.p
+            <motion.p key="error"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -492,7 +492,7 @@ export const EnhancedTextarea = forwardRef<HTMLTextAreaElement, EnhancedTextarea
         <div className="flex items-center justify-between mt-1.5">
           <AnimatePresence>
             {error && (
-              <motion.p
+              <motion.p key="error"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -590,7 +590,7 @@ export const EnhancedCheckbox = forwardRef<HTMLInputElement, EnhancedCheckboxPro
           >
             <AnimatePresence>
               {checked && (
-                <motion.div
+                <motion.div key="checked"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
@@ -643,7 +643,7 @@ export const EnhancedCheckbox = forwardRef<HTMLInputElement, EnhancedCheckboxPro
         >
           <AnimatePresence>
             {checked && (
-              <motion.div
+              <motion.div key="checked"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
@@ -717,7 +717,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
           >
             <AnimatePresence>
               {checked && (
-                <motion.div
+                <motion.div key="checked"
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
@@ -769,7 +769,7 @@ export const EnhancedRadio = forwardRef<HTMLInputElement, EnhancedRadioProps>(
         >
           <AnimatePresence>
             {checked && (
-              <motion.div
+              <motion.div key="checked"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}

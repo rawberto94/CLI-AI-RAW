@@ -179,7 +179,7 @@ function ConfirmationDialog({
   return (
     <AnimatePresence>
       {isOpen && options && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div key="open" className="fixed inset-0 z-[100] flex items-center justify-center">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -313,7 +313,7 @@ export function DeleteConfirmation({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div key="open" className="fixed inset-0 z-[100] flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -522,7 +522,7 @@ export function useUnsavedChangesWarning({
   const WarningDialog = () => (
     <AnimatePresence>
       {showWarning && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center">
+        <div key="warning" className="fixed inset-0 z-[100] flex items-center justify-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}

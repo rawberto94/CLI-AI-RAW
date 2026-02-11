@@ -276,7 +276,7 @@ const WidgetItem: React.FC<{
         </button>
         <AnimatePresence>
           {showSizeDropdown && (
-            <motion.div
+            <motion.div key="size-dropdown"
               initial={{ opacity: 0, y: -5 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -5 }}

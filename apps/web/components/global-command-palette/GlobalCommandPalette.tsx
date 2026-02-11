@@ -310,7 +310,7 @@ function GlobalCommandPaletteModal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -416,7 +416,7 @@ function GlobalCommandPaletteModal({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

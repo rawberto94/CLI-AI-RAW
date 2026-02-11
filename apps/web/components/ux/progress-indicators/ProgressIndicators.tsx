@@ -292,7 +292,7 @@ export const StepProgress = memo(function StepProgress({
 
         <AnimatePresence>
           {!isCollapsed && (
-            <motion.div
+            <motion.div key="ProgressIndicators-ap-1"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

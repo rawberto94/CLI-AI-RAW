@@ -703,7 +703,7 @@ export const ContractPreviewPanel = memo(function ContractPreviewPanel({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop for mobile */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -944,7 +944,7 @@ export const ContractPreviewPanel = memo(function ContractPreviewPanel({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

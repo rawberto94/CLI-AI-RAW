@@ -337,7 +337,7 @@ const SmartSearchInput = memo(function SmartSearchInput({
       {/* Dropdown */}
       <AnimatePresence>
         {showDropdown && (
-          <motion.div
+          <motion.div key="dropdown"
             ref={dropdownRef}
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -890,7 +890,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       {/* Loading shimmer overlay */}
       <AnimatePresence>
         {isLoading && (
-          <motion.div
+          <motion.div key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -955,7 +955,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       {/* Filter Chips Row */}
       <AnimatePresence>
         {showAdvanced && (
-          <motion.div
+          <motion.div key="advanced"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}

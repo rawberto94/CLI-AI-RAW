@@ -436,8 +436,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                             {/* Tags */}
                             {clause.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-3">
-                                {clause.tags.map((tag, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                {clause.tags.map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
                                     <Tag className="h-3 w-3 mr-1" />
                                     {tag}
                                   </Badge>
@@ -664,8 +664,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                 <Badge variant="secondary">{selectedClause.category}</Badge>
                 {selectedClause.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedClause.tags.map((tag, idx) => (
-                      <Badge key={idx} variant="outline">
+                    {selectedClause.tags.map((tag) => (
+                      <Badge key={tag} variant="outline">
                         <Tag className="h-3 w-3 mr-1" />
                         {tag}
                       </Badge>

@@ -614,11 +614,11 @@ export function QuickStatsRow({
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {stats.map((stat, index) => {
+      {stats.map((stat) => {
         const Icon = stat.icon;
         return (
           <Link
-            key={index}
+            key={stat.label}
             href={stat.href}
             className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-slate-300 transition-all group"
           >

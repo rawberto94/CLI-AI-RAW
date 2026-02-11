@@ -160,8 +160,9 @@ export function CategorySelector({
 
   // Find selected category when value or categories change
   useEffect(() => {
-    if (value && categories.length > 0) {
-      const found = categories.find(
+    const cats = Array.isArray(categories) ? categories : [];
+    if (value && cats.length > 0) {
+      const found = cats.find(
         (c) => c.id === value || c.name === value
       );
       setSelectedCategory(found || null);
@@ -172,9 +173,11 @@ export function CategorySelector({
 
   // Filter categories - memoized for performance
   const filteredCategories = useMemo(() => {
-    if (!searchQuery) return categories;
+    // Ensure categories is always an array
+    const cats = Array.isArray(categories) ? categories : [];
+    if (!searchQuery) return cats;
     const query = searchQuery.toLowerCase();
-    return categories.filter(
+    return cats.filter(
       (c) =>
         c.name.toLowerCase().includes(query) ||
         c.path.toLowerCase().includes(query)
@@ -182,7 +185,7 @@ export function CategorySelector({
   }, [categories, searchQuery]);
 
   // Group by parent for hierarchical display
-  const groupedByParent = filteredCategories.reduce((acc, cat) => {
+  const groupedByParent = (Array.isArray(filteredCategories) ? filteredCategories : []).reduce((acc, cat) => {
     const parentId = cat.parentId || 'root';
     if (!acc[parentId]) acc[parentId] = [];
     acc[parentId].push(cat);
