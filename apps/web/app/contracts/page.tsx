@@ -2513,7 +2513,7 @@ export default function ContractsPage() {
       
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-3 space-y-2.5">
 
-        {/* Bulk Actions Bar */}
+        {/* Bulk Actions Bar — sticky so it's always visible when scrolling */}
         <AnimatePresence>
           {selectedContracts.size > 0 && (
             <motion.div
@@ -2522,6 +2522,7 @@ export default function ContractsPage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.15 }}
+              className="sticky top-0 z-40"
             >
               <Card className="bg-slate-900 border-slate-700/50 shadow-lg rounded-xl overflow-hidden">
                 <div className="h-px w-full bg-slate-700" />
