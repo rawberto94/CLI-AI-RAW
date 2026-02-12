@@ -470,9 +470,13 @@ export default function TenantAdminPage() {
     }
   };
 
-  const copyInviteLink = (token: string) => {
-    const link = `${window.location.origin}/auth/signup?invite=${token}`;
-    navigator.clipboard.writeText(link);
+  const copyInviteLink = (invitationId: string) => {
+    const link = `${window.location.origin}/auth/signup?invite=${invitationId}`;
+    navigator.clipboard.writeText(link).then(() => {
+      // Toast handled by caller if needed
+    }).catch(() => {
+      // Fallback: no-op
+    });
   };
 
   const getRoleBadgeVariant = (role: string) => {
@@ -838,7 +842,7 @@ export default function TenantAdminPage() {
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                onClick={() => copyInviteLink((invitation as any).token)}
+                                onClick={() => copyInviteLink(invitation.id)}
                                 title="Copy invite link"
                               >
                                 <Copy className="h-4 w-4" />
@@ -921,7 +925,10 @@ export default function TenantAdminPage() {
                       {tenantInfo?.usage?.contractsProcessed || 0} contracts processed
                     </p>
                   </div>
-                  <Button className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600">
+                  <Button
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 text-white hover:from-violet-600 hover:to-purple-600"
+                    onClick={() => window.location.href = '/settings'}
+                  >
                     Upgrade Plan
                   </Button>
                 </div>
@@ -934,7 +941,17 @@ export default function TenantAdminPage() {
                 <CardDescription>Irreversible actions - proceed with caution</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button variant="destructive" className="shadow-lg shadow-red-500/20">
+                <Button
+                  variant="destructive"
+                  className="shadow-lg shadow-red-500/20"
+                  onClick={() => {
+                    if (window.confirm('Are you sure you want to delete this organization? This action is irreversible.')) {
+                      fetch('/api/admin/organization', { method: 'DELETE' })
+                        .then(() => window.location.href = '/')
+                        .catch(() => alert('Failed to delete organization'));
+                    }
+                  }}
+                >
                   Delete Organization
                 </Button>
               </CardContent>

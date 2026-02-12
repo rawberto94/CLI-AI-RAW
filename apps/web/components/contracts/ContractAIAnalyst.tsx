@@ -482,6 +482,11 @@ export function ContractAIAnalyst({
             type: contract.contractType,
             value: contract.totalValue,
           },
+          // Send conversation history for multi-turn context
+          conversationHistory: messages
+            .filter(m => !m.isLoading)
+            .slice(-10)
+            .map(m => ({ role: m.role, content: m.content })),
         }),
       });
 

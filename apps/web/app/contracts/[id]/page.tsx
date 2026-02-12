@@ -152,6 +152,10 @@ interface ContractData {
   billing_frequency_type?: string | null
   periodicity?: string | null
   signature_date?: string | null
+  signature_status?: string | null
+  signature_required_flag?: boolean | null
+  document_classification?: string | null
+  document_classification_warning?: string | null
   start_date?: string | null
   end_date?: string | null
   termination_date?: string | null

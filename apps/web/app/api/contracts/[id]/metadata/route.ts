@@ -190,6 +190,46 @@ export async function GET(
       }
     }
     
+    // If still no parties, try extracting from AI artifacts (overview/parties)
+    // Also capture overview data for other missing fields
+    let artifactOverview: Record<string, any> | null = null;
+    if (normalizedParties.length === 0 || !aiMetadata.contract_short_description || !aiMetadata.jurisdiction) {
+      try {
+        const artifacts = await prisma.artifact.findMany({
+          where: { contractId, tenantId },
+          select: { type: true, data: true },
+        });
+        for (const artifact of artifacts) {
+          const artType = artifact.type.toLowerCase();
+          const artData = artifact.data as Record<string, any> | null;
+          if (!artData) continue;
+          
+          // Capture overview artifact for field enrichment
+          if ((artType === 'overview' || artType === 'metadata') && !artifactOverview) {
+            artifactOverview = artData;
+          }
+          
+          // Extract parties from overview, metadata, or parties artifact
+          if (normalizedParties.length === 0 && (artType === 'overview' || artType === 'metadata' || artType === 'parties') && artData.parties && Array.isArray(artData.parties)) {
+            for (const p of artData.parties) {
+              const name = p.legalName || p.name;
+              if (name) {
+                normalizedParties.push({
+                  legalName: name,
+                  role: p.role || p.type || 'Party',
+                  legalForm: p.legalForm || p.entityType || '',
+                  registeredAddress: p.address || p.registeredAddress || '',
+                  registeredSeat: p.registeredSeat || '',
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // Silent fail — artifact lookup is a best-effort fallback
+      }
+    }
+    
     // Build enterprise metadata response
     const enterpriseMetadata: EnterpriseMetadata = {
       // Identification
@@ -198,18 +238,18 @@ export async function GET(
       document_classification: aiMetadata.document_classification || 'contract',
       document_classification_confidence: aiMetadata.document_classification_confidence,
       document_classification_warning: aiMetadata.document_classification_warning,
-      contract_short_description: aiMetadata.contract_short_description || contract.description || '',
+      contract_short_description: aiMetadata.contract_short_description || contract.description || artifactOverview?.summary || '',
       
       // Parties - use normalized parties
       external_parties: normalizedParties,
       
       // Commercials
-      tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0),
+      tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0) || (artifactOverview?.totalValue ? Number(artifactOverview.totalValue) : 0),
       tcv_text: aiMetadata.tcv_text || '',
       payment_type: aiMetadata.payment_type || '',
       billing_frequency_type: aiMetadata.billing_frequency_type || contract.paymentFrequency || '',
       periodicity: aiMetadata.periodicity || contract.billingCycle || '',
-      currency: aiMetadata.currency || contract.currency || 'USD',
+      currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
       
       // Dates
       signature_date: aiMetadata.signature_date || null,
@@ -220,8 +260,8 @@ export async function GET(
         aiMetadata.signature_status === 'partially_signed' ||
         (!aiMetadata.signature_date && aiMetadata.signature_status !== 'signed')
       ),
-      start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || '',
-      end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || null,
+      start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || artifactOverview?.effectiveDate || artifactOverview?.effective_date || artifactOverview?.startDate || artifactOverview?.start_date || '',
+      end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || artifactOverview?.expirationDate || artifactOverview?.expiration_date || artifactOverview?.endDate || artifactOverview?.end_date || null,
       termination_date: aiMetadata.termination_date || null,
       
       // Reminders
@@ -231,8 +271,8 @@ export async function GET(
       notice_period_days: aiMetadata.notice_period_days || contract.noticePeriodDays || undefined,
       
       // Ownership
-      jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || '',
-      contract_language: aiMetadata.contract_language || 'en',
+      jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || artifactOverview?.jurisdiction || '',
+      contract_language: aiMetadata.contract_language || artifactOverview?.language || 'en',
       created_by_user_id: aiMetadata.created_by_user_id || contract.uploadedBy || '',
       contract_owner_user_ids: aiMetadata.contract_owner_user_ids || [],
       access_group_ids: aiMetadata.access_group_ids || [],

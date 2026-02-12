@@ -225,7 +225,9 @@ export const ContractNotes = memo(function ContractNotes({
   const sortedNotes = [...notes].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
-    return b.createdAt.getTime() - a.createdAt.getTime()
+    const timeA = a.createdAt?.getTime?.() ?? 0
+    const timeB = b.createdAt?.getTime?.() ?? 0
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA)
   })
   
   return (

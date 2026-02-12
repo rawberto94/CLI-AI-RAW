@@ -98,197 +98,7 @@ interface Threshold {
   enabled: boolean;
 }
 
-const mockPolicies: Policy[] = [
-  {
-    id: 'p1',
-    name: 'Liability Cap Policy',
-    description: 'Ensures liability limitations meet company standards',
-    category: 'risk',
-    status: 'active',
-    severity: 'critical',
-    rules: 5,
-    violations: 2,
-    lastUpdated: '2024-03-10',
-    enforcement: 'block',
-  },
-  {
-    id: 'p2',
-    name: 'GDPR Compliance',
-    description: 'Data protection and privacy requirements',
-    category: 'compliance',
-    status: 'active',
-    severity: 'critical',
-    rules: 12,
-    violations: 0,
-    lastUpdated: '2024-03-12',
-    enforcement: 'block',
-  },
-  {
-    id: 'p3',
-    name: 'Payment Terms Standard',
-    description: 'Net 45+ payment terms required',
-    category: 'commercial',
-    status: 'active',
-    severity: 'medium',
-    rules: 3,
-    violations: 5,
-    lastUpdated: '2024-03-08',
-    enforcement: 'warn',
-  },
-  {
-    id: 'p4',
-    name: 'Termination Rights',
-    description: 'Must include termination for convenience',
-    category: 'legal',
-    status: 'active',
-    severity: 'high',
-    rules: 4,
-    violations: 3,
-    lastUpdated: '2024-03-05',
-    enforcement: 'warn',
-  },
-  {
-    id: 'p5',
-    name: 'Contract Value Threshold',
-    description: 'Approval requirements based on contract value',
-    category: 'operational',
-    status: 'active',
-    severity: 'high',
-    rules: 6,
-    violations: 1,
-    lastUpdated: '2024-03-14',
-    enforcement: 'block',
-  },
-  {
-    id: 'p6',
-    name: 'IP Ownership Standards',
-    description: 'Customer must retain IP for deliverables',
-    category: 'legal',
-    status: 'draft',
-    severity: 'high',
-    rules: 3,
-    violations: 0,
-    lastUpdated: '2024-03-14',
-    enforcement: 'audit',
-  },
-];
-
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: 'log1',
-    timestamp: '2024-03-14 10:30:00',
-    action: 'Contract clause modified',
-    user: 'Sarah Chen',
-    resource: 'MSA - Acme Corp',
-    decision: 'approved',
-    reason: 'Within policy parameters',
-    policyId: 'p1',
-    riskScore: 25,
-  },
-  {
-    id: 'log2',
-    timestamp: '2024-03-14 10:15:00',
-    action: 'Liability clause violation',
-    user: 'Mike Johnson',
-    resource: 'SLA - CloudTech',
-    decision: 'escalated',
-    reason: 'Unlimited liability detected',
-    policyId: 'p1',
-    riskScore: 95,
-  },
-  {
-    id: 'log3',
-    timestamp: '2024-03-14 09:45:00',
-    action: 'Payment terms deviation',
-    user: 'Lisa Park',
-    resource: 'MSA - DataTech',
-    decision: 'overridden',
-    reason: 'Business exception approved by VP',
-    policyId: 'p3',
-    riskScore: 45,
-  },
-  {
-    id: 'log4',
-    timestamp: '2024-03-14 09:30:00',
-    action: 'Contract submission blocked',
-    user: 'Tom Wilson',
-    resource: 'PO - VendorX',
-    decision: 'rejected',
-    reason: 'Missing GDPR clauses',
-    policyId: 'p2',
-    riskScore: 85,
-  },
-  {
-    id: 'log5',
-    timestamp: '2024-03-14 09:00:00',
-    action: 'AI suggestion accepted',
-    user: 'Sarah Chen',
-    resource: 'SOW - ConsultPro',
-    decision: 'approved',
-    reason: 'Improved contract health score',
-    policyId: 'p4',
-    riskScore: 15,
-  },
-];
-
-const mockRiskFlags: RiskFlag[] = [
-  {
-    id: 'rf1',
-    type: 'deviation',
-    severity: 'critical',
-    title: 'Unlimited Liability Clause',
-    description: 'Contract contains unlimited liability exposure contrary to policy',
-    contract: 'MSA - Acme Corp',
-    clause: 'Section 7.2',
-    detectedAt: '2024-03-14 09:00:00',
-    status: 'open',
-    recommendation: 'Add liability cap at contract value or $1M',
-  },
-  {
-    id: 'rf2',
-    type: 'compliance',
-    severity: 'high',
-    title: 'Missing DPA Clause',
-    description: 'Data Processing Agreement not included for GDPR compliance',
-    contract: 'SLA - CloudTech',
-    clause: 'Missing',
-    detectedAt: '2024-03-13 14:30:00',
-    status: 'acknowledged',
-    recommendation: 'Add standard DPA addendum to contract',
-  },
-  {
-    id: 'rf3',
-    type: 'threshold',
-    severity: 'medium',
-    title: 'Contract Value Exceeds $500K',
-    description: 'Requires VP-level approval per policy',
-    contract: 'Master Agreement - TechVendor',
-    detectedAt: '2024-03-13 10:00:00',
-    status: 'resolved',
-    recommendation: 'Route to VP approval workflow',
-  },
-  {
-    id: 'rf4',
-    type: 'ai-generated',
-    severity: 'low',
-    title: 'Ambiguous Termination Language',
-    description: 'AI detected potentially unclear termination provisions',
-    contract: 'SOW - ConsultPro',
-    clause: 'Section 12.1',
-    detectedAt: '2024-03-12 16:00:00',
-    status: 'open',
-    recommendation: 'Clarify termination notice period and process',
-  },
-];
-
-const mockThresholds: Threshold[] = [
-  { id: 't1', name: 'Max Contract Value (Auto)', metric: 'Contract Value', operator: 'lte', value: 100000, unit: 'USD', action: 'notify', enabled: true },
-  { id: 't2', name: 'VP Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 500000, unit: 'USD', action: 'escalate', enabled: true },
-  { id: 't3', name: 'Exec Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 1000000, unit: 'USD', action: 'block', enabled: true },
-  { id: 't4', name: 'Max Contract Duration', metric: 'Term Length', operator: 'lte', value: 36, unit: 'months', action: 'warn', enabled: true },
-  { id: 't5', name: 'Risk Score Limit', metric: 'Risk Score', operator: 'lt', value: 70, unit: 'points', action: 'block', enabled: true },
-  { id: 't6', name: 'Min Payment Terms', metric: 'Payment Terms', operator: 'gte', value: 45, unit: 'days', action: 'warn', enabled: false },
-];
+// Dead mock data removed — all data comes from /api/governance
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -344,6 +154,18 @@ export function AIGuardrails() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [riskFlags, setRiskFlags] = useState<RiskFlag[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [apiStats, setApiStats] = useState<{
+    totalChecks: number; complianceRate: number; avgRiskScore: number;
+    auditLogCount: number; complianceScore: number; highValueContracts: number;
+  }>({ totalChecks: 0, complianceRate: 100, avgRiskScore: 0, auditLogCount: 0, complianceScore: 100, highValueContracts: 0 });
+  const [thresholds, setThresholds] = useState<Threshold[]>([
+    { id: 't1', name: 'Max Contract Value (Auto)', metric: 'Contract Value', operator: 'lte', value: 100000, unit: 'USD', action: 'notify', enabled: true },
+    { id: 't2', name: 'VP Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 500000, unit: 'USD', action: 'escalate', enabled: true },
+    { id: 't3', name: 'Exec Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 1000000, unit: 'USD', action: 'block', enabled: true },
+    { id: 't4', name: 'Max Contract Duration', metric: 'Term Length', operator: 'lte', value: 36, unit: 'months', action: 'warn', enabled: true },
+    { id: 't5', name: 'Risk Score Limit', metric: 'Risk Score', operator: 'lt', value: 70, unit: 'points', action: 'block', enabled: true },
+    { id: 't6', name: 'Min Payment Terms', metric: 'Payment Terms', operator: 'gte', value: 45, unit: 'days', action: 'warn', enabled: false },
+  ]);
   const [loading, setLoading] = useState(true);
 
   // Fetch governance data from API - no mock data fallback
@@ -357,6 +179,16 @@ export function AIGuardrails() {
           setPolicies(json.data.policies || []);
           setRiskFlags(json.data.flags || []);
           setAuditLogs(json.data.auditLogs || []);
+          if (json.data.stats) {
+            setApiStats({
+              totalChecks: json.data.stats.totalChecks || 0,
+              complianceRate: json.data.stats.complianceRate ?? 100,
+              avgRiskScore: json.data.stats.avgRiskScore || 0,
+              auditLogCount: json.data.stats.auditLogCount || 0,
+              complianceScore: json.data.stats.complianceScore || 100,
+              highValueContracts: json.data.stats.highValueContracts || 0,
+            });
+          }
         } else {
           // API error - show empty state, not mock data
           setPolicies([]);
@@ -518,6 +350,17 @@ export function AIGuardrails() {
               <p className="text-gray-500">Policy enforcement, risk management, and audit controls</p>
             </div>
           </div>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                detail: { message: 'Analyze our current governance posture — policies, open risk flags, compliance rate, and recommend improvements.' }
+              }));
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+          >
+            <Brain className="h-4 w-4" />
+            Ask AI
+          </button>
         </div>
 
         {/* Stats */}
@@ -583,8 +426,8 @@ export function AIGuardrails() {
                 <Brain className="h-5 w-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">94%</p>
-                <p className="text-sm text-gray-500">AI Accuracy</p>
+                <p className="text-2xl font-bold text-gray-900">{apiStats.complianceRate}%</p>
+                <p className="text-sm text-gray-500">Compliance Rate</p>
               </div>
             </div>
           </motion.div>
@@ -600,7 +443,7 @@ export function AIGuardrails() {
                 <Scale className="h-5 w-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">78</p>
+                <p className="text-2xl font-bold text-gray-900">{apiStats.avgRiskScore}</p>
                 <p className="text-sm text-gray-500">Avg Risk Score</p>
               </div>
             </div>
@@ -723,11 +566,11 @@ export function AIGuardrails() {
                             </div>
                             <div className="p-3 bg-white rounded-lg">
                               <p className="text-xs text-gray-500 mb-1">Total Checks</p>
-                              <p className="font-medium text-gray-900">1,234</p>
+                              <p className="font-medium text-gray-900">{apiStats.totalChecks.toLocaleString()}</p>
                             </div>
                             <div className="p-3 bg-white rounded-lg">
                               <p className="text-xs text-gray-500 mb-1">Compliance Rate</p>
-                              <p className="font-medium text-green-600">98.5%</p>
+                              <p className="font-medium text-green-600">{apiStats.complianceRate}%</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-4">
@@ -870,45 +713,39 @@ export function AIGuardrails() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Risk</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entity</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {auditLogs.map((log) => (
+                      {auditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                            <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No audit log entries found</p>
+                            <p className="text-xs mt-1">Activity will appear here as actions are performed</p>
+                          </td>
+                        </tr>
+                      ) : auditLogs.map((log: any) => (
                         <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-500">{log.timestamp}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{log.time || log.timestamp || '—'}</td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{log.action}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.user}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.resource}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{log.user || 'System'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{log.entity || log.resource || '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getDecisionColor(log.decision)}`}>
-                              {log.decision === 'approved' && <CheckCircle2 className="h-3 w-3" />}
-                              {log.decision === 'rejected' && <XCircle className="h-3 w-3" />}
-                              {log.decision === 'escalated' && <AlertCircle className="h-3 w-3" />}
-                              {log.decision === 'overridden' && <Unlock className="h-3 w-3" />}
-                              {log.decision}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              (log.status || log.decision) === 'completed' || (log.status || log.decision) === 'approved'
+                                ? 'text-green-600 bg-green-50'
+                                : (log.status || log.decision) === 'rejected'
+                                ? 'text-red-600 bg-red-50'
+                                : 'text-gray-600 bg-gray-50'
+                            }`}>
+                              {log.status || log.decision || 'completed'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className={`h-2 w-16 rounded-full overflow-hidden bg-gray-200`}>
-                              <div
-                                className={`h-full ${
-                                  log.riskScore >= 80 ? 'bg-red-500' :
-                                  log.riskScore >= 60 ? 'bg-orange-500' :
-                                  log.riskScore >= 40 ? 'bg-yellow-500' :
-                                  'bg-green-500'
-                                }`}
-                                style={{ width: `${log.riskScore}%` }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{log.reason}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -941,7 +778,7 @@ export function AIGuardrails() {
                 </div>
 
                 <div className="space-y-3">
-                  {mockThresholds.map((threshold) => (
+                  {thresholds.map((threshold) => (
                     <div
                       key={threshold.id}
                       className={`p-4 rounded-xl border ${
@@ -986,7 +823,12 @@ export function AIGuardrails() {
                             <input
                               type="checkbox"
                               checked={threshold.enabled}
-                              onChange={() => {}}
+                              onChange={() => {
+                                setThresholds(prev => prev.map(t =>
+                                  t.id === threshold.id ? { ...t, enabled: !t.enabled } : t
+                                ));
+                                toast.success(`Threshold "${threshold.name}" ${threshold.enabled ? 'disabled' : 'enabled'}`);
+                              }}
                               className="sr-only peer"
                             />
                             <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>

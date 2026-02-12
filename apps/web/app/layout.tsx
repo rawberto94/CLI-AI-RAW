@@ -44,14 +44,8 @@ export const metadata = {
     title: "ConTigo",
   },
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
-      { url: "/icons/icon-512x512.svg", sizes: "512x512", type: "image/svg+xml" },
-    ],
-    apple: [
-      { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
-    ],
+    icon: { url: "/favicon.svg", type: "image/svg+xml" },
+    apple: { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
   },
 };
 
@@ -69,6 +63,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Additional icons rendered manually to avoid Next.js metadata key prop bug */}
+        <link rel="icon" href="/icons/icon-192x192.svg" sizes="192x192" type="image/svg+xml" />
+        <link rel="icon" href="/icons/icon-512x512.svg" sizes="512x512" type="image/svg+xml" />
+      </head>
       <body className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans antialiased">
         {/* Skip to main content link for accessibility */}
         <a 

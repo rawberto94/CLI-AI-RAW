@@ -388,6 +388,7 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
           <a href="#ai-technology" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">AI Technology</a>
           <a href="#architecture" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Architecture</a>
           <a href="#innovation" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Innovation</a>
+          <a href="#pricing" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Pricing</a>
           <a href="#security" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Security</a>
           <a href="#faq" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">FAQ</a>
           <div className="pt-6 space-y-3">
@@ -418,7 +419,7 @@ export default function LandingPageClient() {
   const faqs = [
     {
       question: "What types of contracts can ConTigo handle?",
-      answer: "ConTigo supports all types of business contracts including NDAs, service agreements, employment contracts, vendor agreements, licensing agreements, SOWs, and more. We support PDF, Word, and 20+ document formats."
+      answer: "ConTigo supports all types of business contracts including NDAs, service agreements, employment contracts, vendor agreements, licensing agreements, SOWs, and more. We support PDF, Word, Excel, images (via OCR), and 15+ document formats."
     },
     {
       question: "How does the AI analysis work?",
@@ -430,7 +431,7 @@ export default function LandingPageClient() {
     },
     {
       question: "Can I integrate ConTigo with other tools?",
-      answer: "Yes! ConTigo offers a robust REST API and webhooks that allow you to integrate with your existing tools and services. We support common document storage providers, CRM systems, and e-signature platforms. We also support SSO with SAML 2.0."
+      answer: "Yes! ConTigo offers a comprehensive REST API, webhooks, and integrations with document storage providers like Google Drive. We also support e-signature workflows and SSO with SAML 2.0 and OAuth 2.0 for enterprise identity management."
     },
     {
       question: "What makes ConTigo different from other CLM solutions?",
@@ -460,26 +461,16 @@ export default function LandingPageClient() {
               { label: 'Features', href: '#features' },
               { label: 'AI Tech', href: '#ai-technology' },
               { label: 'Architecture', href: '#architecture' },
-              { label: 'Pricing', href: '/pricing', isLink: true },
+              { label: 'Pricing', href: '#pricing' },
               { label: 'FAQ', href: '#faq' },
             ].map((item, i) => (
-              item.isLink ? (
-                <Link 
-                  key={i}
-                  href={item.href}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200"
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <a 
-                  key={i}
-                  href={item.href}
-                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200"
-                >
-                  {item.label}
-                </a>
-              )
+              <a 
+                key={i}
+                href={item.href}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-all duration-200"
+              >
+                {item.label}
+              </a>
             ))}
           </div>
           
@@ -597,7 +588,7 @@ export default function LandingPageClient() {
             {/* Trust Badges with Hover Effects */}
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
               {[
-                { icon: <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />, text: 'Enterprise SLA', color: 'text-green-600' },
+                { icon: <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />, text: 'Enterprise-Ready', color: 'text-green-600' },
                 { icon: <Shield aria-hidden="true" className="w-4 h-4" />, text: 'Compliance-Ready', color: 'text-violet-600' },
                 { icon: <Lock aria-hidden="true" className="w-4 h-4" />, text: '256-bit Encryption', color: 'text-violet-600' },
                 { icon: <CheckCircle2 aria-hidden="true" className="w-4 h-4" />, text: 'GDPR Compliant', color: 'text-violet-600' },
@@ -704,7 +695,7 @@ export default function LandingPageClient() {
               { value: <AnimatedCounter end={50} suffix="+" />, label: 'Clause Types', icon: Brain },
               { value: '<3s', label: 'Analysis Time', icon: Zap },
               { value: <AnimatedCounter end={18} suffix="+" />, label: 'Artifact Types', icon: Layers },
-              { value: <AnimatedCounter end={20} suffix="+" />, label: 'Doc Formats', icon: FileText },
+              { value: <AnimatedCounter end={15} suffix="+" />, label: 'Doc Formats', icon: FileText },
             ].map((stat, i) => (
               <div key={i} className="group relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 rounded-2xl opacity-0 group-hover:opacity-100 blur-xl transition-all duration-500" />
@@ -811,7 +802,7 @@ export default function LandingPageClient() {
             <FeatureCard icon={FileText} title="AI-Powered Analysis" description="Extract key terms, identify risks, and get intelligent insights automatically." features={['Auto-extract dates & terms', 'Risk identification', 'Smart suggestions']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
             <FeatureCard icon={Shield} title="Enterprise Security" description="Bank-grade encryption and comprehensive audit logging for peace of mind." features={['End-to-end encryption', 'Role-based access', 'Complete audit trails']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
             <FeatureCard icon={Zap} title="Workflow Automation" description="Automate approvals, notifications, and renewals to eliminate delays." features={['Automated approvals', 'Smart notifications', 'Renewal reminders']} gradient="bg-gradient-to-br from-amber-500 to-orange-600" />
-            <FeatureCard icon={Users} title="Team Collaboration" description="Real-time editing, comments, and version control for your team." features={['Real-time co-editing', 'In-line comments', 'Version history']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
+            <FeatureCard icon={Users} title="Team Collaboration" description="Comments, sharing, and version tracking for your whole team." features={['Threaded comments', 'Contract sharing', 'Version tracking']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
             <FeatureCard icon={Search} title="Semantic Search" description="Find any contract, clause, or term instantly with AI-powered search." features={['Natural language queries', 'Cross-contract search', 'Similar clause finder']} gradient="bg-gradient-to-br from-rose-500 to-pink-600" />
             <FeatureCard icon={BarChart3} title="Analytics & Reports" description="Get actionable insights with dashboards and custom reports." features={['Contract analytics', 'Custom dashboards', 'Export options']} gradient="bg-gradient-to-br from-violet-500 to-purple-600" />
           </div>
@@ -926,7 +917,7 @@ export default function LandingPageClient() {
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { value: '50+', label: 'Clause Types', icon: FileText },
-                      { value: '20+', label: 'Languages', icon: MessageSquare },
+                      { value: '25+', label: 'AI Endpoints', icon: MessageSquare },
                       { value: '<3s', label: 'Avg. Analysis', icon: Zap },
                       { value: 'RAG', label: 'Powered', icon: Database },
                     ].map((stat, i) => (
@@ -1203,16 +1194,16 @@ export default function LandingPageClient() {
             <InnovationCard 
               icon={Boxes}
               title="API-First Design"
-              description="Every feature available via our REST API. Integrate ConTigo into your existing workflows, CRM, or build custom applications on top of our platform."
-              stat="100%"
-              statLabel="API coverage"
+              description="Core features available via our REST API. Integrate ConTigo into your existing workflows, CRM, or build custom applications on top of our platform."
+              stat="REST"
+              statLabel="API included"
             />
             <InnovationCard 
               icon={Award}
-              title="Continuous Learning"
-              description="Our AI models improve continuously based on user feedback and new contract patterns. The system gets smarter with every document it processes."
-              stat="Daily"
-              statLabel="model updates"
+              title="Continuous Improvement"
+              description="Our AI models are regularly improved based on user feedback and new contract patterns. The system gets smarter with every document it processes."
+              stat="Regular"
+              statLabel="updates"
             />
           </div>
 
@@ -1297,9 +1288,9 @@ export default function LandingPageClient() {
                         {[
                           { text: 'AI-powered semantic search', detail: 'Find contracts by meaning, not just keywords' },
                           { text: 'Automatic entity extraction', detail: 'Parties, dates, values extracted instantly' },
-                          { text: 'Analysis in under 3 seconds', detail: '100x faster than manual review' },
+                          { text: 'Analysis in under 3 seconds', detail: 'Significantly faster than manual review' },
                           { text: 'Modern, intuitive interface', detail: 'Get started in minutes, not days' },
-                          { text: 'Cloud-native, deploy anywhere', detail: 'Swiss data centers, global access' },
+                          { text: 'Cloud-native, deploy anywhere', detail: 'Secure cloud hosting, global access' },
                           { text: 'Full API access included', detail: 'Integrate with any system seamlessly' },
                         ].map((item, i) => (
                           <li key={i} className="flex items-start gap-3 group/item">
@@ -1329,8 +1320,117 @@ export default function LandingPageClient() {
               Get Started Today
               <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </Link>
-            <p className="text-gray-500 text-sm mt-4">Swiss data residency • Enterprise-grade security</p>
+            <p className="text-gray-500 text-sm mt-4">Secure cloud hosting • Enterprise-grade security</p>
           </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section id="pricing" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/20 to-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-purple-200/20 to-transparent rounded-full blur-3xl" />
+        
+        <div className="max-w-5xl mx-auto relative">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
+              <Sparkles aria-hidden="true" className="w-4 h-4" />
+              Simple Pricing
+            </div>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Choose Your{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Plan</span>
+            </h2>
+            <p className="text-xl text-gray-600 max-w-2xl mx-auto font-light leading-relaxed">
+              Start managing contracts smarter. Upgrade as you grow.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            {/* Standard Plan */}
+            <div className="relative bg-white rounded-3xl border border-gray-200 p-8 hover:shadow-xl transition-all duration-300">
+              <div className="mb-8">
+                <h3 className="text-2xl font-bold text-gray-900 mb-2">Standard</h3>
+                <p className="text-gray-500">For teams getting started with AI contract management</p>
+              </div>
+              <div className="mb-8">
+                <span className="text-4xl font-bold text-gray-900">Custom</span>
+                <span className="text-gray-500 ml-2">pricing</span>
+              </div>
+              <ul className="space-y-4 mb-8">
+                {[
+                  'AI-powered contract analysis',
+                  'Key data extraction (parties, dates, values)',
+                  'Document OCR & parsing (PDF, Word, images)',
+                  'Semantic search across contracts',
+                  'Dashboard & reporting',
+                  'Team collaboration & comments',
+                  'Notifications & renewal alerts',
+                  'Secure cloud storage',
+                  'Email support',
+                ].map((feature, i) => (
+                  <li key={i} className="flex items-center gap-3 text-gray-700">
+                    <Check className="w-5 h-5 text-violet-500 flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <Link
+                href="mailto:sales@contigo.com?subject=Standard%20Plan%20Inquiry"
+                className="block w-full text-center py-4 rounded-xl border-2 border-violet-200 text-violet-700 font-semibold hover:bg-violet-50 transition-colors"
+              >
+                Contact Sales
+              </Link>
+            </div>
+
+            {/* Pro Plan */}
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 to-purple-500 rounded-[1.5rem] opacity-20 blur-xl group-hover:opacity-30 transition-opacity" />
+              <div className="relative bg-white rounded-3xl border-2 border-violet-300 p-8 hover:shadow-xl transition-all duration-300">
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                  <span className="bg-gradient-to-r from-violet-600 to-purple-600 text-white text-sm font-semibold px-4 py-1.5 rounded-full shadow-lg">
+                    Most Popular
+                  </span>
+                </div>
+                <div className="mb-8">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Pro</h3>
+                  <p className="text-gray-500">For organizations that need the full platform</p>
+                </div>
+                <div className="mb-8">
+                  <span className="text-4xl font-bold text-gray-900">Custom</span>
+                  <span className="text-gray-500 ml-2">pricing</span>
+                </div>
+                <ul className="space-y-4 mb-8">
+                  {[
+                    'Everything in Standard',
+                    'Workflow automation & approvals',
+                    'Advanced analytics & forecasting',
+                    'Rate card management & benchmarking',
+                    'Vendor risk & supplier management',
+                    'Governance & compliance tools',
+                    'Webhooks & third-party integrations',
+                    'SSO (SAML 2.0) & MFA',
+                    'REST API access',
+                    'Priority support & onboarding',
+                  ].map((feature, i) => (
+                    <li key={i} className="flex items-center gap-3 text-gray-700">
+                      <Check className="w-5 h-5 text-violet-500 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="mailto:sales@contigo.com?subject=Pro%20Plan%20Inquiry"
+                  className="block w-full text-center py-4 rounded-xl bg-gradient-to-r from-violet-600 to-purple-600 text-white font-semibold hover:shadow-lg hover:shadow-violet-500/25 transition-all"
+                >
+                  Contact Sales
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-center text-gray-500 mt-10 text-sm">
+            Need a custom solution? <a href="mailto:sales@contigo.com" className="text-violet-600 hover:underline font-medium">Get in touch</a> — we&apos;ll tailor a plan for your organization.
+          </p>
         </div>
       </section>
 
@@ -1623,7 +1723,7 @@ export default function LandingPageClient() {
             </div>
             
             {[
-              { title: 'Product', links: [{ label: 'Features', href: '#features' }, { label: 'AI Technology', href: '#ai-technology' }, { label: 'Security', href: '#security' }, { label: 'Pricing', href: '/pricing' }, { label: 'API', href: '#' }] },
+              { title: 'Product', links: [{ label: 'Features', href: '#features' }, { label: 'AI Technology', href: '#ai-technology' }, { label: 'Security', href: '#security' }, { label: 'Pricing', href: '#pricing' }, { label: 'API', href: '#' }] },
               { title: 'Resources', links: [{ label: 'Documentation', href: '#' }, { label: 'Help Center', href: '#support' }, { label: 'Blog', href: '#' }, { label: 'Changelog', href: '#' }, { label: 'Status', href: '#' }] },
               { title: 'Company', links: [{ label: 'About', href: '#' }, { label: 'Careers', href: '#' }, { label: 'Contact', href: '#support' }, { label: 'Partners', href: '#' }, { label: 'Legal', href: '#' }] },
             ].map((col, i) => (

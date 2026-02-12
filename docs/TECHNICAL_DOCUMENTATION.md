@@ -29,7 +29,7 @@
 
 ## 1. Overview & Purpose
 
-ConTigo is an **AI-powered Contract Lifecycle Management (CLM)** platform built for Swiss and DACH-region enterprises. It automates contract ingestion, AI-driven clause extraction, risk analysis, obligation tracking, rate card benchmarking, and collaborative drafting.
+ConTigo is an **AI-powered Contract Lifecycle Management (CLM)** platform. It automates contract ingestion, AI-driven clause extraction, risk analysis, obligation tracking, rate card benchmarking, and collaborative drafting.
 
 ### Key Capabilities
 
@@ -41,7 +41,7 @@ ConTigo is an **AI-powered Contract Lifecycle Management (CLM)** platform built 
 | **Obligation Tracking** | Automated deadline monitoring, renewal alerts, calendar sync |
 | **Collaborative Drafting** | Template-based generation, redline, approval workflows |
 | **Analytics & Reporting** | Dashboards, forecasting, scheduled reports, custom metrics |
-| **Integrations** | DocuSign, SAP, SharePoint, custom webhooks, SFTP |
+| **Integrations** | Google Drive, Word Add-in, webhooks, e-signatures, SCIM v2 |
 
 ---
 
@@ -120,15 +120,15 @@ ConTigo is an **AI-powered Contract Lifecycle Management (CLM)** platform built 
 CLI-AI-RAW/
 ├── apps/
 │   └── web/                          # Next.js 15 application
-│       ├── app/                      # App Router (60+ route groups)
+│       ├── app/                      # App Router (80+ route groups)
 │       │   ├── (dashboard)/          # Dashboard layout group
 │       │   ├── (marketing)/          # Marketing/public pages
-│       │   ├── api/                  # API routes (77+ groups)
+│       │   ├── api/                  # API routes (83+ groups)
 │       │   ├── contracts/            # Contract management pages
 │       │   ├── rate-cards/           # Rate card pages
 │       │   ├── analytics/            # Analytics & reporting
 │       │   ├── settings/             # User/tenant settings
-│       │   └── ...                   # 50+ more route groups
+│       │   └── ...                   # 70+ more route groups
 │       ├── components/               # UI components (200+)
 │       ├── lib/                      # Client utilities
 │       ├── hooks/                    # Custom React hooks

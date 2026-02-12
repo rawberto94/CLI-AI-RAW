@@ -543,6 +543,18 @@ export async function GET(
       classificationConf: contract.classificationConf || null,
       classificationMeta: contract.classificationMeta || null,
       
+      // Signature & Document Classification (from DB columns)
+      signature_date: contract.signatureDate?.toISOString() || null,
+      signature_status: contract.signatureStatus || 'unknown',
+      signature_required_flag: contract.signatureRequiredFlag ?? false,
+      document_classification: contract.documentClassification || 'contract',
+      document_classification_warning: (contract as any).documentClassificationWarning || null,
+      
+      // Identification & Ownership fields from DB
+      jurisdiction: contract.jurisdiction || null,
+      notice_period: contract.noticePeriodDays ? `${contract.noticePeriodDays} days` : null,
+      notice_period_days: contract.noticePeriodDays || null,
+      
       // Taxonomy Category Classification
       category: categoryInfo,
       categoryL1: contract.categoryL1,

@@ -297,6 +297,7 @@ function formatToolName(name: string): string {
     navigate_to_page: '🔗 Navigating',
     get_compliance_summary: '✅ Checking compliance',
     get_contract_stats: '📊 Loading statistics',
+    get_intelligence_insights: '🧠 Loading AI insights',
   };
   return labels[name] || name.replace(/_/g, ' ');
 }
@@ -305,6 +306,15 @@ function formatToolName(name: string): string {
 function getPageContext(pathname: string | null): string {
   if (!pathname) return 'dashboard';
   
+  if (pathname.includes('/intelligence/graph')) return 'intelligence-knowledge-graph';
+  if (pathname.includes('/intelligence/health')) return 'intelligence-health-scores';
+  if (pathname.includes('/intelligence/search')) return 'intelligence-rag-search';
+  if (pathname.includes('/intelligence/negotiate')) return 'intelligence-negotiation';
+  if (pathname.includes('/intelligence')) return 'intelligence-hub';
+  if (pathname.includes('/self-service')) return 'self-service';
+  if (pathname.includes('/ecosystem')) return 'ecosystem';
+  if (pathname.includes('/governance') || pathname === '/compliance' || pathname === '/risk') return 'governance';
+  if (pathname === '/admin') return 'administration';
   if (pathname.includes('/contracts/') && pathname.includes('/redline')) return 'contract-redline';
   if (pathname.includes('/contracts/') && pathname.includes('/sign')) return 'contract-signatures';
   if (pathname.includes('/contracts/') && pathname.includes('/store')) return 'contract-storage';
@@ -342,8 +352,11 @@ export function FloatingAIBubble() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   
+  // Contract ID override from openAIChatbot events (e.g. contracts list "Ask AI")
+  const [eventContractId, setEventContractId] = useState<string | null>(null);
+
   // Extract contract ID from current page URL
-  const currentContractId = useMemo(() => {
+  const urlContractId = useMemo(() => {
     // Check if we're on a contract detail page: /contracts/[id]
     const contractMatch = pathname?.match(/\/contracts\/([^\/]+)/);
     if (contractMatch) return contractMatch[1];
@@ -354,6 +367,14 @@ export function FloatingAIBubble() {
     
     return null;
   }, [pathname, searchParams]);
+
+  // URL contract takes precedence; event-provided contractId used as fallback
+  const currentContractId = urlContractId || eventContractId;
+
+  // Clear event contractId when navigating to a different page
+  useEffect(() => {
+    if (urlContractId) setEventContractId(null);
+  }, [urlContractId]);
 
   // Chat persistence - database-backed with localStorage fallback
   const persistence = useChatPersistence({
@@ -680,6 +701,12 @@ export function FloatingAIBubble() {
       // If an autoMessage is provided, store it and trigger when chat opens
       if (customEvent.detail?.autoMessage) {
         pendingAutoMessageRef.current = customEvent.detail.autoMessage;
+      }
+      
+      // Capture contractId from event so the chatbot has contract context
+      // even when not on the contract detail page (e.g. from contracts list)
+      if (customEvent.detail?.contractId) {
+        setEventContractId(customEvent.detail.contractId);
       }
       
       setIsOpen(true);

@@ -193,6 +193,99 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'get_workflow_status',
+      description: 'Check the status and progress of a running workflow execution. Use when the user asks "what is the status of the approval?", "where is the workflow at?", or "how far along is the review?".',
+      parameters: {
+        type: 'object',
+        properties: {
+          executionId: { type: 'string', description: 'Workflow execution ID' },
+          contractId: { type: 'string', description: 'Contract ID to find its active workflow' },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'create_workflow',
+      description: 'Create a new workflow template with default approval steps. Use when the user asks to "create a workflow", "set up an approval process", or "new review workflow".',
+      parameters: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'Name for the workflow template' },
+          type: { type: 'string', enum: ['APPROVAL', 'REVIEW', 'CUSTOM'], description: 'Type of workflow', default: 'APPROVAL' },
+          steps: {
+            type: 'array',
+            items: { type: 'object', properties: { name: { type: 'string' }, type: { type: 'string' } } },
+            description: 'Custom steps (optional — defaults to Manager Review, Legal Review, Final Approval)',
+          },
+        },
+        required: ['name'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'cancel_workflow',
+      description: 'Cancel an active workflow execution. Use when the user says "cancel the workflow", "stop the approval", or "abort the review process".',
+      parameters: {
+        type: 'object',
+        properties: {
+          executionId: { type: 'string', description: 'Workflow execution ID to cancel' },
+          reason: { type: 'string', description: 'Reason for cancellation' },
+        },
+        required: ['executionId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'assign_approver',
+      description: 'Assign a user to a pending workflow step. Use when the user says "assign Sarah to the legal review", "delegate step to John", or "reassign the approval".',
+      parameters: {
+        type: 'object',
+        properties: {
+          executionId: { type: 'string', description: 'Workflow execution ID' },
+          assignee: { type: 'string', description: 'Name or email of the person to assign' },
+        },
+        required: ['executionId', 'assignee'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'escalate_workflow',
+      description: 'Escalate a stuck or overdue workflow. Use when the user says "escalate the approval", "this workflow is stuck", or "speed up the review".',
+      parameters: {
+        type: 'object',
+        properties: {
+          executionId: { type: 'string', description: 'Workflow execution ID to escalate' },
+          reason: { type: 'string', description: 'Reason for escalation' },
+        },
+        required: ['executionId'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'suggest_workflow',
+      description: 'Get an AI recommendation for which workflow template to use for a contract. Use when the user asks "which workflow should I use?", "recommend an approval process", or "what workflow fits this contract?".',
+      parameters: {
+        type: 'object',
+        properties: {
+          contractId: { type: 'string', description: 'The contract ID to get a workflow recommendation for' },
+        },
+        required: ['contractId'],
+      },
+    },
+  },
 
   // ── Contract Actions ──────────────────────────────────────────────────
   {
@@ -243,12 +336,29 @@ export const STREAMING_TOOLS: OpenAI.Chat.Completions.ChatCompletionTool[] = [
         properties: {
           page: {
             type: 'string',
-            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'vendors', 'compliance', 'risk-dashboard', 'reports', 'bulk-operations', 'calendar'],
+            enum: ['dashboard', 'contracts', 'analytics', 'workflows', 'settings', 'vendors', 'compliance', 'risk-dashboard', 'reports', 'bulk-operations', 'calendar', 'intelligence', 'intelligence-graph', 'intelligence-health', 'intelligence-search', 'intelligence-negotiate', 'self-service', 'ecosystem', 'governance', 'admin'],
             description: 'Target page',
           },
           contractId: { type: 'string', description: 'Specific contract to navigate to' },
         },
         required: ['page'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_intelligence_insights',
+      description: 'Get AI-powered intelligence insights including contract health scores, risk insights, expiration warnings, compliance gaps, and strategic recommendations. Use when the user asks about health scores, intelligence, AI insights, portfolio health, or strategic analysis.',
+      parameters: {
+        type: 'object',
+        properties: {
+          section: {
+            type: 'string',
+            enum: ['all', 'health', 'insights', 'activity'],
+            description: 'Which intelligence section to retrieve. "all" returns health scores + insights + recent activity.',
+          },
+        },
       },
     },
   },
@@ -312,12 +422,26 @@ export async function executeTool(
         return await executeGetPendingApprovals(tenantId, userId, start);
       case 'approve_or_reject_step':
         return await executeApproveReject(args, tenantId, userId, start);
+      case 'get_workflow_status':
+        return await executeGetWorkflowStatus(args, tenantId, start);
+      case 'create_workflow':
+        return await executeCreateWorkflow(args, tenantId, userId, start);
+      case 'cancel_workflow':
+        return await executeCancelWorkflow(args, tenantId, userId, start);
+      case 'assign_approver':
+        return await executeAssignApprover(args, tenantId, userId, start);
+      case 'escalate_workflow':
+        return await executeEscalateWorkflow(args, tenantId, userId, start);
+      case 'suggest_workflow':
+        return await executeSuggestWorkflow(args, tenantId, start);
       case 'create_contract':
         return await executeCreateContract(args, tenantId, userId, start);
       case 'update_contract':
         return await executeUpdateContract(args, tenantId, userId, start);
       case 'navigate_to_page':
         return await executeNavigate(args, start);
+      case 'get_intelligence_insights':
+        return await executeIntelligenceInsights(args, tenantId, start);
       case 'get_compliance_summary':
         return await executeComplianceSummary(tenantId, start);
       case 'get_contract_stats':
@@ -738,6 +862,253 @@ async function executeApproveReject(args: Record<string, unknown>, tenantId: str
   };
 }
 
+// ── Workflow: Get Status ───────────────────────────────────────────────
+
+async function executeGetWorkflowStatus(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const executionId = args.executionId as string | undefined;
+  const contractId = args.contractId as string | undefined;
+
+  const execution = await prisma.workflowExecution.findFirst({
+    where: {
+      tenantId,
+      ...(executionId
+        ? { OR: [{ id: executionId }, { workflowId: executionId }] }
+        : contractId
+          ? { contractId, status: { in: ['PENDING', 'IN_PROGRESS'] } }
+          : {}),
+    },
+    include: {
+      workflow: { select: { name: true, type: true } },
+      contract: { select: { id: true, contractTitle: true } },
+      stepExecutions: { include: { step: { select: { name: true } } }, orderBy: { stepOrder: 'asc' } },
+    },
+    orderBy: { startedAt: 'desc' },
+  });
+
+  if (!execution) {
+    return { toolName: 'get_workflow_status', success: false, data: null, error: 'No workflow execution found', executionTimeMs: Date.now() - start };
+  }
+
+  const completedSteps = execution.stepExecutions.filter(s => s.status === 'COMPLETED').length;
+  const currentStep = execution.stepExecutions.find(s => s.status === 'PENDING');
+
+  return {
+    toolName: 'get_workflow_status',
+    success: true,
+    data: {
+      executionId: execution.id,
+      workflowName: execution.workflow.name,
+      workflowType: execution.workflow.type,
+      contractTitle: execution.contract?.contractTitle,
+      status: execution.status,
+      progress: {
+        completed: completedSteps,
+        total: execution.stepExecutions.length,
+        percentage: execution.stepExecutions.length > 0 ? Math.round((completedSteps / execution.stepExecutions.length) * 100) : 0,
+      },
+      currentStep: currentStep ? { name: currentStep.step.name, assignee: currentStep.assignedTo } : null,
+      steps: execution.stepExecutions.map(se => ({ name: se.step.name, status: se.status, completedAt: se.completedAt })),
+      startedAt: execution.startedAt,
+    },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: `/contracts/${execution.contract?.id}`, label: 'View Contract' },
+    suggestedActions: [
+      ...(currentStep ? [{ label: '✅ Approve Step', action: `approve:${execution.id}` }] : []),
+      { label: '📋 All Workflows', action: 'navigate:/workflows' },
+    ],
+  };
+}
+
+// ── Workflow: Create Template ──────────────────────────────────────────
+
+async function executeCreateWorkflow(args: Record<string, unknown>, tenantId: string, userId: string, start: number): Promise<ToolResult> {
+  const name = args.name as string;
+  const type = (args.type as string) || 'APPROVAL';
+  const customSteps = args.steps as Array<{ name: string; type?: string }> | undefined;
+
+  const workflow = await prisma.workflow.create({
+    data: { tenantId, name, type, isActive: true, createdBy: userId },
+  });
+
+  const steps = customSteps && customSteps.length > 0
+    ? customSteps
+    : [{ name: 'Manager Review', type: 'APPROVAL' }, { name: 'Legal Review', type: 'APPROVAL' }, { name: 'Final Approval', type: 'APPROVAL' }];
+
+  await prisma.workflowStep.createMany({
+    data: steps.map((step, idx) => ({ workflowId: workflow.id, name: step.name, type: step.type || 'APPROVAL', order: idx })),
+  });
+
+  return {
+    toolName: 'create_workflow',
+    success: true,
+    data: { workflowId: workflow.id, name, type, stepCount: steps.length, steps: steps.map(s => s.name) },
+    executionTimeMs: Date.now() - start,
+    navigation: { url: '/workflows', label: 'View Workflows' },
+    suggestedActions: [
+      { label: '⚙️ Configure Steps', action: `navigate:/workflows` },
+      { label: '▶️ Start for a Contract', action: 'start_workflow' },
+    ],
+  };
+}
+
+// ── Workflow: Cancel ───────────────────────────────────────────────────
+
+async function executeCancelWorkflow(args: Record<string, unknown>, tenantId: string, userId: string, start: number): Promise<ToolResult> {
+  const executionId = args.executionId as string;
+  const reason = args.reason as string | undefined;
+
+  const execution = await prisma.workflowExecution.findFirst({
+    where: { id: executionId, tenantId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+    include: { workflow: { select: { name: true } }, contract: { select: { contractTitle: true, id: true } } },
+  });
+
+  if (!execution) {
+    return { toolName: 'cancel_workflow', success: false, data: null, error: 'Active workflow not found', executionTimeMs: Date.now() - start };
+  }
+
+  await prisma.$transaction([
+    prisma.workflowExecution.update({ where: { id: execution.id }, data: { status: 'CANCELLED', completedAt: new Date() } }),
+    prisma.workflowStepExecution.updateMany({ where: { executionId: execution.id, status: { in: ['PENDING', 'WAITING'] } }, data: { status: 'CANCELLED' } }),
+  ]);
+
+  return {
+    toolName: 'cancel_workflow',
+    success: true,
+    data: { executionId, workflowName: execution.workflow.name, contractTitle: execution.contract?.contractTitle, reason },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [{ label: '📋 All Workflows', action: 'navigate:/workflows' }],
+  };
+}
+
+// ── Workflow: Assign Approver ──────────────────────────────────────────
+
+async function executeAssignApprover(args: Record<string, unknown>, tenantId: string, _userId: string, start: number): Promise<ToolResult> {
+  const executionId = args.executionId as string;
+  const assignee = args.assignee as string;
+
+  const stepExecution = await prisma.workflowStepExecution.findFirst({
+    where: { OR: [{ id: executionId }, { executionId }], status: 'PENDING', execution: { tenantId } },
+    include: { step: { select: { name: true } } },
+  });
+
+  if (!stepExecution) {
+    return { toolName: 'assign_approver', success: false, data: null, error: 'No pending step found', executionTimeMs: Date.now() - start };
+  }
+
+  const user = await prisma.user.findFirst({
+    where: {
+      tenantId,
+      OR: [
+        { email: { contains: assignee, mode: 'insensitive' } },
+        { firstName: { contains: assignee, mode: 'insensitive' } },
+        { lastName: { contains: assignee, mode: 'insensitive' } },
+      ],
+    },
+  });
+
+  if (!user) {
+    return { toolName: 'assign_approver', success: false, data: null, error: `User "${assignee}" not found in your organization`, executionTimeMs: Date.now() - start };
+  }
+
+  await prisma.workflowStepExecution.update({ where: { id: stepExecution.id }, data: { assignedTo: user.id } });
+
+  const userName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.email;
+  return {
+    toolName: 'assign_approver',
+    success: true,
+    data: { stepName: stepExecution.step.name, assignedTo: userName, userId: user.id },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [{ label: '⏳ View Pending', action: 'pending_approvals' }],
+  };
+}
+
+// ── Workflow: Escalate ─────────────────────────────────────────────────
+
+async function executeEscalateWorkflow(args: Record<string, unknown>, tenantId: string, userId: string, start: number): Promise<ToolResult> {
+  const executionId = args.executionId as string;
+  const reason = args.reason as string | undefined;
+
+  const execution = await prisma.workflowExecution.findFirst({
+    where: { id: executionId, tenantId, status: { in: ['PENDING', 'IN_PROGRESS'] } },
+    include: { workflow: { select: { name: true } }, contract: { select: { contractTitle: true, id: true } } },
+  });
+
+  if (!execution) {
+    return { toolName: 'escalate_workflow', success: false, data: null, error: 'Active workflow not found', executionTimeMs: Date.now() - start };
+  }
+
+  const currentMetadata = (execution.metadata as Record<string, unknown>) || {};
+  await prisma.workflowExecution.update({
+    where: { id: execution.id },
+    data: { metadata: { ...currentMetadata, isEscalated: true, escalatedAt: new Date().toISOString(), escalatedBy: userId, escalationReason: reason } },
+  });
+
+  return {
+    toolName: 'escalate_workflow',
+    success: true,
+    data: { executionId, workflowName: execution.workflow.name, contractTitle: execution.contract?.contractTitle, reason },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [{ label: '📋 View Workflows', action: 'navigate:/workflows' }],
+  };
+}
+
+// ── Workflow: AI Suggestion ────────────────────────────────────────────
+
+async function executeSuggestWorkflow(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const contractId = args.contractId as string;
+
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: { id: true, contractTitle: true, contractType: true, totalValue: true, status: true },
+  });
+
+  if (!contract) {
+    return { toolName: 'suggest_workflow', success: false, data: null, error: 'Contract not found', executionTimeMs: Date.now() - start };
+  }
+
+  const workflows = await prisma.workflow.findMany({
+    where: { tenantId, isActive: true },
+    include: { steps: { select: { name: true }, orderBy: { order: 'asc' } }, _count: { select: { executions: true } } },
+  });
+
+  if (workflows.length === 0) {
+    return { toolName: 'suggest_workflow', success: false, data: null, error: 'No workflow templates available. Create one first.', executionTimeMs: Date.now() - start };
+  }
+
+  // Simple scoring: match by type, prefer well-used workflows, consider value
+  const contractValue = contract.totalValue ? Number(contract.totalValue) : 0;
+  const scored = workflows.map(w => {
+    let score = 0;
+    if (contract.contractType && w.name.toLowerCase().includes(contract.contractType.toLowerCase())) score += 3;
+    if (w.type === 'APPROVAL') score += 1;
+    if (contractValue > 100000 && w.steps.length >= 3) score += 2;
+    score += Math.min(w._count.executions / 10, 2); // popularity bonus
+    return { ...w, score };
+  }).sort((a, b) => b.score - a.score);
+
+  return {
+    toolName: 'suggest_workflow',
+    success: true,
+    data: {
+      contractTitle: contract.contractTitle,
+      contractType: contract.contractType,
+      contractValue: contractValue,
+      recommendation: {
+        workflowId: scored[0].id,
+        workflowName: scored[0].name,
+        reason: `Best match based on contract type, value, and risk level`,
+        steps: scored[0].steps.map(s => s.name),
+      },
+      alternatives: scored.slice(1, 3).map(w => ({ workflowId: w.id, workflowName: w.name, steps: w.steps.map(s => s.name) })),
+    },
+    executionTimeMs: Date.now() - start,
+    suggestedActions: [
+      { label: '▶️ Start Recommended', action: `start_workflow:${contractId}:${scored[0].id}` },
+      { label: '📋 View All Workflows', action: 'navigate:/workflows' },
+    ],
+  };
+}
+
 // ── Create Contract ────────────────────────────────────────────────────
 
 async function executeCreateContract(args: Record<string, unknown>, tenantId: string, userId: string, start: number): Promise<ToolResult> {
@@ -823,6 +1194,15 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     reports: '/reports',
     'bulk-operations': '/bulk-operations',
     calendar: '/calendar',
+    intelligence: '/intelligence',
+    'intelligence-graph': '/intelligence/graph',
+    'intelligence-health': '/intelligence/health',
+    'intelligence-search': '/intelligence/search',
+    'intelligence-negotiate': '/intelligence/negotiate',
+    'self-service': '/self-service',
+    ecosystem: '/ecosystem',
+    governance: '/governance',
+    admin: '/admin',
   };
 
   const url = contractId ? `/contracts/${contractId}` : (routes[page] || '/dashboard');
@@ -833,6 +1213,102 @@ async function executeNavigate(args: Record<string, unknown>, start: number): Pr
     data: { url, page },
     executionTimeMs: Date.now() - start,
     navigation: { url, label: `Go to ${page}` },
+  };
+}
+
+// ── Intelligence Insights ──────────────────────────────────────────────
+
+interface ContractMeta {
+  healthScore?: number;
+  previousHealthScore?: number;
+}
+
+async function executeIntelligenceInsights(args: Record<string, unknown>, tenantId: string, start: number): Promise<ToolResult> {
+  const section = (args.section as string) || 'all';
+
+  // Health scores
+  const getHealth = async () => {
+    const contracts = await prisma.contract.findMany({
+      where: { tenantId },
+      select: { id: true, metadata: true },
+    });
+    let healthy = 0, atRisk = 0, critical = 0, total = 0;
+    for (const c of contracts) {
+      const meta = c.metadata as ContractMeta | null;
+      const score = meta?.healthScore ?? 75;
+      total += score;
+      if (score >= 70) healthy++;
+      else if (score >= 40) atRisk++;
+      else critical++;
+    }
+    return {
+      averageHealthScore: contracts.length > 0 ? Math.round(total / contracts.length) : 75,
+      healthy, atRisk, critical, totalContracts: contracts.length,
+    };
+  };
+
+  // Risk insights
+  const getInsights = async () => {
+    const riskyContracts = await prisma.contract.findMany({
+      where: { tenantId, expirationRisk: { in: ['HIGH', 'CRITICAL'] } },
+      take: 8,
+      orderBy: { expirationDate: 'asc' },
+      select: { id: true, contractTitle: true, fileName: true, totalValue: true, expirationDate: true, autoRenewalEnabled: true, expirationRisk: true },
+    });
+
+    const insights: Array<{ type: string; severity: string; title: string; detail: string; contractId?: string }> = [];
+    for (const c of riskyContracts) {
+      if (c.expirationDate) {
+        const days = Math.ceil((c.expirationDate.getTime() - Date.now()) / 86400000);
+        const name = c.contractTitle || c.fileName || 'Unnamed';
+        if (days > 0 && days <= 90) {
+          insights.push({
+            type: 'expiration_risk',
+            severity: days <= 14 ? 'critical' : days <= 30 ? 'high' : 'medium',
+            title: `${name} expires in ${days} days`,
+            detail: c.autoRenewalEnabled ? 'Auto-renewal enabled — review terms' : 'No auto-renewal — initiate action',
+            contractId: c.id,
+          });
+        }
+      }
+    }
+    return insights;
+  };
+
+  // Recent activity
+  const getActivity = async () => {
+    const logs = await prisma.auditLog.findMany({
+      where: { tenantId },
+      take: 8,
+      orderBy: { createdAt: 'desc' },
+      select: { action: true, entityType: true, createdAt: true },
+    });
+    return logs.map(l => ({
+      action: l.action,
+      entity: l.entityType,
+      when: l.createdAt.toISOString(),
+    }));
+  };
+
+  let data: Record<string, unknown> = {};
+
+  if (section === 'health') {
+    data = { healthScores: await getHealth() };
+  } else if (section === 'insights') {
+    data = { insights: await getInsights() };
+  } else if (section === 'activity') {
+    data = { recentActivity: await getActivity() };
+  } else {
+    const [healthScores, insights, recentActivity] = await Promise.all([getHealth(), getInsights(), getActivity()]);
+    data = { healthScores, insights, recentActivity };
+  }
+
+  return {
+    toolName: 'get_intelligence_insights',
+    success: true,
+    data,
+    executionTimeMs: Date.now() - start,
+    navigation: { url: '/intelligence', label: 'View Intelligence Hub' },
   };
 }
 

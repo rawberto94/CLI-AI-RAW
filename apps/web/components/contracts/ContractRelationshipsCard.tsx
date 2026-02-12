@@ -745,7 +745,7 @@ export function ContractRelationshipsCard({
             </div>
             
             <AnimatePresence>
-              {familyHealth?.suggestedParents.slice(0, 2).map((suggestion) => (
+              {familyHealth?.suggestedParents?.slice(0, 2).map((suggestion) => (
                 <AISuggestionCard 
                   key={suggestion.id}
                   suggestion={suggestion}

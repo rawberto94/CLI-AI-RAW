@@ -187,7 +187,7 @@ function WorkflowsPageContent() {
     active: workflows.filter(w => w.isActive).length,
     inactive: workflows.filter(w => !w.isActive).length,
     totalExecutions: workflows.reduce((sum, w) => sum + (w.executions || 0), 0),
-     
+    pending: workflows.filter(w => w.isActive && (w.executions || 0) === 0).length,
   }), [workflows])
 
   useEffect(() => {
@@ -344,7 +344,7 @@ function WorkflowsPageContent() {
               <div className="hidden lg:flex items-center gap-2.5 mr-2">
                 <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700 text-amber-700 dark:text-amber-300">
                   <Clock className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="font-semibold">4</span> Pending
+                  <span className="font-semibold">{stats.pending}</span> Pending
                 </Badge>
                 <Badge variant="outline" className="gap-1.5 px-3 py-1 bg-green-50 dark:bg-green-900/30 border-green-200 dark:border-green-700 text-green-700 dark:text-green-300">
                   <CheckCircle className="h-3.5 w-3.5" aria-hidden="true" />
@@ -377,7 +377,7 @@ function WorkflowsPageContent() {
                 >
                   <Inbox className="h-4 w-4" aria-hidden="true" />
                   Queue
-                  <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 ml-1 text-xs">4</Badge>
+                  <Badge variant="secondary" className="bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 ml-1 text-xs">{stats.pending}</Badge>
                 </TabsTrigger>
                 <TabsTrigger 
                   value="automation" 

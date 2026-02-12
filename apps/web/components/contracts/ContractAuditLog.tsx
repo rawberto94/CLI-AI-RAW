@@ -154,8 +154,8 @@ export function ContractAuditLog({
       const data = await response.json();
 
       if (data.success) {
-        setLogs(data.data.logs);
-        setSummary(data.data.summary);
+        setLogs(data.data?.logs || []);
+        setSummary(data.data?.summary || null);
       } else {
         setError(data.error || 'Failed to fetch audit logs');
       }
@@ -251,7 +251,7 @@ export function ContractAuditLog({
               variant="outline" 
               size="sm"
               onClick={exportLogs}
-              disabled={logs.length === 0}
+              disabled={!logs || logs.length === 0}
             >
               <Download className="h-4 w-4 mr-1" />
               Export
@@ -451,7 +451,7 @@ export function ContractAuditLog({
                       )}
                     </div>
                     
-                    {Object.keys(log.details).length > 0 && (
+                    {log.details && typeof log.details === 'object' && Object.keys(log.details).length > 0 && (
                       <div className="mt-3">
                         <span className="text-muted-foreground text-sm">Details:</span>
                         <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">

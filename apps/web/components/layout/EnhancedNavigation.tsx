@@ -57,6 +57,21 @@ import {
   Database,
   Keyboard,
   RefreshCcw,
+  Network,
+  GitBranch,
+  BookOpen,
+  Lightbulb,
+  Truck,
+  Receipt,
+  Wallet,
+  ShieldCheck,
+  ClipboardCheck,
+  AlertTriangle,
+  CheckSquare,
+  PenTool,
+  ScrollText,
+  Award,
+  TrendingDown,
 } from 'lucide-react';
 
 interface NavigationItem {
@@ -79,7 +94,7 @@ interface NavigationGroup {
   requiresAdmin?: boolean; // Only show entire group for admin/owner users
 }
 
-// Streamlined navigation - Core features only
+// Full navigation — All platform features
 const navigationGroups: NavigationGroup[] = [
   {
     id: 'main',
@@ -94,6 +109,15 @@ const navigationGroups: NavigationGroup[] = [
     ]
   },
   {
+    id: 'lifecycle',
+    label: 'Contract Lifecycle',
+    items: [
+      { name: 'Clauses', href: '/clauses', icon: BookOpen, description: 'Clause library & governance' },
+      { name: 'Drafting', href: '/drafting', icon: PenTool, description: 'AI-assisted contract drafting' },
+      { name: 'Workflows', href: '/workflows', icon: GitBranch, description: 'Workflows, approvals & SLA' },
+    ]
+  },
+  {
     id: 'intelligence',
     label: 'AI Intelligence',
     items: [
@@ -103,18 +127,39 @@ const navigationGroups: NavigationGroup[] = [
         description: 'Ask questions about your contracts',
         action: 'openAIChatbot'
       },
+      { name: 'Intelligence Hub', href: '/intelligence', icon: Lightbulb, description: 'Knowledge graph & negotiation' },
+      { name: 'Smart Search', href: '/search', icon: Search, description: 'Semantic & advanced search' },
+    ]
+  },
+  {
+    id: 'procurement',
+    label: 'Procurement',
+    items: [
+      { name: 'Suppliers', href: '/suppliers', icon: Truck, description: 'Supplier management & performance' },
+      { name: 'Rate Cards', href: '/rate-cards/dashboard', icon: Receipt, description: 'Rate monitoring, benchmarking & trends' },
+      { name: 'Spend', href: '/spend', icon: Wallet, description: 'PO, Invoice & 3-way matching' },
+      { name: 'Forecast', href: '/forecast', icon: TrendingUp, description: 'Spend & contract forecasting' },
+    ]
+  },
+  {
+    id: 'governance',
+    label: 'Governance & Risk',
+    items: [
+      { name: 'Governance', href: '/governance', icon: ShieldCheck, description: 'Policies, gates & routing rules' },
+      { name: 'Compliance', href: '/compliance', icon: ClipboardCheck, description: 'Compliance tracking' },
+      { name: 'Risk', href: '/risk', icon: AlertTriangle, description: 'Risk assessment & vendor risk' },
     ]
   },
   {
     id: 'self-service',
     label: 'Self-Service',
     items: [
-      { 
-        name: 'AI Report Builder', 
-        href: '/reports/ai-builder', 
-        icon: FileBarChart, 
-        description: 'Generate AI-powered contract summaries'
-      },
+      { name: 'Self-Service Hub', href: '/self-service', icon: Zap, description: 'Quick actions & overview', isNew: true },
+      { name: 'My Requests', href: '/self-service/my-requests', icon: Clock, description: 'Track your contract requests' },
+      { name: 'New Request', href: '/requests/new', icon: Edit3, description: 'Submit a contract request' },
+      { name: 'Generate Contract', href: '/contracts/generate', icon: PenTool, description: 'AI-powered contract drafting' },
+      { name: 'AI Report Builder', href: '/reports/ai-builder', icon: FileBarChart, description: 'Generate AI-powered reports' },
+      { name: 'Help & Guides', href: '/self-service/help', icon: HelpCircle, description: 'FAQs, guides & tips' },
     ]
   },
   {
@@ -122,6 +167,7 @@ const navigationGroups: NavigationGroup[] = [
     label: 'Analytics',
     items: [
       { name: 'Reports', href: '/analytics', icon: BarChart3, description: 'Analytics & reports' },
+      { name: 'Ecosystem', href: '/ecosystem', icon: Network, description: 'ERP, Spend & Contract synergy' },
     ]
   },
   {
@@ -133,6 +179,7 @@ const navigationGroups: NavigationGroup[] = [
       { name: 'My Organization', href: '/admin', icon: Building2, description: 'Manage team & settings', requiresAdmin: true },
       { name: 'Data Connections', href: '/admin/integrations', icon: Database, description: 'Connect external databases', requiresAdmin: true },
       { name: 'Queue Dashboard', href: '/admin/queue', icon: Activity, description: 'Monitor processing queues', requiresAdmin: true },
+      { name: 'Audit Logs', href: '/audit-logs', icon: ScrollText, description: 'System-wide audit trail', requiresAdmin: true },
       { name: 'Settings', href: '/settings', icon: Settings, description: 'System settings', requiresAdmin: true },
     ]
   },

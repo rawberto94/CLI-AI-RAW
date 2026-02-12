@@ -29,7 +29,7 @@ ConTigo is a **multi-tenant, AI-powered Contract Lifecycle Management (CLM) plat
 
 | Principle | Approach |
 |---|---|
-| **Data sovereignty** | All data in Swiss data centres (Azure Switzerland North) |
+| **Data sovereignty** | Secure cloud hosting (Azure-ready, configurable region) |
 | **AI-first** | Every contract operation enhanced by AI extraction & analysis |
 | **Type safety** | End-to-end TypeScript with Zod runtime validation |
 | **Scalability** | Horizontal scaling via PM2 clusters + Azure Container Apps |
@@ -595,12 +595,12 @@ Low Load           Medium Load         High Load
 
 | System | Pattern | Protocol | Auth |
 |---|---|---|---|
-| **DocuSign** | Bidirectional | REST + Webhooks | OAuth 2.0 |
-| **SAP** | Bidirectional | REST / RFC | API Key |
-| **SharePoint** | Bidirectional | MS Graph API | OAuth 2.0 |
-| **Outlook** | Outbound | MS Graph API | OAuth 2.0 |
-| **Slack/Teams** | Outbound | Webhooks | Webhook URL |
-| **Custom** | Outbound | Webhooks (configurable) | HMAC signature |
+| **Google Drive** | Bidirectional | REST (OAuth) | OAuth 2.0 |
+| **Word Add-in** | Bidirectional | Office.js + REST | Session token |
+| **E-signatures** | Outbound | REST + Webhooks | API Key / OAuth 2.0 |
+| **SCIM v2** | Inbound | SCIM REST API | Bearer token |
+| **Supplier Portal** | Inbound | REST | Magic-link token |
+| **Custom Webhooks** | Outbound | HTTP POST (configurable) | HMAC signature |
 
 ### Webhook Architecture
 

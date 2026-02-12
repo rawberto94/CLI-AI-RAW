@@ -86,7 +86,7 @@ const ExecutiveSummary = memo(function ExecutiveSummary({
             </p>
             <div className="flex flex-wrap gap-1.5">
               {keyTerms.map((term, i) => (
-                <KeyTermBadge key={term.name || term.label || `term-${i}`} term={term} />
+                <KeyTermBadge key={typeof term === 'string' ? term : (term.name || term.label || `term-${i}`)} term={term} />
               ))}
             </div>
           </div>
