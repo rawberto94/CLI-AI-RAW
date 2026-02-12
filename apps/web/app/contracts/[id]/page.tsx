@@ -556,10 +556,10 @@ export default function ContractDetailPage() {
   const handleAIExtraction = useCallback(async () => {
     setIsExtractingAI(true)
     try {
-      const response = await fetch(`/api/contracts/${params.id}/extract`, {
+      const response = await fetch(`/api/contracts/${params.id}/retry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
-        body: JSON.stringify({ force: true, includeConfidence: true })
+        body: JSON.stringify({ force: true })
       })
       
       if (!response.ok) throw new Error('AI extraction failed')
