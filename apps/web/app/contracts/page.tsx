@@ -3004,6 +3004,17 @@ export default function ContractsPage() {
                     <X className="h-3.5 w-3.5 mr-1" />
                     Clear
                   </Button>
+                  <div className="w-px h-4 bg-slate-300" />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleBulkDeleteClick}
+                    disabled={isProcessingBulk}
+                    className="h-8 text-xs text-red-600 hover:text-white hover:bg-red-600 rounded-lg gap-1"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete
+                  </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2 text-sm text-slate-600">
