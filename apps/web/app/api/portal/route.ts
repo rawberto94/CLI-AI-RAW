@@ -299,7 +299,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const payloadStr = JSON.stringify(tokenPayload);
     const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
     const token = Buffer.from(`${payloadStr}.${signature}`).toString('base64url');
-    const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3005';
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'NEXTAUTH_URL environment variable must be configured', 500);
+    }
     return createSuccessResponse(ctx, {
       success: true,
       data: {

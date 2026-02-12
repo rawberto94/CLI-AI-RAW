@@ -145,7 +145,7 @@ export class ScheduledReportsService {
   }
 
   private async initializeRedis(): Promise<void> {
-    const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+    const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
     
     try {
       this.redis = new Redis(redisUrl, {
@@ -834,7 +834,10 @@ export class ScheduledReportsService {
       const localFile = path.join(localPath, `${schedule.name.toLowerCase().replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.${schedule.format}`);
       await fs.writeFile(localFile, report.content);
       
-      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+      if (!baseUrl) {
+        throw new Error('NEXT_PUBLIC_APP_URL environment variable must be configured');
+      }
       return `${baseUrl}/api/reports/download?path=${encodeURIComponent(localFile)}`;
     } catch {
       console.error('[ScheduledReports] Local storage fallback failed');

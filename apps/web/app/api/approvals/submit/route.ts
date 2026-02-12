@@ -369,30 +369,9 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       },
       source: 'database',
     });
-  } catch {
-    // Continue to mock fallback
+  } catch (error) {
+    throw error;
   }
-
-  // Fallback mock response
-  const dueDate = deadline 
-    ? new Date(deadline)
-    : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-
-  return createSuccessResponse(ctx, {
-    success: true,
-    message: 'Contract submitted for approval',
-    data: {
-      executionId: `exec_${Date.now()}`,
-      workflowName: template.name,
-      contractId,
-      contractTitle,
-      priority,
-      dueDate: dueDate.toISOString(),
-      totalSteps: approvers.length || template.steps.length,
-      status: 'pending',
-    },
-    source: 'mock',
-  });
 });
 
 // Get available workflow templates

@@ -3916,7 +3916,10 @@ if (isMainModule) {
   logger.info('Starting OCR + Artifact worker...');
   
   // Initialize queue service with config before registering worker
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error('REDIS_URL environment variable must be configured');
+  }
   getQueueService({
     redis: { url: redisUrl },
     defaultJobOptions: {

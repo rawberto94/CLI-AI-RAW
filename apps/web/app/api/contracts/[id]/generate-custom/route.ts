@@ -383,7 +383,7 @@ async function getContractText(contractId: string, tenantId: string): Promise<st
   try {
     // Try to fetch from internal API or database
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/api/contracts/${contractId}`,
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/contracts/${contractId}`,
       {
         headers: { 'x-tenant-id': tenantId }
       }

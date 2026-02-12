@@ -9,12 +9,16 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // In production, this reads from DB (SSOProvider table)
   // For now, return mock data structure
+  const baseUrl = process.env.NEXTAUTH_URL;
+  if (!baseUrl) {
+    return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'NEXTAUTH_URL environment variable must be configured', 500);
+  }
   return createSuccessResponse(ctx, {
     providers: [],
     spMetadata: {
-      entityId: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/saml/metadata`,
-      acsUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/saml/callback`,
-      sloUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/auth/saml/slo`,
+      entityId: `${baseUrl}/api/auth/saml/metadata`,
+      acsUrl: `${baseUrl}/api/auth/saml/callback`,
+      sloUrl: `${baseUrl}/api/auth/saml/slo`,
       nameIdFormat: 'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
     },
   });

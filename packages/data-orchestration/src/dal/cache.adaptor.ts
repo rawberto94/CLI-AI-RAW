@@ -22,7 +22,10 @@ export class CacheAdaptor {
 
   static getInstance(redisUrl?: string): CacheAdaptor {
     if (!CacheAdaptor.instance) {
-      const url = redisUrl || process.env.REDIS_URL || "redis://localhost:6379";
+      const url = redisUrl || process.env.REDIS_URL;
+      if (!url) {
+        throw new Error('REDIS_URL environment variable must be configured');
+      }
       CacheAdaptor.instance = new CacheAdaptor(url);
     }
     return CacheAdaptor.instance;

@@ -176,21 +176,9 @@ export async function PUT(
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch {
-      // Database update failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return createSuccessResponse(ctx, {
-      success: true,
-      workflow: {
-        ...mockWorkflow,
-        ...body,
-        updatedAt: new Date(),
-      },
-      source: 'mock',
-      message: 'Workflow updated (mock)',
-    });
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
@@ -244,21 +232,9 @@ export async function PATCH(
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch {
-      // Database update failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return createSuccessResponse(ctx, {
-      success: true,
-      workflow: {
-        ...mockWorkflow,
-        ...body,
-        updatedAt: new Date(),
-      },
-      source: 'mock',
-      message: 'Workflow updated (mock)',
-    });
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }
@@ -306,16 +282,9 @@ export async function DELETE(
         source: 'database',
         message: 'Workflow deleted successfully',
       });
-    } catch {
-      // Database delete failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return createSuccessResponse(ctx, {
-      success: true,
-      source: 'mock',
-      message: 'Workflow deleted (mock)',
-    });
   } catch (error: unknown) {
     return handleApiError(ctx, error);
   }

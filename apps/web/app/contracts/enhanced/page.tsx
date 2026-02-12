@@ -32,6 +32,7 @@ import {
   Upload,
   Plus,
   FileText,
+  AlertTriangle,
 } from "lucide-react";
 
 // Import enhanced components
@@ -485,6 +486,10 @@ export default function EnhancedContractsDemo() {
   if (isMobile) {
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Preview Mode — data shown is illustrative. Full integration is under development.</span>
+        </div>
         {/* Mobile Search Bar */}
         <MobileSearchBar
           value={filters.search || ""}
@@ -611,6 +616,11 @@ export default function EnhancedContractsDemo() {
       </div>
 
       <div className="max-w-[1600px] mx-auto px-6 sm:px-8 lg:px-12 py-6 space-y-6">
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Preview Mode — data shown is illustrative. Full integration is under development.</span>
+        </div>
+
         {/* Hero Dashboard */}
         <ContractsHeroDashboard
           stats={MOCK_STATS}

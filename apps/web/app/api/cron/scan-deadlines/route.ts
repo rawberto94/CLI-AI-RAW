@@ -133,7 +133,7 @@ export const POST = withCronHandler(async (request, ctx) => {
           expirationDate: deadline.expirationDate.toLocaleDateString(),
           daysUntilExpiration: deadline.daysUntilExpiry,
           contractId: deadline.contractId,
-          contractUrl: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3005'}/contracts/${deadline.contractId}`,
+          contractUrl: `${process.env.NEXT_PUBLIC_URL}/contracts/${deadline.contractId}`,
         });
         
         // Get owner email from contract uploadedBy or fallback to admin

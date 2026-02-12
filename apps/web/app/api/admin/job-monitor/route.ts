@@ -11,7 +11,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     try {
       // Try to connect to Redis and read BullMQ queue info
       const Redis = (await import('ioredis')).default;
-      const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { connectTimeout: 3000 });
+      const redis = new Redis(process.env.REDIS_URL || '', { connectTimeout: 3000 });
 
       const queueNames = [
         'contract-processing',
@@ -79,7 +79,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       // Retry failed job
       try {
         const Redis = (await import('ioredis')).default;
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { connectTimeout: 3000 });
+        const redis = new Redis(process.env.REDIS_URL || '', { connectTimeout: 3000 });
         // Move job from failed to waiting
         await redis.lrem(`bull:${body.queueName}:failed`, 1, body.jobId);
         await redis.rpush(`bull:${body.queueName}:wait`, body.jobId);
@@ -93,7 +93,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (body.action === 'clean-failed') {
       try {
         const Redis = (await import('ioredis')).default;
-        const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', { connectTimeout: 3000 });
+        const redis = new Redis(process.env.REDIS_URL || '', { connectTimeout: 3000 });
         const deleted = await redis.del(`bull:${body.queueName}:failed`);
         await redis.quit();
         return createSuccessResponse(ctx, { cleaned: true, deleted });

@@ -826,6 +826,9 @@ async function uploadToSecureStorage(
   await fs.writeFile(path.join(exportDir, fileName), content);
   
   // Return API endpoint to serve the file
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL;
+  if (!baseUrl) {
+    throw new Error('NEXT_PUBLIC_APP_URL environment variable must be configured');
+  }
   return `${baseUrl}/api/gdpr/download/${encodeURIComponent(fileName)}`;
 }

@@ -96,7 +96,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     select: { name: true },
   });
 
-  const inviteLink = `${process.env.NEXTAUTH_URL || 'http://localhost:3005'}/auth/signup?invite=${token}`;
+  const inviteLink = `${process.env.NEXTAUTH_URL}/auth/signup?invite=${token}`;
 
   const template = emailTemplates.teamInvitation({
     invitedBy: 'Admin',

@@ -33,7 +33,7 @@ class DistributedCache {
   private constructor(config: CacheConfig = {}) {
     this.config = {
       redisUrl: config.redisUrl || process.env.REDIS_URL || 
-        `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`,
+        `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`,
       keyPrefix: config.keyPrefix || 'cache:',
       defaultTTL: config.defaultTTL || 3600, // 1 hour default
       maxRetries: config.maxRetries || 3,

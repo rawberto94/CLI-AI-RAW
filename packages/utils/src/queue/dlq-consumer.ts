@@ -64,7 +64,7 @@ class DLQConsumer {
    */
   public async initialize(connectionConfig?: ConnectionOptions): Promise<void> {
     const redisUrl = process.env.REDIS_URL || 
-      `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+      `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
 
     this.connection = connectionConfig || { url: redisUrl } as ConnectionOptions;
     

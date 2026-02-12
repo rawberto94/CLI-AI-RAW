@@ -251,7 +251,7 @@ async function createDocuSignEnvelope(params: CreateEnvelopeParams): Promise<Env
           {
             method: 'POST',
             body: JSON.stringify({
-              returnUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3005'}/contracts/${params.contractId}?signed=true`,
+              returnUrl: `${process.env.NEXTAUTH_URL}/contracts/${params.contractId}?signed=true`,
               authenticationMethod: 'email',
               email: s.email,
               userName: s.name,
@@ -290,7 +290,7 @@ async function createInternalEnvelope(params: CreateEnvelopeParams): Promise<Env
   const signerResults = params.signers.map((s) => ({
     ...s,
     status: 'sent' as const,
-    signingUrl: `${process.env.NEXTAUTH_URL || 'http://localhost:3005'}/portal?token=${Buffer.from(
+    signingUrl: `${process.env.NEXTAUTH_URL}/portal?token=${Buffer.from(
       JSON.stringify({ contractId: params.contractId, email: s.email, exp: Date.now() + 14 * 86400000 })
     ).toString('base64url')}&action=sign`,
   }));

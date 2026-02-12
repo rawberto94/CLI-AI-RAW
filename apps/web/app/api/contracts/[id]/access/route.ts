@@ -234,7 +234,10 @@ export async function POST(
           ? `${userSession.firstName} ${userSession.lastName || ''}`
           : session.user.email || 'Unknown';
         
-        const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3005';
+        const baseUrl = process.env.NEXT_PUBLIC_URL;
+        if (!baseUrl) {
+          throw new Error('NEXT_PUBLIC_URL environment variable must be configured');
+        }
         
         // Send notification emails in parallel
         await Promise.allSettled(

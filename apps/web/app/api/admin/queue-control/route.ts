@@ -15,7 +15,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
   // Dynamically import BullMQ Queue to connect to Redis
   const { Queue } = await import('bullmq');
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'REDIS_URL environment variable must be configured', 500);
+  }
   const url = new URL(redisUrl);
   const connection = {
     host: url.hostname,

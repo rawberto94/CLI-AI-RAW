@@ -484,84 +484,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         source: 'database',
       });
     }
-  } catch {
-    // Database operation failed - fall through to mock responses
-  }
-
-  // Fallback mock responses
-  if (action === 'approve') {
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: approvalIds?.length > 1
-        ? `${approvalIds.length} items approved successfully`
-        : 'Approval completed successfully',
-      data: {
-        approvalId: approvalId || approvalIds?.[0],
-        newStatus: 'approved',
-        approvedAt: new Date().toISOString(),
-        comment,
-      },
-      source: 'mock',
-    });
-  }
-
-  if (action === 'reject') {
-    if (!reason) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Rejection reason is required', 400);
-    }
-
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: 'Approval rejected',
-      data: {
-        approvalId,
-        newStatus: 'rejected',
-        rejectedAt: new Date().toISOString(),
-        reason,
-      },
-      source: 'mock',
-    });
-  }
-
-  if (action === 'delegate') {
-    if (!delegateTo) {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Delegate target is required', 400);
-    }
-
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: `Delegated to ${delegateTo}`,
-      data: {
-        approvalId,
-        delegatedTo: delegateTo,
-        delegatedAt: new Date().toISOString(),
-      },
-    });
-  }
-
-  if (action === 'request-info') {
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: 'Information request sent',
-      data: {
-        approvalId,
-        status: 'info-requested',
-        requestedAt: new Date().toISOString(),
-        comment,
-      },
-    });
-  }
-
-  if (action === 'escalate') {
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: 'Approval escalated to next level',
-      data: {
-        approvalId,
-        escalatedAt: new Date().toISOString(),
-        newAssignee: 'VP Level Approver',
-      },
-    });
+  } catch (error) {
+    throw error;
   }
 
   return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);

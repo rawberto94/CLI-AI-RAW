@@ -65,6 +65,7 @@ const OPTIONAL_ENV_VARS: EnvVarConfig[] = [
   {
     name: 'REDIS_URL',
     type: 'url',
+    required: true,
     description: 'Redis connection for caching and real-time features',
   },
   {

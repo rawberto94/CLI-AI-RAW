@@ -58,7 +58,10 @@ export async function POST(request: NextRequest) {
     });
 
     // Build reset URL
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      throw new Error('NEXT_PUBLIC_APP_URL or NEXTAUTH_URL environment variable must be configured');
+    }
     const resetUrl = `${baseUrl}/auth/reset-password?token=${token}`;
 
     // In production, send email. In dev, log to console.

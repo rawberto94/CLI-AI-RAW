@@ -35,7 +35,7 @@ const CACHE_PREFIX = 'cache:';
 export function getRedisClient(): RedisClient {
   if (!redisClient) {
     const redisUrl = process.env.REDIS_URL || 
-      `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+      `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
     
     redisClient = new Redis(redisUrl, {
       maxRetriesPerRequest: 3,

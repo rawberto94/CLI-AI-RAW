@@ -7666,7 +7666,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         }
       } else if (intent.action === 'categorization_accuracy') {
         try {
-          const accuracyRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/analytics/categorization-accuracy`, {
+          const accuracyRes = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/analytics/categorization-accuracy`, {
             headers: { 'x-tenant-id': tenantId } });
           
           if (accuracyRes.ok) {

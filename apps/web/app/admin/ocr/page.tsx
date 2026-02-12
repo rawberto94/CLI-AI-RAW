@@ -347,6 +347,11 @@ export default function OCRAdminPage() {
           </p>
         </div>
 
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-300">
+          <AlertTriangle className="h-4 w-4 shrink-0" />
+          <span>Preview Mode — data shown is illustrative. Full integration is under development.</span>
+        </div>
+
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">

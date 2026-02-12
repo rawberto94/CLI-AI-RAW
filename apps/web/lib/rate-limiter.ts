@@ -76,7 +76,10 @@ export class RateLimiter {
    */
   private async getRedis(): Promise<RedisClient> {
     if (!this.redis) {
-      const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+      const redisUrl = process.env.REDIS_URL;
+      if (!redisUrl) {
+        throw new Error('REDIS_URL environment variable must be configured');
+      }
       this.redis = new IORedis(redisUrl, {
         maxRetriesPerRequest: 3,
         enableReadyCheck: true,

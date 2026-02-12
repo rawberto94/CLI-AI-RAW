@@ -63,7 +63,7 @@ class RedisEventBus {
     }
     getRedisUrl() {
         return process.env.REDIS_URL ||
-            `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+            `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
     }
     /**
      * Initialize Redis connections for pub/sub

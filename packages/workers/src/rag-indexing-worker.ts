@@ -597,7 +597,10 @@ const isMainModule = import.meta.url === `file://${process.argv[1]}`;
 if (isMainModule) {
   logger.info('Starting RAG indexing worker...');
   
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error('REDIS_URL environment variable must be configured');
+  }
   getQueueService({
     redis: { url: redisUrl },
     defaultJobOptions: {

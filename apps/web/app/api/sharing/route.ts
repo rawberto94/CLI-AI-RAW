@@ -79,24 +79,22 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       orderBy: { createdAt: 'desc' },
     });
 
-    if (shares.length > 0) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        shares,
-        total: shares.length,
-        source: 'database',
-      });
-    }
+    return createSuccessResponse(ctx, {
+      success: true,
+      shares,
+      total: shares.length,
+      source: 'database',
+    });
   } catch {
-    // Database lookup failed, fall through to mock
+    // Database lookup failed
   }
 
-  // Fallback to mock
+  // Return empty results when database is unavailable
   return createSuccessResponse(ctx, {
     success: true,
-    shares: getMockShares(documentId),
-    total: 2,
-    source: 'mock',
+    shares: [],
+    total: 0,
+    source: 'database',
   });
 });
 
@@ -181,25 +179,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       message: `Document shared with ${recipients.length} recipient(s)`,
       source: 'database',
     });
-  } catch {
-    // Database insert failed, fall through to mock response
-    const mockShares = recipients.map((recipient: string, idx: number) => ({
-      id: `share-${Date.now()}-${idx}`,
-      documentId,
-      documentType,
-      sharedWith: recipient,
-      sharedBy: userId,
-      permission,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-    }));
-
-    return createSuccessResponse(ctx, {
-      success: true,
-      shares: mockShares,
-      message: `Document shared with ${recipients.length} recipient(s) (mock)`,
-      source: 'mock',
-    });
+  } catch (error) {
+    throw error;
   }
 });
 
@@ -245,13 +226,8 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       message: 'Share updated successfully',
       source: 'database',
     });
-  } catch {
-    return createSuccessResponse(ctx, {
-      success: true,
-      share: { id: shareId, permission, expiresAt, isActive },
-      message: 'Share updated (mock)',
-      source: 'mock',
-    });
+  } catch (error) {
+    throw error;
   }
 });
 
@@ -291,11 +267,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
       message: 'Share revoked successfully',
       source: 'database',
     });
-  } catch {
-    return createSuccessResponse(ctx, {
-      success: true,
-      message: 'Share revoked (mock)',
-      source: 'mock',
-    });
+  } catch (error) {
+    throw error;
   }
 });

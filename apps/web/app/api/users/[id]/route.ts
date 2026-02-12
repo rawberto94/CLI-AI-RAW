@@ -54,28 +54,8 @@ export async function GET(
           source: 'database',
         });
       }
-    } catch {
-      // Database query failed, fallback to mock
-    }
-
-    // Fallback mock user
-    const mockUsers: Record<string, { id: string; name: string; email: string; role: string }> = {
-      'user-1': { id: 'user-1', name: 'Sarah Chen', email: 'sarah.chen@company.com', role: 'admin' },
-      'user-2': { id: 'user-2', name: 'Mike Johnson', email: 'mike.johnson@company.com', role: 'approver' },
-      'user-3': { id: 'user-3', name: 'Emily Davis', email: 'emily.davis@company.com', role: 'legal' },
-    };
-
-    const mockUser = mockUsers[id];
-    if (mockUser) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        user: {
-          ...mockUser,
-          avatar: null,
-          initials: mockUser.name.split(' ').map(n => n[0]).join('').toUpperCase(),
-        },
-        source: 'mock',
-      });
+    } catch (error) {
+      throw error;
     }
 
     return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);

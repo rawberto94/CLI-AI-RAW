@@ -153,7 +153,7 @@ export class QueueService {
         ? config.redis as any  // ioredis can parse the url option
         : config.redis as ConnectionOptions;
     } else {
-      this.connection = { host: 'localhost', port: 6379 };
+      throw new Error('Redis connection configuration is required: provide config.connection or config.redis');
     }
     
     // Test Redis connection

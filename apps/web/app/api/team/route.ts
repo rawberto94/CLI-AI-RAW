@@ -209,7 +209,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const template = emailTemplates.teamInvitation({
         invitedBy: 'Team Admin',
         tenantName: 'Your Organization',
-        inviteUrl: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3005'}/accept-invitation?email=${encodeURIComponent(member.email)}`,
+        inviteUrl: `${process.env.NEXT_PUBLIC_URL}/accept-invitation?email=${encodeURIComponent(member.email)}`,
         expiresIn: '7 days',
       });
       
