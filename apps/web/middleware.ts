@@ -204,14 +204,23 @@ const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: numb
   'upload': { anonymous: 15, user: 60, admin: 200 },
   'export': { anonymous: 5, user: 30, admin: 100 },
   'contracts': { anonymous: 50, user: 200, admin: 500 },
-  'default': { anonymous: 50, user: 100, admin: 300 },
+  'read': { anonymous: 100, user: 300, admin: 600 },    // Read-heavy polling endpoints
+  'default': { anonymous: 50, user: 150, admin: 400 },
 };
+
+// Endpoints completely exempt from rate limiting (health checks, monitoring)
+const RATE_LIMIT_EXEMPT = [
+  '/api/health',
+  '/api/monitoring/health',
+  '/api/csrf',
+];
 
 function getEndpointCategory(pathname: string): string {
   if (pathname.startsWith('/api/auth/')) return 'auth'; // M14: Auth-specific rate limits
   if (pathname.includes('/ai/')) return 'ai';
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
+  if (pathname.includes('/extraction/')) return 'read';  // Polling endpoints
   if (pathname.includes('/contracts')) return 'contracts';
   return 'default';
 }
@@ -296,7 +305,8 @@ export default auth(async (req) => {
     '/api/auth/error',
   ];
   const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => pathname.startsWith(p));
-  if (pathname.startsWith("/api/") && !isNextAuthInternal) {
+  const isRateLimitExempt = RATE_LIMIT_EXEMPT.some(p => pathname.startsWith(p));
+  if (pathname.startsWith("/api/") && !isNextAuthInternal && !isRateLimitExempt) {
     // Periodically prune expired entries
     cleanupRateLimitStore();
     
@@ -306,10 +316,12 @@ export default auth(async (req) => {
     const tenantId = req.auth?.user?.tenantId;
     const userRole = (req.auth?.user as any)?.role;
     
-    // Use tenant+user for rate limit grouping (per-tenant limits)
-    const identifier = tenantId 
+    // Use tenant+user+category for rate limit grouping (per-category, per-tenant limits)
+    const category = getEndpointCategory(pathname);
+    const baseId = tenantId 
       ? `tenant:${tenantId}:${userId || ip}`
       : userId || `ip:${ip}`;
+    const identifier = `${category}:${baseId}`;
     
     // Get dynamic rate limit based on endpoint and role
     const maxRequests = getRateLimit(pathname, userRole);
