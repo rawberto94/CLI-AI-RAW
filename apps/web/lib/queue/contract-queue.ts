@@ -91,18 +91,16 @@ export function getContractQueue(): ContractQueueManager {
   if (!queueInstance) {
     try {
       // Ensure the QueueService singleton is initialized before constructing queue managers
-      initializeQueueService();
-      queueInstance = getContractQueueFromUtils();
-      
-      // Verify the queue service is actually connected (not using stub)
-      // If initializeQueueService returns a stub, we should fallback to legacy processing
       const queueService = initializeQueueService();
-      // @ts-expect-error - accessing internal property to check connection
-      if (queueService?.isStub || !queueService?.isConnected?.()) {
-        console.log('[ContractQueue] Queue service is using stub mode or not connected, falling back to legacy processing');
+      
+      if (!queueService) {
+        console.log('[ContractQueue] Queue service initialization returned null, falling back to legacy processing');
         queueInitFailed = true;
-        throw new Error('Queue service not available - using stub mode');
+        throw new Error('Queue service not available - initialization failed');
       }
+      
+      queueInstance = getContractQueueFromUtils();
+      console.log('[ContractQueue] Queue manager initialized successfully');
     } catch (error) {
       console.error('[ContractQueue] Failed to initialize queue:', error);
       queueInitFailed = true;

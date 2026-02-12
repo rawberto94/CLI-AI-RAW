@@ -14,9 +14,15 @@ import dotenv from 'dotenv';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Load environment variables from the web app's .env file
-const envPath = join(__dirname, '..', 'apps', 'web', '.env');
-dotenv.config({ path: envPath });
+// Load environment variables - try multiple locations
+const envPaths = [
+  join(__dirname, '..', '.env'),                    // Root .env (primary)
+  join(__dirname, '..', 'apps', 'web', '.env'),     // Web app .env
+  join(__dirname, '..', 'packages', 'workers', '.env'), // Workers .env
+];
+for (const envFile of envPaths) {
+  dotenv.config({ path: envFile });
+}
 
 // Also try loading .env.local for local overrides
 const envLocalPath = join(__dirname, '..', 'apps', 'web', '.env.local');
