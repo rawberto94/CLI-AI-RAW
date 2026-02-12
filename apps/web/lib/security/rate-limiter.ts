@@ -367,10 +367,10 @@ export const rateLimiters = {
     message: 'Too many authentication attempts. Please try again later.',
   }),
   
-  /** Upload rate limit: 10 uploads per hour */
+  /** Upload rate limit: 60 uploads per hour */
   upload: new RateLimiter({
     identifier: 'upload',
-    limit: 10,
+    limit: 60,
     window: 3600,
     message: 'Upload limit exceeded. Please try again later.',
   }),

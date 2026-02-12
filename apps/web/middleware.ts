@@ -201,7 +201,7 @@ async function checkRateLimit(
 const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: number }> = {
   'auth': { anonymous: 10, user: 20, admin: 50 },      // M14: Strict auth rate limits
   'ai': { anonymous: 10, user: 50, admin: 200 },
-  'upload': { anonymous: 5, user: 20, admin: 100 },
+  'upload': { anonymous: 15, user: 60, admin: 200 },
   'export': { anonymous: 5, user: 30, admin: 100 },
   'contracts': { anonymous: 50, user: 200, admin: 500 },
   'default': { anonymous: 50, user: 100, admin: 300 },

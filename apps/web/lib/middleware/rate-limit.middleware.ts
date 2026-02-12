@@ -118,10 +118,10 @@ export const EndpointRateLimits = {
     message: 'Rate limit exceeded for analytics operations.',
   },
 
-  // File upload endpoints - strict limits
+  // File upload endpoints
   upload: {
     windowMs: 60000, // 1 minute
-    maxRequests: 10,
+    maxRequests: 60,
     message: 'Too many file uploads. Please wait before uploading more files.',
   },
 
