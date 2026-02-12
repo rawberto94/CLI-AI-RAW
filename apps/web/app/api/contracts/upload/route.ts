@@ -521,6 +521,37 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     // Silently handle taxonomy classifier import errors
   }
 
+  // Fast text-based party extraction at upload time
+  // Gives immediate clientName/supplierName from document text before AI processing
+  try {
+    const partyText = buffer.toString('utf-8', 0, Math.min(15000, buffer.length));
+    if (!metadata.clientName && !metadata.supplierName && partyText.length > 50) {
+      const partyUpdate: Record<string, string> = {};
+      // "between X and Y" — most common contract pattern
+      const betweenMatch = partyText.match(
+        /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
+      );
+      if (betweenMatch) {
+        partyUpdate.clientName = betweenMatch[1].replace(/\s+$/, '').trim();
+        partyUpdate.supplierName = betweenMatch[2].replace(/\s+$/, '').trim();
+      } else {
+        // Label patterns: "Client: X", "Vendor: X"
+        const clientMatch = partyText.match(/(?:Client|Buyer|Customer|Auftraggeber)\s*[:.]\s*(.+?)(?:\n|$)/i);
+        const supplierMatch = partyText.match(/(?:Service Provider|Vendor|Supplier|Provider|Contractor|Auftragnehmer)\s*[:.]\s*(.+?)(?:\n|$)/i);
+        if (clientMatch) partyUpdate.clientName = clientMatch[1].replace(/[,;]+$/, '').trim().substring(0, 200);
+        if (supplierMatch) partyUpdate.supplierName = supplierMatch[1].replace(/[,;]+$/, '').trim().substring(0, 200);
+      }
+      if (Object.keys(partyUpdate).length > 0) {
+        await prisma.contract.update({
+          where: { id: contract.id },
+          data: partyUpdate,
+        });
+      }
+    }
+  } catch {
+    // Non-critical — AI worker will extract parties later
+  }
+
   // Fast keyword-based contract type detection at upload time
   // This gives an immediate contractType (e.g., "SOW", "NDA", "MSA") without an API call.
   // The OCR worker will later refine this with AI-based detection for higher accuracy.

@@ -318,6 +318,9 @@ export async function GET(
       startDate: contract.startDate?.toISOString?.() ?? (contract as any).startDate ?? null,
       endDate: contract.endDate?.toISOString?.() ?? (contract as any).endDate ?? null,
 
+      // Enterprise metadata from AI processing (includes external_parties, signature info, etc.)
+      aiMetadata: (contract as any).aiMetadata || null,
+
       // Build contract_short_description server-side for reliability
       contract_short_description: (() => {
         const overviewArt = artifactsByType['overview'] || artifactsByType['metadata'];
@@ -340,36 +343,74 @@ export async function GET(
       // Build external_parties array directly so the hook finds it immediately
       external_parties: (() => {
         const parties: Array<{ legalName: string; role: string }> = [];
+        const unwrapPartyVal = (v: any) => (v && typeof v === 'object' && 'value' in v) ? v.value : v;
+        const addParty = (name: any, role: string) => {
+          const n = typeof name === 'string' ? name.trim() : '';
+          if (n && n.length > 1 && !parties.some(p => p.legalName === n)) parties.push({ legalName: n, role });
+        };
         // 1. Try OVERVIEW artifact parties
         const overviewArtifact = artifactsByType['overview'] || artifactsByType['metadata'];
         if (overviewArtifact?.parties && Array.isArray(overviewArtifact.parties)) {
-          overviewArtifact.parties.forEach((p: { name?: string; legalName?: string; role?: string }) => {
-            const name = p.legalName || p.name;
-            if (name) parties.push({ legalName: name, role: p.role || '' });
+          overviewArtifact.parties.forEach((p: any) => {
+            const name = unwrapPartyVal(p.legalName) || unwrapPartyVal(p.name);
+            if (name) addParty(name, unwrapPartyVal(p.role) || '');
           });
         }
         // 2. Try PARTIES artifact
         if (parties.length === 0) {
           const partiesArtifact = artifactsByType['parties'];
           if (partiesArtifact?.parties && Array.isArray(partiesArtifact.parties)) {
-            partiesArtifact.parties.forEach((p: { name?: string; legalName?: string; role?: string }) => {
-              const name = p.legalName || p.name;
-              if (name) parties.push({ legalName: name, role: p.role || '' });
+            partiesArtifact.parties.forEach((p: any) => {
+              const name = unwrapPartyVal(p.legalName) || unwrapPartyVal(p.name);
+              if (name) addParty(name, unwrapPartyVal(p.role) || '');
             });
           }
         }
-        // 3. Fallback to DB fields
+        // 3. Try enterprise metadata (aiMetadata.external_parties from worker)
         if (parties.length === 0) {
-          if (contract.clientName) parties.push({ legalName: contract.clientName, role: 'Client' });
-          if (contract.supplierName) parties.push({ legalName: contract.supplierName, role: 'Service Provider' });
+          const aiMeta = (contract as any).aiMetadata;
+          if (aiMeta?.external_parties && Array.isArray(aiMeta.external_parties)) {
+            aiMeta.external_parties.forEach((p: any) => {
+              const name = p.legalName || p.name;
+              if (name) addParty(name, p.role || '');
+            });
+          }
         }
-        // 4. Last resort: parse from documentInfo.preview text
-        if (parties.length === 0 && overviewArtifact?.documentInfo?.preview) {
-          const preview = overviewArtifact.documentInfo.preview as string;
-          const clientMatch = preview.match(/Client:\s*(.+?)(?:\n|$)/);
-          const providerMatch = preview.match(/(?:Service Provider|Vendor|Supplier|Provider):\s*(.+?)(?:\n|$)/);
-          if (clientMatch) parties.push({ legalName: clientMatch[1].trim(), role: 'Client' });
-          if (providerMatch) parties.push({ legalName: providerMatch[1].trim(), role: 'Service Provider' });
+        // 4. Fallback to DB fields
+        if (parties.length === 0) {
+          if (contract.clientName) addParty(contract.clientName, 'Client');
+          if (contract.supplierName) addParty(contract.supplierName, 'Service Provider');
+        }
+        // 5. Parse from any available text (artifact preview, summary, or ingestion text)
+        if (parties.length === 0) {
+          const textSources = [
+            overviewArtifact?.documentInfo?.preview,
+            overviewArtifact?.rawText,
+            overviewArtifact?.summary,
+            artifactsByType['ingestion']?.text,
+            artifactsByType['ingestion']?.rawText,
+          ].filter(Boolean).join('\n');
+          if (textSources.length > 10) {
+            // "between X and Y" pattern (most common in contracts)
+            const betweenMatch = textSources.match(/(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()-]{2,80}?)\s*(?:\(|,|\n)/i);
+            if (betweenMatch) {
+              addParty(betweenMatch[1].replace(/\s+$/, ''), 'Party');
+              addParty(betweenMatch[2].replace(/\s+$/, ''), 'Party');
+            }
+            // "Client: X" / "Provider: X" patterns
+            if (parties.length === 0) {
+              const labelPatterns = [
+                { re: /(?:Client|Buyer|Customer|Auftraggeber|Mandant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Client' },
+                { re: /(?:Service Provider|Vendor|Supplier|Provider|Contractor|Auftragnehmer|Lieferant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Service Provider' },
+                { re: /(?:Party\s*A|First Party|Licensor|Landlord)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Party A' },
+                { re: /(?:Party\s*B|Second Party|Licensee|Tenant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Party B' },
+              ];
+              for (const { re, role } of labelPatterns) {
+                const m = textSources.match(re);
+                if (m) addParty(m[1].replace(/[,;]+$/, '').trim(), role);
+              }
+            }
+          }
         }
         return parties.length > 0 ? parties : undefined;
       })(),

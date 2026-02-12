@@ -3745,7 +3745,26 @@ function getFallbackArtifact(type: string, contractText: string, contract: any):
     OVERVIEW: {
       summary: `Contract uploaded: ${contract.fileName || contract.contractTitle || 'Unknown'}. AI analysis unavailable - please review manually.`,
       contractType: contract.contractType || 'Unknown',
-      parties: [contract.clientName, contract.supplierName].filter(Boolean).map((name: string) => ({ name, role: 'Party' })),
+      parties: (() => {
+        // Start with DB fields
+        const p = [contract.clientName, contract.supplierName].filter(Boolean).map((name: string) => ({ name, role: 'Party' }));
+        // If empty, try to extract from contract text using common patterns
+        if (p.length === 0 && contractText && contractText.length > 50) {
+          const betweenMatch = contractText.match(
+            /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
+          );
+          if (betweenMatch) {
+            p.push({ name: betweenMatch[1].trim(), role: 'Party A' });
+            p.push({ name: betweenMatch[2].trim(), role: 'Party B' });
+          } else {
+            const clientMatch = contractText.match(/(?:Client|Buyer|Customer)\s*[:.]\s*(.+?)(?:\n|$)/i);
+            const supplierMatch = contractText.match(/(?:Service Provider|Vendor|Supplier|Provider|Contractor)\s*[:.]\s*(.+?)(?:\n|$)/i);
+            if (clientMatch) p.push({ name: clientMatch[1].replace(/[,;]+$/, '').trim(), role: 'Client' });
+            if (supplierMatch) p.push({ name: supplierMatch[1].replace(/[,;]+$/, '').trim(), role: 'Service Provider' });
+          }
+        }
+        return p;
+      })(),
       effectiveDate: contract.effectiveDate?.toISOString() || null,
       expirationDate: contract.expirationDate?.toISOString() || null,
       totalValue: contract.totalValue || 0,

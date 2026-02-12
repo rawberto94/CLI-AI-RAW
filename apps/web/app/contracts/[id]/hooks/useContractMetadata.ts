@@ -113,9 +113,9 @@ export function useContractMetadata(contract: ContractData | null) {
   const buildExternalParties = useCallback((): Array<{ legalName: string; role?: string; legalForm?: string }> => {
     if (!contract) return []
     
-    // First check if contract has external_parties array
+    // First check if contract has external_parties array (built by API from artifacts)
     if (contract.external_parties && Array.isArray(contract.external_parties) && contract.external_parties.length > 0) {
-      return contract.external_parties.filter(p => p.legalName)
+      return contract.external_parties.filter((p: any) => p.legalName)
     }
     
     // Fallback to AI-extracted parties from overview artifact
@@ -129,6 +129,18 @@ export function useContractMetadata(contract: ContractData | null) {
           legalName: unwrapValue(p.legalName) || unwrapValue(p.name) || p.value?.name || unwrapValue(p.value) || '',
           role: unwrapValue(p.role) || unwrapValue(p.type) || '',
           legalForm: unwrapValue(p.legalForm) || unwrapValue(p.entityType) || ''
+        }))
+    }
+    
+    // Fallback to enterprise metadata (aiMetadata.external_parties from worker)
+    const aiMeta = (contract as any).aiMetadata
+    if (aiMeta?.external_parties && Array.isArray(aiMeta.external_parties) && aiMeta.external_parties.length > 0) {
+      return aiMeta.external_parties
+        .filter((p: any) => p.legalName || p.name)
+        .map((p: any) => ({
+          legalName: p.legalName || p.name || '',
+          role: p.role || '',
+          legalForm: p.legalForm || ''
         }))
     }
     
