@@ -335,7 +335,13 @@ ${memoryContext}`;
   const allToolResults: ToolResult[] = [];
   const allSuggestedActions: Array<{ label: string; action: string }> = [];
 
+  let cancelled = false;
+
   const readable = new ReadableStream({
+    cancel() {
+      // Client disconnected — signal upstream work to stop
+      cancelled = true;
+    },
     async start(controller) {
       try {
         // ── Send initial metadata ─────────────────────────────────────
@@ -369,7 +375,7 @@ ${memoryContext}`;
         // ── Agentic loop with tool calling ────────────────────────────
         let iteration = 0;
 
-        while (iteration < MAX_TOOL_ITERATIONS) {
+        while (iteration < MAX_TOOL_ITERATIONS && !cancelled) {
           iteration++;
 
           // Try OpenAI with function calling
@@ -442,6 +448,7 @@ ${memoryContext}`;
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`));
                 if (words.length > 20 && i % 12 === 0) {
                   await new Promise(r => setTimeout(r, 10));
+                  if (cancelled) break;
                 }
               }
             }

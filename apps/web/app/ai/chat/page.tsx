@@ -223,6 +223,14 @@ function AIChatPageContent() {
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup: abort any in-flight streaming request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Load conversation messages when switching conversations
   const loadConversation = useCallback(async (conversationId: string) => {
@@ -458,6 +466,10 @@ function AIChatPageContent() {
       await saveMessage(activeConversationId, userMessage);
     }
 
+    // Create abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
       // Use streaming endpoint for real-time token-by-token display
       const response = await fetch("/api/ai/chat/stream", {
@@ -472,50 +484,58 @@ function AIChatPageContent() {
           conversationId: activeConversationId,
           conversationHistory: messages.slice(-10),
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
         throw new Error("Failed to get AI response");
       }
 
-      // Parse SSE stream
+      // Parse SSE stream with proper chunk boundary buffering
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       let fullContent = '';
       let sources: string[] = [];
       let confidence: number | undefined;
       let suggestions: string[] = [];
+      let sseBuffer = ''; // Buffer for incomplete SSE lines across chunks
 
       if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            // Keep the last (potentially incomplete) line in the buffer
+            sseBuffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === 'content' && data.content) {
-                  fullContent += data.content;
-                  setStreamingContent(fullContent);
-                } else if (data.content && !data.type) {
-                  fullContent += data.content;
-                  setStreamingContent(fullContent);
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'content' && data.content) {
+                    fullContent += data.content;
+                    setStreamingContent(fullContent);
+                  } else if (data.content && !data.type) {
+                    fullContent += data.content;
+                    setStreamingContent(fullContent);
+                  }
+                  if (data.sources) sources = data.sources;
+                  if (data.confidence) confidence = data.confidence;
+                  if (data.suggestedActions) {
+                    suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
+                  }
+                  if (data.done || data.type === 'done') break;
+                } catch {
+                  // Ignore parse errors for malformed SSE lines
                 }
-                if (data.sources) sources = data.sources;
-                if (data.confidence) confidence = data.confidence;
-                if (data.suggestedActions) {
-                  suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
-                }
-                if (data.done || data.type === 'done') break;
-              } catch {
-                // Ignore parse errors for incomplete SSE chunks
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
       }
 

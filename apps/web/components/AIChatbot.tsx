@@ -199,6 +199,13 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const responseStartTimeRef = useRef<number>(0);
 
+  // Cleanup: abort any in-flight streaming request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
   const contextualSuggestions = useMemo<Record<string, string[]>>(() => ({
     global: [
       'What needs my attention today?',
@@ -718,36 +725,43 @@ How can I help you today?`;
       let sources: string[] = [];
       let suggestedActions: Array<{ label: string; action: string }> = [];
       let contractPreviews: Message['contractPreviews'] = [];
+      let sseBuffer = ''; // Buffer for incomplete SSE lines across chunks
 
       if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            // Keep the last (potentially incomplete) line in the buffer
+            sseBuffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.type === 'content' && data.content) {
-                  fullContent += data.content;
-                  setStreamingText(fullContent);
-                } else if (data.content && !data.type) {
-                  // Legacy format compatibility
-                  fullContent += data.content;
-                  setStreamingText(fullContent);
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'content' && data.content) {
+                    fullContent += data.content;
+                    setStreamingText(fullContent);
+                  } else if (data.content && !data.type) {
+                    // Legacy format compatibility
+                    fullContent += data.content;
+                    setStreamingText(fullContent);
+                  }
+                  if (data.sources) sources = data.sources;
+                  if (data.suggestedActions) suggestedActions = data.suggestedActions;
+                  if (data.contractPreviews) contractPreviews = data.contractPreviews;
+                  if (data.done || data.type === 'done') break;
+                } catch (_e) {
+                  // Ignore parse errors for malformed SSE lines
                 }
-                if (data.sources) sources = data.sources;
-                if (data.suggestedActions) suggestedActions = data.suggestedActions;
-                if (data.contractPreviews) contractPreviews = data.contractPreviews;
-                if (data.done || data.type === 'done') break;
-              } catch (_e) {
-                // Ignore parse errors for incomplete chunks
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
       }
 

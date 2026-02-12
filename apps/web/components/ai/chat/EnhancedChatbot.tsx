@@ -560,14 +560,15 @@ const ChatbotInner = memo(({
     setIsLoading(true);
 
     try {
-      // Call AI API with conversation memory support
-      const response = await fetch('/api/ai/chat', {
+      // Call streaming AI API with conversation memory support
+      const response = await fetch('/api/ai/chat/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text,
           contractId: contractContext?.id,
-          conversationId: currentConversationId, // Pass conversation ID for memory
+          conversationId: currentConversationId,
+          conversationHistory: messages.slice(-10),
           attachments: attachments?.map(a => ({
             name: a.file.name,
             type: a.file.type,
@@ -579,35 +580,57 @@ const ChatbotInner = memo(({
         throw new Error('Failed to get AI response');
       }
 
-      // Handle streaming response
+      // Parse SSE stream with chunk boundary buffering
       const reader = response.body?.getReader();
       if (reader) {
         let fullResponse = '';
+        let sources: string[] | undefined;
+        let suggestions: string[] | undefined;
         const decoder = new TextDecoder();
+        let sseBuffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value);
-          fullResponse += chunk;
-          setStreamingMessage(fullResponse);
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            sseBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if ((data.type === 'content' || !data.type) && data.content) {
+                    fullResponse += data.content;
+                    setStreamingMessage(fullResponse);
+                  }
+                  if (data.sources) sources = data.sources;
+                  if (data.suggestedActions) {
+                    suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
+                  }
+                } catch { /* skip malformed SSE lines */ }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
         }
 
         // Add assistant message
         setStreamingMessage('');
         addMessage({
           role: 'assistant',
-          content: fullResponse,
+          content: fullResponse || 'Sorry, I could not generate a response.',
+          sources,
+          suggestions,
         });
       } else {
-        // Non-streaming response
+        // Fallback: non-streaming JSON response
         const data = await response.json();
-        
-        // Build message content with reference resolutions
         let messageContent = data.response || data.message || 'Sorry, I could not generate a response.';
         
-        // Add reference resolutions if present
         if (data.referenceResolutions && data.referenceResolutions.length > 0) {
           const resolutions = data.referenceResolutions
             .map((r: any) => `"${r.originalText}" → "${r.resolvedValue}"`)
