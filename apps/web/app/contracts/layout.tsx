@@ -1,5 +1,3 @@
-'use client';
-
 import { AutoBreadcrumbs } from '@/components/navigation/AutoBreadcrumbs';
 
 export default function ContractsLayout({
