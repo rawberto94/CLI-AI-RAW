@@ -214,11 +214,11 @@ export function useContractMetadata(contract: ContractData | null) {
     return {
       // Identification
       document_number: contract.document_number || contract.id || '',
-      document_title: contract.document_title || unwrapValue(overviewData?.title) || contract.filename || '',
+      document_title: contract.document_title || (contract as any).contractTitle || unwrapValue(overviewData?.title) || unwrapValue(overviewData?.contractTitle) || contract.filename || '',
       contract_short_description: contract.contract_short_description || contract.description || unwrapValue(execSummaryData?.executiveSummary) || unwrapValue(execSummaryData?.summary) || unwrapValue(overviewData?.summary) || '',
-      contract_type: unwrapValue(overviewData?.contractType) || unwrapValue(overviewData?.type) || unwrapValue(overviewData?.contract_type) || '',
+      contract_type: (contract as any).contractType || unwrapValue(overviewData?.contractType) || unwrapValue(overviewData?.type) || unwrapValue(overviewData?.contract_type) || '',
       jurisdiction: contract.jurisdiction || unwrapValue(overviewData?.jurisdiction) || '',
-      contract_language: contract.contract_language || unwrapValue(overviewData?.language) || 'en',
+      contract_language: contract.contract_language || unwrapValue(overviewData?.language) || unwrapValue(overviewData?.contract_language) || '',
       document_classification: contract.document_classification || unwrapValue(overviewData?.documentClassification) || 'contract' as DocumentClassification,
       document_classification_warning: contract.document_classification_warning || unwrapValue(overviewData?.documentClassificationWarning),
       
@@ -266,6 +266,7 @@ export function useContractMetadata(contract: ContractData | null) {
       ),
       start_date: formatDateStr(
         contract.start_date || 
+        (contract as any).startDate ||
         contract.effectiveDate || 
         unwrapValue(overviewData?.effectiveDate) || 
         unwrapValue(overviewData?.effective_date) ||
@@ -274,13 +275,19 @@ export function useContractMetadata(contract: ContractData | null) {
       ),
       end_date: formatDateStr(
         contract.end_date || 
+        (contract as any).endDate ||
         contract.expirationDate || 
         unwrapValue(overviewData?.expirationDate) || 
         unwrapValue(overviewData?.expiration_date) ||
         unwrapValue(overviewData?.endDate) ||
         unwrapValue(overviewData?.end_date)
       ),
-      termination_date: formatDateStr(contract.termination_date),
+      termination_date: formatDateStr(
+        contract.termination_date || 
+        (contract as any).terminationDate ||
+        unwrapValue(overviewData?.terminationDate) ||
+        unwrapValue(overviewData?.termination_date)
+      ),
       
       // Reminders & Notices
       reminder_enabled: contract.reminder_enabled ?? true,
@@ -295,16 +302,20 @@ export function useContractMetadata(contract: ContractData | null) {
     const score = riskData?.riskScore || riskData?.overallScore
     const level = riskData?.riskLevel || riskData?.overallRisk
     
+    // If no risk data at all (no artifact), mark as not-assessed rather than fabricating 'medium'
+    const hasRiskData = riskData && !riskData?._meta?.fallback && !riskData?.error
+    
     let riskLevel: 'low' | 'medium' | 'high'
     if (level) {
       riskLevel = level.toLowerCase() as 'low' | 'medium' | 'high'
-    } else if (score !== undefined) {
+    } else if (score !== undefined && score !== null) {
       riskLevel = score < 30 ? 'low' : score < 60 ? 'medium' : 'high'
     } else {
-      riskLevel = 'medium'
+      // No risk data — default to 'low' (neutral) rather than alarming 'medium'
+      riskLevel = hasRiskData ? 'medium' : 'low'
     }
     
-    const riskScore = score ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75)
+    const riskScore = score ?? (hasRiskData ? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75) : 0)
     const risks = riskData?.risks || []
     
     // Extract risk factors as string array for display

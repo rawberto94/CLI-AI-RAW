@@ -310,16 +310,23 @@ export async function GET(
       clientName: contract.clientName || null,
       supplierName: contract.supplierName || null,
       contractTitle: contract.contractTitle || null,
+      document_title: contract.contractTitle || null,
       description: contract.description || null,
       effectiveDate: contract.effectiveDate?.toISOString() || null,
       expirationDate: contract.expirationDate?.toISOString() || null,
 
-      // Pass through start/end dates as well (some contracts use startDate/endDate instead of effectiveDate)
-      startDate: contract.startDate?.toISOString?.() ?? (contract as any).startDate ?? null,
-      endDate: contract.endDate?.toISOString?.() ?? (contract as any).endDate ?? null,
+      // Pass through start/end dates in BOTH camelCase and snake_case so frontend can find them
+      startDate: contract.startDate?.toISOString?.() ?? contract.effectiveDate?.toISOString() ?? null,
+      endDate: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
+      start_date: contract.startDate?.toISOString?.() ?? contract.effectiveDate?.toISOString() ?? null,
+      end_date: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
+      termination_date: (contract as any).terminationDate?.toISOString?.() ?? null,
 
       // Enterprise metadata from AI processing (includes external_parties, signature info, etc.)
       aiMetadata: (contract as any).aiMetadata || null,
+
+      // Contract type from DB (frontend checks this for type display)
+      contractType: contract.contractType || null,
 
       // Build contract_short_description server-side for reliability
       contract_short_description: (() => {

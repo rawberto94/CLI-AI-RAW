@@ -821,8 +821,8 @@ export default function ContractDetailPage() {
         isExtractingAI={isExtractingAI}
         isExtractingObligations={isExtractingObligations}
         isExpiredOrExpiring={
-          contract?.expirationDate 
-            ? new Date(contract.expirationDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+          metadata.end_date 
+            ? new Date(metadata.end_date) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
             : false
         }
         onRefresh={loadContract}
@@ -972,6 +972,8 @@ export default function ContractDetailPage() {
                 riskLevel={riskInfo.riskLevel}
                 complianceStatus={complianceInfo.isCompliant ? 'ok' : 'review'}
                 contractStatus={contract?.status || 'active'}
+                signatureStatus={metadata.signature_status}
+                signatureRequiredFlag={metadata.signature_required_flag}
               />
             </motion.div>
 
@@ -1164,7 +1166,7 @@ export default function ContractDetailPage() {
                         signatureDate={metadata.signature_date}
                         startDate={metadata.start_date}
                         endDate={metadata.end_date}
-                        terminationDate={contract?.termination_date}
+                        terminationDate={metadata.termination_date}
                       />
                     </SectionErrorBoundary>
                     
@@ -1186,7 +1188,7 @@ export default function ContractDetailPage() {
                     contract={{
                       id: params.id as string,
                       name: contract?.filename || contract?.document_title || 'Contract',
-                      supplierName: contract?.supplierName || metadata.external_parties?.[0]?.legalName,
+                      supplierName: contract?.supplierName || metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || metadata.external_parties?.[0]?.legalName,
                       contractType: contract?.category?.name || contract?.contractType || undefined,
                       totalValue: typeof contract?.totalValue === 'number' ? contract.totalValue : undefined,
                       startDate: metadata.start_date || undefined,
@@ -1317,12 +1319,12 @@ export default function ContractDetailPage() {
                     contractId={params.id as string}
                     onUpdate={loadContract}
                     fields={[
-                      { name: 'supplierName', label: 'Supplier', value: contract?.supplierName, confidence: 92, source: 'ai' },
-                      { name: 'clientName', label: 'Client', value: contract?.clientName, confidence: 88, source: 'ai' },
-                      { name: 'totalValue', label: 'Total Value', value: contract?.totalValue, confidence: 85, source: 'ai' },
-                      { name: 'effectiveDate', label: 'Effective Date', value: contract?.effectiveDate, confidence: 95, source: 'ai' },
-                      { name: 'expirationDate', label: 'Expiration Date', value: contract?.expirationDate, confidence: 90, source: 'ai' },
-                      { name: 'contractType', label: 'Contract Type', value: contract?.contractType, confidence: 78, source: 'ai' },
+                      { name: 'supplierName', label: 'Supplier', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract?.supplierName, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'clientName', label: 'Client', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract?.clientName, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'totalValue', label: 'Total Value', value: metadata.tcv_amount ?? contract?.totalValue, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'effectiveDate', label: 'Effective Date', value: metadata.start_date || contract?.effectiveDate, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'expirationDate', label: 'Expiration Date', value: metadata.end_date || contract?.expirationDate, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'contractType', label: 'Contract Type', value: metadata.contract_type || contract?.contractType, confidence: extractionConfidence, source: 'ai' },
                     ].filter(f => f.value !== null && f.value !== undefined)}
                   />
                 </TabsContent>
@@ -1479,8 +1481,8 @@ export default function ContractDetailPage() {
         contractName={contract?.filename || 'Contract'}
         expirationDate={metadata.end_date}
         currentConfig={{
-          enabled: contract?.reminder_enabled ?? false,
-          daysBeforeExpiry: contract?.reminder_days_before_end ?? 30,
+          enabled: metadata.reminder_enabled ?? contract?.reminder_enabled ?? false,
+          daysBeforeExpiry: metadata.reminder_days_before_end ?? contract?.reminder_days_before_end ?? 30,
           notificationChannels: ['email', 'in-app'],
         }}
         onSave={async (config) => {
@@ -1502,9 +1504,9 @@ export default function ContractDetailPage() {
         contractId={params.id as string}
         filename={contract?.filename || 'Contract'}
         isFavorite={isFavorite}
-        hasReminder={contract?.reminder_enabled ?? false}
+        hasReminder={metadata.reminder_enabled ?? contract?.reminder_enabled ?? false}
         isArchived={contract?.status === 'archived'}
-        isExpired={contract?.expirationDate ? new Date(contract.expirationDate) < new Date() : false}
+        isExpired={metadata.end_date ? new Date(metadata.end_date) < new Date() : false}
         onToggleFavorite={async () => {
           const response = await fetch(`/api/contracts/${params.id}/favorite`, {
             method: 'POST',
@@ -1564,15 +1566,15 @@ export default function ContractDetailPage() {
           onOpenChange={setShowRenewalModal}
           contract={{
             id: contract.id,
-            title: contract.document_title || contract.filename || 'Contract',
+            title: metadata.document_title || contract.filename || 'Contract',
             fileName: contract.filename,
-            effectiveDate: contract.effectiveDate,
-            expirationDate: contract.expirationDate,
-            totalValue: typeof contract.totalValue === 'string' ? parseFloat(contract.totalValue) : contract.totalValue,
-            currency: contract.currency,
-            clientName: contract.clientName,
-            supplierName: contract.supplierName,
-            contractType: contract.contractType,
+            effectiveDate: metadata.start_date || contract.effectiveDate,
+            expirationDate: metadata.end_date || contract.expirationDate,
+            totalValue: metadata.tcv_amount ?? (typeof contract.totalValue === 'string' ? parseFloat(contract.totalValue) : contract.totalValue),
+            currency: metadata.currency || contract.currency,
+            clientName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract.clientName,
+            supplierName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract.supplierName,
+            contractType: metadata.contract_type || contract.contractType,
             status: contract.status,
           }}
           onRenewalCreated={(renewal) => {
