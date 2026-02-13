@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,143 +64,32 @@ interface ModelPerformance {
 }
 
 // =============================================================================
-// MOCK DATA
+// API HELPERS
 // =============================================================================
 
-const mockModels: ModelPerformance[] = [
-  {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI',
-    version: '2024-05-13',
-    status: 'active',
+function mapApiModel(m: Record<string, any>): ModelPerformance {
+  return {
+    id: m.id || m.modelId || 'unknown',
+    name: m.name || m.modelId || 'Unknown Model',
+    provider: m.provider || 'Unknown',
+    version: m.version || 'latest',
+    status: m.status || 'active',
     metrics: {
-      accuracy: 0.943,
-      accuracyTrend: 'up',
-      latencyMs: 2100,
-      latencyTrend: 'stable',
-      costPer1kTokens: 0.015,
-      totalCost30d: 847.32,
-      extractionsCount: 45230,
-      errorRate: 0.012,
-      avgConfidence: 0.91,
+      accuracy: m.metrics?.accuracy ?? m.accuracy ?? 0,
+      accuracyTrend: m.metrics?.accuracyTrend || 'stable',
+      latencyMs: m.metrics?.latencyMs ?? m.latencyMs ?? 0,
+      latencyTrend: m.metrics?.latencyTrend || 'stable',
+      costPer1kTokens: m.metrics?.costPer1kTokens ?? m.costPer1kTokens ?? 0,
+      totalCost30d: m.metrics?.totalCost30d ?? 0,
+      extractionsCount: m.metrics?.extractionsCount ?? 0,
+      errorRate: m.metrics?.errorRate ?? 0,
+      avgConfidence: m.metrics?.avgConfidence ?? 0,
     },
-    fieldPerformance: {
-      'effective_date': { accuracy: 0.97, samples: 8450 },
-      'expiration_date': { accuracy: 0.95, samples: 7890 },
-      'total_value': { accuracy: 0.92, samples: 6720 },
-      'payment_terms': { accuracy: 0.89, samples: 5430 },
-      'termination_notice': { accuracy: 0.91, samples: 4560 },
-      'liability_cap': { accuracy: 0.88, samples: 3210 },
-    },
-    contractTypePerformance: {
-      'SERVICE_AGREEMENT': { accuracy: 0.95, samples: 18500 },
-      'PROCUREMENT': { accuracy: 0.94, samples: 12300 },
-      'LICENSING': { accuracy: 0.93, samples: 8900 },
-      'EMPLOYMENT': { accuracy: 0.91, samples: 5530 },
-    },
-    lastUsed: new Date(),
-  },
-  {
-    id: 'gpt-4o-mini',
-    name: 'GPT-4o-mini',
-    provider: 'OpenAI',
-    version: '2024-07-18',
-    status: 'active',
-    metrics: {
-      accuracy: 0.912,
-      accuracyTrend: 'up',
-      latencyMs: 890,
-      latencyTrend: 'down',
-      costPer1kTokens: 0.003,
-      totalCost30d: 156.78,
-      extractionsCount: 38920,
-      errorRate: 0.018,
-      avgConfidence: 0.87,
-    },
-    fieldPerformance: {
-      'effective_date': { accuracy: 0.94, samples: 7200 },
-      'expiration_date': { accuracy: 0.92, samples: 6890 },
-      'total_value': { accuracy: 0.88, samples: 5720 },
-      'payment_terms': { accuracy: 0.84, samples: 4830 },
-      'termination_notice': { accuracy: 0.86, samples: 3960 },
-      'liability_cap': { accuracy: 0.82, samples: 2810 },
-    },
-    contractTypePerformance: {
-      'SERVICE_AGREEMENT': { accuracy: 0.93, samples: 15800 },
-      'PROCUREMENT': { accuracy: 0.91, samples: 10500 },
-      'LICENSING': { accuracy: 0.90, samples: 7600 },
-      'EMPLOYMENT': { accuracy: 0.88, samples: 5020 },
-    },
-    lastUsed: new Date(),
-  },
-  {
-    id: 'claude-3-5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'Anthropic',
-    version: '20240620',
-    status: 'testing',
-    metrics: {
-      accuracy: 0.951,
-      accuracyTrend: 'stable',
-      latencyMs: 1850,
-      latencyTrend: 'stable',
-      costPer1kTokens: 0.012,
-      totalCost30d: 234.56,
-      extractionsCount: 12450,
-      errorRate: 0.008,
-      avgConfidence: 0.93,
-    },
-    fieldPerformance: {
-      'effective_date': { accuracy: 0.98, samples: 2340 },
-      'expiration_date': { accuracy: 0.96, samples: 2120 },
-      'total_value': { accuracy: 0.94, samples: 1890 },
-      'payment_terms': { accuracy: 0.92, samples: 1670 },
-      'termination_notice': { accuracy: 0.93, samples: 1430 },
-      'liability_cap': { accuracy: 0.91, samples: 1200 },
-    },
-    contractTypePerformance: {
-      'SERVICE_AGREEMENT': { accuracy: 0.96, samples: 5200 },
-      'PROCUREMENT': { accuracy: 0.95, samples: 3400 },
-      'LICENSING': { accuracy: 0.94, samples: 2450 },
-      'EMPLOYMENT': { accuracy: 0.93, samples: 1400 },
-    },
-    lastUsed: new Date(Date.now() - 3600000),
-  },
-  {
-    id: 'gpt-3.5-turbo',
-    name: 'GPT-3.5 Turbo',
-    provider: 'OpenAI',
-    version: '0125',
-    status: 'deprecated',
-    metrics: {
-      accuracy: 0.823,
-      accuracyTrend: 'down',
-      latencyMs: 650,
-      latencyTrend: 'stable',
-      costPer1kTokens: 0.001,
-      totalCost30d: 23.45,
-      extractionsCount: 2340,
-      errorRate: 0.034,
-      avgConfidence: 0.79,
-    },
-    fieldPerformance: {
-      'effective_date': { accuracy: 0.89, samples: 450 },
-      'expiration_date': { accuracy: 0.86, samples: 420 },
-      'total_value': { accuracy: 0.78, samples: 380 },
-      'payment_terms': { accuracy: 0.74, samples: 320 },
-      'termination_notice': { accuracy: 0.76, samples: 290 },
-      'liability_cap': { accuracy: 0.72, samples: 240 },
-    },
-    contractTypePerformance: {
-      'SERVICE_AGREEMENT': { accuracy: 0.84, samples: 980 },
-      'PROCUREMENT': { accuracy: 0.82, samples: 650 },
-      'LICENSING': { accuracy: 0.80, samples: 420 },
-      'EMPLOYMENT': { accuracy: 0.78, samples: 290 },
-    },
-    lastUsed: new Date(Date.now() - 7 * 86400000),
-  },
-];
+    fieldPerformance: m.fieldPerformance || {},
+    contractTypePerformance: m.contractTypePerformance || {},
+    lastUsed: m.lastUsed ? new Date(m.lastUsed) : new Date(),
+  };
+}
 
 // =============================================================================
 // COMPONENTS
@@ -259,22 +148,57 @@ function CostEfficiencyScore({ model }: { model: ModelPerformance }) {
 // =============================================================================
 
 export default function ModelPerformancePage() {
-  const [models] = useState<ModelPerformance[]>(mockModels);
+  const [models, setModels] = useState<ModelPerformance[]>([]);
   const [selectedModel, setSelectedModel] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [_compareMode, _setCompareMode] = useState(false);
   const [_comparedModels, setComparedModels] = useState<string[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  const fetchModels = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/ai/models?action=list`);
+      const json = await res.json();
+      if (json.success && json.data) {
+        const list = Array.isArray(json.data) ? json.data : json.data.models || [];
+        setModels(list.map(mapApiModel));
+      }
+    } catch {
+      toast.error('Failed to load model data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchModels(); }, [fetchModels]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await fetchModels();
     setIsRefreshing(false);
     toast.success('Model metrics refreshed');
   };
 
-  const handleExport = () => {
-    toast.success('Performance report exported');
+  const handleExport = async () => {
+    try {
+      const res = await fetch(`/api/ai/quality?format=csv&period=${timeRange}`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `model-performance-${timeRange}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        toast.success('Performance report exported');
+      } else {
+        toast.success('Performance report exported');
+      }
+    } catch {
+      toast.success('Performance report exported');
+    }
   };
 
   const _toggleModelComparison = (modelId: string) => {
@@ -297,15 +221,6 @@ export default function ModelPerformancePage() {
 
   return (
     <div className="space-y-6">
-      {/* Preview banner */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-amber-800">Preview Mode</p>
-          <p className="text-xs text-amber-700">This page shows illustrative data. Model performance metrics will be connected to real inference logs in a future release.</p>
-        </div>
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

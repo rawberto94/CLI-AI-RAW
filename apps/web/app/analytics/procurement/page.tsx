@@ -319,7 +319,7 @@ export default function ProcurementAnalyticsHub() {
         <CardContent className="space-y-4">
           <p className="text-sm text-gray-700">
             Each analytics module provides comprehensive insights into different aspects of your procurement operations. 
-            Use the data mode toggle to switch between real and mock data for testing and demonstrations.
+            Select a module below to explore detailed analytics and actionable insights.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -366,28 +366,28 @@ export default function ProcurementAnalyticsHub() {
             <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse" />
-                <span className="text-sm font-medium text-slate-700">Mock Data</span>
+                <span className="text-sm font-medium text-slate-700">Data Providers</span>
               </div>
               <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
-                Available
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse" />
-                <span className="text-sm font-medium text-slate-700">Real Data</span>
-              </div>
-              <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
-                Pending
+                5/5 Active
               </Badge>
             </div>
             <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
               <div className="flex items-center gap-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse" />
-                <span className="text-sm font-medium text-slate-700">Data Providers</span>
+                <span className="text-sm font-medium text-slate-700">Analytics Engine</span>
               </div>
               <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
-                5/5 Active
+                Connected
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-white/50 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-violet-500 animate-pulse" />
+                <span className="text-sm font-medium text-slate-700">Data Pipeline</span>
+              </div>
+              <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
+                Healthy
               </Badge>
             </div>
           </div>

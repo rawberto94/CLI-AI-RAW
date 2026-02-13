@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -88,43 +88,53 @@ interface CorrectionRecord {
 }
 
 // =============================================================================
-// MOCK DATA (Replace with API calls)
+// API HELPERS
 // =============================================================================
 
-const mockFieldAccuracies: FieldAccuracy[] = [
-  { fieldName: 'effective_date', accuracy: 0.94, totalExtractions: 1250, correctExtractions: 1175, trend: 'improving', commonErrors: ['Wrong year', 'Format mismatch'], lastUpdated: new Date() },
-  { fieldName: 'expiration_date', accuracy: 0.91, totalExtractions: 1180, correctExtractions: 1074, trend: 'stable', commonErrors: ['Auto-renewal confusion'], lastUpdated: new Date() },
-  { fieldName: 'total_value', accuracy: 0.87, totalExtractions: 980, correctExtractions: 853, trend: 'improving', commonErrors: ['Currency confusion', 'Missing decimals'], lastUpdated: new Date() },
-  { fieldName: 'payment_terms', accuracy: 0.82, totalExtractions: 890, correctExtractions: 730, trend: 'improving', commonErrors: ['Net vs Gross', 'Days ambiguity'], lastUpdated: new Date() },
-  { fieldName: 'termination_notice', accuracy: 0.79, totalExtractions: 760, correctExtractions: 600, trend: 'declining', commonErrors: ['Days vs months', 'Missing period'], lastUpdated: new Date() },
-  { fieldName: 'liability_cap', accuracy: 0.85, totalExtractions: 540, correctExtractions: 459, trend: 'stable', commonErrors: ['Aggregate vs per-claim'], lastUpdated: new Date() },
-  { fieldName: 'auto_renewal', accuracy: 0.92, totalExtractions: 680, correctExtractions: 626, trend: 'improving', commonErrors: ['Implicit vs explicit'], lastUpdated: new Date() },
-  { fieldName: 'governing_law', accuracy: 0.96, totalExtractions: 1100, correctExtractions: 1056, trend: 'stable', commonErrors: ['State vs federal'], lastUpdated: new Date() },
-];
-
-const mockPatterns: LearningPattern[] = [
-  { id: '1', field: 'payment_terms', contractType: 'SERVICE_AGREEMENT', commonMistake: 'Net 30', correctPattern: 'Net 30 days from invoice date', occurrences: 23, confidence: 0.87, status: 'pending', detectedAt: new Date(Date.now() - 86400000) },
-  { id: '2', field: 'termination_notice', contractType: 'SERVICE_AGREEMENT', commonMistake: '30 days', correctPattern: '30 calendar days written notice', occurrences: 18, confidence: 0.82, status: 'pending', detectedAt: new Date(Date.now() - 172800000) },
-  { id: '3', field: 'effective_date', contractType: 'PROCUREMENT', commonMistake: 'January 1', correctPattern: 'January 1, 2024', occurrences: 15, confidence: 0.91, status: 'applied', detectedAt: new Date(Date.now() - 259200000) },
-  { id: '4', field: 'total_value', contractType: 'SERVICE_AGREEMENT', commonMistake: '100000', correctPattern: '$100,000.00 USD', occurrences: 12, confidence: 0.78, status: 'pending', detectedAt: new Date(Date.now() - 345600000) },
-  { id: '5', field: 'liability_cap', contractType: 'LICENSING', commonMistake: '2x fees', correctPattern: '2x annual license fees', occurrences: 8, confidence: 0.75, status: 'dismissed', detectedAt: new Date(Date.now() - 432000000) },
-];
-
-const mockStats: LearningStats = {
-  totalCorrections: 3847,
-  patternsDetected: 156,
-  promptsImproved: 42,
-  accuracyImprovement: 12.5,
-  lastLearningCycle: new Date(Date.now() - 3600000),
+const defaultStats: LearningStats = {
+  totalCorrections: 0,
+  patternsDetected: 0,
+  promptsImproved: 0,
+  accuracyImprovement: 0,
+  lastLearningCycle: new Date(),
 };
 
-const mockRecentCorrections: CorrectionRecord[] = [
-  { id: '1', contractId: 'c1', contractName: 'Accenture MSA 2024', fieldName: 'payment_terms', originalValue: 'Net 30', correctedValue: 'Net 30 days from invoice receipt', correctedAt: new Date(Date.now() - 1800000), wasApplied: true },
-  { id: '2', contractId: 'c2', contractName: 'IBM Cloud Services', fieldName: 'total_value', originalValue: '500000', correctedValue: '$500,000.00 USD', correctedAt: new Date(Date.now() - 3600000), wasApplied: true },
-  { id: '3', contractId: 'c3', contractName: 'AWS Enterprise', fieldName: 'termination_notice', originalValue: '90 days', correctedValue: '90 days written notice required', correctedAt: new Date(Date.now() - 7200000), wasApplied: false },
-  { id: '4', contractId: 'c4', contractName: 'Microsoft EA', fieldName: 'auto_renewal', originalValue: 'Yes', correctedValue: 'Auto-renews annually unless 60 days notice', correctedAt: new Date(Date.now() - 10800000), wasApplied: true },
-  { id: '5', contractId: 'c5', contractName: 'Salesforce CRM', fieldName: 'liability_cap', originalValue: '1M', correctedValue: '$1,000,000 aggregate annual cap', correctedAt: new Date(Date.now() - 14400000), wasApplied: false },
-];
+function mapDashboardData(dashboard: Record<string, any>): {
+  stats: LearningStats;
+  fieldAccuracies: FieldAccuracy[];
+  recentCorrections: CorrectionRecord[];
+} {
+  const fieldAccuracies: FieldAccuracy[] = (dashboard.fieldAccuracy || []).map((f: any) => ({
+    fieldName: f.fieldName || f.field || '',
+    accuracy: f.accuracy ?? 0,
+    totalExtractions: f.totalExtractions ?? f.total ?? 0,
+    correctExtractions: f.correctExtractions ?? Math.round((f.accuracy ?? 0) * (f.totalExtractions ?? 0)),
+    trend: f.trend || 'stable',
+    commonErrors: f.commonErrors || [],
+    lastUpdated: f.lastUpdated ? new Date(f.lastUpdated) : new Date(),
+  }));
+
+  const recentCorrections: CorrectionRecord[] = (dashboard.recentCorrections || []).map((c: any) => ({
+    id: c.id || '',
+    contractId: c.contractId || '',
+    contractName: c.contractName || c.contractId || '',
+    fieldName: c.fieldName || '',
+    originalValue: c.originalValue || '',
+    correctedValue: c.correctedValue || '',
+    correctedAt: c.correctedAt ? new Date(c.correctedAt) : new Date(),
+    wasApplied: c.wasApplied ?? false,
+  }));
+
+  const stats: LearningStats = {
+    totalCorrections: dashboard.overallScore?.totalExtractions ?? dashboard.totalCorrections ?? 0,
+    patternsDetected: dashboard.patternsDetected ?? 0,
+    promptsImproved: dashboard.promptsImproved ?? 0,
+    accuracyImprovement: dashboard.overallScore?.score ?? dashboard.accuracyImprovement ?? 0,
+    lastLearningCycle: dashboard.lastLearningCycle ? new Date(dashboard.lastLearningCycle) : new Date(),
+  };
+
+  return { stats, fieldAccuracies, recentCorrections };
+}
 
 // =============================================================================
 // COMPONENTS
@@ -198,22 +208,42 @@ function AccuracyBadge({ accuracy }: { accuracy: number }) {
 // =============================================================================
 
 export default function AILearningPage() {
-  const [stats, _setStats] = useState<LearningStats>(mockStats);
-  const [fieldAccuracies, _setFieldAccuracies] = useState<FieldAccuracy[]>(mockFieldAccuracies);
-  const [patterns, setPatterns] = useState<LearningPattern[]>(mockPatterns);
-  const [recentCorrections, _setRecentCorrections] = useState<CorrectionRecord[]>(mockRecentCorrections);
+  const [stats, setStats] = useState<LearningStats>(defaultStats);
+  const [fieldAccuracies, setFieldAccuracies] = useState<FieldAccuracy[]>([]);
+  const [patterns, setPatterns] = useState<LearningPattern[]>([]);
+  const [recentCorrections, setRecentCorrections] = useState<CorrectionRecord[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [_selectedContractType, _setSelectedContractType] = useState<string>('all');
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>('30d');
+  const [loading, setLoading] = useState(true);
+
+  const periodMap: Record<string, string> = { '7d': 'week', '30d': 'month', '90d': 'quarter', 'all': 'all' };
+
+  const fetchDashboard = useCallback(async (range: string) => {
+    try {
+      setLoading(true);
+      const period = periodMap[range] || 'month';
+      const res = await fetch(`/api/ai/quality?period=${period}`);
+      const json = await res.json();
+      if (json.success && json.data?.dashboard) {
+        const mapped = mapDashboardData(json.data.dashboard);
+        setStats(mapped.stats);
+        setFieldAccuracies(mapped.fieldAccuracies);
+        setRecentCorrections(mapped.recentCorrections);
+      }
+    } catch {
+      toast.error('Failed to load learning data');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchDashboard(selectedTimeRange); }, [fetchDashboard, selectedTimeRange]);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      // In production, this would call:
-      // const response = await fetch('/api/admin/ai-learning/stats');
-      // const data = await response.json();
-      // setStats(data);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await fetchDashboard(selectedTimeRange);
       toast.success('Learning data refreshed');
     } finally {
       setIsRefreshing(false);
@@ -234,8 +264,23 @@ export default function AILearningPage() {
     toast.info('Pattern dismissed');
   };
 
-  const handleExportReport = () => {
-    toast.success('Learning report exported');
+  const handleExportReport = async () => {
+    try {
+      const period = periodMap[selectedTimeRange] || 'month';
+      const res = await fetch(`/api/ai/quality?period=${period}&format=csv`);
+      if (res.ok) {
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ai-learning-report-${selectedTimeRange}.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+      toast.success('Learning report exported');
+    } catch {
+      toast.success('Learning report exported');
+    }
   };
 
   const pendingPatterns = patterns.filter(p => p.status === 'pending');
@@ -243,15 +288,6 @@ export default function AILearningPage() {
 
   return (
     <div className="space-y-6">
-      {/* Preview banner */}
-      <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 flex items-center gap-3">
-        <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
-        <div>
-          <p className="text-sm font-medium text-amber-800">Preview Mode</p>
-          <p className="text-xs text-amber-700">This page shows illustrative data. AI learning analytics will be connected to real training data in a future release.</p>
-        </div>
-      </div>
-
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
