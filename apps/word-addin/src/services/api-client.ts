@@ -299,6 +299,30 @@ class ContigoApiClient {
     });
   }
 
+  /**
+   * AI-powered contract draft generation
+   * Uses GPT to produce a complete contract from template + variables + clauses
+   */
+  async generateAIDraft(request: {
+    contractType: string;
+    variables: Record<string, string>;
+    templateId?: string;
+    clauses?: string[];
+    tone?: 'formal' | 'standard' | 'plain-english';
+    jurisdiction?: string;
+    additionalInstructions?: string;
+  }): Promise<ApiResponse<{
+    html: string;
+    plainText: string;
+    contractType: string;
+    metadata: { model: string; generatedAt: string };
+  }>> {
+    return this.request('/ai/generate/draft', {
+      method: 'POST',
+      body: JSON.stringify(request),
+    });
+  }
+
   async saveContractDraft(data: {
     templateId?: string;
     title: string;

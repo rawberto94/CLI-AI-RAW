@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useDataMode } from '@/contexts/DataModeContext';
 import {
   Share2,
   ZoomIn,
@@ -423,6 +424,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
 // ============================================================================
 
 export const ContractKnowledgeGraph: React.FC = () => {
+  const { isMockData } = useDataMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -434,20 +436,76 @@ export const ContractKnowledgeGraph: React.FC = () => {
   );
   const [highlightCluster, setHighlightCluster] = useState<string | null>(null);
 
+  // Live data state
+  const [liveNodes, setLiveNodes] = useState<GraphNode[]>([]);
+  const [liveEdges, setLiveEdges] = useState<GraphEdge[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  // Fetch live data from API when not in mock mode
+  useEffect(() => {
+    if (isMockData) return;
+    let cancelled = false;
+    setLiveLoading(true);
+    fetch('/api/intelligence/graph')
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return;
+        if (json.success && json.data) {
+          // Map API response to component types
+          const apiNodes: GraphNode[] = (json.data.nodes || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || 'contract',
+            label: n.label,
+            data: n.metadata || {},
+            connections: [],
+            size: n.weight > 3 ? 'large' : n.weight > 1 ? 'medium' : 'small',
+            status: n.metadata?.risk === 'CRITICAL' ? 'critical' : n.metadata?.risk === 'HIGH' ? 'warning' : 'active',
+          }));
+          // Build connections from edges
+          const apiEdges: GraphEdge[] = (json.data.edges || []).map((e: any, i: number) => ({
+            id: e.id || `e-${i}`,
+            source: e.source,
+            target: e.target,
+            type: e.type === 'party_to' ? 'supplies' : e.type === 'has_risk' ? 'relates' : e.type === 'parent_of' ? 'depends' : 'relates',
+            strength: e.weight ? Math.min(e.weight / 3, 1) : 0.5,
+            label: e.label,
+          }));
+          // Populate connections
+          const connectionMap = new Map<string, string[]>();
+          for (const e of apiEdges) {
+            connectionMap.set(e.source, [...(connectionMap.get(e.source) || []), e.target]);
+            connectionMap.set(e.target, [...(connectionMap.get(e.target) || []), e.source]);
+          }
+          for (const node of apiNodes) {
+            node.connections = connectionMap.get(node.id) || [];
+          }
+          setLiveNodes(apiNodes);
+          setLiveEdges(apiEdges);
+        }
+      })
+      .catch(() => { /* Fall back to mock data on error */ })
+      .finally(() => { if (!cancelled) setLiveLoading(false); });
+    return () => { cancelled = true; };
+  }, [isMockData]);
+
+  // Choose data source
+  const activeNodes = isMockData ? mockNodes : (liveNodes.length > 0 ? liveNodes : mockNodes);
+  const activeEdges = isMockData ? mockEdges : (liveEdges.length > 0 ? liveEdges : mockEdges);
+
   // Filter nodes based on visibility and search
   const filteredNodes = useMemo(() => {
-    return mockNodes.filter(node => {
+    return activeNodes.filter(node => {
       if (!visibleTypes.has(node.type)) return false;
       if (searchQuery && !node.label.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [visibleTypes, searchQuery]);
+  }, [activeNodes, visibleTypes, searchQuery]);
 
   // Filter edges based on visible nodes
   const filteredEdges = useMemo(() => {
     const nodeIds = new Set(filteredNodes.map(n => n.id));
-    return mockEdges.filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
-  }, [filteredNodes]);
+    return activeEdges.filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
+  }, [activeEdges, filteredNodes]);
 
   // Calculate positions
   const positions = useForceLayout(filteredNodes, filteredEdges, containerRef);
@@ -456,17 +514,17 @@ export const ContractKnowledgeGraph: React.FC = () => {
   const relatedNodes = useMemo(() => {
     if (!selectedNode) return [];
     const relatedIds = new Set<string>();
-    mockEdges.forEach(edge => {
+    activeEdges.forEach(edge => {
       if (edge.source === selectedNode.id) relatedIds.add(edge.target);
       if (edge.target === selectedNode.id) relatedIds.add(edge.source);
     });
-    return mockNodes.filter(n => relatedIds.has(n.id));
-  }, [selectedNode]);
+    return activeNodes.filter(n => relatedIds.has(n.id));
+  }, [selectedNode, activeNodes, activeEdges]);
 
   const relatedEdges = useMemo(() => {
     if (!selectedNode) return [];
-    return mockEdges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
-  }, [selectedNode]);
+    return activeEdges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
+  }, [selectedNode, activeEdges]);
 
   // Toggle node type visibility
   const toggleType = (type: GraphNode['type']) => {
@@ -479,11 +537,34 @@ export const ContractKnowledgeGraph: React.FC = () => {
   };
 
   // Check if node is in highlighted cluster
+  // Build clusters dynamically from active data or fall back to mock
+  const activeClusters = useMemo(() => {
+    if (isMockData || liveNodes.length === 0) return mockClusters;
+    // Auto-generate clusters from supplier groups
+    const supplierClusters: GraphCluster[] = [];
+    const suppliers = activeNodes.filter(n => n.type === 'supplier');
+    const colors = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
+    suppliers.forEach((s, i) => {
+      const connected = activeEdges
+        .filter(e => e.source === s.id || e.target === s.id)
+        .map(e => e.source === s.id ? e.target : e.source);
+      if (connected.length > 0) {
+        supplierClusters.push({
+          id: `cluster-${s.id}`,
+          name: s.label,
+          nodes: [s.id, ...connected],
+          color: colors[i % colors.length],
+        });
+      }
+    });
+    return supplierClusters.length > 0 ? supplierClusters : mockClusters;
+  }, [isMockData, liveNodes, activeNodes, activeEdges]);
+
   const isInHighlightedCluster = useCallback((nodeId: string) => {
     if (!highlightCluster) return true;
-    const cluster = mockClusters.find(c => c.id === highlightCluster);
+    const cluster = activeClusters.find(c => c.id === highlightCluster);
     return cluster?.nodes.includes(nodeId) ?? false;
-  }, [highlightCluster]);
+  }, [highlightCluster, activeClusters]);
 
   // Stats
   const stats = useMemo(() => ({
@@ -666,7 +747,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                   >
                     All
                   </button>
-                  {mockClusters.map(cluster => (
+                  {activeClusters.map(cluster => (
                     <button
                       key={cluster.id}
                       onClick={() => setHighlightCluster(highlightCluster === cluster.id ? null : cluster.id)}

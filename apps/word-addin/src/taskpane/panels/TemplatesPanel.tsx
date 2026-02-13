@@ -124,6 +124,7 @@ export const TemplatesPanel: React.FC = () => {
   const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [variableValues, setVariableValues] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
+  const [useAIDraft, setUseAIDraft] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Fetch templates
@@ -159,7 +160,7 @@ export const TemplatesPanel: React.FC = () => {
     setVariableValues((prev) => ({ ...prev, [name]: value }));
   }, []);
 
-  // Generate contract
+  // Generate contract (template-based or AI-powered)
   const handleGenerate = useCallback(async () => {
     if (!selectedTemplate) return;
     
@@ -178,37 +179,56 @@ export const TemplatesPanel: React.FC = () => {
         return;
       }
 
-      // Call API to generate contract
-      const result = await apiClient.generateContract({
-        templateId: selectedTemplate.id,
-        variables: variableValues,
-        format: 'html', // Word can handle HTML well
-      });
+      if (useAIDraft) {
+        // AI-powered draft generation via GPT
+        const aiResult = await apiClient.generateAIDraft({
+          contractType: selectedTemplate.category,
+          variables: variableValues,
+          templateId: selectedTemplate.id,
+          clauses: selectedTemplate.clauses,
+          tone: 'formal',
+        });
 
-      if (!result.success || !result.data) {
-        throw new Error(result.error?.message || 'Generation failed');
+        if (!aiResult.success || !aiResult.data) {
+          throw new Error(aiResult.error?.message || 'AI generation failed');
+        }
+
+        // Insert AI-generated HTML into Word
+        await wordService.insertHtml(aiResult.data.html, 'end');
+      } else {
+        // Traditional template-based generation
+        const result = await apiClient.generateContract({
+          templateId: selectedTemplate.id,
+          variables: variableValues,
+          format: 'html',
+        });
+
+        if (!result.success || !result.data) {
+          throw new Error(result.error?.message || 'Generation failed');
+        }
+
+        // Insert into Word document
+        await wordService.insertHtml(result.data.content, 'end');
+
+        // Replace variable placeholders
+        const variables = Object.entries(variableValues).map(([name, value]) => ({
+          name,
+          value,
+          placeholder: `{{${name}}}`,
+        }));
+        await wordService.replaceVariables(variables);
       }
-
-      // Insert into Word document
-      await wordService.insertHtml(result.data.content, 'end');
-
-      // Replace variable placeholders
-      const variables = Object.entries(variableValues).map(([name, value]) => ({
-        name,
-        value,
-        placeholder: `{{${name}}}`,
-      }));
-      await wordService.replaceVariables(variables);
 
       // Close dialog
       setSelectedTemplate(null);
+      setUseAIDraft(false);
       
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Generation failed');
     } finally {
       setIsGenerating(false);
     }
-  }, [selectedTemplate, variableValues]);
+  }, [selectedTemplate, variableValues, useAIDraft]);
 
   // Render loading state
   if (isLoading) {
@@ -359,10 +379,21 @@ export const TemplatesPanel: React.FC = () => {
             <DialogActions>
               <Button
                 appearance="secondary"
-                onClick={() => setSelectedTemplate(null)}
+                onClick={() => {
+                  setSelectedTemplate(null);
+                  setUseAIDraft(false);
+                }}
                 disabled={isGenerating}
               >
                 Cancel
+              </Button>
+              <Button
+                appearance={useAIDraft ? 'primary' : 'subtle'}
+                onClick={() => setUseAIDraft(!useAIDraft)}
+                disabled={isGenerating}
+                style={{ fontSize: 12 }}
+              >
+                {useAIDraft ? '✨ AI Draft ON' : '🤖 Use AI Draft'}
               </Button>
               <Button
                 appearance="primary"
@@ -370,7 +401,7 @@ export const TemplatesPanel: React.FC = () => {
                 onClick={handleGenerate}
                 disabled={isGenerating}
               >
-                {isGenerating ? <Spinner size="tiny" /> : 'Generate Contract'}
+                {isGenerating ? <Spinner size="tiny" /> : useAIDraft ? 'Generate with AI' : 'Generate Contract'}
               </Button>
             </DialogActions>
           </DialogBody>
