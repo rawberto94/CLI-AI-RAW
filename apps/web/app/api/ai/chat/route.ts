@@ -1,3 +1,19 @@
+/**
+ * ⚠️ LEGACY Non-Streaming AI Chat API
+ *
+ * This 7,900+ line monolith is superseded by the streaming endpoint at
+ * /api/ai/chat/stream which provides:
+ *  - True token-level streaming (OpenAI + Anthropic)
+ *  - Smart model routing (gpt-4o for complex, gpt-4o-mini for simple)
+ *  - Agentic tool calling with 18 tools
+ *  - Server-side conversation persistence
+ *  - Semantic cache + episodic memory
+ *
+ * New clients should use the streaming endpoint. This route is kept as
+ * a non-streaming fallback for compatibility.
+ *
+ * @deprecated Prefer /api/ai/chat/stream for all new integrations
+ */
 
 // Note: This file contains many helper functions for AI chat capabilities.
 // Some functions are prepared for future features and may not be in use yet.

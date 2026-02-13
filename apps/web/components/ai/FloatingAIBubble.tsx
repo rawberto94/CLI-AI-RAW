@@ -64,6 +64,7 @@ import { useChatPersistence } from "@/hooks/useChatPersistence";
 
 // Enhanced AI Features - Round 2 Integration
 import { AIErrorBoundary } from "@/components/ai/AIErrorBoundary";
+import { MarkdownContent } from "@/components/ai/MarkdownContent";
 import { useOfflineQueue } from "@/lib/ai/offline-queue.service";
 import { ExportChatDialog } from "@/components/ai/ExportChatDialog";
 import { InlineUsageIndicator } from "@/components/ai/AIUsageQuotaWidget";
@@ -2002,9 +2003,9 @@ export function FloatingAIBubble() {
                                     </div>
                                   )}
 
-                                  <div
-                                    className="text-[15px] leading-relaxed prose prose-sm max-w-none prose-headings:font-semibold prose-a:text-violet-600"
-                                    dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
+                                  <MarkdownContent
+                                    content={message.content}
+                                    className="text-[15px] leading-relaxed"
                                   />
                                   
                                   {/* Metadata footer - Enhanced */}

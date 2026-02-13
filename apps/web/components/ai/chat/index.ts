@@ -22,8 +22,8 @@ export { ConversationSidebar } from './ConversationSidebar';
 // Context
 export { ChatContextProvider, useChatContext } from './ChatContext';
 
-// Main chatbot
-export { EnhancedChatbot } from './EnhancedChatbot';
+// Main chatbot (use FloatingAIBubble from parent directory instead)
+// EnhancedChatbot is deprecated — kept for reference only
 
 // Floating trigger
 export { ChatBubbleTrigger } from './ChatBubbleTrigger';

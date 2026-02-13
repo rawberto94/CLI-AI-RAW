@@ -14,7 +14,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EnhancedChatbot } from './EnhancedChatbot';
+import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 
 interface ChatBubbleTriggerProps {
   contractContext?: { id: string; name: string } | null;
@@ -227,11 +227,7 @@ export const ChatBubbleTrigger = memo(({
       {/* Chatbot */}
       <AnimatePresence>
         {isOpen && (
-          <EnhancedChatbot key="open"
-            isOpen={isOpen}
-            onClose={handleClose}
-            contractContext={contractContext}
-          />
+          <FloatingAIBubble key="open" />
         )}
       </AnimatePresence>
     </>

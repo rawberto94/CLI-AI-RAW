@@ -26,6 +26,7 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
+import { prisma } from '@/lib/prisma';
 import { parallelMultiQueryRAG } from '@/lib/rag/parallel-rag.service';
 import { hybridSearch } from '@/lib/rag/advanced-rag.service';
 import { semanticCache } from '@/lib/ai/semantic-cache.service';
@@ -96,6 +97,55 @@ function canUseTool(toolName: string, userRole: string): boolean {
 
 // Maximum tool-calling iterations before forcing a final response
 const MAX_TOOL_ITERATIONS = 3;
+
+// ─── Smart Model Routing ────────────────────────────────────────────────
+
+type QueryComplexity = 'simple' | 'moderate' | 'complex';
+
+function detectQueryComplexity(message: string): QueryComplexity {
+  const q = message.toLowerCase().trim();
+  const wordCount = message.split(/\s+/).length;
+
+  // Simple: greetings, confirmations, trivial lookups
+  const simplePatterns = [
+    /^(hi|hello|hey|thanks|thank you|ok|okay|yes|no|bye|sup|yo)\b/,
+    /^what time/,
+    /^(who|what) (is|are) (you|contigo|this)/,
+    /^(show|go to|open|navigate)/,
+  ];
+  if (simplePatterns.some(p => p.test(q)) && wordCount <= 8) return 'simple';
+
+  // Complex: multi-part analysis, comparisons, legal reasoning, strategy
+  const complexIndicators = [
+    'compare', 'analyze', 'summarize all', 'across all', 'trend',
+    'risk assessment', 'compliance audit', 'negotiate', 'strategy',
+    'implications', 'recommend', 'evaluate', 'what should',
+    'how can we', 'optimize', 'consolidate', 'benchmark',
+    'clause by clause', 'draft a', 'create a report', 'full analysis',
+  ];
+  const complexCount = complexIndicators.filter(k => q.includes(k)).length;
+  if (complexCount >= 1 || wordCount > 50) return 'complex';
+
+  return 'moderate';
+}
+
+function buildModelChain(complexity: QueryComplexity): ModelConfig[] {
+  const baseModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  if (complexity === 'complex') {
+    // Route complex queries to gpt-4o first, then fall back
+    return [
+      { provider: 'openai', model: 'gpt-4o', priority: 1 },
+      { provider: 'openai', model: baseModel, priority: 2 },
+      ...(process.env.ANTHROPIC_API_KEY ? [
+        { provider: 'anthropic' as const, model: 'claude-3-5-sonnet-20241022', priority: 3 },
+      ] : []),
+    ];
+  }
+
+  // Simple & moderate: use the default chain
+  return MODEL_FAILOVER_CHAIN;
+}
 
 // ─── Main Handler ───────────────────────────────────────────────────────
 
@@ -372,43 +422,108 @@ ${memoryContext}`;
               ],
         })}\n\n`));
 
+        // ── Smart model routing based on query complexity ──────────
+        const queryComplexity = detectQueryComplexity(message);
+        const modelChain = buildModelChain(queryComplexity);
+
         // ── Agentic loop with tool calling ────────────────────────────
         let iteration = 0;
 
         while (iteration < MAX_TOOL_ITERATIONS && !cancelled) {
           iteration++;
 
-          // Try OpenAI with function calling
+          // Try models with true token-level streaming
           let assistantMessage: OpenAI.Chat.Completions.ChatCompletionMessage | null = null;
 
-          for (const config of MODEL_FAILOVER_CHAIN) {
+          for (const config of modelChain) {
             if (config.provider === 'anthropic' && !anthropic) continue;
 
             try {
               if (config.provider === 'openai') {
-                // Non-streaming call for tool-calling iterations
-                const response = await openai.chat.completions.create({
+                // ── True token-level streaming with tool support ──────
+                const stream = await openai.chat.completions.create({
                   model: config.model,
                   messages,
                   tools: STREAMING_TOOLS,
                   tool_choice: 'auto',
                   temperature: 0.3,
                   max_tokens: 2000,
+                  stream: true,
                 });
 
                 usedModel = config.model;
                 usedProvider = 'openai';
-                assistantMessage = response.choices[0].message;
+
+                // Accumulate streamed content and tool-call deltas
+                let streamedContent = '';
+                const accToolCalls = new Map<number, {
+                  id: string;
+                  type: string;
+                  function: { name: string; arguments: string };
+                }>();
+
+                for await (const chunk of stream) {
+                  if (cancelled) break;
+                  const delta = chunk.choices[0]?.delta;
+                  if (!delta) continue;
+
+                  // Forward content tokens to client in real-time
+                  if (delta.content) {
+                    streamedContent += delta.content;
+                    fullContent += delta.content;
+                    controller.enqueue(encoder.encode(
+                      `data: ${JSON.stringify({ type: 'content', content: delta.content })}\n\n`
+                    ));
+                  }
+
+                  // Accumulate tool-call deltas (streamed piece by piece)
+                  if (delta.tool_calls) {
+                    for (const tc of delta.tool_calls) {
+                      const existing = accToolCalls.get(tc.index);
+                      if (!existing) {
+                        accToolCalls.set(tc.index, {
+                          id: tc.id || '',
+                          type: (tc.type as string) || 'function',
+                          function: {
+                            name: tc.function?.name || '',
+                            arguments: tc.function?.arguments || '',
+                          },
+                        });
+                      } else {
+                        if (tc.function?.arguments) existing.function.arguments += tc.function.arguments;
+                        if (tc.function?.name) existing.function.name += tc.function.name;
+                        if (tc.id) existing.id = tc.id;
+                      }
+                    }
+                  }
+                }
+
+                // Build assistantMessage from accumulated stream data
+                if (accToolCalls.size > 0) {
+                  assistantMessage = {
+                    role: 'assistant',
+                    content: streamedContent || null,
+                    tool_calls: Array.from(accToolCalls.values()).map(tc => ({
+                      id: tc.id,
+                      type: 'function' as const,
+                      function: { name: tc.function.name, arguments: tc.function.arguments },
+                    })),
+                    refusal: null,
+                  } as OpenAI.Chat.Completions.ChatCompletionMessage;
+                } else {
+                  // Content already streamed to client — no tool calls
+                  assistantMessage = null;
+                }
                 break;
               } else if (config.provider === 'anthropic' && anthropic) {
-                // Anthropic fallback — content-only (no tool calling)
+                // Anthropic fallback — true streaming, content-only (no tool calling)
                 const anthropicMessages = conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
                   role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
                   content: msg.content,
                 }));
                 anthropicMessages.push({ role: 'user' as const, content: message });
 
-                const response = await anthropic.messages.create({
+                const anthropicStream = anthropic.messages.stream({
                   model: config.model,
                   max_tokens: 2000,
                   system: systemPrompt,
@@ -418,11 +533,18 @@ ${memoryContext}`;
                 usedModel = config.model;
                 usedProvider = 'anthropic';
 
-                // Stream Anthropic response as final content
-                const text = response.content.filter(b => b.type === 'text').map(b => b.text).join('');
-                fullContent = text;
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: text })}\n\n`));
-                iteration = MAX_TOOL_ITERATIONS; // Exit loop
+                // Stream Anthropic tokens in real-time
+                for await (const event of anthropicStream) {
+                  if (cancelled) break;
+                  if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                    const token = event.delta.text;
+                    fullContent += token;
+                    controller.enqueue(encoder.encode(
+                      `data: ${JSON.stringify({ type: 'content', content: token })}\n\n`
+                    ));
+                  }
+                }
+                iteration = MAX_TOOL_ITERATIONS; // Exit agentic loop
                 assistantMessage = null;
                 break;
               }
@@ -432,26 +554,13 @@ ${memoryContext}`;
             }
           }
 
-          if (!assistantMessage) break;
+          if (!assistantMessage) break; // Content already streamed or all models failed
 
           // ── Check if model wants to call tools ─────────────────────
           const toolCalls = assistantMessage.tool_calls;
 
           if (!toolCalls || toolCalls.length === 0) {
-            // No tool calls — stream final text response
-            const finalText = assistantMessage.content || '';
-            if (finalText) {
-              const words = finalText.split(/(?<=\s)/);
-              for (let i = 0; i < words.length; i += 3) {
-                const chunk = words.slice(i, i + 3).join('');
-                fullContent += chunk;
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'content', content: chunk })}\n\n`));
-                if (words.length > 20 && i % 12 === 0) {
-                  await new Promise(r => setTimeout(r, 10));
-                  if (cancelled) break;
-                }
-              }
-            }
+            // Content already streamed in real-time — done
             break;
           }
 
@@ -571,6 +680,56 @@ ${memoryContext}`;
             context: searchResults[0]?.contractName || detectTopic(message),
             importance: allToolResults.length > 0 ? 0.85 : searchResults.length > 0 ? 0.7 : 0.4,
           }).catch(() => { /* ignore */ });
+        }
+
+        // ── Server-side conversation persistence ──────────────────────
+        // Save the exchange to DB so it persists across sessions/devices
+        if (fullContent.length > 0) {
+          const convId = (context as Record<string, unknown>).conversationId as string | undefined;
+          const contractId = contextContractId || null;
+
+          (async () => {
+            try {
+              let conversationId = convId;
+              if (!conversationId) {
+                const conv = await prisma.chatConversation.create({
+                  data: {
+                    tenantId,
+                    userId,
+                    title: message.slice(0, 80).replace(/\n/g, ' '),
+                    context: contractId,
+                    contextType: contractId ? 'CONTRACT' : 'GENERAL',
+                    lastMessageAt: new Date(),
+                    messageCount: 2,
+                  },
+                });
+                conversationId = conv.id;
+              }
+              await prisma.chatMessage.createMany({
+                data: [
+                  { conversationId, role: 'user', content: message },
+                  {
+                    conversationId,
+                    role: 'assistant',
+                    content: fullContent,
+                    model: usedModel,
+                    tokensUsed: Math.round(fullContent.length / 4),
+                    confidence: adjustedConfidence,
+                    sources: JSON.stringify(ragSources.slice(0, 10)),
+                  },
+                ],
+              });
+              await prisma.chatConversation.update({
+                where: { id: conversationId },
+                data: {
+                  lastMessageAt: new Date(),
+                  messageCount: { increment: 2 },
+                },
+              });
+            } catch {
+              // Non-critical — don't break streaming
+            }
+          })();
         }
 
         // Deduplicate suggested actions
