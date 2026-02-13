@@ -16,8 +16,86 @@
  */
 
 import pino from 'pino';
+import { startSpan, endSpan, setSpanAttributes, addSpanEvent } from './observability/opentelemetry';
+import { RateLimiter } from './resilience/backpressure';
 
 const logger = pino({ name: 'azure-document-intelligence' });
+
+// ============================================================================
+// DI-Specific Rate Limiter (Azure S0 tier = 15 TPS)
+// ============================================================================
+
+const diRateLimiter = new RateLimiter({
+  maxRequests: parseInt(process.env.AZURE_DI_MAX_TPS || '15', 10),
+  windowMs: 1000,
+  retryAfter: 200,
+});
+
+// ============================================================================
+// Prometheus-compatible Metrics Counters
+// ============================================================================
+
+export const diMetrics = {
+  requestsTotal: 0,
+  requestsSucceeded: 0,
+  requestsFailed: 0,
+  requestsByModel: {} as Record<string, number>,
+  totalPagesProcessed: 0,
+  totalProcessingTimeMs: 0,
+  averageProcessingTimeMs: 0,
+  lastRequestAt: null as string | null,
+
+  /** Record a successful DI request */
+  recordSuccess(model: string, pages: number, processingTimeMs: number) {
+    this.requestsTotal++;
+    this.requestsSucceeded++;
+    this.requestsByModel[model] = (this.requestsByModel[model] || 0) + 1;
+    this.totalPagesProcessed += pages;
+    this.totalProcessingTimeMs += processingTimeMs;
+    this.averageProcessingTimeMs = this.totalProcessingTimeMs / this.requestsSucceeded;
+    this.lastRequestAt = new Date().toISOString();
+  },
+
+  /** Record a failed DI request */
+  recordFailure(model: string) {
+    this.requestsTotal++;
+    this.requestsFailed++;
+    this.requestsByModel[model] = (this.requestsByModel[model] || 0) + 1;
+    this.lastRequestAt = new Date().toISOString();
+  },
+
+  /** Get metrics snapshot for /metrics endpoint */
+  getSnapshot() {
+    return {
+      requests: {
+        total: this.requestsTotal,
+        succeeded: this.requestsSucceeded,
+        failed: this.requestsFailed,
+        byModel: { ...this.requestsByModel },
+      },
+      pages: {
+        totalProcessed: this.totalPagesProcessed,
+      },
+      latency: {
+        totalMs: this.totalProcessingTimeMs,
+        averageMs: Math.round(this.averageProcessingTimeMs),
+      },
+      lastRequestAt: this.lastRequestAt,
+    };
+  },
+
+  /** Reset all counters (for testing) */
+  reset() {
+    this.requestsTotal = 0;
+    this.requestsSucceeded = 0;
+    this.requestsFailed = 0;
+    this.requestsByModel = {};
+    this.totalPagesProcessed = 0;
+    this.totalProcessingTimeMs = 0;
+    this.averageProcessingTimeMs = 0;
+    this.lastRequestAt = null;
+  },
+};
 
 // ============================================================================
 // Constants
@@ -27,6 +105,46 @@ const DI_API_VERSION = '2024-11-30';
 
 const MAX_POLL_ATTEMPTS = 120; // 2 minutes
 const POLL_INTERVAL_MS = 1000;
+
+// Azure DI pricing per page (USD, S0 tier as of 2025)
+const DI_COST_PER_PAGE: Record<string, number> = {
+  'prebuilt-read': 0.001,
+  'prebuilt-layout': 0.01,
+  'prebuilt-contract': 0.01,
+  'prebuilt-invoice': 0.01,
+  'prebuilt-receipt': 0.01,
+  'prebuilt-idDocument': 0.01,
+};
+
+/** Cumulative cost tracking for the current process lifetime */
+export const diCostTracker = {
+  totalCostUSD: 0,
+  costByModel: {} as Record<string, number>,
+  pagesByModel: {} as Record<string, number>,
+
+  record(model: string, pages: number) {
+    const perPage = DI_COST_PER_PAGE[model] || 0.01;
+    const cost = pages * perPage;
+    this.totalCostUSD += cost;
+    this.costByModel[model] = (this.costByModel[model] || 0) + cost;
+    this.pagesByModel[model] = (this.pagesByModel[model] || 0) + pages;
+    return cost;
+  },
+
+  getSnapshot() {
+    return {
+      totalCostUSD: Math.round(this.totalCostUSD * 10000) / 10000,
+      costByModel: { ...this.costByModel },
+      pagesByModel: { ...this.pagesByModel },
+    };
+  },
+
+  reset() {
+    this.totalCostUSD = 0;
+    this.costByModel = {};
+    this.pagesByModel = {};
+  },
+};
 
 export type DIModel =
   | 'prebuilt-layout'
@@ -248,10 +366,23 @@ async function analyzeDocument(
     queryFields?: string[];
     outputContentFormat?: 'text' | 'markdown';
     locale?: string;
+    onProgress?: (pct: number, message: string) => void;
   } = {}
 ): Promise<any> {
   const config = getDIConfig();
   const startTime = Date.now();
+
+  // Rate limit: wait for a token before submitting to DI
+  let rateLimitAttempts = 0;
+  while (!diRateLimiter.consume()) {
+    rateLimitAttempts++;
+    if (rateLimitAttempts > 50) {
+      throw new Error('DI rate limiter exhausted — too many concurrent requests');
+    }
+    const retryMs = diRateLimiter.getRetryAfter();
+    logger.warn({ retryMs, remaining: diRateLimiter.remaining() }, 'DI rate limited, waiting');
+    await new Promise((resolve) => setTimeout(resolve, retryMs));
+  }
 
   // Build the analyze URL
   const params = new URLSearchParams({ 'api-version': DI_API_VERSION });
@@ -299,9 +430,17 @@ async function analyzeDocument(
   let result: any = null;
   let attempts = 0;
 
+  options.onProgress?.(10, `Submitted to DI (${model}), polling for result…`);
+
   while (attempts < MAX_POLL_ATTEMPTS) {
     await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
     attempts++;
+
+    // Report progress based on polling progress (10-90%)
+    const pct = 10 + Math.min(80, Math.floor((attempts / MAX_POLL_ATTEMPTS) * 80));
+    if (attempts % 5 === 0) {
+      options.onProgress?.(pct, `DI analysis in progress (${attempts}s elapsed)…`);
+    }
 
     const statusResponse = await fetch(operationLocation, {
       headers: { 'Ocp-Apim-Subscription-Key': config.apiKey },
@@ -328,9 +467,17 @@ async function analyzeDocument(
   }
 
   const processingTime = Date.now() - startTime;
-  logger.info({ model, processingTime, pages: result.pages?.length || 0 }, 'Document Intelligence analysis complete');
+  const pageCount = result.pages?.length || 0;
+  logger.info({ model, processingTime, pages: pageCount }, 'Document Intelligence analysis complete');
 
-  return { ...result, _processingTime: processingTime, _config: config };
+  // Record metrics and cost
+  diMetrics.recordSuccess(model, pageCount, processingTime);
+  const cost = diCostTracker.record(model, Math.max(pageCount, 1));
+  logger.debug({ model, pages: pageCount, costUSD: cost }, 'DI cost recorded');
+
+  options.onProgress?.(95, `DI analysis complete (${pageCount} pages, ${processingTime}ms)`);
+
+  return { ...result, _processingTime: processingTime, _region: config.region };
 }
 
 // ============================================================================
@@ -458,20 +605,23 @@ export async function analyzeLayout(
     outputFormat?: 'text' | 'markdown';
   } = {}
 ): Promise<DIAnalyzeResult> {
-  const features: string[] = [];
-  if (options.extractKeyValuePairs !== false) {
-    features.push('keyValuePairs');
-  }
+  const span = startSpan({ name: 'di.analyzeLayout', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.buffer_size': fileBuffer.length } });
+  try {
+    const features: string[] = [];
+    if (options.extractKeyValuePairs !== false) {
+      features.push('keyValuePairs');
+    }
 
-  const raw = await analyzeDocument(fileBuffer, 'prebuilt-layout', {
-    features,
-    locale: options.locale,
-    outputContentFormat: options.outputFormat,
-  });
+    const raw = await analyzeDocument(fileBuffer, 'prebuilt-layout', {
+      features,
+      locale: options.locale,
+      outputContentFormat: options.outputFormat,
+    });
 
-  const config = raw._config as DIConfig;
+    const region = raw._region as string;
+    setSpanAttributes(span, { 'di.region': region, 'di.pages': raw.pages?.length || 0 });
 
-  return {
+    const result: DIAnalyzeResult = {
     content: raw.content || '',
     pages: parsePages(raw),
     tables: parseTables(raw),
@@ -483,10 +633,18 @@ export async function analyzeLayout(
       apiVersion: DI_API_VERSION,
       processingTimeMs: raw._processingTime,
       pageCount: raw.pages?.length || 0,
-      region: config.region,
-      dataResidency: getDataResidency(config.region),
+      region: region,
+      dataResidency: getDataResidency(region),
     },
   };
+    endSpan(span, 'ok');
+    return result;
+  } catch (error) {
+    diMetrics.recordFailure('prebuilt-layout');
+    setSpanAttributes(span, { 'error.message': error instanceof Error ? error.message : String(error) });
+    endSpan(span, 'error');
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -500,13 +658,16 @@ export async function analyzeRead(
   fileBuffer: Buffer,
   options: { locale?: string } = {}
 ): Promise<DIAnalyzeResult> {
+  const span = startSpan({ name: 'di.analyzeRead', kind: 'client', attributes: { 'di.model': 'prebuilt-read', 'di.buffer_size': fileBuffer.length } });
+  try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-read', {
     locale: options.locale,
   });
 
-  const config = raw._config as DIConfig;
+  const region = raw._region as string;
+  setSpanAttributes(span, { 'di.region': region, 'di.pages': raw.pages?.length || 0 });
 
-  return {
+  const result: DIAnalyzeResult = {
     content: raw.content || '',
     pages: parsePages(raw),
     tables: [],
@@ -518,10 +679,18 @@ export async function analyzeRead(
       apiVersion: DI_API_VERSION,
       processingTimeMs: raw._processingTime,
       pageCount: raw.pages?.length || 0,
-      region: config.region,
-      dataResidency: getDataResidency(config.region),
+      region: region,
+      dataResidency: getDataResidency(region),
     },
   };
+    endSpan(span, 'ok');
+    return result;
+  } catch (error) {
+    diMetrics.recordFailure('prebuilt-read');
+    setSpanAttributes(span, { 'error.message': error instanceof Error ? error.message : String(error) });
+    endSpan(span, 'error');
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -538,12 +707,14 @@ export async function analyzeContract(
   fileBuffer: Buffer,
   options: { locale?: string } = {}
 ): Promise<{ analysis: DIAnalyzeResult; contract: ContractExtractionResult }> {
+  const span = startSpan({ name: 'di.analyzeContract', kind: 'client', attributes: { 'di.model': 'prebuilt-contract', 'di.buffer_size': fileBuffer.length } });
+  try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-contract', {
     locale: options.locale,
     features: ['keyValuePairs'],
   });
 
-  const config = raw._config as DIConfig;
+  const region = raw._region as string;
 
   const analysis: DIAnalyzeResult = {
     content: raw.content || '',
@@ -557,8 +728,8 @@ export async function analyzeContract(
       apiVersion: DI_API_VERSION,
       processingTimeMs: raw._processingTime,
       pageCount: raw.pages?.length || 0,
-      region: config.region,
-      dataResidency: getDataResidency(config.region),
+      region: region,
+      dataResidency: getDataResidency(region),
     },
   };
 
@@ -614,7 +785,15 @@ export async function analyzeContract(
     'Contract extraction complete'
   );
 
-  return { analysis, contract };
+    setSpanAttributes(span, { 'di.parties': parties.length, 'di.confidence': contract.confidence });
+    endSpan(span, 'ok');
+    return { analysis, contract };
+  } catch (error) {
+    diMetrics.recordFailure('prebuilt-contract');
+    setSpanAttributes(span, { 'error.message': error instanceof Error ? error.message : String(error) });
+    endSpan(span, 'error');
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -630,11 +809,13 @@ export async function analyzeInvoice(
   fileBuffer: Buffer,
   options: { locale?: string } = {}
 ): Promise<{ analysis: DIAnalyzeResult; invoice: InvoiceExtractionResult }> {
+  const span = startSpan({ name: 'di.analyzeInvoice', kind: 'client', attributes: { 'di.model': 'prebuilt-invoice', 'di.buffer_size': fileBuffer.length } });
+  try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-invoice', {
     locale: options.locale,
   });
 
-  const config = raw._config as DIConfig;
+  const region = raw._region as string;
 
   const analysis: DIAnalyzeResult = {
     content: raw.content || '',
@@ -648,8 +829,8 @@ export async function analyzeInvoice(
       apiVersion: DI_API_VERSION,
       processingTimeMs: raw._processingTime,
       pageCount: raw.pages?.length || 0,
-      region: config.region,
-      dataResidency: getDataResidency(config.region),
+      region: region,
+      dataResidency: getDataResidency(region),
     },
   };
 
@@ -699,7 +880,15 @@ export async function analyzeInvoice(
     'Invoice extraction complete'
   );
 
-  return { analysis, invoice };
+    setSpanAttributes(span, { 'di.vendor': invoice.vendorName || '', 'di.line_items': lineItems.length });
+    endSpan(span, 'ok');
+    return { analysis, invoice };
+  } catch (error) {
+    diMetrics.recordFailure('prebuilt-invoice');
+    setSpanAttributes(span, { 'error.message': error instanceof Error ? error.message : String(error) });
+    endSpan(span, 'error');
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -718,13 +907,15 @@ export async function analyzeWithQueries(
   queryFields: string[],
   options: { locale?: string } = {}
 ): Promise<{ analysis: DIAnalyzeResult; answers: Record<string, string> }> {
+  const span = startSpan({ name: 'di.analyzeWithQueries', kind: 'client', attributes: { 'di.model': 'prebuilt-layout', 'di.queries': queryFields.length } });
+  try {
   const raw = await analyzeDocument(fileBuffer, 'prebuilt-layout', {
     features: ['queryFields', 'keyValuePairs'],
     queryFields,
     locale: options.locale,
   });
 
-  const config = raw._config as DIConfig;
+  const region = raw._region as string;
 
   const analysis: DIAnalyzeResult = {
     content: raw.content || '',
@@ -738,8 +929,8 @@ export async function analyzeWithQueries(
       apiVersion: DI_API_VERSION,
       processingTimeMs: raw._processingTime,
       pageCount: raw.pages?.length || 0,
-      region: config.region,
-      dataResidency: getDataResidency(config.region),
+      region: region,
+      dataResidency: getDataResidency(region),
     },
   };
 
@@ -751,7 +942,15 @@ export async function analyzeWithQueries(
     }
   }
 
-  return { analysis, answers };
+    setSpanAttributes(span, { 'di.answers': Object.keys(answers).length });
+    endSpan(span, 'ok');
+    return { analysis, answers };
+  } catch (error) {
+    diMetrics.recordFailure('prebuilt-layout');
+    setSpanAttributes(span, { 'error.message': error instanceof Error ? error.message : String(error) });
+    endSpan(span, 'error');
+    throw error;
+  }
 }
 
 // ============================================================================
@@ -797,6 +996,20 @@ export async function checkDIHealth(): Promise<{
       error: err.message,
     };
   }
+}
+
+/**
+ * Check if Document Intelligence feature flag is enabled.
+ * Defaults to true when DI credentials are configured.
+ * Set AZURE_DI_ENABLED=false to disable even with valid credentials.
+ */
+export function isDIEnabled(): boolean {
+  const flag = process.env.AZURE_DI_ENABLED;
+  if (flag !== undefined) {
+    return flag === 'true' || flag === '1';
+  }
+  // Enabled by default when configured
+  return isDIConfigured();
 }
 
 /**

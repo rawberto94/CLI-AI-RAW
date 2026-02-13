@@ -58,6 +58,13 @@ import {
 import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
+
+// Type-only imports for Azure Document Intelligence
+import type {
+  DIAnalyzeResult,
+  ContractExtractionResult,
+  InvoiceExtractionResult,
+} from './azure-document-intelligence';
 import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 
 // Check if we're in build mode - skip worker initialization
@@ -805,7 +812,7 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
 /**
  * Perform OCR extraction on a file with circuit breaker protection and caching
  */
-async function performOCR(filePath: string, ocrMode: string, fileSize?: number): Promise<string> {
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<string> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
   // Check distributed cache first
@@ -822,8 +829,9 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
   const DI_MODES: OCRMode[] = ['azure-di-layout', 'azure-di-contract', 'azure-di-invoice'];
   if (DI_MODES.includes(ocrMode as OCRMode)) {
     try {
-      const { isDIConfigured } = await import('./azure-document-intelligence');
-      if (isDIConfigured() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+      const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
+      if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+        onProgress?.(15); // DI submission starting
         const result = await azureCircuitBreaker.execute(() =>
           retry(async () => {
             const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
@@ -893,6 +901,7 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
           await ocrCache.set(cacheKey, result);
         }
         logger.info({ ocrMode, textLength: result.length }, 'DI model OCR succeeded');
+        onProgress?.(55); // DI analysis complete
         return result;
       }
     } catch (diError) {
@@ -1565,8 +1574,8 @@ export async function processOCRArtifactJob(
     // Auto-select: run quick preclassification to pick the optimal DI model
     if (ocrMode === 'auto') {
       try {
-        const { isDIConfigured } = await import('./azure-document-intelligence');
-        if (isDIConfigured()) {
+        const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
+        if (isDIConfigured() && isDIEnabled()) {
           // Read a small text sample for preclassification (use pdf-parse for PDFs)
           let textSample = '';
           const ext = localFilePath.toLowerCase().split('.').pop() || '';
@@ -1603,7 +1612,9 @@ export async function processOCRArtifactJob(
       }
     }
 
-    const rawExtractedText = await performOCR(localFilePath, ocrMode);
+    const rawExtractedText = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
+      try { await job.updateProgress(pct); } catch { /* best-effort */ }
+    });
     
     // ============ OCR ENHANCEMENT PIPELINE (NEW) ============
     // Apply post-OCR corrections, validation, and quality improvements
@@ -1762,6 +1773,9 @@ export async function processOCRArtifactJob(
           where: { id: contractId, tenantId },
           data: {
             rawText: extractedText,
+            ocrProvider: ocrMode,
+            ocrModel: ocrMode.startsWith('azure-di-') ? `prebuilt-${ocrMode.replace('azure-di-', '')}` : undefined,
+            ocrProcessedAt: new Date(),
             updatedAt: new Date(),
           },
         });

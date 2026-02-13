@@ -9,6 +9,7 @@ import http from 'http';
 import { getMetricsCollector, MetricsSnapshot } from './metrics';
 import { getAllCircuitStats, getBackpressureHandler } from './resilience';
 import { getRecentSpans } from './observability/opentelemetry';
+import { checkDIHealth, isDIConfigured, diMetrics, diCostTracker } from './azure-document-intelligence';
 import pino from 'pino';
 
 const logger = pino({ name: 'health-server' });
@@ -67,6 +68,9 @@ function createHealthHandler(): (req: http.IncomingMessage, res: http.ServerResp
         case '/traces':
           handleRecentTraces(res);
           break;
+        case '/di-health':
+          await handleDIHealth(res);
+          break;
         default:
           res.writeHead(404, { 'Content-Type': 'application/json' });
           res.end(JSON.stringify({ error: 'Not found' }));
@@ -110,11 +114,24 @@ async function handleHealthCheck(res: http.ServerResponse): Promise<void> {
     response.status = 'degraded';
   }
 
+  // Check DI health if configured
+  let diHealth: any = null;
+  if (isDIConfigured()) {
+    try {
+      diHealth = await checkDIHealth();
+      if (diHealth.configured && !diHealth.reachable) {
+        response.status = response.status === 'healthy' ? 'degraded' : response.status;
+      }
+    } catch {
+      // Don't let DI health check crash the main health endpoint
+    }
+  }
+
   const statusCode = response.status === 'healthy' ? 200 : 
                      response.status === 'degraded' ? 200 : 503;
 
   res.writeHead(statusCode, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(response, null, 2));
+  res.end(JSON.stringify({ ...response, documentIntelligence: diHealth }, null, 2));
 }
 
 /**
@@ -163,7 +180,7 @@ async function handleMetricsJson(res: http.ServerResponse): Promise<void> {
   const snapshot = await collector.getSnapshot();
 
   res.writeHead(200, { 'Content-Type': 'application/json' });
-  res.end(JSON.stringify(snapshot, null, 2));
+  res.end(JSON.stringify({ ...snapshot, documentIntelligence: diMetrics.getSnapshot(), diCost: diCostTracker.getSnapshot() }, null, 2));
 }
 
 /**
@@ -217,6 +234,29 @@ function handleRecentTraces(res: http.ServerResponse): void {
 }
 
 /**
+ * Document Intelligence health check endpoint
+ */
+async function handleDIHealth(res: http.ServerResponse): Promise<void> {
+  try {
+    const health = await checkDIHealth();
+    const statusCode = health.configured && health.reachable ? 200 : 
+                       health.configured ? 503 : 200;
+
+    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      ...health,
+    }, null, 2));
+  } catch (error) {
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      error: 'Failed to check DI health',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    }));
+  }
+}
+
+/**
  * Start the health check server
  */
 export function startHealthServer(port: number = 9090): http.Server {
@@ -242,6 +282,7 @@ export function startHealthServer(port: number = 9090): http.Server {
         `http://localhost:${port}/metrics/json - JSON metrics`,
         `http://localhost:${port}/resilience - Circuit breakers & backpressure`,
         `http://localhost:${port}/traces - Recent distributed traces`,
+        `http://localhost:${port}/di-health - Azure Document Intelligence health`,
       ]
     }, 'Available endpoints');
   });

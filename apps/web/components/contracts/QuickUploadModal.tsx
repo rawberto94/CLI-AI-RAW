@@ -109,6 +109,7 @@ export function QuickUploadModal({
   const [isDragging, setIsDragging] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
   const [category, setCategory] = useState(defaultCategory || '')
+  const [ocrMode, setOcrMode] = useState('auto')
   const [showSuccess, setShowSuccess] = useState(false)
   const [uploadedContractIds, setUploadedContractIds] = useState<string[]>([])
   
@@ -184,6 +185,9 @@ export function QuickUploadModal({
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('category', category)
+    if (ocrMode && ocrMode !== 'auto') {
+      formData.append('ocrMode', ocrMode)
+    }
     
     try {
       const response = await fetch('/api/contracts/upload', {
@@ -410,6 +414,30 @@ export function QuickUploadModal({
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              )}
+              
+              {/* OCR Processing Mode */}
+              {files.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">OCR Processing Mode</Label>
+                  <Select value={ocrMode} onValueChange={setOcrMode}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select OCR mode..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="auto">Auto-detect (Recommended)</SelectItem>
+                      <SelectItem value="azure-di-layout">Azure DI — Layout Analysis</SelectItem>
+                      <SelectItem value="azure-di-contract">Azure DI — Contract Model</SelectItem>
+                      <SelectItem value="azure-di-invoice">Azure DI — Invoice Model</SelectItem>
+                      <SelectItem value="azure-di-read">Azure DI — Read (Lightweight)</SelectItem>
+                      <SelectItem value="openai">OpenAI Vision</SelectItem>
+                      <SelectItem value="mistral">Mistral OCR</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-500">
+                    Auto-detect selects the best model based on document type
+                  </p>
                 </div>
               )}
               

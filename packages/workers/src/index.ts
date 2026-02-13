@@ -25,6 +25,35 @@ import pino from 'pino';
 // Re-export contract type profiles for use in web app
 export * from './contract-type-profiles';
 
+// Re-export Azure Document Intelligence v4.0 service and types
+export {
+  analyzeLayout,
+  analyzeContract,
+  analyzeInvoice,
+  analyzeRead,
+  analyzeWithQueries,
+  checkDIHealth,
+  isDIConfigured,
+  isDIEnabled,
+  diMetrics,
+  diCostTracker,
+} from './azure-document-intelligence';
+export type {
+  DIAnalyzeResult,
+  DIPage,
+  DITable,
+  DIKeyValuePair,
+  DIParagraph,
+  DIDocument,
+  DIField,
+  DIMetadata,
+  DIModel,
+  ContractExtractionResult,
+  ContractParty,
+  InvoiceExtractionResult,
+  InvoiceLineItem,
+} from './azure-document-intelligence';
+
 // Re-export agentic AI agents for use in API routes (excluding ContractType to avoid duplicate export)
 export { 
   agentRegistry,

@@ -454,6 +454,11 @@ model Contract {
   importedAt     DateTime?
   lastSyncedAt   DateTime?
 
+  // OCR Provider Tracking
+  ocrProvider    String? // openai, azure-ch, azure-di-layout, azure-di-contract, azure-di-invoice, mistral, tesseract
+  ocrModel       String? // e.g. prebuilt-layout, prebuilt-contract, prebuilt-invoice, gpt-4o
+  ocrProcessedAt DateTime? // When OCR was last run
+
   // Contract Hierarchy (Parent-Child Relationships)
   parentContractId String? // Reference to parent contract (e.g., MSA for a SoW)
   parentContract   Contract?  @relation("ContractHierarchy", fields: [parentContractId], references: [id])
