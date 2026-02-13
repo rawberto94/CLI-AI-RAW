@@ -55,6 +55,9 @@ export type OCRModel =
   | 'TESSERACT_BEST'       // Higher quality Tesseract
   | 'AZURE_READ'           // Azure Computer Vision Read API
   | 'AZURE_FORM'           // Azure Form Recognizer
+  | 'AZURE_DI_LAYOUT'      // Azure Document Intelligence v4.0 — Layout model
+  | 'AZURE_DI_CONTRACT'    // Azure Document Intelligence v4.0 — Contract model
+  | 'AZURE_DI_INVOICE'     // Azure Document Intelligence v4.0 — Invoice model
   | 'GOOGLE_DOCUMENT_AI'   // Google Document AI
   | 'GOOGLE_VISION'        // Google Cloud Vision
   | 'AWS_TEXTRACT'         // AWS Textract
@@ -364,6 +367,12 @@ interface ModelSelectionCriteria {
 
 /**
  * Select the best OCR model based on document characteristics
+ *
+ * Prefers Azure Document Intelligence v4.0 models when available:
+ * - AZURE_DI_LAYOUT   → Documents with tables, forms, checkboxes, mixed content
+ * - AZURE_DI_CONTRACT → Contracts and legal filings (party/date/jurisdiction extraction)
+ * - AZURE_DI_INVOICE  → Invoices (vendor, line items, totals)
+ * - AZURE_READ        → Simple text-heavy documents
  */
 function selectOCRModel(criteria: ModelSelectionCriteria): {
   primary: OCRModel;
@@ -377,28 +386,39 @@ function selectOCRModel(criteria: ModelSelectionCriteria): {
     'TESSERACT_BEST',
     'AZURE_READ',
     'AZURE_FORM',
+    'AZURE_DI_LAYOUT',
+    'AZURE_DI_CONTRACT',
+    'AZURE_DI_INVOICE',
     'GOOGLE_DOCUMENT_AI',
     'AWS_TEXTRACT',
   ];
+
+  const hasDI = models.includes('AZURE_DI_LAYOUT');
 
   // If too much handwriting, flag for manual review
   if (characteristics.handwritingPercentage > 60) {
     return {
       primary: 'MANUAL_REVIEW',
-      alternatives: ['AZURE_READ', 'GOOGLE_DOCUMENT_AI'],
+      alternatives: hasDI ? ['AZURE_DI_LAYOUT', 'AZURE_READ'] : ['AZURE_READ', 'GOOGLE_DOCUMENT_AI'],
     };
   }
 
-  // Very low quality documents
+  // Very low quality documents — DI Layout handles degraded scans well
   if (quality === 'VERY_LOW') {
     return {
-      primary: models.includes('AZURE_READ') ? 'AZURE_READ' : 'TESSERACT_BEST',
-      alternatives: ['GOOGLE_DOCUMENT_AI', 'TESSERACT_BEST'],
+      primary: hasDI ? 'AZURE_DI_LAYOUT' : (models.includes('AZURE_READ') ? 'AZURE_READ' : 'TESSERACT_BEST'),
+      alternatives: hasDI ? ['AZURE_READ', 'GOOGLE_DOCUMENT_AI'] : ['GOOGLE_DOCUMENT_AI', 'TESSERACT_BEST'],
     };
   }
 
-  // Documents with forms/tables
+  // Documents with forms/tables → DI Layout (tables + KV pairs + structure)
   if (characteristics.hasTables || characteristics.hasCheckboxes) {
+    if (hasDI) {
+      return {
+        primary: 'AZURE_DI_LAYOUT',
+        alternatives: ['AZURE_FORM', 'AWS_TEXTRACT'],
+      };
+    }
     if (models.includes('AZURE_FORM')) {
       return {
         primary: 'AZURE_FORM',
@@ -411,8 +431,14 @@ function selectOCRModel(criteria: ModelSelectionCriteria): {
     };
   }
 
-  // Contracts and legal documents
+  // Contracts and legal documents → DI Contract model (party/date extraction)
   if (category === 'CONTRACT' || category === 'LEGAL_FILING') {
+    if (hasDI && models.includes('AZURE_DI_CONTRACT')) {
+      return {
+        primary: 'AZURE_DI_CONTRACT',
+        alternatives: ['AZURE_DI_LAYOUT', 'AZURE_READ'],
+      };
+    }
     if (quality === 'HIGH') {
       return {
         primary: models.includes('AZURE_READ') ? 'AZURE_READ' : 'TESSERACT_BEST',
@@ -425,26 +451,42 @@ function selectOCRModel(criteria: ModelSelectionCriteria): {
     };
   }
 
-  // Invoices
+  // Invoices → DI Invoice model (vendor, line items, totals)
   if (category === 'INVOICE') {
+    if (hasDI && models.includes('AZURE_DI_INVOICE')) {
+      return {
+        primary: 'AZURE_DI_INVOICE',
+        alternatives: ['AZURE_DI_LAYOUT', 'AZURE_FORM'],
+      };
+    }
     return {
       primary: models.includes('AZURE_FORM') ? 'AZURE_FORM' : 'AWS_TEXTRACT',
       alternatives: ['AWS_TEXTRACT', 'GOOGLE_DOCUMENT_AI'],
     };
   }
 
+  // ID Documents, Certificates
+  if (category === 'ID_DOCUMENT' || category === 'CERTIFICATE') {
+    if (hasDI) {
+      return {
+        primary: 'AZURE_DI_LAYOUT',
+        alternatives: ['AZURE_READ', 'GOOGLE_DOCUMENT_AI'],
+      };
+    }
+  }
+
   // High quality general documents
   if (quality === 'HIGH') {
     return {
-      primary: 'TESSERACT_BEST',
-      alternatives: ['AZURE_READ', 'TESSERACT_FAST'],
+      primary: hasDI ? 'AZURE_DI_LAYOUT' : 'TESSERACT_BEST',
+      alternatives: hasDI ? ['AZURE_READ', 'TESSERACT_BEST'] : ['AZURE_READ', 'TESSERACT_FAST'],
     };
   }
 
   // Default for medium quality
   return {
-    primary: models.includes('AZURE_READ') ? 'AZURE_READ' : 'TESSERACT_BEST',
-    alternatives: ['TESSERACT_BEST', 'GOOGLE_VISION'],
+    primary: hasDI ? 'AZURE_DI_LAYOUT' : (models.includes('AZURE_READ') ? 'AZURE_READ' : 'TESSERACT_BEST'),
+    alternatives: hasDI ? ['AZURE_READ', 'TESSERACT_BEST'] : ['TESSERACT_BEST', 'GOOGLE_VISION'],
   };
 }
 

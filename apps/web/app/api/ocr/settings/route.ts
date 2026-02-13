@@ -43,6 +43,18 @@ interface OCRSettings {
 // ============================================================================
 
 const PROVIDER_DETAILS: Record<string, Omit<OCRProviderStatus, 'id' | 'configured' | 'region' | 'dataResidency'>> = {
+  'azure-di': {
+    name: 'Azure Document Intelligence v4.0 (Switzerland)',
+    accuracy: 99,
+    speed: 'medium',
+    cost: '$0.01/page (read) – $0.10/page (layout)',
+    compliance: ['GDPR', 'Swiss FADP', 'FINMA', 'ISO 27001', 'SOC 2'],
+    features: [
+      'Tables', 'Forms', 'Handwriting', 'Signatures', 'Layout',
+      'Key-Value Pairs', 'Contract Extraction', 'Invoice Extraction',
+      'Paragraphs with Roles', 'Searchable PDF', 'Query Fields',
+    ],
+  },
   'azure-ch': {
     name: 'Azure Document AI (Switzerland)',
     accuracy: 97,

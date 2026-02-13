@@ -848,6 +848,60 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
             },
           })
         );
+      } else if (mode === 'azure-di-contract' || mode === 'azure-di-invoice') {
+        // Direct Document Intelligence v4.0 model invocation
+        result = await azureCircuitBreaker.execute(() =>
+          retry(async () => {
+            const { analyzeContract, analyzeInvoice, isDIConfigured } = await import('./azure-document-intelligence');
+            if (!isDIConfigured()) {
+              throw new Error('Document Intelligence not configured');
+            }
+            const fileBuffer = await fs.readFile(filePath);
+            if (mode === 'azure-di-contract') {
+              const { analysis, contract } = await analyzeContract(fileBuffer);
+              const parts = [analysis.content];
+              if (contract.parties.length > 0) {
+                parts.push('\n--- CONTRACT PARTIES ---');
+                for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
+              }
+              if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
+              if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
+              if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
+              if (analysis.tables.length > 0) {
+                parts.push('\n--- EXTRACTED TABLES ---');
+                for (const t of analysis.tables) {
+                  if (t.headers.length) parts.push(`| ${t.headers.join(' | ')} |`);
+                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
+                }
+              }
+              return parts.join('\n');
+            } else {
+              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
+              const parts = [analysis.content];
+              parts.push('\n--- INVOICE DATA ---');
+              if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
+              if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
+              if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
+              if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
+              if (invoice.lineItems.length > 0) {
+                parts.push('\n--- LINE ITEMS ---');
+                parts.push('| Description | Qty | Unit Price | Amount |');
+                parts.push('| --- | --- | --- | --- |');
+                for (const li of invoice.lineItems) {
+                  parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
+                }
+              }
+              return parts.join('\n');
+            }
+          }, {
+            maxAttempts: 2,
+            initialDelay: 2000,
+            maxDelay: 15000,
+            onRetry: (error, attempt, delay) => {
+              logger.warn({ error: error.message, attempt, delay, mode }, 'DI model OCR retry');
+            },
+          })
+        );
       } else {
         // Fallback to basic extraction
         result = await extractTextFallback(filePath);
@@ -902,33 +956,94 @@ async function extractTextFallback(filePath: string): Promise<string> {
 
 /**
  * Azure Switzerland OCR extraction (Swiss FADP compliant)
- * Uses Azure Computer Vision API in Switzerland North region
+ *
+ * Uses Azure Document Intelligence v4.0 Layout model when DI credentials
+ * are available (richer output: text + tables + key-value pairs + structure).
+ * Falls back to legacy Computer Vision Read API v3.2 otherwise.
  */
 async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
   try {
-    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
-    const apiKey = process.env.AZURE_VISION_KEY_CH;
-    
-    if (!endpoint || !apiKey) {
-      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH, AZURE_VISION_KEY_CH)');
-    }
-    
     const fileBuffer = await fs.readFile(filePath);
     const ext = filePath.toLowerCase().split('.').pop() || '';
     const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
-    
+
     // For text files, just read directly
     if (isTextFile) {
       logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
       return fileBuffer.toString('utf-8');
     }
+
+    // ── Try Document Intelligence v4.0 Layout model first ──
+    const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+    const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+
+    if (diEndpoint && diKey) {
+      try {
+        const { analyzeLayout } = await import('./azure-document-intelligence');
+        const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+
+        // Build rich text output with tables rendered as markdown
+        const parts: string[] = [];
+        parts.push(result.content);
+
+        // Append tables as markdown for downstream AI processing
+        if (result.tables.length > 0) {
+          parts.push('\n\n--- EXTRACTED TABLES ---\n');
+          for (const table of result.tables) {
+            if (table.headers.length > 0) {
+              parts.push(`| ${table.headers.join(' | ')} |`);
+              parts.push(`| ${table.headers.map(() => '---').join(' | ')} |`);
+            }
+            for (const row of table.rows) {
+              parts.push(`| ${row.join(' | ')} |`);
+            }
+            parts.push('');
+          }
+        }
+
+        // Append key-value pairs
+        if (result.keyValuePairs.length > 0) {
+          parts.push('\n--- KEY-VALUE PAIRS ---\n');
+          for (const kv of result.keyValuePairs) {
+            if (kv.key && kv.value) {
+              parts.push(`${kv.key}: ${kv.value}`);
+            }
+          }
+        }
+
+        const extractedText = parts.join('\n');
+        logger.info(
+          {
+            textLength: extractedText.length,
+            pages: result.metadata.pageCount,
+            tables: result.tables.length,
+            kvPairs: result.keyValuePairs.length,
+            model: 'prebuilt-layout',
+            apiVersion: 'v4.0',
+          },
+          'Azure Document Intelligence v4.0 OCR completed'
+        );
+        return extractedText;
+      } catch (diError) {
+        logger.warn(
+          { error: (diError as Error).message },
+          'Document Intelligence v4.0 failed, falling back to Read API v3.2'
+        );
+        // Fall through to legacy path
+      }
+    }
+
+    // ── Legacy fallback: Azure Computer Vision Read API v3.2 ──
+    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
+    const apiKey = process.env.AZURE_VISION_KEY_CH;
     
-    // Use Azure Computer Vision Read API for OCR
+    if (!endpoint || !apiKey) {
+      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH / AZURE_VISION_KEY_CH or AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT / AZURE_DOCUMENT_INTELLIGENCE_KEY)');
+    }
+    
     const readUrl = `${endpoint}/vision/v3.2/read/analyze`;
+    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR (legacy Read v3.2)');
     
-    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR');
-    
-    // Submit the document for reading
     const submitResponse = await fetch(readUrl, {
       method: 'POST',
       headers: {
@@ -943,24 +1058,20 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       throw new Error(`Azure OCR submit failed: ${submitResponse.status} ${errorText}`);
     }
     
-    // Get the operation location from the response headers
     const operationLocation = submitResponse.headers.get('Operation-Location');
     if (!operationLocation) {
       throw new Error('Azure OCR did not return Operation-Location header');
     }
     
-    // Poll for results
     let result;
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max wait
+    const maxAttempts = 30;
     
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const resultResponse = await fetch(operationLocation, {
-        headers: {
-          'Ocp-Apim-Subscription-Key': apiKey,
-        },
+        headers: { 'Ocp-Apim-Subscription-Key': apiKey },
       });
       
       if (!resultResponse.ok) {
@@ -969,11 +1080,8 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       
       result = await resultResponse.json();
       
-      if (result.status === 'succeeded') {
-        break;
-      } else if (result.status === 'failed') {
-        throw new Error('Azure OCR processing failed');
-      }
+      if (result.status === 'succeeded') break;
+      if (result.status === 'failed') throw new Error('Azure OCR processing failed');
       
       attempts++;
     }
@@ -982,15 +1090,11 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       throw new Error('Azure OCR timed out or failed');
     }
     
-    // Extract text from all pages and lines
     const extractedText = result.analyzeResult.readResults
-      .map((page: any) => 
-        page.lines.map((line: any) => line.text).join('\n')
-      )
+      .map((page: any) => page.lines.map((line: any) => line.text).join('\n'))
       .join('\n\n');
     
-    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed');
-    
+    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed (legacy Read v3.2)');
     return extractedText;
   } catch (error) {
     const err = error as Error;
