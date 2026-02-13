@@ -382,8 +382,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           mimeType: file.type || "application/octet-stream",
           storagePath: filePath,
           storageProvider: storageProvider,
-          status: metadata.lifecycle === 'NEW' || metadata.lifecycle === 'AMENDMENT' ? "DRAFT" : "PROCESSING",
-          documentRole: metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
+          status: metadata.lifecycle === 'REVIEW' ? "PENDING" :
+                 metadata.lifecycle === 'NEW' || metadata.lifecycle === 'AMENDMENT' ? "DRAFT" : "PROCESSING",
+          documentRole: metadata.lifecycle === 'REVIEW' ? 'REVIEW' :
+                       metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
                        metadata.lifecycle === 'AMENDMENT' ? 'AMENDMENT' :
                        metadata.lifecycle === 'RENEWAL' ? 'RENEWAL' : 'EXISTING',
           uploadedBy: metadata.uploadedBy || "anonymous",
@@ -627,9 +629,12 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       fileName: file.name,
       fileSize: file.size,
       mimeType: file.type,
-      status: "PROCESSING",
+      status: metadata.lifecycle === 'REVIEW' ? "PENDING" : "PROCESSING",
+      documentRole: metadata.lifecycle === 'REVIEW' ? 'REVIEW' : undefined,
       processingJobId: processingJob.id,
-      message: "File uploaded successfully",
+      message: metadata.lifecycle === 'REVIEW' 
+        ? "File uploaded for review — AI analysis is running in the background"
+        : "File uploaded successfully",
     },
     { status: 201 }
   );

@@ -65,6 +65,7 @@ import {
   Award,
   Activity,
   Scale,
+  Edit3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
@@ -152,6 +153,7 @@ export default function UploadPage() {
   const [aiStatus, setAiStatus] = useState<AIStatus | null>(null)
   const [aiStatusLoading, setAiStatusLoading] = useState(true)
   const [isMounted, setIsMounted] = useState(false)
+  const [uploadPurpose, setUploadPurpose] = useState<'store' | 'review'>('store')
 
   // Simple approach: Clear ALL stale state on mount
   // HMR preserves React state, so any files in "uploading"/"processing" are stale
@@ -243,6 +245,9 @@ export default function UploadPage() {
     formData.append('dataMode', dataMode)
     formData.append('ocrMode', processingOptions.aiModel)
     formData.append('processingMode', processingOptions.processingMode)
+    if (uploadPurpose === 'review') {
+      formData.append('lifecycle', 'REVIEW')
+    }
 
     try {
       // Update to uploading
@@ -598,6 +603,42 @@ export default function UploadPage() {
               )}
             </AnimatePresence>
             
+            {/* Document Purpose Selector */}
+            <div className="flex items-center gap-3 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm w-fit">
+              <button
+                onClick={() => setUploadPurpose('store')}
+                disabled={isUploading}
+                className={cn(
+                  'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  uploadPurpose === 'store'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                )}
+              >
+                <FolderUp className="h-4 w-4" />
+                Store &amp; Process
+              </button>
+              <button
+                onClick={() => setUploadPurpose('review')}
+                disabled={isUploading}
+                className={cn(
+                  'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  uploadPurpose === 'review'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                )}
+              >
+                <Scale className="h-4 w-4" />
+                Upload for Review
+              </button>
+            </div>
+            {uploadPurpose === 'review' && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl text-sm text-blue-700 dark:text-blue-300">
+                <Info className="h-4 w-4 shrink-0" />
+                Documents will be uploaded for AI-powered review, redlining, and collaboration — not stored as executed contracts.
+              </div>
+            )}
+
             {/* Drop Zone */}
             <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardContent className="p-8">
@@ -642,19 +683,19 @@ export default function UploadPage() {
                     {isDragActive ? (
                       <>
                         <p className="text-2xl font-bold text-violet-600 dark:text-violet-400 mb-2">
-                          Drop your contracts here!
+                          {uploadPurpose === 'review' ? 'Drop your documents here!' : 'Drop your contracts here!'}
                         </p>
                         <p className="text-gray-600 dark:text-gray-300">
-                          Release to start the AI analysis
+                          {uploadPurpose === 'review' ? 'Release to start AI-powered review' : 'Release to start the AI analysis'}
                         </p>
                       </>
                     ) : (
                       <>
                         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                          Drag & drop contracts here
+                          {uploadPurpose === 'review' ? 'Drag & drop documents for review' : 'Drag & drop contracts here'}
                         </p>
                         <p className="text-gray-600 dark:text-gray-400 mb-6 text-lg">
-                          or click to browse your files
+                          {uploadPurpose === 'review' ? 'AI will analyze for redlining, risks, and recommendations' : 'or click to browse your files'}
                         </p>
                         
                         {/* Supported formats */}
@@ -976,29 +1017,61 @@ export default function UploadPage() {
                         </motion.div>
                         <div>
                           <h3 className="text-xl font-bold">
-                            {completedCount} Contract{completedCount !== 1 ? 's' : ''} Processed Successfully!
+                            {completedCount} {uploadPurpose === 'review' ? 'Document' : 'Contract'}{completedCount !== 1 ? 's' : ''} Processed Successfully!
                           </h3>
                           <p className="text-green-100 mt-1">
-                            AI analysis complete. Your contracts are ready for review.
+                            {uploadPurpose === 'review' 
+                              ? 'AI analysis complete. Start a legal review or redline session to proceed.'
+                              : 'AI analysis complete. Your contracts are ready for review.'}
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button 
-                          variant="secondary" 
-                          className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                          onClick={() => router.push('/contracts')}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View All Contracts
-                        </Button>
-                        <Button 
-                          className="bg-white text-green-700 hover:bg-green-50"
-                          onClick={() => setActiveTab('upload')}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload More
-                        </Button>
+                        {uploadPurpose === 'review' ? (
+                          <>
+                            <Button 
+                              variant="secondary" 
+                              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                              onClick={() => {
+                                const firstCompleted = files.find(f => f.status === 'completed')
+                                if (firstCompleted?.contractId) router.push(`/contracts/${firstCompleted.contractId}/legal-review`)
+                                else router.push('/contracts')
+                              }}
+                            >
+                              <Scale className="h-4 w-4 mr-2" />
+                              Start Legal Review
+                            </Button>
+                            <Button 
+                              className="bg-white text-violet-700 hover:bg-violet-50"
+                              onClick={() => {
+                                const firstCompleted = files.find(f => f.status === 'completed')
+                                if (firstCompleted?.contractId) router.push(`/contracts/${firstCompleted.contractId}/redline`)
+                                else router.push('/contracts')
+                              }}
+                            >
+                              <Edit3 className="h-4 w-4 mr-2" />
+                              Start Redlining
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button 
+                              variant="secondary" 
+                              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                              onClick={() => router.push('/contracts')}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View All Contracts
+                            </Button>
+                            <Button 
+                              className="bg-white text-green-700 hover:bg-green-50"
+                              onClick={() => setActiveTab('upload')}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload More
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     
@@ -1092,6 +1165,15 @@ export default function UploadPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => router.push(`/contracts/${file.contractId}/redline`)}
+                            className="gap-1 hidden md:flex dark:border-slate-600 dark:hover:bg-slate-700"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                            Redline
+                          </Button>
                           <Button
                             size="sm"
                             variant="outline"

@@ -49,10 +49,25 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
     avatar: undefined,
   };
 
-  // Fetch contract content
+  // Fetch contract content + saved redline state
   useEffect(() => {
     async function fetchContractContent() {
       try {
+        // Try loading saved redline state first
+        const redlineRes = await fetch(`/api/contracts/${id}/redline`);
+        if (redlineRes.ok) {
+          const { data } = await redlineRes.json();
+          if (data.content && data.content.length > 100) {
+            setContent(data.content);
+            setContractTitle(data.contractTitle || 'Contract - Redline');
+            if (data.documentStatus) setDocumentStatus(data.documentStatus as any);
+            if (data.savedAt) setLastSaved(new Date(data.savedAt));
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Fall back to fetching raw contract text
         const response = await fetch(`/api/contracts/${id}`);
         if (response.ok) {
           const raw = await response.json();
@@ -60,7 +75,6 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
           if (data.id) {
             setContractTitle(data.contractTitle || data.filename || 'Contract - Redline');
             
-            // Try to get text content from various sources
             const rawText = data.rawText 
               || data.extractedData?.rawText 
               || data.extractedData?.overview?.summary
@@ -80,13 +94,28 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
     fetchContractContent();
   }, [id]);
 
-  const handleSave = useCallback((content: string, changes: Change[]) => {
-    // Saving document with changes
-    setLastSaved(new Date());
-    toast.success('Document saved successfully', {
-      description: `${changes.filter(c => c.status === 'pending').length} pending changes remain`
-    });
-  }, []);
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = useCallback(async (content: string, changes: Change[]) => {
+    setIsSaving(true);
+    try {
+      const res = await fetch(`/api/contracts/${id}/redline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, changes, documentStatus }),
+      });
+      if (!res.ok) throw new Error('Save failed');
+      const { data } = await res.json();
+      setLastSaved(new Date());
+      toast.success('Document saved', {
+        description: `Version ${data.version} · ${data.pendingChanges} pending changes`,
+      });
+    } catch {
+      toast.error('Failed to save redline changes');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, documentStatus]);
 
   const handleExport = useCallback((type: 'redline' | 'clean' | 'pdf') => {
     toast.success(`Exporting ${type === 'redline' ? 'with redlines' : type === 'clean' ? 'clean copy' : 'as PDF'}`, {
@@ -94,12 +123,26 @@ export default function RedlinePage({ params }: { params: Promise<{ id: string }
     });
   }, []);
 
-  const handleFinalize = useCallback(() => {
-    setDocumentStatus('approved');
-    toast.success('Document finalized', {
-      description: 'All changes have been accepted and the document is ready for signing.'
-    });
-  }, []);
+  const handleFinalize = useCallback(async () => {
+    setIsSaving(true);
+    try {
+      // Save with finalize flag — transitions contract status to ACTIVE
+      const res = await fetch(`/api/contracts/${id}/redline`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, changes: [], finalize: true }),
+      });
+      if (!res.ok) throw new Error('Finalize failed');
+      setDocumentStatus('approved');
+      toast.success('Document finalized', {
+        description: 'All changes accepted — contract is now active.',
+      });
+    } catch {
+      toast.error('Failed to finalize document');
+    } finally {
+      setIsSaving(false);
+    }
+  }, [id, content]);
 
   if (loading) {
     return (

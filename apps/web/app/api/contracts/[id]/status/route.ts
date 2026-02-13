@@ -259,3 +259,121 @@ function formatDuration(ms: number): string {
   const mins = Math.round((ms % 3600000) / 60000);
   return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
 }
+
+// ============================================================================
+// PATCH — Transition contract to a new status
+// ============================================================================
+
+// Valid transitions: fromStatus → Set<validTargetStatuses>
+const VALID_TRANSITIONS: Record<string, Set<string>> = {
+  DRAFT:      new Set(['PENDING', 'ACTIVE', 'PROCESSING', 'CANCELLED']),
+  PENDING:    new Set(['ACTIVE', 'DRAFT', 'CANCELLED', 'PROCESSING']),
+  PROCESSING: new Set(['COMPLETED', 'FAILED', 'PENDING']),
+  COMPLETED:  new Set(['ACTIVE', 'ARCHIVED', 'DRAFT', 'PENDING']),
+  ACTIVE:     new Set(['EXPIRED', 'ARCHIVED', 'CANCELLED', 'DRAFT', 'PENDING']),
+  EXPIRED:    new Set(['ACTIVE', 'ARCHIVED']),
+  FAILED:     new Set(['PROCESSING', 'DRAFT']),
+  ARCHIVED:   new Set(['ACTIVE', 'DRAFT']),
+  CANCELLED:  new Set(['DRAFT']),
+  UPLOADED:   new Set(['PROCESSING', 'DRAFT', 'PENDING', 'ACTIVE']),
+  DELETED:    new Set([]),
+};
+
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const ctx = getApiContext(request);
+  try {
+    const tenantId = getTenantId(request);
+    if (!tenantId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
+    }
+
+    const contractId = params.id;
+    const body = await request.json();
+    const { status: newStatus, reason, workflowExecutionId } = body;
+
+    if (!newStatus) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'status is required', 400);
+    }
+
+    const normalizedStatus = newStatus.toUpperCase();
+
+    // Fetch current contract
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { id: true, status: true, metadata: true, contractTitle: true, fileName: true },
+    });
+
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
+
+    const currentStatus = (contract.status || 'DRAFT').toUpperCase();
+    const allowedTargets = VALID_TRANSITIONS[currentStatus];
+
+    if (!allowedTargets || !allowedTargets.has(normalizedStatus)) {
+      return createErrorResponse(
+        ctx,
+        'INVALID_TRANSITION',
+        `Cannot transition from ${currentStatus} to ${normalizedStatus}. Allowed: ${allowedTargets ? [...allowedTargets].join(', ') : 'none'}`,
+        422
+      );
+    }
+
+    // Build status history entry
+    const meta = (contract.metadata || {}) as Record<string, unknown>;
+    const statusHistory = (meta.statusHistory as Array<Record<string, unknown>>) || [];
+    statusHistory.push({
+      from: currentStatus,
+      to: normalizedStatus,
+      at: new Date().toISOString(),
+      by: tenantId,
+      reason: reason || undefined,
+      workflowExecutionId: workflowExecutionId || undefined,
+    });
+
+    // Update contract status + metadata
+    const updated = await prisma.contract.update({
+      where: { id: contractId },
+      data: {
+        status: normalizedStatus,
+        metadata: {
+          ...meta,
+          statusHistory,
+          lastStatusChange: new Date().toISOString(),
+        },
+      },
+      select: {
+        id: true,
+        status: true,
+        contractTitle: true,
+        fileName: true,
+        updatedAt: true,
+      },
+    });
+
+    // If tied to a workflow execution, update it
+    if (workflowExecutionId) {
+      try {
+        await prisma.workflowExecution.update({
+          where: { id: workflowExecutionId },
+          data: { status: 'COMPLETED', completedAt: new Date() },
+        });
+      } catch {
+        // Non-critical
+      }
+    }
+
+    return createSuccessResponse(ctx, {
+      contractId: updated.id,
+      previousStatus: currentStatus,
+      newStatus: normalizedStatus,
+      contractTitle: updated.contractTitle || updated.fileName,
+      updatedAt: updated.updatedAt.toISOString(),
+    });
+  } catch (error: unknown) {
+    return handleApiError(ctx, error);
+  }
+}

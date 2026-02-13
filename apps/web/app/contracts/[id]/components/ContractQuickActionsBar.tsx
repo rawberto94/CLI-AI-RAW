@@ -29,6 +29,10 @@ import {
   Link,
   Lock,
   Unlock,
+  Eye,
+  GitCompare,
+  ShieldCheck,
+  RotateCcw,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -92,6 +96,10 @@ interface ContractQuickActionsBarProps {
   onExportPDF?: () => void
   onExportWord?: () => void
   onStartWorkflow?: () => void
+  onApproveReview?: () => void
+  onRequestChanges?: () => void
+  onLegalReview?: () => void
+  onRedline?: () => void
   className?: string
 }
 
@@ -123,12 +131,67 @@ export const ContractQuickActionsBar = memo(function ContractQuickActionsBar({
   onExportPDF,
   onExportWord,
   onStartWorkflow,
+  onApproveReview,
+  onRequestChanges,
+  onLegalReview,
+  onRedline,
   className,
 }: ContractQuickActionsBarProps) {
   
   // Primary actions (always visible)
   const primaryActions = useMemo<QuickAction[]>(() => {
     const actions: QuickAction[] = []
+    
+    // ── Review-mode actions (when contract is pending review) ──
+    const isReviewMode = contractStatus === 'pending_review'
+    
+    if (isReviewMode && onApproveReview) {
+      actions.push({
+        id: 'approve-review',
+        label: 'Approve',
+        icon: ShieldCheck,
+        variant: 'default',
+        tooltip: 'Approve and mark as active',
+        onClick: onApproveReview,
+      })
+    }
+    
+    if (isReviewMode && onRequestChanges) {
+      actions.push({
+        id: 'request-changes',
+        label: 'Request Changes',
+        icon: RotateCcw,
+        variant: 'outline',
+        tooltip: 'Send back for changes',
+        onClick: onRequestChanges,
+      })
+    }
+    
+    if (isReviewMode && onLegalReview) {
+      actions.push({
+        id: 'legal-review',
+        label: 'Legal Review',
+        icon: Eye,
+        variant: 'outline',
+        tooltip: 'Start AI-powered legal review',
+        badge: 'AI',
+        badgeVariant: 'secondary',
+        onClick: onLegalReview,
+      })
+    }
+    
+    if (isReviewMode && onRedline) {
+      actions.push({
+        id: 'redline',
+        label: 'Redline',
+        icon: GitCompare,
+        variant: 'outline',
+        tooltip: 'Open redline editor',
+        onClick: onRedline,
+      })
+    }
+    
+    // ── Standard actions ──
     
     // Edit (if contract is editable)
     if (onEdit && contractStatus !== 'terminated') {
@@ -198,7 +261,7 @@ export const ContractQuickActionsBar = memo(function ContractQuickActionsBar({
     }
     
     return actions
-  }, [contractStatus, signatureStatus, isLocked, onEdit, onAIExtract, onRequestSignature, onDownload, onShare])
+  }, [contractStatus, signatureStatus, isLocked, onEdit, onAIExtract, onRequestSignature, onDownload, onShare, onApproveReview, onRequestChanges, onLegalReview, onRedline])
   
   // Copy link handler
   const handleCopyLink = () => {
