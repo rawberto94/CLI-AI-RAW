@@ -51,7 +51,7 @@ export interface ProcessContractJobData {
   filePath: string;
   originalName: string;
   userId?: string;
-  ocrMode?: string; // User-selected AI model: 'gpt4', 'mistral', 'auto'
+  ocrMode?: 'openai' | 'mistral' | 'azure-ch' | 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice' | 'auto' | (string & {}); // DI v4.0 models + legacy providers
   /** Correlation ID propagated across worker pipeline */
   traceId?: string;
   /** Optional request correlation from API layer */

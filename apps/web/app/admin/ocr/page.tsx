@@ -249,8 +249,185 @@ const BatchUploadSection: React.FC = () => {
 // ============================================================================
 
 const SettingsSection: React.FC = () => {
+  const [providers, setProviders] = useState<Array<{
+    id: string;
+    name: string;
+    configured: boolean;
+    region: string;
+    dataResidency: string;
+    accuracy?: number;
+    speed?: string;
+    cost?: string;
+    compliance?: string[];
+    features?: string[];
+  }>>([]);
+  const [defaultProvider, setDefaultProvider] = useState('azure-di');
+  const [testingProvider, setTestingProvider] = useState<string | null>(null);
+  const [testResults, setTestResults] = useState<Record<string, { success: boolean; message: string; responseTimeMs?: number }>>({});
+  const [loadingProviders, setLoadingProviders] = useState(true);
+
+  useEffect(() => {
+    async function fetchProviders() {
+      try {
+        const res = await fetch('/api/ocr/settings');
+        const json = await res.json();
+        if (json.success && json.data?.providers) {
+          setProviders(json.data.providers);
+        }
+        if (json.data?.settings?.defaultProvider) {
+          setDefaultProvider(json.data.settings.defaultProvider);
+        }
+      } catch {
+        // Use static fallback
+      } finally {
+        setLoadingProviders(false);
+      }
+    }
+    fetchProviders();
+  }, []);
+
+  const testConnection = async (providerId: string) => {
+    setTestingProvider(providerId);
+    try {
+      const res = await fetch('/api/ocr/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: providerId }),
+      });
+      const json = await res.json();
+      setTestResults(prev => ({
+        ...prev,
+        [providerId]: {
+          success: json.data?.success ?? false,
+          message: json.data?.message ?? 'Unknown error',
+          responseTimeMs: json.data?.responseTimeMs,
+        },
+      }));
+    } catch {
+      setTestResults(prev => ({
+        ...prev,
+        [providerId]: { success: false, message: 'Network error' },
+      }));
+    } finally {
+      setTestingProvider(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Provider Configuration */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Eye className="h-5 w-5" />
+            OCR Provider Configuration
+          </CardTitle>
+          <CardDescription>
+            Select and configure OCR providers. Azure Document Intelligence v4.0 is recommended for contracts and invoices.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {loadingProviders ? (
+            <div className="flex items-center gap-2 text-muted-foreground py-4">
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Loading providers...
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {(providers.length > 0
+                ? providers
+                : [
+                    { id: 'azure-di', name: 'Azure Document Intelligence v4.0 (Switzerland)', configured: false, region: 'Switzerland North', dataResidency: 'Switzerland', accuracy: 99, features: ['Tables', 'Key-Value Pairs', 'Contract Extraction', 'Invoice Extraction', 'Query Fields'] },
+                    { id: 'azure-ch', name: 'Azure Document AI (Switzerland)', configured: false, region: 'Switzerland North', dataResidency: 'Switzerland', accuracy: 97, features: ['Tables', 'Forms', 'Handwriting'] },
+                    { id: 'mistral', name: 'Mistral Pixtral', configured: false, region: 'EU', dataResidency: 'EU', accuracy: 94, features: ['Text', 'Tables'] },
+                    { id: 'tesseract', name: 'Tesseract (Local)', configured: true, region: 'Local', dataResidency: 'Your infrastructure', accuracy: 85, features: ['Text'] },
+                  ]
+              ).map((provider) => {
+                const isDefault = defaultProvider === provider.id;
+                const testResult = testResults[provider.id];
+
+                return (
+                  <div
+                    key={provider.id}
+                    className={`p-4 border rounded-lg transition-colors ${
+                      isDefault ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h4 className="font-medium">{provider.name}</h4>
+                          {provider.configured ? (
+                            <Badge variant="default" className="bg-green-600 text-xs">Configured</Badge>
+                          ) : (
+                            <Badge variant="secondary" className="text-xs">Not Configured</Badge>
+                          )}
+                          {isDefault && (
+                            <Badge variant="outline" className="text-xs border-primary text-primary">Default</Badge>
+                          )}
+                          {provider.id === 'azure-di' && (
+                            <Badge variant="outline" className="text-xs border-blue-500 text-blue-600">Recommended</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {provider.region} &middot; Data residency: {provider.dataResidency}
+                          {provider.accuracy && ` · ${provider.accuracy}% accuracy`}
+                        </p>
+                        {provider.features && provider.features.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {provider.features.map((f) => (
+                              <Badge key={f} variant="secondary" className="text-xs font-normal">
+                                {f}
+                              </Badge>
+                            ))}
+                          </div>
+                        )}
+                        {testResult && (
+                          <div className={`flex items-center gap-2 mt-2 text-sm ${testResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                            {testResult.success ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                              <AlertTriangle className="h-4 w-4" />
+                            )}
+                            {testResult.message}
+                            {testResult.responseTimeMs != null && (
+                              <span className="text-muted-foreground">({testResult.responseTimeMs}ms)</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 ml-4">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={!provider.configured || testingProvider === provider.id}
+                          onClick={() => testConnection(provider.id)}
+                        >
+                          {testingProvider === provider.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin mr-1" />
+                          ) : null}
+                          Test
+                        </Button>
+                        {!isDefault && provider.configured && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setDefaultProvider(provider.id)}
+                          >
+                            Set Default
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* General OCR Configuration */}
       <Card>
         <CardHeader>
           <CardTitle>OCR Configuration</CardTitle>

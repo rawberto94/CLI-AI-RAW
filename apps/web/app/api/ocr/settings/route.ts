@@ -432,6 +432,41 @@ async function testProviderConnection(provider: string): Promise<{
         };
       }
 
+      case 'azure-di': {
+        const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+        const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+
+        if (!diEndpoint || !diKey) {
+          return {
+            success: false,
+            provider,
+            responseTimeMs: Date.now() - startTime,
+            message: 'Document Intelligence credentials not configured (AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT / KEY)',
+          };
+        }
+
+        // Ping the DI info endpoint
+        const diResponse = await fetch(
+          `${diEndpoint.replace(/\/$/, '')}/documentintelligence/info?api-version=2024-11-30`,
+          { headers: { 'Ocp-Apim-Subscription-Key': diKey } }
+        );
+
+        const region = diEndpoint.includes('switzerland') ? 'switzerland-north'
+          : diEndpoint.includes('westeurope') ? 'west-europe' : 'unknown';
+
+        return {
+          success: diResponse.ok,
+          provider,
+          responseTimeMs: Date.now() - startTime,
+          message: diResponse.ok
+            ? 'Document Intelligence v4.0 connection successful'
+            : `Connection failed: ${diResponse.status}`,
+          details: diResponse.ok
+            ? { apiVersion: '2024-11-30', region, models: ['prebuilt-layout', 'prebuilt-contract', 'prebuilt-invoice', 'prebuilt-read'] }
+            : undefined,
+        };
+      }
+
       default:
         return {
           success: false,

@@ -728,9 +728,33 @@ function isPreprocessableImage(filePath: string): boolean {
 }
 const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
-// OCR fallback chain - includes OpenAI for testing, Swiss FADP compliant options (Azure CH → Mistral EU)
-const OCR_FALLBACK_CHAIN = ['openai', 'azure-ch', 'mistral'] as const;
-type OCRMode = typeof OCR_FALLBACK_CHAIN[number];
+// Valid OCR modes — includes DI v4.0 models + legacy providers
+type OCRMode =
+  | 'openai'
+  | 'azure-ch'
+  | 'mistral'
+  | 'azure-di-layout'
+  | 'azure-di-contract'
+  | 'azure-di-invoice'
+  | 'auto';
+
+// Fallback chain for generic/legacy modes (DI modes short-circuit before this)
+const OCR_FALLBACK_CHAIN: readonly OCRMode[] = ['openai', 'azure-ch', 'mistral'];
+
+// Map preclassification OCRModel → worker OCRMode
+const OCR_MODEL_TO_MODE: Record<string, OCRMode> = {
+  AZURE_DI_LAYOUT: 'azure-di-layout',
+  AZURE_DI_CONTRACT: 'azure-di-contract',
+  AZURE_DI_INVOICE: 'azure-di-invoice',
+  AZURE_READ: 'azure-ch',
+  AZURE_FORM: 'azure-di-layout', // superseded by DI v4.0
+  GOOGLE_DOCUMENT_AI: 'openai',  // not available, best alternative
+  GOOGLE_VISION: 'openai',
+  AWS_TEXTRACT: 'openai',
+  TESSERACT_FAST: 'mistral',
+  TESSERACT_BEST: 'mistral',
+  MANUAL_REVIEW: 'openai',
+};
 
 // Preload heavy modules to reduce cold start time
 let pdfParseModule: any = null;
@@ -794,6 +818,89 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
     }
   }
   
+  // ── DI modes: try the specific model first, then fall through to legacy chain ──
+  const DI_MODES: OCRMode[] = ['azure-di-layout', 'azure-di-contract', 'azure-di-invoice'];
+  if (DI_MODES.includes(ocrMode as OCRMode)) {
+    try {
+      const { isDIConfigured } = await import('./azure-document-intelligence');
+      if (isDIConfigured() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+        const result = await azureCircuitBreaker.execute(() =>
+          retry(async () => {
+            const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
+            const fileBuffer = await fs.readFile(filePath);
+
+            if (ocrMode === 'azure-di-contract') {
+              const { analysis, contract } = await analyzeContract(fileBuffer);
+              const parts = [analysis.content];
+              if (contract.parties.length > 0) {
+                parts.push('\n--- CONTRACT PARTIES ---');
+                for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
+              }
+              if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
+              if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
+              if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
+              return parts.join('\n');
+            } else if (ocrMode === 'azure-di-invoice') {
+              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
+              const parts = [analysis.content, '\n--- INVOICE DATA ---'];
+              if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
+              if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
+              if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
+              if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
+              if (invoice.lineItems.length > 0) {
+                parts.push('\n| Description | Qty | Unit Price | Amount |');
+                parts.push('| --- | --- | --- | --- |');
+                for (const li of invoice.lineItems) {
+                  parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
+                }
+              }
+              return parts.join('\n');
+            } else {
+              // azure-di-layout
+              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+              const parts = [result.content];
+              if (result.tables.length > 0) {
+                parts.push('\n--- EXTRACTED TABLES ---');
+                for (const t of result.tables) {
+                  if (t.headers.length) {
+                    parts.push(`| ${t.headers.join(' | ')} |`);
+                    parts.push(`| ${t.headers.map(() => '---').join(' | ')} |`);
+                  }
+                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
+                }
+              }
+              if (result.keyValuePairs.length > 0) {
+                parts.push('\n--- KEY-VALUE PAIRS ---');
+                for (const kv of result.keyValuePairs) {
+                  if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
+                }
+              }
+              return parts.join('\n');
+            }
+          }, {
+            maxAttempts: 2,
+            initialDelay: 2000,
+            maxDelay: 15000,
+            onRetry: (error, attempt, delay) => {
+              logger.warn({ error: error.message, attempt, delay, ocrMode }, 'DI model retry');
+            },
+          })
+        );
+
+        // Cache and return
+        if (fileSize && result && result.length > 100) {
+          const cacheKey = generateOCRCacheKey(filePath, fileSize);
+          await ocrCache.set(cacheKey, result);
+        }
+        logger.info({ ocrMode, textLength: result.length }, 'DI model OCR succeeded');
+        return result;
+      }
+    } catch (diError) {
+      logger.warn({ error: (diError as Error).message, ocrMode }, 'DI model OCR failed, falling through to legacy chain');
+    }
+    // Fall through to legacy fallback chain
+  }
+
   // Build fallback chain starting from preferred mode
   const preferredIndex = OCR_FALLBACK_CHAIN.indexOf(ocrMode as OCRMode);
   const fallbackOrder = preferredIndex >= 0 
@@ -845,60 +952,6 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
             maxDelay: 10000,
             onRetry: (error, attempt, delay) => {
               logger.warn({ error: error.message, attempt, delay }, 'Azure Switzerland OCR retry');
-            },
-          })
-        );
-      } else if (mode === 'azure-di-contract' || mode === 'azure-di-invoice') {
-        // Direct Document Intelligence v4.0 model invocation
-        result = await azureCircuitBreaker.execute(() =>
-          retry(async () => {
-            const { analyzeContract, analyzeInvoice, isDIConfigured } = await import('./azure-document-intelligence');
-            if (!isDIConfigured()) {
-              throw new Error('Document Intelligence not configured');
-            }
-            const fileBuffer = await fs.readFile(filePath);
-            if (mode === 'azure-di-contract') {
-              const { analysis, contract } = await analyzeContract(fileBuffer);
-              const parts = [analysis.content];
-              if (contract.parties.length > 0) {
-                parts.push('\n--- CONTRACT PARTIES ---');
-                for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
-              }
-              if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
-              if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
-              if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
-              if (analysis.tables.length > 0) {
-                parts.push('\n--- EXTRACTED TABLES ---');
-                for (const t of analysis.tables) {
-                  if (t.headers.length) parts.push(`| ${t.headers.join(' | ')} |`);
-                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
-                }
-              }
-              return parts.join('\n');
-            } else {
-              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
-              const parts = [analysis.content];
-              parts.push('\n--- INVOICE DATA ---');
-              if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
-              if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
-              if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
-              if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
-              if (invoice.lineItems.length > 0) {
-                parts.push('\n--- LINE ITEMS ---');
-                parts.push('| Description | Qty | Unit Price | Amount |');
-                parts.push('| --- | --- | --- | --- |');
-                for (const li of invoice.lineItems) {
-                  parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
-                }
-              }
-              return parts.join('\n');
-            }
-          }, {
-            maxAttempts: 2,
-            initialDelay: 2000,
-            maxDelay: 15000,
-            onRetry: (error, attempt, delay) => {
-              logger.warn({ error: error.message, attempt, delay, mode }, 'DI model OCR retry');
             },
           })
         );
@@ -1506,8 +1559,50 @@ export async function processOCRArtifactJob(
     jobLogger.info({ filePath: localFilePath }, 'Running OCR extraction');
     await publishJobProgress(job.id || '', contractId, tenantId, 20, 'ocr', 'Extracting text from document');
     
-    // Get ocrMode from job data (user selection) or fallback to default
-    const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
+    // Get ocrMode from job data (user selection) or use preclassification
+    let ocrMode: string = job.data.ocrMode || 'auto';
+
+    // Auto-select: run quick preclassification to pick the optimal DI model
+    if (ocrMode === 'auto') {
+      try {
+        const { isDIConfigured } = await import('./azure-document-intelligence');
+        if (isDIConfigured()) {
+          // Read a small text sample for preclassification (use pdf-parse for PDFs)
+          let textSample = '';
+          const ext = localFilePath.toLowerCase().split('.').pop() || '';
+          if (['pdf'].includes(ext)) {
+            try {
+              const buf = await fs.readFile(localFilePath);
+              const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+              const parsed = await pdfParse(buf, { max: 3 }); // first 3 pages
+              textSample = (parsed.text || '').slice(0, 3000);
+            } catch { /* ignore, proceed without sample */ }
+          }
+
+          if (textSample.length > 50) {
+            const { quickClassify } = await import('./document-preclassification');
+            const classification = await quickClassify(textSample);
+            const mappedMode = OCR_MODEL_TO_MODE[classification.recommendedModel];
+            if (mappedMode) {
+              ocrMode = mappedMode;
+              jobLogger.info({
+                category: classification.category,
+                contractType: classification.contractType,
+                recommendedModel: classification.recommendedModel,
+                resolvedMode: ocrMode,
+              }, 'Preclassification selected DI model');
+            }
+          }
+        }
+
+        // Still auto? fall back to azure-ch (which already tries DI v4.0 internally)
+        if (ocrMode === 'auto') ocrMode = 'azure-ch';
+      } catch (preErr) {
+        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to azure-ch');
+        ocrMode = 'azure-ch';
+      }
+    }
+
     const rawExtractedText = await performOCR(localFilePath, ocrMode);
     
     // ============ OCR ENHANCEMENT PIPELINE (NEW) ============

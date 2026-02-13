@@ -35,7 +35,7 @@ export interface ProcessContractJobData {
   filePath: string;
   originalName: string;
   userId?: string;
-  ocrMode?: string;
+  ocrMode?: 'openai' | 'mistral' | 'azure-ch' | 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice' | 'auto' | (string & {});
 }
 
 export interface ContractQueueManager {
