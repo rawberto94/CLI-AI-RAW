@@ -229,7 +229,7 @@ export function ContractIntelligenceBrief({
         throw new Error('Failed to fetch intelligence brief');
       }
       const json = await res.json();
-      return json.brief || null;
+      return json.data?.brief || null;
     },
     staleTime: 60_000,
   });

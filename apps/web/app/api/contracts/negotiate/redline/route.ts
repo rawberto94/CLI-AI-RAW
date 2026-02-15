@@ -11,7 +11,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { clauseText, clauseType, contractType, objective } = body;
 
   if (!clauseText) {
-    return createErrorResponse('clauseText is required', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'clauseText is required', 400);
   }
 
   try {
@@ -25,8 +25,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       objective,
     });
 
-    return createSuccessResponse({ redline });
+    return createSuccessResponse(ctx, { redline });
   } catch (error) {
-    return createErrorResponse('Redline generation failed', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Redline generation failed', 500);
   }
 });

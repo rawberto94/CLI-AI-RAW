@@ -11,7 +11,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type Au
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const contractId = request.nextUrl.searchParams.get('contractId');
   if (!contractId) {
-    return createErrorResponse('contractId is required', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
   }
 
   const tenantId = ctx.tenantId;
@@ -28,10 +28,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     });
 
     if (!artifact) {
-      return createSuccessResponse({ brief: null, status: 'not_generated' });
+      return createSuccessResponse(ctx, { brief: null, status: 'not_generated' });
     }
 
-    return createSuccessResponse({
+    return createSuccessResponse(ctx, {
       brief: (artifact.content as any)?.brief || null,
       comparisons: (artifact.content as any)?.comparisons || [],
       generatedAt: (artifact.content as any)?.generatedAt || null,
@@ -40,7 +40,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       status: 'ready',
     });
   } catch (error) {
-    return createErrorResponse('Failed to fetch intelligence brief', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch intelligence brief', 500);
   }
 });
 
@@ -49,7 +49,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { contractId } = body;
   
   if (!contractId) {
-    return createErrorResponse('contractId is required', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
   }
 
   const tenantId = ctx.tenantId;
@@ -61,14 +61,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
     const result = await runIntelligencePipeline({ contractId, tenantId });
 
     if (!result.success) {
-      return createErrorResponse(result.error || 'Intelligence brief generation failed', 500);
+      return createErrorResponse(ctx, 'PROCESSING_ERROR', result.error || 'Intelligence brief generation failed', 500);
     }
 
-    return createSuccessResponse({
+    return createSuccessResponse(ctx, {
       brief: result.brief,
       status: 'generated',
     });
   } catch (error) {
-    return createErrorResponse('Failed to generate intelligence brief', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate intelligence brief', 500);
   }
 });

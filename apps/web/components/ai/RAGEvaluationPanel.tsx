@@ -107,7 +107,8 @@ export function RAGEvaluationPanel({ className }: { className?: string }) {
         body: JSON.stringify({ sampleSize: 10 }),
       });
       if (!res.ok) throw new Error('Evaluation failed');
-      return res.json();
+      const json = await res.json();
+      return json.data?.evaluation;
     },
     onSuccess: (data) => {
       setLastResult(data);

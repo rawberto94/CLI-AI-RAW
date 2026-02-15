@@ -114,7 +114,7 @@ export function EnhancedNegotiationPanel({
       });
       if (!res.ok) throw new Error('Failed to generate playbook');
       const json = await res.json();
-      return json.playbook;
+      return json.data?.playbook;
     },
     onError: () => toast.error('Failed to generate negotiation playbook'),
   });
@@ -128,7 +128,8 @@ export function EnhancedNegotiationPanel({
         body: JSON.stringify({ contractId, clauseText: redlineClause }),
       });
       if (!res.ok) throw new Error('Failed to generate redline');
-      return res.json();
+      const json = await res.json();
+      return json.data?.redline;
     },
     onError: () => toast.error('Failed to generate redline suggestion'),
   });

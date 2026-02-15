@@ -108,7 +108,8 @@ function RenewalTab({ contractId }: { contractId?: string }) {
         body: JSON.stringify({ type: 'renewal', contractId }),
       });
       if (!res.ok) return null;
-      return res.json();
+      const json = await res.json();
+      return json.data?.prediction || null;
     },
     enabled: !!contractId,
     staleTime: 120_000,
@@ -199,7 +200,8 @@ function CostTab() {
         body: JSON.stringify({ type: 'cost_forecast' }),
       });
       if (!res.ok) return null;
-      return res.json();
+      const json = await res.json();
+      return json.data?.forecast || null;
     },
     staleTime: 300_000,
   });
@@ -267,7 +269,8 @@ function PortfolioTab() {
         body: JSON.stringify({ type: 'portfolio_health' }),
       });
       if (!res.ok) return null;
-      return res.json();
+      const json = await res.json();
+      return json.data?.health || null;
     },
     staleTime: 300_000,
   });

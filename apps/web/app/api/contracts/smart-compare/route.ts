@@ -11,11 +11,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { contractId1, contractId2 } = body;
 
   if (!contractId1 || !contractId2) {
-    return createErrorResponse('contractId1 and contractId2 are required', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId1 and contractId2 are required', 400);
   }
 
   if (contractId1 === contractId2) {
-    return createErrorResponse('Cannot compare a contract with itself', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot compare a contract with itself', 400);
   }
 
   try {
@@ -27,9 +27,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       tenantId: ctx.tenantId,
     });
 
-    return createSuccessResponse({ report });
+    return createSuccessResponse(ctx, { report });
   } catch (error) {
     return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
       error instanceof Error ? error.message : 'Smart comparison failed',
       500
     );

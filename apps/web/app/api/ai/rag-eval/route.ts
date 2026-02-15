@@ -19,9 +19,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       testQueries,
     });
 
-    return createSuccessResponse({ evaluation: summary });
+    return createSuccessResponse(ctx, { evaluation: summary });
   } catch (error) {
     return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
       error instanceof Error ? error.message : 'RAG evaluation failed',
       500
     );

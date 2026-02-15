@@ -14,7 +14,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const { contractId, ourRole, negotiationContext } = body;
 
   if (!contractId) {
-    return createErrorResponse('contractId is required', 400);
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
   }
 
   try {
@@ -27,9 +27,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
       negotiationContext,
     });
 
-    return createSuccessResponse({ playbook });
+    return createSuccessResponse(ctx, { playbook });
   } catch (error) {
     return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
       error instanceof Error ? error.message : 'Negotiation playbook generation failed',
       500
     );

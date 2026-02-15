@@ -117,10 +117,11 @@ export function SmartComparisonPanel({
       const res = await fetch('/api/contracts/smart-compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-data-mode': 'real' },
-        body: JSON.stringify({ contractAId, contractBId }),
+        body: JSON.stringify({ contractId1: contractAId, contractId2: contractBId }),
       });
       if (!res.ok) throw new Error('Comparison failed');
-      return res.json();
+      const json = await res.json();
+      return json.data?.report;
     },
     onError: () => toast.error('Failed to compare contracts'),
   });
