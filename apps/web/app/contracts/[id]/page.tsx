@@ -38,6 +38,9 @@ import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 import { ComprehensiveAIAnalysis } from '@/components/artifacts/ComprehensiveAIAnalysis'
 import { ContractAIAnalyst } from '@/components/contracts/ContractAIAnalyst'
+import { ContractIntelligenceBrief } from '@/components/ai/ContractIntelligenceBrief'
+import { EnhancedNegotiationPanel } from '@/components/ai/EnhancedNegotiationPanel'
+import { PredictiveInsightsWidget } from '@/components/ai/PredictiveInsightsWidget'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { useWebSocket } from '@/contexts/websocket-context'
 import { useCrossModuleInvalidation } from '@/hooks/use-queries'
@@ -1259,6 +1262,27 @@ export default function ContractDetailPage() {
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* Intelligence Brief */}
+                  <SectionErrorBoundary sectionName="Intelligence Brief">
+                    <ContractIntelligenceBrief
+                      contractId={params.id as string}
+                      contractName={contract?.filename || contract?.document_title || 'Contract'}
+                    />
+                  </SectionErrorBoundary>
+
+                  {/* Predictive Insights + Negotiation Copilot */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <SectionErrorBoundary sectionName="Predictive Insights">
+                      <PredictiveInsightsWidget contractId={params.id as string} />
+                    </SectionErrorBoundary>
+                    <SectionErrorBoundary sectionName="Negotiation Copilot">
+                      <EnhancedNegotiationPanel
+                        contractId={params.id as string}
+                        contractName={contract?.filename || contract?.document_title || 'Contract'}
+                      />
+                    </SectionErrorBoundary>
+                  </div>
                 </TabsContent>
 
                 {/* Details Tab */}

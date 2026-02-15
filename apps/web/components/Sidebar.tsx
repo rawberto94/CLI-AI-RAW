@@ -47,6 +47,9 @@ import {
   ShieldCheck,
   Inbox,
   CalendarClock,
+  Gauge,
+  GitCompare,
+  Target,
 } from "lucide-react";
 import {
   Tooltip,
@@ -118,6 +121,10 @@ const navigationGroups: NavGroup[] = [
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
       { href: "/search/saved", label: "Saved Searches", icon: Inbox, description: "Saved searches with alerts", isNew: true, tourId: "saved-searches" },
       { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side", tourId: "compare" },
+      { href: "/intelligence/negotiate", label: "Negotiation Copilot", icon: Scale, description: "AI-powered negotiation strategy", isNew: true, tourId: "negotiate" },
+      { href: "/ai/smart-compare", label: "AI Comparison", icon: GitCompare, description: "Semantic clause-level comparison", isNew: true, tourId: "smart-compare" },
+      { href: "/ai/predictions", label: "Predictive Analytics", icon: Target, description: "Renewal & cost predictions", isNew: true, tourId: "predictions" },
+      { href: "/admin/rag-eval", label: "RAG Quality", icon: Gauge, description: "RAG pipeline quality monitoring", isNew: true, tourId: "rag-eval" },
     ],
   },
   {
