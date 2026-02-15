@@ -1,7 +1,6 @@
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from '@/lib/auth'
 import { publishRealtimeEvent } from '@/lib/realtime/publish'
 import { workflowService } from 'data-orchestration/services';
 
@@ -35,11 +34,8 @@ const DEFAULT_WORKFLOW = {
 }
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-  const tenantId = session.user.tenantId
-  const userId = session.user.id
+  const tenantId = ctx.tenantId
+  const userId = ctx.userId
 
   const body: QuickActionBody = await request.json()
 
@@ -225,10 +221,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // GET - List pending approvals with simplified response
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-  const tenantId = session.user.tenantId
+  const tenantId = ctx.tenantId
 
   const pendingExecutions = await prisma.workflowExecution.findMany({
     where: {

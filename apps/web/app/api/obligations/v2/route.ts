@@ -74,10 +74,6 @@ const recurrenceMap: Record<string, RecurrenceFrequency> = {
  * Retrieve obligations from the dedicated database table
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const contractId = searchParams.get('contractId');
   const status = searchParams.get('status');
@@ -94,7 +90,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Build where clause
   const where: Prisma.ObligationWhereInput = {
-    tenantId: session.user.tenantId,
+    tenantId: ctx.tenantId,
     ...(contractId && { contractId }),
     ...(status && { status: statusMap[status] || status as ObligationStatus }),
     ...(type && { type: typeMap[type] || type as ObligationType }),
@@ -188,7 +184,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Calculate metrics
   const now = new Date();
   const allObligations = await prisma.obligation.findMany({
-    where: { tenantId: session.user.tenantId },
+    where: { tenantId: ctx.tenantId },
     select: { status: true, priority: true, type: true, owner: true, dueDate: true },
   });
 
@@ -243,23 +239,19 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Create obligation or extract from contract
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { action, contractId, obligation, extractionOptions } = body;
 
   if (action === 'extract') {
-    return handleExtraction(contractId, session.user.tenantId, session.user.id!, extractionOptions, ctx);
+    return handleExtraction(contractId, ctx.tenantId, ctx.userId, extractionOptions, ctx);
   }
 
   if (action === 'create' || !action) {
-    return handleCreate(obligation, contractId, session.user.tenantId, session.user.id!, ctx);
+    return handleCreate(obligation, contractId, ctx.tenantId, ctx.userId, ctx);
   }
 
   if (action === 'bulk_create') {
-    return handleBulkCreate(body.obligations, session.user.tenantId, session.user.id!, ctx);
+    return handleBulkCreate(body.obligations, ctx.tenantId, ctx.userId, ctx);
   }
 
   return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);

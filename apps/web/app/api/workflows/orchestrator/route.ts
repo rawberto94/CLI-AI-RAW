@@ -10,7 +10,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getSessionTenantId } from '@/lib/tenant-server';
 // Services for enhanced orchestration (available when needed)
 // import { getWorkflowManagementService } from 'data-orchestration/services';
 import { prisma } from '@/lib/prisma';
@@ -21,11 +20,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'status';
 
@@ -197,12 +192,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = getSessionTenantId(session);
-  const userId = session.user.id || 'unknown';
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const body = await request.json();
   const { action } = body;
 

@@ -17,15 +17,6 @@ export async function POST(
   try {
     const { id: contractId, commentId } = params;
     const tenantId = await getApiTenantId(request);
-    const useMock = request.nextUrl.searchParams.get('mock') === 'true';
-
-    if (useMock) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        message: 'Comment resolved successfully',
-        source: 'mock'
-      });
-    }
 
     try {
       const db = await getDb();

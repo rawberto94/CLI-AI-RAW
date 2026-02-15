@@ -13,14 +13,10 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/user/profile - Get current user's profile
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
 
   const user = await prisma.user.findFirst({
-    where: { id: session.user.id, tenantId },
+    where: { id: ctx.userId, tenantId },
     select: {
       id: true,
       firstName: true,
@@ -77,16 +73,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // PATCH /api/user/profile - Update current user's profile
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const body = await request.json();
 
   // Verify user exists
   const existingUser = await prisma.user.findFirst({
-    where: { id: session.user.id, tenantId },
+    where: { id: ctx.userId, tenantId },
   });
 
   if (!existingUser) {
@@ -107,7 +99,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (avatar !== undefined) updateData.avatar = avatar;
 
   const user = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: updateData,
     select: {
       id: true,

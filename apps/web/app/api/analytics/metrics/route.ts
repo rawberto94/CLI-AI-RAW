@@ -2,21 +2,13 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
-  const dataMode = request.headers.get('x-data-mode') || 'real'
-
-  if (dataMode !== 'real') {
-    // Return mock data for non-real modes
-    return createSuccessResponse(ctx, {
-      totalContracts: 247,
-      totalValue: 45600000,
-      potentialSavings: 6840000,
-      activeSuppliers: 89,
-      upcomingRenewals: 23,
-      artifactsProcessed: 1847
-    })
-  }
+  const tenantId = ctx.tenantId;
+  const cacheKey = `analytics:metrics:${tenantId}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   // Real data from database (excluding DELETED contracts)
   const [
@@ -47,12 +39,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     })
   ])
 
-  return createSuccessResponse(ctx, {
+  const data = {
     totalContracts,
     totalValue: Number(valueAggregate._sum.totalValue || 0),
     potentialSavings: Math.round(Number(valueAggregate._sum.totalValue || 0) * 0.15), // 15% estimate
     activeSuppliers: suppliers.length,
     upcomingRenewals: upcomingContracts,
     artifactsProcessed: artifacts
-  })
+  };
+  await setCached(cacheKey, data, 60);
+  return createSuccessResponse(ctx, data);
 });

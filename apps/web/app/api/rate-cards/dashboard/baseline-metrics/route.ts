@@ -3,21 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
-// Mock data for when table doesn't exist
-const mockBaselineMetrics = {
-  totalBaselines: 156,
-  baselineTypes: {
-    'market-benchmark': 45,
-    'historical-average': 38,
-    'negotiated-rate': 42,
-    'internal-standard': 31,
-  },
-  compliancePercentage: 87.2,
-  averageVariance: 4.8,
-  atRiskCount: 20,
-  compliantCount: 136,
-};
-
 /**
  * GET /api/rate-cards/dashboard/baseline-metrics
  * Get baseline tracking metrics for dashboard
@@ -72,10 +57,16 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         source: 'database',
       });
     } catch {
-      // Table doesn't exist or other DB error - return mock data
+      // Table doesn't exist or other DB error - return zero-value metrics
       return createSuccessResponse(ctx, {
-        ...mockBaselineMetrics,
-        source: 'mock',
+        totalBaselines: 0,
+        baselineTypes: {},
+        compliancePercentage: 0,
+        averageVariance: 0,
+        atRiskCount: 0,
+        compliantCount: 0,
+        source: 'empty',
+        message: 'Baseline metrics unavailable - database error',
       });
     }
   });

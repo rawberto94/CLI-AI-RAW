@@ -63,16 +63,12 @@ const createSchema = z.object({
  * List review queue items with filtering
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const params = querySchema.parse(Object.fromEntries(searchParams));
 
   // Filter items
   let items = Array.from(reviewItems.values())
-    .filter(item => item.tenantId === session.user.tenantId);
+    .filter(item => item.tenantId === ctx.tenantId);
 
   if (params.status) items = items.filter(i => i.status === params.status);
   if (params.priority) items = items.filter(i => i.priority === params.priority);
@@ -108,10 +104,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Create a new review queue item
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const data = createSchema.parse(body);
 
@@ -120,7 +112,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const item: ReviewItem = {
     id,
-    tenantId: session.user.tenantId!,
+    tenantId: ctx.tenantId!,
     contractId: data.contractId,
     type: data.type,
     status: 'pending',
@@ -130,7 +122,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     documentName: data.documentName,
     documentType: data.documentType,
     notes: data.notes,
-    createdBy: session.user.id,
+    createdBy: ctx.userId,
     createdAt: now,
     updatedAt: now,
   };

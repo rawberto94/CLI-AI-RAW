@@ -137,11 +137,8 @@ const workflowTemplates = {
 };
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
-  const userId = session.user.id;
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const body = await request.json();
 
   const {
@@ -376,10 +373,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // Get available workflow templates
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   try {
     // Try to get custom workflows from database

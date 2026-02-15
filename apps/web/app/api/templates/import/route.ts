@@ -14,11 +14,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { contractService } from 'data-orchestration/services';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   if (!tenantId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
   }
@@ -88,7 +84,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         structure: {},
         metadata: metadataJson,
         tenantId,
-        createdBy: session.user.email || 'Unknown',
+        createdBy: ctx.userId || 'Unknown',
         version: 1,
         isActive: true,
       },

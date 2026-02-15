@@ -230,16 +230,12 @@ async function sendTeamsNotification(webhookUrl: string, message: TeamsMessage):
 }
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { action, platform, obligationId, webhookUrl, channel } = body;
 
   // Get tenant configuration for webhook URLs
   const tenantConfig = await prisma.tenantConfig.findUnique({
-    where: { tenantId: session.user.tenantId },
+    where: { tenantId: ctx.tenantId },
   });
 
   const integrations = tenantConfig?.integrations as Record<string, unknown> || {};
@@ -279,7 +275,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (action === 'notify_obligation') {
     // Send notification for a specific obligation
     const obligation = await prisma.obligation.findFirst({
-      where: { id: obligationId, tenantId: session.user.tenantId },
+      where: { id: obligationId, tenantId: ctx.tenantId },
       include: { contract: { select: { contractTitle: true } } },
     });
 
@@ -321,7 +317,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // Send daily/weekly digest of obligations
     const overdueObligations = await prisma.obligation.findMany({
       where: {
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
         status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
         dueDate: { lt: new Date() },
       },
@@ -331,7 +327,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     const upcomingObligations = await prisma.obligation.findMany({
       where: {
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
         status: { notIn: ['COMPLETED', 'WAIVED', 'CANCELLED'] },
         dueDate: {
           gte: new Date(),
@@ -438,7 +434,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { slackWebhookUrl, teamsWebhookUrl, slackChannel, teamsChannel, enabled } = body;
 
     await prisma.tenantConfig.upsert({
-      where: { tenantId: session.user.tenantId },
+      where: { tenantId: ctx.tenantId },
       update: {
         integrations: {
           ...integrations,
@@ -450,7 +446,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         },
       },
       create: {
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
         integrations: {
           slackWebhookUrl,
           teamsWebhookUrl,
@@ -468,12 +464,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantConfig = await prisma.tenantConfig.findUnique({
-    where: { tenantId: session.user.tenantId },
+    where: { tenantId: ctx.tenantId },
   });
 
   const integrations = tenantConfig?.integrations as Record<string, unknown> || {};

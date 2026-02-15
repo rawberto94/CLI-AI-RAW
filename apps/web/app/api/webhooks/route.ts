@@ -77,12 +77,8 @@ async function getPrisma() {
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Authenticate user via session
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-  }
-
   // Get tenantId from session (secure) with fallback to header for backward compat
-  const tenantId = session.user.tenantId || ctx.tenantId;
+  const tenantId = ctx.tenantId;
 
   // Require tenant ID for data isolation
   if (!tenantId) {
@@ -128,17 +124,13 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Authenticate user via session
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Authentication required', 401);
-  }
-
   // Only admins can manage webhooks
-  if (session.user.role !== 'ADMIN' && session.user.role !== 'SUPER_ADMIN') {
+  if (ctx.userRole !== 'ADMIN' && ctx.userRole !== 'SUPER_ADMIN') {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Admin access required', 403);
   }
 
   // Get tenantId from session (secure) with fallback to header for backward compat
-  const tenantId = session.user.tenantId || ctx.tenantId;
+  const tenantId = ctx.tenantId;
 
   // Require tenant ID for data isolation
   if (!tenantId) {

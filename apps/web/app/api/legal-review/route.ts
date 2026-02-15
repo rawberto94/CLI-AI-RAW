@@ -5,7 +5,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
@@ -14,10 +13,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { 
     contractText,
@@ -32,7 +27,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text is required', 400);
   }
 
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
 
   const legalReviewService = getLegalReviewService();
   const result = await legalReviewService.reviewContract(contractText, {

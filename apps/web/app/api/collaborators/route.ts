@@ -30,17 +30,13 @@ interface CollaboratorInvite {
  * GET /api/collaborators - List external collaborators
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id || !session.user.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const searchParams = request.nextUrl.searchParams;
   const contractId = searchParams.get('contractId');
   const type = searchParams.get('type');
   const status = searchParams.get('status');
 
   const where: any = {
-    tenantId: session.user.tenantId,
+    tenantId: ctx.tenantId,
   };
 
   if (contractId) {
@@ -97,11 +93,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * POST /api/collaborators - Invite external collaborator
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id || !session.user.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const canManage = await hasPermission(session.user.id, 'collaborators:manage');
+  const canManage = await hasPermission(ctx.userId, 'collaborators:manage');
   if (!canManage) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
   }
@@ -123,7 +115,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const contracts = await prisma.contract.findMany({
     where: {
       id: { in: contractIds },
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
     },
     select: { id: true },
   });
@@ -135,7 +127,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Check if collaborator already exists
   let collaborator = await prisma.externalCollaborator.findFirst({
     where: {
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
       email: email.toLowerCase(),
     },
   });
@@ -161,14 +153,14 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     // Create new collaborator
     collaborator = await prisma.externalCollaborator.create({
       data: {
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
         email: email.toLowerCase(),
         name,
         company,
         type: type,
         permissions: permissions || getDefaultPermissions(type),
         accessToken,
-        invitedBy: session.user.id,
+        invitedBy: ctx.userId,
         expiresAt: expiresAt ? new Date(expiresAt) : defaultExpiry,
         status: 'INVITED',
       },
@@ -197,8 +189,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   await auditLog({
     action: AuditAction.COLLABORATOR_INVITED,
-    userId: session.user.id,
-    tenantId: session.user.tenantId,
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
     resourceType: 'external_collaborator',
     resourceId: collaborator.id,
     metadata: { email, type, contractIds },
@@ -240,11 +232,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * PUT /api/collaborators - Update collaborator
  */
 export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id || !session.user.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const canManage = await hasPermission(session.user.id, 'collaborators:manage');
+  const canManage = await hasPermission(ctx.userId, 'collaborators:manage');
   if (!canManage) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
   }
@@ -257,7 +245,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Verify collaborator belongs to tenant
   const existing = await prisma.externalCollaborator.findFirst({
-    where: { id: collaboratorId, tenantId: session.user.tenantId },
+    where: { id: collaboratorId, tenantId: ctx.tenantId },
   });
 
   if (!existing) {
@@ -287,7 +275,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const contracts = await prisma.contract.findMany({
         where: {
           id: { in: contractIds },
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
         },
         select: { id: true },
       });
@@ -309,11 +297,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * DELETE /api/collaborators - Revoke collaborator access
  */
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id || !session.user.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const canManage = await hasPermission(session.user.id, 'collaborators:manage');
+  const canManage = await hasPermission(ctx.userId, 'collaborators:manage');
   if (!canManage) {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
   }
@@ -326,7 +310,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Verify collaborator belongs to tenant
   const existing = await prisma.externalCollaborator.findFirst({
-    where: { id: collaboratorId, tenantId: session.user.tenantId },
+    where: { id: collaboratorId, tenantId: ctx.tenantId },
   });
 
   if (!existing) {
@@ -352,8 +336,8 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   await auditLog({
     action: AuditAction.COLLABORATOR_REVOKED,
-    userId: session.user.id,
-    tenantId: session.user.tenantId,
+    userId: ctx.userId,
+    tenantId: ctx.tenantId,
     resourceType: 'external_collaborator',
     resourceId: collaboratorId,
     metadata: { email: existing.email },

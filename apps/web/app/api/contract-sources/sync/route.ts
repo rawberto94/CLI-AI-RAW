@@ -20,10 +20,6 @@ const triggerSyncSchema = z.object({
 });
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { tenantId, userId } = await getTenantContext();
 
   if (!tenantId || !userId) {
@@ -71,10 +67,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const sourceId = searchParams.get('sourceId');

@@ -13,18 +13,10 @@ import {
 } from '@/lib/gdpr/data-rights';
 // Request account deletion
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   return requestAccountDeletion(request);
 });
 
 // Cancel deletion request
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   return cancelAccountDeletion(request);
 });

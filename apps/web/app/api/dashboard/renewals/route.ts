@@ -9,6 +9,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -34,6 +35,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const { days, limit } = safeParsePaginationParams(searchParams);
   
   const tenantId = ctx.tenantId;
+
+  const cacheKey = `dashboard:renewals:${tenantId}:${days}:${limit}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
+
   const now = new Date();
   const futureDate = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
   
@@ -134,7 +140,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     }),
   };
   
-  return createSuccessResponse(ctx, {
+  const data = {
     renewals: renewalData,
     stats,
     meta: { 
@@ -143,5 +149,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       daysQueried: days,
       timestamp: now.toISOString(),
     }
-  });
+  };
+  await setCached(cacheKey, data, 300);
+  return createSuccessResponse(ctx, data);
 });

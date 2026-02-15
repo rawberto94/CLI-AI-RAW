@@ -13,10 +13,6 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/obligations/notifications - List notifications
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
 
@@ -105,10 +101,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST /api/obligations/notifications - Create notification
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const body = await request.json();
 

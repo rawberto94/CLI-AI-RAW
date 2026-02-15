@@ -8,17 +8,13 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Get obligation dashboard metrics
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // Fetch all contracts with obligations
   const contracts = await prisma.contract.findMany({
-    where: { tenantId: session.user.tenantId },
+    where: { tenantId: ctx.tenantId },
     select: {
       id: true,
       contractTitle: true,

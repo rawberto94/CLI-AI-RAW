@@ -3,10 +3,6 @@ import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');
@@ -73,10 +69,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   
   try {
@@ -267,10 +259,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');

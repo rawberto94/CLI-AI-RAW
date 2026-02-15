@@ -9,43 +9,6 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
 
 export const dynamic = 'force-dynamic';
 
-// Mock version data for demonstration
-const getMockVersions = () => [
-      {
-        id: '1',
-        versionNumber: 1,
-        uploadedBy: 'Sarah Chen',
-        uploadedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: false,
-        summary: 'Initial contract version',
-      },
-      {
-        id: '2',
-        versionNumber: 2,
-        uploadedBy: 'Roberto Ostojic',
-        uploadedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: false,
-        summary: 'Updated payment terms and expiration date',
-        changes: {
-          totalValue: { old: '$500,000', new: '$525,000' },
-          expirationDate: { old: '2025-12-31', new: '2026-03-31' },
-        }
-      },
-      {
-        id: '3',
-        versionNumber: 3,
-        uploadedBy: 'Mike Johnson',
-        uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: true,
-        summary: 'Final negotiated terms',
-        changes: {
-          totalValue: { old: '$525,000', new: '$550,000' },
-          paymentTerms: { old: 'Net 30', new: 'Net 45' },
-          autoRenewal: { old: null, new: 'Yes' },
-        }
-      },
-    ];
-
 /**
  * GET /api/contracts/:id/versions
  * Get all versions of a contract
@@ -58,15 +21,6 @@ export async function GET(
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
-    const useMock = request.nextUrl.searchParams.get('mock') === 'true';
-
-    if (useMock) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        versions: getMockVersions(),
-        source: 'mock'
-      });
-    }
 
     try {
       const db = await getDb();

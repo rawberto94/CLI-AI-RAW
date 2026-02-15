@@ -41,12 +41,8 @@ const preferencesSchema = z.object({
  * Get user's notification preferences
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const preferences = await prisma.notificationPreferences.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
   });
 
   // Return defaults if no preferences exist
@@ -103,10 +99,6 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 export async function PUT(req: NextRequest) {
   const ctx = getApiContext(req);
   try {
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const body = await req.json();
     const validated = preferencesSchema.parse(body);
 
@@ -121,11 +113,11 @@ export async function PUT(req: NextRequest) {
     };
 
     const updated = await prisma.notificationPreferences.upsert({
-      where: { userId: session.user.id },
+      where: { userId: ctx.userId },
       update: { ...updateData, updatedAt: new Date() },
       create: {
-        userId: session.user.id,
-        tenantId: session.user.id,
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
         ...updateData,
       },
     });

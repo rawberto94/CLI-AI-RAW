@@ -29,28 +29,6 @@ export async function POST(request: NextRequest) {
       return createValidationErrorResponse(ctx, parsed.error)
     }
     const { query, filters } = parsed.data
-    const dataMode = request.headers.get('x-data-mode') || 'real'
-
-    if (dataMode !== 'real') {
-      // Return mock data
-      return createSuccessResponse(ctx, {
-        results: [
-          {
-            id: '1',
-            title: 'Software Development Services Agreement',
-            type: 'contract',
-            snippet: `...found matching terms for "${query}" in the contract scope...`,
-            metadata: {
-              supplier: 'TechCorp Inc',
-              value: 1250000,
-              date: '2024-01-15',
-              status: 'Active'
-            },
-            relevance: 0.95
-          }
-        ]
-      })
-    }
 
     // Build where clause
     const where: Record<string, unknown> = {

@@ -131,16 +131,8 @@ const defaultPreferences: UserPreferences = {
 // ============ GET - Fetch preferences ============
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    // Return default preferences for unauthenticated users
-    return createSuccessResponse(ctx, {
-      preferences: defaultPreferences,
-      isDefault: true,
-    });
-  }
-
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: {
       id: true,
       preferences: true,
@@ -166,17 +158,9 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const preferences = await request.json();
 
-  if (!session?.user?.id) {
-    // For unauthenticated, just return success (client-side storage)
-    return createSuccessResponse(ctx, {
-      success: true,
-      preferences
-    });
-  }
-
   // Get current preferences and merge
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { preferences: true },
   });
 
@@ -185,7 +169,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Update user preferences
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: { preferences: newPreferences },
   });
 
@@ -198,10 +182,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============ PUT - Full update ============
 
 export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { preferences, partial = false } = body;
 
@@ -214,7 +194,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   if (partial) {
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: ctx.userId },
       select: { preferences: true },
     });
 
@@ -224,7 +204,7 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Update user preferences
   const updatedUser = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: {
       preferences: newPreferences,
     },
@@ -243,10 +223,6 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============ PATCH - Partial update ============
 
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { path, value } = body;
 
@@ -256,7 +232,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Get current preferences
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { preferences: true },
   });
 
@@ -267,7 +243,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Update user preferences
   const updatedUser = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     data: {
       preferences: currentPreferences,
     },
@@ -286,17 +262,13 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============ DELETE - Reset to defaults ============
 
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const section = searchParams.get('section');
 
   if (section) {
     // Reset only specific section
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: ctx.userId },
       select: { preferences: true },
     });
 
@@ -310,9 +282,9 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     // Reset specific section to default using upsert on UserPreferences
     await prisma.userPreferences.upsert({
-      where: { userId: session.user.id },
+      where: { userId: ctx.userId },
       create: {
-        userId: session.user.id,
+        userId: ctx.userId,
         customSettings: JSON.parse(JSON.stringify(currentPreferences)),
       },
       update: {
@@ -331,9 +303,9 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Note: preferences is a relation to UserPreferences model
   // For now, upsert the preferences relation with default values
   await prisma.userPreferences.upsert({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     create: {
-      userId: session.user.id,
+      userId: ctx.userId,
       theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
       notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
       customSettings: JSON.parse(JSON.stringify(defaultPreferences)),

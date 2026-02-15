@@ -14,14 +14,11 @@ export const dynamic = 'force-dynamic';
  * Get connection metrics and statistics
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
   // Admin-only route for connection management
-  if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
     return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
   }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');

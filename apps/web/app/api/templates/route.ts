@@ -2,7 +2,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getApiTenantId } from '@/lib/tenant-server'
-import { getServerSession } from '@/lib/auth'
 import { contractService } from 'data-orchestration/services';
 
 // Helper to transform Prisma template to UI-expected format
@@ -126,7 +125,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         tags: tags || [],
       },
       isActive: isActive ?? (status === 'active'),
-      createdBy: session?.user?.id || 'system',
+      createdBy: ctx.userId,
     },
   })
 

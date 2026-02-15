@@ -8,7 +8,7 @@ module.exports = {
     {
       name: 'contigo-web-dev',
       cwd: './apps/web',
-      script: 'npm',
+      script: 'pnpm',
       args: 'run dev',
       env: {
         NODE_ENV: 'development',

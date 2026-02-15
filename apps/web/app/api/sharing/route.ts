@@ -26,39 +26,11 @@ interface ShareSettings {
   accessedAt?: string;
 }
 
-// Mock shares for fallback
-const getMockShares = (documentId: string): ShareSettings[] => [
-  {
-    id: 'share1',
-    documentId,
-    documentType: 'contract',
-    sharedWith: 'sarah.johnson@company.com',
-    sharedBy: 'current-user',
-    permission: 'EDIT',
-    isActive: true,
-    createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    accessedAt: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'share2',
-    documentId,
-    documentType: 'contract',
-    sharedWith: 'mike.chen@company.com',
-    sharedBy: 'current-user',
-    permission: 'VIEW',
-    isActive: true,
-    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
 /**
  * GET /api/sharing - Get shares for a document
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const documentId = searchParams.get('documentId');
   const documentType = searchParams.get('documentType') || 'contract';
@@ -102,11 +74,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * POST /api/sharing - Create a new share
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
-  const userId = session.user.id;
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const body = await request.json();
 
   const { 
@@ -188,10 +157,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * PATCH /api/sharing - Update share permissions
  */
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const body = await request.json();
   const { shareId, permission, expiresAt, isActive } = body;
 
@@ -235,10 +201,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * DELETE /api/sharing - Revoke a share
  */
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const shareId = searchParams.get('id');
 

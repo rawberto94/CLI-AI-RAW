@@ -16,10 +16,6 @@ export const dynamic = 'force-dynamic';
  * Trigger a renewal check scan
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await getServerTenantId();
   const body = await request.json().catch(() => ({}));
 
@@ -69,10 +65,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Get information about renewal scanning
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const _tenantId = await getServerTenantId();
 
   return createSuccessResponse(ctx, {

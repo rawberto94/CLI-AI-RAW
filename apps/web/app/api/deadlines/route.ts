@@ -8,67 +8,9 @@ import { z } from 'zod';
 const deadlinesQuerySchema = z.object({
   client: z.string().optional(),
   type: z.enum(['all', 'expiration', 'renewal', 'milestone']).optional(),
-  mock: z.enum(['true', 'false']).optional(),
 });
 
 export const dynamic = 'force-dynamic';
-
-// Mock data for demonstration
-const getMockDeadlines = () => {
-  const now = Date.now();
-  return [
-    {
-      id: '1',
-      contractId: 'demo-1',
-      contractName: 'Software License Agreement - Acme Corp',
-      type: 'renewal',
-      date: new Date(now + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 15,
-      status: 'due-soon',
-      priority: 'high',
-      clientName: 'Acme Corp',
-      value: 250000,
-      currency: 'USD'
-    },
-    {
-      id: '2',
-      contractId: 'demo-2',
-      contractName: 'Master Services Agreement - TechStart',
-      type: 'expiration',
-      date: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: -5,
-      status: 'overdue',
-      priority: 'high',
-      clientName: 'TechStart',
-      value: 500000,
-      currency: 'USD'
-    },
-    {
-      id: '3',
-      contractId: 'demo-3',
-      contractName: 'Consulting Agreement - GlobalCo',
-      type: 'milestone',
-      date: new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 7,
-      status: 'due-soon',
-      priority: 'medium',
-      clientName: 'GlobalCo',
-      value: 75000,
-      currency: 'USD'
-    },
-    {
-      id: '4',
-      contractId: 'demo-4',
-      contractName: 'NDA - Innovation Labs',
-      type: 'expiration',
-      date: new Date(now + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 60,
-      status: 'upcoming',
-      priority: 'low',
-      clientName: 'Innovation Labs'
-    }
-  ];
-};
 
 /**
  * GET /api/deadlines
@@ -90,27 +32,6 @@ export async function GET(request: NextRequest) {
     const tenantId = await getApiTenantId(request);
     const client = queryParams.client || null;
     const type = queryParams.type || null;
-    const useMock = queryParams.mock === 'true';
-
-    // Block mock mode in production
-    if (useMock && process.env.NODE_ENV === 'production') {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Mock mode not available in production', 400);
-    }
-
-    // Return mock data if requested (dev only)
-    if (useMock) {
-      return createSuccessResponse(ctx, {
-        deadlines: getMockDeadlines(),
-        source: 'mock',
-        stats: {
-          total: 4,
-          overdue: 1,
-          dueSoon: 2,
-          upcoming: 1,
-          completed: 0
-        }
-      });
-    }
 
     try {
       const db = await getDb();

@@ -9,9 +9,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
+
+  const cacheKey = `dashboard:metrics:${tenantId}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   if (!tenantId) {
     return createErrorResponse(ctx, 'TENANT_REQUIRED', 'Tenant ID required', 400);
@@ -206,7 +211,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   // Calculate risk trend (compared to last month's at-risk count)
   const riskChange = 0; // Would need historical risk data, display 0 as neutral
 
-  return createSuccessResponse(ctx, {
+  const data = {
     totalContracts,
     activeContracts,
     expiringContracts,
@@ -229,5 +234,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       count: s._count.id,
     })),
     recentActivity,
-  });
+  };
+  await setCached(cacheKey, data, 60);
+  return createSuccessResponse(ctx, data);
 });

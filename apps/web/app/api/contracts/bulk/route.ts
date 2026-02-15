@@ -16,7 +16,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId
   const userId = ctx.userId
   const body = await request.json()
-  const dataMode = request.headers.get('x-data-mode') || 'real'
 
   // Validate request body with Zod schema
   try {
@@ -32,13 +31,6 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
   }
 
   const { operation, contractIds } = body
-
-  if (dataMode !== 'real') {
-    // Mock response
-    return createSuccessResponse(ctx, {
-      message: `Mock ${operation} completed for ${contractIds.length} contracts`
-    })
-  }
 
   // Real bulk operations
   switch (operation) {

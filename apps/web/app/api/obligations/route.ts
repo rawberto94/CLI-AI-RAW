@@ -11,10 +11,6 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
  * Retrieve obligations for a tenant with filtering
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const contractId = searchParams.get('contractId');
   const status = searchParams.get('status');
@@ -29,7 +25,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   // Query contracts with their metadata (which contains obligations)
   const contracts = await prisma.contract.findMany({
     where: {
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
       ...(contractId && { id: contractId }),
     },
     select: {
@@ -123,10 +119,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
  * Extract obligations from a contract or create manually
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { action, contractId, obligation, extractionOptions } = body;
 
@@ -139,7 +131,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const contract = await prisma.contract.findFirst({
       where: {
         id: contractId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
       select: {
         id: true,
@@ -170,7 +162,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const result = await extractObligationsWithAI(
       contractId,
       contractText,
-      session.user.tenantId,
+      ctx.tenantId,
       {
         contractType: contract.contractType || undefined,
         startDate: contract.startDate || undefined,
@@ -211,7 +203,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const contract = await prisma.contract.findFirst({
       where: {
         id: contractId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
       select: {
         id: true,
@@ -227,17 +219,17 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const newObligation = {
       ...obligation,
       id: crypto.randomUUID(),
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
       contractId,
       status: obligation.status || 'pending',
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
-      createdBy: session.user.id,
+      createdBy: ctx.userId,
       history: [{
         id: crypto.randomUUID(),
         action: 'created',
         description: 'Obligation created manually',
-        performedBy: session.user.id,
+        performedBy: ctx.userId,
         performedAt: now.toISOString(),
       }],
     };

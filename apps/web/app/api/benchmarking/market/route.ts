@@ -20,10 +20,6 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  * Query params: role, seniority, country, lineOfService
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const searchParams = request.nextUrl.searchParams;
 
   const roleStandardized = searchParams.get('role');

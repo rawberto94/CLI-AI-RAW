@@ -7,6 +7,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 interface DateRange {
   start: Date;
@@ -87,6 +88,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const period = searchParams.get('period') || 'year';
+
+  const cacheKey = `dashboard:document-analytics:${tenantId}:${period}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   const dateRanges = getDateRanges(period);
 
@@ -236,7 +241,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     ? ((lastPeriod.contracts - prevPeriod.contracts) / prevPeriod.contracts) * 100
     : 0;
 
-  return createSuccessResponse(ctx, {
+  const data = {
     period,
     trends: cumulativeTrends,
     summary: {
@@ -263,5 +268,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([type, count]) => ({ type, count, percentage: (count / totalDocuments) * 100 })),
-  });
+  };
+  await setCached(cacheKey, data, 300);
+  return createSuccessResponse(ctx, data);
 });

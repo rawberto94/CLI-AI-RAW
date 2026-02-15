@@ -3,255 +3,6 @@ import { readFile } from "fs/promises";
 import { join } from "path";
 import { existsSync } from "fs";
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
-// Mock data for processing status (fallback)
-const mockJobs = [
-  {
-    id: "job_001",
-    contractId: "contract_001",
-    filename: "service-agreement-2024.pdf",
-    status: "processing",
-    currentStage: "financial_analysis",
-    totalProgress: 65,
-    startTime: new Date(Date.now() - 5 * 60 * 1000),
-    estimatedCompletion: new Date(Date.now() + 2 * 60 * 1000),
-    stages: [
-      {
-        id: "text_extraction",
-        name: "Text Extraction",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "metadata_extraction",
-        name: "Metadata Extraction",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "financial_analysis",
-        name: "Financial Analysis",
-        status: "running",
-        progress: 75,
-      },
-      {
-        id: "risk_assessment",
-        name: "Risk Assessment",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "compliance_check",
-        name: "Compliance Check",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "clause_extraction",
-        name: "Clause Extraction",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "search_indexing",
-        name: "Search Indexing",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "finalization",
-        name: "Finalization",
-        status: "pending",
-        progress: 0,
-      },
-    ],
-    metadata: {
-      fileSize: 2048576,
-      uploadedBy: "roberto@company.com",
-    },
-  },
-  {
-    id: "job_002",
-    contractId: "contract_002",
-    filename: "purchase-order-Q1.docx",
-    status: "queued",
-    currentStage: "text_extraction",
-    totalProgress: 0,
-    startTime: new Date(Date.now() - 1 * 60 * 1000),
-    stages: [
-      {
-        id: "text_extraction",
-        name: "Text Extraction",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "metadata_extraction",
-        name: "Metadata Extraction",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "financial_analysis",
-        name: "Financial Analysis",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "risk_assessment",
-        name: "Risk Assessment",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "compliance_check",
-        name: "Compliance Check",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "clause_extraction",
-        name: "Clause Extraction",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "search_indexing",
-        name: "Search Indexing",
-        status: "pending",
-        progress: 0,
-      },
-      {
-        id: "finalization",
-        name: "Finalization",
-        status: "pending",
-        progress: 0,
-      },
-    ],
-    metadata: {
-      fileSize: 1024000,
-      uploadedBy: "jane.smith@company.com",
-    },
-  },
-  {
-    id: "job_003",
-    contractId: "contract_003",
-    filename: "employment-contract.pdf",
-    status: "completed",
-    currentStage: "finalization",
-    totalProgress: 100,
-    startTime: new Date(Date.now() - 15 * 60 * 1000),
-    stages: [
-      {
-        id: "text_extraction",
-        name: "Text Extraction",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "metadata_extraction",
-        name: "Metadata Extraction",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "financial_analysis",
-        name: "Financial Analysis",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "risk_assessment",
-        name: "Risk Assessment",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "compliance_check",
-        name: "Compliance Check",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "clause_extraction",
-        name: "Clause Extraction",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "search_indexing",
-        name: "Search Indexing",
-        status: "completed",
-        progress: 100,
-      },
-      {
-        id: "finalization",
-        name: "Finalization",
-        status: "completed",
-        progress: 100,
-      },
-    ],
-    metadata: {
-      fileSize: 512000,
-      uploadedBy: "hr@company.com",
-    },
-  },
-];
-
-const mockWorkers = [
-  {
-    id: "worker_001",
-    name: "Text Extraction Worker",
-    status: "active",
-    currentJob: "job_001",
-    processedJobs: 45,
-    averageProcessingTime: 120000,
-    lastActivity: new Date(),
-    cpuUsage: 75,
-    memoryUsage: 60,
-  },
-  {
-    id: "worker_002",
-    name: "Financial Analysis Worker",
-    status: "active",
-    currentJob: "job_001",
-    processedJobs: 38,
-    averageProcessingTime: 180000,
-    lastActivity: new Date(),
-    cpuUsage: 85,
-    memoryUsage: 70,
-  },
-  {
-    id: "worker_003",
-    name: "Risk Assessment Worker",
-    status: "idle",
-    processedJobs: 42,
-    averageProcessingTime: 150000,
-    lastActivity: new Date(Date.now() - 2 * 60 * 1000),
-    cpuUsage: 15,
-    memoryUsage: 25,
-  },
-  {
-    id: "worker_004",
-    name: "Compliance Worker",
-    status: "idle",
-    processedJobs: 35,
-    averageProcessingTime: 200000,
-    lastActivity: new Date(Date.now() - 5 * 60 * 1000),
-    cpuUsage: 10,
-    memoryUsage: 20,
-  },
-];
-
-const mockMetrics = {
-  totalJobs: 156,
-  activeJobs: 1,
-  completedJobs: 142,
-  failedJobs: 13,
-  averageProcessingTime: 165000,
-  throughput: 8.5,
-  queueDepth: 1,
-  systemLoad: 45,
-};
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
@@ -279,18 +30,20 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // If requesting specific job status
   if (jobId) {
-    const job = mockJobs.find((j) => j.id === jobId);
-    if (job) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        data: job,
-        timestamp: new Date().toISOString(),
-      });
-    }
+    // TODO: Look up job by ID from database/queue system
+    return createErrorResponse(ctx, 'NOT_FOUND', `Job ${jobId} not found. Processing status monitoring not yet connected to database.`, 404);
   }
 
-  // Get all jobs for tenant
-  const jobs = mockJobs;
+  const emptyMetrics = {
+    totalJobs: 0,
+    activeJobs: 0,
+    completedJobs: 0,
+    failedJobs: 0,
+    averageProcessingTime: 0,
+    throughput: 0,
+    queueDepth: 0,
+    systemLoad: 0,
+  };
 
   let response = {};
 
@@ -298,7 +51,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     case "jobs":
       response = {
         success: true,
-        data: jobs,
+        data: [],
+        total: 0,
+        message: "Processing status monitoring not yet connected to database",
         timestamp: new Date().toISOString(),
       };
       break;
@@ -306,7 +61,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     case "workers":
       response = {
         success: true,
-        data: mockWorkers,
+        data: [],
         timestamp: new Date().toISOString(),
       };
       break;
@@ -314,13 +69,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     case "metrics":
       response = {
         success: true,
-        data: {
-          ...mockMetrics,
-          totalJobs: jobs.length,
-          activeJobs: jobs.filter((j) => j.status === "processing").length,
-          completedJobs: jobs.filter((j) => j.status === "completed").length,
-          failedJobs: jobs.filter((j) => j.status === "failed").length,
-        },
+        data: emptyMetrics,
         timestamp: new Date().toISOString(),
       };
       break;
@@ -330,9 +79,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       response = {
         success: true,
         data: {
-          jobs: jobs.length > 0 ? jobs : mockJobs,
-          workers: mockWorkers,
-          metrics: mockMetrics,
+          jobs: [],
+          workers: [],
+          metrics: emptyMetrics,
         },
         timestamp: new Date().toISOString(),
       };

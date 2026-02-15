@@ -83,37 +83,16 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   const db = await getDb();
 
-  // Try to find the contract - for demo/mock data, contract may not exist
   const contract = await db.contract.findUnique({
     where: { id: contractId, tenantId },
     select: { id: true, fileName: true },
   });
 
-  // For demo purposes, if contract doesn't exist, we'll create a mock workflow execution
-  // In production, you'd want to enforce contract existence
-  const actualContractId = contract?.id;
-
-  if (!actualContractId) {
-    // For mock renewals, return a simulated success response
-    return createSuccessResponse(ctx, {
-      success: true,
-      execution: {
-        id: `mock-exec-${Date.now()}`,
-        contractId: contractId,
-        status: 'in_progress',
-        startedAt: new Date().toISOString(),
-        steps: steps.map((step: { stepOrder: number; stepName: string; assignedTo: string; required?: boolean }, index: number) => ({
-          id: `mock-step-${index + 1}`,
-          name: step.stepName,
-          assignedTo: step.assignedTo,
-          status: index === 0 ? 'in_progress' : 'pending',
-          order: step.stepOrder || index + 1,
-        })),
-      },
-      message: 'Approval workflow started successfully (demo mode)',
-      source: 'mock',
-    });
+  if (!contract) {
+    return createErrorResponse(ctx, 'NOT_FOUND', `Contract ${contractId} not found`, 404);
   }
+
+  const actualContractId = contract.id;
 
   // Create or find an ad-hoc approval workflow
   let workflow = await db.workflow.findFirst({

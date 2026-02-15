@@ -227,7 +227,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         jurisdiction,
         contractTypes: JSON.stringify(contractTypes),
         alternativeText,
-        createdBy: session?.user?.id || 'system'
+        createdBy: ctx.userId
       },
     });
 

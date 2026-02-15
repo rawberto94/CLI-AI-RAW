@@ -19,10 +19,6 @@ import {
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const formData = await request.formData();
   const file = formData.get('file') as File | null;
   const action = formData.get('action') as string || 'analyze';

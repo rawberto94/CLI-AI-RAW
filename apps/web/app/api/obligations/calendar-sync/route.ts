@@ -157,15 +157,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 
   // Otherwise, require auth and return sync status
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   // Get existing calendar tokens for this user
   const tokens = await prisma.calendarSyncToken.findMany({
     where: {
-      tenantId: session.user.tenantId,
-      userId: session.user.id,
+      tenantId: ctx.tenantId,
+      userId: ctx.userId,
       isActive: true,
     },
     select: {
@@ -200,10 +196,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST - Create new calendar sync token or sync to provider
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId || !session.user.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { action, provider, name, filters } = body;
 
@@ -214,8 +206,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const calendarToken = await prisma.calendarSyncToken.create({
       data: {
         token,
-        tenantId: session.user.tenantId,
-        userId: session.user.id,
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
         name: name || 'ConTigo Obligations',
         provider: provider || 'ical',
         filters: filters || {},
@@ -247,7 +239,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     await prisma.calendarSyncToken.update({
       where: { 
         id: tokenId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
       data: { isActive: false },
     });

@@ -5,15 +5,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { 
     originalText,
@@ -26,7 +21,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Both original and proposed text are required', 400);
   }
 
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
 
   const legalReviewService = getLegalReviewService();
   const changes = await legalReviewService.generateRedlines(originalText, proposedText, {

@@ -21,14 +21,10 @@ const querySchema = z.object({
  * Get OCR quality metrics for dashboard
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const params = querySchema.parse(Object.fromEntries(searchParams));
 
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   // Calculate date range
   const now = new Date();

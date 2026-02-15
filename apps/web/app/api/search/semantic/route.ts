@@ -2,7 +2,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { NextRequest } from 'next/server'
 import { hybridSearch, crossContractSearch } from '@/lib/rag/advanced-rag.service'
 import { getServerTenantId } from '@/lib/tenant-server'
-import { getServerSession } from '@/lib/auth'
 
 /**
  * Semantic Search API - Enhanced with Hybrid Search
@@ -12,10 +11,6 @@ import { getServerSession } from '@/lib/auth'
  * Supports both single-contract and cross-contract search
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json()
   const { 
     query, 

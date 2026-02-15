@@ -7,9 +7,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   const tenantId = ctx.tenantId;
+
+  const cacheKey = `dashboard:document-stats:${tenantId}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   // Get all contracts with their classification and signature status
   const contracts = await prisma.contract.findMany({
@@ -95,7 +100,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       count,
     }));
 
-  return createSuccessResponse(ctx, {
+  const data = {
     documentTypes: documentTypesArray,
     signatureStatus: signatureStatusArray,
     totalDocuments,
@@ -110,5 +115,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
         : 0,
       needsAttention: nonContractCount + unsignedCount,
     },
-  });
+  };
+  await setCached(cacheKey, data, 300);
+  return createSuccessResponse(ctx, data);
 });

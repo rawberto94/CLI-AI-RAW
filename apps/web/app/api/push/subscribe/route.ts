@@ -37,10 +37,6 @@ function readPushSubscriptionsMap(notifications: Record<string, unknown>): Recor
 }
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const subscription = await request.json() as PushSubscription;
 
   // Validate subscription
@@ -49,7 +45,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 
   const existing = await prisma.userPreferences.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: { notifications: true },
   });
 
@@ -67,18 +63,18 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   };
 
   await prisma.userPreferences.upsert({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     update: {
       notifications: nextNotifications as unknown as Prisma.InputJsonValue,
     },
     create: {
-      userId: session.user.id,
+      userId: ctx.userId,
       notifications: nextNotifications as unknown as Prisma.InputJsonValue,
     },
   });
 
   logger.info('Push subscription created', {
-    userId: session.user.id,
+    userId: ctx.userId,
     endpoint: subscription.endpoint.substring(0, 50) + '...',
   });
 
@@ -89,15 +85,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 });
 
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = (await request.json().catch(() => ({}))) as unknown;
   const endpoint = isRecord(body) && typeof body.endpoint === 'string' ? body.endpoint : undefined;
 
   const existing = await prisma.userPreferences.findUnique({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: { notifications: true },
   });
 
@@ -114,18 +106,18 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
   };
 
   await prisma.userPreferences.upsert({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     update: {
       notifications: nextNotifications as unknown as Prisma.InputJsonValue,
     },
     create: {
-      userId: session.user.id,
+      userId: ctx.userId,
       notifications: nextNotifications as unknown as Prisma.InputJsonValue,
     },
   });
 
   logger.info('Push subscription removed', {
-    userId: session.user.id,
+    userId: ctx.userId,
     endpoint: endpoint?.substring(0, 50) || 'all',
   });
 

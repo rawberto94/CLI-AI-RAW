@@ -6,37 +6,6 @@ import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
-// Mock workflow for fallback
-const mockWorkflow = {
-  id: '1',
-  tenantId: 'demo',
-  name: 'Contract Approval Workflow',
-  description: 'Standard approval process for new contracts',
-  type: 'APPROVAL',
-  isActive: true,
-  steps: [
-    {
-      id: 's1',
-      name: 'Legal Review',
-      order: 0,
-      type: 'REVIEW',
-      assignedRole: 'Legal Team',
-      config: { dueDays: 3, requiresApproval: true, allowReject: true },
-    },
-    {
-      id: 's2',
-      name: 'Finance Approval',
-      order: 1,
-      type: 'APPROVAL',
-      assignedRole: 'Finance Manager',
-      config: { dueDays: 2, requiresApproval: true, allowReject: true, allowDelegate: true },
-    },
-  ],
-  executions: 45,
-  createdAt: new Date('2025-01-01'),
-  updatedAt: new Date('2025-01-15'),
-};
-
 /**
  * GET /api/workflows/:id - Get specific workflow
  */
@@ -78,16 +47,8 @@ export async function GET(
         });
       }
     } catch {
-      // Database lookup failed, fall back to mock
-    }
-    
-    // Fallback to mock only if id matches and tenantId is demo
-    if ((workflowId === '1' || workflowId === mockWorkflow.id) && tenantId === 'demo') {
-      return createSuccessResponse(ctx, {
-        success: true,
-        workflow: mockWorkflow,
-        source: 'mock',
-      });
+      // Database lookup failed
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to retrieve workflow from database', 500);
     }
     
     return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);

@@ -102,7 +102,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       return createErrorResponse(ctx, 'NOT_FOUND', 'No contracts found', 404);
     }
 
-    // Prepare contract summaries (used for both AI + mock flows)
+    // Prepare contract summaries for AI analysis
     const contractSummaries: ContractSummary[] = contracts.map(c => ({
       id: c.id,
       fileName: c.contractTitle || c.fileName,
@@ -115,12 +115,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      // In production, AI service must be configured
-      if (process.env.NODE_ENV === 'production') {
-        return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured', 503);
-      }
-      // Return mock report for demo purposes (dev only)
-      return createSuccessResponse(ctx, generateMockReport(contractSummaries));
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured. Set OPENAI_API_KEY environment variable.', 503);
     }
 
     // Calculate portfolio stats
@@ -278,94 +273,6 @@ Focus on:
   } catch {
     throw new Error('Failed to generate AI analysis');
   }
-}
-
-function generateMockReport(contracts: ContractInput[]): { success: boolean; processingTime: number; report: Partial<AIReportResult> } {
-  const stats = calculatePortfolioStats(contracts);
-  
-  const expiringContracts = contracts.filter(c => {
-    if (!c.expirationDate) return false;
-    const daysUntilExpiry = (new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    return daysUntilExpiry <= 90 && daysUntilExpiry > 0;
-  });
-
-  const highRiskContracts = contracts.filter(c => c.riskLevel === 'high' || c.riskLevel === 'critical');
-
-  return {
-    success: true,
-    processingTime: 1200,
-    report: {
-      reportId: `report-${Date.now()}`,
-      generatedAt: new Date().toISOString(),
-      contractCount: contracts.length,
-      executiveSummary: `This AI-generated report analyzes ${contracts.length} contracts with a combined value of $${stats.totalValue.toLocaleString()}. 
-
-The portfolio shows ${highRiskContracts.length} high-risk contracts requiring attention and ${expiringContracts.length} contracts expiring within 90 days. The average contract value is $${Math.round(stats.averageValue).toLocaleString()}.
-
-Key areas of focus include ${Object.keys(stats.statusDistribution).join(', ')} contracts. Risk distribution across the portfolio shows ${JSON.stringify(stats.riskDistribution)}.
-
-Immediate action is recommended for contracts approaching expiration and those flagged as high risk to ensure business continuity and compliance.`,
-      portfolioAnalysis: stats,
-      keyFindings: [
-        ...(expiringContracts.length > 0 ? [{
-          type: 'action-needed' as const,
-          title: 'Contracts Approaching Expiration',
-          description: `${expiringContracts.length} contracts will expire within the next 90 days. Review and initiate renewal discussions.`,
-          severity: 'high' as const,
-          affectedContracts: expiringContracts.map(c => c.fileName),
-        }] : []),
-        ...(highRiskContracts.length > 0 ? [{
-          type: 'risk' as const,
-          title: 'High Risk Contracts Identified',
-          description: `${highRiskContracts.length} contracts have been flagged as high risk. Review terms and conditions.`,
-          severity: 'critical' as const,
-          affectedContracts: highRiskContracts.map(c => c.fileName),
-        }] : []),
-        {
-          type: 'opportunity' as const,
-          title: 'Portfolio Consolidation Opportunity',
-          description: 'Consider consolidating similar contracts to improve terms and reduce administrative overhead.',
-          severity: 'medium' as const,
-          affectedContracts: contracts.slice(0, 3).map(c => c.fileName),
-        },
-      ],
-      contractHighlights: contracts.slice(0, 5).map(c => ({
-        contractId: c.id,
-        contractName: c.fileName,
-        summary: `${c.status} contract valued at $${(c.totalValue || 0).toLocaleString()}.`,
-        keyRisks: c.riskLevel === 'high' ? ['High risk classification', 'Requires detailed review'] : ['Standard risk level'],
-        recommendations: c.expirationDate && new Date(c.expirationDate) < new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
-          ? ['Initiate renewal discussions', 'Review pricing terms']
-          : ['Monitor for compliance', 'Track key dates'],
-      })),
-      actionItems: [
-        ...(expiringContracts.length > 0 ? [{
-          priority: 'urgent' as const,
-          action: 'Review and renew expiring contracts',
-          deadline: '30 days',
-          relatedContracts: expiringContracts.slice(0, 3).map(c => c.fileName),
-        }] : []),
-        {
-          priority: 'high' as const,
-          action: 'Conduct risk assessment for flagged contracts',
-          deadline: '2 weeks',
-          relatedContracts: highRiskContracts.slice(0, 3).map(c => c.fileName),
-        },
-        {
-          priority: 'medium' as const,
-          action: 'Update contract metadata and categorization',
-          relatedContracts: contracts.slice(0, 2).map(c => c.fileName),
-        },
-      ],
-      recommendations: [
-        'Implement quarterly contract review cycles',
-        'Set up automated renewal reminders 90 days before expiration',
-        'Standardize contract templates to reduce negotiation time',
-        'Consider vendor consolidation for cost optimization',
-        'Establish clear risk assessment criteria for new contracts',
-      ],
-    },
-  };
 }
 
 export const GET = withAuthApiHandler(async (_request, ctx) => {

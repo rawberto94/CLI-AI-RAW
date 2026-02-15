@@ -22,10 +22,7 @@ import {
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   const schema = await metadataSchemaService.getSchema(tenantId);
 
@@ -40,10 +37,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 // ============================================================================
 
 export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const body = await request.json();
 
   const { action } = body;
@@ -91,11 +85,8 @@ export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
-  const userId = session.user.id;
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
   const body = await request.json();
 
   const { type } = body;
@@ -155,10 +146,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============================================================================
 
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const body = await request.json();
 
   const { type, id, ...updates } = body;
@@ -191,10 +179,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============================================================================
 
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const searchParams = request.nextUrl.searchParams;
 
   const type = searchParams.get('type') || 'field';

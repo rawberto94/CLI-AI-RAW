@@ -2,8 +2,8 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
-type DataMode = 'real' | 'mock';
 type ProviderType = 
   | 'rate-benchmarking'
   | 'supplier-analytics'
@@ -40,105 +40,59 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     return createErrorResponse(ctx, 'INVALID_MODULE', `Invalid moduleName: ${moduleName}`, 400);
   }
 
-  // Check for data mode parameter
-  const dataMode = searchParams.get('mode') as DataMode | null;
-  const mode: DataMode = dataMode === 'mock' ? 'mock' : 'real';
+  const cacheKey = `analytics:procurement-intelligence:${tenantId}:${searchParams.toString()}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   // Build params object from all query parameters
   const params: Record<string, string> = {};
   searchParams.forEach((value, key) => {
-    if (key !== 'moduleName' && key !== 'mode') {
+    if (key !== 'moduleName') {
       params[key] = value;
     }
   });
 
-  // Get data based on moduleName and mode
+  // Get data based on moduleName
   let data: unknown;
   let source: string;
-  
-  if (mode === 'mock') {
-    // Use mock data
-    switch (moduleName) {
-      case 'supplier-analytics':
-        data = {
-          suppliers: [
-            { id: '1', name: 'Acme Consulting', score: 92, spend: 450000 },
-            { id: '2', name: 'Tech Solutions', score: 85, spend: 320000 },
-          ],
-        };
-        source = 'mock-data-generator';
-        break;
-      case 'negotiation-prep':
-        data = {
-          recommendations: ['Focus on volume discounts', 'Request better payment terms'],
-        };
-        source = 'mock-data-generator';
-        break;
-      case 'savings-pipeline':
-        data = {
-          opportunities: [
-            { id: '1', supplier: 'Acme', potential: 25000, confidence: 'high' },
-          ],
-        };
-        source = 'mock-data-generator';
-        break;
-      case 'renewal-radar':
-        data = {
-          upcomingRenewals: [
-            { contractId: 'C1', supplier: 'Acme', daysUntilRenewal: 30 },
-          ],
-        };
-        source = 'mock-data-generator';
-        break;
-      case 'rate-benchmarking':
-        // Rate benchmarking uses JSON file
-        const rateCards = await import('@/lib/mock-data/rate-cards.json');
-        data = rateCards.default;
-        source = 'mock-data-file';
-        break;
-      default:
-        throw new Error(`Mock data not implemented for moduleName: ${moduleName}`);
-    }
-  } else {
-    // Real data mode - fetch from database
-    switch (moduleName) {
-      case 'supplier-analytics':
-        data = await getSupplierAnalyticsReal(tenantId, params);
-        source = 'database';
-        break;
-      case 'negotiation-prep':
-        data = await getNegotiationPrepReal(tenantId, params);
-        source = 'database';
-        break;
-      case 'savings-pipeline':
-        data = await getSavingsPipelineReal(tenantId, params);
-        source = 'database';
-        break;
-      case 'renewal-radar':
-        data = await getRenewalRadarReal(tenantId, params);
-        source = 'database';
-        break;
-      case 'rate-benchmarking':
-        data = await getRateBenchmarkingReal(tenantId, params);
-        source = 'database';
-        break;
-      default:
-        throw new Error(`Real data not implemented for moduleName: ${moduleName}`);
-    }
+
+  switch (moduleName) {
+    case 'supplier-analytics':
+      data = await getSupplierAnalyticsReal(tenantId, params);
+      source = 'database';
+      break;
+    case 'negotiation-prep':
+      data = await getNegotiationPrepReal(tenantId, params);
+      source = 'database';
+      break;
+    case 'savings-pipeline':
+      data = await getSavingsPipelineReal(tenantId, params);
+      source = 'database';
+      break;
+    case 'renewal-radar':
+      data = await getRenewalRadarReal(tenantId, params);
+      source = 'database';
+      break;
+    case 'rate-benchmarking':
+      data = await getRateBenchmarkingReal(tenantId, params);
+      source = 'database';
+      break;
+    default:
+      throw new Error(`Data not implemented for moduleName: ${moduleName}`);
   }
 
-  return createSuccessResponse(ctx, {
+  const responseData = {
     moduleName,
     data,
     metadata: {
       source,
-      mode,
       lastUpdated: new Date().toISOString(),
       recordCount: Array.isArray(data) ? data.length : 1,
-      confidence: mode === 'real' ? 0.95 : 0.75,
-      description: mode === 'mock' ? 'Mock data for testing' : 'Real data (fallback to mock)'
+      confidence: 0.95,
     },
-  });
+  };
+  await setCached(cacheKey, responseData, 300);
+  return createSuccessResponse(ctx, responseData);
 });
 
 // POST /api/analytics/procurement-intelligence - Handle actions like health checks
@@ -149,29 +103,28 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   if (action === 'health-check') {
     // Return health status for all modules
     const status = {
-      'rate-benchmarking': { real: false, mock: true },
-      'supplier-analytics': { real: false, mock: true },
-      'negotiation-prep': { real: false, mock: true },
-      'savings-pipeline': { real: false, mock: true },
-      'renewal-radar': { real: false, mock: true }
+      'rate-benchmarking': { available: true },
+      'supplier-analytics': { available: true },
+      'negotiation-prep': { available: true },
+      'savings-pipeline': { available: true },
+      'renewal-radar': { available: true }
     };
 
     return createSuccessResponse(ctx, status);
   }
 
   if (action === 'get-metadata') {
-    const { moduleName, mode } = body;
+    const { moduleName } = body;
     
     if (!moduleName) {
       return createErrorResponse(ctx, 'MISSING_MODULE', 'Module parameter is required', 400);
     }
 
     const metadata = {
-      source: mode === 'mock' ? 'mock-data-generator' : 'mock-fallback',
-      mode: mode || 'real',
+      source: 'database',
       lastUpdated: new Date().toISOString(),
       recordCount: 0,
-      confidence: mode === 'mock' ? 0.75 : 0.95,
+      confidence: 0.95,
       description: `${moduleName} data provider`
     };
 
@@ -180,38 +133,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   return createErrorResponse(ctx, 'INVALID_ACTION', 'Invalid action specified', 400);
 });
-
-function _generateSupplierAnalyticsMock(params: Record<string, string>) {
-  return {
-    suppliers: [],
-    params,
-    note: 'Mock fallback (real mode not implemented)',
-  };
-}
-
-function _generateNegotiationPrepMock(params: Record<string, string>) {
-  return {
-    recommendations: [],
-    params,
-    note: 'Mock fallback (real mode not implemented)',
-  };
-}
-
-function _generateSavingsPipelineMock(params: Record<string, string>) {
-  return {
-    opportunities: [],
-    params,
-    note: 'Mock fallback (real mode not implemented)',
-  };
-}
-
-function _generateRenewalRadarMock(params: Record<string, string>) {
-  return {
-    upcomingRenewals: [],
-    params,
-    note: 'Mock fallback (real mode not implemented)',
-  };
-}
 
 // =============================================================================
 // Real Data Providers

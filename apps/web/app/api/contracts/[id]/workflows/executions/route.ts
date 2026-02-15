@@ -5,35 +5,6 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
 
 export const dynamic = 'force-dynamic';
 
-// Mock workflow executions for demonstration
-const getMockExecutions = () => [
-  {
-    id: '1',
-    workflowName: 'Contract Approval',
-    status: 'in_progress',
-    startedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    currentStep: 'Legal Review',
-    initiatedBy: 'Sarah Chen',
-    steps: [
-      { id: '1', name: 'Manager Review', assignedTo: 'Roberto Ostojic', status: 'completed', completedAt: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(), order: 1 },
-      { id: '2', name: 'Legal Review', assignedTo: 'Legal Team', status: 'in_progress', order: 2 },
-      { id: '3', name: 'Finance Approval', assignedTo: 'Finance Team', status: 'pending', order: 3 }
-    ]
-  },
-  {
-    id: '2',
-    workflowName: 'Contract Renewal',
-    status: 'completed',
-    startedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(),
-    initiatedBy: 'System',
-    steps: [
-      { id: '4', name: 'Client Notification', assignedTo: 'Account Manager', status: 'completed', completedAt: new Date(Date.now() - 28 * 24 * 60 * 60 * 1000).toISOString(), order: 1 },
-      { id: '5', name: 'Terms Update', assignedTo: 'Contract Manager', status: 'completed', completedAt: new Date(Date.now() - 25 * 24 * 60 * 60 * 1000).toISOString(), order: 2 }
-    ]
-  }
-];
-
 /**
  * GET /api/contracts/:id/workflows/executions
  * Get all workflow executions for a contract
@@ -46,15 +17,6 @@ export async function GET(
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
-    const useMock = request.nextUrl.searchParams.get('mock') === 'true';
-
-    if (useMock) {
-      return createSuccessResponse(ctx, {
-        success: true,
-        executions: getMockExecutions(),
-        source: 'mock'
-      });
-    }
 
     try {
       const db = await getDb();

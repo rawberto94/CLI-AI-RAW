@@ -34,14 +34,10 @@ async function _isPlatformAdmin(userId: string): Promise<boolean> {
 
 // GET - List all tenants
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   // For development, allow access if user is owner/admin
   // In production, should check isPlatformAdmin
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { role: true },
   });
 
@@ -113,13 +109,9 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 
 // POST - Create a new tenant
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   // Check admin access
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: ctx.userId },
     select: { role: true },
   });
 

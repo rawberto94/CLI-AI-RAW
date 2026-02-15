@@ -32,8 +32,7 @@ export type { AdvancedSearchFilters } from './AdvancedSearchModal';
 // Report Components
 export { AIReportModal } from './AIReportModal';
 
-// Quick Actions & Insights Components
-export { QuickActionsPanel, FloatingActionsBar, AIInsightsCard } from './QuickActionsPanel';
+
 
 // Health Score Components
 export { ContractHealthScore, HealthScoreWidget } from './ContractHealthScore';

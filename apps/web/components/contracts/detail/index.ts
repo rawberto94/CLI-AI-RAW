@@ -6,5 +6,4 @@ export { ContractLifecycleTimeline } from './ContractLifecycleTimeline';
 export { SectionNavigator } from './SectionNavigator';
 export { PDFThumbnailStrip } from './PDFThumbnailStrip';
 export { SmartInsightsPanel } from './SmartInsightsPanel';
-export { EnhancedEmptyState } from './EnhancedEmptyState';
 export { InlineEditField } from './InlineEditField';

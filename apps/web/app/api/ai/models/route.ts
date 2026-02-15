@@ -113,7 +113,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     // Model registry modifications should be admin-only
-    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+    if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
     }
 
@@ -242,7 +242,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
  * Update model status or configuration
  */
 export const PATCH = withAuthApiHandler(async (request, ctx) => {
-    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+    if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
     }
 
@@ -307,7 +307,7 @@ export const PATCH = withAuthApiHandler(async (request, ctx) => {
  * Remove a model from registry
  */
 export const DELETE = withAuthApiHandler(async (request, ctx) => {
-    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
+    if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
       return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
     }
 

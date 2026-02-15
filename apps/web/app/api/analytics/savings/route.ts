@@ -4,10 +4,11 @@ import { DataMode } from 'data-orchestration/types';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 /**
  * Savings Pipeline API Endpoints
- * Supports both real and mock data modes
+ * Savings pipeline data endpoints
  */
 
 // GET /api/analytics/savings - Get savings pipeline data
@@ -17,11 +18,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const category = searchParams.get('category');
   const status = searchParams.get('status');
   
-  // Check for data mode parameter
-  const dataMode = searchParams.get('mode') as 'real' | 'mock' | null;
-  const mode = dataMode === 'mock' ? DataMode.MOCK : 
-               dataMode === 'real' ? DataMode.REAL : 
-               DataMode.REAL;
+  const tenantId = ctx.tenantId;
+  const cacheKey = `analytics:savings:${tenantId}:${timeframe}:${category}:${status}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
   // Use data provider system
   const factory = getDataProviderFactory();
@@ -29,9 +29,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     timeframe,
     category: category || undefined,
     status: status || undefined
-  }, mode);
+  }, DataMode.REAL);
 
-  return createSuccessResponse(ctx, {
+  const data = {
     data: response.data,
     metadata: {
       source: response.metadata.source,
@@ -40,7 +40,9 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       confidence: response.metadata.confidence
     },
     timestamp: new Date().toISOString()
-  });
+  };
+  await setCached(cacheKey, data, 300);
+  return createSuccessResponse(ctx, data);
 });
 
 // POST /api/analytics/savings/opportunities - Create new savings opportunity
@@ -48,24 +50,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
   const body = await request.json();
   const { title, category, potentialSavings, probability, timeToRealize: _timeToRealize } = body;
   
-  // For now, this only works with real data
-  // Mock mode would just return the input as confirmation
-  const dataMode = body.mode;
-  
-  if (dataMode === 'mock') {
-    return createSuccessResponse(ctx, {
-      id: `OPP${Math.floor(Math.random() * 1000)}`,
-      ...body,
-      status: 'identified',
-      createdAt: new Date().toISOString(),
-      _metadata: {
-        source: 'mock-data-generator',
-        mode: 'mock'
-      },
-    });
-  }
-
-  // Real implementation - save to database
+  // Save to database
   const tenantId = ctx.tenantId;
   
   const opportunity = await prisma.costSavingsOpportunity.create({

@@ -12,23 +12,12 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 
 import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from '@/lib/auth'
 import { auditTrailService } from 'data-orchestration/services';
 
 // ============ GET - Fetch all favorites ============
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   // For demo mode, return mock data
-  if (!session?.user?.id) {
-    return createSuccessResponse(ctx, {
-      success: true,
-      data: {
-        favorites: generateMockFavorites(),
-        count: 5
-      }
-    })
-  }
-
-  const userId = session.user.id
+  const userId = ctx.userId
 
   // Get user preferences with customSettings
   const preferences = await prisma.userPreferences.findUnique({
@@ -91,17 +80,13 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 
 // ============ POST - Add to favorites ============
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-
   const { contractId } = await request.json()
 
   if (!contractId) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400)
   }
 
-  const userId = session.user.id
+  const userId = ctx.userId
 
   // Get or create user preferences
   let preferences = await prisma.userPreferences.findUnique({
@@ -147,10 +132,6 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // ============ DELETE - Remove from favorites ============
 export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-
   const { searchParams } = new URL(request.url)
   const contractId = searchParams.get('contractId')
 
@@ -158,7 +139,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400)
   }
 
-  const userId = session.user.id
+  const userId = ctx.userId
 
   const preferences = await prisma.userPreferences.findUnique({
     where: { userId },
@@ -193,17 +174,13 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // ============ PATCH - Reorder favorites ============
 export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401)
-  }
-
   const { orderedIds } = await request.json()
 
   if (!Array.isArray(orderedIds)) {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'orderedIds array is required', 400)
   }
 
-  const userId = session.user.id
+  const userId = ctx.userId
 
   const preferences = await prisma.userPreferences.findUnique({
     where: { userId },
@@ -245,14 +222,4 @@ function mapContractStatus(status: string): 'active' | 'pending' | 'expiring' | 
     default:
       return 'active'
   }
-}
-
-function generateMockFavorites() {
-  return [
-    { id: 'fav-1', name: 'Microsoft Enterprise Agreement', supplier: 'Microsoft', status: 'active', value: 250000, addedAt: new Date() },
-    { id: 'fav-2', name: 'AWS Services Contract', supplier: 'Amazon Web Services', status: 'expiring', value: 180000, addedAt: new Date() },
-    { id: 'fav-3', name: 'Salesforce Enterprise', supplier: 'Salesforce', status: 'active', value: 120000, addedAt: new Date() },
-    { id: 'fav-4', name: 'Google Cloud Platform', supplier: 'Google', status: 'pending', value: 95000, addedAt: new Date() },
-    { id: 'fav-5', name: 'Adobe Creative Cloud', supplier: 'Adobe', status: 'active', value: 45000, addedAt: new Date() },
-  ]
 }

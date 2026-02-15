@@ -12,10 +12,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Get queue statistics
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   // Stubbed statistics - in production, aggregate from Prisma
   return createSuccessResponse(ctx, {
     summary: {

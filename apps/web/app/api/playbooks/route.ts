@@ -5,7 +5,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getSessionTenantId } from '@/lib/tenant-server';
 import { getLegalReviewService } from 'data-orchestration/services';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
@@ -14,11 +13,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
   const legalReviewService = getLegalReviewService();
   const playbooks = await legalReviewService.listPlaybooks(tenantId);
 
@@ -34,10 +29,6 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const {
     name,
@@ -53,7 +44,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Playbook name is required', 400);
   }
 
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
 
   const legalReviewService = getLegalReviewService();
   const playbook = await legalReviewService.createPlaybook({
@@ -65,7 +56,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     riskThresholds,
     redFlags,
     isDefault,
-    createdBy: session.user.id,
+    createdBy: ctx.userId,
   });
 
   return createSuccessResponse(ctx, {

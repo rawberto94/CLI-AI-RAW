@@ -8,7 +8,6 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getSessionTenantId } from '@/lib/tenant-server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { 
   getWorkflowManagementService,
@@ -21,10 +20,6 @@ import {
 // ============================================================================
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const action = searchParams.get('action') || 'list';
 
@@ -63,7 +58,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       const isRenewalOptOut = searchParams.get('isRenewalOptOut') === 'true';
       const partyCount = searchParams.get('partyCount');
 
-      const tenantId = getSessionTenantId(session);
+      const tenantId = ctx.tenantId;
       const workflowService = getWorkflowManagementService();
 
       const routing = await workflowService.routeToWorkflow(tenantId, {
@@ -106,11 +101,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 // ============================================================================
 
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = getSessionTenantId(session);
+  const tenantId = ctx.tenantId;
   const body = await request.json();
   const { action } = body;
 
@@ -181,7 +172,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           workflowId,
           contractId,
           tenantId,
-          initiatedBy: session.user.id || 'unknown',
+          initiatedBy: ctx.userId,
         });
       }
 

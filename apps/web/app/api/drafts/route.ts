@@ -13,10 +13,6 @@ export const dynamic = 'force-dynamic';
 
 // GET /api/drafts - List all drafts
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
 
@@ -108,10 +104,6 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
 // POST /api/drafts - Create a new draft
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const tenantId = await ctx.tenantId;
   const body = await request.json();
 
@@ -159,7 +151,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       aiPrompt,
       aiModel,
       generationParams,
-      createdBy: session.user.id,
+      createdBy: ctx.userId,
       status: 'DRAFT',
       version: 1,
     },

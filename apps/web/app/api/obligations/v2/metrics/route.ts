@@ -8,11 +8,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Get comprehensive obligation metrics and analytics
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const now = new Date();
   const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);

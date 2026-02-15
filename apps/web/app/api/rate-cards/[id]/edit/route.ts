@@ -21,28 +21,6 @@ export const PATCH = async (request: NextRequest, props: { params: Promise<{ id:
       return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    // Check data mode from header
-    const dataMode = request.headers.get('x-data-mode') || 'real';
-    
-    // Block mock mode in production
-    if (dataMode === 'mock' && process.env.NODE_ENV === 'production') {
-      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Mock mode not available in production', 400);
-    }
-    
-    // If mock mode (dev only), return success without updating database
-    if (dataMode === 'mock') {
-      return createSuccessResponse(ctx, {
-        success: true,
-        message: 'Mock mode - changes not persisted',
-        rateCard: {
-          id,
-          ...body,
-          editedAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      });
-    }
-    
     const {
       clientName,
       clientId,

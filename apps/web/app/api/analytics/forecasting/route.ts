@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 // Helper to get month string
 function getMonthString(date: Date): string {
@@ -201,6 +202,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
   const timeRange = searchParams.get('timeRange') || '12m';
   const months = timeRange === '6m' ? 6 : timeRange === '24m' ? 24 : 12;
 
+  const cacheKey = `analytics:forecasting:${tenantId}:${timeRange}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
+
   // Get current portfolio value
   const contracts = await prisma.contract.findMany({
     where: { tenantId, isDeleted: false },
@@ -246,7 +251,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     .sort((a, b) => b.currentSpend - a.currentSpend)
     .slice(0, 10);
 
-  return createSuccessResponse(ctx, {
+  const responseData = {
     forecastData,
     scenarios,
     opportunities,
@@ -258,5 +263,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
       generatedAt: new Date().toISOString(),
       source: 'database',
     },
-  });
+  };
+  await setCached(cacheKey, responseData, 600);
+  return createSuccessResponse(ctx, responseData);
 });

@@ -10,6 +10,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,6 +19,10 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
   const startTime = Date.now();
   const tenantId = ctx.tenantId;
   
+  const cacheKey = `dashboard:stats:${tenantId}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
+
   const now = new Date();
   const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
   const ninetyDaysFromNow = new Date(now.getTime() + 90 * 24 * 60 * 60 * 1000);
@@ -188,7 +193,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
   const avgRiskScore = Math.round(Number(hs.avg_risk || 0));
   const avgComplianceScore = Math.round(Number(hs.avg_compliance || 0));
   
-  return createSuccessResponse(ctx, {
+  const data = {
     overview: {
       totalContracts,
       activeContracts,
@@ -248,5 +253,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       timestamp: now.toISOString(),
       responseTime: `${Date.now() - startTime}ms`,
     }
-  });
+  };
+  await setCached(cacheKey, data, 60);
+  return createSuccessResponse(ctx, data);
 });

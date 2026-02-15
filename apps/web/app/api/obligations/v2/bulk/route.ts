@@ -20,10 +20,6 @@ const statusMap: Record<string, ObligationStatus> = {
  * Bulk operations on obligations
  */
 export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await request.json();
   const { action, obligationIds, data } = body;
 
@@ -35,7 +31,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const obligations = await prisma.obligation.findMany({
     where: {
       id: { in: obligationIds },
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
     },
     select: { id: true, status: true },
   });
@@ -56,15 +52,15 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       await prisma.obligation.updateMany({
         where: {
           id: { in: obligationIds },
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
         },
         data: {
           status: newStatus,
           ...(isCompleting && {
             completedAt: new Date(),
-            completedBy: session.user.id,
+            completedBy: ctx.userId,
           }),
-          updatedBy: session.user.id,
+          updatedBy: ctx.userId,
         },
       });
 
@@ -75,7 +71,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             obligationId: oblId,
             action: isCompleting ? 'COMPLETED' : 'STATUS_CHANGED',
             description: `Status changed to ${data.status} via bulk operation`,
-            performedBy: session.user.id,
+            performedBy: ctx.userId,
           },
         });
       }
@@ -95,11 +91,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       await prisma.obligation.updateMany({
         where: {
           id: { in: obligationIds },
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
         },
         data: {
           assignedToUserId: data.assignedToUserId,
-          updatedBy: session.user.id,
+          updatedBy: ctx.userId,
         },
       });
 
@@ -109,7 +105,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             obligationId: oblId,
             action: 'ASSIGNED',
             description: `Assigned via bulk operation`,
-            performedBy: session.user.id,
+            performedBy: ctx.userId,
           },
         });
       }
@@ -129,11 +125,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       await prisma.obligation.updateMany({
         where: {
           id: { in: obligationIds },
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
         },
         data: {
           dueDate: new Date(data.dueDate),
-          updatedBy: session.user.id,
+          updatedBy: ctx.userId,
         },
       });
 
@@ -143,7 +139,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
             obligationId: oblId,
             action: 'RESCHEDULED',
             description: `Due date changed to ${data.dueDate} via bulk operation`,
-            performedBy: session.user.id,
+            performedBy: ctx.userId,
           },
         });
       }
@@ -174,7 +170,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
           where: { id: oblId },
           data: {
             tags: newTags,
-            updatedBy: session.user.id,
+            updatedBy: ctx.userId,
           },
         });
       }
@@ -190,7 +186,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       await prisma.obligation.deleteMany({
         where: {
           id: { in: obligationIds },
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
         },
       });
 

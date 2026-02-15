@@ -16,10 +16,6 @@ interface Suggestion {
 }
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const searchParams = request.nextUrl.searchParams;
   const query = searchParams.get('q')?.trim() || '';
   const limit = Math.min(parseInt(searchParams.get('limit') || '8'), 20);

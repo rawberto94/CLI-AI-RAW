@@ -9,10 +9,6 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
  * Export obligations as CSV or JSON
  */
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(request.url);
   const format = searchParams.get('format') || 'csv';
   const contractId = searchParams.get('contractId');
@@ -22,7 +18,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
   // Build where clause
   const where: Prisma.ObligationWhereInput = {
-    tenantId: session.user.tenantId,
+    tenantId: ctx.tenantId,
     ...(contractId && { contractId }),
     ...(status && { status: status.toUpperCase() as Prisma.EnumObligationStatusFilter }),
     ...(priority && { priority: priority.toUpperCase() as Prisma.EnumObligationPriorityFilter }),

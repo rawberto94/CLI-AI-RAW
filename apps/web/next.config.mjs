@@ -242,7 +242,7 @@ const nextConfig = {
     // Mark problematic packages as external to prevent webpack from bundling them
     // These packages have symlinks to TypeScript sources which cause parse errors
     if (!isServer) {
-      const externals = ['clients-db', 'clients-storage', 'clients-openai', 'clients-queue', 'clients-rag'];
+      const externals = ['clients-db', 'clients-openai', 'clients-rag'];
       config.externals = config.externals || [];
       if (Array.isArray(config.externals)) {
         config.externals.push(({ request }, callback) => {

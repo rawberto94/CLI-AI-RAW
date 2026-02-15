@@ -31,10 +31,6 @@ const BulkApprovalSchema = z.object({
 // =============================================================================
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const { searchParams } = new URL(req.url);
   const status = searchParams.get('status') || 'pending';
   const category = searchParams.get('category');
@@ -43,7 +39,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   const limit = parseInt(searchParams.get('limit') || '20');
 
   // Get tenant ID from session
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
 
   // Build query filters
   const where: any = {
@@ -54,7 +50,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   if (searchParams.get('myQueue') === 'true') {
     where.approvalChain = {
       some: {
-        approverId: session.user.id,
+        approverId: ctx.userId,
         status: 'PENDING',
       },
     };
@@ -206,10 +202,6 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 // =============================================================================
 
 export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const body = await req.json();
   const { searchParams } = new URL(req.url);
   const itemId = searchParams.get('itemId');
@@ -223,7 +215,7 @@ export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
         return updateApprovalStatus(
           id,
           validated.action,
-          session.user!.id!,
+          ctx.userId,
           validated.comment
         );
       })
@@ -249,7 +241,7 @@ export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   await updateApprovalStatus(
     itemId,
     validated.action,
-    session.user.id,
+    ctx.userId,
     validated.comment || validated.reason
   );
 

@@ -11,11 +11,7 @@ import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleA
 import { contractService } from 'data-orchestration/services';
 
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.tenantId) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
-  const tenantId = session.user.tenantId;
+  const tenantId = ctx.tenantId;
   const now = new Date();
   const last24h = subHours(now, 24);
   const last7d = subDays(now, 7);

@@ -25,10 +25,6 @@ const subscriptionSchema = z.object({
  * Get VAPID public key for push subscription
  */
 export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
-  if (!session?.user?.id) {
-    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-  }
-
   const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 
   if (!vapidPublicKey) {
@@ -43,7 +39,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
 
   // Check if user has existing subscription
   const subscription = await prisma.pushSubscription.findFirst({
-    where: { userId: session.user.id },
+    where: { userId: ctx.userId },
     select: { endpoint: true },
   });
 
@@ -63,10 +59,6 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
  */
 export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const body = await req.json();
     const validated = subscriptionSchema.parse(body);
 
@@ -74,15 +66,15 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
     await prisma.pushSubscription.upsert({
       where: { endpoint: validated.endpoint },
       update: {
-        userId: session.user.id,
+        userId: ctx.userId,
         p256dh: validated.keys.p256dh,
         auth: validated.keys.auth,
         expirationTime: validated.expirationTime ? BigInt(validated.expirationTime) : null,
         updatedAt: new Date(),
       },
       create: {
-        userId: session.user.id,
-        tenantId: session.user.id,
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
         endpoint: validated.endpoint,
         p256dh: validated.keys.p256dh,
         auth: validated.keys.auth,
@@ -110,10 +102,6 @@ export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
  */
 export const DELETE = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    if (!session?.user?.id) {
-      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
-    }
-
     const { searchParams } = new URL(req.url);
     const endpoint = searchParams.get("endpoint");
 
@@ -121,14 +109,14 @@ export const DELETE = withAuthApiHandler(async (req: NextRequest, ctx) => {
       // Delete specific subscription
       await prisma.pushSubscription.deleteMany({
         where: {
-          userId: session.user.id,
+          userId: ctx.userId,
           endpoint,
         },
       });
     } else {
       // Delete all subscriptions for user
       await prisma.pushSubscription.deleteMany({
-        where: { userId: session.user.id },
+        where: { userId: ctx.userId },
       });
     }
 

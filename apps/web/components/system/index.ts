@@ -5,4 +5,3 @@
 
 export { SystemStatusBadge } from './SystemStatusBadge';
 export { ProcessingQueueIndicator } from './ProcessingQueueIndicator';
-export { QuickActionsPanel, QuickActionsBar } from './QuickActionsPanel';
