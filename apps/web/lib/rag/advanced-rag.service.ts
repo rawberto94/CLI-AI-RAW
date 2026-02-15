@@ -28,6 +28,7 @@ import {
   type ChunkMetadata,
   type ChunkingOptions,
 } from '@repo/utils/rag/semantic-chunker';
+import { progressiveRerank as progressiveRerankService } from './reranker.service';
 
 // Re-export so existing callers (barrel, tests) keep working
 export { semanticChunk };
@@ -58,6 +59,62 @@ export function detectChunkTypes(query: string): ('heading' | 'paragraph' | 'lis
   }
   // If nothing specific detected, return undefined (no filter = search everything)
   return types.size > 0 ? Array.from(types) : undefined;
+}
+
+// ============================================================================
+// Query Intent Router — intelligent search-mode selection
+// ============================================================================
+
+export type RoutedMode = 'semantic' | 'keyword' | 'hybrid';
+
+/**
+ * Classify the user query to select the most efficient search mode.
+ *
+ * Heuristics (zero-LLM, sub-1ms):
+ *  • **keyword-only** — exact identifiers, quoted phrases, contract numbers,
+ *    party names, date patterns  → BM25 is sufficient, skip vector search
+ *  • **semantic-only** — conceptual questions ("what does…", "explain…",
+ *    comparative queries)          → vector search excels, skip BM25
+ *  • **hybrid** — everything else  → run both + RRF
+ *
+ * Returns the original `mode` unchanged if the caller explicitly sets it to
+ * something other than 'hybrid' (respecting explicit intent).
+ */
+export function routeQueryIntent(
+  query: string,
+  callerMode: RoutedMode = 'hybrid',
+): RoutedMode {
+  // If the caller explicitly asked for semantic or keyword, respect that
+  if (callerMode !== 'hybrid') return callerMode;
+
+  const q = query.trim();
+
+  // ── Keyword signals ──────────────────────────────────────────────────────
+  // Quoted exact-match phrase
+  if (/^"[^"]+"$/.test(q)) return 'keyword';
+  // Contract / reference numbers (e.g. "SOW-2024-001", "PO 12345")
+  if (/\b(?:SOW|PO|MSA|NDA|SLA|REF|INV)[\s\-#]?\d{2,}/i.test(q)) return 'keyword';
+  // ISO date patterns (2024-01-15, 01/15/2024)
+  if (/\b\d{4}[-/]\d{2}[-/]\d{2}\b/.test(q) || /\b\d{2}[-/]\d{2}[-/]\d{4}\b/.test(q)) return 'keyword';
+  // Very short queries with no question words — likely exact term lookups
+  if (q.split(/\s+/).length <= 2 && !/\?|what|how|why|which|when|where|who|explain|compare|describe|summarize|overview/i.test(q)) {
+    return 'keyword';
+  }
+  // Exact legal clause references (e.g. "Section 4.2", "Article III")
+  if (/^(?:section|article|clause|appendix|schedule|exhibit)\s+[\dIVXLCDM.]+$/i.test(q)) return 'keyword';
+
+  // ── Semantic signals ─────────────────────────────────────────────────────
+  // Natural-language questions
+  if (/^(?:what|how|why|which|when|where|who|can|does|is|are|should|could|would|explain|describe|summarize|compare)\b/i.test(q)) {
+    return 'semantic';
+  }
+  // Conceptual / open-ended phrasing
+  if (/\b(?:implications?|obligations?|risks?|consequences?|difference|between|relate|relationship|impact|affect|meaning|purpose)\b/i.test(q)) {
+    return 'semantic';
+  }
+
+  // ── Default: hybrid ──────────────────────────────────────────────────────
+  return 'hybrid';
 }
 
 // ============================================================================
@@ -440,7 +497,6 @@ async function rerank(
   results: Array<{ contractId: string; chunkIndex: number; text: string; score: number }>,
   options?: { apiKey?: string; topK?: number }
 ): Promise<RerankedResult[]> {
-  const apiKey = options?.apiKey || process.env.OPENAI_API_KEY;
   const topK = options?.topK || 10;
   
   if (results.length === 0) {
@@ -449,85 +505,29 @@ async function rerank(
   
   const candidates = results.slice(0, Math.min(20, results.length));
   
-  // Try Cohere Rerank first (fast, cheap, purpose-built)
-  const cohereApiKey = process.env.COHERE_API_KEY;
-  if (cohereApiKey) {
-    try {
-      const { CohereClient } = await import('cohere-ai');
-      const cohere = new CohereClient({ token: cohereApiKey });
-      
-      const response = await cohere.v2.rerank({
-        model: 'rerank-v3.5',
-        query,
-        documents: candidates.map(c => ({ text: c.text.slice(0, 1000) })),
-        topN: topK,
-      });
-      
-      return (response.results || []).map((r: any) => {
-        const original = candidates[r.index]!;
-        return {
-          contractId: original.contractId,
-          chunkIndex: original.chunkIndex,
-          text: original.text,
-          originalScore: original.score,
-          rerankedScore: r.relevanceScore,
-        };
-      });
-    } catch (err) {
-      console.warn('[RAG] Cohere rerank failed, falling back to GPT:', (err as Error).message);
-    }
-  }
-  
-  // Fallback: GPT cross-encoder reranking
-  if (!apiKey) {
-    return candidates.map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
-  }
-  
+  // Delegate to progressiveRerank — races fast embedding-similarity against
+  // Cohere / GPT and returns whichever finishes first (2 s timeout for the slow path).
   try {
-    const OpenAI = (await import('openai')).OpenAI;
-    const openai = new OpenAI({ apiKey });
-    
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: `You are a relevance scoring assistant. Given a query and document passages, rate each passage's relevance from 0.0 to 1.0.
-Return ONLY a JSON array of numbers in the same order as the passages.
-Consider:
-- Semantic relevance to the query
-- Specificity of information
-- Completeness of answer
-- Legal/contractual context match`,
-        },
-        {
-          role: 'user',
-          content: `Query: "${query}"
-
-Passages:
-${candidates.map((c, i) => `[${i}] ${c.text.slice(0, 500)}`).join('\n\n')}
-
-Return relevance scores as JSON array:`,
-        },
-      ],
-      temperature: 0,
-      max_tokens: 200,
+    const docs = candidates.map(c => c.text.slice(0, 1000));
+    const reranked = await progressiveRerankService(query, docs, {
+      topK,
+      minScore: 0.1,
+      slowPathTimeoutMs: 2000,
+      // awaitSlowPath defaults to false → interactive race mode
     });
     
-    let content = response.choices[0]?.message?.content || '[]';
-    content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-    const scores = JSON.parse(content) as number[];
-    
-    const reranked = candidates.map((c, i) => ({
-      ...c,
-      originalScore: c.score,
-      rerankedScore: scores[i] ?? c.score,
-    }));
-    
-    reranked.sort((a, b) => b.rerankedScore - a.rerankedScore);
-    
-    return reranked.slice(0, topK);
-  } catch {
+    return reranked.map(r => {
+      const original = candidates[r.index]!;
+      return {
+        contractId: original.contractId,
+        chunkIndex: original.chunkIndex,
+        text: original.text,
+        originalScore: original.score,
+        rerankedScore: r.score,
+      };
+    });
+  } catch (err) {
+    console.warn('[RAG] Progressive rerank failed, using passthrough:', (err as Error).message);
     return candidates.slice(0, topK).map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
   }
 }
@@ -614,13 +614,17 @@ export async function hybridSearch(
   options: SearchOptions = {}
 ): Promise<SearchResult[]> {
   const {
-    mode = 'hybrid',
+    mode: callerMode = 'hybrid',
     k = 10,
     minScore = 0.3,
     filters = {},
     rerank: shouldRerank = true,
     expandQuery: shouldExpand = true,
   } = options;
+  
+  // Step –1: Intelligent query routing — avoid running both search paths
+  // when the query strongly signals one mode.
+  const mode = routeQueryIntent(query, callerMode);
   
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {

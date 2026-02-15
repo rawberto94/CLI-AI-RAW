@@ -30,6 +30,7 @@ export const QUEUE_NAMES = {
   WEBHOOK_DELIVERY: 'webhook-delivery',
   RATE_CARD_IMPORT: 'rate-card-import',
   BENCHMARK_CALCULATION: 'benchmark-calculation',
+  EMBEDDING_REFRESH: 'embedding-refresh',
 } as const;
 
 export const JOB_NAMES = {
@@ -42,6 +43,7 @@ export const JOB_NAMES = {
   SEND_WEBHOOK: 'send-webhook',
   IMPORT_RATE_CARDS: 'import-rate-cards',
   CALCULATE_BENCHMARKS: 'calculate-benchmarks',
+  REFRESH_EMBEDDINGS: 'refresh-embeddings',
 } as const;
 
 // Job data types

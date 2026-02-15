@@ -40,6 +40,7 @@ let openaiModule: any = null;
 })();
 
 import { semanticChunk, type SemanticChunk } from '@repo/utils/rag/semantic-chunker';
+import { adaptiveChunk, type EmbedFn } from '@repo/utils/rag/adaptive-chunker';
 
 interface RAGIndexingResult {
   success: boolean;
@@ -116,9 +117,40 @@ export async function processRAGIndexingJob(
       throw new Error('OPENAI_API_KEY not configured');
     }
     
-    // Semantic chunking
+    // Semantic chunking (adaptive or regex-based)
     jobLogger.info({ textLength: contract.rawText.length }, 'Creating semantic chunks');
-    const rawChunks = semanticChunk(contract.rawText);
+    let rawChunks: SemanticChunk[];
+
+    if (process.env.RAG_ADAPTIVE_CHUNKING === 'true' && apiKey) {
+      // Adaptive chunking — splits at true semantic boundaries using embeddings
+      jobLogger.info('Using adaptive embedding-based chunking');
+      const OpenAIEmbed = openaiModule?.default || (await import('openai')).default;
+      const embedClient = new OpenAIEmbed({ apiKey });
+      const embedModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
+
+      const embedFn: EmbedFn = async (texts: string[]) => {
+        // Batch in groups of 64 to stay within API limits
+        const EMBED_BATCH = 64;
+        const all: number[][] = [];
+        for (let b = 0; b < texts.length; b += EMBED_BATCH) {
+          const batch = texts.slice(b, b + EMBED_BATCH);
+          const res = await embedClient.embeddings.create({ model: embedModel, input: batch });
+          all.push(...res.data.map((d: any) => d.embedding));
+        }
+        return all;
+      };
+
+      rawChunks = await adaptiveChunk(contract.rawText, embedFn, {
+        maxChunkSize: 1500,
+        minChunkSize: 200,
+        overlap: 100,
+        breakpointPercentile: 1.0,
+      });
+    } else {
+      // Default: regex-based structural chunking (zero-dependency, deterministic)
+      rawChunks = semanticChunk(contract.rawText);
+    }
+
     jobLogger.info({ chunkCount: rawChunks.length }, 'Chunks created');
     
     if (rawChunks.length === 0) {

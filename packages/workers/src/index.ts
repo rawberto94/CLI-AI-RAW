@@ -16,6 +16,7 @@ import { registerRenewalAlertWorker } from './renewal-alert-worker';
 import { registerObligationTrackerWorker } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
 import { registerAutonomousTriggers, processScheduledTrigger } from './autonomous-scheduler';
+import { registerEmbeddingRefreshScheduler } from './embedding-refresh-scheduler';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
@@ -140,6 +141,12 @@ async function startWorkers() {
     const renewalAlertWorker = registerRenewalAlertWorker();
     const obligationTrackerWorker = registerObligationTrackerWorker();
     const agentOrchestratorWorker = registerAgentOrchestratorWorker();
+
+    // Register embedding refresh scheduler (daily stale-embedding re-indexing)
+    const embeddingRefreshWorker = registerEmbeddingRefreshScheduler();
+    if (embeddingRefreshWorker) {
+      logger.info('🔄 Embedding refresh scheduler registered');
+    }
 
     // Register workers with metrics collector
     metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
