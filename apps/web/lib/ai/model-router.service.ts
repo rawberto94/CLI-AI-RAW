@@ -11,6 +11,7 @@
  */
 
 import pino from 'pino';
+import { prisma } from '@/lib/prisma';
 
 const logger = pino({ name: 'model-router' });
 
@@ -363,22 +364,67 @@ interface CostEntry {
   timestamp: number;
 }
 
+export interface RecordCostParams {
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
+  cost: number;
+  taskType: TaskType;
+  tenantId?: string;
+  userId?: string;
+  requestId?: string;
+  latencyMs?: number;
+  routedFrom?: string;
+  savingsVs4o?: number;
+  complexity?: string;
+}
+
 // In-memory cost tracker (for real-time monitoring within the process)
 const costHistory: CostEntry[] = [];
 const MAX_HISTORY = 1000;
 
 /**
  * Record an AI call for cost tracking.
+ * Writes to in-memory cache for instant queries AND persists to DB asynchronously.
  */
-export function recordAICost(entry: Omit<CostEntry, 'timestamp'>): void {
-  costHistory.push({ ...entry, timestamp: Date.now() });
+export function recordAICost(entry: RecordCostParams): void {
+  // In-memory for real-time dashboards
+  costHistory.push({
+    model: entry.model,
+    inputTokens: entry.inputTokens,
+    outputTokens: entry.outputTokens,
+    cost: entry.cost,
+    taskType: entry.taskType,
+    timestamp: Date.now(),
+  });
   if (costHistory.length > MAX_HISTORY) {
     costHistory.splice(0, costHistory.length - MAX_HISTORY);
   }
+
+  // Persist to DB (fire-and-forget — don't block the AI response)
+  prisma.aiCostLog.create({
+    data: {
+      tenantId: entry.tenantId || 'default',
+      model: entry.model,
+      taskType: entry.taskType,
+      inputTokens: entry.inputTokens,
+      outputTokens: entry.outputTokens,
+      cost: entry.cost,
+      routedFrom: entry.routedFrom,
+      savingsVs4o: entry.savingsVs4o ?? 0,
+      complexity: entry.complexity,
+      requestId: entry.requestId,
+      userId: entry.userId,
+      latencyMs: entry.latencyMs,
+    },
+  }).catch(err => {
+    logger.warn({ err: err?.message }, 'Failed to persist AI cost log');
+  });
 }
 
 /**
  * Get cost summary for a time period.
+ * Uses in-memory cache for sub-second response, with optional DB fallback.
  */
 export function getCostSummary(periodMs: number = 3600_000): {
   totalCost: number;
@@ -426,5 +472,84 @@ export function getCostSummary(periodMs: number = 3600_000): {
     byTaskType,
     estimatedMonthlyCost: Number(estimatedMonthlyCost.toFixed(2)),
     savingsAchieved,
+  };
+}
+
+/**
+ * Get historical cost summary from the database.
+ * Use for dashboards that need data beyond the in-memory window.
+ */
+export async function getHistoricalCostSummary(
+  tenantId: string,
+  periodMs: number = 30 * 24 * 3600_000,
+): Promise<{
+  totalCost: number;
+  totalCalls: number;
+  totalTokens: number;
+  savingsAchieved: number;
+  byModel: { model: string; _sum: { cost: number; inputTokens: number; outputTokens: number }; _count: number }[];
+  byTaskType: { taskType: string; _sum: { cost: number }; _count: number }[];
+  dailyCosts: { date: string; cost: number; calls: number }[];
+}> {
+  const since = new Date(Date.now() - periodMs);
+
+  const [aggregateByModel, aggregateByTask, totals, dailyRaw] = await Promise.all([
+    prisma.aiCostLog.groupBy({
+      by: ['model'],
+      where: { tenantId, createdAt: { gte: since } },
+      _sum: { cost: true, inputTokens: true, outputTokens: true },
+      _count: true,
+    }),
+    prisma.aiCostLog.groupBy({
+      by: ['taskType'],
+      where: { tenantId, createdAt: { gte: since } },
+      _sum: { cost: true },
+      _count: true,
+    }),
+    prisma.aiCostLog.aggregate({
+      where: { tenantId, createdAt: { gte: since } },
+      _sum: { cost: true, inputTokens: true, outputTokens: true, savingsVs4o: true },
+      _count: true,
+    }),
+    prisma.$queryRaw<{ date: string; cost: number; calls: bigint }[]>`
+      SELECT DATE("createdAt") as date,
+             SUM(cost)::float as cost,
+             COUNT(*)::bigint as calls
+      FROM ai_cost_logs
+      WHERE "tenantId" = ${tenantId} AND "createdAt" >= ${since}
+      GROUP BY DATE("createdAt")
+      ORDER BY date DESC
+      LIMIT 90
+    `,
+  ]);
+
+  const totalCost = totals._sum.cost ?? 0;
+  const totalTokens = (totals._sum.inputTokens ?? 0) + (totals._sum.outputTokens ?? 0);
+  const totalSavings = totals._sum.savingsVs4o ?? 0;
+
+  return {
+    totalCost: Number(totalCost.toFixed(4)),
+    totalCalls: totals._count,
+    totalTokens,
+    savingsAchieved: Number(totalSavings.toFixed(4)),
+    byModel: aggregateByModel.map(m => ({
+      model: m.model,
+      _sum: {
+        cost: m._sum.cost ?? 0,
+        inputTokens: m._sum.inputTokens ?? 0,
+        outputTokens: m._sum.outputTokens ?? 0,
+      },
+      _count: m._count,
+    })),
+    byTaskType: aggregateByTask.map(t => ({
+      taskType: t.taskType,
+      _sum: { cost: t._sum.cost ?? 0 },
+      _count: t._count,
+    })),
+    dailyCosts: dailyRaw.map(d => ({
+      date: String(d.date),
+      cost: Number(d.cost),
+      calls: Number(d.calls),
+    })),
   };
 }

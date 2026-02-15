@@ -10,6 +10,7 @@
 
 import { NextRequest } from 'next/server';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { getCostSummary, getHistoricalCostSummary } from '@/lib/ai/model-router.service';
 
 // Dynamic import helper with proper typing
 async function getAiCostOptimizerService() {
@@ -68,8 +69,21 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
         return createSuccessResponse(ctx, selection);
       }
 
+      case 'realtime': {
+        const periodHours = parseInt(searchParams.get('hours') || '1', 10);
+        const summary = getCostSummary(periodHours * 3600_000);
+        return createSuccessResponse(ctx, summary);
+      }
+
+      case 'history': {
+        const days = parseInt(searchParams.get('days') || '30', 10);
+        const periodMs = days * 24 * 3600_000;
+        const history = await getHistoricalCostSummary(tenantId, periodMs);
+        return createSuccessResponse(ctx, history);
+      }
+
       default:
-        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: budget, report, estimate, select-model', 400);
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: budget, report, estimate, select-model, realtime, history', 400);
     }
   });
 
