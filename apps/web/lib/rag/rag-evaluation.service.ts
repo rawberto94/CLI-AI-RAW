@@ -170,15 +170,14 @@ export async function runBatchEvaluation(params: {
   for (const query of queries) {
     try {
       const startTime = Date.now();
-      const searchResult = await hybridSearch({
-        query,
-        tenantId,
-        topK: 5,
+      const searchResults = await hybridSearch(query, {
+        k: 5,
+        filters: { tenantId },
       });
       const latencyMs = Date.now() - startTime;
 
-      const chunks = (searchResult.results || []).map((r: any) => ({
-        content: r.content || '',
+      const chunks = searchResults.map((r) => ({
+        content: r.text || '',
         score: r.score,
         metadata: r.metadata,
       }));

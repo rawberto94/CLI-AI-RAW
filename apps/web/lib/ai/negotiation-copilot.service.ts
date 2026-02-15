@@ -114,16 +114,14 @@ export async function generateNegotiationPlaybook(params: {
   // Find similar past clauses from tenant's portfolio for benchmarking
   let portfolioBenchmark = '';
   try {
-    const similarClauses = await hybridSearch({
-      query: `key clauses terms conditions ${contractType || 'contract'}`,
-      tenantId: params.tenantId,
-      contractId: undefined, // Search across all contracts
-      topK: 5,
-    });
-    if (similarClauses.results?.length) {
+    const similarClauses = await hybridSearch(
+      `key clauses terms conditions ${contractType || 'contract'}`,
+      { k: 5, filters: { tenantId: params.tenantId } }
+    );
+    if (similarClauses.length) {
       portfolioBenchmark = `\n\nBENCHMARK — Similar clauses from your existing portfolio:\n${
-        similarClauses.results.slice(0, 3).map((r: any, i: number) => 
-          `[${i + 1}] ${r.content?.slice(0, 300)}...`
+        similarClauses.slice(0, 3).map((r, i) => 
+          `[${i + 1}] ${r.text?.slice(0, 300)}...`
         ).join('\n')
       }`;
     }
