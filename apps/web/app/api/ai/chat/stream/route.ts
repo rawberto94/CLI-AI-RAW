@@ -748,7 +748,7 @@ ${memoryContext}`;
                     model: usedModel,
                     tokensUsed: Math.round(fullContent.length / 4),
                     confidence: adjustedConfidence,
-                    sources: JSON.stringify(ragSources.slice(0, 10)),
+                    sources: ragSources.slice(0, 10) as any,
                   },
                 ],
               });
