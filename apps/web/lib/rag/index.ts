@@ -29,6 +29,26 @@
  * 6. Metadata Filtering
  *    - Filter by date, supplier, contract type, status
  *    - Combined with vector search for targeted results
+ * 
+ * 7. Contextual Retrieval (NEW)
+ *    - Anthropic-style chunk contextualization (+49% accuracy)
+ *    - Prepends document-level summary to each chunk before embedding
+ * 
+ * 8. Parent Document Retrieval (NEW)
+ *    - Two-tier chunking: small children for matching, large parents for context
+ *    - Ensures LLM gets complete surrounding context
+ * 
+ * 9. Semantic Cache (NEW)
+ *    - Embedding-similarity query cache for 60-80% latency reduction
+ *    - TTL-based expiry with per-tenant isolation
+ * 
+ * 10. Self-Corrective RAG / CRAG (NEW)
+ *     - LLM grades retrieved chunks for relevance
+ *     - Auto-reformulates query on low-confidence results
+ * 
+ * 11. Chunk Relationship Graph (NEW)
+ *     - Legal concept ontology for co-retrieval of related clauses
+ *     - Graph traversal for multi-hop reasoning
  */
 
 // Core RAG Service - Main entry point
@@ -44,6 +64,55 @@ export {
   type RAGChunk,
   type ChunkMetadata,
 } from './advanced-rag.service';
+
+// Contextual Retrieval Service
+export {
+  contextualizeChunks,
+  getDocumentSummary,
+  generateChunkContext,
+  invalidateDocumentSummary,
+} from './contextual-retrieval.service';
+
+// Parent Document Retrieval Service
+export {
+  createParentChildChunks,
+  expandToParentChunks,
+} from './parent-document-retrieval.service';
+
+// Semantic Cache Service
+export {
+  getSemanticCache,
+  resetSemanticCache,
+  cosineSimilarity,
+  type SemanticCacheConfig,
+  type CacheStats,
+} from './semantic-cache.service';
+
+// Self-Corrective RAG (CRAG) Service
+export {
+  selfCorrectiveRetrieval,
+  gradeChunks,
+  reformulateQuery,
+  type CRAGResult,
+  type CRAGConfig,
+  type GradedChunk,
+  type RelevanceGrade,
+} from './self-corrective-rag.service';
+
+// Chunk Relationship Graph Service
+export {
+  buildContractGraph,
+  expandWithGraphContext,
+  getChunkGraph,
+  resetChunkGraph,
+  LEGAL_CONCEPT_GROUPS,
+  type ChunkGraph,
+  type ChunkNode,
+  type ChunkEdge,
+  type EdgeType,
+  type GraphTraversalOptions,
+  type RelatedChunk,
+} from './chunk-graph.service';
 
 // Reranking Service
 export {

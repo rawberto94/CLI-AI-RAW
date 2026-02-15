@@ -45,7 +45,7 @@ export async function triggerContractReindex(
 
     // Delete existing embeddings if requested
     if (deleteExisting) {
-      await prisma.embedding.deleteMany({
+      await prisma.contractEmbedding.deleteMany({
         where: { contractId },
       });
     }

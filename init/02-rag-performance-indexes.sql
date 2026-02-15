@@ -17,7 +17,7 @@ IF EXISTS (
 ) THEN -- Ensure the vector column has explicit 1536 dimensions (text-embedding-3-small)
 ALTER TABLE "ContractEmbedding"
 ALTER COLUMN embedding TYPE vector(1536);
-CREATE INDEX idx_contract_embedding_vector_hnsw ON "ContractEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64);
+CREATE INDEX idx_contract_embedding_vector_hnsw ON "ContractEmbedding" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 200);
 RAISE NOTICE 'Created HNSW vector index on ContractEmbedding.embedding';
 END IF;
 ELSE RAISE NOTICE 'HNSW vector index already exists';

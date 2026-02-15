@@ -1,27 +1,51 @@
-# Docker Compose for RAG System
+# Docker Compose for RAG System (pgvector)
 # Run with: docker-compose -f docker-compose.rag.yml up -d
+#
+# NOTE: The platform uses PostgreSQL 16 + pgvector for vector storage.
+# ChromaDB was removed — all embeddings live in the ContractEmbedding table.
+# This compose file provides a standalone pgvector instance for RAG development.
 
 version: '3.8'
 
 services:
-  # Chroma Vector Database
-  chroma:
-    image: chromadb/chroma:latest
-    container_name: contract-intelligence-chroma
+  # PostgreSQL with pgvector extension for RAG
+  pgvector:
+    image: pgvector/pgvector:pg16
+    container_name: contract-intelligence-pgvector
     ports:
-      - "8000:8000"
+      - "5433:5432"
     volumes:
-      - chroma-data:/chroma/chroma
+      - pgvector-data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d
     environment:
-      - IS_PERSISTENT=TRUE
-      - ANONYMIZED_TELEMETRY=FALSE
+      POSTGRES_DB: ${POSTGRES_DB:-contigo}
+      POSTGRES_USER: ${POSTGRES_USER:-contigo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-contigo_dev}
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v2/heartbeat')\" || exit 1"]
-      interval: 30s
-      timeout: 10s
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-contigo}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Redis for semantic cache and job queues
+  redis:
+    image: redis:7-alpine
+    container_name: contract-intelligence-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
       retries: 3
     restart: unless-stopped
 
 volumes:
-  chroma-data:
+  pgvector-data:
+    driver: local
+  redis-data:
     driver: local

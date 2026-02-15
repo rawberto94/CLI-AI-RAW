@@ -14,10 +14,8 @@ CREATE TABLE "ai_cost_logs" (
     "user_id" TEXT,
     "latency_ms" INTEGER,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "ai_cost_logs_pkey" PRIMARY KEY ("id")
 );
-
 -- CreateIndex
 CREATE INDEX "ai_cost_logs_tenant_id_idx" ON "ai_cost_logs"("tenant_id");
 CREATE INDEX "ai_cost_logs_tenant_id_created_at_idx" ON "ai_cost_logs"("tenant_id", "created_at");

@@ -837,20 +837,24 @@ model ContractArtifact {
 }
 
 model ContractEmbedding {
-  id         String                 @id @default(cuid())
-  contractId String
-  chunkIndex Int
-  chunkText  String
-  embedding  Unsupported("vector")?
-  chunkType  String?
-  section    String?
-  createdAt  DateTime               @default(now())
-  updatedAt  DateTime               @updatedAt
-  contract   Contract               @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  id           String                 @id @default(cuid())
+  contractId   String
+  chunkIndex   Int
+  chunkText    String
+  embedding    Unsupported("vector")?
+  chunkType    String?
+  section      String?
+  tenantId     String?
+  contractType String?
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  contract     Contract               @relation(fields: [contractId], references: [id], onDelete: Cascade)
 
   @@unique([contractId, chunkIndex])
   @@index([contractId])
   @@index([chunkType])
+  @@index([tenantId])
+  @@index([contractType])
 }
 
 model Clause {
@@ -5385,21 +5389,21 @@ model AiCostLog {
   tenantId String @map("tenant_id")
 
   // Request details
-  model       String // gpt-4o, gpt-4o-mini, gpt-4.1-nano
-  taskType    String @map("task_type") // chat, analysis, extraction, etc.
-  inputTokens Int    @map("input_tokens")
-  outputTokens Int   @map("output_tokens")
-  cost        Float  // USD cost of this request
+  model        String // gpt-4o, gpt-4o-mini, gpt-4.1-nano
+  taskType     String @map("task_type") // chat, analysis, extraction, etc.
+  inputTokens  Int    @map("input_tokens")
+  outputTokens Int    @map("output_tokens")
+  cost         Float // USD cost of this request
 
   // Routing metadata
-  routedFrom  String?  @map("routed_from") // Original model before routing
-  savingsVs4o Float    @default(0) @map("savings_vs_4o") // % savings vs gpt-4o
-  complexity  String?  // low, medium, high, critical
+  routedFrom  String? @map("routed_from") // Original model before routing
+  savingsVs4o Float   @default(0) @map("savings_vs_4o") // % savings vs gpt-4o
+  complexity  String? // low, medium, high, critical
 
   // Request context
-  requestId   String?  @map("request_id")
-  userId      String?  @map("user_id")
-  latencyMs   Int?     @map("latency_ms")
+  requestId String? @map("request_id")
+  userId    String? @map("user_id")
+  latencyMs Int?    @map("latency_ms")
 
   createdAt DateTime @default(now()) @map("created_at")
 
