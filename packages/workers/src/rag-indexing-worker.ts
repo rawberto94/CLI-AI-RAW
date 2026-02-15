@@ -419,6 +419,19 @@ export async function processRAGIndexingJob(
       progress: 100,
       currentStep: 'rag.indexing',
     });
+
+    // Fire event trigger for post-upload intelligence pipeline
+    try {
+      const { fireEventTrigger } = await import('./autonomous-scheduler');
+      await fireEventTrigger('contract_indexed', {
+        contractId,
+        tenantId,
+        chunksCreated: chunks.length,
+        embeddingsGenerated: embeddings.length,
+      });
+    } catch (triggerErr) {
+      jobLogger.warn({ error: (triggerErr as Error).message }, 'Event trigger fire failed (non-fatal)');
+    }
     
     return {
       success: true,

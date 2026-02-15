@@ -15,6 +15,7 @@ import { registerCategorizationWorker } from './categorization-worker';
 import { registerRenewalAlertWorker } from './renewal-alert-worker';
 import { registerObligationTrackerWorker } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
+import { registerAutonomousTriggers, processScheduledTrigger } from './autonomous-scheduler';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
@@ -151,6 +152,14 @@ async function startWorkers() {
     metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
     metricsCollector.registerWorker('agent-orchestrator', agentOrchestratorWorker);
 
+    // Register autonomous agent triggers (cron-based)
+    try {
+      await registerAutonomousTriggers();
+      logger.info('🤖 Autonomous agent triggers registered');
+    } catch (triggerError) {
+      logger.warn({ error: triggerError }, '⚠️ Autonomous triggers failed to register (non-fatal)');
+    }
+
     // Start backpressure monitoring
     backpressure.start();
     logger.info('📊 Backpressure monitoring started');
@@ -195,6 +204,7 @@ async function startWorkers() {
         'renewal-alerts (deadline monitoring)',
         'obligation-tracker (SLA & milestone monitoring)',
         'agent-orchestrator (manager agent loop)',
+        'autonomous-triggers (cron-based AI agents)',
       ],
       resilience: {
         circuitBreaker: 'enabled',

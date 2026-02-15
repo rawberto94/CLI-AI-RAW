@@ -36,6 +36,7 @@ import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streamin
 import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
+import { routeToModel, recordAICost, type TaskType } from '@/lib/ai/model-router.service';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -129,8 +130,40 @@ function detectQueryComplexity(message: string): QueryComplexity {
   return 'moderate';
 }
 
-function buildModelChain(complexity: QueryComplexity): ModelConfig[] {
+function buildModelChain(complexity: QueryComplexity, query?: string): ModelConfig[] {
   const baseModel = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+
+  // Use smart model router for dynamic selection
+  if (query) {
+    try {
+      const taskTypeMap: Record<QueryComplexity, TaskType> = {
+        simple: 'simple_qa',
+        moderate: 'extraction',
+        complex: 'analysis',
+      };
+      const routing = routeToModel({
+        query,
+        taskType: taskTypeMap[complexity],
+        inputTokens: Math.round(query.length / 4),
+      });
+      // Build chain with routed model first, then fallbacks
+      const chain: ModelConfig[] = [
+        { provider: 'openai', model: routing.model, priority: 1 },
+      ];
+      if (routing.model !== 'gpt-4o') {
+        chain.push({ provider: 'openai', model: 'gpt-4o', priority: 2 });
+      }
+      if (routing.model !== baseModel && routing.model !== 'gpt-4o') {
+        chain.push({ provider: 'openai', model: baseModel, priority: 3 });
+      }
+      if (process.env.ANTHROPIC_API_KEY) {
+        chain.push({ provider: 'anthropic', model: 'claude-3-5-sonnet-20241022', priority: chain.length + 1 });
+      }
+      return chain;
+    } catch {
+      // Fall through to default logic
+    }
+  }
 
   if (complexity === 'complex') {
     // Route complex queries to gpt-4o first, then fall back
@@ -424,7 +457,7 @@ ${memoryContext}`;
 
         // ── Smart model routing based on query complexity ──────────
         const queryComplexity = detectQueryComplexity(message);
-        const modelChain = buildModelChain(queryComplexity);
+        const modelChain = buildModelChain(queryComplexity, message);
 
         // ── Agentic loop with tool calling ────────────────────────────
         let iteration = 0;

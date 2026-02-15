@@ -14,6 +14,34 @@ import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
 // ============================================================================
+// Query Intent → ChunkType Mapping
+// ============================================================================
+
+/** Auto-detect relevant chunk types from query intent for pre-filtering */
+export function detectChunkTypes(query: string): ('heading' | 'paragraph' | 'list' | 'table' | 'clause')[] | undefined {
+  const q = query.toLowerCase();
+  const types: Set<'heading' | 'paragraph' | 'list' | 'table' | 'clause'> = new Set();
+
+  // Clause-related queries
+  if (/clause|term|condition|obligation|provision|warranty|indemnif|liabilit|terminat|confiden|force.?majeure|non.?compete|governing.?law/i.test(q)) {
+    types.add('clause');
+    types.add('heading');
+  }
+  // Table/rate/pricing queries
+  if (/table|schedule|rate|pricing|fee|cost|amount|payment.?schedule|milestone|deliverable/i.test(q)) {
+    types.add('table');
+    types.add('list');
+  }
+  // Section/overview queries
+  if (/section|article|overview|summary|scope|purpose/i.test(q)) {
+    types.add('heading');
+    types.add('paragraph');
+  }
+  // If nothing specific detected, return undefined (no filter = search everything)
+  return types.size > 0 ? Array.from(types) : undefined;
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -68,6 +96,10 @@ export interface SearchFilters {
   suppliers?: string[];
   contractTypes?: string[];
   status?: string[];
+  /** Chunk-level pre-filter: only search specific chunk types */
+  chunkTypes?: ('heading' | 'paragraph' | 'list' | 'table' | 'clause')[];
+  /** Chunk-level pre-filter: only search specific sections */
+  sections?: string[];
 }
 
 // ============================================================================
@@ -193,6 +225,41 @@ export function semanticChunk(
 // ============================================================================
 
 /**
+ * Generate a Hypothetical Document Embedding (HyDE)
+ * Creates a synthetic document that would answer the query, then embeds it.
+ * This bridges the vocabulary gap between questions and document text.
+ */
+async function generateHypotheticalDocument(
+  query: string,
+  apiKey: string
+): Promise<string | null> {
+  try {
+    const OpenAI = (await import('openai')).OpenAI;
+    const openai = new OpenAI({ apiKey });
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: `Generate a realistic 2-3 sentence contract clause that would answer the user's question. Write ONLY the clause text — no explanation, no prefix.
+
+Example query: "What is the termination notice period?"
+Example output: "Either party may terminate this Agreement by providing sixty (60) days prior written notice to the other party. In the event of a material breach, the non-breaching party may terminate immediately upon written notice."`,
+        },
+        { role: 'user', content: query },
+      ],
+      temperature: 0.5,
+      max_tokens: 200,
+    });
+
+    return response.choices[0]?.message?.content || null;
+  } catch {
+    return null; // Non-critical — just skip HyDE on failure
+  }
+}
+
+/**
  * Generate query variations for better recall
  */
 export async function expandQuery(
@@ -309,11 +376,26 @@ async function vectorSearch(
     }
   }
   
+  // Chunk-level pre-filters (search directly on ContractEmbedding columns)
+  if (filters.chunkTypes?.length) {
+    const validTypes = ['heading', 'paragraph', 'list', 'table', 'clause'];
+    const safeTypes = filters.chunkTypes.filter(t => validTypes.includes(t));
+    if (safeTypes.length > 0) {
+      conditions.push(Prisma.sql`ce."chunkType" IN (${Prisma.join(safeTypes)})`);
+    }
+  }
+  if (filters.sections?.length) {
+    conditions.push(Prisma.sql`ce."section" IN (${Prisma.join(filters.sections)})`);
+  }
+  
   const whereClause = conditions.length > 0 
     ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}` 
     : Prisma.empty;
   
   try {
+    // Set HNSW ef_search for high recall (95%+), then run vector search
+    await prisma.$executeRawUnsafe('SET hnsw.ef_search = 100');
+    
     const results = await prisma.$queryRaw<VectorResult[]>`
       SELECT 
         ce."contractId",
@@ -443,8 +525,8 @@ interface RerankedResult {
 }
 
 /**
- * Rerank results using a cross-encoder approach via GPT
- * (In production, use Cohere Rerank or a local cross-encoder model)
+ * Rerank results using Cohere Rerank v3 (primary) or GPT cross-encoder (fallback)
+ * Cohere is ~10x cheaper and purpose-built for reranking ($0.10/1000 queries)
  */
 async function rerank(
   query: string,
@@ -454,12 +536,45 @@ async function rerank(
   const apiKey = options?.apiKey || process.env.OPENAI_API_KEY;
   const topK = options?.topK || 10;
   
-  if (!apiKey || results.length === 0) {
+  if (results.length === 0) {
     return results.map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
   }
   
-  // Take top candidates for reranking (reranking is expensive)
   const candidates = results.slice(0, Math.min(20, results.length));
+  
+  // Try Cohere Rerank first (fast, cheap, purpose-built)
+  const cohereApiKey = process.env.COHERE_API_KEY;
+  if (cohereApiKey) {
+    try {
+      const { CohereClient } = await import('cohere-ai');
+      const cohere = new CohereClient({ token: cohereApiKey });
+      
+      const response = await cohere.v2.rerank({
+        model: 'rerank-v3.5',
+        query,
+        documents: candidates.map(c => ({ text: c.text.slice(0, 1000) })),
+        topN: topK,
+      });
+      
+      return (response.results || []).map((r: any) => {
+        const original = candidates[r.index]!;
+        return {
+          contractId: original.contractId,
+          chunkIndex: original.chunkIndex,
+          text: original.text,
+          originalScore: original.score,
+          rerankedScore: r.relevanceScore,
+        };
+      });
+    } catch (err) {
+      console.warn('[RAG] Cohere rerank failed, falling back to GPT:', (err as Error).message);
+    }
+  }
+  
+  // Fallback: GPT cross-encoder reranking
+  if (!apiKey) {
+    return candidates.map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
+  }
   
   try {
     const OpenAI = (await import('openai')).OpenAI;
@@ -493,7 +608,6 @@ Return relevance scores as JSON array:`,
     });
     
     let content = response.choices[0]?.message?.content || '[]';
-    // Strip markdown code blocks if present
     content = content.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
     const scores = JSON.parse(content) as number[];
     
@@ -503,13 +617,82 @@ Return relevance scores as JSON array:`,
       rerankedScore: scores[i] ?? c.score,
     }));
     
-    // Sort by reranked score
     reranked.sort((a, b) => b.rerankedScore - a.rerankedScore);
     
     return reranked.slice(0, topK);
   } catch {
-    return results.slice(0, topK).map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
+    return candidates.slice(0, topK).map(r => ({ ...r, originalScore: r.score, rerankedScore: r.score }));
   }
+}
+
+// ============================================================================
+// Maximal Marginal Relevance (text-overlap variant)
+// ============================================================================
+
+/**
+ * Lightweight MMR based on Jaccard text overlap — removes near-duplicate chunks
+ * without requiring a separate embedding call. λ controls the relevance–diversity trade-off:
+ * λ=1.0 means pure relevance, λ=0.0 means pure diversity. Default 0.7 = relevance-biased.
+ */
+function applyMMRDiversity<T extends { text: string; score: number }>(
+  results: T[],
+  lambda: number = 0.7
+): T[] {
+  if (results.length <= 1) return results;
+  
+  const selected: T[] = [results[0]!];
+  const candidates = results.slice(1);
+  
+  while (selected.length < results.length && candidates.length > 0) {
+    let bestIdx = 0;
+    let bestMMR = -Infinity;
+    
+    for (let i = 0; i < candidates.length; i++) {
+      const candidate = candidates[i]!;
+      const relevance = candidate.score;
+      
+      // Compute max Jaccard similarity to any already-selected result
+      let maxSim = 0;
+      for (const sel of selected) {
+        const sim = jaccardSimilarity(candidate.text, sel.text);
+        if (sim > maxSim) maxSim = sim;
+      }
+      
+      // MMR score = λ * relevance - (1-λ) * maxSimilarityToSelected
+      const mmr = lambda * relevance - (1 - lambda) * maxSim;
+      if (mmr > bestMMR) {
+        bestMMR = mmr;
+        bestIdx = i;
+      }
+    }
+    
+    selected.push(candidates.splice(bestIdx, 1)[0]!);
+  }
+  
+  return selected;
+}
+
+/** Jaccard similarity on word trigrams — fast proxy for text overlap */
+function jaccardSimilarity(a: string, b: string): number {
+  const trigramsA = wordTrigrams(a);
+  const trigramsB = wordTrigrams(b);
+  if (trigramsA.size === 0 && trigramsB.size === 0) return 1;
+  if (trigramsA.size === 0 || trigramsB.size === 0) return 0;
+  
+  let intersection = 0;
+  for (const t of trigramsA) {
+    if (trigramsB.has(t)) intersection++;
+  }
+  return intersection / (trigramsA.size + trigramsB.size - intersection);
+}
+
+function wordTrigrams(text: string): Set<string> {
+  const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const trigrams = new Set<string>();
+  for (let i = 0; i <= words.length - 3; i++) {
+    trigrams.add(`${words[i]} ${words[i+1]} ${words[i+2]}`);
+  }
+  return trigrams;
 }
 
 // ============================================================================
@@ -538,10 +721,25 @@ export async function hybridSearch(
   }
   
   try {
-    // Step 1: Query expansion
+    // Step 0: Auto-detect chunk types from query intent (pre-filter)
+    const autoChunkTypes = detectChunkTypes(query);
+    const effectiveFilters: SearchFilters = {
+      ...filters,
+      chunkTypes: filters.chunkTypes || autoChunkTypes,
+    };
+    
+    // Step 1: Query expansion + HyDE (Hypothetical Document Embedding)
     let queries = [query];
     if (shouldExpand && mode !== 'keyword') {
-      queries = await expandQuery(query, { apiKey });
+      // Run HyDE and query expansion in parallel for speed
+      const [expanded, hydeDoc] = await Promise.all([
+        expandQuery(query, { apiKey }),
+        generateHypotheticalDocument(query, apiKey),
+      ]);
+      queries = expanded;
+      if (hydeDoc) {
+        queries.push(hydeDoc); // Add hypothetical document as an additional "query"
+      }
     }
     
     // Step 2: Generate embeddings for all query variations
@@ -562,7 +760,7 @@ export async function hybridSearch(
     if (mode === 'semantic' || mode === 'hybrid') {
       // Search with each query variation and merge results
       const allVectorResults = await Promise.all(
-        queryEmbeddings.map(emb => vectorSearch(emb, filters, k * 2))
+        queryEmbeddings.map(emb => vectorSearch(emb, effectiveFilters, k * 2))
       );
       
       // Deduplicate and keep best scores
@@ -581,7 +779,7 @@ export async function hybridSearch(
     }
     
     if (mode === 'keyword' || mode === 'hybrid') {
-      keywordResults = await keywordSearch(query, filters, k * 2);
+      keywordResults = await keywordSearch(query, effectiveFilters, k * 2);
     }
     
     // Step 4: Combine results with RRF (for hybrid mode)
@@ -639,6 +837,11 @@ export async function hybridSearch(
         matchType: combinedResults.find(c => c.contractId === r.contractId && c.chunkIndex === r.chunkIndex)?.matchType || 'hybrid',
       }));
     }
+    
+    // Step 5.5: MMR Diversity — remove near-duplicate chunks
+    // Uses a lightweight text-overlap MMR to ensure result diversity without
+    // needing embeddings (which would require another API call)
+    finalResults = applyMMRDiversity(finalResults, 0.7);
     
     // Step 6: Fetch contract metadata and format results
     const contractIds = [...new Set(finalResults.map(r => r.contractId))];
@@ -947,5 +1150,7 @@ const advancedRagService = {
   crossContractSearch,
   processContractWithSemanticChunking,
   rerank,
+  detectChunkTypes,
+  generateHypotheticalDocument,
 };
 export default advancedRagService;

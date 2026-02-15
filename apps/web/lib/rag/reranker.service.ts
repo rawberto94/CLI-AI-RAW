@@ -2,7 +2,8 @@
  * Cross-Encoder Reranking Service
  * 
  * Provides high-precision reranking using cross-encoder models.
- * Cross-encoders score query-document pairs jointly for better relevance.
+ * Primary: Cohere Rerank v3 (fast, cheap, purpose-built)
+ * Fallback: GPT-4o-mini cross-encoder scoring
  */
 
 import OpenAI from 'openai';
@@ -17,7 +18,7 @@ export interface RerankResult {
 
 export interface RerankOptions {
   topK?: number;
-  model?: 'openai' | 'cohere';
+  model?: 'cohere' | 'openai' | 'auto';
   minScore?: number;
 }
 
@@ -25,6 +26,52 @@ export interface RerankOptions {
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
+
+// ============================================================================
+// COHERE RERANKING (Primary — 10x cheaper, purpose-built)
+// ============================================================================
+
+/**
+ * Rerank using Cohere Rerank v3 API
+ * ~$0.10/1000 queries vs ~$1/1000 for GPT-based reranking
+ */
+export async function cohereRerank(
+  query: string,
+  documents: string[],
+  options: RerankOptions = {}
+): Promise<RerankResult[]> {
+  const { topK = 10, minScore = 0.3 } = options;
+  const cohereApiKey = process.env.COHERE_API_KEY;
+  
+  if (!cohereApiKey || documents.length === 0) {
+    // Fall back to GPT reranking if no Cohere key
+    return crossEncoderRerank(query, documents, options);
+  }
+
+  try {
+    const { CohereClient } = await import('cohere-ai');
+    const cohere = new CohereClient({ token: cohereApiKey });
+
+    const response = await cohere.v2.rerank({
+      model: 'rerank-v3.5',
+      query,
+      documents: documents.map(text => ({ text })),
+      topN: topK,
+    });
+
+    return (response.results || [])
+      .filter((r: any) => r.relevanceScore >= minScore)
+      .map((r: any) => ({
+        index: r.index,
+        text: documents[r.index] || '',
+        score: r.relevanceScore,
+        originalScore: 1 - (r.index * 0.05),
+      }));
+  } catch (error) {
+    console.warn('[Reranker] Cohere rerank failed, falling back to GPT:', (error as Error).message);
+    return crossEncoderRerank(query, documents, options);
+  }
+}
 
 /**
  * Cross-encoder reranking using OpenAI
@@ -302,20 +349,24 @@ export async function mmrRerank(
 
 /**
  * Hybrid reranking combining multiple strategies
+ * Default: Cohere Rerank v3 (fast + cheap)
+ * Fallback chain: Cohere → GPT cross-encoder → semantic reranking
  */
 export async function hybridRerank(
   query: string,
   documents: string[],
   options: RerankOptions & { useCrossEncoder?: boolean } = {}
 ): Promise<RerankResult[]> {
-  const { useCrossEncoder = true, topK = 10 } = options;
+  const { model = 'auto', topK = 10 } = options;
 
-  // For production with many documents, use semantic reranking
-  // For high-stakes queries, use cross-encoder
-  if (useCrossEncoder && documents.length <= 20) {
+  // Auto mode: use Cohere if available, GPT for small sets, semantic for large
+  if (model === 'cohere' || (model === 'auto' && process.env.COHERE_API_KEY)) {
+    return cohereRerank(query, documents, options);
+  }
+
+  if ((model === 'openai' || model === 'auto') && documents.length <= 20) {
     return crossEncoderRerank(query, documents, options);
   }
 
-  // Fall back to semantic reranking for larger sets
   return semanticRerank(query, documents, options);
 }

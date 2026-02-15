@@ -27,6 +27,8 @@ export interface ParallelRAGOptions {
   useHyDE?: boolean;
   useExpansion?: boolean;
   useSynonyms?: boolean;
+  /** Chunk-level pre-filter: only search specific chunk types */
+  chunkTypes?: ('heading' | 'paragraph' | 'list' | 'table' | 'clause')[];
 }
 
 export interface ParallelRAGResult {
@@ -143,7 +145,7 @@ export async function parallelMultiQueryRAG(
     const searchStart = Date.now();
 
     const searchPromises = queryEmbeddings.map((embedding, idx) =>
-      vectorSearch(embedding, tenantId, k * 2).then(results => ({
+      vectorSearch(embedding, tenantId, k * 2, options.chunkTypes).then(results => ({
         queryIndex: idx,
         queryText: allQueries[idx],
         results,
@@ -387,14 +389,30 @@ interface KeywordSearchResult {
 async function vectorSearch(
   embedding: number[],
   tenantId: string | undefined,
-  k: number
+  k: number,
+  chunkTypes?: ('heading' | 'paragraph' | 'list' | 'table' | 'clause')[]
 ): Promise<VectorSearchResult[]> {
   const vectorStr = `[${embedding.join(',')}]`;
 
   try {
-    const whereClause = tenantId
-      ? Prisma.sql`WHERE c."tenantId" = ${tenantId}`
+    const conditions: Prisma.Sql[] = [];
+    if (tenantId) {
+      conditions.push(Prisma.sql`c."tenantId" = ${tenantId}`);
+    }
+    if (chunkTypes?.length) {
+      const validTypes = ['heading', 'paragraph', 'list', 'table', 'clause'];
+      const safeTypes = chunkTypes.filter(t => validTypes.includes(t));
+      if (safeTypes.length > 0) {
+        conditions.push(Prisma.sql`ce."chunkType" IN (${Prisma.join(safeTypes)})`);
+      }
+    }
+
+    const whereClause = conditions.length > 0
+      ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
       : Prisma.empty;
+
+    // Set HNSW ef_search for high recall (95%+)
+    await prisma.$executeRawUnsafe('SET hnsw.ef_search = 100');
 
     const results = await prisma.$queryRaw<VectorSearchResult[]>`
       SELECT 

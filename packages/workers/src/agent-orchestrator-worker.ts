@@ -3,6 +3,7 @@ import { JOB_NAMES, QUEUE_NAMES, AgentOrchestrationJobData } from '@repo/utils/q
 import clientsDb from 'clients-db';
 import pino from 'pino';
 
+import { processScheduledTrigger } from './autonomous-scheduler';
 import { ensureProcessingJob, updateStep } from './workflow/processing-job';
 import { getTraceContextFromJobData } from './observability/trace';
 import { getWorkerConcurrency, getWorkerLimiter } from './config/worker-runtime';
@@ -88,6 +89,20 @@ async function computeArtifactNeed(args: { contractId: string; tenantId: string;
 export async function runAgentOrchestrationJob(
   job: JobType<AgentOrchestrationJobData>
 ): Promise<{ done: boolean; iteration: number }> {
+  // ===== AUTONOMOUS TRIGGER JOBS =====
+  // Repeatable cron jobs arrive with autonomous:true — delegate to scheduler
+  if ((job.data as any).autonomous && (job.data as any).goalType) {
+    const { triggerName, goalType, trigger } = job.data as any;
+    logger.info({ goalType, triggerName, jobId: job.id }, '🤖 Autonomous trigger tick');
+    try {
+      const result = await processScheduledTrigger(triggerName, goalType, trigger);
+      logger.info({ goalType, ...result }, '🤖 Autonomous trigger processed');
+    } catch (error) {
+      logger.error({ goalType, error: (error as Error).message }, 'Autonomous trigger failed');
+    }
+    return { done: true, iteration: 0 };
+  }
+
   const { contractId, tenantId } = job.data;
   const iteration = Number(job.data.iteration ?? 0);
   const trace = getTraceContextFromJobData(job.data);
