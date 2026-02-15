@@ -196,6 +196,35 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       });
     }
 
+    case 'contractTypeOverrides': {
+      // Set per-contract-type artifact overrides (P3 #16)
+      // payload: { contractType: 'SOW', overrides: { FINANCIAL: { enabled: true }, RATES: { enabled: false } } }
+      const { contractType, overrides } = payload;
+      if (!contractType || !overrides || typeof overrides !== 'object') {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing contractType or overrides in payload', 400);
+      }
+      const existingConfig = await artifactConfigService.getTenantConfig(tenantId);
+      const existing = (existingConfig as any)?.contractTypeOverrides || {};
+      existing[contractType] = { ...(existing[contractType] || {}), ...overrides };
+      await artifactConfigService.updateTenantConfig(tenantId, {
+        contractTypeOverrides: existing,
+      } as any);
+      return createSuccessResponse(ctx, {
+        success: true,
+        message: `Contract type overrides updated for ${contractType}`,
+        data: { contractType, overrides: existing[contractType] },
+      });
+    }
+
+    case 'getContractTypeOverrides': {
+      // Get per-contract-type overrides
+      const existingConfig = await artifactConfigService.getTenantConfig(tenantId);
+      return createSuccessResponse(ctx, {
+        success: true,
+        data: (existingConfig as any)?.contractTypeOverrides || {},
+      });
+    }
+
     default:
       return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
   }

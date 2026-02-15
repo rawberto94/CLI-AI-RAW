@@ -102,7 +102,8 @@ export type ArtifactType =
   | 'PARTIES'
   | 'TIMELINE'
   | 'DELIVERABLES'
-  | 'EXECUTIVE_SUMMARY';
+  | 'EXECUTIVE_SUMMARY'
+  | 'RATES';
 
 export type ArtifactRelevance = 'required' | 'optional' | 'not-applicable';
 
@@ -161,6 +162,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'not-applicable',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'confidentiality_definition',
@@ -214,6 +216,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_services',
@@ -276,6 +279,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'required',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'project_scope',
@@ -337,6 +341,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'service_levels',
@@ -394,6 +399,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'position_and_duties',
@@ -461,6 +467,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'premises_description',
@@ -528,6 +535,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'license_grant',
@@ -588,6 +596,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'goods_description',
@@ -648,6 +657,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'partnership_purpose',
@@ -708,6 +718,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'required',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_services',
@@ -767,6 +778,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'subscription_scope',
@@ -828,6 +840,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'principal_amount',
@@ -890,6 +903,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'recitals_background',
@@ -946,6 +960,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'grant_of_franchise',
@@ -1008,6 +1023,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'appointment',
@@ -1066,6 +1082,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'appointment',
@@ -1122,6 +1139,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'purpose',
@@ -1180,6 +1198,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'required',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_services',
@@ -1236,6 +1255,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'warranty_scope',
@@ -1290,6 +1310,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'coverage',
@@ -1348,6 +1369,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'purchase_price',
@@ -1409,6 +1431,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'investment_amount',
@@ -1468,6 +1491,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'grant_of_rights',
@@ -1526,6 +1550,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'variation_scope',
@@ -1580,6 +1605,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_engagement',
@@ -1640,6 +1666,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'not-applicable',
       EXECUTIVE_SUMMARY: 'optional',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'amendment_number',
@@ -1690,6 +1717,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'not-applicable',
       EXECUTIVE_SUMMARY: 'optional',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'addendum_scope',
@@ -1736,6 +1764,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'purpose',
@@ -1789,6 +1818,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'not-applicable',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'transaction_description',
@@ -1847,6 +1877,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'products',
@@ -1906,6 +1937,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'required',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'products',
@@ -1965,6 +1997,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'appointment',
@@ -2024,6 +2057,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'sponsorship_rights',
@@ -2079,6 +2113,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_services',
@@ -2136,6 +2171,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'required',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_work',
@@ -2199,6 +2235,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'property_description',
@@ -2257,6 +2294,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'share_ownership',
@@ -2317,6 +2355,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'formation',
@@ -2377,6 +2416,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'item_description',
@@ -2433,6 +2473,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'billing_details',
@@ -2486,6 +2527,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'scope_of_work',
@@ -2536,6 +2578,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: [
       'executive_summary',
@@ -2587,6 +2630,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'payment_details',
@@ -2629,6 +2673,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'shipper_details',
@@ -2682,6 +2727,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'data_categories',
@@ -2732,6 +2778,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'acceptance',
@@ -2787,6 +2834,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'resolution_topic',
@@ -2831,6 +2879,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'powers_granted',
@@ -2879,6 +2928,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'scope_of_work',
@@ -2928,6 +2978,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'change_description',
@@ -2975,6 +3026,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'requirements',
@@ -3024,6 +3076,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'position',
@@ -3074,6 +3127,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'separation_date',
@@ -3127,6 +3181,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'required',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'required',
     },
     clauseCategories: [
       'services',
@@ -3180,6 +3235,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['item_list', 'quantities', 'weights'],
     financialFields: ['declared_value'],
@@ -3208,6 +3264,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['items_delivered', 'recipient', 'delivery_date'],
     financialFields: [],
@@ -3236,6 +3293,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['data_collected', 'data_use', 'data_sharing', 'user_rights', 'security', 'cookies', 'retention'],
     financialFields: [],
@@ -3264,6 +3322,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['permitted_use', 'prohibited_activities', 'enforcement', 'consequences'],
     financialFields: [],
@@ -3292,6 +3351,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['ethical_standards', 'expected_behavior', 'prohibited_conduct', 'reporting', 'consequences'],
     financialFields: [],
@@ -3320,6 +3380,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['certification_type', 'requirements_met', 'validity', 'issuer'],
     financialFields: [],
@@ -3348,6 +3409,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['attendees', 'agenda', 'discussions', 'resolutions', 'action_items'],
     financialFields: ['budget_approvals'],
@@ -3376,6 +3438,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['guarantee_scope', 'guaranteed_obligations', 'limitations', 'termination', 'enforcement'],
     financialFields: ['guarantee_amount', 'maximum_liability'],
@@ -3404,6 +3467,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['credit_amount', 'beneficiary', 'required_documents', 'expiry', 'payment_terms'],
     financialFields: ['credit_amount', 'currency', 'fees'],
@@ -3432,6 +3496,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: ['current_scope', 'proposed_changes', 'impact_analysis', 'justification'],
     financialFields: ['cost_impact', 'budget_change'],
@@ -3460,6 +3525,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'optional',
     },
     clauseCategories: ['project_purpose', 'objectives', 'scope', 'stakeholders', 'budget', 'timeline', 'risks'],
     financialFields: ['project_budget', 'funding_source'],
@@ -3488,6 +3554,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['item_specifications', 'quantities', 'delivery_requirements', 'submission_deadline'],
     financialFields: ['budget_estimate', 'quantity_breaks'],
@@ -3516,6 +3583,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'not-applicable',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['restricted_activities', 'geographic_scope', 'duration', 'consideration', 'enforcement'],
     financialFields: ['consideration_amount'],
@@ -3544,6 +3612,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: ['prohibited_solicitation', 'covered_persons', 'duration', 'exceptions', 'enforcement'],
     financialFields: ['consideration_amount'],
@@ -3572,6 +3641,7 @@ export const CONTRACT_TYPE_PROFILES: Record<ContractType, ContractTypeProfile> =
       TIMELINE: 'optional',
       DELIVERABLES: 'optional',
       EXECUTIVE_SUMMARY: 'required',
+      RATES: 'not-applicable',
     },
     clauseCategories: [
       'purpose',

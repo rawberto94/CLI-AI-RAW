@@ -12,9 +12,19 @@ export interface ArtifactUpdate {
   status: string;
   hasContent: boolean;
   contentLength: number;
+  qualityScore: number | null;
+  completenessScore: number | null;
+  confidence: number | null;
   metadata: any;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ArtifactTransition {
+  artifactId: string;
+  type: string;
+  from: string;
+  to: string;
 }
 
 export interface StreamMessage {
@@ -22,6 +32,10 @@ export interface StreamMessage {
   contractId?: string;
   contractStatus?: string;
   processingStage?: string;
+  progress?: number;
+  completedCount?: number;
+  totalCount?: number;
+  transitions?: ArtifactTransition[];
   errorMessage?: string;
   artifacts?: ArtifactUpdate[];
   timestamp?: string;
@@ -59,6 +73,9 @@ export function useArtifactStream({
   const [isComplete, setIsComplete] = useState(false);
   const [contractStatus, setContractStatus] = useState<string | null>(null);
   const [processingStage, setProcessingStage] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(0);
   const [error, setError] = useState<string | null>(() => wasNotFound ? 'Contract not found' : null);
   const [contractNotFound, setContractNotFound] = useState(wasNotFound);
   const eventSourceRef = useRef<EventSource | null>(null);
@@ -192,6 +209,15 @@ export function useArtifactStream({
             }
             if (data.processingStage) {
               setProcessingStage(data.processingStage);
+            }
+            if (typeof data.progress === 'number') {
+              setProgress(data.progress);
+            }
+            if (typeof data.completedCount === 'number') {
+              setCompletedCount(data.completedCount);
+            }
+            if (typeof data.totalCount === 'number') {
+              setTotalCount(data.totalCount);
             }
             if (data.errorMessage) {
               setError(data.errorMessage);
@@ -410,6 +436,9 @@ export function useArtifactStream({
     isComplete,
     contractStatus,
     processingStage,
+    progress,
+    completedCount,
+    totalCount,
     error,
     contractNotFound,
     disconnect,

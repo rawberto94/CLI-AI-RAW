@@ -60,6 +60,7 @@ import {
   MetricCard,
   ScoreRing
 } from '@/components/artifacts/ArtifactCards'
+import { ArtifactFeedback } from '@/components/artifacts/ArtifactFeedback'
 import { SmartEditableArtifact, convertToEditableSections } from '@/components/artifacts/SmartEditableArtifact'
 
 // ============ CONTRACT TYPE HELPERS (Client-side) ============
@@ -126,6 +127,10 @@ interface ArtifactData {
 interface EnhancedArtifactViewerProps {
   artifacts: ArtifactData
   contractId: string
+  /** Map of artifact type (lowercase) → artifact database ID for feedback/export */
+  artifactIds?: Record<string, string>
+  /** When true, shows loading skeletons for tabs without data yet */
+  isProcessing?: boolean
   initialTab?: string
   className?: string
 }
@@ -242,6 +247,8 @@ type TabId = typeof TABS[number]['id'];
 export function EnhancedArtifactViewer({
   artifacts,
   contractId,
+  artifactIds = {},
+  isProcessing = false,
   initialTab = 'overview',
   className
 }: EnhancedArtifactViewerProps) {
@@ -1003,6 +1010,31 @@ export function EnhancedArtifactViewer({
     if (!data) {
       const tabInfo = TABS.find(t => t.id === activeTab);
       const TabIconComponent = tabInfo?.icon ?? TabIcon ?? FileText;
+
+      // Show animated skeleton while artifacts are still being generated
+      if (isProcessing) {
+        return (
+          <div className="space-y-4 animate-pulse">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-violet-100" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-slate-200 rounded w-1/3" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-24 bg-gradient-to-r from-slate-100 to-violet-50 rounded-xl border border-slate-100" />
+              <div className="h-16 bg-gradient-to-r from-slate-100 to-slate-50 rounded-xl border border-slate-100" />
+              <div className="h-20 bg-gradient-to-r from-slate-50 to-violet-50 rounded-xl border border-slate-100" />
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-4 text-sm text-violet-500">
+              <Sparkles className="h-4 w-4 animate-spin" />
+              <span>AI is extracting {tabInfo?.label || 'data'}...</span>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
@@ -2610,6 +2642,17 @@ export function EnhancedArtifactViewer({
                 transition={{ duration: 0.2 }}
               >
                 {renderTabContent()}
+                
+                {/* Feedback bar — shown when artifact has data and an ID */}
+                {normalizedData[activeTab as keyof typeof normalizedData] && (
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <ArtifactFeedback
+                      contractId={contractId}
+                      artifactId={artifactIds[activeTab] || artifactIds[activeTab.toUpperCase()] || ''}
+                      artifactType={activeTab.toUpperCase()}
+                    />
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           )}

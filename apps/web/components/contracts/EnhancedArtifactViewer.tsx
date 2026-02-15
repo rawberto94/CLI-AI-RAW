@@ -26,9 +26,17 @@ import {
   Calendar, Users, MapPin, Clock, TrendingUp, AlertCircle,
   Scale, Award, Target, Sparkles, Copy, Check, Download,
   BarChart3, PieChart, TrendingDown, Zap, Brain, Eye,
-  ChevronDown, ChevronUp, ExternalLink, Info
+  ChevronDown, ChevronUp, ExternalLink, Info, List, Briefcase,
+  Package, Hash
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ObligationsArtifact,
+  RenewalArtifact,
+  NegotiationPointsArtifact,
+  AmendmentsArtifact,
+  ContactsArtifact,
+} from '@/components/artifacts/ArtifactCards';
 
 interface EnhancedArtifactViewerProps {
   type: string;
@@ -1140,6 +1148,296 @@ export function EnhancedArtifactViewer({
     </motion.div>
   );
 
+  const renderParties = (data: any) => {
+    const parties = data?.parties || data?.involvedParties || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-blue-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Users className="h-4 w-4 text-white" />
+              </div>
+              Parties & Stakeholders
+              <Badge variant="secondary" className="ml-2">{parties.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {parties.map((party: any, idx: number) => (
+                <motion.div key={idx} variants={itemVariants}
+                  className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Briefcase className="h-4 w-4 text-blue-600" />
+                    <span className="font-semibold text-gray-900">{party.name || party.partyName || `Party ${idx + 1}`}</span>
+                  </div>
+                  {(party.role || party.type) && (
+                    <Badge variant="outline" className="mb-2 bg-blue-50">{party.role || party.type}</Badge>
+                  )}
+                  {party.address && <p className="text-sm text-gray-600 flex items-center gap-1"><MapPin className="h-3 w-3" />{party.address}</p>}
+                  {party.contact && <p className="text-sm text-gray-600 flex items-center gap-1"><Users className="h-3 w-3" />{party.contact}</p>}
+                  {party.obligations && <p className="text-sm mt-2 text-gray-700"><strong>Obligations:</strong> {party.obligations}</p>}
+                </motion.div>
+              ))}
+            </div>
+            {parties.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No party information extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderTimeline = (data: any) => {
+    const events = data?.milestones || data?.events || data?.timeline || data?.keyDates || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-amber-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-amber-500 rounded-lg">
+                <Calendar className="h-4 w-4 text-white" />
+              </div>
+              Timeline & Key Dates
+              <Badge variant="secondary" className="ml-2">{events.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="relative">
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-amber-200" />
+              <div className="space-y-4 pl-10">
+                {events.map((event: any, idx: number) => (
+                  <motion.div key={idx} variants={itemVariants}
+                    className="relative p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200"
+                  >
+                    <div className="absolute -left-8 top-4 h-4 w-4 rounded-full bg-amber-500 border-2 border-white shadow" />
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-900">{event.event || event.milestone || event.title || event.description || `Event ${idx + 1}`}</span>
+                      {(event.date || event.dueDate || event.deadline) && (
+                        <Badge variant="outline" className="bg-amber-50">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {event.date || event.dueDate || event.deadline}
+                        </Badge>
+                      )}
+                    </div>
+                    {event.description && event.title && <p className="text-sm text-gray-600">{event.description}</p>}
+                    {event.status && <Badge className="mt-1" variant="secondary">{event.status}</Badge>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            {events.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No timeline data extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+        {(data?.effectiveDate || data?.expirationDate || data?.startDate || data?.endDate) && (
+          <Card className="border-amber-200">
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                {(data.effectiveDate || data.startDate) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Effective Date</p>
+                      <p className="font-semibold text-gray-900">{data.effectiveDate || data.startDate}</p>
+                    </div>
+                  </div>
+                )}
+                {(data.expirationDate || data.endDate) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <Calendar className="h-5 w-5 text-red-600" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Expiration Date</p>
+                      <p className="font-semibold text-gray-900">{data.expirationDate || data.endDate}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </motion.div>
+    );
+  };
+
+  const renderDeliverables = (data: any) => {
+    const items = data?.deliverables || data?.items || data?.workItems || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-teal-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-emerald-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-teal-500 rounded-lg">
+                <Package className="h-4 w-4 text-white" />
+              </div>
+              Deliverables & Work Items
+              <Badge variant="secondary" className="ml-2">{items.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              {items.map((item: any, idx: number) => (
+                <motion.div key={idx} variants={itemVariants}
+                  className="p-4 rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 border-2 border-teal-200"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-teal-600" />
+                      <span className="font-semibold text-gray-900">{item.name || item.title || item.deliverable || `Deliverable ${idx + 1}`}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.status && (
+                        <Badge variant={item.status === 'completed' ? 'default' : 'secondary'} className={
+                          item.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }>{item.status}</Badge>
+                      )}
+                      {(item.dueDate || item.deadline) && (
+                        <Badge variant="outline" className="bg-teal-50">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {item.dueDate || item.deadline}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {item.description && <p className="text-sm text-gray-600 mb-2">{item.description}</p>}
+                  {item.acceptanceCriteria && (
+                    <div className="mt-2 p-2 rounded-lg bg-white/50 border border-teal-100">
+                      <p className="text-xs text-gray-500 uppercase mb-1">Acceptance Criteria</p>
+                      <p className="text-sm text-gray-700">{item.acceptanceCriteria}</p>
+                    </div>
+                  )}
+                  {item.responsibleParty && (
+                    <p className="text-sm text-gray-500 mt-2 flex items-center gap-1"><Users className="h-3 w-3" />{item.responsibleParty}</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+            {items.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No deliverables extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderExecutiveSummary = (data: any) => (
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+      <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="p-2 bg-violet-500 rounded-lg">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            Executive Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {data?.summary && (
+            <div className="p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200">
+              <p className="text-gray-800 leading-relaxed">{data.summary}</p>
+            </div>
+          )}
+          {data?.keyPoints && data.keyPoints.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Target className="h-4 w-4 text-violet-600" /> Key Points
+              </h4>
+              <ul className="space-y-2">
+                {data.keyPoints.map((point: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                    <CheckCircle2 className="h-4 w-4 text-violet-500 flex-shrink-0 mt-0.5" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data?.recommendations && data.recommendations.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-600" /> Recommendations
+              </h4>
+              <ul className="space-y-2">
+                {data.recommendations.map((rec: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                    <Zap className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    {typeof rec === 'string' ? rec : (rec as any).recommendation || JSON.stringify(rec)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data?.overallAssessment && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-violet-50 border border-gray-200">
+              <h4 className="font-semibold text-gray-900 mb-1">Overall Assessment</h4>
+              <p className="text-sm text-gray-700">{data.overallAssessment}</p>
+            </div>
+          )}
+          {!data?.summary && !data?.keyPoints && !data?.recommendations && (
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">
+              <pre className="text-sm overflow-auto max-h-96 text-gray-700 whitespace-pre-wrap font-mono">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  const renderRates = (data: any) => {
+    const rates = data?.rates || data?.rateSchedule || data?.lineItems || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-emerald-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-emerald-500 rounded-lg">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
+              Rate Schedule
+              <Badge variant="secondary" className="ml-2">{rates.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {rates.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-emerald-200">
+                      <th className="text-left p-2 font-semibold text-gray-700">Description</th>
+                      <th className="text-right p-2 font-semibold text-gray-700">Rate</th>
+                      <th className="text-left p-2 font-semibold text-gray-700">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((rate: any, idx: number) => (
+                      <tr key={idx} className="border-b border-gray-100 hover:bg-emerald-50/50">
+                        <td className="p-2 text-gray-900">{rate.description || rate.role || rate.item || `Item ${idx + 1}`}</td>
+                        <td className="p-2 text-right font-semibold text-emerald-700">
+                          {typeof rate.rate === 'number' ? `$${rate.rate.toLocaleString()}` : rate.rate || rate.amount || '-'}
+                        </td>
+                        <td className="p-2 text-gray-600">{rate.unit || rate.per || rate.period || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">No rate data extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
   const renderDefault = (data: any) => (
     <Card className="border-gray-200">
       <CardHeader className="bg-gradient-to-r from-gray-50 to-gray-100">
@@ -1172,6 +1470,26 @@ export function EnhancedArtifactViewer({
         return renderCompliance(data);
       case 'CLAUSES':
         return renderClauses(data);
+      case 'OBLIGATIONS':
+        return <ObligationsArtifact data={data} />;
+      case 'RENEWAL':
+        return <RenewalArtifact data={data} />;
+      case 'NEGOTIATION_POINTS':
+        return <NegotiationPointsArtifact data={data} />;
+      case 'AMENDMENTS':
+        return <AmendmentsArtifact data={data} />;
+      case 'CONTACTS':
+        return <ContactsArtifact data={data} />;
+      case 'PARTIES':
+        return renderParties(data);
+      case 'TIMELINE':
+        return renderTimeline(data);
+      case 'DELIVERABLES':
+        return renderDeliverables(data);
+      case 'EXECUTIVE_SUMMARY':
+        return renderExecutiveSummary(data);
+      case 'RATES':
+        return renderRates(data);
       default:
         return renderDefault(data);
     }
