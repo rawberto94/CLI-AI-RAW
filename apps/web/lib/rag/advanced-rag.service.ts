@@ -22,6 +22,15 @@ import { selfCorrectiveRetrieval } from './self-corrective-rag.service';
 import { expandWithGraphContext, getChunkGraph, buildContractGraph } from './chunk-graph.service';
 import { contextualizeChunks } from './contextual-retrieval.service';
 import { expandToParentChunks, createParentChildChunks } from './parent-document-retrieval.service';
+import {
+  semanticChunk,
+  type SemanticChunk,
+  type ChunkMetadata,
+  type ChunkingOptions,
+} from '@repo/utils/rag/semantic-chunker';
+
+// Re-export so existing callers (barrel, tests) keep working
+export { semanticChunk };
 
 // ============================================================================
 // Query Intent → ChunkType Mapping
@@ -64,15 +73,8 @@ export interface RAGChunk {
   metadata: ChunkMetadata;
 }
 
-export interface ChunkMetadata {
-  section?: string;
-  heading?: string;
-  pageNumber?: number;
-  chunkType: 'heading' | 'paragraph' | 'list' | 'table' | 'clause';
-  startChar: number;
-  endChar: number;
-  wordCount: number;
-}
+// Re-export ChunkMetadata from shared package (single source of truth)
+export type { ChunkMetadata, SemanticChunk, ChunkingOptions } from '@repo/utils/rag/semantic-chunker';
 
 export interface SearchResult {
   contractId: string;
@@ -110,124 +112,6 @@ export interface SearchFilters {
   chunkTypes?: ('heading' | 'paragraph' | 'list' | 'table' | 'clause')[];
   /** Chunk-level pre-filter: only search specific sections */
   sections?: string[];
-}
-
-// ============================================================================
-// Semantic Chunking
-// ============================================================================
-
-interface SemanticChunk {
-  index: number;
-  text: string;
-  metadata: ChunkMetadata;
-}
-
-/**
- * Semantic chunking - splits text by document structure (headings, sections, paragraphs)
- * rather than fixed character counts
- */
-export function semanticChunk(
-  text: string,
-  options: {
-    maxChunkSize?: number;
-    minChunkSize?: number;
-    overlap?: number;
-  } = {}
-): SemanticChunk[] {
-  const { maxChunkSize = 1500, minChunkSize = 200, overlap = 100 } = options;
-  
-  const chunks: SemanticChunk[] = [];
-  let chunkIndex = 0;
-  
-  // Detect document structure patterns
-  const headingPattern = /^(?:#{1,6}\s+|(?:\d+\.)+\s+|[A-Z][A-Z\s]{2,}:?\s*$|Article\s+\d+|Section\s+\d+|ARTICLE\s+[IVXLCDM]+)/gm;
-  const listPattern = /^(?:\s*[-•*]\s+|\s*\d+[.)]\s+)/gm;
-  const tablePattern = /\|.*\|/g;
-  
-  // Split by major sections first
-  const sections = text.split(/\n(?=(?:#{1,3}\s+|Article\s+\d+|Section\s+\d+|ARTICLE\s+[IVXLCDM]+))/i);
-  
-  for (const section of sections) {
-    if (!section.trim()) continue;
-    
-    // Extract heading if present
-    const headingMatch = section.match(headingPattern);
-    const heading = headingMatch ? headingMatch[0].trim() : undefined;
-    
-    // Determine chunk type
-    let chunkType: ChunkMetadata['chunkType'] = 'paragraph';
-    if (heading) chunkType = 'heading';
-    else if (listPattern.test(section)) chunkType = 'list';
-    else if (tablePattern.test(section)) chunkType = 'table';
-    else if (/clause|term|condition|obligation/i.test(section)) chunkType = 'clause';
-    
-    // If section is small enough, keep as single chunk
-    if (section.length <= maxChunkSize) {
-      chunks.push({
-        index: chunkIndex++,
-        text: section.trim(),
-        metadata: {
-          section: heading,
-          heading,
-          chunkType,
-          startChar: text.indexOf(section),
-          endChar: text.indexOf(section) + section.length,
-          wordCount: section.split(/\s+/).length,
-        },
-      });
-      continue;
-    }
-    
-    // Split large sections by paragraphs
-    const paragraphs = section.split(/\n\n+/);
-    let currentChunk = '';
-    let chunkStartChar = text.indexOf(section);
-    
-    for (const para of paragraphs) {
-      if (!para.trim()) continue;
-      
-      // If adding this paragraph would exceed max size, save current chunk
-      if (currentChunk.length + para.length > maxChunkSize && currentChunk.length >= minChunkSize) {
-        chunks.push({
-          index: chunkIndex++,
-          text: currentChunk.trim(),
-          metadata: {
-            section: heading,
-            heading,
-            chunkType,
-            startChar: chunkStartChar,
-            endChar: chunkStartChar + currentChunk.length,
-            wordCount: currentChunk.split(/\s+/).length,
-          },
-        });
-        
-        // Start new chunk with overlap
-        const overlapText = currentChunk.slice(-overlap);
-        currentChunk = overlapText + '\n\n' + para;
-        chunkStartChar = text.indexOf(currentChunk) || chunkStartChar + currentChunk.length - overlap;
-      } else {
-        currentChunk += (currentChunk ? '\n\n' : '') + para;
-      }
-    }
-    
-    // Save remaining chunk
-    if (currentChunk.trim().length >= minChunkSize) {
-      chunks.push({
-        index: chunkIndex++,
-        text: currentChunk.trim(),
-        metadata: {
-          section: heading,
-          heading,
-          chunkType,
-          startChar: chunkStartChar,
-          endChar: chunkStartChar + currentChunk.length,
-          wordCount: currentChunk.split(/\s+/).length,
-        },
-      });
-    }
-  }
-  
-  return chunks;
 }
 
 // ============================================================================
@@ -359,6 +243,8 @@ async function vectorSearch(
   
   // Build safe parameterized filter conditions using Prisma.sql
   const conditions: Prisma.Sql[] = [];
+  // Track whether we actually need the Contract table JOIN
+  let needsContractJoin = false;
   
   if (filters.contractIds?.length) {
     // Validate UUID format to prevent injection
@@ -369,15 +255,19 @@ async function vectorSearch(
     }
   }
   if (filters.tenantId) {
-    conditions.push(Prisma.sql`c."tenantId" = ${filters.tenantId}`);
+    // Use denormalized tenantId on ContractEmbedding directly — avoids JOIN
+    conditions.push(Prisma.sql`ce."tenantId" = ${filters.tenantId}`);
   }
   if (filters.dateFrom) {
+    needsContractJoin = true;
     conditions.push(Prisma.sql`c."createdAt" >= ${filters.dateFrom}`);
   }
   if (filters.dateTo) {
+    needsContractJoin = true;
     conditions.push(Prisma.sql`c."createdAt" <= ${filters.dateTo}`);
   }
   if (filters.status?.length) {
+    needsContractJoin = true;
     // Validate status values against allowed list
     const validStatuses = ['DRAFT', 'ACTIVE', 'PENDING', 'EXPIRED', 'TERMINATED', 'PROCESSING', 'READY'];
     const safeStatuses = filters.status.filter(s => validStatuses.includes(s));
@@ -406,6 +296,12 @@ async function vectorSearch(
     // Set HNSW ef_search for high recall (95%+), then run vector search
     await prisma.$executeRawUnsafe('SET hnsw.ef_search = 100');
     
+    // Only JOIN Contract table when date/status filters are used.
+    // tenantId and chunkType filters hit denormalized ContractEmbedding columns directly.
+    const joinClause = needsContractJoin
+      ? Prisma.sql`JOIN "Contract" c ON c.id = ce."contractId"`
+      : Prisma.empty;
+    
     const results = await prisma.$queryRaw<VectorResult[]>`
       SELECT 
         ce."contractId",
@@ -413,7 +309,7 @@ async function vectorSearch(
         ce."chunkText",
         1 - (ce."embedding" <=> ${vectorQuery}::vector) as score
       FROM "ContractEmbedding" ce
-      JOIN "Contract" c ON c.id = ce."contractId"
+      ${joinClause}
       ${whereClause}
       ORDER BY score DESC
       LIMIT ${k}
@@ -435,6 +331,7 @@ async function keywordSearch(
 ): Promise<KeywordResult[]> {
   // Build safe parameterized filter conditions
   const conditions: Prisma.Sql[] = [];
+  let needsJoin = false;
   
   if (filters.contractIds?.length) {
     // Validate UUID format
@@ -445,7 +342,8 @@ async function keywordSearch(
     }
   }
   if (filters.tenantId) {
-    conditions.push(Prisma.sql`c."tenantId" = ${filters.tenantId}`);
+    // Use denormalized tenantId on ContractEmbedding directly — avoids JOIN
+    conditions.push(Prisma.sql`ce."tenantId" = ${filters.tenantId}`);
   }
   
   const additionalWhere = conditions.length > 0 
@@ -472,7 +370,6 @@ async function keywordSearch(
         ce."chunkText",
         ROW_NUMBER() OVER (ORDER BY ts_rank_cd(to_tsvector('english', ce."chunkText"), plainto_tsquery('english', ${sanitizedQuery})) DESC) as rank
       FROM "ContractEmbedding" ce
-      JOIN "Contract" c ON c.id = ce."contractId"
       WHERE to_tsvector('english', ce."chunkText") @@ plainto_tsquery('english', ${sanitizedQuery})
       ${additionalWhere}
       ORDER BY rank ASC
@@ -954,6 +851,36 @@ export async function hybridSearch(
       }
     }
     
+    // Step 5.8: Parent Document Retrieval — expand child matches to parent context
+    // If chunks were stored with parent-child relationships, expand top child hits
+    // to their parent chunk for richer context in the final answer.
+    if (process.env.RAG_PARENT_DOC_ENABLED !== 'false') {
+      try {
+        const expanded = await expandToParentChunks(
+          finalResults.map(r => ({
+            contractId: r.contractId,
+            chunkIndex: r.chunkIndex,
+            text: r.text,
+            score: r.score,
+            section: '',
+            matchType: r.matchType,
+          })),
+          k,
+        );
+        if (expanded.length > 0) {
+          finalResults = expanded.map(e => ({
+            contractId: e.contractId,
+            chunkIndex: e.chunkIndex ?? 0,
+            text: e.text,
+            score: e.score ?? 0.5,
+            matchType: (e as any).matchType || 'hybrid',
+          }));
+        }
+      } catch (parentErr) {
+        console.warn('[RAG] Parent-doc retrieval skipped:', parentErr);
+      }
+    }
+    
     // Step 6: Fetch contract metadata and format results
     const contractIds = [...new Set(finalResults.map(r => r.contractId))];
     const contracts = await prisma.contract.findMany({
@@ -1268,12 +1195,26 @@ export async function processContractWithSemanticChunking(
     section: chunk.metadata.section,
   }));
   
-  await prisma.$executeRawUnsafe(`
-    INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt")
-    VALUES ${records.map((r, i) => 
-      `(gen_random_uuid(), '${r.contractId}', ${r.chunkIndex}, $${i * 2 + 1}, '${r.embedding}'::vector, $${i * 2 + 2}, ${r.section ? `'${r.section}'` : 'NULL'}, NOW(), NOW())`
-    ).join(', ')}
-  `, ...records.flatMap(r => [r.chunkText, r.chunkType]));
+  // Insert in batches using fully parameterized queries (no string interpolation)
+  const INSERT_BATCH = 50;
+  for (let batchStart = 0; batchStart < records.length; batchStart += INSERT_BATCH) {
+    const batch = records.slice(batchStart, batchStart + INSERT_BATCH);
+    // Build a parameterized values list: each row uses 6 parameters
+    const paramParts: string[] = [];
+    const params: unknown[] = [];
+    for (let idx = 0; idx < batch.length; idx++) {
+      const offset = idx * 6;
+      paramParts.push(
+        `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
+      );
+      const r = batch[idx]!;
+      params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
+    }
+    await prisma.$executeRawUnsafe(
+      `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
+      ...params,
+    );
+  }
   
   // Step 4: Build chunk relationship graph for this contract
   try {
@@ -1296,6 +1237,30 @@ export async function processContractWithSemanticChunking(
     getSemanticCache().invalidateContract(contractId);
   } catch {
     // Non-critical
+  }
+  
+  // Step 6: Track embedding version in ContractMetadata (idempotency + observability)
+  try {
+    await prisma.contractMetadata.upsert({
+      where: { contractId },
+      update: {
+        ragSyncedAt: new Date(),
+        embeddingVersion: model,
+        embeddingCount: embeddings.length,
+        lastEmbeddingAt: new Date(),
+      },
+      create: {
+        contractId,
+        tenantId: (await prisma.contract.findUnique({ where: { id: contractId }, select: { tenantId: true } }))?.tenantId ?? 'unknown',
+        updatedBy: 'system',
+        ragSyncedAt: new Date(),
+        embeddingVersion: model,
+        embeddingCount: embeddings.length,
+        lastEmbeddingAt: new Date(),
+      },
+    });
+  } catch (metaErr) {
+    console.warn('[RAG] ContractMetadata version tracking failed (non-fatal):', metaErr);
   }
   
   return {

@@ -59,3 +59,38 @@ END $$;
 -- Drop old IVFFlat indexes if they exist (replaced by HNSW above)
 DROP INDEX IF EXISTS idx_contract_embedding_vector;
 DROP INDEX IF EXISTS contract_embedding_embedding_idx;
+-- GIN trigram index for fast substring / LIKE / ILIKE queries on chunkText.
+-- Requires pg_trgm extension (enabled in 01-enable-extensions.sql).
+-- Powers fuzzy search, autocomplete, and trigram similarity ranking.
+DO $$ BEGIN IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE indexname = 'idx_contract_embedding_chunktext_trgm'
+) THEN IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'ContractEmbedding'
+        AND column_name = 'chunkText'
+) THEN CREATE INDEX idx_contract_embedding_chunktext_trgm ON "ContractEmbedding" USING gin ("chunkText" gin_trgm_ops);
+RAISE NOTICE 'Created GIN trigram index on ContractEmbedding.chunkText';
+END IF;
+ELSE RAISE NOTICE 'GIN trigram index on chunkText already exists';
+END IF;
+END $$;
+-- Composite B-tree index for common pre-filter pattern: tenantId + contractId lookups
+-- Accelerates the JOIN-free vector search path added in the pre-filter optimization.
+DO $$ BEGIN IF NOT EXISTS (
+    SELECT 1
+    FROM pg_indexes
+    WHERE indexname = 'idx_contract_embedding_tenant_contract'
+) THEN IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'ContractEmbedding'
+        AND column_name = 'tenantId'
+) THEN CREATE INDEX idx_contract_embedding_tenant_contract ON "ContractEmbedding" ("tenantId", "contractId");
+RAISE NOTICE 'Created composite index on ContractEmbedding(tenantId, contractId)';
+END IF;
+ELSE RAISE NOTICE 'Composite tenantId+contractId index already exists';
+END IF;
+END $$;

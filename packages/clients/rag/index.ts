@@ -11,7 +11,7 @@ function getDB(): unknown {
       const mod = require('../db');
       db = mod.default || mod;
     } catch {
-      // Failed to load DB client
+      console.warn('[RAG-client] Failed to load DB client — RAG operations will be unavailable');
     }
   }
   return db;
@@ -48,6 +48,7 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
   const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
   
   if (!apiKey || !OpenAIClientCtor) {
+    console.warn(`[RAG-client] embedChunks skipped for ${docId}: ${!apiKey ? 'no API key' : 'no OpenAI client'}`);
     return chunks; // silently skip in demo
   }
   
@@ -56,11 +57,12 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
   try {
     const OpenAISDK = require('openai').OpenAI;
     openai = new OpenAISDK({ apiKey });
-  } catch {
-    // Failed to initialize OpenAI
+  } catch (err) {
+    console.error('[RAG-client] Failed to initialise OpenAI SDK:', (err as Error).message);
   }
   
   if (!openai) {
+    console.warn('[RAG-client] embedChunks skipped: OpenAI SDK unavailable');
     return chunks; // can't embed without SDK
   }
   
@@ -82,7 +84,8 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
       for (let i = 0; i < batch.length; i++) {
         if (batch[i]) batch[i].embedding = vectors[i];
       }
-    } catch {
+    } catch (err) {
+      console.error(`[RAG-client] OpenAI embeddings API error (batch ${Math.floor(start / BATCH) + 1}, docId=${docId}):`, (err as Error).message);
       throw new Error('OpenAI embeddings API error');
     }
   }
@@ -112,7 +115,8 @@ export async function embedChunks(docId: string, tenantId: string, chunks: Chunk
         skipDuplicates: true 
       });
     }
-  } catch {
+  } catch (err) {
+    console.error(`[RAG-client] Failed to persist embeddings for docId=${docId}:`, (err as Error).message);
     // RAG embed persistence error - allow artifact generation to continue without RAG
   }
   return toEmbed;
@@ -122,7 +126,9 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
   const apiKey = opts?.apiKey || process.env['OPENAI_API_KEY'];
   const model = opts?.model || process.env['RAG_EMBED_MODEL'] || 'text-embedding-3-small';
   let openai: any = null;
-  try { openai = new (require('openai').OpenAI)({ apiKey }); } catch {}
+  try { openai = new (require('openai').OpenAI)({ apiKey }); } catch (err) {
+    console.warn('[RAG-client] retrieve: OpenAI SDK unavailable:', (err as Error).message);
+  }
   if (!openai) return [] as Array<{ text: string; score: number; chunkIndex: number }>;
   const qvec = (await openai.embeddings.create({ model, input: query })).data[0].embedding as number[];
   
@@ -140,7 +146,8 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
       ORDER BY score DESC
       LIMIT ${k};
     `;
-  } catch {
+  } catch (err) {
+    console.error(`[RAG-client] retrieve query failed for docId=${docId}:`, (err as Error).message);
     rows = [] as any;
   }
   return rows.map(r => ({ ...r, text: r.chunkText }));
@@ -149,14 +156,18 @@ export async function retrieve(docId: string, tenantId: string, query: string, k
 export async function getDocChunks(docId: string, tenantId: string, k = 50) {
   try {
     const dbClient = getDB();
-    if (!dbClient) return [];
+    if (!dbClient) {
+      console.warn(`[RAG-client] getDocChunks: DB client unavailable for docId=${docId}`);
+      return [];
+    }
     
     return await dbClient.contractEmbedding.findMany({ 
       where: { contractId: docId }, 
       orderBy: { chunkIndex: 'asc' }, 
       take: k 
     });
-  } catch {
+  } catch (err) {
+    console.error(`[RAG-client] getDocChunks failed for docId=${docId}:`, (err as Error).message);
     return [];
   }
 }

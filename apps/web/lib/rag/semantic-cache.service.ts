@@ -11,8 +11,8 @@
  * 4. Otherwise, run full RAG pipeline and cache the results
  * 
  * Storage:
- * - Redis for cache entries (with TTL)
- * - In-memory LRU for hot-path embeddings (avoids Redis round-trip)
+ * - Redis for durable cache entries (with TTL) — shared across instances
+ * - In-memory LRU for hot-path embedding comparisons (avoids Redis round-trip)
  * 
  * Cache invalidation:
  * - TTL-based expiry (configurable, default 30 min)
@@ -48,6 +48,7 @@ interface CacheStats {
   hitRate: number;
   entries: number;
   avgLatencySavedMs: number;
+  redisConnected: boolean;
 }
 
 // ============================================================================
@@ -61,12 +62,16 @@ const DEFAULT_CONFIG: SemanticCacheConfig = {
   enabled: true,
 };
 
+const REDIS_KEY_PREFIX = 'rag:cache:';
+const REDIS_INDEX_KEY = 'rag:cache:index'; // Sorted set of all cache keys by timestamp
+
 // ============================================================================
-// In-Memory Semantic Cache Implementation
+// Redis-backed Semantic Cache with In-Memory Hot-Path LRU
 // ============================================================================
 
 class SemanticCacheStore {
-  private entries: Map<string, CachedQuery> = new Map();
+  /** Hot-path LRU: keep recent embeddings in-process for fast cosine comparison */
+  private hotEntries: Map<string, CachedQuery> = new Map();
   private config: SemanticCacheConfig;
   private stats: CacheStats = {
     hits: 0,
@@ -74,15 +79,49 @@ class SemanticCacheStore {
     hitRate: 0,
     entries: 0,
     avgLatencySavedMs: 0,
+    redisConnected: false,
   };
   private latencySavings: number[] = [];
+  private redis: import('ioredis').default | null = null;
+  private redisReady = false;
 
   constructor(config: Partial<SemanticCacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.initRedis();
+  }
+
+  /** Lazily initialise Redis — gracefully degrades to in-memory if unavailable */
+  private async initRedis(): Promise<void> {
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) return;
+
+    try {
+      const Redis = (await import('ioredis')).default;
+      this.redis = new Redis(redisUrl, {
+        connectTimeout: 3000,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+        keyPrefix: REDIS_KEY_PREFIX,
+      });
+
+      await this.redis.connect();
+      this.redisReady = true;
+      this.stats.redisConnected = true;
+    } catch {
+      // Redis unavailable — fall back to in-memory only
+      this.redis = null;
+      this.redisReady = false;
+    }
+  }
+
+  private getRedis(): import('ioredis').default | null {
+    return this.redisReady ? this.redis : null;
   }
 
   /**
    * Look up a semantically similar cached query.
+   * 1. Check hot in-memory LRU first (fast cosine comparison)
+   * 2. If miss, scan Redis embeddings index (slower but durable)
    * Returns cached results if a match is found above the similarity threshold.
    */
   lookup(
@@ -94,19 +133,15 @@ class SemanticCacheStore {
     const now = Date.now();
     let bestMatch: { key: string; cached: CachedQuery; similarity: number } | null = null;
 
-    for (const [key, cached] of this.entries) {
-      // Skip expired entries
+    // Phase 1: Hot-path in-memory scan (fast — no I/O)
+    for (const [key, cached] of this.hotEntries) {
       if (now - cached.cachedAt > this.config.ttlMs) {
-        this.entries.delete(key);
+        this.hotEntries.delete(key);
         continue;
       }
-
-      // Only match within same tenant
       if (cached.tenantId !== tenantId) continue;
 
-      // Compute cosine similarity
       const similarity = cosineSimilarity(queryEmbedding, cached.queryEmbedding);
-
       if (similarity >= this.config.similarityThreshold) {
         if (!bestMatch || similarity > bestMatch.similarity) {
           bestMatch = { key, cached, similarity };
@@ -117,6 +152,8 @@ class SemanticCacheStore {
     if (bestMatch) {
       bestMatch.cached.hitCount++;
       this.recordHit();
+      // Async write-back hit count to Redis (fire-and-forget)
+      this.touchRedisEntry(bestMatch.key).catch(() => {});
       return { results: bestMatch.cached.results, similarity: bestMatch.similarity };
     }
 
@@ -125,7 +162,54 @@ class SemanticCacheStore {
   }
 
   /**
-   * Store a query + results in the semantic cache.
+   * Async lookup that also checks Redis when in-memory misses.
+   * Call this from hybridSearch for full cache coverage.
+   */
+  async lookupAsync(
+    queryEmbedding: number[],
+    tenantId: string,
+  ): Promise<{ results: SearchResult[]; similarity: number } | null> {
+    // Try synchronous hot-path first
+    const memResult = this.lookup(queryEmbedding, tenantId);
+    if (memResult) return memResult;
+
+    // Phase 2: Redis scan (slower but covers entries from other instances)
+    const r = this.getRedis();
+    if (!r) return null;
+
+    try {
+      const indexKeys = await r.zrangebyscore(
+        REDIS_INDEX_KEY,
+        Date.now() - this.config.ttlMs,
+        '+inf',
+      );
+
+      for (const rKey of indexKeys) {
+        const raw = await r.get(rKey);
+        if (!raw) continue;
+
+        const cached: CachedQuery = JSON.parse(raw);
+        if (cached.tenantId !== tenantId) continue;
+
+        const similarity = cosineSimilarity(queryEmbedding, cached.queryEmbedding);
+        if (similarity >= this.config.similarityThreshold) {
+          // Promote to hot-path LRU
+          this.promoteToHot(rKey, cached);
+          // Fix stats: undo the miss we recorded above, record a hit
+          this.stats.misses = Math.max(0, this.stats.misses - 1);
+          this.recordHit();
+          return { results: cached.results, similarity };
+        }
+      }
+    } catch {
+      // Redis read failed — already recorded miss via sync path
+    }
+
+    return null;
+  }
+
+  /**
+   * Store a query + results in the semantic cache (Redis + hot LRU).
    */
   store(
     queryText: string,
@@ -135,24 +219,23 @@ class SemanticCacheStore {
   ): void {
     if (!this.config.enabled) return;
 
-    // Evict if at capacity (remove least recently used & oldest)
-    while (this.entries.size >= this.config.maxEntries) {
-      const oldestKey = this.findOldestEntry();
-      if (oldestKey) this.entries.delete(oldestKey);
-      else break;
-    }
-
     const key = `${tenantId}:${Date.now()}:${queryText.slice(0, 50)}`;
-    this.entries.set(key, {
+    const entry: CachedQuery = {
       queryEmbedding,
       queryText,
       tenantId,
       results,
       cachedAt: Date.now(),
       hitCount: 0,
-    });
+    };
 
-    this.stats.entries = this.entries.size;
+    // Store in hot LRU
+    this.evictHotIfNeeded();
+    this.hotEntries.set(key, entry);
+    this.stats.entries = this.hotEntries.size;
+
+    // Store in Redis (async, fire-and-forget)
+    this.storeToRedis(key, entry).catch(() => {});
   }
 
   /**
@@ -161,42 +244,48 @@ class SemanticCacheStore {
    */
   invalidateTenant(tenantId: string): number {
     let count = 0;
-    for (const [key, cached] of this.entries) {
+    for (const [key, cached] of this.hotEntries) {
       if (cached.tenantId === tenantId) {
-        this.entries.delete(key);
+        this.hotEntries.delete(key);
         count++;
       }
     }
-    this.stats.entries = this.entries.size;
+    this.stats.entries = this.hotEntries.size;
+
+    // Invalidate in Redis (async)
+    this.invalidateTenantRedis(tenantId).catch(() => {});
     return count;
   }
 
   /**
    * Invalidate all cache entries for a specific contract.
-   * Uses contractId in the results to find matching entries.
    */
   invalidateContract(contractId: string): number {
     let count = 0;
-    for (const [key, cached] of this.entries) {
+    for (const [key, cached] of this.hotEntries) {
       const hasContract = cached.results.some(r => r.contractId === contractId);
       if (hasContract) {
-        this.entries.delete(key);
+        this.hotEntries.delete(key);
         count++;
       }
     }
-    this.stats.entries = this.entries.size;
+    this.stats.entries = this.hotEntries.size;
+
+    // Redis invalidation for contract requires scan — fire and forget
+    this.invalidateContractRedis(contractId).catch(() => {});
     return count;
   }
 
   /** Clear entire cache */
   clear(): void {
-    this.entries.clear();
+    this.hotEntries.clear();
     this.stats.entries = 0;
+    this.clearRedis().catch(() => {});
   }
 
   /** Get cache statistics */
   getStats(): CacheStats {
-    return { ...this.stats };
+    return { ...this.stats, redisConnected: this.redisReady };
   }
 
   /** Record latency saved by a cache hit (for metrics) */
@@ -206,16 +295,97 @@ class SemanticCacheStore {
     this.stats.avgLatencySavedMs = this.latencySavings.reduce((a, b) => a + b, 0) / this.latencySavings.length;
   }
 
+  /** Graceful shutdown */
+  async disconnect(): Promise<void> {
+    try { await this.redis?.quit(); } catch { /* ignore */ }
+    this.redis = null;
+    this.redisReady = false;
+    this.stats.redisConnected = false;
+  }
+
   // -- Private helpers --
 
-  private findOldestEntry(): string | null {
+  private evictHotIfNeeded(): void {
+    while (this.hotEntries.size >= this.config.maxEntries) {
+      const oldestKey = this.findOldestHotEntry();
+      if (oldestKey) this.hotEntries.delete(oldestKey);
+      else break;
+    }
+  }
+
+  private findOldestHotEntry(): string | null {
     let oldest: { key: string; time: number } | null = null;
-    for (const [key, cached] of this.entries) {
+    for (const [key, cached] of this.hotEntries) {
       if (!oldest || cached.cachedAt < oldest.time) {
         oldest = { key, time: cached.cachedAt };
       }
     }
     return oldest?.key || null;
+  }
+
+  private promoteToHot(key: string, cached: CachedQuery): void {
+    this.evictHotIfNeeded();
+    this.hotEntries.set(key, cached);
+    this.stats.entries = this.hotEntries.size;
+  }
+
+  // -- Redis helpers --
+
+  private async storeToRedis(key: string, entry: CachedQuery): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    const ttlSec = Math.ceil(this.config.ttlMs / 1000);
+    await r.set(key, JSON.stringify(entry), 'EX', ttlSec);
+    await r.zadd(REDIS_INDEX_KEY, entry.cachedAt, key);
+  }
+
+  private async touchRedisEntry(key: string): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+    await r.zadd(REDIS_INDEX_KEY, Date.now(), key);
+  }
+
+  private async invalidateTenantRedis(tenantId: string): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    const keys = await r.zrangebyscore(REDIS_INDEX_KEY, '-inf', '+inf');
+    for (const key of keys) {
+      if (key.startsWith(`${tenantId}:`)) {
+        await r.del(key);
+        await r.zrem(REDIS_INDEX_KEY, key);
+      }
+    }
+  }
+
+  private async invalidateContractRedis(contractId: string): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    const keys = await r.zrangebyscore(REDIS_INDEX_KEY, '-inf', '+inf');
+    for (const key of keys) {
+      const raw = await r.get(key);
+      if (!raw) continue;
+      try {
+        const cached: CachedQuery = JSON.parse(raw);
+        if (cached.results.some(res => res.contractId === contractId)) {
+          await r.del(key);
+          await r.zrem(REDIS_INDEX_KEY, key);
+        }
+      } catch { /* skip corrupt entries */ }
+    }
+  }
+
+  private async clearRedis(): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    const keys = await r.zrangebyscore(REDIS_INDEX_KEY, '-inf', '+inf');
+    if (keys.length) {
+      await r.del(...keys);
+      await r.del(REDIS_INDEX_KEY);
+    }
   }
 
   private recordHit(): void {

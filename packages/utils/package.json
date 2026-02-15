@@ -48,6 +48,11 @@
       "types": "./dist/patterns/retry.d.ts",
       "import": "./dist/patterns/retry.js",
       "require": "./dist/patterns/retry.js"
+    },
+    "./rag/semantic-chunker": {
+      "types": "./dist/rag/semantic-chunker.d.ts",
+      "import": "./dist/rag/semantic-chunker.js",
+      "require": "./dist/rag/semantic-chunker.js"
     }
   },
   "scripts": {

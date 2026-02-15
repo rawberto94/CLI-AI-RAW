@@ -13,6 +13,11 @@
  * - SEMANTIC_SIBLING: Chunks with similar embeddings from different sections
  * - LEGAL_RELATED: Chunks linked by legal concept ontology
  * 
+ * Storage:
+ * - Redis Hash per node, Redis Hash for adjacency lists — shared across instances
+ * - In-memory Map as hot-path cache (avoids Redis round-trip on lookups)
+ * - Falls back to pure in-memory if Redis is unavailable
+ * 
  * The graph is built during indexing and queried during retrieval.
  */
 
@@ -85,13 +90,51 @@ for (const [group, terms] of Object.entries(LEGAL_CONCEPT_GROUPS)) {
 }
 
 // ============================================================================
-// In-Memory Graph Store
+// Redis-backed Graph Store with In-Memory Hot-Path Cache
 // ============================================================================
 
+const REDIS_GRAPH_PREFIX = 'rag:graph:';
+const REDIS_NODE_KEY = (id: string) => `node:${id}`;
+const REDIS_ADJ_KEY = (id: string) => `adj:${id}`;
+const REDIS_CONTRACT_KEY = (cid: string) => `contract:${cid}`;
+
 class ChunkGraph {
+  /** In-memory hot cache (fast lookup, eventually consistent with Redis) */
   private nodes: Map<string, ChunkNode> = new Map();
   private adjacency: Map<string, ChunkEdge[]> = new Map();
   private contractNodes: Map<string, Set<string>> = new Map(); // contractId → nodeIds
+
+  private redis: import('ioredis').default | null = null;
+  private redisReady = false;
+
+  constructor() {
+    this.initRedis();
+  }
+
+  /** Lazily initialise Redis — degrades to in-memory if unavailable */
+  private async initRedis(): Promise<void> {
+    const redisUrl = process.env.REDIS_URL;
+    if (!redisUrl) return;
+
+    try {
+      const Redis = (await import('ioredis')).default;
+      this.redis = new Redis(redisUrl, {
+        connectTimeout: 3000,
+        maxRetriesPerRequest: 1,
+        lazyConnect: true,
+        keyPrefix: REDIS_GRAPH_PREFIX,
+      });
+      await this.redis.connect();
+      this.redisReady = true;
+    } catch {
+      this.redis = null;
+      this.redisReady = false;
+    }
+  }
+
+  private getRedis(): import('ioredis').default | null {
+    return this.redisReady ? this.redis : null;
+  }
 
   /** Add a chunk node to the graph */
   addNode(node: ChunkNode): void {
@@ -106,13 +149,15 @@ class ChunkGraph {
       this.contractNodes.set(node.contractId, new Set());
     }
     this.contractNodes.get(node.contractId)!.add(node.chunkId);
+
+    // Persist to Redis (fire-and-forget)
+    this.persistNode(node).catch(() => {});
   }
 
   /** Add an edge between two chunks */
   addEdge(edge: ChunkEdge): void {
     const sourceEdges = this.adjacency.get(edge.sourceId);
     if (sourceEdges) {
-      // Avoid duplicate edges
       const existing = sourceEdges.find(
         e => e.targetId === edge.targetId && e.type === edge.type
       );
@@ -137,6 +182,9 @@ class ChunkGraph {
         }
       }
     }
+
+    // Persist edges to Redis (fire-and-forget)
+    this.persistEdge(edge).catch(() => {});
   }
 
   /** Get node by ID */
@@ -150,10 +198,8 @@ class ChunkGraph {
     if (!nodeIds) return;
 
     for (const nodeId of nodeIds) {
-      // Remove outgoing edges
       this.adjacency.delete(nodeId);
 
-      // Remove incoming edges from other nodes
       for (const [, edges] of this.adjacency) {
         const idx = edges.findIndex(e => e.targetId === nodeId);
         if (idx >= 0) edges.splice(idx, 1);
@@ -163,6 +209,9 @@ class ChunkGraph {
     }
 
     this.contractNodes.delete(contractId);
+
+    // Remove from Redis (fire-and-forget)
+    this.removeContractRedis(contractId, nodeIds).catch(() => {});
   }
 
   /**
@@ -183,7 +232,6 @@ class ChunkGraph {
     const visited = new Set<string>(seedChunkIds);
     const related: RelatedChunk[] = [];
 
-    // BFS queue: [nodeId, hopDistance, cumulativeWeight]
     const queue: Array<[string, number, number]> = seedChunkIds.map(id => [id, 0, 1.0]);
 
     while (queue.length > 0 && related.length < opts.maxRelated) {
@@ -209,19 +257,53 @@ class ChunkGraph {
             hopDistance: hops + 1,
           });
 
-          // Continue BFS from this node
           queue.push([edge.targetId, hops + 1, edge.weight * cumWeight]);
         }
       }
     }
 
-    // Sort by weight descending
     related.sort((a, b) => b.weight - a.weight);
     return related.slice(0, opts.maxRelated);
   }
 
+  /** Load graph for a contract from Redis into in-memory cache */
+  async loadContract(contractId: string): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    try {
+      const nodeIdsRaw = await r.smembers(REDIS_CONTRACT_KEY(contractId));
+      if (!nodeIdsRaw.length) return;
+
+      for (const nodeId of nodeIdsRaw) {
+        // Load node
+        const nodeRaw = await r.get(REDIS_NODE_KEY(nodeId));
+        if (nodeRaw) {
+          const node: ChunkNode = JSON.parse(nodeRaw);
+          this.nodes.set(node.chunkId, node);
+          if (!this.adjacency.has(node.chunkId)) {
+            this.adjacency.set(node.chunkId, []);
+          }
+          if (!this.contractNodes.has(contractId)) {
+            this.contractNodes.set(contractId, new Set());
+          }
+          this.contractNodes.get(contractId)!.add(node.chunkId);
+        }
+
+        // Load adjacency
+        const adjRaw = await r.get(REDIS_ADJ_KEY(nodeId));
+        if (adjRaw) {
+          const edges: ChunkEdge[] = JSON.parse(adjRaw);
+          this.adjacency.set(nodeId, edges);
+        }
+      }
+    } catch {
+      // Redis load failed — continue with whatever is in-memory
+    }
+  }
+
   /** Get graph statistics */
-  getStats(): { nodes: number; edges: number; contracts: number } {
+  getStats(): { nodes: number; edges: number; contracts: number; redisConnected: boolean } {
     let edgeCount = 0;
     for (const [, edges] of this.adjacency) {
       edgeCount += edges.length;
@@ -230,7 +312,54 @@ class ChunkGraph {
       nodes: this.nodes.size,
       edges: edgeCount,
       contracts: this.contractNodes.size,
+      redisConnected: this.redisReady,
     };
+  }
+
+  /** Graceful shutdown */
+  async disconnect(): Promise<void> {
+    try { await this.redis?.quit(); } catch { /* ignore */ }
+    this.redis = null;
+    this.redisReady = false;
+  }
+
+  // -- Redis persistence helpers --
+
+  private async persistNode(node: ChunkNode): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    // Store node (exclude embedding to save space)
+    const { embedding, ...nodeWithoutEmbedding } = node;
+    await r.set(REDIS_NODE_KEY(node.chunkId), JSON.stringify(nodeWithoutEmbedding), 'EX', 86400); // 24h TTL
+    await r.sadd(REDIS_CONTRACT_KEY(node.contractId), node.chunkId);
+    await r.expire(REDIS_CONTRACT_KEY(node.contractId), 86400);
+  }
+
+  private async persistEdge(edge: ChunkEdge): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    // Append edge to source's adjacency list
+    const key = REDIS_ADJ_KEY(edge.sourceId);
+    const existing = await r.get(key);
+    const edges: ChunkEdge[] = existing ? JSON.parse(existing) : [];
+    const dup = edges.find(e => e.targetId === edge.targetId && e.type === edge.type);
+    if (!dup) {
+      edges.push(edge);
+      await r.set(key, JSON.stringify(edges), 'EX', 86400);
+    }
+  }
+
+  private async removeContractRedis(contractId: string, nodeIds: Set<string>): Promise<void> {
+    const r = this.getRedis();
+    if (!r) return;
+
+    for (const nodeId of nodeIds) {
+      await r.del(REDIS_NODE_KEY(nodeId));
+      await r.del(REDIS_ADJ_KEY(nodeId));
+    }
+    await r.del(REDIS_CONTRACT_KEY(contractId));
   }
 }
 

@@ -39,18 +39,7 @@ let openaiModule: any = null;
   }
 })();
 
-interface SemanticChunk {
-  index: number;
-  text: string;
-  metadata: {
-    section?: string;
-    heading?: string;
-    chunkType: 'heading' | 'paragraph' | 'list' | 'table' | 'clause';
-    startChar: number;
-    endChar: number;
-    wordCount: number;
-  };
-}
+import { semanticChunk, type SemanticChunk } from '@repo/utils/rag/semantic-chunker';
 
 interface RAGIndexingResult {
   success: boolean;
@@ -59,106 +48,6 @@ interface RAGIndexingResult {
   embeddingsGenerated: number;
   processingTime: number;
   error?: string;
-}
-
-/**
- * Semantic chunking - splits text by document structure
- */
-function semanticChunk(
-  text: string,
-  options: { maxChunkSize?: number; minChunkSize?: number; overlap?: number } = {}
-): SemanticChunk[] {
-  const { maxChunkSize = 1500, minChunkSize = 200, overlap = 100 } = options;
-  
-  const chunks: SemanticChunk[] = [];
-  let chunkIndex = 0;
-  
-  // Detect document structure patterns
-  const headingPattern = /^(?:#{1,6}\s+|(?:\d+\.)+\s+|[A-Z][A-Z\s]{2,}:?\s*$|Article\s+\d+|Section\s+\d+|ARTICLE\s+[IVXLCDM]+)/gm;
-  const listPattern = /^(?:\s*[-•*]\s+|\s*\d+[.)]\s+)/gm;
-  const tablePattern = /\|.*\|/g;
-  
-  // Split by major sections first
-  const sections = text.split(/\n(?=(?:#{1,3}\s+|Article\s+\d+|Section\s+\d+|ARTICLE\s+[IVXLCDM]+))/i);
-  
-  for (const section of sections) {
-    if (!section.trim()) continue;
-    
-    // Extract heading if present
-    const headingMatch = section.match(headingPattern);
-    const heading = headingMatch ? headingMatch[0].trim() : undefined;
-    
-    // Determine chunk type
-    let chunkType: SemanticChunk['metadata']['chunkType'] = 'paragraph';
-    if (heading) chunkType = 'heading';
-    else if (listPattern.test(section)) chunkType = 'list';
-    else if (tablePattern.test(section)) chunkType = 'table';
-    else if (/clause|term|condition|obligation/i.test(section)) chunkType = 'clause';
-    
-    // If section is small enough, keep as single chunk
-    if (section.length <= maxChunkSize) {
-      chunks.push({
-        index: chunkIndex++,
-        text: section.trim(),
-        metadata: {
-          section: heading,
-          heading,
-          chunkType,
-          startChar: text.indexOf(section),
-          endChar: text.indexOf(section) + section.length,
-          wordCount: section.split(/\s+/).length,
-        },
-      });
-      continue;
-    }
-    
-    // Split large sections by paragraphs
-    const paragraphs = section.split(/\n\n+/);
-    let currentChunk = '';
-    let chunkStartChar = text.indexOf(section);
-    
-    for (const para of paragraphs) {
-      if (!para.trim()) continue;
-      
-      if (currentChunk.length + para.length > maxChunkSize && currentChunk.length >= minChunkSize) {
-        chunks.push({
-          index: chunkIndex++,
-          text: currentChunk.trim(),
-          metadata: {
-            section: heading,
-            heading,
-            chunkType,
-            startChar: chunkStartChar,
-            endChar: chunkStartChar + currentChunk.length,
-            wordCount: currentChunk.split(/\s+/).length,
-          },
-        });
-        
-        const overlapText = currentChunk.slice(-overlap);
-        currentChunk = overlapText + '\n\n' + para;
-        chunkStartChar = text.indexOf(currentChunk) || chunkStartChar + currentChunk.length - overlap;
-      } else {
-        currentChunk += (currentChunk ? '\n\n' : '') + para;
-      }
-    }
-    
-    if (currentChunk.trim().length >= minChunkSize) {
-      chunks.push({
-        index: chunkIndex++,
-        text: currentChunk.trim(),
-        metadata: {
-          section: heading,
-          heading,
-          chunkType,
-          startChar: chunkStartChar,
-          endChar: chunkStartChar + currentChunk.length,
-          wordCount: currentChunk.split(/\s+/).length,
-        },
-      });
-    }
-  }
-  
-  return chunks;
 }
 
 /**
@@ -229,10 +118,10 @@ export async function processRAGIndexingJob(
     
     // Semantic chunking
     jobLogger.info({ textLength: contract.rawText.length }, 'Creating semantic chunks');
-    const chunks = semanticChunk(contract.rawText);
-    jobLogger.info({ chunkCount: chunks.length }, 'Chunks created');
+    const rawChunks = semanticChunk(contract.rawText);
+    jobLogger.info({ chunkCount: rawChunks.length }, 'Chunks created');
     
-    if (chunks.length === 0) {
+    if (rawChunks.length === 0) {
       return {
         success: true,
         contractId,
@@ -240,6 +129,80 @@ export async function processRAGIndexingJob(
         embeddingsGenerated: 0,
         processingTime: Date.now() - startTime,
       };
+    }
+
+    // Step 1.5: Contextual Retrieval — Anthropic-style chunk contextualization
+    // Prepend a 1-2 sentence context prefix per chunk for +49% retrieval accuracy.
+    // Uses gpt-4o-mini; gracefully degrades on failure.
+    let chunks = rawChunks;
+    try {
+      const ctxApiKey = process.env.OPENAI_API_KEY;
+      if (ctxApiKey) {
+        const OpenAICtx = openaiModule?.default || (await import('openai')).default;
+        const ctxClient = new OpenAICtx({ apiKey: ctxApiKey });
+
+        // Document summary (first 6K chars → gpt-4o-mini)
+        const summaryRes = await ctxClient.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: 'Summarize this contract in 3-4 sentences. Include: document type, parties involved, primary subject matter, and key terms. Be factual and concise.' },
+            { role: 'user', content: contract.rawText.slice(0, 6000) },
+          ],
+          temperature: 0,
+          max_tokens: 200,
+        });
+        const docSummary = summaryRes.choices[0]?.message?.content || '';
+
+        if (docSummary) {
+          const CTX_BATCH = 5;
+          const contextualized = [...rawChunks];
+          for (let ci = 0; ci < rawChunks.length; ci += CTX_BATCH) {
+            const ctxBatch = rawChunks.slice(ci, ci + CTX_BATCH);
+            const prefixes = await Promise.all(
+              ctxBatch.map(async (c) => {
+                try {
+                  const res = await ctxClient.chat.completions.create({
+                    model: 'gpt-4o-mini',
+                    messages: [
+                      {
+                        role: 'system',
+                        content: `You are contextualizing a chunk from a contract document for a retrieval system.
+Given the document summary and a specific chunk, write a 1-2 sentence context prefix that:
+1. Identifies which part of the document this chunk is from
+2. Provides enough context so the chunk can be understood in isolation
+Return ONLY the context prefix.`,
+                      },
+                      {
+                        role: 'user',
+                        content: `Document Summary: ${docSummary}\n\nChunk ${c.index + 1} of ${rawChunks.length}${c.metadata.section ? ` (Section: ${c.metadata.section})` : ''}:\n${c.text.slice(0, 1000)}`,
+                      },
+                    ],
+                    temperature: 0,
+                    max_tokens: 100,
+                  });
+                  return res.choices[0]?.message?.content?.trim() || '';
+                } catch {
+                  return '';
+                }
+              }),
+            );
+            for (let j = 0; j < ctxBatch.length; j++) {
+              const prefix = prefixes[j];
+              if (prefix) {
+                contextualized[ci + j] = {
+                  ...rawChunks[ci + j]!,
+                  text: `[Context: ${prefix}]\n\n${rawChunks[ci + j]!.text}`,
+                };
+              }
+            }
+          }
+          chunks = contextualized;
+          jobLogger.info({ contextualizedCount: chunks.length }, 'Contextual retrieval applied');
+        }
+      }
+    } catch (ctxErr) {
+      jobLogger.warn({ error: (ctxErr as Error).message }, 'Contextual retrieval skipped (non-fatal)');
+      // Continue with original chunks — graceful degradation
     }
     
     await job.updateProgress(30);
@@ -352,16 +315,22 @@ export async function processRAGIndexingJob(
     for (let i = 0; i < records.length; i += INSERT_BATCH) {
       const batch = records.slice(i, i + INSERT_BATCH);
       
-      const values = batch.map((r, idx) => 
-        `(gen_random_uuid(), '${r.contractId}', ${r.chunkIndex}, $${idx * 2 + 1}, '${r.embedding}'::vector, $${idx * 2 + 2}, ${r.section ? `'${r.section.replace(/'/g, "''")}'` : 'NULL'}, NOW(), NOW())`
-      ).join(', ');
+      // Build fully-parameterized values list (no string interpolation)
+      const paramParts: string[] = [];
+      const params: unknown[] = [];
+      for (let idx = 0; idx < batch.length; idx++) {
+        const offset = idx * 6;
+        paramParts.push(
+          `(gen_random_uuid(), $${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}::vector, $${offset + 5}, $${offset + 6}, NOW(), NOW())`
+        );
+        const r = batch[idx]!;
+        params.push(r.contractId, r.chunkIndex, r.chunkText, r.embedding, r.chunkType, r.section ?? null);
+      }
       
-      const params = batch.flatMap(r => [r.chunkText, r.chunkType]);
-      
-      await prisma.$executeRawUnsafe(`
-        INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt")
-        VALUES ${values}
-      `, ...params);
+      await prisma.$executeRawUnsafe(
+        `INSERT INTO "ContractEmbedding" ("id", "contractId", "chunkIndex", "chunkText", "embedding", "chunkType", "section", "createdAt", "updatedAt") VALUES ${paramParts.join(', ')}`,
+        ...params,
+      );
     }
     
     await job.updateProgress(95);
