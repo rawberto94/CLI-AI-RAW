@@ -131,9 +131,23 @@ export class ContinuousLearningAgent extends BaseAgent {
    */
   private async storeLearningRecord(record: Omit<LearningRecord, 'id'>): Promise<void> {
     try {
-      // This would store in a dedicated learning_records table
-      // For now, log it
-      logger.debug({ record }, 'Learning record stored');
+      await prisma.learningRecord.create({
+        data: {
+          tenantId: (record as any).tenantId || 'system',
+          artifactType: record.artifactType,
+          contractType: record.contractType ?? null,
+          field: record.field,
+          aiExtracted: record.aiExtracted ?? null,
+          userCorrected: record.userCorrected ?? null,
+          confidence: record.context?.confidence ?? null,
+          contractLength: record.context?.contractLength ?? null,
+          ocrQuality: record.context?.ocrQuality ?? null,
+          modelUsed: record.context?.modelUsed ?? null,
+          promptVersion: record.context?.promptVersion ?? null,
+          correctionType: record.aiExtracted === record.userCorrected ? 'confirmation' : 'correction',
+        },
+      });
+      logger.debug({ field: record.field }, 'Learning record stored');
     } catch (error) {
       logger.error({ error, record }, 'Failed to store learning record');
     }
@@ -146,18 +160,55 @@ export class ContinuousLearningAgent extends BaseAgent {
     tenantId: string,
     contractType: string
   ): Promise<CorrectionPattern[]> {
-    // This would query learning_records from database
-    // For now, return example patterns
+    try {
+      const where: any = { tenantId };
+      if (contractType !== 'all') where.contractType = contractType;
 
-    const mockPatterns: CorrectionPattern[] = [];
+      // Query corrections grouped by field
+      const corrections = await prisma.extractionCorrection.groupBy({
+        by: ['fieldName', 'contractType'],
+        where: { ...where, wasCorrect: false },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 20,
+      });
 
-    // In production, this would:
-    // 1. Query all learning records for this tenant/contract type
-    // 2. Group by field
-    // 3. Detect common patterns (AI tends to extract X when it should be Y)
-    // 4. Calculate confidence based on occurrences
+      const patterns: CorrectionPattern[] = [];
 
-    return mockPatterns;
+      for (const group of corrections) {
+        if (group._count.id < 2) continue;
+
+        // Get recent examples for this field
+        const examples = await prisma.extractionCorrection.findMany({
+          where: { ...where, fieldName: group.fieldName, wasCorrect: false },
+          orderBy: { createdAt: 'desc' },
+          take: 5,
+          select: { originalValue: true, correctedValue: true, confidence: true },
+        });
+
+        const commonMistake = examples[0]?.originalValue || 'unknown';
+        const correctPattern = examples[0]?.correctedValue || 'unknown';
+
+        patterns.push({
+          field: group.fieldName,
+          contractType: group.contractType || contractType,
+          commonMistake,
+          correctPattern,
+          occurrences: group._count.id,
+          confidence: Math.min(0.95, 0.5 + group._count.id * 0.05),
+          examples: examples.map(e => ({
+            input: e.originalValue || '',
+            expected: e.correctedValue || '',
+            actual: e.originalValue || '',
+          })) as CorrectionExample[],
+        });
+      }
+
+      return patterns;
+    } catch (error) {
+      logger.error({ error, tenantId, contractType }, 'Failed to analyze corrections');
+      return [];
+    }
   }
 
   /**
@@ -200,15 +251,32 @@ export class ContinuousLearningAgent extends BaseAgent {
     improvement: number;
     trend: 'improving' | 'stable' | 'degrading';
   }> {
-    // This would analyze correction rates over time
-    // Fewer corrections = improving accuracy
+    try {
+      const daysMap = { week: 7, month: 30, quarter: 90 };
+      const days = daysMap[timeRange];
+      const rangeStart = new Date(Date.now() - days * 86400000);
+      const halfPoint = new Date(Date.now() - Math.floor(days / 2) * 86400000);
 
-    return {
-      baseline: 0.75,
-      current: 0.92,
-      improvement: 0.17,
-      trend: 'improving',
-    };
+      const [totalFirst, correctFirst] = await Promise.all([
+        prisma.extractionCorrection.count({ where: { tenantId, createdAt: { gte: rangeStart, lt: halfPoint } } }),
+        prisma.extractionCorrection.count({ where: { tenantId, wasCorrect: true, createdAt: { gte: rangeStart, lt: halfPoint } } }),
+      ]);
+
+      const [totalSecond, correctSecond] = await Promise.all([
+        prisma.extractionCorrection.count({ where: { tenantId, createdAt: { gte: halfPoint } } }),
+        prisma.extractionCorrection.count({ where: { tenantId, wasCorrect: true, createdAt: { gte: halfPoint } } }),
+      ]);
+
+      const baseline = totalFirst > 0 ? correctFirst / totalFirst : 0.75;
+      const current = totalSecond > 0 ? correctSecond / totalSecond : baseline;
+      const improvement = current - baseline;
+      const trend = improvement > 0.02 ? 'improving' as const : improvement < -0.02 ? 'degrading' as const : 'stable' as const;
+
+      return { baseline, current, improvement, trend };
+    } catch (error) {
+      logger.error({ error }, 'Failed to get accuracy trend');
+      return { baseline: 0, current: 0, improvement: 0, trend: 'stable' as const };
+    }
   }
 
   /**
@@ -223,10 +291,36 @@ export class ContinuousLearningAgent extends BaseAgent {
     totalExtractions: number;
     corrections: number;
   }>> {
-    // This would calculate accuracy per field
-    // accuracy = (totalExtractions - corrections) / totalExtractions
+    try {
+      const stats = await prisma.extractionCorrection.groupBy({
+        by: ['fieldName'],
+        where: { tenantId },
+        _count: { id: true },
+        _sum: {},
+      });
 
-    return [];
+      const correctStats = await prisma.extractionCorrection.groupBy({
+        by: ['fieldName'],
+        where: { tenantId, wasCorrect: true },
+        _count: { id: true },
+      });
+
+      const correctMap = new Map(correctStats.map(s => [s.fieldName, s._count.id]));
+
+      return stats.map(s => {
+        const total = s._count.id;
+        const correct = correctMap.get(s.fieldName) || 0;
+        return {
+          field: s.fieldName,
+          accuracy: total > 0 ? correct / total : 0,
+          totalExtractions: total,
+          corrections: total - correct,
+        };
+      });
+    } catch (error) {
+      logger.error({ error }, 'Failed to get field accuracy');
+      return [];
+    }
   }
 
   /**

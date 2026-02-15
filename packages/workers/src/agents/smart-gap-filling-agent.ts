@@ -86,7 +86,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         ),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }

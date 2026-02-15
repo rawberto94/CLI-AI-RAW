@@ -106,7 +106,7 @@ export class WorkflowSuggestionEngine extends BaseAgent {
         `Alternatives Available: ${suggestion.alternatives.length}`,
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
@@ -492,9 +492,49 @@ export class WorkflowSuggestionEngine extends BaseAgent {
     contractType: string
   ): Promise<WorkflowHistory[]> {
     try {
-      // This would query actual workflow data from database
-      // For now, return empty array (will be populated with real data)
-      return [];
+      const executions = await prisma.workflowExecution.findMany({
+        where: {
+          tenantId,
+          status: { in: ['COMPLETED', 'FAILED'] },
+          contract: { contractType },
+        },
+        include: {
+          contract: { select: { id: true, contractType: true, totalValue: true } },
+          stepExecutions: {
+            orderBy: { stepOrder: 'asc' },
+            select: {
+              stepName: true,
+              assignedTo: true,
+              completedAt: true,
+              startedAt: true,
+              status: true,
+            },
+          },
+        },
+        orderBy: { completedAt: 'desc' },
+        take: 50,
+      });
+
+      return executions.map((exec): WorkflowHistory => ({
+        contractId: exec.contractId,
+        contractType: (exec.contract.contractType || contractType) as any,
+        value: exec.contract.totalValue ? Number(exec.contract.totalValue) : 0,
+        steps: exec.stepExecutions
+          .filter(s => s.completedAt)
+          .map((s): CompletedStep => ({
+            name: s.stepName || 'Unknown Step',
+            assignee: s.assignedTo || 'unassigned',
+            completedAt: s.completedAt!,
+            duration: s.completedAt && s.startedAt
+              ? (s.completedAt.getTime() - s.startedAt.getTime()) / 86400000
+              : 0,
+            approved: s.status === 'COMPLETED',
+          })),
+        totalDuration: exec.completedAt && exec.startedAt
+          ? (exec.completedAt.getTime() - exec.startedAt.getTime()) / 86400000
+          : 0,
+        success: exec.status === 'COMPLETED',
+      }));
     } catch (error) {
       logger.error({ error, tenantId, contractType }, 'Failed to fetch historical workflows');
       return [];

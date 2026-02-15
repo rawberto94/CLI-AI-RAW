@@ -63,6 +63,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       status: healthScore >= 70 ? 'healthy' : healthScore >= 50 ? 'at-risk' : 'critical',
       factors: [
         {
+          id: `${c.id}-completeness`,
           name: 'Document Completeness',
           score: completeness,
           weight: 0.2,
@@ -70,6 +71,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
           description: `${c.artifacts.length} artifacts generated`,
         },
         {
+          id: `${c.id}-expiration`,
           name: 'Expiration Risk',
           score: expirationScore,
           weight: 0.25,
@@ -77,6 +79,7 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
           description: daysToExpiry > 0 ? `${daysToExpiry} days until expiration` : 'Expired',
         },
         {
+          id: `${c.id}-risk`,
           name: 'Risk Assessment',
           score: riskScore,
           weight: 0.25,
@@ -87,9 +90,9 @@ export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: Authent
       lastAssessed: c.updatedAt.toISOString(),
       nextReview: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
       actionItems: [
-        ...(completeness < 80 ? [{ action: 'Run AI artifact generation', priority: 'medium' }] : []),
-        ...(expirationScore < 40 ? [{ action: 'Review expiration and plan renewal', priority: 'high' }] : []),
-        ...(riskScore < 40 ? [{ action: 'Conduct detailed risk assessment', priority: 'high' }] : []),
+        ...(completeness < 80 ? [{ id: `${c.id}-ai`, action: 'Run AI artifact generation', priority: 'medium' }] : []),
+        ...(expirationScore < 40 ? [{ id: `${c.id}-renew`, action: 'Review expiration and plan renewal', priority: 'high' }] : []),
+        ...(riskScore < 40 ? [{ id: `${c.id}-risk`, action: 'Conduct detailed risk assessment', priority: 'high' }] : []),
       ],
     };
   });

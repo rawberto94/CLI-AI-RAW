@@ -98,7 +98,7 @@ export class AutonomousDeadlineManager extends BaseAgent {
         `Auto-Escalations: ${allActions.filter(a => a.type === 'escalate').length}`,
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
@@ -229,31 +229,92 @@ export class AutonomousDeadlineManager extends BaseAgent {
   }
 
   /**
-   * Analyze historical performance
+   * Analyze historical performance from completed processing jobs
    */
   private async analyzeHistoricalPerformance(contract: any): Promise<PredictionFactor> {
-    // This would analyze similar contracts' completion times
-    // For now, use a generic factor
-    return {
-      factor: 'Historical Performance',
-      impact: 'neutral',
-      weight: 0.2,
-      description: 'Similar contracts completed in 5-7 days on average',
-    };
+    try {
+      const completed = await prisma.processingJob.findMany({
+        where: {
+          tenantId: contract.tenantId,
+          status: 'COMPLETED',
+          completedAt: { not: null },
+          startedAt: { not: null },
+          contract: { contractType: contract.contractType },
+        },
+        select: { startedAt: true, completedAt: true },
+        orderBy: { completedAt: 'desc' },
+        take: 20,
+      });
+
+      if (completed.length === 0) {
+        return {
+          factor: 'Historical Performance',
+          impact: 'neutral',
+          weight: 0.2,
+          description: 'No historical data available for this contract type',
+        };
+      }
+
+      const durations = completed.map(j =>
+        (j.completedAt!.getTime() - j.startedAt!.getTime()) / 86400000
+      );
+      const avgDays = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+      const impact = avgDays <= 3 ? 'positive' : avgDays <= 7 ? 'neutral' : 'negative';
+
+      return {
+        factor: 'Historical Performance',
+        impact,
+        weight: 0.2,
+        description: `Similar contracts completed in ${avgDays.toFixed(1)} days on average (${completed.length} samples)`,
+      };
+    } catch (error) {
+      logger.warn({ error }, 'Failed to analyze historical performance');
+      return {
+        factor: 'Historical Performance',
+        impact: 'neutral',
+        weight: 0.2,
+        description: 'Unable to retrieve historical data',
+      };
+    }
   }
 
   /**
-   * Analyze current workload
+   * Analyze current workload from active processing jobs
    */
   private async analyzeWorkload(contract: any): Promise<PredictionFactor> {
-    // This would check team workload
-    // High workload = longer processing time
-    return {
-      factor: 'Team Workload',
-      impact: 'neutral',
-      weight: 0.2,
-      description: 'Team workload is moderate',
-    };
+    try {
+      const activeJobs = await prisma.processingJob.count({
+        where: {
+          tenantId: contract.tenantId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      });
+
+      let impact: 'positive' | 'neutral' | 'negative';
+      let description: string;
+
+      if (activeJobs <= 5) {
+        impact = 'positive';
+        description = `Light workload (${activeJobs} active jobs)`;
+      } else if (activeJobs <= 20) {
+        impact = 'neutral';
+        description = `Moderate workload (${activeJobs} active jobs)`;
+      } else {
+        impact = 'negative';
+        description = `Heavy workload (${activeJobs} active jobs) — may cause delays`;
+      }
+
+      return { factor: 'Team Workload', impact, weight: 0.2, description };
+    } catch (error) {
+      logger.warn({ error }, 'Failed to analyze workload');
+      return {
+        factor: 'Team Workload',
+        impact: 'neutral',
+        weight: 0.2,
+        description: 'Unable to assess current workload',
+      };
+    }
   }
 
   /**

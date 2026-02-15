@@ -458,7 +458,26 @@ export const NegotiationCoPilot: React.FC = () => {
         const res = await fetch('/api/intelligence/negotiate');
         const json = await res.json();
         if (json.success && json.data?.redlines?.length > 0) {
-          setRedlines(json.data.redlines);
+          // Map API response to ensure field compatibility
+          const mapped: RedlineChange[] = json.data.redlines.map((r: any) => ({
+            id: r.id,
+            type: r.type || r.changeType || 'modification',
+            originalText: r.originalText || '',
+            proposedText: r.proposedText || '',
+            clause: r.clause || r.section || 'General',
+            section: r.section || r.clause || 'General',
+            riskLevel: r.riskLevel || 'medium',
+            category: r.category || 'other',
+            aiAnalysis: typeof r.aiAnalysis === 'object' ? r.aiAnalysis : {
+              summary: String(r.aiAnalysis || ''),
+              marketPosition: 'neutral' as const,
+              recommendation: 'negotiate' as const,
+              rationale: String(r.aiAnalysis || ''),
+            },
+            playbookMatch: r.playbookMatch || undefined,
+            status: r.status || 'pending',
+          }));
+          setRedlines(mapped);
         } else {
           setRedlines(mockRedlines);
         }

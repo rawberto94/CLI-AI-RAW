@@ -13,6 +13,10 @@ import type {
 } from './types';
 import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
+import clientsDb from 'clients-db';
+
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+const prisma = getClient();
 
 export class IntelligentSearchAgent extends BaseAgent {
   name = 'intelligent-search-agent';
@@ -237,29 +241,131 @@ export class IntelligentSearchAgent extends BaseAgent {
   }
 
   /**
-   * Perform search (mock - would integrate with real search)
+   * Perform search using full-text + vector similarity on real database
    */
   private async performSearch(
     query: string,
     intent: SearchIntent,
     tenantId: string
   ): Promise<SearchResult> {
-    // This would integrate with actual search system (Elasticsearch, etc.)
-    // For now, return mock result
+    let dbResults: any[] = [];
 
-    const mockResults: any[] = [];
-    
-    const summary = await this.generateSearchSummary(mockResults, intent);
-    const suggestedFilters = this.generateSuggestedFilters(mockResults, intent);
+    try {
+      // Build intent-specific WHERE conditions
+      const intentConditions: string[] = ['c."tenantId" = $1', 'c."isDeleted" = false'];
+      const params: any[] = [tenantId];
+      let paramIdx = 2;
+
+      for (const filter of intent.filters) {
+        switch (filter.field) {
+          case 'status':
+            intentConditions.push(`c."status" = $${paramIdx}`);
+            params.push(String(filter.value).toUpperCase());
+            paramIdx++;
+            break;
+          case 'expirationDate':
+            if (filter.operator === 'less_than') {
+              intentConditions.push(`c."expirationDate" < $${paramIdx}`);
+              params.push(new Date(filter.value));
+              paramIdx++;
+            }
+            break;
+          case 'totalValue':
+            if (filter.operator === 'greater_than') {
+              intentConditions.push(`c."totalValue" > $${paramIdx}`);
+              params.push(Number(filter.value));
+              paramIdx++;
+            }
+            break;
+          case 'supplierName':
+            intentConditions.push(`c."supplierName" ILIKE $${paramIdx}`);
+            params.push(`%${filter.value}%`);
+            paramIdx++;
+            break;
+        }
+      }
+
+      const whereClause = intentConditions.join(' AND ');
+
+      // Strategy 1: Full-text search on Contract.searchableText + rawText
+      const ftsQuery = query.replace(/[^a-zA-Z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean).join(' & ');
+      
+      if (ftsQuery) {
+        params.push(ftsQuery);
+        const ftsResults = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT c.id, c."contractTitle", c."supplierName", c."contractType",
+                 c."totalValue", c."expirationDate", c.status,
+                 ts_rank(to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('english', $${paramIdx})) as rank
+          FROM "Contract" c
+          WHERE ${whereClause}
+            AND to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", ''))
+                @@ to_tsquery('english', $${paramIdx})
+          ORDER BY rank DESC
+          LIMIT 20
+        `, ...params);
+        paramIdx++;
+
+        dbResults = ftsResults.map((r: any) => ({
+          id: r.id,
+          contractTitle: r.contractTitle,
+          supplierName: r.supplierName,
+          contractType: r.contractType,
+          totalValue: r.totalValue ? Number(r.totalValue) : null,
+          expirationDate: r.expirationDate,
+          status: r.status,
+          score: Number(r.rank),
+          matchType: 'fulltext',
+        }));
+      }
+
+      // Strategy 2: If few FTS results, fall back to ILIKE search
+      if (dbResults.length < 5) {
+        const likeParams = [...params.slice(0, paramIdx - 1)]; // without fts param
+        likeParams.push(`%${query}%`);
+        const likeIdx = likeParams.length;
+
+        const likeResults = await prisma.$queryRawUnsafe<any[]>(`
+          SELECT c.id, c."contractTitle", c."supplierName", c."contractType",
+                 c."totalValue", c."expirationDate", c.status
+          FROM "Contract" c
+          WHERE ${whereClause}
+            AND (c."contractTitle" ILIKE $${likeIdx} OR c."supplierName" ILIKE $${likeIdx} OR c."rawText" ILIKE $${likeIdx})
+          ORDER BY c."updatedAt" DESC
+          LIMIT 10
+        `, ...likeParams);
+
+        const existingIds = new Set(dbResults.map(r => r.id));
+        for (const r of likeResults) {
+          if (!existingIds.has(r.id)) {
+            dbResults.push({
+              id: r.id,
+              contractTitle: r.contractTitle,
+              supplierName: r.supplierName,
+              contractType: r.contractType,
+              totalValue: r.totalValue ? Number(r.totalValue) : null,
+              expirationDate: r.expirationDate,
+              status: r.status,
+              score: 0.5,
+              matchType: 'keyword',
+            });
+          }
+        }
+      }
+    } catch (error) {
+      logger.warn({ error, tenantId, query }, 'Search agent DB query failed');
+    }
+
+    const summary = await this.generateSearchSummary(dbResults, intent);
+    const suggestedFilters = this.generateSuggestedFilters(dbResults, intent);
     const relatedQueries = this.generateRelatedQueries(query, intent);
 
     return {
-      results: mockResults,
+      results: dbResults,
       intent: intent.type,
       summary,
       suggestedFilters,
       relatedQueries,
-      totalResults: mockResults.length,
+      totalResults: dbResults.length,
       confidence: intent.confidence,
     };
   }

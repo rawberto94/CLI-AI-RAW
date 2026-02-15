@@ -569,9 +569,6 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   tenantId: _tenantId,
   className,
 }: AgentObservabilityDashboardProps) {
-  // Suppress unused variable warnings
-  void _tenantId;
-
   // State
   const [traces, setTraces] = useState<AgentTrace[]>([]);
   const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
@@ -584,37 +581,53 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [agentTypeFilter, setAgentTypeFilter] = useState<string>('all');
 
-  // Fetch data
+  // Fetch data from real API, fall back to mock
+  const fetchObservabilityData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agents/observability');
+      const json = await res.json();
+      if (json.success && (json.data?.traces?.length > 0 || json.data?.metrics)) {
+        if (json.data.traces?.length > 0) setTraces(json.data.traces);
+        else setTraces(generateMockTraces());
+        if (json.data.metrics) setMetrics(json.data.metrics);
+        else setMetrics(generateMockMetrics());
+        return;
+      }
+    } catch {
+      // API unavailable — fall through to mock
+    }
+    setTraces(generateMockTraces());
+    setMetrics(generateMockMetrics());
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       setIsLoading(true);
       try {
-        // In production, fetch from API
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setTraces(generateMockTraces());
-        setMetrics(generateMockMetrics());
+        await fetchObservabilityData();
       } catch {
         toast.error('Failed to load observability data');
       } finally {
         setIsLoading(false);
       }
     };
+    load();
+  }, [fetchObservabilityData]);
 
-    fetchData();
-  }, []);
-
-  // Live mode polling
+  // Live mode polling — fetches real API data on interval
   useEffect(() => {
     if (!isLiveMode) return;
 
-    const interval = setInterval(() => {
-      // In production, fetch updates from SSE or polling
-      const newTraces = generateMockTraces();
-      setTraces(newTraces);
+    const interval = setInterval(async () => {
+      try {
+        await fetchObservabilityData();
+      } catch {
+        // Silently continue with stale data
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isLiveMode]);
+  }, [isLiveMode, fetchObservabilityData]);
 
   // Filter traces
   const filteredTraces = useMemo(() => {
@@ -633,15 +646,17 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   }, [traces, statusFilter, agentTypeFilter, searchQuery]);
 
   // Handlers
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setTraces(generateMockTraces());
-      setMetrics(generateMockMetrics());
-      setIsLoading(false);
+    try {
+      await fetchObservabilityData();
       toast.success('Data refreshed');
-    }, 500);
-  }, []);
+    } catch {
+      toast.error('Refresh failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchObservabilityData]);
 
   const toggleStep = useCallback((stepId: string) => {
     setExpandedSteps(prev => {

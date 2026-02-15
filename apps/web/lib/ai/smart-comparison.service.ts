@@ -209,7 +209,7 @@ export async function generateSmartComparison(params: {
   const text2 = contract2.rawText.slice(0, maxChars);
 
   const { object: report } = await generateObject({
-    model: openai('gpt-4o'),
+    model: openai('gpt-4o-mini'),
     schema: ComparisonReportSchema,
     system: COMPARISON_SYSTEM_PROMPT,
     prompt: `Compare these two contracts:

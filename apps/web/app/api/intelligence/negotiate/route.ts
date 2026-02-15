@@ -16,13 +16,21 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 interface RedlineChange {
   id: string;
+  type: 'addition' | 'deletion' | 'modification' | 'replacement';
+  clause: string;
   section: string;
   originalText: string;
   proposedText: string;
-  changeType: 'addition' | 'deletion' | 'modification' | 'replacement';
+  category: 'liability' | 'termination' | 'payment' | 'confidentiality' | 'ip' | 'compliance' | 'other';
   riskLevel: 'critical' | 'high' | 'medium' | 'low';
   status: 'pending' | 'accepted' | 'rejected' | 'negotiating';
-  aiAnalysis: string;
+  aiAnalysis: {
+    summary: string;
+    marketPosition: 'favorable' | 'neutral' | 'unfavorable';
+    recommendation: 'accept' | 'negotiate' | 'reject';
+    rationale: string;
+    fallbackSuggestion?: string;
+  };
   suggestedResponse: string;
   impactAreas: string[];
 }
@@ -67,15 +75,24 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
 
     // If we have recorded clause changes, map them
     for (const change of clauseChanges) {
+      const analysisStr = change.analysis || `Clause change in ${c.contractTitle || 'contract'} with ${c.counterparty || 'counterparty'}`;
       redlines.push({
         id: `${c.id}-${change.id || redlines.length}`,
+        type: change.type || 'modification',
+        clause: change.clause || change.section || c.contractType || 'General',
         section: change.section || c.contractType || 'General',
         originalText: change.original || '',
         proposedText: change.proposed || change.text || '',
-        changeType: change.type || 'modification',
+        category: inferCategory(change.section || change.clause || ''),
         riskLevel: mapRiskLevel(change.risk),
         status: change.status || 'pending',
-        aiAnalysis: change.analysis || `Clause change in ${c.contractTitle || 'contract'} with ${c.counterparty || 'counterparty'}`,
+        aiAnalysis: {
+          summary: analysisStr,
+          marketPosition: change.marketPosition || 'neutral',
+          recommendation: change.recommendation || 'negotiate',
+          rationale: change.rationale || analysisStr,
+          fallbackSuggestion: change.suggestion || undefined,
+        },
         suggestedResponse: change.suggestion || '',
         impactAreas: change.impact || [c.contractType || 'general'],
       });
@@ -84,15 +101,23 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx: Authenti
     // If no recorded changes, generate a summary redline for the contract
     if (clauseChanges.length === 0) {
       const riskLevel = c.expirationRisk === 'CRITICAL' ? 'critical' : c.expirationRisk === 'HIGH' ? 'high' : 'medium';
+      const summaryText = `Contract with ${c.counterparty || 'counterparty'} is in review. Value: $${c.totalValue || 0}`;
       redlines.push({
         id: c.id,
+        type: 'modification',
+        clause: c.contractTitle || 'Untitled',
         section: c.contractType || 'General Terms',
         originalText: '',
         proposedText: `${c.contractTitle || 'Untitled'} — review needed`,
-        changeType: 'modification',
+        category: inferCategory(c.contractType || ''),
         riskLevel: riskLevel as RedlineChange['riskLevel'],
         status: 'pending',
-        aiAnalysis: `Contract with ${c.counterparty || 'counterparty'} is in review. Value: $${c.totalValue || 0}`,
+        aiAnalysis: {
+          summary: summaryText,
+          marketPosition: 'neutral',
+          recommendation: 'negotiate',
+          rationale: summaryText,
+        },
         suggestedResponse: 'Request latest redline comparison from counterparty.',
         impactAreas: [c.contractType || 'general'],
       });
@@ -157,4 +182,15 @@ function mapRiskLevel(risk: string | undefined): RedlineChange['riskLevel'] {
   if (r === 'high') return 'high';
   if (r === 'low') return 'low';
   return 'medium';
+}
+
+function inferCategory(text: string): RedlineChange['category'] {
+  const t = text.toLowerCase();
+  if (t.includes('liab') || t.includes('indemn')) return 'liability';
+  if (t.includes('terminat') || t.includes('cancel')) return 'termination';
+  if (t.includes('payment') || t.includes('invoice') || t.includes('fee')) return 'payment';
+  if (t.includes('confiden') || t.includes('nda') || t.includes('secret')) return 'confidentiality';
+  if (t.includes('ip') || t.includes('intellectual') || t.includes('patent')) return 'ip';
+  if (t.includes('complian') || t.includes('regulat')) return 'compliance';
+  return 'other';
 }

@@ -901,13 +901,13 @@ export const ContractHealthScore: React.FC = () => {
         const json = await res.json();
         if (json.success && json.data?.contracts?.length > 0) {
           const mapped = json.data.contracts.map((item: any) => ({
-            contractId: item.id || item.contractId,
+            contractId: item.contractId || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
-            supplierName: item.counterparty || item.vendor || 'Unknown',
-            overallScore: item.healthScore || item.overallScore || 75,
-            previousScore: item.previousScore || item.healthScore - 5 || 70,
+            supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
+            overallScore: item.overallScore || item.healthScore || 75,
+            previousScore: item.previousScore || (item.overallScore || item.healthScore || 75) - 5 || 70,
             trend: item.trend || 'stable',
-            status: item.healthScore >= 70 ? 'healthy' : item.healthScore >= 50 ? 'at-risk' : 'critical',
+            status: (item.overallScore || item.healthScore || 75) >= 70 ? 'healthy' : (item.overallScore || item.healthScore || 75) >= 50 ? 'at-risk' : 'critical',
             factors: Array.isArray(item.factors) ? item.factors : [],
             lastAssessed: item.lastAssessed || new Date().toISOString(),
             nextReview: item.nextReview || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),

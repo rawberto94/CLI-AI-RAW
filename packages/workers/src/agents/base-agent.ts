@@ -11,6 +11,10 @@ import type {
   AgentConfig,
 } from './types';
 import { logger } from '../utils/logger';
+import clientsDb from 'clients-db';
+
+const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
+const prisma = getClient();
 
 export abstract class BaseAgent {
   abstract name: string;
@@ -133,13 +137,26 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Record agent event for analytics
+   * Record agent event for analytics — persists to AuditLog
    */
   protected async recordEvent(event: Omit<AgentEvent, 'id'>): Promise<void> {
     try {
-      // This would typically save to database
-      // For now, just log it
-      logger.debug({ event }, 'Agent event recorded');
+      await prisma.auditLog.create({
+        data: {
+          tenantId: event.tenantId,
+          action: `agent:${event.eventType}`,
+          entityType: 'agent',
+          entityId: event.contractId || 'system',
+          details: {
+            agentName: event.agentName,
+            eventType: event.eventType,
+            outcome: event.outcome,
+            payload: event.payload,
+            metadata: event.metadata,
+          } as any,
+        },
+      });
+      logger.debug({ event: event.eventType, agent: event.agentName }, 'Agent event persisted');
     } catch (error) {
       logger.error({ error }, 'Failed to record agent event');
     }
@@ -193,19 +210,53 @@ export abstract class BaseAgent {
   }
 
   /**
-   * Get performance metrics for this agent
+   * Get performance metrics for this agent from AuditLog history
    */
   async getPerformanceMetrics(tenantId: string): Promise<AgentPerformanceMetrics> {
-    // This would typically query database for metrics
-    return {
-      agentName: this.name,
-      totalExecutions: 0,
-      successRate: 0,
-      averageConfidence: 0,
-      averageExecutionTime: 0,
-      totalCost: 0,
-      lastExecuted: new Date(),
-    };
+    try {
+      const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // last 30 days
+      const logs = await prisma.auditLog.findMany({
+        where: {
+          tenantId,
+          action: { startsWith: 'agent:' },
+          details: { path: ['agentName'], equals: this.name },
+          createdAt: { gte: since },
+        },
+        select: { details: true, createdAt: true },
+        orderBy: { createdAt: 'desc' },
+        take: 500,
+      });
+
+      const total = logs.length;
+      const successes = logs.filter((l: any) => (l.details as any)?.outcome === 'success').length;
+      const confidences = logs
+        .map((l: any) => (l.details as any)?.metadata?.confidence)
+        .filter((c: any): c is number => typeof c === 'number');
+      const durations = logs
+        .map((l: any) => (l.details as any)?.metadata?.duration)
+        .filter((d: any): d is number => typeof d === 'number');
+
+      return {
+        agentName: this.name,
+        totalExecutions: total,
+        successRate: total > 0 ? successes / total : 0,
+        averageConfidence: confidences.length > 0 ? confidences.reduce((a: number, b: number) => a + b, 0) / confidences.length : 0,
+        averageExecutionTime: durations.length > 0 ? durations.reduce((a: number, b: number) => a + b, 0) / durations.length : 0,
+        totalCost: 0, // Cost tracking via AiCostLog is separate
+        lastExecuted: logs[0]?.createdAt || new Date(),
+      };
+    } catch (error) {
+      logger.warn({ error, agent: this.name }, 'Failed to query agent metrics');
+      return {
+        agentName: this.name,
+        totalExecutions: 0,
+        successRate: 0,
+        averageConfidence: 0,
+        averageExecutionTime: 0,
+        totalCost: 0,
+        lastExecuted: new Date(),
+      };
+    }
   }
 
   /**

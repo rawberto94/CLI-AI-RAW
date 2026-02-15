@@ -190,46 +190,54 @@ export async function processRAGIndexingJob(
           const contextualized = [...rawChunks];
           for (let ci = 0; ci < rawChunks.length; ci += CTX_BATCH) {
             const ctxBatch = rawChunks.slice(ci, ci + CTX_BATCH);
-            const prefixes = await Promise.all(
-              ctxBatch.map(async (c) => {
-                try {
-                  const res = await ctxClient.chat.completions.create({
-                    model: 'gpt-4o-mini',
-                    messages: [
-                      {
-                        role: 'system',
-                        content: `You are contextualizing a chunk from a contract document for a retrieval system.
-Given the document summary and a specific chunk, write a 1-2 sentence context prefix that:
-1. Identifies which part of the document this chunk is from
-2. Provides enough context so the chunk can be understood in isolation
-Return ONLY the context prefix.`,
-                      },
-                      {
-                        role: 'user',
-                        content: `Document Summary: ${docSummary}\n\nChunk ${c.index + 1} of ${rawChunks.length}${c.metadata.section ? ` (Section: ${c.metadata.section})` : ''}:\n${c.text.slice(0, 1000)}`,
-                      },
-                    ],
-                    temperature: 0,
-                    max_tokens: 100,
-                  });
-                  return res.choices[0]?.message?.content?.trim() || '';
-                } catch {
-                  return '';
-                }
-              }),
-            );
-            for (let j = 0; j < ctxBatch.length; j++) {
-              const prefix = prefixes[j];
-              if (prefix) {
-                contextualized[ci + j] = {
-                  ...rawChunks[ci + j]!,
-                  text: `[Context: ${prefix}]\n\n${rawChunks[ci + j]!.text}`,
-                };
+            try {
+              // Batch all chunks in one LLM call with JSON array output
+              const batchPrompt = ctxBatch.map((c, idx) => 
+                `CHUNK_${idx}: [Section: ${c.metadata.section || 'N/A'}] ${c.text.slice(0, 600)}`
+              ).join('\n\n');
+
+              const res = await ctxClient.chat.completions.create({
+                model: 'gpt-4o-mini',
+                messages: [
+                  {
+                    role: 'system',
+                    content: `You contextualize contract chunks for a retrieval system. Given a document summary and multiple chunks, write a 1-2 sentence context prefix for EACH chunk that identifies its location in the document and provides enough context for standalone understanding.
+Return a JSON array of strings, one prefix per chunk, in the same order. Return ONLY the JSON array, no other text.`,
+                  },
+                  {
+                    role: 'user',
+                    content: `Document Summary: ${docSummary}\n\n${batchPrompt}`,
+                  },
+                ],
+                temperature: 0,
+                max_tokens: 150 * ctxBatch.length,
+                response_format: { type: 'json_object' },
+              });
+
+              const raw = res.choices[0]?.message?.content?.trim() || '{}';
+              let prefixes: string[] = [];
+              try {
+                const parsed = JSON.parse(raw);
+                prefixes = Array.isArray(parsed) ? parsed : (parsed.prefixes || parsed.contexts || Object.values(parsed));
+              } catch {
+                prefixes = [];
               }
+
+              for (let j = 0; j < ctxBatch.length; j++) {
+                const prefix = typeof prefixes[j] === 'string' ? prefixes[j] : '';
+                if (prefix) {
+                  contextualized[ci + j] = {
+                    ...rawChunks[ci + j]!,
+                    text: `[Context: ${prefix}]\n\n${rawChunks[ci + j]!.text}`,
+                  };
+                }
+              }
+            } catch {
+              // Batch failed — skip this batch, chunks keep original text
             }
           }
           chunks = contextualized;
-          jobLogger.info({ contextualizedCount: chunks.length }, 'Contextual retrieval applied');
+          jobLogger.info({ contextualizedCount: chunks.length }, 'Contextual retrieval applied (batched)');
         }
       }
     } catch (ctxErr) {

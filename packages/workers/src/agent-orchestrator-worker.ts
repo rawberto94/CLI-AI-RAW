@@ -458,6 +458,55 @@ export async function runAgentOrchestrationJob(
   
   const done = allPlannedTerminal && artifactsOk;
 
+  // 4. Intelligence Agent Passes — run registered agents post-artifact/post-pipeline
+  if (done && !checkpoint.intelligenceRun) {
+    try {
+      const { runPostArtifactIntelligence, runPostPipelineIntelligence } = await import('./agents/agent-dispatch');
+      
+      // Get all generated artifacts for context
+      const allArtifacts = await prisma.artifact.findMany({
+        where: { contractId, tenantId },
+        select: { type: true, data: true },
+      });
+      const artifactContext: Record<string, any> = {};
+      for (const a of allArtifacts) {
+        artifactContext[String(a.type)] = a.data;
+      }
+
+      const agentContext = {
+        contractText: typeof contract?.rawText === 'string' ? contract.rawText : '',
+        contractType: contractType || 'OTHER',
+        artifacts: artifactContext,
+        riskAnalysis,
+        contract: {
+          id: contractId,
+          status: contract?.status,
+          totalValue: contract?.totalValue,
+          effectiveDate: contract?.effectiveDate,
+          expirationDate: contract?.expirationDate,
+          supplierName: contract?.supplierName,
+          autoRenewalEnabled: contract?.autoRenewalEnabled,
+        },
+      };
+
+      // Post-artifact: validation, health, gap-filling
+      const postArtifactResults = await runPostArtifactIntelligence(contractId, tenantId, agentContext);
+      
+      // Post-pipeline: workflow, deadline, opportunity
+      const postPipelineResults = await runPostPipelineIntelligence(contractId, tenantId, agentContext);
+
+      const allResults: Record<string, any> = {};
+      for (const [name, output] of postArtifactResults) allResults[name] = { success: output.success, confidence: output.confidence };
+      for (const [name, output] of postPipelineResults) allResults[name] = { success: output.success, confidence: output.confidence };
+
+      logger.info({ contractId, agents: Object.keys(allResults), results: allResults }, '🧠 Intelligence agent passes completed');
+      checkpoint.intelligenceRun = allResults;
+    } catch (error) {
+      logger.warn({ error: error instanceof Error ? error.message : String(error), contractId }, 'Intelligence agent passes failed (non-fatal)');
+      checkpoint.intelligenceRun = { error: true };
+    }
+  }
+
   // Persist agent decision snapshot into checkpointData (best-effort)
   try {
     const decision: AgentDecision = {

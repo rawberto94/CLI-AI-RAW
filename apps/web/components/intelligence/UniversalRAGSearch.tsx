@@ -522,19 +522,21 @@ export const UniversalRAGSearch: React.FC = () => {
             },
           }));
         } else if (json.error) {
-          results = generateMockResults(searchQuery);
+          results = [];
         } else {
-          results = generateMockResults(searchQuery);
+          results = [];
         }
       } catch {
-        results = generateMockResults(searchQuery);
+        results = [];
       }
     }
 
     const assistantMessage: ChatMessage = {
       id: `msg-${Date.now()}-response`,
       role: 'assistant',
-      content: `I found ${results.length} relevant items matching "${searchQuery}". Here are the most relevant results:`,
+      content: results.length > 0
+        ? `I found ${results.length} relevant items matching "${searchQuery}". Here are the most relevant results:`
+        : `No results found for "${searchQuery}". Try rephrasing your query or using different keywords.`,
       timestamp: new Date(),
       results,
       suggestions: [

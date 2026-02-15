@@ -255,7 +255,7 @@ export function selectCompliantProvider(
       provider: 'azure-openai',
       endpoint: process.env.AZURE_OPENAI_ENDPOINT,
       apiKey: process.env.AZURE_OPENAI_API_KEY,
-      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4',
+      model: process.env.AZURE_OPENAI_DEPLOYMENT || 'gpt-4o',
       region,
     });
   }
@@ -265,7 +265,7 @@ export function selectCompliantProvider(
     providers.push({
       provider: 'openai',
       apiKey: process.env.OPENAI_API_KEY,
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       region: 'us',
     });
   }

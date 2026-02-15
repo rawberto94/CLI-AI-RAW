@@ -89,7 +89,7 @@ export class AdaptiveRetryAgent extends BaseAgent {
         ...(strategy.promptModifications ? ['Prompt Modifications:', ...strategy.promptModifications.map(m => `  - ${m}`)] : []),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
