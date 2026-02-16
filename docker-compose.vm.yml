@@ -83,9 +83,7 @@ services:
       - contigo
 
   web:
-    build:
-      context: .
-      dockerfile: Dockerfile.production
+    image: ghcr.io/rawberto94/cli-ai-raw/web:latest
     container_name: contigo-web
     restart: unless-stopped
     environment:
@@ -103,6 +101,7 @@ services:
       MINIO_BUCKET: ${S3_BUCKET:-contracts}
       MINIO_USE_SSL: "false"
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
+      AUTH_TRUST_HOST: "true"
       NEXTAUTH_URL: ${NEXTAUTH_URL:-http://20.199.168.182:3000}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       NEXT_TELEMETRY_DISABLED: "1"
