@@ -76,6 +76,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { MarkdownContent } from '@/components/ai/MarkdownContent';
 
 // Keyboard shortcuts
 const _KEYBOARD_SHORTCUTS = {
@@ -194,6 +195,7 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [activeTools, setActiveTools] = useState<Array<{ name: string; status: 'running' | 'done'; summary?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -745,6 +747,15 @@ How can I help you today?`;
                   if (data.type === 'content' && data.content) {
                     fullContent += data.content;
                     setStreamingText(fullContent);
+                  } else if (data.type === 'tool_start') {
+                    setActiveTools(prev => [...prev, { name: data.tool || data.name || 'tool', status: 'running' }]);
+                  } else if (data.type === 'tool_done') {
+                    setActiveTools(prev =>
+                      prev.map(t => t.name === (data.tool || data.name) && t.status === 'running'
+                        ? { ...t, status: 'done' as const, summary: data.summary || data.result }
+                        : t
+                      )
+                    );
                   } else if (data.content && !data.type) {
                     // Legacy format compatibility
                     fullContent += data.content;
@@ -766,6 +777,7 @@ How can I help you today?`;
       }
 
       setIsStreaming(false);
+      setActiveTools([]);
       
       // Calculate response time
       const responseTimeMs = Date.now() - responseStartTimeRef.current;
@@ -1485,7 +1497,11 @@ Would you like me to notify the first approver or do anything else?`,
                         : 'bg-gray-100 text-gray-900'
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <MarkdownContent content={message.content} className="text-sm leading-relaxed" />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    )}
 
                     {/* Sources */}
                     {message.sources && message.sources.length > 0 && (
@@ -1667,6 +1683,34 @@ Would you like me to notify the first approver or do anything else?`,
           ))}
           </AnimatePresence>
 
+          {/* Tool execution progress */}
+          {isStreaming && activeTools.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
+              <div className="w-8" /> {/* Spacer to align with bot avatar */}
+              <div className="space-y-1 text-xs">
+                {activeTools.map((tool, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-gray-500">
+                    {tool.status === 'running' ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+                    ) : (
+                      <Check className="h-3 w-3 text-green-500" />
+                    )}
+                    <span className={tool.status === 'done' ? 'text-gray-400' : 'text-gray-600'}>
+                      {tool.name.replace(/_/g, ' ')}
+                    </span>
+                    {tool.summary && (
+                      <span className="text-gray-400">— {tool.summary}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
           {/* Streaming response */}
           {isStreaming && streamingText && (
             <motion.div
@@ -1678,7 +1722,7 @@ Would you like me to notify the first approver or do anything else?`,
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-gray-100 text-gray-900">
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}</p>
+                <MarkdownContent content={streamingText} className="text-sm leading-relaxed" />
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex gap-1">
                     <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>

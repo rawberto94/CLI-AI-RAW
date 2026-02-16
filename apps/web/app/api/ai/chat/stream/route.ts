@@ -37,6 +37,7 @@ import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '
 import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
 import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
+import { shouldUseRAG } from '@/lib/ai/chat/response-builder';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -848,18 +849,6 @@ ${memoryContext}`;
 });
 
 // ─── Helpers ────────────────────────────────────────────────────────────
-
-function shouldUseRAG(query: string): boolean {
-  const q = query.toLowerCase();
-  const keywords = [
-    'find', 'search', 'show me', 'where', 'what', 'which', 'list',
-    'contract', 'clause', 'term', 'liability', 'termination',
-    'payment', 'renewal', 'expire', 'obligation', 'risk',
-    'indemnif', 'sla', 'warranty', 'confidential', 'vendor', 'supplier',
-    'compare', 'analyze', 'summary', 'expiring', 'value', 'spend',
-  ];
-  return keywords.some(k => q.includes(k));
-}
 
 function detectTopic(query: string): string {
   const q = query.toLowerCase();

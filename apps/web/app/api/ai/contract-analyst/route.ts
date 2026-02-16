@@ -307,15 +307,21 @@ ${contractContext || 'No specific contract content available. Please provide a g
 // Streaming Handler (for real-time responses)
 // ============================================================================
 
-export const GET = withAuthApiHandler(async (request, ctx) => {
-  const { searchParams } = new URL(request.url);
-  const contractId = searchParams.get('contractId');
-  const query = searchParams.get('query');
-
-  if (!contractId || !query) {
-    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID and query are required', 400);
-  }
-
-  // For GET requests, redirect to POST with streaming
-  return createErrorResponse(ctx, 'BAD_REQUEST', 'Use POST method for contract analysis', 405);
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return new Response(JSON.stringify({
+    endpoint: '/api/ai/contract-analyst',
+    method: 'POST',
+    description: 'AI-powered contract analysis endpoint. Submit a query about a specific contract.',
+    body: {
+      contractId: { type: 'string', required: true, description: 'UUID of the contract to analyze' },
+      query: { type: 'string', required: true, description: 'Natural language question about the contract' },
+    },
+    example: {
+      contractId: '123e4567-e89b-12d3-a456-426614174000',
+      query: 'What are the key risk clauses in this contract?',
+    },
+  }), {
+    status: 200,
+    headers: { 'Content-Type': 'application/json' },
+  });
 });

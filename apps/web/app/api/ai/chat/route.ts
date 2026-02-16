@@ -31,12 +31,23 @@ import { getOpenAIResponse } from '@/lib/ai/chat/response-builder';
 
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
+  const userRole = ctx.userRole || 'VIEWER';
   try {
     const { message, contractId, context: initialContext, conversationHistory, conversationId: providedConversationId } = await request.json()
     let context = initialContext || {};
 
     if (!message) {
       return createErrorResponse(ctx, 'BAD_REQUEST', 'Message is required', 400);
+    }
+
+    // ─── Role-based write protection (matches stream route) ─────────
+    const WRITE_ACTIONS = new Set([
+      'start_workflow', 'approve_workflow', 'reject_workflow',
+      'create_contract', 'update_contract', 'delete_contract',
+    ]);
+    const lowerMsg = message.toLowerCase();
+    if (userRole === 'VIEWER' && WRITE_ACTIONS.has(lowerMsg)) {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Your role does not allow write operations via chat. Contact an admin to upgrade your permissions.', 403);
     }
 
     // ============================================
