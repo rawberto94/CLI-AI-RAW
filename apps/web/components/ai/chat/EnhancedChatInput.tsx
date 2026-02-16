@@ -181,6 +181,9 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
         { handle: 'learner', displayName: 'Learning Agent', avatar: '🧠', tagline: 'Accuracy improvement' },
         { handle: 'opportunities', displayName: 'Opportunity Scout', avatar: '💡', tagline: 'Savings discovery' },
         { handle: 'search', displayName: 'Search Expert', avatar: '🔍', tagline: 'Semantic search' },
+        { handle: 'compliance', displayName: 'Compliance Monitor', avatar: '⚖️', tagline: 'Regulation & policy tracking' },
+        { handle: 'obligations', displayName: 'Obligation Tracker', avatar: '📌', tagline: 'Deadline & deliverable tracking' },
+        { handle: 'summarize', displayName: 'Contract Summarizer', avatar: '📝', tagline: 'Quick contract summaries' },
       ];
       const filtered = query
         ? allPersonas.filter(p => p.handle.includes(query) || p.displayName.toLowerCase().includes(query))

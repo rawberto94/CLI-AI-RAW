@@ -14,7 +14,6 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -24,7 +23,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Send,
   FileText,
   TrendingUp,
   Calendar,
@@ -55,6 +53,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { cn } from "@/lib/utils";
+import { EnhancedChatInput } from "@/components/ai/chat/EnhancedChatInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -145,8 +144,8 @@ const QUICK_ACTIONS = [
   },
   {
     icon: Shield,
-    label: "Risk Analysis",
-    query: "Identify high-risk clauses in my active contracts",
+    label: "Compliance Check",
+    query: "@compliance Check all contracts for regulatory compliance gaps",
     color: "text-red-500",
   },
   {
@@ -158,7 +157,7 @@ const QUICK_ACTIONS = [
   {
     icon: Clock,
     label: "Obligation Tracking",
-    query: "What are my upcoming contractual obligations?",
+    query: "@obligations What are my upcoming contractual obligations?",
     color: "text-violet-500",
   },
 ];
@@ -166,11 +165,11 @@ const QUICK_ACTIONS = [
 // Example conversations
 const EXAMPLE_PROMPTS = [
   "What's the average contract value in my portfolio?",
-  "Show me contracts with auto-renewal clauses",
+  "@health Show me contracts with auto-renewal clauses",
   "Which suppliers have the best rates for IT services?",
-  "Find contracts with termination clauses less than 30 days",
+  "@search Find contracts with termination clauses less than 30 days",
   "Compare pricing across my software licenses",
-  "What are the payment terms in my recent contracts?",
+  "@summarize Summarize my most recent contract",
 ];
 
 // Initial welcome message
@@ -179,7 +178,7 @@ const WELCOME_MESSAGE: Message = {
   role: "assistant",
   content: `👋 **Welcome to the AI Contract Assistant!**
 
-I'm here to help you navigate your contract portfolio with intelligence and ease. I can:
+I'm here to help you navigate your contract portfolio with intelligence and ease, powered by **12 specialist agents**. I can:
 
 • **Analyze Contracts** - Extract key terms, dates, and obligations
 • **Find Savings** - Identify cost optimization opportunities  
@@ -188,13 +187,17 @@ I'm here to help you navigate your contract portfolio with intelligence and ease
 • **Compare Rates** - Benchmark against market standards
 • **Answer Questions** - Natural language queries about your contracts
 
-Try asking me something, or click one of the quick actions below!`,
+💡 **Pro tip:** Type **@** to summon a specialist agent — e.g. \`@compliance\` for regulation checks, \`@health\` for contract scoring, \`@summarize\` for quick summaries, or \`@search\` for semantic lookup.
+
+Try asking me something, or use an @mention to talk to a specific agent!`,
   timestamp: new Date(),
   suggestions: [
     "Summarize my contract portfolio",
-    "What contracts expire this quarter?",
+    "@health Score my portfolio risk",
+    "@compliance Check regulation gaps",
+    "@summarize My latest contract",
     "Find contracts over $100k",
-    "Show me high-risk clauses",
+    "@search Find indemnity clauses",
   ],
 };
 
@@ -222,7 +225,7 @@ function AIChatPageContent() {
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
   // Cleanup: abort any in-flight streaming request on unmount
@@ -868,6 +871,14 @@ function AIChatPageContent() {
                     <span className="text-muted-foreground">Send message</span>
                     <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">Enter</kbd>
                   </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Summon agent</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">@handle</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Quick commands</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">/command</kbd>
+                  </div>
                 </div>
                 <Button
                   className="w-full mt-4"
@@ -1103,55 +1114,22 @@ function AIChatPageContent() {
             </div>
           </div>
 
-          {/* Input Area */}
+          {/* Input Area — Enhanced with @mention persona autocomplete */}
           <div className="flex-shrink-0 border-t bg-white dark:bg-slate-900 p-4">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="max-w-3xl mx-auto"
-            >
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask anything about your contracts..."
-                    className="pr-10 h-12 text-base"
-                    disabled={isLoading}
-                  />
-                  {input && (
-                    <button
-                      type="button"
-                      onClick={() => setInput("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <span className="sr-only">Clear input</span>
-                      ×
-                    </button>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={!input.trim() || isLoading}
-                  className="h-12 px-6 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Press <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">/</kbd> to focus •{" "}
-                <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">Enter</kbd> to send •{" "}
-                <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">?</kbd> for shortcuts
-              </p>
-            </form>
+            <div className="max-w-3xl mx-auto">
+              <EnhancedChatInput
+                ref={inputRef}
+                value={input}
+                onChange={setInput}
+                onSend={(message) => handleSendMessage(message)}
+                placeholder="Ask anything about your contracts... Type @ to summon an agent"
+                disabled={isLoading}
+                isLoading={isLoading}
+                suggestions={messages[messages.length - 1]?.suggestions || []}
+                onSuggestionClick={handleUseSuggestion}
+                contractContext={contractId ? { id: contractId, name: `Contract ${contractId}` } : undefined}
+              />
+            </div>
           </div>
         </div>
       </div>

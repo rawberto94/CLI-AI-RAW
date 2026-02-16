@@ -44,14 +44,14 @@ const cache = new Map<string, PatternCache>();
 function getPrisma(): any | null {
   try {
     // Workers package
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+     
     const clientsDb = require('clients-db');
     const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
     return getClient();
   } catch {
     try {
       // Next.js app — dynamic import style
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+       
       return require('@/lib/prisma').prisma;
     } catch {
       return null;
