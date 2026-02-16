@@ -1,15 +1,14 @@
 /**
  * Enhanced Artifacts API Route
  * 
- * Integrates new artifact services:
- * - Parallel artifact generation
+ * Integrates artifact services:
+ * - Parallel artifact generation (via unified generator)
  * - Confidence scoring
  * - Version tracking
  * - AI with fallback
  */
 
 import { NextRequest } from 'next/server';
-import { parallelArtifactGeneratorService as _parallelArtifactGeneratorService } from 'data-orchestration/services';
 import { confidenceScoringService } from 'data-orchestration/services';
 import { artifactVersioningService } from 'data-orchestration/services';
 import { aiArtifactGeneratorService } from 'data-orchestration/services';

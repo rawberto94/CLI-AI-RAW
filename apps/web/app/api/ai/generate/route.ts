@@ -1,14 +1,15 @@
 /**
- * Next-Gen AI Artifact Generation API
+ * AI Artifact Generation API
  * 
- * Advanced artifact generation with:
+ * Unified artifact generation with:
  * - Contract-type intelligent classification
  * - Semantic chunking for long documents
  * - Structured output with JSON schemas
  * - Multi-model orchestration
  * - Cross-artifact validation
+ * - Circuit breaker + 3-tier fallback
  * 
- * @version 1.0.0
+ * @version 2.0.0
  */
 
 import { NextRequest } from 'next/server';
@@ -54,12 +55,12 @@ interface BatchResultType {
 }
 
 /**
- * POST - Generate artifact using next-gen AI
+ * POST - Generate artifact using unified AI generator
  */
 export const POST = withAuthApiHandler(async (request, ctx) => {
   const tenantId = ctx.tenantId;
     const services = await import('data-orchestration/services');
-    const nextGenArtifactGenerator = services.nextGenArtifactGenerator;
+    const generator = services.aiArtifactGeneratorService;
 
     const body = await request.json() as GenerationRequest;
 
@@ -80,7 +81,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
 
     // Handle batch generation
     if (Array.isArray(body.artifactType)) {
-      const results = await nextGenArtifactGenerator.generateBatch(
+      const results = await generator.generateBatch(
         body.contractId,
         body.contractText,
         body.artifactType,
@@ -106,7 +107,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     }
 
     // Single artifact generation
-    const result = await nextGenArtifactGenerator.generateArtifact(
+    const result = await generator.generateAdvanced(
       body.contractId,
       body.contractText,
       body.artifactType,

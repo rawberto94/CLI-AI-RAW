@@ -11,8 +11,18 @@ export { validationService } from './validation.service';
 // Artifact services
 export { artifactVersioningService } from './artifact-versioning.service';
 export { confidenceScoringService } from './confidence-scoring.service';
-export { aiArtifactGeneratorService } from './ai-artifact-generator.service';
-export { parallelArtifactGeneratorService } from './parallel-artifact-generator.service';
+export {
+  aiArtifactGeneratorService,
+  type GenerationMethod,
+  type GenerationOptions,
+  type GenerationResult,
+  type GeneratorConfig,
+  type AdvancedGenerationResult,
+  type BatchGenerationResult,
+  type ParallelProgress,
+  type ParallelOptions,
+  type ParallelGenerationResult,
+} from './ai-artifact-generator.service';
 // export { enhancedArtifactService } from './enhanced-artifact.service'; // Excluded in tsconfig
 export { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
 export { artifactContextEnrichmentService } from './artifact-context-enrichment.service';
@@ -58,15 +68,6 @@ export {
   getSchemaForArtifact,
   createStructuredOutputFormat,
 } from './structured-output-schemas.service';
-
-export {
-  NextGenArtifactGenerator,
-  getNextGenArtifactGenerator,
-  nextGenArtifactGenerator,
-  type NextGenConfig,
-  type GenerationResult,
-  type BatchGenerationResult,
-} from './next-gen-artifact-generator.service';
 
 // Advanced AI Enhancement Services
 export {
