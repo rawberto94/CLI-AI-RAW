@@ -386,10 +386,9 @@ function MobileMenu({ isOpen, onClose }: { isOpen: boolean; onClose: () => void 
         <nav className="mt-12 space-y-4">
           <a href="#features" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Features</a>
           <a href="#ai-technology" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">AI Technology</a>
-          <a href="#architecture" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Architecture</a>
-          <a href="#innovation" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Innovation</a>
           <a href="#pricing" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Pricing</a>
-          <a href="#security" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Security</a>
+          <a href="#about" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">About Us</a>
+          <a href="#contact" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">Contact</a>
           <a href="#faq" onClick={onClose} className="block py-3 text-gray-700 hover:text-violet-600 font-medium border-b border-gray-100">FAQ</a>
           <div className="pt-6 space-y-3">
             <Link href="/auth/signin" className="block w-full text-center py-3 text-gray-700 border border-gray-200 rounded-xl font-medium">
@@ -460,9 +459,9 @@ export default function LandingPageClient() {
             {[
               { label: 'Features', href: '#features' },
               { label: 'AI Tech', href: '#ai-technology' },
-              { label: 'Architecture', href: '#architecture' },
               { label: 'Pricing', href: '#pricing' },
-              { label: 'FAQ', href: '#faq' },
+              { label: 'About', href: '#about' },
+              { label: 'Contact', href: '#contact' },
             ].map((item, i) => (
               <a 
                 key={i}
@@ -1589,16 +1588,232 @@ export default function LandingPageClient() {
         </div>
       </section>
 
+      {/* About Us / Team Section */}
+      <section id="about" className="py-32 px-6 bg-gradient-to-b from-white via-violet-50/30 to-white relative overflow-hidden">
+        <div className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-violet-200/30 to-transparent rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-gradient-to-tl from-purple-200/30 to-transparent rounded-full blur-3xl" />
+
+        <div className="max-w-7xl mx-auto relative">
+          <div className="text-center mb-20">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200/50 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
+              <Users aria-hidden="true" className="w-4 h-4" />
+              Born in Zürich
+            </div>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Meet the{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-600 to-purple-600">Team</span>
+            </h2>
+            <p className="text-xl text-gray-600 font-light leading-relaxed max-w-3xl mx-auto">
+              Three professionals from Zürich who lived the pain of contract management first-hand — two from the world of procurement consulting and managed services, one from data architecture — came together to build the solution they always wished existed.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8 mb-16">
+            {[
+              {
+                name: 'Roberto Ostojic',
+                title: 'Technical Founder',
+                role: 'CEO & CTO',
+                description: 'Creator of the core ConTigo product and codebase. Combines deep technical expertise with hands-on procurement consulting experience to architect a platform that truly understands contract workflows.',
+                gradient: 'from-violet-500 to-purple-600',
+                initial: 'RO',
+              },
+              {
+                name: 'Florian Herhold',
+                title: 'Commercial Founder',
+                role: 'CCO',
+                description: 'Drives go-to-market strategy, sales, and partnerships. Years of experience in procurement consulting and managed services give him first-hand insight into the challenges enterprises face daily.',
+                gradient: 'from-purple-500 to-fuchsia-600',
+                initial: 'FH',
+              },
+              {
+                name: 'Daniel Bartholy',
+                title: 'Data Founder',
+                role: 'Chief Data Architecture',
+                description: 'Owns the data model, integrations, data architecture, and analytics foundations. His expertise ensures ConTigo turns unstructured contract data into structured, actionable intelligence.',
+                gradient: 'from-fuchsia-500 to-pink-600',
+                initial: 'DB',
+              },
+            ].map((member) => (
+              <TiltCard key={member.name}>
+                <div className="relative group h-full">
+                  <div className={`absolute -inset-0.5 bg-gradient-to-br ${member.gradient} rounded-3xl opacity-0 group-hover:opacity-50 blur-xl transition-all duration-500`} />
+                  <div className="relative bg-white p-8 rounded-3xl border border-gray-100 hover:border-gray-200 h-full transition-all duration-300 group-hover:shadow-2xl text-center">
+                    {/* Avatar */}
+                    <div className="relative mx-auto mb-6 w-24 h-24">
+                      <div className={`absolute inset-0 bg-gradient-to-br ${member.gradient} rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity`} />
+                      <div className={`relative w-24 h-24 bg-gradient-to-br ${member.gradient} rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-all duration-500`}>
+                        <span className="text-2xl font-bold text-white">{member.initial}</span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-1">{member.name}</h3>
+                    <p className="text-sm text-violet-600 font-semibold mb-1">{member.role}</p>
+                    <p className="text-xs text-gray-400 mb-4">{member.title}</p>
+                    <p className="text-gray-600 leading-relaxed text-sm">{member.description}</p>
+                  </div>
+                </div>
+              </TiltCard>
+            ))}
+          </div>
+
+          {/* Swiss quality banner */}
+          <div className="relative group">
+            <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-3xl opacity-20 blur-lg group-hover:opacity-30 transition-opacity" />
+            <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-violet-100/50 shadow-xl p-10">
+              <div className="grid md:grid-cols-3 gap-8 text-center">
+                {[
+                  { icon: Award, label: 'Swiss Engineered', desc: 'Designed and built in Zürich with Swiss precision and quality standards.' },
+                  { icon: Users, label: 'Procurement DNA', desc: 'Founded by consultants who managed procurement for leading enterprises.' },
+                  { icon: Database, label: 'Data-Driven', desc: 'Intelligent data architecture that transforms contracts into actionable insights.' },
+                ].map((item) => (
+                  <div key={item.label} className="flex flex-col items-center">
+                    <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform">
+                      <item.icon className="w-7 h-7 text-white" />
+                    </div>
+                    <h4 className="text-lg font-bold text-gray-900 mb-2">{item.label}</h4>
+                    <p className="text-gray-600 text-sm leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Contact Us Section */}
+      <section id="contact" className="py-32 px-6 bg-gradient-to-b from-gray-50 via-rose-50/30 to-gray-50 relative overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-purple-200/30 rounded-full blur-3xl" />
+
+        <div className="max-w-7xl mx-auto relative">
+          <div className="text-center mb-16">
+            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50 text-rose-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
+              <MessageSquare aria-hidden="true" className="w-4 h-4" />
+              Get in Touch
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            </div>
+            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
+              Let&apos;s{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-rose-600 to-pink-600">Talk</span>
+            </h2>
+            <p className="text-xl text-gray-600 font-light leading-relaxed max-w-2xl mx-auto">
+              Whether you need a demo, have a question, or want to explore a partnership — we&apos;d love to hear from you.
+            </p>
+          </div>
+
+          <div className="grid lg:grid-cols-5 gap-8">
+            {/* Info cards — left column */}
+            <div className="lg:col-span-2 space-y-6">
+              {[
+                { icon: MessageSquare, title: 'Email Us', desc: 'Our team typically responds within 24 hours.', detail: 'hello@contigo.io', href: 'mailto:hello@contigo.io', gradient: 'from-violet-500 to-purple-600' },
+                { icon: BookOpen, title: 'Sales Inquiry', desc: 'Get a personalised demo for your team.', detail: 'sales@contigo.io', href: 'mailto:sales@contigo.io?subject=Demo%20Request', gradient: 'from-violet-500 to-purple-600' },
+                { icon: HelpCircle, title: 'Support', desc: 'Technical help and documentation.', detail: 'support@contigo.io', href: 'mailto:support@contigo.io', gradient: 'from-violet-500 to-purple-600' },
+              ].map((card) => (
+                <a key={card.title} href={card.href} className="group block">
+                  <div className="relative">
+                    <div className={`absolute -inset-1 bg-gradient-to-br ${card.gradient} rounded-[1.5rem] opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500`} />
+                    <div className="relative bg-white/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-100/50 hover:border-gray-200 hover:shadow-2xl transition-all duration-500">
+                      <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 bg-gradient-to-br ${card.gradient} rounded-xl flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 flex-shrink-0`}>
+                          <card.icon className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">{card.title}</h3>
+                          <p className="text-gray-500 text-sm mb-2">{card.desc}</p>
+                          <span className="text-violet-600 font-medium text-sm group-hover:text-violet-700 transition-colors">{card.detail}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </a>
+              ))}
+
+              {/* Office info */}
+              <div className="bg-white/80 backdrop-blur-xl p-6 rounded-2xl border border-gray-100/50">
+                <h3 className="text-lg font-bold text-gray-900 mb-3">Our Office</h3>
+                <div className="space-y-2 text-sm text-gray-500">
+                  <p className="flex items-center gap-2"><span className="text-violet-500">📍</span> Zürich, Switzerland</p>
+                  <p className="flex items-center gap-2"><span className="text-violet-500">🕐</span> Mon–Fri: 9:00–18:00 CET</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Contact form — right column */}
+            <div className="lg:col-span-3">
+              <div className="relative group">
+                <div className="absolute -inset-1 bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 rounded-[2rem] opacity-20 blur-lg group-hover:opacity-30 transition-opacity duration-500" />
+                <div className="relative bg-white/80 backdrop-blur-xl rounded-3xl border border-gray-100/50 shadow-xl p-8 md:p-10">
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const data = Object.fromEntries(new FormData(form));
+                      try {
+                        const res = await fetch('/api/contact', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(data),
+                        });
+                        if (res.ok) {
+                          form.reset();
+                          alert('Thanks! We\u2019ll be in touch shortly.');
+                        }
+                      } catch { /* silently fail */ }
+                    }}
+                    className="space-y-6"
+                  >
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="contact-name" className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                        <input id="contact-name" name="name" type="text" required placeholder="Jane Doe" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all" />
+                      </div>
+                      <div>
+                        <label htmlFor="contact-email" className="block text-sm font-medium text-gray-700 mb-2">Email *</label>
+                        <input id="contact-email" name="email" type="email" required placeholder="jane@company.com" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all" />
+                      </div>
+                    </div>
+                    <div className="grid sm:grid-cols-2 gap-6">
+                      <div>
+                        <label htmlFor="contact-company" className="block text-sm font-medium text-gray-700 mb-2">Company</label>
+                        <input id="contact-company" name="company" type="text" placeholder="Acme Inc." className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all" />
+                      </div>
+                      <div>
+                        <label htmlFor="contact-reason" className="block text-sm font-medium text-gray-700 mb-2">Reason</label>
+                        <select id="contact-reason" name="reason" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all">
+                          <option value="">Select a reason</option>
+                          <option value="demo">Request a Demo</option>
+                          <option value="sales">Sales Inquiry</option>
+                          <option value="support">Technical Support</option>
+                          <option value="partnership">Partnership</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label htmlFor="contact-message" className="block text-sm font-medium text-gray-700 mb-2">Message *</label>
+                      <textarea id="contact-message" name="message" required rows={5} placeholder="How can we help you?" className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-white text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all resize-none" />
+                    </div>
+                    <button type="submit" className="group w-full inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 px-8 py-4 text-lg font-semibold text-white shadow-lg shadow-violet-500/25 transition-all hover:shadow-violet-500/40 hover:scale-[1.02]">
+                      Send Message
+                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Support Section - Enhanced */}
-      <section id="support" className="py-32 px-6 bg-gradient-to-b from-gray-50 via-rose-50/30 to-gray-50 relative overflow-hidden">
+      <section id="support" className="py-32 px-6 bg-gradient-to-b from-white via-rose-50/20 to-white relative overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-to-r from-rose-200/30 via-purple-200/20 to-purple-200/30 rounded-full blur-3xl" />
         
         <div className="max-w-7xl mx-auto relative">
           <div className="text-center mb-16">
             <div className="inline-flex items-center gap-2 bg-gradient-to-r from-rose-50 to-pink-50 border border-rose-200/50 text-rose-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6 shadow-sm">
-              <MessageSquare aria-hidden="true" className="w-4 h-4" />
-              We&apos;re Here to Help
-              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <BookOpen aria-hidden="true" className="w-4 h-4" />
+              Resources
             </div>
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 tracking-tight">
               Support &{' '}
@@ -1611,9 +1826,9 @@ export default function LandingPageClient() {
           
           <div className="grid md:grid-cols-3 gap-8">
             {[
-              { icon: BookOpen, title: 'Documentation', desc: 'Comprehensive guides and API docs', link: 'View Docs', gradient: 'from-violet-500 to-purple-600' },
-              { icon: HelpCircle, title: 'Help Center', desc: 'Tutorials and best practices', link: 'Visit Help Center', gradient: 'from-violet-500 to-purple-600' },
-              { icon: MessageSquare, title: 'Contact Support', desc: 'Get help from our team', link: 'Contact Us', gradient: 'from-violet-500 to-purple-600' },
+              { icon: BookOpen, title: 'Documentation', desc: 'Comprehensive guides and API docs', link: 'View Docs', href: '/api-docs', gradient: 'from-violet-500 to-purple-600' },
+              { icon: HelpCircle, title: 'Help Center', desc: 'Tutorials and best practices', link: 'Visit Help Center', href: '#faq', gradient: 'from-violet-500 to-purple-600' },
+              { icon: MessageSquare, title: 'Contact Support', desc: 'Get help from our team', link: 'Contact Us', href: '#contact', gradient: 'from-violet-500 to-purple-600' },
             ].map((item, i) => (
               <div key={i} className="relative group">
                 <div className={`absolute -inset-1 bg-gradient-to-br ${item.gradient} rounded-[2rem] opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-500`} />
@@ -1626,7 +1841,7 @@ export default function LandingPageClient() {
                   </div>
                   <h3 className="text-2xl font-bold text-gray-900 mb-4 group-hover:text-gray-800 transition-colors">{item.title}</h3>
                   <p className="text-gray-600 mb-8 text-lg leading-relaxed">{item.desc}</p>
-                  <a href="#" className="inline-flex items-center text-violet-600 font-semibold hover:text-violet-700 text-lg group/link">
+                  <a href={item.href} className="inline-flex items-center text-violet-600 font-semibold hover:text-violet-700 text-lg group/link">
                     {item.link}
                     <ArrowUpRight className="w-5 h-5 ml-2 group-hover/link:translate-x-0.5 group-hover/link:-translate-y-0.5 transition-transform" />
                   </a>
@@ -1725,7 +1940,7 @@ export default function LandingPageClient() {
             {[
               { title: 'Product', links: [{ label: 'Features', href: '#features' }, { label: 'AI Technology', href: '#ai-technology' }, { label: 'Security', href: '#security' }, { label: 'Pricing', href: '#pricing' }, { label: 'API', href: '#' }] },
               { title: 'Resources', links: [{ label: 'Documentation', href: '#' }, { label: 'Help Center', href: '#support' }, { label: 'Blog', href: '#' }, { label: 'Changelog', href: '#' }, { label: 'Status', href: '#' }] },
-              { title: 'Company', links: [{ label: 'About', href: '#' }, { label: 'Careers', href: '#' }, { label: 'Contact', href: '#support' }, { label: 'Partners', href: '#' }, { label: 'Legal', href: '#' }] },
+              { title: 'Company', links: [{ label: 'About', href: '#about' }, { label: 'Careers', href: '#' }, { label: 'Contact', href: '#contact' }, { label: 'Partners', href: '#' }, { label: 'Legal', href: '#' }] },
             ].map((col, i) => (
               <div key={i}>
                 <h4 className="text-white font-semibold mb-6 text-lg">{col.title}</h4>

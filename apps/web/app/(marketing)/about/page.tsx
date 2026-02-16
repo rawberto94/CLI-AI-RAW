@@ -8,53 +8,86 @@ import {
   Users,
   Globe,
   Award,
-  Zap
+  Zap,
+  Database,
+  Shield,
+  MapPin,
 } from 'lucide-react';
 import Link from 'next/link';
 
 export const metadata: Metadata = {
-  title: 'About ConTigo — AI-Powered Contract Management',
+  title: 'About ConTigo — Swiss-Made AI Contract Intelligence',
   description:
-    'Learn about ConTigo, the Swiss-made AI contract intelligence platform transforming how enterprises manage contracts.',
+    'ConTigo was founded in Zürich by three professionals from procurement consulting, managed services, and data architecture. Learn about the team behind the platform.',
 };
+
+const founders = [
+  {
+    name: 'Roberto Ostojic',
+    subtitle: 'Technical Founder',
+    role: 'CEO & CTO',
+    description:
+      'Creator of the core ConTigo product and codebase. Roberto combines deep technical expertise with hands-on procurement consulting experience to architect a platform that truly understands contract workflows.',
+    gradient: 'from-violet-500 to-purple-600',
+    initial: 'RO',
+  },
+  {
+    name: 'Florian Herhold',
+    subtitle: 'Commercial Founder',
+    role: 'CCO',
+    description:
+      'Florian drives go-to-market strategy, sales, and partnerships. Years of experience in procurement consulting and managed services give him first-hand insight into the challenges enterprises face daily.',
+    gradient: 'from-purple-500 to-fuchsia-600',
+    initial: 'FH',
+  },
+  {
+    name: 'Daniel Bartholy',
+    subtitle: 'Data Founder',
+    role: 'Chief Data Architecture',
+    description:
+      'Daniel owns the data model, integrations, data architecture, and analytics foundations. His expertise ensures ConTigo turns unstructured contract data into structured, actionable intelligence.',
+    gradient: 'from-fuchsia-500 to-pink-600',
+    initial: 'DB',
+  },
+];
 
 const values = [
   {
     icon: Target,
-    title: 'Customer First',
-    description: 'Every feature we build starts with a customer need. Your success is our success.',
+    title: 'Practitioner-Built',
+    description: 'We\'ve managed procurement for leading enterprises. We know the pain — and we built the cure.',
     gradient: 'from-violet-500 to-purple-600',
   },
   {
     icon: Lightbulb,
-    title: 'Innovation',
-    description: 'We push the boundaries of what AI can do for contract management.',
+    title: 'AI-First Innovation',
+    description: 'We push the boundaries of what AI can do for contract management — extraction, risk analysis, and beyond.',
     gradient: 'from-violet-500 to-purple-600',
   },
   {
     icon: Heart,
-    title: 'Trust & Security',
-    description: 'We treat your data with the same care we would our own. Security is non-negotiable.',
+    title: 'Swiss Trust & Security',
+    description: 'We treat your data with Swiss-grade precision and care. Security and compliance are non-negotiable.',
     gradient: 'from-pink-500 to-pink-600',
   },
   {
     icon: Users,
-    title: 'Collaboration',
-    description: 'Great products come from diverse teams working together towards a common goal.',
+    title: 'Customer Collaboration',
+    description: 'Every feature we build starts with a real customer need. Your success drives our roadmap.',
     gradient: 'from-violet-500 to-purple-600',
   },
 ];
 
 const milestones = [
-  { year: '2021', title: 'Founded', description: 'ConTigo was born from a simple idea: contracts shouldn\'t be hard.' },
-  { year: '2022', title: 'Development', description: 'Built the AI engine and core platform with Swiss engineering quality.' },
-  { year: '2023', title: 'AI Launch', description: 'Launched our proprietary AI engine for contract analysis and extraction.' },
-  { year: '2024', title: 'Enterprise Ready', description: 'Full production launch with Swiss data residency and enterprise-grade security.' },
+  { year: '2023', title: 'Founded in Zürich', description: 'Three professionals from procurement consulting and data architecture came together with a shared vision.' },
+  { year: '2024', title: 'Platform Built', description: 'Built the AI engine, OCR pipeline, and core platform with Swiss engineering quality and real-world procurement DNA.' },
+  { year: '2025', title: 'Enterprise Launch', description: 'Full production launch with AI contract intelligence, Swiss data residency, and enterprise-grade security.' },
+  { year: '2026', title: 'Scaling Up', description: 'Expanding across industries, deepening AI capabilities, and growing the team from our Zürich home.' },
 ];
 
 const stats = [
-  { value: 'AI-First', label: 'Built from the Ground Up' },
-  { value: 'Swiss', label: 'Data Residency' },
+  { value: 'Zürich', label: 'Founded & Based' },
+  { value: '3', label: 'Co-Founders' },
   { value: '18+', label: 'Artifact Types Extracted' },
   { value: '<3s', label: 'Avg. Analysis Time' },
 ];
@@ -77,15 +110,16 @@ export default function AboutPage() {
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold">
-              <span className="text-white">Transforming How the</span>
+              <span className="text-white">Born in Zürich.</span>
               <br />
               <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
-                World Manages Contracts
+                Built by Practitioners.
               </span>
             </h1>
             <p className="mt-6 text-xl text-slate-400 max-w-3xl mx-auto">
-              We believe that managing contracts shouldn&apos;t require an army of lawyers or endless hours 
-              of manual review. ConTigo uses AI to make contract intelligence accessible to everyone.
+              ConTigo was founded by three professionals who lived the pain of contract management every day — 
+              two from procurement consulting and managed services, one from data architecture. 
+              We built the intelligent platform we always wished existed.
             </p>
           </div>
         </div>
@@ -107,20 +141,60 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Mission */}
+      {/* Founders */}
+      <section className="py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-white">The Founding Team</h2>
+            <p className="mt-4 text-lg text-slate-400">
+              Procurement expertise meets technical innovation
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {founders.map((founder) => (
+              <div
+                key={founder.name}
+                className="group bg-white/5 border border-white/5 rounded-2xl p-8 hover:bg-white/10 hover:border-white/10 transition-all text-center"
+              >
+                {/* Avatar */}
+                <div className={`w-24 h-24 mx-auto mb-6 bg-gradient-to-br ${founder.gradient} rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-500`}>
+                  <span className="text-2xl font-bold text-white">{founder.initial}</span>
+                </div>
+
+                <h3 className="text-xl font-semibold text-white mb-1">{founder.name}</h3>
+                <p className="text-sm text-violet-400 font-semibold mb-1">{founder.role}</p>
+                <p className="text-xs text-slate-500 mb-4">{founder.subtitle}</p>
+                <p className="text-slate-400 text-sm leading-relaxed">{founder.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Origin Story */}
       <section className="py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-3xl font-bold text-white mb-6">Our Mission</h2>
+              <div className="flex items-center gap-2 mb-4">
+                <MapPin className="w-5 h-5 text-violet-400" />
+                <span className="text-violet-400 font-medium text-sm">Zürich, Switzerland</span>
+              </div>
+              <h2 className="text-3xl font-bold text-white mb-6">Why We Started ConTigo</h2>
               <p className="text-lg text-slate-400 leading-relaxed mb-6">
-                Contracts are the backbone of business relationships, yet managing them has remained 
-                stuck in the past. Legal teams spend countless hours searching for information, 
-                tracking deadlines, and extracting key terms manually.
+                As procurement consultants and managed services providers, Roberto and Florian spent years dealing with the same problem: 
+                contracts trapped in PDFs, manual tracking in spreadsheets, missed renewal dates, 
+                and legal teams drowning in document review.
+              </p>
+              <p className="text-lg text-slate-400 leading-relaxed mb-6">
+                When Daniel joined with his deep data architecture expertise, the vision became clear — 
+                build an AI-powered platform that not only stores contracts but truly <em className="text-white">understands</em> them. 
+                One that extracts every clause, every obligation, every date — automatically.
               </p>
               <p className="text-lg text-slate-400 leading-relaxed">
-                We&apos;re on a mission to change that. By combining cutting-edge AI with intuitive design, 
-                ConTigo transforms contract management from a burden into a competitive advantage.
+                That&apos;s ConTigo: Swiss-engineered AI contract intelligence, built by the people who know 
+                the pain of procurement first-hand.
               </p>
             </div>
             <div className="relative">
@@ -130,7 +204,9 @@ export default function AboutPage() {
                     { icon: Globe, label: 'Global Scale' },
                     { icon: Zap, label: 'AI-Powered' },
                     { icon: Award, label: 'Swiss Quality' },
-                    { icon: Users, label: 'Customer Focused' },
+                    { icon: Shield, label: 'Enterprise Security' },
+                    { icon: Database, label: 'Data-Driven' },
+                    { icon: Users, label: 'Practitioner-Built' },
                   ].map((item) => (
                     <div key={item.label} className="bg-white/5 rounded-xl p-4 text-center">
                       <item.icon className="w-8 h-8 text-violet-400 mx-auto mb-2" />
@@ -177,7 +253,7 @@ export default function AboutPage() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold text-white">Our Journey</h2>
             <p className="mt-4 text-lg text-slate-400">
-              From idea to enterprise-ready platform
+              From consulting pain to intelligent platform
             </p>
           </div>
           
@@ -220,7 +296,7 @@ export default function AboutPage() {
             Join Our Journey
           </h2>
           <p className="mt-4 text-lg text-indigo-100 max-w-2xl mx-auto">
-            Be part of the contract management revolution. Get started today.
+            Built by practitioners, for practitioners. See how ConTigo can transform your contract management.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
