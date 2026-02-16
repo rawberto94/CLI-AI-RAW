@@ -375,7 +375,8 @@ async function vectorSearch(
     `;
     
     return results;
-  } catch {
+  } catch (err) {
+    console.error('[RAG] vectorSearch failed:', err instanceof Error ? err.message : err);
     return [];
   }
 }
@@ -436,7 +437,8 @@ async function keywordSearch(
     `;
     
     return results;
-  } catch {
+  } catch (err) {
+    console.error('[RAG] keywordSearch failed:', err instanceof Error ? err.message : err);
     return [];
   }
 }

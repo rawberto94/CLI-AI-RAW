@@ -829,10 +829,20 @@ export function FloatingAIBubble() {
     URL.revokeObjectURL(url);
   }, [messages]);
 
-  // Handle action button clicks
+  // Handle action button clicks — routes all action types from response-builder
   const handleAction = useCallback((action: string) => {
+    // Handle dynamic contract-specific actions (e.g., "view-contract:abc-123")
+    if (action.startsWith("view-contract:")) {
+      const contractId = action.replace("view-contract:", "");
+      router.push(`/contracts/${contractId}`);
+      setIsOpen(false);
+      return;
+    }
+
     switch (action) {
+      // Navigation actions
       case "view-contracts":
+      case "search-contracts":
         router.push("/contracts");
         setIsOpen(false);
         break;
@@ -841,18 +851,44 @@ export function FloatingAIBubble() {
         setIsOpen(false);
         break;
       case "view-analytics":
+      case "supplier-analytics":
+      case "view-dashboard":
         router.push("/analytics");
         setIsOpen(false);
         break;
+
+      // Chat-driven actions — re-send as a message to the AI
       case "set-reminder":
+      case "set-reminders":
         handleSendMessage("Set a reminder for upcoming renewals");
         break;
+      case "start-renewal":
+        handleSendMessage("Start the renewal process for expiring contracts");
+        break;
+      case "notify-stakeholders":
+        handleSendMessage("Notify relevant stakeholders about upcoming contract renewals");
+        break;
+      case "deep-analysis":
+        handleSendMessage("Perform a deep analysis on the contracts we just discussed");
+        break;
+      case "generate-report":
+        handleSendMessage("Generate a detailed report on this analysis");
+        break;
+      case "refine-search":
+        handleSendMessage("Help me refine my search with more specific criteria");
+        break;
+      case "export-list":
+        handleSendMessage("Export the list of contracts we just discussed");
+        break;
+
       default:
-        // Unhandled action - no-op
+        // Unknown action — try sending it as a natural language query
+        if (action) {
+          handleSendMessage(action.replace(/-/g, " "));
+        }
         break;
     }
-    
-  }, [router]);
+  }, [router, handleSendMessage]);
 
   // Constants for request handling
   const REQUEST_TIMEOUT_MS = 60000; // 60 seconds
@@ -1328,7 +1364,8 @@ export function FloatingAIBubble() {
     }));
   };
 
-  // Enhanced AI response generator
+  // Fallback AI response generator — used ONLY when API is unreachable
+  // All responses are guidance-oriented (no fake data)
   const generateAIResponse = (
     query: string,
     context: ConversationContext
@@ -1341,149 +1378,16 @@ export function FloatingAIBubble() {
   } => {
     const lowerQuery = query.toLowerCase();
 
-    // Summary/Overview queries
-    if (lowerQuery.includes("summary") || lowerQuery.includes("overview") || lowerQuery.includes("dashboard")) {
-      return {
-        content:
-          "📊 **Your Contract Portfolio**\n\n" +
-          "I'm fetching the latest data from your contract database...\n\n" +
-          "Please use the **View All Contracts** button to see real-time contract information, or try refreshing the page.\n\n" +
-          "💡 **Tip:** For accurate portfolio metrics, visit the Dashboard or Analytics pages.",
-        suggestions: ["Show my contracts", "View renewals", "Risk analysis"],
-        actions: [
-          { label: "View All Contracts", action: "view-contracts", icon: FileText, variant: "primary" },
-          { label: "See Analytics", action: "view-analytics", icon: TrendingUp },
-        ],
-        confidence: 0.90,
-        source: "fallback-guide",
-      };
-    }
-
-    // Renewal queries
-    if (lowerQuery.includes("expir") || lowerQuery.includes("renewal") || lowerQuery.includes("soon") || lowerQuery.includes("due")) {
-      return {
-        content:
-          "📅 **Contract Renewals**\n\n" +
-          "I'm checking your contract expiration dates...\n\n" +
-          "Please use the **View Renewals** button to see real-time renewal information from your database.\n\n" +
-          "💡 **Tip:** You can also filter contracts by expiration date on the Contracts page.",
-        suggestions: ["Show expiring contracts", "View all contracts", "Set reminders"],
-        actions: [
-          { label: "View Renewals", action: "view-renewals", icon: Calendar, variant: "primary" },
-          { label: "View Contracts", action: "view-contracts", icon: FileText },
-        ],
-        confidence: 0.90,
-        source: "fallback-guide",
-      };
-    }
-
-    // Insights/Analytics queries
-    if (lowerQuery.includes("insight") || lowerQuery.includes("analytics") || lowerQuery.includes("portfolio") || lowerQuery.includes("trend")) {
-      return {
-        content:
-          "💡 **Portfolio Insights**\n\n" +
-          "I'm analyzing your contract portfolio in real-time...\n\n" +
-          "Please use the **Full Analytics** button to view live metrics and trends from your database.\n\n" +
-          "💡 **Tip:** The Analytics page shows real-time data including spend analysis, risk metrics, and renewal tracking.",
-        suggestions: ["View analytics", "Show contracts", "Risk analysis"],
-        actions: [
-          { label: "Full Analytics", action: "view-analytics", icon: TrendingUp, variant: "primary" },
-        ],
-        confidence: 0.90,
-        source: "fallback-guide",
-      };
-    }
-
-    // Search queries
-    if (lowerQuery.includes("find") || lowerQuery.includes("search") || lowerQuery.includes("locate") || lowerQuery.includes("where")) {
-      return {
-        content:
-          "🔍 **Smart Contract Search**\n\n" +
-          "I can help you find contracts by:\n\n" +
-          "• **Vendor name** - \"Find AWS contracts\"\n" +
-          "• **Contract type** - \"Show IT services\"\n" +
-          "• **Status** - \"List active contracts\"\n" +
-          "• **Date range** - \"Contracts signed in 2024\"\n" +
-          "• **Value** - \"Contracts over $50,000\"\n" +
-          "• **Keywords** - \"Find SLA terms\"\n\n" +
-          "**Try these examples:**\n" +
-          "• \"Find all cloud services contracts\"\n" +
-          "• \"Show contracts expiring in Q1\"\n" +
-          "• \"List vendors by spend\"",
-        suggestions: ["All contracts", "By vendor", "By type", "Recent uploads"],
-        confidence: 0.92,
-        source: "search-assistant",
-      };
-    }
-
-    // Compliance/Risk queries
-    if (lowerQuery.includes("complian") || lowerQuery.includes("risk") || lowerQuery.includes("audit")) {
-      return {
-        content:
-          "🛡️ **Compliance & Risk Dashboard**\n\n" +
-          "**Overall Status: ✅ Healthy**\n\n" +
-          "**Compliance Score: 94%**\n" +
-          "• Required signatures: ✅ Complete\n" +
-          "• Document retention: ✅ Compliant\n" +
-          "• SLA monitoring: ✅ Active\n" +
-          "• Audit trail: ✅ Complete\n\n" +
-          "**Risk Assessment: Low (23/100)**\n" +
-          "• Vendor concentration: Low\n" +
-          "• Contract gaps: None\n" +
-          "• Renewal risk: 3 contracts flagged\n\n" +
-          "**⚠️ Attention Items:**\n" +
-          "• Review AWS contract terms before renewal\n" +
-          "• Update Accenture contact information",
-        suggestions: ["Risk breakdown", "Compliance report", "Audit history", "Improvement tips"],
-        confidence: 0.97,
-        source: "compliance-engine",
-      };
-    }
-
-    // Cost analysis queries
-    if (lowerQuery.includes("cost") || lowerQuery.includes("spend") || lowerQuery.includes("budget") || lowerQuery.includes("money") || lowerQuery.includes("save")) {
-      return {
-        content:
-          "💰 **Cost Analysis Report**\n\n" +
-          "**Total Annual Spend: $255,500**\n\n" +
-          "**By Category:**\n" +
-          "• Cloud Services: $78,000 (31%)\n" +
-          "• IT Services: $120,000 (47%)\n" +
-          "• Software Licenses: $45,000 (18%)\n" +
-          "• Other: $12,500 (4%)\n\n" +
-          "**Savings Opportunities:**\n" +
-          "💡 Cloud consolidation: ~$8,000/year\n" +
-          "💡 License optimization: ~$5,500/year\n" +
-          "💡 Early renewal discounts: ~$5,000/year\n\n" +
-          "**Total Potential Savings: $18,500/year**",
-        suggestions: ["Implement savings", "Vendor comparison", "Budget forecast", "ROI analysis"],
-        confidence: 0.95,
-        source: "cost-analytics",
-      };
-    }
-
     // Help queries
     if (lowerQuery.includes("help") || lowerQuery.includes("what can") || lowerQuery.includes("how to")) {
       return {
         content:
           "🤖 **How I Can Help You**\n\n" +
           "I'm your AI contract assistant! Here's what I can do:\n\n" +
-          "**📊 Analytics & Reports**\n" +
-          "• Contract summaries & portfolio overview\n" +
-          "• Cost analysis & savings opportunities\n" +
-          "• Trend analysis & forecasting\n\n" +
-          "**📅 Tracking & Alerts**\n" +
-          "• Renewal reminders & deadlines\n" +
-          "• Compliance monitoring\n" +
-          "• Risk assessments\n\n" +
-          "**🔍 Search & Discovery**\n" +
-          "• Find contracts by any criteria\n" +
-          "• Compare vendors & terms\n" +
-          "• Extract key clauses\n\n" +
-          "**💡 Recommendations**\n" +
-          "• Negotiation strategies\n" +
-          "• Best practices\n" +
-          "• Process improvements\n\n" +
+          "**📊 Analytics & Reports** — Summaries, spend analysis, trends\n" +
+          "**📅 Tracking & Alerts** — Renewals, deadlines, compliance\n" +
+          "**🔍 Search & Discovery** — Find contracts, compare vendors, extract clauses\n" +
+          "**💡 Recommendations** — Negotiation strategies, best practices\n\n" +
           "Just ask me anything in natural language!",
         suggestions: ["Contract summary", "Renewals", "Cost analysis", "Compliance"],
         confidence: 1.0,
@@ -1491,39 +1395,69 @@ export function FloatingAIBubble() {
       };
     }
 
-    // Context-aware follow-up
-    if (context.lastTopic) {
-      const topicResponses: Record<string, string> = {
-        renewals: "Based on our renewal discussion, would you like to set up automated reminders or view the full renewal calendar?",
-        contracts: "Continuing with contracts, I can show you detailed analytics, compare vendors, or help you search for specific terms.",
-        risk: "Regarding risk management, shall I generate a detailed risk report or show you mitigation strategies?",
-        costs: "For cost optimization, I can provide vendor comparisons, suggest negotiation strategies, or forecast next quarter's spend.",
+    // Navigation-oriented fallback for specific topics
+    if (lowerQuery.includes("expir") || lowerQuery.includes("renewal")) {
+      return {
+        content:
+          "📅 **Contract Renewals**\n\n" +
+          "I couldn't reach the AI service right now. You can view your renewal information directly:\n\n" +
+          "Click **View Renewals** below, or try your question again in a moment.",
+        suggestions: ["Show expiring contracts", "View all contracts"],
+        actions: [
+          { label: "View Renewals", action: "view-renewals", icon: Calendar, variant: "primary" },
+          { label: "View Contracts", action: "view-contracts", icon: FileText },
+        ],
+        confidence: 0.5,
+        source: "fallback-offline",
       };
-
-      const topicResponse = context.lastTopic ? topicResponses[context.lastTopic] : undefined;
-      if (topicResponse && lowerQuery.length < 20) {
-        return {
-          content: topicResponse,
-          suggestions: ["Yes, please", "Something else", "Go back"],
-          confidence: 0.85,
-          source: "context-aware",
-        };
-      }
     }
 
-    // Default response with smart suggestions
+    if (lowerQuery.includes("analytics") || lowerQuery.includes("spend") || lowerQuery.includes("cost") || lowerQuery.includes("budget")) {
+      return {
+        content:
+          "📊 **Analytics**\n\n" +
+          "I couldn't reach the AI service right now. You can view live analytics directly:\n\n" +
+          "Click **View Analytics** below, or try your question again in a moment.",
+        suggestions: ["View analytics", "Show contracts"],
+        actions: [
+          { label: "View Analytics", action: "view-analytics", icon: TrendingUp, variant: "primary" },
+        ],
+        confidence: 0.5,
+        source: "fallback-offline",
+      };
+    }
+
+    if (lowerQuery.includes("complian") || lowerQuery.includes("risk")) {
+      return {
+        content:
+          "🛡️ **Compliance & Risk**\n\n" +
+          "I couldn't reach the AI service to analyze your contracts right now.\n\n" +
+          "You can view compliance data on the **Analytics** page, or try again in a moment.",
+        suggestions: ["View analytics", "Show contracts"],
+        actions: [
+          { label: "View Analytics", action: "view-analytics", icon: TrendingUp, variant: "primary" },
+        ],
+        confidence: 0.5,
+        source: "fallback-offline",
+      };
+    }
+
+    // Default fallback — honest and helpful
     return {
       content:
-        "I'm here to help with your contract management needs! I can assist with:\n\n" +
-        "📊 **Contract Analytics** - Summaries, trends, insights\n" +
-        "📅 **Renewal Tracking** - Deadlines, reminders, alerts\n" +
-        "🔍 **Smart Search** - Find any contract or clause\n" +
-        "💰 **Cost Analysis** - Spending, savings, budgets\n" +
-        "🛡️ **Compliance** - Risk scores, audit trails\n\n" +
-        "What would you like to explore?" as string,
-      suggestions: ["Contract summary", "Renewals", "Search", "Cost analysis"],
-      confidence: 0.90,
-      source: "general-assistant",
+        "⚠️ **AI service temporarily unavailable**\n\n" +
+        "I couldn't process your request right now. You can:\n\n" +
+        "• **Try again** in a few moments\n" +
+        "• **Browse contracts** directly using the button below\n" +
+        "• **Check the dashboard** for real-time metrics\n\n" +
+        "The AI service usually recovers quickly.",
+      suggestions: ["Try again", "Show contracts", "View dashboard"],
+      actions: [
+        { label: "View Contracts", action: "view-contracts", icon: FileText, variant: "primary" },
+        { label: "View Dashboard", action: "view-dashboard", icon: TrendingUp },
+      ],
+      confidence: 0.3,
+      source: "fallback-offline",
     };
   };
 
@@ -2155,10 +2089,10 @@ export function FloatingAIBubble() {
                                       </div>
                                       {message.contractPreviews.length > 5 && (
                                         <button 
-                                          onClick={() => {/* Could expand to show more */}}
-                                          className="w-full text-xs text-center text-violet-600 hover:text-violet-700 py-2 font-medium"
+                                          onClick={() => router.push("/contracts")}
+                                          className="w-full text-xs text-center text-violet-600 hover:text-violet-700 py-2 font-medium hover:underline"
                                         >
-                                          +{message.contractPreviews.length - 5} more contracts
+                                          +{message.contractPreviews.length - 5} more contracts — View All
                                         </button>
                                       )}
                                     </motion.div>
