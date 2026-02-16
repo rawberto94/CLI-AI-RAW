@@ -634,81 +634,34 @@ export const HumanReviewQueue: React.FC<HumanReviewQueueProps> = ({
     const loadData = async () => {
       setLoading(true);
       try {
-        // In production, replace with actual API calls
-        // const response = await fetch(`/api/review-queue?tenantId=${tenantId}&status=${statusFilter}`);
-        // const data = await response.json();
-        
-        // Mock data for demonstration
-        const mockItems: ReviewItem[] = [
-          {
-            id: 'review_1',
-            contractId: 'contract_abc',
-            tenantId: tenantId || 'tenant_1',
-            type: 'ocr_quality',
-            priority: 'critical',
-            status: 'pending',
-            ocrConfidence: 0.45,
-            lowConfidenceRegions: [
-              { start: 100, end: 150, text: 'Pa7ty Name: Acme Corp.', avgConfidence: 0.35, fieldType: 'party_name' },
-              { start: 300, end: 350, text: 'Total: $l2,500.00', avgConfidence: 0.42, fieldType: 'amount' },
-            ],
-            documentName: 'Service_Agreement_2024.pdf',
-            documentType: 'SERVICE_AGREEMENT',
-            pageCount: 12,
-            createdAt: new Date(Date.now() - 1000 * 60 * 30),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 30),
-          },
-          {
-            id: 'review_2',
-            contractId: 'contract_def',
-            tenantId: tenantId || 'tenant_1',
-            type: 'ocr_quality',
-            priority: 'high',
-            status: 'in_progress',
-            ocrConfidence: 0.58,
-            lowConfidenceRegions: [
-              { start: 50, end: 100, text: 'Effective Date: J4n 15, 2024', avgConfidence: 0.52, fieldType: 'date' },
-            ],
-            documentName: 'NDA_ClientXYZ.pdf',
-            documentType: 'NDA',
-            pageCount: 4,
-            assignedTo: 'john.doe@example.com',
-            assignedAt: new Date(Date.now() - 1000 * 60 * 15),
-            createdAt: new Date(Date.now() - 1000 * 60 * 60),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 15),
-          },
-          {
-            id: 'review_3',
-            contractId: 'contract_ghi',
-            tenantId: tenantId || 'tenant_1',
-            type: 'ocr_quality',
-            priority: 'medium',
-            status: 'pending',
-            ocrConfidence: 0.68,
-            lowConfidenceRegions: [
-              { start: 200, end: 250, text: 'Term: 24 mon+hs', avgConfidence: 0.55, fieldType: 'term' },
-              { start: 400, end: 450, text: 'Auto-renewal: Y3s', avgConfidence: 0.60, fieldType: 'renewal' },
-              { start: 600, end: 650, text: 'Penalty: l0%', avgConfidence: 0.58, fieldType: 'penalty' },
-            ],
-            documentName: 'Master_Services_Agreement.pdf',
-            documentType: 'MSA',
-            pageCount: 28,
-            createdAt: new Date(Date.now() - 1000 * 60 * 120),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 120),
-          },
-        ];
+        // Fetch from OCR review queue API
+        const [itemsRes, statsRes] = await Promise.all([
+          fetch(`/api/ocr/review-queue?status=${statusFilter}${tenantId ? `&tenantId=${tenantId}` : ''}`).then(r => r.ok ? r.json() : null),
+          fetch(`/api/ocr/review-queue/stats${tenantId ? `?tenantId=${tenantId}` : ''}`).then(r => r.ok ? r.json() : null),
+        ]);
 
-        const mockStats: ReviewQueueStats = {
-          total: 15,
-          byStatus: { pending: 8, in_progress: 3, completed: 3, rejected: 0, escalated: 1 },
-          byPriority: { critical: 2, high: 4, medium: 6, low: 3 },
-          avgTimeToComplete: 1.5,
-          completedToday: 3,
-          avgConfidenceImprovement: 0.15,
-        };
+        if (itemsRes?.items?.length) {
+          setItems(itemsRes.items.map((item: any) => ({
+            ...item,
+            createdAt: new Date(item.createdAt),
+            updatedAt: new Date(item.updatedAt),
+            assignedAt: item.assignedAt ? new Date(item.assignedAt) : undefined,
+            completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
+          })));
+        } else {
+          setItems([]);
+        }
 
-        setItems(mockItems);
-        setStats(mockStats);
+        if (statsRes) {
+          setStats({
+            total: statsRes.total ?? 0,
+            byStatus: statsRes.byStatus ?? { pending: 0, in_progress: 0, completed: 0, rejected: 0, escalated: 0 },
+            byPriority: statsRes.byPriority ?? { critical: 0, high: 0, medium: 0, low: 0 },
+            avgTimeToComplete: statsRes.avgTimeToComplete ?? 0,
+            completedToday: statsRes.completedToday ?? 0,
+            avgConfidenceImprovement: statsRes.avgConfidenceImprovement ?? 0,
+          });
+        }
       } catch (error) {
         console.error('Failed to load review queue:', error);
       } finally {

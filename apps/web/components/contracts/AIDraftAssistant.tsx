@@ -122,7 +122,7 @@ async function generateAIResponse(
   // For now, we simulate an AI response based on the prompt
   
   try {
-    const response = await fetch('/api/ai/contract-draft', {
+    const response = await fetch('/api/ai/generate/draft', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

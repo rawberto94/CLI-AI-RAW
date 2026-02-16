@@ -7,7 +7,7 @@
  * Tracks model performance, correction patterns, and improvement opportunities.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   BarChart,
@@ -514,48 +514,74 @@ export const OCRQualityDashboard: React.FC<OCRQualityDashboardProps> = ({
   const [timeRange, setTimeRange] = useState('30d');
   const [loading, setLoading] = useState(false);
 
-  // Mock data - in production, fetch from API
-  const dailyData = useMemo(() => generateMockData(), []);
+  // Fetch OCR quality data from API
+  const [dailyData, setDailyData] = useState<DailyMetric[]>([]);
+  const [metrics, setMetrics] = useState<OCRMetrics>({
+    totalDocuments: 0, avgConfidence: 0, avgConfidenceChange: 0,
+    documentsNeedingReview: 0, reviewsCompleted: 0, avgCorrectionTime: 0,
+    modelAccuracy: {}, fieldAccuracy: {},
+  });
+  const [fieldPerformance, setFieldPerformance] = useState<FieldPerformance[]>([]);
+  const [documentTypes, setDocumentTypes] = useState<DocumentTypeStats[]>([]);
 
-  const metrics: OCRMetrics = {
-    totalDocuments: 1247,
-    avgConfidence: 0.78,
-    avgConfidenceChange: 3.2,
-    documentsNeedingReview: 89,
-    reviewsCompleted: 156,
-    avgCorrectionTime: 1.2,
-    modelAccuracy: {
-      tesseract: 0.72,
-      azure_ocr: 0.85,
-      google_vision: 0.82,
-    },
-    fieldAccuracy: {
-      party_name: 0.88,
-      effective_date: 0.92,
-      expiration_date: 0.90,
-      contract_value: 0.75,
-      payment_terms: 0.68,
-      jurisdiction: 0.82,
-    },
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/ocr/quality/metrics?timeRange=${timeRange}${tenantId ? `&tenantId=${tenantId}` : ''}`);
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        const d = data.data || data;
 
-  const fieldPerformance: FieldPerformance[] = [
-    { field: 'effective_date', accuracy: 0.92, totalExtractions: 1200, corrections: 96, trend: 'up' },
-    { field: 'expiration_date', accuracy: 0.90, totalExtractions: 1150, corrections: 115, trend: 'stable' },
-    { field: 'party_name', accuracy: 0.88, totalExtractions: 2400, corrections: 288, trend: 'up' },
-    { field: 'jurisdiction', accuracy: 0.82, totalExtractions: 950, corrections: 171, trend: 'stable' },
-    { field: 'contract_value', accuracy: 0.75, totalExtractions: 800, corrections: 200, trend: 'down' },
-    { field: 'payment_terms', accuracy: 0.68, totalExtractions: 600, corrections: 192, trend: 'down' },
-  ];
+        if (d.metrics) {
+          setMetrics({
+            totalDocuments: d.metrics.totalDocuments ?? 0,
+            avgConfidence: d.metrics.avgConfidence ?? 0,
+            avgConfidenceChange: d.metrics.avgConfidenceChange ?? 0,
+            documentsNeedingReview: d.metrics.documentsNeedingReview ?? d.metrics.pendingReview ?? 0,
+            reviewsCompleted: d.metrics.reviewsCompleted ?? 0,
+            avgCorrectionTime: d.metrics.avgCorrectionTime ?? 0,
+            modelAccuracy: d.metrics.modelAccuracy || {},
+            fieldAccuracy: d.metrics.fieldAccuracy || {},
+          });
+        }
 
-  const documentTypes: DocumentTypeStats[] = [
-    { type: 'NDA', count: 320, avgConfidence: 0.85, needsReview: 12 },
-    { type: 'MSA', count: 180, avgConfidence: 0.78, needsReview: 25 },
-    { type: 'SoW', count: 250, avgConfidence: 0.72, needsReview: 35 },
-    { type: 'Amendment', count: 140, avgConfidence: 0.82, needsReview: 8 },
-    { type: 'License', count: 200, avgConfidence: 0.75, needsReview: 18 },
-    { type: 'Other', count: 157, avgConfidence: 0.65, needsReview: 31 },
-  ];
+        if (d.dailyMetrics || d.daily) {
+          setDailyData((d.dailyMetrics || d.daily).map((m: any) => ({
+            date: m.date,
+            documents: m.documents || m.count || 0,
+            avgConfidence: m.avgConfidence || 0,
+            corrections: m.corrections || 0,
+            reviewTime: m.reviewTime || m.avgReviewTime || 0,
+          })));
+        }
+
+        if (d.fieldPerformance || d.fields) {
+          setFieldPerformance((d.fieldPerformance || d.fields).map((f: any) => ({
+            field: f.field || f.name,
+            accuracy: f.accuracy || 0,
+            totalExtractions: f.totalExtractions || f.total || 0,
+            corrections: f.corrections || 0,
+            trend: f.trend || 'stable',
+          })));
+        }
+
+        if (d.documentTypes || d.documents) {
+          setDocumentTypes((d.documentTypes || d.documents).map((dt: any) => ({
+            type: dt.type || dt.name,
+            count: dt.count || 0,
+            avgConfidence: dt.avgConfidence || 0,
+            needsReview: dt.needsReview || dt.pendingReview || 0,
+          })));
+        }
+      } catch {
+        // API unavailable — show empty state
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [timeRange, tenantId]);
 
   return (
     <div className={cn('space-y-6', className)}>

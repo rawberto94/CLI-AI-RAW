@@ -175,10 +175,10 @@ export const UserManagement = memo(function UserManagement({
           lastLoginAt: u.lastLoginAt ? new Date(u.lastLoginAt) : undefined,
         })));
       } else {
-        setUsers(generateMockUsers());
+        setUsers([]);
       }
     } catch {
-      setUsers(generateMockUsers());
+      setUsers([]);
     } finally {
       setLoading(false);
     }

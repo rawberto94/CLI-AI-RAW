@@ -60,10 +60,27 @@ interface DashboardMetrics {
   };
 }
 
+const emptyMetrics: DashboardMetrics = {
+  totalContracts: 0,
+  activeContracts: 0,
+  totalValue: 0,
+  avgRiskScore: 0,
+  pendingApprovals: 0,
+  expiringThisMonth: 0,
+  trends: { contractsChange: 0, valueChange: 0, riskChange: 0 },
+};
+
+const statusColors: Record<string, string> = { Active: '#10b981', Draft: '#f59e0b', Expired: '#ef4444', Pending: '#3b82f6' };
+const riskColors: Record<string, string> = { Low: '#10b981', Medium: '#f59e0b', High: '#ef4444', Critical: '#dc2626' };
+
 export function EnhancedDashboard() {
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d' | '1y'>('30d');
+  const [contractsByStatusData, setContractsByStatusData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [riskDistributionData, setRiskDistributionData] = useState<{ name: string; value: number; color: string }[]>([]);
+  const [monthlyTrendData, setMonthlyTrendData] = useState<{ month: string; contracts: number; value: number; risk: number }[]>([]);
+  const [workflowData, setWorkflowData] = useState<{ stage: string; count: number }[]>([]);
 
   useEffect(() => {
     fetchMetrics();
@@ -78,36 +95,52 @@ export function EnhancedDashboard() {
         const raw = await response.json();
         const data = raw.data ?? raw;
         setMetrics(data.metrics ?? data);
+
+        // Wire chart data from API response
+        if (data.statusDistribution) {
+          setContractsByStatusData(Object.entries(data.statusDistribution).map(([name, value]) => ({
+            name, value: value as number, color: statusColors[name] || '#6b7280',
+          })));
+        } else if (data.contractsByStatus) {
+          setContractsByStatusData(data.contractsByStatus.map((s: any) => ({
+            name: s.name || s.status, value: s.value || s.count, color: statusColors[s.name || s.status] || '#6b7280',
+          })));
+        }
+
+        if (data.riskDistribution) {
+          const rd = Array.isArray(data.riskDistribution) ? data.riskDistribution : Object.entries(data.riskDistribution).map(([name, value]) => ({ name, value }));
+          setRiskDistributionData(rd.map((r: any) => ({
+            name: r.name || r.level, value: r.value || r.count, color: riskColors[r.name || r.level] || '#6b7280',
+          })));
+        }
+
+        if (data.monthlyTrend || data.trends?.monthly) {
+          const mt = data.monthlyTrend || data.trends.monthly;
+          setMonthlyTrendData(mt.map((m: any) => ({
+            month: m.month || m.label, contracts: m.contracts || m.count || 0, value: m.value || 0, risk: m.risk || m.avgRisk || 0,
+          })));
+        }
+
+        if (data.workflowPipeline || data.workflow) {
+          const wf = data.workflowPipeline || data.workflow;
+          setWorkflowData(wf.map((w: any) => ({ stage: w.stage || w.name, count: w.count || w.value || 0 })));
+        }
       } else {
-        setMetrics(mockMetrics);
+        setMetrics(emptyMetrics);
       }
     } catch {
-      setMetrics(mockMetrics);
+      setMetrics(emptyMetrics);
     } finally {
       setLoading(false);
     }
   };
-
-  const contractsByStatusData = [
-    { name: 'Active', value: 145, color: '#10b981' },
-    { name: 'Draft', value: 23, color: '#f59e0b' },
-    { name: 'Expired', value: 12, color: '#ef4444' },
-    { name: 'Pending', value: 34, color: '#3b82f6' },
-  ];
-
-  const riskDistributionData = [
-    { name: 'Low', value: 98, color: '#10b981' },
-    { name: 'Medium', value: 67, color: '#f59e0b' },
-    { name: 'High', value: 23, color: '#ef4444' },
-    { name: 'Critical', value: 5, color: '#dc2626' },
-  ];
 
   const handleExport = () => {
     try {
       const exportData = {
         generatedAt: new Date().toISOString(),
         timeframe,
-        metrics: metrics || { totalContracts: 214, activeContracts: 145, totalValue: 3800000 },
+        metrics: metrics || emptyMetrics,
         statusDistribution: contractsByStatusData,
         riskDistribution: riskDistributionData,
       };
@@ -122,22 +155,7 @@ export function EnhancedDashboard() {
     }
   };
 
-  const monthlyTrendData = [
-    { month: 'Jun', contracts: 145, value: 2.1, risk: 45 },
-    { month: 'Jul', contracts: 158, value: 2.4, risk: 42 },
-    { month: 'Aug', contracts: 172, value: 2.7, risk: 38 },
-    { month: 'Sep', contracts: 189, value: 3.1, risk: 35 },
-    { month: 'Oct', contracts: 198, value: 3.4, risk: 33 },
-    { month: 'Nov', contracts: 214, value: 3.8, risk: 31 },
-  ];
-
-  const workflowData = [
-    { stage: 'Draft', count: 23 },
-    { stage: 'Review', count: 34 },
-    { stage: 'Approval', count: 18 },
-    { stage: 'Signature', count: 12 },
-    { stage: 'Active', count: 145 },
-  ];
+  // monthlyTrendData and workflowData are now fetched from API in state above
 
   if (loading) {
     return (
@@ -192,15 +210,15 @@ export function EnhancedDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Contracts</p>
-                <p className="text-3xl font-bold text-foreground mt-1">{metrics?.totalContracts || 214}</p>
+                <p className="text-3xl font-bold text-foreground mt-1">{metrics?.totalContracts ?? 0}</p>
                 <div className="flex items-center gap-1 mt-2">
-                  {(metrics?.trends.contractsChange || 12) > 0 ? (
+                  {(metrics?.trends.contractsChange ?? 0) > 0 ? (
                     <ArrowUpRight className="h-4 w-4 text-violet-600" />
                   ) : (
                     <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange || 12) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
-                    {Math.abs(metrics?.trends.contractsChange || 12)}%
+                  <span className={`text-sm font-medium ${(metrics?.trends.contractsChange ?? 0) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
+                    {Math.abs(metrics?.trends.contractsChange ?? 0)}%
                   </span>
                   <span className="text-sm text-muted-foreground">vs last period</span>
                 </div>
@@ -217,15 +235,15 @@ export function EnhancedDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Value</p>
-                <p className="text-3xl font-bold text-foreground mt-1">${(metrics?.totalValue || 3.8).toFixed(1)}M</p>
+                <p className="text-3xl font-bold text-foreground mt-1">${(metrics?.totalValue ?? 0).toFixed(1)}M</p>
                 <div className="flex items-center gap-1 mt-2">
-                  {(metrics?.trends.valueChange || 18) > 0 ? (
+                  {(metrics?.trends.valueChange ?? 0) > 0 ? (
                     <ArrowUpRight className="h-4 w-4 text-violet-600" />
                   ) : (
                     <ArrowDownRight className="h-4 w-4 text-destructive" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange || 18) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
-                    {Math.abs(metrics?.trends.valueChange || 18)}%
+                  <span className={`text-sm font-medium ${(metrics?.trends.valueChange ?? 0) > 0 ? 'text-violet-600' : 'text-destructive'}`}>
+                    {Math.abs(metrics?.trends.valueChange ?? 0)}%
                   </span>
                   <span className="text-sm text-muted-foreground">vs last period</span>
                 </div>
@@ -242,15 +260,15 @@ export function EnhancedDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Avg Risk Score</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.avgRiskScore || 31}/100</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.avgRiskScore ?? 0}/100</p>
                 <div className="flex items-center gap-1 mt-2">
-                  {(metrics?.trends.riskChange || -8) < 0 ? (
+                  {(metrics?.trends.riskChange ?? 0) < 0 ? (
                     <ArrowDownRight className="h-4 w-4 text-green-600" />
                   ) : (
                     <ArrowUpRight className="h-4 w-4 text-red-600" />
                   )}
-                  <span className={`text-sm font-medium ${(metrics?.trends.riskChange || -8) < 0 ? 'text-green-600' : 'text-red-600'}`}>
-                    {Math.abs(metrics?.trends.riskChange || -8)}%
+                  <span className={`text-sm font-medium ${(metrics?.trends.riskChange ?? 0) < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    {Math.abs(metrics?.trends.riskChange ?? 0)}%
                   </span>
                   <span className="text-sm text-gray-500">improvement</span>
                 </div>
@@ -267,10 +285,10 @@ export function EnhancedDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-gray-600">Pending Actions</p>
-                <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.pendingApprovals || 18}</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.pendingApprovals ?? 0}</p>
                 <div className="flex items-center gap-1 mt-2">
                   <Clock className="h-4 w-4 text-yellow-600" />
-                  <span className="text-sm text-gray-500">{metrics?.expiringThisMonth || 12} expiring soon</span>
+                  <span className="text-sm text-gray-500">{metrics?.expiringThisMonth ?? 0} expiring soon</span>
                 </div>
               </div>
               <div className="p-3 bg-yellow-100 rounded-xl">
@@ -541,16 +559,4 @@ export function EnhancedDashboard() {
   );
 }
 
-const mockMetrics: DashboardMetrics = {
-  totalContracts: 214,
-  activeContracts: 145,
-  totalValue: 3.8,
-  avgRiskScore: 31,
-  pendingApprovals: 18,
-  expiringThisMonth: 12,
-  trends: {
-    contractsChange: 12,
-    valueChange: 18,
-    riskChange: -8,
-  },
-};
+

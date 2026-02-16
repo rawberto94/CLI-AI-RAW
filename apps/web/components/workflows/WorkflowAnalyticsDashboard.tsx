@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import {
   TrendingUp,
@@ -487,9 +487,78 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
   const [_selectedWorkflow, _setSelectedWorkflow] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Mock data - in production, fetch from API
-  const workflowMetrics = useMemo(() => generateMockWorkflowMetrics(), []);
-  const stepMetrics = useMemo(() => generateMockStepMetrics(), []);
+  // Fetch workflow metrics from API
+  const [workflowMetrics, setWorkflowMetrics] = useState<WorkflowMetrics[]>([]);
+  const [stepMetrics, setStepMetrics] = useState<StepMetrics[]>([]);
+
+  const fetchData = async () => {
+    setIsRefreshing(true);
+    try {
+      const [wfRes, execRes, slaRes] = await Promise.all([
+        fetch('/api/workflows').then(r => r.ok ? r.json() : null),
+        fetch('/api/workflows/executions').then(r => r.ok ? r.json() : null),
+        fetch('/api/workflows/sla').then(r => r.ok ? r.json() : null),
+      ]);
+
+      // Map workflows + executions into WorkflowMetrics
+      const templates = wfRes?.workflows || wfRes?.data?.workflows || [];
+      const executions = execRes?.executions || execRes?.data?.executions || [];
+      const slaData = slaRes?.data || slaRes || {};
+
+      if (templates.length > 0) {
+        const metricsMap: Record<string, WorkflowMetrics> = {};
+        for (const t of templates) {
+          metricsMap[t.id] = {
+            templateId: t.id,
+            templateName: t.name || t.templateName || 'Workflow',
+            totalExecutions: 0,
+            completed: 0,
+            pending: 0,
+            failed: 0,
+            avgCompletionTime: 0,
+            avgApprovalTime: 0,
+            slaCompliance: slaData.compliance?.[t.id] ?? 0,
+          };
+        }
+
+        for (const e of executions) {
+          const tId = e.workflowId || e.templateId;
+          if (metricsMap[tId]) {
+            metricsMap[tId].totalExecutions++;
+            if (e.status === 'completed' || e.status === 'COMPLETED') metricsMap[tId].completed++;
+            else if (e.status === 'pending' || e.status === 'PENDING' || e.status === 'in_progress') metricsMap[tId].pending++;
+            else if (e.status === 'failed' || e.status === 'FAILED') metricsMap[tId].failed++;
+          }
+        }
+
+        setWorkflowMetrics(Object.values(metricsMap));
+      }
+
+      // Map step metrics from SLA data if available
+      if (slaData.steps || slaData.stepMetrics) {
+        const steps = slaData.steps || slaData.stepMetrics || [];
+        setStepMetrics(steps.map((s: any, i: number) => ({
+          stepId: s.id || String(i + 1),
+          stepName: s.name || s.stepName || `Step ${i + 1}`,
+          avgTime: s.avgTime || s.avgDuration || 0,
+          minTime: s.minTime || 0,
+          maxTime: s.maxTime || 0,
+          completionRate: s.completionRate || 0,
+          slaBreaches: s.slaBreaches || s.breaches || 0,
+          pendingCount: s.pendingCount || s.pending || 0,
+          topApprover: s.topApprover,
+        })));
+      }
+    } catch {
+      // API unavailable — show empty state
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, [timeRange]);
 
   // Aggregate statistics
   const stats = useMemo(() => {
@@ -504,10 +573,7 @@ export const WorkflowAnalyticsDashboard: React.FC = () => {
   }, [workflowMetrics]);
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsRefreshing(false);
+    await fetchData();
   };
 
   return (

@@ -40,7 +40,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatCurrency, formatNumber, formatDate } from '@/lib/design-tokens';
-import { useDataMode } from '@/contexts/DataModeContext';
+
 import { toast } from 'sonner';
 import { DeadlineAlertBanner, useDeadlineAlerts } from '@/components/workflows/DeadlineAlerts';
 import { 
@@ -52,41 +52,15 @@ import {
 } from '@/hooks/use-queries';
 
 // New Dashboard Widgets
-import { 
-  RecentActivityWidget, 
-  generateDemoActivities 
-} from './RecentActivityWidget';
-import { 
-  FavoriteContractsWidget, 
-  generateDemoFavorites 
-} from './FavoriteContractsWidget';
-import { 
-  UpcomingRenewalsWidget, 
-} from './UpcomingRenewalsWidget';
-import { 
-  AIInsightsSummaryWidget, 
-  generateDemoInsights, 
-  generateDemoMetrics as generateDemoAIMetrics 
-} from './AIInsightsSummaryWidget';
-import {
-  ContractNotificationsWidget,
-  generateDemoNotifications,
-} from './ContractNotificationsWidget';
-import {
-  KeyboardShortcutsPanel,
-} from './KeyboardShortcutsPanel';
-import {
-  SavingsTrackerWidget,
-  generateDemoSavingsData,
-} from './SavingsTrackerWidget';
-import {
-  TeamActivityWidget,
-  generateDemoTeamData,
-} from './TeamActivityWidget';
-import {
-  IntegrationStatusWidget,
-  generateDemoIntegrations,
-} from './IntegrationStatusWidget';
+import { RecentActivityWidget } from './RecentActivityWidget';
+import { FavoriteContractsWidget } from './FavoriteContractsWidget';
+import { UpcomingRenewalsWidget } from './UpcomingRenewalsWidget';
+import { AIInsightsSummaryWidget } from './AIInsightsSummaryWidget';
+import { ContractNotificationsWidget } from './ContractNotificationsWidget';
+import { KeyboardShortcutsPanel } from './KeyboardShortcutsPanel';
+import { SavingsTrackerWidget } from './SavingsTrackerWidget';
+import { TeamActivityWidget } from './TeamActivityWidget';
+import { IntegrationStatusWidget } from './IntegrationStatusWidget';
 import {
   LineChart,
   Line,
@@ -142,67 +116,34 @@ interface UpcomingExpiration {
   value: number;
 }
 
-// ============ MOCK DATA ============
+// ============ DEFAULT DATA (empty states) ============
 
-const mockMetrics: DashboardMetrics = {
-  totalContracts: 247,
-  activeContracts: 189,
-  totalValue: 12500000,
-  avgRiskScore: 34,
-  pendingApprovals: 12,
-  expiringThisMonth: 8,
-  contractsThisWeek: 14,
-  aiProcessingQueue: 3,
+const emptyMetrics: DashboardMetrics = {
+  totalContracts: 0,
+  activeContracts: 0,
+  totalValue: 0,
+  avgRiskScore: 0,
+  pendingApprovals: 0,
+  expiringThisMonth: 0,
+  contractsThisWeek: 0,
+  aiProcessingQueue: 0,
   trends: {
-    contracts: 12.5,
-    value: 18.3,
-    risk: -8.2,
-    compliance: 5.1,
+    contracts: 0,
+    value: 0,
+    risk: 0,
+    compliance: 0,
   },
 };
 
-const mockRecentContracts: RecentContract[] = [
-  { id: '1', name: 'Enterprise License Agreement', status: 'completed', value: 450000, date: '2024-01-15', riskLevel: 'low' },
-  { id: '2', name: 'Cloud Services MSA', status: 'processing', value: 280000, date: '2024-01-14', riskLevel: 'medium' },
-  { id: '3', name: 'Consulting Services Contract', status: 'review', value: 125000, date: '2024-01-13', riskLevel: 'low' },
-  { id: '4', name: 'Software Development Agreement', status: 'completed', value: 890000, date: '2024-01-12', riskLevel: 'high' },
-  { id: '5', name: 'NDA - Tech Partner', status: 'pending', value: 0, date: '2024-01-11', riskLevel: 'low' },
-];
-
-const mockExpirations: UpcomingExpiration[] = [
-  { id: '1', name: 'Annual Support Contract', client: 'Acme Corp', expiresAt: '2024-02-15', daysRemaining: 12, value: 85000 },
-  { id: '2', name: 'Software License', client: 'TechStart Inc', expiresAt: '2024-02-20', daysRemaining: 17, value: 120000 },
-  { id: '3', name: 'Maintenance Agreement', client: 'Global Systems', expiresAt: '2024-02-28', daysRemaining: 25, value: 45000 },
-];
-
-const mockChartData = {
-  monthly: [
-    { month: 'Aug', contracts: 32, value: 1.2, processed: 28 },
-    { month: 'Sep', contracts: 45, value: 1.8, processed: 41 },
-    { month: 'Oct', contracts: 38, value: 1.5, processed: 35 },
-    { month: 'Nov', contracts: 52, value: 2.1, processed: 48 },
-    { month: 'Dec', contracts: 48, value: 1.9, processed: 45 },
-    { month: 'Jan', contracts: 61, value: 2.4, processed: 57 },
-  ],
-  riskDistribution: [
-    { name: 'Low Risk', value: 156, color: '#10b981' },
-    { name: 'Medium Risk', value: 67, color: '#f59e0b' },
-    { name: 'High Risk', value: 24, color: '#f43f5e' },
-  ],
-  byType: [
-    { type: 'MSA', count: 45 },
-    { type: 'NDA', count: 38 },
-    { type: 'License', count: 32 },
-    { type: 'Service', count: 28 },
-    { type: 'Other', count: 15 },
-  ],
+const emptyChartData = {
+  monthly: [] as { month: string; contracts: number; value: number; processed: number }[],
+  riskDistribution: [] as { name: string; value: number; color: string }[],
+  byType: [] as { type: string; count: number }[],
 };
 
 // ============ API FETCH HOOK (React Query) ============
 
 function useDashboardData() {
-  const { isMockData } = useDataMode();
-  
   // Use React Query hooks for real-time cache invalidation
   const statsQuery = useDashboardStats();
   const approvalsQuery = usePendingApprovals(5);
@@ -210,57 +151,62 @@ function useDashboardData() {
   const healthQuery = useContractHealthScores();
   
   // Compute derived state from queries
-  const { metrics, chartData, expirations } = useMemo(() => {
-    // If in demo mode or queries are loading, use mock data
-    if (isMockData) {
-      return {
-        metrics: mockMetrics,
-        chartData: mockChartData,
-        expirations: mockExpirations,
-      };
-    }
-    
+  const { metrics, chartData, recentContracts, expirations } = useMemo(() => {
     const statsJson = statsQuery.data;
     const approvalsJson = approvalsQuery.data;
     const expirationsJson = expirationsQuery.data;
     const healthJson = healthQuery.data;
     
-    let computedMetrics = mockMetrics;
-    let computedChartData = mockChartData;
-    let computedExpirations = mockExpirations;
+    let computedMetrics = emptyMetrics;
+    let computedChartData = emptyChartData;
+    let computedExpirations: UpcomingExpiration[] = [];
+    let computedRecentContracts: RecentContract[] = [];
     
     // Map API data to metrics
     if (statsJson?.success && statsJson.data) {
       const d = statsJson.data;
       
       // Use health score data if available
-      const avgHealthScore = d.health?.averageScore || healthJson?.data?.stats?.averageScore || 66;
-      const riskScore = 100 - avgHealthScore; // Invert health to get risk
+      const avgHealthScore = d.health?.averageScore || healthJson?.data?.stats?.averageScore || 50;
+      const riskScore = 100 - avgHealthScore;
       
       computedMetrics = {
-        totalContracts: d.overview?.totalContracts ?? mockMetrics.totalContracts,
-        activeContracts: d.overview?.activeContracts ?? mockMetrics.activeContracts,
-        totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
+        totalContracts: d.overview?.totalContracts ?? 0,
+        activeContracts: d.overview?.activeContracts ?? 0,
+        totalValue: d.overview?.portfolioValue ?? 0,
         avgRiskScore: riskScore,
-        pendingApprovals: approvalsJson?.data?.items?.length ?? mockMetrics.pendingApprovals,
-        expiringThisMonth: ((d.expirations?.criticalRisk ?? 0) + (d.expirations?.highRisk ?? 0)) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
-        contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
-        aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
+        pendingApprovals: approvalsJson?.data?.items?.length ?? 0,
+        expiringThisMonth: ((d.expirations?.criticalRisk ?? 0) + (d.expirations?.highRisk ?? 0)) || (d.renewals?.expiringIn30Days ?? 0),
+        contractsThisWeek: d.overview?.recentlyAdded ?? 0,
+        aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 0,
         trends: {
-          contracts: mockMetrics.trends.contracts,
-          value: mockMetrics.trends.value,
+          contracts: d.trends?.contracts ?? 0,
+          value: d.trends?.value ?? 0,
           risk: d.health?.trends?.improving > 0 ? -5 : d.health?.trends?.declining > 0 ? 5 : 0,
-          compliance: d.health?.averageScore ? (d.health.averageScore - 60) : mockMetrics.trends.compliance,
+          compliance: d.health?.averageScore ? (d.health.averageScore - 60) : 0,
         },
       };
 
-      // Map breakdown to chart with health score distribution
+      // Map breakdown to chart
       if (d.breakdown?.byType) {
         computedChartData = {
-          ...mockChartData,
+          ...computedChartData,
           byType: d.breakdown.byType.slice(0, 5).map((t: any) => ({
             type: t.type?.substring(0, 10) || 'Other',
             count: t.count,
+          })),
+        };
+      }
+
+      // Map monthly data if available
+      if (d.breakdown?.byMonth) {
+        computedChartData = {
+          ...computedChartData,
+          monthly: d.breakdown.byMonth.slice(-6).map((m: any) => ({
+            month: m.month || m.label || '',
+            contracts: m.count || 0,
+            value: m.value || 0,
+            processed: m.processed || m.count || 0,
           })),
         };
       }
@@ -277,9 +223,21 @@ function useDashboardData() {
           ],
         };
       }
+
+      // Map recent contracts from stats
+      if (d.recentContracts?.length > 0) {
+        computedRecentContracts = d.recentContracts.slice(0, 5).map((c: any) => ({
+          id: c.id,
+          name: c.name || c.fileName || c.contractTitle || 'Untitled',
+          status: (c.status || 'pending').toLowerCase(),
+          value: c.totalValue || c.value || 0,
+          date: c.createdAt || c.updatedAt || '',
+          riskLevel: c.riskLevel || (c.riskScore > 70 ? 'high' : c.riskScore > 40 ? 'medium' : 'low'),
+        }));
+      }
     }
 
-    // Map expirations data to upcoming expirations
+    // Map expirations data
     if (expirationsJson?.success && expirationsJson.data?.expirations?.length > 0) {
       computedExpirations = expirationsJson.data.expirations.slice(0, 3).map((e: any, i: number) => ({
         id: e.contractId || String(i + 1),
@@ -291,11 +249,10 @@ function useDashboardData() {
       }));
     }
     
-    return { metrics: computedMetrics, chartData: computedChartData, expirations: computedExpirations };
-  }, [isMockData, statsQuery.data, approvalsQuery.data, expirationsQuery.data, healthQuery.data]);
+    return { metrics: computedMetrics, chartData: computedChartData, recentContracts: computedRecentContracts, expirations: computedExpirations };
+  }, [statsQuery.data, approvalsQuery.data, expirationsQuery.data, healthQuery.data]);
   
   const loading = statsQuery.isLoading || approvalsQuery.isLoading || expirationsQuery.isLoading;
-  const recentContracts = mockRecentContracts; // Keep mock for now since recent contracts come from stats
 
   return { metrics, chartData, recentContracts, expirations, loading };
 }
@@ -798,45 +755,185 @@ export function ProfessionalDashboard() {
   const [timeframe, setTimeframe] = useState<'7d' | '30d' | '90d'>('30d');
   
   // Demo data for new widgets (replace with API calls in production)
-  const [favoriteContracts] = useState(() => generateDemoFavorites(5));
-  const [recentActivity] = useState(() => generateDemoActivities(10));
+  const [favoriteContracts, setFavoriteContracts] = useState<any[]>([]);
+  const [recentActivity, setRecentActivity] = useState<any[]>([]);
   // Fetch renewals from API
   const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/renewals');
-        const json = await res.json();
-        if (json.data?.renewals?.length) {
-          setUpcomingRenewals(json.data.renewals.map((r: any) => ({
-            id: r.id || r.contractId,
-            name: r.contractName || r.name || 'Untitled Contract',
-            supplier: r.supplierName || r.counterparty,
-            value: r.contractValue || r.value || 0,
-            currency: r.currency || 'USD',
-            expirationDate: new Date(r.expirationDate || r.endDate),
-            daysRemaining: r.daysUntilExpiry ?? r.daysRemaining ?? 0,
-            autoRenewal: r.autoRenewal ?? false,
-            noticePeriodDays: r.noticePeriodDays,
-            renewalStatus: r.status || 'pending',
-            lastRenewalDate: r.lastRenewalDate ? new Date(r.lastRenewalDate) : undefined,
-            renewalCount: r.renewalCount,
-          })));
-        }
-      } catch {
-        // Could not load renewals
-      }
-    })();
-  }, []);
-  const [aiInsights] = useState(() => generateDemoInsights(6));
-  const [aiMetrics] = useState(() => generateDemoAIMetrics());
-  const [notifications] = useState(() => generateDemoNotifications(12));
+  const [aiInsights, setAiInsights] = useState<any[]>([]);
+  const [aiMetrics, setAiMetrics] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
   
   // New widget data
-  const [savingsData] = useState(() => generateDemoSavingsData());
-  const [teamData] = useState(() => generateDemoTeamData());
-  const [integrations] = useState(() => generateDemoIntegrations());
+  const [savingsData, setSavingsData] = useState<any>(null);
+  const [teamData, setTeamData] = useState<{ activities: any[]; members: any[] }>({ activities: [], members: [] });
+  const [integrations, setIntegrations] = useState<any[]>([]);
+
+  // Fetch all widget data from APIs
+  useEffect(() => {
+    // Favorites
+    fetch('/api/user/favorites').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.favorites?.length) {
+        setFavoriteContracts(data.favorites.map((f: any) => ({
+          id: f.contractId || f.id,
+          name: f.contractTitle || f.fileName || 'Untitled',
+          supplier: f.supplierName,
+          status: f.status === 'COMPLETED' ? 'active' : f.status === 'PROCESSING' ? 'pending' : f.status === 'ARCHIVED' ? 'expired' : 'draft',
+          value: f.totalValue,
+          expirationDate: f.expirationDate ? new Date(f.expirationDate) : undefined,
+          lastViewed: f.lastViewedAt ? new Date(f.lastViewedAt) : undefined,
+          addedAt: new Date(f.createdAt || Date.now()),
+        })));
+      }
+    }).catch(() => {});
+
+    // Recent Activity
+    fetch('/api/activity?limit=10').then(r => r.ok ? r.json() : null).then(data => {
+      const items = Array.isArray(data) ? data : data?.activities || [];
+      if (items.length) {
+        setRecentActivity(items.map((a: any) => ({
+          id: a.id,
+          type: a.type || 'contract_updated',
+          title: a.title || 'Activity',
+          description: a.description,
+          timestamp: new Date(a.timestamp || a.createdAt),
+          user: { id: a.userId || '', name: a.userName || 'System', email: a.userEmail, avatar: a.userAvatar },
+          contract: a.contractId ? { id: a.contractId, name: a.contractName || '' } : undefined,
+          metadata: a.metadata,
+        })));
+      }
+    }).catch(() => {});
+
+    // Renewals
+    fetch('/api/renewals').then(r => r.ok ? r.json() : null).then(json => {
+      if (json?.data?.renewals?.length) {
+        setUpcomingRenewals(json.data.renewals.map((r: any) => ({
+          id: r.id || r.contractId,
+          name: r.contractName || r.name || 'Untitled Contract',
+          supplier: r.supplierName || r.counterparty,
+          value: r.contractValue || r.value || 0,
+          currency: r.currency || 'USD',
+          expirationDate: new Date(r.expirationDate || r.endDate),
+          daysRemaining: r.daysUntilExpiry ?? r.daysRemaining ?? 0,
+          autoRenewal: r.autoRenewal ?? false,
+          noticePeriodDays: r.noticePeriodDays,
+          renewalStatus: r.status || 'pending',
+          lastRenewalDate: r.lastRenewalDate ? new Date(r.lastRenewalDate) : undefined,
+          renewalCount: r.renewalCount,
+        })));
+      }
+    }).catch(() => {});
+
+    // AI Insights
+    fetch('/api/ai/insights').then(r => r.ok ? r.json() : null).then(data => {
+      const items = Array.isArray(data) ? data : data?.insights || [];
+      if (items.length) {
+        setAiInsights(items.slice(0, 6).map((i: any) => ({
+          id: i.id,
+          category: i.type || i.category || 'trend',
+          priority: i.severity || i.priority || 'medium',
+          title: i.title,
+          description: i.description,
+          affectedContracts: i.affectedContracts,
+          confidence: i.confidence ?? 0.85,
+          generatedAt: new Date(i.createdAt || i.generatedAt || Date.now()),
+        })));
+      }
+    }).catch(() => {});
+
+    // AI Metrics (from analytics)
+    fetch('/api/ai/analytics?period=30d').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.success && data.data) {
+        setAiMetrics({
+          extractionAccuracy: data.data.successRate || 95,
+          riskDetectionRate: 92,
+          processingSpeed: data.data.avgLatency || 200,
+          costSavingsIdentified: 0,
+          anomaliesDetected: 0,
+          recommendationsGenerated: 0,
+          contractsAnalyzed: data.data.requests || 0,
+          avgConfidence: 0.89,
+        });
+      }
+    }).catch(() => {});
+
+    // Notifications
+    fetch('/api/notifications').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.notifications?.length) {
+        setNotifications(data.notifications.slice(0, 12).map((n: any) => ({
+          id: n.id,
+          type: (n.type || '').toLowerCase().includes('approval') ? 'approval' :
+                (n.type || '').toLowerCase().includes('deadline') ? 'deadline' :
+                (n.type || '').toLowerCase().includes('expir') ? 'expiring' : 'update',
+          priority: n.priority || 'medium',
+          title: n.title,
+          message: n.message || n.body || '',
+          contractId: n.contractId,
+          contractName: n.contractName,
+          timestamp: new Date(n.createdAt || Date.now()),
+          read: n.isRead ?? false,
+          actionUrl: n.actionUrl,
+        })));
+      }
+    }).catch(() => {});
+
+    // Savings
+    fetch('/api/analytics/savings').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.data) {
+        setSavingsData({
+          totalSavings: data.data.totalSavings || 0,
+          savingsTarget: data.data.savingsTarget || 0,
+          previousPeriodSavings: data.data.previousPeriodSavings || 0,
+          categories: data.data.categories || [],
+          opportunities: data.data.opportunities || [],
+          monthlyTrend: data.data.monthlyTrend || [],
+        });
+      }
+    }).catch(() => {});
+
+    // Team
+    Promise.all([
+      fetch('/api/team').then(r => r.ok ? r.json() : null),
+      fetch('/api/activity?limit=10').then(r => r.ok ? r.json() : null),
+    ]).then(([teamRes, activityRes]) => {
+      const members = (teamRes?.members || []).map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        email: m.email,
+        avatar: m.avatar,
+        role: m.role || 'member',
+        isOnline: m.status === 'active',
+        lastActive: m.lastActive ? new Date(m.lastActive) : undefined,
+      }));
+      const activities = (Array.isArray(activityRes) ? activityRes : activityRes?.activities || []).slice(0, 10).map((a: any) => ({
+        id: a.id,
+        user: members.find((m: any) => m.id === a.userId) || { id: a.userId || '', name: a.userName || 'Unknown', email: '', role: 'member', isOnline: false },
+        type: a.type || 'comment',
+        target: a.title || '',
+        targetId: a.contractId,
+        targetType: 'contract' as const,
+        timestamp: new Date(a.timestamp || a.createdAt),
+        details: a.description,
+      }));
+      setTeamData({ activities, members });
+    }).catch(() => {});
+
+    // Integrations
+    fetch('/api/integrations').then(r => r.ok ? r.json() : null).then(data => {
+      if (data?.integrations?.length) {
+        setIntegrations(data.integrations.map((i: any) => ({
+          id: i.id,
+          name: i.name,
+          type: (i.type || 'other').toLowerCase(),
+          status: (i.status || 'disconnected').toLowerCase(),
+          lastSync: i.lastSyncAt ? new Date(i.lastSyncAt) : undefined,
+          nextSync: i.nextSyncAt ? new Date(i.nextSyncAt) : undefined,
+          syncedItems: i.recordsProcessed || i.syncedItems,
+          errorMessage: i.errorMessage,
+        })));
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleExport = () => {
     try {
