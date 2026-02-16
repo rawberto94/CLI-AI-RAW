@@ -18,7 +18,6 @@ import { confidenceScoringService } from './confidence-scoring.service';
 import { artifactVersioningService } from './artifact-versioning.service';
 import { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
 import { artifactValidationService } from './artifact-validation.service';
-import { artifactCostSavingsIntegrationService } from './artifact-cost-savings-integration.service';
 import { createStructuredOutputFormat, ARTIFACT_SCHEMAS } from './structured-output-schemas.service';
 import {
   ContractTypeClassifier,
@@ -106,7 +105,9 @@ class CircuitBreaker {
 // =========================================================================
 
 export type GenerationMethod = 'ai' | 'hybrid' | 'rule-based';
-export type ArtifactType = 'OVERVIEW' | 'FINANCIAL' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'RISK';
+export type ArtifactType = 
+  | 'OVERVIEW' | 'FINANCIAL' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'RISK'
+  | 'OBLIGATIONS' | 'RENEWAL' | 'NEGOTIATION_POINTS' | 'AMENDMENTS' | 'CONTACTS';
 
 export interface GenerationOptions {
   preferredMethod?: GenerationMethod;
@@ -506,35 +507,6 @@ export class AIArtifactGeneratorService {
         }
       }
 
-      // Integrate cost savings if applicable
-      if (options.previousArtifacts && ['FINANCIAL', 'RATES', 'RISK'].includes(artifactType)) {
-        try {
-          const allArtifacts = Object.fromEntries(options.previousArtifacts);
-          allArtifacts[artifactType] = finalData;
-          
-          const enhanced = await artifactCostSavingsIntegrationService.enhanceWithCostSavings(
-            artifactType,
-            finalData,
-            allArtifacts
-          );
-          
-          finalData = enhanced.artifact;
-          
-          if (enhanced.costSavings) {
-            logger.info(
-              { 
-                artifactType, 
-                opportunities: enhanced.costSavings.opportunities.length,
-                totalSavings: enhanced.costSavings.totalPotentialSavings.amount
-              },
-              'Cost savings integrated into artifact'
-            );
-          }
-        } catch (error) {
-          logger.warn({ error, artifactType }, 'Failed to integrate cost savings');
-        }
-      }
-
       return {
         success: true,
         data: finalData,
@@ -791,7 +763,10 @@ export class AIArtifactGeneratorService {
     tenantId: string,
     options: ParallelOptions = {}
   ): Promise<ParallelGenerationResult> {
-    const types = options.artifactTypes || (['OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RATES', 'COMPLIANCE', 'RISK'] as ArtifactType[]);
+    const types = options.artifactTypes || (
+      ['OVERVIEW', 'FINANCIAL', 'CLAUSES', 'RATES', 'COMPLIANCE', 'RISK',
+       'OBLIGATIONS', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS'] as ArtifactType[]
+    );
     const maxConcurrent = options.maxConcurrent || DEFAULT_GENERATOR_CONFIG.maxConcurrent;
     const startTime = Date.now();
 
@@ -1138,6 +1113,9 @@ export class AIArtifactGeneratorService {
       RATES: ['rateSchedule'],
       RENEWAL: ['renewalType'],
       COMPLIANCE: ['complianceRequirements'],
+      NEGOTIATION_POINTS: ['leveragePoints'],
+      AMENDMENTS: ['amendments'],
+      CONTACTS: ['primaryContacts'],
     };
 
     const fields = requiredFields[artifactType] || [];

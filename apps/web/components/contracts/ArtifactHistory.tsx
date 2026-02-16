@@ -61,7 +61,7 @@ export function ArtifactHistory({
 
     try {
       const response = await fetch(
-        `/api/contracts/${contractId}/artifacts/${artifactId}/history`
+        `/api/contracts/${contractId}/artifacts/${artifactId}/versions`
       );
 
       if (!response.ok) {

@@ -32,7 +32,7 @@
     "src/scripts/**",
     "src/services/rag/**",
     "src/services/rag-integration.service.ts",
-    "src/services/enhanced-artifact.service.ts",
+
     "src/services/processing-job.service.ts",
     "src/middleware/rate-limiter.ts"
   ]

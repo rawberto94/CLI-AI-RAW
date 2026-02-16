@@ -23,12 +23,9 @@ export {
   type ParallelOptions,
   type ParallelGenerationResult,
 } from './ai-artifact-generator.service';
-// export { enhancedArtifactService } from './enhanced-artifact.service'; // Excluded in tsconfig
 export { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
 export { artifactContextEnrichmentService } from './artifact-context-enrichment.service';
-// export { hybridArtifactStorageService } from './hybrid-artifact-storage.service'; // Excluded in tsconfig
 export { editableArtifactService } from './editable-artifact.service';
-export { artifactChangePropagationService } from './artifact-change-propagation.service';
 export { 
   artifactConfigService,
   getTenantArtifactConfig,
