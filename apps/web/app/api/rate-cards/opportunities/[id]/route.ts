@@ -33,7 +33,7 @@ const tenantId = await getApiTenantId(request);
       opportunity,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }
 
@@ -80,7 +80,7 @@ const tenantId = await getApiTenantId(request);
       opportunity: updated,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }
 
@@ -113,6 +113,6 @@ const tenantId = await getApiTenantId(request);
       message: 'Opportunity deleted',
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }

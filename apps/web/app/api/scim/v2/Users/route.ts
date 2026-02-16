@@ -25,8 +25,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         meta: { resourceType: 'User', created: u.created_at, lastModified: u.updated_at },
       })),
     });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `SCIM error: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM error. Please try again.', 500);
   }
 });
 
@@ -74,7 +74,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       active: scimUser.active,
       meta: { resourceType: 'User', created: scimUser.created_at, lastModified: scimUser.updated_at },
     });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `SCIM create error: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'SCIM create error. Please try again.', 500);
   }
 });

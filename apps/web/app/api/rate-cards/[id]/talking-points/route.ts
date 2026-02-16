@@ -22,6 +22,6 @@ try {
       data: talkingPoints,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to generate talking points', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate talking points', 500)
   }
 }

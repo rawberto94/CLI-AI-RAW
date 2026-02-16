@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `SELECT * FROM dlp_policies WHERE tenant_id = $1 ORDER BY created_at DESC`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { policies });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch DLP policies: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch DLP policies. Please try again.', 500);
   }
 });
 
@@ -31,7 +31,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { policy: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create DLP policy: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create DLP policy. Please try again.', 500);
   }
 });

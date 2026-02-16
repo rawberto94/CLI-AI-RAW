@@ -95,6 +95,6 @@ try {
     });
 
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to export comparison: ${error instanceof Error ? error.message : String(error)}`, 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to export comparison. Please try again.', 500);
   }
 }

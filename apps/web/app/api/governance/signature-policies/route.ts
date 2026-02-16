@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `SELECT * FROM signature_policies WHERE tenant_id = $1 ORDER BY created_at DESC`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { policies: items });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch signature policies: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch signature policies. Please try again.', 500);
   }
 });
 
@@ -32,7 +32,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       body.isActive ?? true, ctx.userId
     );
     return createSuccessResponse(ctx, { policy: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create signature policy: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create signature policy. Please try again.', 500);
   }
 });

@@ -35,8 +35,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, ctx.tenantId, ctx.userId);
 
     return createSuccessResponse(ctx, { searches });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });
 
@@ -62,8 +62,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { search: (saved as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });
 
@@ -96,8 +96,8 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createSuccessResponse(ctx, { updated: true });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });
 
@@ -113,7 +113,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, id, ctx.tenantId, ctx.userId);
 
     return createSuccessResponse(ctx, { deleted: true });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });

@@ -24,8 +24,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, ctx.tenantId);
 
     return createSuccessResponse(ctx, { amendments: items, metrics: (metrics as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch amendments: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch amendments. Please try again.', 500);
   }
 });
 
@@ -50,8 +50,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create amendment: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create amendment. Please try again.', 500);
   }
 });
 
@@ -71,7 +71,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update amendment: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update amendment. Please try again.', 500);
   }
 });

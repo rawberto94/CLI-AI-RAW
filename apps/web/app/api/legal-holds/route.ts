@@ -20,8 +20,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { holds: items });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch legal holds: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch legal holds. Please try again.', 500);
   }
 });
 
@@ -40,8 +40,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { hold: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create legal hold: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create legal hold. Please try again.', 500);
   }
 });
 
@@ -59,7 +59,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update legal hold: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update legal hold. Please try again.', 500);
   }
 });

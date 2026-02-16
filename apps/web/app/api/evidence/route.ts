@@ -37,8 +37,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, ctx.tenantId);
 
     return createSuccessResponse(ctx, { evidence: items, metrics: (metrics as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch evidence: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch evidence. Please try again.`, 500);
   }
 });
 
@@ -56,8 +56,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       JSON.stringify(body.tags || []), ctx.userId
     );
     return createSuccessResponse(ctx, { evidence: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create evidence: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create evidence. Please try again.`, 500);
   }
 });
 
@@ -80,7 +80,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       );
     }
     return createSuccessResponse(ctx, { evidence: (result as any[])?.[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update evidence: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update evidence. Please try again.`, 500);
   }
 });

@@ -34,8 +34,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, ctx.tenantId);
 
     return createSuccessResponse(ctx, { metrics: (metrics as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch records: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch records. Please try again.', 500);
   }
 });
 
@@ -80,7 +80,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Action must be archive or delete-defensible', 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed in records operation: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed in records operation. Please try again.', 500);
   }
 });

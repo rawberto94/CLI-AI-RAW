@@ -119,8 +119,8 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       default:
         return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown action: ${action}`, 400);
     }
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Queue operation failed: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Queue operation failed. Please try again.', 500);
   }
 
   return createSuccessResponse(ctx, {

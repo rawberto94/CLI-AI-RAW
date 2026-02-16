@@ -19,6 +19,6 @@ try {
       data: brief,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to generate negotiation brief', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate negotiation brief', 500)
   }
 }

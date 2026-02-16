@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `SELECT * FROM delegation_of_authority WHERE tenant_id = $1 ORDER BY max_value ASC NULLS LAST`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { entries: items });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch DoA matrix: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch DoA matrix. Please try again.', 500);
   }
 });
 
@@ -32,8 +32,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       ctx.userId
     );
     return createSuccessResponse(ctx, { entry: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create DoA entry: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create DoA entry. Please try again.', 500);
   }
 });
 
@@ -50,8 +50,8 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       data.maxValue || null, data.isActive ?? null, id, ctx.tenantId
     );
     return createSuccessResponse(ctx, { entry: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update DoA entry: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update DoA entry. Please try again.', 500);
   }
 });
 
@@ -63,7 +63,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
     await prisma.$queryRawUnsafe(`DELETE FROM delegation_of_authority WHERE id = $1 AND tenant_id = $2`, id, ctx.tenantId);
     return createSuccessResponse(ctx, { deleted: true });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to delete DoA entry: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete DoA entry. Please try again.', 500);
   }
 });

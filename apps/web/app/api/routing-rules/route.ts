@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `SELECT * FROM routing_rules WHERE tenant_id = $1 ORDER BY priority DESC`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { rules });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch routing rules: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch routing rules. Please try again.`, 500);
   }
 });
 
@@ -30,8 +30,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       ctx.userId
     );
     return createSuccessResponse(ctx, { rule: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create routing rule: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create routing rule. Please try again.`, 500);
   }
 });
 
@@ -47,8 +47,8 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       body.id, ctx.tenantId
     );
     return createSuccessResponse(ctx, { rule: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update routing rule: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update routing rule. Please try again.`, 500);
   }
 });
 
@@ -60,7 +60,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
     await prisma.$queryRawUnsafe(`DELETE FROM routing_rules WHERE id = $1 AND tenant_id = $2`, id, ctx.tenantId);
     return createSuccessResponse(ctx, { deleted: true });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to delete rule: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to delete rule. Please try again.`, 500);
   }
 });

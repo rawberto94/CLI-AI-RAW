@@ -18,6 +18,6 @@ try {
       data: targetRates,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to suggest target rates', 500)
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to suggest target rates', 500)
   }
 }

@@ -162,11 +162,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
         } catch (error) {
           run.status = 'failed';
           run.completedAt = new Date();
-          run.errors = [{ row: 0, error: error instanceof Error ? error.message : 'Unknown error' }];
+          run.errors = [{ row: 0, error: 'Unknown error' }];
 
           await updateSyncStats(tenantId, scheduleId, run);
 
-          return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Sync failed', 500);
+          return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Sync failed', 500);
         }
       }
 

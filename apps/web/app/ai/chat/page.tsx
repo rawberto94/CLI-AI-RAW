@@ -751,6 +751,7 @@ function AIChatPageContent() {
         variant="ghost"
         size="sm"
         onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label={sidebarOpen ? "Close conversation sidebar" : "Open conversation sidebar"}
         className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-l-none border border-l-0"
         style={{ left: sidebarOpen ? 280 : 0 }}
       >
@@ -945,7 +946,7 @@ function AIChatPageContent() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Messages */}
           <ScrollArea className="flex-1 p-4">
-            <div ref={scrollRef} className="max-w-3xl mx-auto space-y-4">
+            <div ref={scrollRef} role="log" aria-live="polite" aria-label="Chat messages" className="max-w-3xl mx-auto space-y-4">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}

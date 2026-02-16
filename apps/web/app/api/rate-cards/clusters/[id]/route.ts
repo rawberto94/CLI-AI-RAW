@@ -134,7 +134,7 @@ try {
       arbitrageOpportunities,
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 }
 
@@ -169,6 +169,6 @@ try {
       message: 'Cluster deleted successfully',
     });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 }

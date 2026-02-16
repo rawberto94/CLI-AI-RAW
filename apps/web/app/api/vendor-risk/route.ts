@@ -28,8 +28,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     ]);
 
     return createSuccessResponse(ctx, { profiles: items, metrics: (metrics as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch vendor risk profiles: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch vendor risk profiles. Please try again.', 500);
   }
 });
 
@@ -59,7 +59,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { profile: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create risk profile: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create risk profile. Please try again.', 500);
   }
 });

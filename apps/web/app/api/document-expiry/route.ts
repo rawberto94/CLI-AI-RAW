@@ -37,8 +37,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     `, ctx.tenantId);
 
     return createSuccessResponse(ctx, { documents: items, metrics: (metrics as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch document expiry data: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch document expiry data. Please try again.`, 500);
   }
 });
 
@@ -57,7 +57,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { document: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create document expiry record: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create document expiry record. Please try again.`, 500);
   }
 });

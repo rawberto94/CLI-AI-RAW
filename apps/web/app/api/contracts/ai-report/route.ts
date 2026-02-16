@@ -144,7 +144,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     });
 
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Report generation failed', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Report generation failed', 500);
   }
 });
 

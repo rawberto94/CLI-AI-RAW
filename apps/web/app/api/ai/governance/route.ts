@@ -54,8 +54,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       exports: (exports as any[])[0],
       policy: (policy as any[])[0] || null,
     });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch AI governance data: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch AI governance data. Please try again.', 500);
   }
 });
 
@@ -129,7 +129,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid type', 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed in AI governance operation: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed in AI governance operation. Please try again.', 500);
   }
 });

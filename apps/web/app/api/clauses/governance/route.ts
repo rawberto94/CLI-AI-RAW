@@ -22,8 +22,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { approvals: items });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch clause approvals: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch clause approvals. Please try again.', 500);
   }
 });
 
@@ -40,8 +40,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { approval: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to submit clause for approval: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to submit clause for approval. Please try again.', 500);
   }
 });
 
@@ -75,7 +75,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Action must be approve or reject', 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to review clause: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to review clause. Please try again.', 500);
   }
 });

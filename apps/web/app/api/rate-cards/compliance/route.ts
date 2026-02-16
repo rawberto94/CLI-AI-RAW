@@ -120,7 +120,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'VALIDATION_ERROR', `Unknown type: ${type}`, 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });

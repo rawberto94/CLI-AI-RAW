@@ -102,11 +102,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       pageSize,
       categoryBreakdown,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If audit_log table doesn't exist, return empty gracefully
     if (error.message?.includes('does not exist')) {
       return createSuccessResponse(ctx, { logs: [], total: 0, page: 1, pageSize: 100, categoryBreakdown: [] });
     }
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error.message, 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'An internal error occurred. Please try again.', 500);
   }
 });

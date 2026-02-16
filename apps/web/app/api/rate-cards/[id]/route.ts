@@ -32,7 +32,7 @@ export const GET = async (request: NextRequest, props: { params: Promise<{ id: s
 
     return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'NOT_FOUND', `Rate card not found: ${error instanceof Error ? error.message : String(error)}`, 404);
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found. Please try again.', 404);
   }
 }
 
@@ -72,7 +72,7 @@ export const PUT = async (request: NextRequest, props: { params: Promise<{ id: s
 
     return createSuccessResponse(ctx, entry);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to update rate card: ${error instanceof Error ? error.message : String(error)}`, 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update rate card. Please try again.', 400);
   }
 }
 
@@ -103,6 +103,6 @@ export const DELETE = async (request: NextRequest, props: { params: Promise<{ id
 
     return createSuccessResponse(ctx, { message: 'Rate card deleted' });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to delete rate card: ${error instanceof Error ? error.message : String(error)}`, 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete rate card. Please try again.', 400);
   }
 }

@@ -31,7 +31,7 @@ const tenantId = await getApiTenantId(request);
 
     return createSuccessResponse(ctx, { comparison });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch comparison: ${error instanceof Error ? error.message : String(error)}`, 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch comparison. Please try again.', 500);
   }
 }
 
@@ -76,7 +76,7 @@ const tenantId = await getApiTenantId(request);
 
     return createSuccessResponse(ctx, { comparison });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update comparison: ${error instanceof Error ? error.message : String(error)}`, 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update comparison. Please try again.', 500);
   }
 }
 
@@ -110,6 +110,6 @@ const tenantId = await getApiTenantId(request);
 
     return createSuccessResponse(ctx, { success: true });
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to delete comparison: ${error instanceof Error ? error.message : String(error)}`, 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete comparison. Please try again.', 500);
   }
 }

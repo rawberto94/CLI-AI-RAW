@@ -98,7 +98,7 @@ export const POST = withApiHandler(async (request: NextRequest, ctx) => {
       return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error || 'Failed to send email', 500);
     }
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 });
 

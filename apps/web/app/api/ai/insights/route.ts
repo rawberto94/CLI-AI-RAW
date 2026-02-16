@@ -249,7 +249,7 @@ export const GET = withAuthApiHandler(async (request, ctx) => {
       processingTime: Date.now() - startTime });
 
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to generate insights', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to generate insights', 500);
   }
 });
 

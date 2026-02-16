@@ -31,8 +31,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, { clauses });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch clause versions: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch clause versions. Please try again.', 500);
   }
 });
 
@@ -67,7 +67,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     });
 
     return createSuccessResponse(ctx, { version });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create clause version: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create clause version. Please try again.', 500);
   }
 });

@@ -45,8 +45,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       metrics: (metrics as any[])[0],
       page, limit,
     });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch contract requests: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch contract requests. Please try again.', 500);
   }
 });
 
@@ -73,8 +73,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     );
 
     return createSuccessResponse(ctx, { request: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create contract request: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create contract request. Please try again.', 500);
   }
 });
 
@@ -119,7 +119,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createSuccessResponse(ctx, { request: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update request: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update request. Please try again.', 500);
   }
 });

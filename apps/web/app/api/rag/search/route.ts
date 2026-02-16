@@ -70,7 +70,7 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
         minScore } });
 
   } catch (error) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Unknown error', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 });
 

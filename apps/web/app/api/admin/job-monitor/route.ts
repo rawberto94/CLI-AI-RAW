@@ -66,8 +66,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createSuccessResponse(ctx, queueData);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch job data: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch job data. Please try again.', 500);
   }
 });
 
@@ -103,7 +103,7 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Job monitor error: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Job monitor error. Please try again.', 500);
   }
 });

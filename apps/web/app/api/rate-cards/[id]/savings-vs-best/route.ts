@@ -40,6 +40,6 @@ try {
 
     return createSuccessResponse(ctx, savingsVsBest);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', error instanceof Error ? error.message : 'Failed to calculate savings', 500);
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to calculate savings', 500);
   }
 }

@@ -28,7 +28,7 @@ try {
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to share segment: ${error instanceof Error ? error.message : String(error)}`, 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to share segment. Please try again.', 400);
   }
 }
 
@@ -53,6 +53,6 @@ try {
 
     return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return createErrorResponse(ctx, 'VALIDATION_ERROR', `Failed to unshare segment: ${error instanceof Error ? error.message : String(error)}`, 400);
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to unshare segment. Please try again.', 400);
   }
 }

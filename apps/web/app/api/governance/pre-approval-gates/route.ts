@@ -11,8 +11,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `SELECT * FROM pre_approval_gates WHERE tenant_id = $1 ORDER BY gate_order ASC`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { gates });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch gates: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch gates. Please try again.', 500);
   }
 });
 
@@ -31,8 +31,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       body.currency || 'USD', ctx.userId
     );
     return createSuccessResponse(ctx, { gate: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create gate: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create gate. Please try again.', 500);
   }
 });
 
@@ -45,7 +45,7 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
       body.name || null, body.isActive ?? null, body.gateOrder ?? null, body.id, ctx.tenantId
     );
     return createSuccessResponse(ctx, { gate: (result as any[])[0] });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to update gate: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update gate. Please try again.', 500);
   }
 });

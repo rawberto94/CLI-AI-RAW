@@ -13,8 +13,8 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
        FROM api_keys WHERE tenant_id = $1 ORDER BY created_at DESC`, ctx.tenantId
     );
     return createSuccessResponse(ctx, { apiKeys: keys });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to fetch API keys: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch API keys. Please try again.', 500);
   }
 });
 
@@ -39,8 +39,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
       apiKey: { key: rawKey, keyPrefix, name: body.name, scopes: body.scopes || ['read'], expiresAt },
       warning: 'Store this key securely. It will not be shown again.',
     });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create API key: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to create API key. Please try again.', 500);
   }
 });
 
@@ -54,7 +54,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
       `UPDATE api_keys SET is_active = false, updated_at = NOW() WHERE id = $1 AND tenant_id = $2`, id, ctx.tenantId
     );
     return createSuccessResponse(ctx, { revoked: true });
-  } catch (error: any) {
-    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to revoke API key: ${error.message}`, 500);
+  } catch (error: unknown) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to revoke API key. Please try again.', 500);
   }
 });
