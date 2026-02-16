@@ -21,7 +21,54 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
   capabilities = ['opportunity-discovery', 'cost-analysis', 'optimization'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contracts, marketData } = input.context;
+    // Support both plural contracts (from scheduler) and singular contract (from pipeline)
+    let contracts: any[];
+    let marketData = input.context?.marketData;
+
+    if (Array.isArray(input.context?.contracts)) {
+      contracts = input.context.contracts;
+    } else {
+      // Query tenant portfolio for cross-contract analysis
+      try {
+        const dbContracts = await prisma.contract.findMany({
+          where: { tenantId: input.tenantId },
+          select: {
+            id: true, contractTitle: true, status: true, contractType: true,
+            totalValue: true, annualValue: true, effectiveDate: true, expirationDate: true,
+            supplierName: true, counterparty: true, vendor: true,
+            autoRenewalEnabled: true, department: true,
+          },
+          take: 100,
+        });
+        contracts = dbContracts.map(c => ({
+          id: c.id,
+          title: c.contractTitle || '',
+          status: c.status,
+          contractType: c.contractType || 'OTHER',
+          value: c.totalValue ?? c.annualValue ?? 0,
+          supplier: c.supplierName || c.counterparty || c.vendor || '',
+          parties: [c.supplierName, c.counterparty, c.vendor].filter(Boolean),
+          effectiveDate: c.effectiveDate,
+          expirationDate: c.expirationDate,
+          autoRenewal: c.autoRenewalEnabled ?? false,
+          department: c.department || '',
+        }));
+      } catch {
+        // Fallback to single contract if DB query fails
+        contracts = input.context?.contract ? [input.context.contract] : [];
+      }
+    }
+
+    if (!contracts.length) {
+      return {
+        success: true,
+        data: { opportunities: [], summary: { total: 0, totalValue: 0, byType: {} } },
+        recommendations: [],
+        confidence: 1,
+        reasoning: 'No contracts available for opportunity analysis',
+        metadata: { processingTime: 0 },
+      };
+    }
 
     // Discover opportunities
     const opportunities = await this.discoverOpportunities(contracts, marketData);

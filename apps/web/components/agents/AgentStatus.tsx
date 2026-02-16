@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Progress as _Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface AgentEvent {
   id: string;
@@ -78,7 +79,7 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
       setEvents(data.events || []);
       setRecommendations(data.recommendations || []);
     } catch {
-      // Error handled silently
+      toast.error('Failed to load agent status');
     } finally {
       setIsLoading(false);
     }

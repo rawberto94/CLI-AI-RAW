@@ -884,6 +884,8 @@ export const ContractHealthScore: React.FC = () => {
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'overview' | 'factors' | 'actions'>('overview');
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'healthy' | 'at-risk' | 'critical'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch health data from API or use mock data based on mode
   useEffect(() => {
@@ -920,6 +922,7 @@ export const ContractHealthScore: React.FC = () => {
           setSelectedContract(mockHealthData[0] ?? null);
         }
       } catch {
+        toast.error('Failed to load health scores — showing sample data');
         setHealthData(mockHealthData);
         setSelectedContract(mockHealthData[0] ?? null);
       } finally {
@@ -958,7 +961,7 @@ export const ContractHealthScore: React.FC = () => {
     setLoading(true);
     toast.info('Refreshing all health scores...');
     try {
-      const res = await fetch('/api/intelligence/health/refresh', { method: 'POST' });
+      const res = await fetch('/api/intelligence/health', { method: 'POST' });
       if (res.ok) {
         toast.success('All health scores refreshed');
         // Refetch data after refresh
@@ -1070,6 +1073,8 @@ export const ContractHealthScore: React.FC = () => {
               <Input 
                 placeholder="Search contracts..." 
                 className="pl-10 w-64 bg-white/80"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <button 
@@ -1207,14 +1212,30 @@ export const ContractHealthScore: React.FC = () => {
             </div>
             {/* Filter Buttons */}
             <div className="flex items-center gap-2 flex-wrap">
-              <button className="px-3 py-1.5 text-xs font-medium bg-violet-100 text-violet-700 rounded-lg border border-violet-200">All</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Healthy</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">At Risk</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Critical</button>
+              <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'all' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>All</button>
+              <button onClick={() => setStatusFilter('healthy')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'healthy' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Healthy</button>
+              <button onClick={() => setStatusFilter('at-risk')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'at-risk' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>At Risk</button>
+              <button onClick={() => setStatusFilter('critical')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'critical' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Critical</button>
             </div>
           </div>
           <div className="p-4 space-y-3">
-            {healthData.map(health => (
+            {healthData
+              .filter(h => {
+                // Status filter
+                if (statusFilter !== 'all') {
+                  const score = h.overallScore;
+                  if (statusFilter === 'healthy' && score < 70) return false;
+                  if (statusFilter === 'at-risk' && (score >= 70 || score < 40)) return false;
+                  if (statusFilter === 'critical' && score >= 40) return false;
+                }
+                // Search filter
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase();
+                  return (h.contractName?.toLowerCase().includes(q) || h.supplierName?.toLowerCase().includes(q) || h.contractId?.toLowerCase().includes(q));
+                }
+                return true;
+              })
+              .map(health => (
               <ContractHealthCard
                 key={health.contractId}
                 health={health}

@@ -36,7 +36,7 @@ import { STREAMING_TOOLS, executeTool, type ToolResult } from '@/lib/ai/streamin
 import { withAuthApiHandler, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { allocateBudget, getBudgetStats } from '@/lib/ai/token-budget';
 import { shouldUseAgent, executeWithAgent } from '@/lib/ai/agent-integration';
-import { routeToModel, recordAICost, type TaskType } from '@/lib/ai/model-router.service';
+import { routeToModel, recordAICost, estimateTokenCost, type TaskType } from '@/lib/ai/model-router.service';
 
 // ─── Clients ────────────────────────────────────────────────────────────
 
@@ -325,6 +325,25 @@ ${ragContext}
 ${memoryContext}`;
 
   // ═══════════════════════════════════════════════════════════════════════
+  // STEP 3.1 — AGENT PERSONA @MENTION DETECTION
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let finalSystemPrompt = systemPrompt;
+  let finalMessage = message;
+
+  try {
+    const { extractMention } = await import('@contigo/workers/agents/agent-personas');
+    const mention = extractMention(message);
+    if (mention) {
+      // Inject the persona's system prompt overlay
+      finalSystemPrompt += `\n\n**ACTIVE PERSONA — ${mention.persona.displayName} ${mention.persona.avatar}:**\n${mention.persona.systemPromptOverlay}\n\nThe user addressed you as @${mention.handle}. Respond in this persona's voice and expertise area. Focus on ${mention.persona.expertise.join(', ')}.`;
+      finalMessage = mention.cleanMessage || message;
+    }
+  } catch {
+    // Persona module unavailable — continue with default prompt
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
   // STEP 3.5 — AGENT DECISION & TOKEN BUDGET
   // ═══════════════════════════════════════════════════════════════════════
   
@@ -385,7 +404,7 @@ ${memoryContext}`;
   const budgetAllocation = allocateBudget(
     process.env.OPENAI_MODEL || 'gpt-4o-mini',
     {
-      systemPrompt,
+      systemPrompt: finalSystemPrompt,
       ragContext,
       conversationHistory: conversationHistory.slice(-10).map((msg: { role: string; content: string }) => ({
         role: msg.role as 'system' | 'user' | 'assistant',
@@ -401,9 +420,9 @@ ${memoryContext}`;
   }
 
   const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-    { role: 'system', content: budgetAllocation.systemPrompt.content || systemPrompt },
+    { role: 'system', content: budgetAllocation.systemPrompt.content || finalSystemPrompt },
     ...JSON.parse(budgetAllocation.conversationHistory.content || '[]').filter((m: { role: string }) => m.role !== 'system'),
-    { role: 'user', content: message },
+    { role: 'user', content: finalMessage },
   ];
 
   // ═══════════════════════════════════════════════════════════════════════
@@ -554,12 +573,12 @@ ${memoryContext}`;
                   role: msg.role === 'assistant' ? 'assistant' as const : 'user' as const,
                   content: msg.content,
                 }));
-                anthropicMessages.push({ role: 'user' as const, content: message });
+                anthropicMessages.push({ role: 'user' as const, content: finalMessage });
 
                 const anthropicStream = anthropic.messages.stream({
                   model: config.model,
                   max_tokens: 2000,
-                  system: systemPrompt,
+                  system: finalSystemPrompt,
                   messages: anthropicMessages,
                 });
 
@@ -772,6 +791,19 @@ ${memoryContext}`;
             ? [{ label: '📄 View Contract', action: `navigate:/contracts/${firstResult.contractId}` }]
             : []),
         ]);
+
+        // Record AI cost
+        const estimatedInputTokens = Math.round(message.length / 4);
+        const estimatedOutputTokens = Math.round(fullContent.length / 4);
+        recordAICost({
+          model: usedModel,
+          inputTokens: estimatedInputTokens,
+          outputTokens: estimatedOutputTokens,
+          cost: estimateTokenCost(usedModel, estimatedInputTokens, estimatedOutputTokens),
+          taskType: 'chat' as TaskType,
+          tenantId,
+          userId,
+        });
 
         // Send done event
         controller.enqueue(encoder.encode(`data: ${JSON.stringify({

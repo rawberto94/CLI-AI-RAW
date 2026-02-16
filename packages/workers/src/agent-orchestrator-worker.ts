@@ -143,6 +143,17 @@ export async function runAgentOrchestrationJob(
       contractType: true,
       rawText: true,
       status: true,
+      totalValue: true,
+      annualValue: true,
+      effectiveDate: true,
+      expirationDate: true,
+      supplierName: true,
+      counterparty: true,
+      vendor: true,
+      contractTitle: true,
+      autoRenewalEnabled: true,
+      department: true,
+      renewalInitiatedAt: true,
     },
   });
 
@@ -473,37 +484,88 @@ export async function runAgentOrchestrationJob(
         artifactContext[String(a.type)] = a.data;
       }
 
+      // Build artifact array for agents that need it
+      const artifactArray = allArtifacts.map(a => ({ type: String(a.type), data: a.data, id: String(a.type) }));
+
       const agentContext = {
         contractText: typeof contract?.rawText === 'string' ? contract.rawText : '',
         contractType: contractType || 'OTHER',
         artifacts: artifactContext,
+        artifactArray,
         riskAnalysis,
         contract: {
           id: contractId,
+          title: contract?.contractTitle || '',
           status: contract?.status,
-          totalValue: contract?.totalValue,
+          contractType: contractType || 'OTHER',
+          totalValue: contract?.totalValue ?? 0,
+          value: contract?.totalValue ?? contract?.annualValue ?? 0,
+          annualValue: contract?.annualValue ?? 0,
           effectiveDate: contract?.effectiveDate,
           expirationDate: contract?.expirationDate,
-          supplierName: contract?.supplierName,
-          autoRenewalEnabled: contract?.autoRenewalEnabled,
+          supplierName: contract?.supplierName || contract?.counterparty || contract?.vendor || '',
+          parties: [contract?.supplierName, contract?.counterparty, contract?.vendor].filter(Boolean),
+          autoRenewalEnabled: contract?.autoRenewalEnabled ?? false,
+          department: contract?.department || '',
+          renewalInitiated: !!contract?.renewalInitiatedAt,
         },
       };
 
       // Post-artifact: validation, health, gap-filling
       const postArtifactResults = await runPostArtifactIntelligence(contractId, tenantId, agentContext);
       
-      // Post-pipeline: workflow, deadline, opportunity
-      const postPipelineResults = await runPostPipelineIntelligence(contractId, tenantId, agentContext);
+      // Post-pipeline: workflow, deadline, opportunity — enrich with post-artifact results
+      const enrichedContext = {
+        ...agentContext,
+        postArtifactResults: Object.fromEntries(
+          Array.from(postArtifactResults.entries()).map(([k, v]) => [k, { success: v.success, data: v.data, confidence: v.confidence }])
+        ),
+      };
+      const postPipelineResults = await runPostPipelineIntelligence(contractId, tenantId, enrichedContext);
 
       const allResults: Record<string, any> = {};
       for (const [name, output] of postArtifactResults) allResults[name] = { success: output.success, confidence: output.confidence };
       for (const [name, output] of postPipelineResults) allResults[name] = { success: output.success, confidence: output.confidence };
+
+      // Execute any recommended actions from agents (action execution loop)
+      for (const [agentName, output] of [...postArtifactResults, ...postPipelineResults]) {
+        if (output.success && output.data?.actions && Array.isArray(output.data.actions)) {
+          for (const action of output.data.actions) {
+            try {
+              if (action.type === 'update_field' && action.field && action.value !== undefined) {
+                await prisma.contract.update({
+                  where: { id: contractId },
+                  data: { [action.field]: action.value },
+                });
+                logger.info({ contractId, agentName, field: action.field }, 'Agent action: field updated');
+              } else if (action.type === 'create_alert' && action.message) {
+                logger.info({ contractId, agentName, alert: action.message }, 'Agent action: alert created');
+              }
+            } catch (actionErr) {
+              logger.warn({ error: (actionErr as Error).message, agentName, action: action.type }, 'Agent action execution failed');
+            }
+          }
+        }
+      }
 
       logger.info({ contractId, agents: Object.keys(allResults), results: allResults }, '🧠 Intelligence agent passes completed');
       checkpoint.intelligenceRun = allResults;
     } catch (error) {
       logger.warn({ error: error instanceof Error ? error.message : String(error), contractId }, 'Intelligence agent passes failed (non-fatal)');
       checkpoint.intelligenceRun = { error: true };
+
+      // Dispatch adaptive-retry agent on failure
+      try {
+        const { runOnFailure } = await import('./agents/agent-dispatch');
+        const retryResult = await runOnFailure(contractId, tenantId, [
+          { stage: 'intelligence-pass', error: error instanceof Error ? error.message : String(error), timestamp: new Date() },
+        ]);
+        if (retryResult.success) {
+          logger.info({ contractId, strategy: retryResult.data }, 'Adaptive retry agent suggested recovery strategy');
+        }
+      } catch (retryErr) {
+        logger.debug({ error: (retryErr as Error).message }, 'Retry agent dispatch failed (non-critical)');
+      }
     }
   }
 

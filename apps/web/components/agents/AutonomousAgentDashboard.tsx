@@ -8,6 +8,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
@@ -530,6 +531,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [_selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -554,6 +556,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (notificationsData.success) setNotifications(notificationsData.data);
     } catch (error) {
       console.error('Failed to fetch orchestrator data:', error);
+      toast.error('Failed to load agent dashboard data');
     } finally {
       setLoading(false);
     }
@@ -683,14 +686,34 @@ export const AutonomousAgentDashboard: React.FC = () => {
             )}
           </Button>
           
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {unreadNotifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {unreadNotifications.length}
-              </span>
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
+              <Bell className="h-5 w-5" />
+              {unreadNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {unreadNotifications.length}
+                </span>
+              )}
+            </Button>
+            {showNotifications && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-sm font-semibold">Notifications</span>
+                  <button onClick={() => setShowNotifications(false)} className="text-xs text-slate-400 hover:text-slate-600">&times;</button>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-slate-400">No notifications</div>
+                ) : (
+                  notifications.slice(0, 10).map((n) => (
+                    <div key={n.id} className={`p-3 border-b border-slate-100 dark:border-slate-700 text-sm ${n.read ? 'opacity-60' : ''}`}>
+                      <div className="font-medium text-slate-800 dark:text-white">{n.title}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{n.message}</div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
-          </Button>
+          </div>
         </div>
       </div>
       

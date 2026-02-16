@@ -483,7 +483,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
           setLiveEdges(apiEdges);
         }
       })
-      .catch(() => { /* Fall back to mock data on error */ })
+      .catch(() => { toast.error('Failed to load knowledge graph data'); })
       .finally(() => { if (!cancelled) setLiveLoading(false); });
     return () => { cancelled = true; };
   }, [isMockData]);

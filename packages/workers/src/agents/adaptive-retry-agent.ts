@@ -136,7 +136,7 @@ export class AdaptiveRetryAgent extends BaseAgent {
         strategy: 'alternative-model',
         reason: 'Token limit exceeded, switching to model with larger context window',
         estimatedSuccess: 0.90,
-        modelToUse: 'gpt-4-turbo-preview',
+        modelToUse: 'gpt-4o',
         maxRetries,
       };
     }

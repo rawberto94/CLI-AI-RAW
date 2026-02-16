@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GitCompare,
@@ -417,7 +418,14 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
                   <XCircle className="w-4 h-4" />
                   Reject
                 </button>
-                <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                <button
+                  onClick={() => {
+                    const text = redline.playbookMatch?.fallbackLanguage || redline.proposedText || redline.originalText;
+                    navigator.clipboard.writeText(text).catch(() => {});
+                  }}
+                  className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                  title="Copy clause text"
+                >
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
@@ -482,6 +490,7 @@ export const NegotiationCoPilot: React.FC = () => {
           setRedlines(mockRedlines);
         }
       } catch {
+        toast.error('Failed to load redline analysis — showing sample data');
         setRedlines(mockRedlines);
       } finally {
         setLoading(false);
@@ -509,11 +518,25 @@ export const NegotiationCoPilot: React.FC = () => {
     rejected: redlines.filter(r => r.status === 'rejected').length,
   }), [redlines]);
 
-  // Handle action
-  const handleAction = (id: string, action: 'accept' | 'reject' | 'negotiate') => {
+  // Handle action — update local state AND persist to API
+  const handleAction = async (id: string, action: 'accept' | 'reject' | 'negotiate') => {
     setRedlines(prev => prev.map(r => 
       r.id === id ? { ...r, status: action === 'negotiate' ? 'negotiating' : action === 'accept' ? 'accepted' : 'rejected' } : r
     ));
+    try {
+      await fetch('/api/intelligence/negotiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redlineId: id, action }),
+      });
+    } catch (err) {
+      console.error('Failed to persist redline action:', err);
+      toast.error('Failed to save action — please try again');
+      // Roll back the optimistic update
+      setRedlines(prev => prev.map(r => 
+        r.id === id ? { ...r, status: 'pending' } : r
+      ));
+    }
   };
 
   // Handle chat with real AI API
@@ -573,13 +596,16 @@ Provide concise, actionable advice. Include specific language suggestions when h
 
       const data = await response.json();
       
+      // API wraps response as { success: true, data: { response: "...", ... } }
+      const aiText = data?.data?.response || data?.message || data?.response || 'No response received';
+
       // Generate suggestions based on the response
-      const suggestions = generateNegotiationSuggestions(chatInput, data.message);
+      const suggestions = generateNegotiationSuggestions(chatInput, aiText);
 
       const aiMsg: NegotiationMessage = {
         id: `m-${Date.now()}-ai`,
         role: 'assistant',
-        content: data.message,
+        content: aiText,
         timestamp: new Date(),
         suggestions,
       };
@@ -657,7 +683,10 @@ Provide concise, actionable advice. Include specific language suggestions when h
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', { detail: { message: 'Show me the negotiation playbook rules and recommended positions for the current contract redlines' } }))}
+              className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2"
+            >
               <Settings className="w-4 h-4" />
               Playbook
             </button>

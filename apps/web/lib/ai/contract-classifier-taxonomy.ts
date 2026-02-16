@@ -197,7 +197,7 @@ export async function classifyContract(
     const classificationPrompt = buildClassificationPrompt(input);
     
     const classificationResponse = await openai.chat({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -240,7 +240,7 @@ export async function classifyContract(
     const tagsPrompt = buildTagsPrompt(input, classification);
     
     const tagsResponse = await openai.chat({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",
@@ -354,7 +354,7 @@ ${text.substring(0, 3000)}
 Respond in JSON format with the extracted values. Use null if a field cannot be found.`;
 
     const response = await openai.chat({
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       messages: [
         {
           role: "system",

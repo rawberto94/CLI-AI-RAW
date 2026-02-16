@@ -138,7 +138,7 @@ export interface CategorizationOptions {
   /** Contract ID for tracking */
   contractId?: string;
   /** Model to use */
-  model?: 'gpt-4o-mini' | 'gpt-4-turbo-preview' | 'gpt-4o';
+  model?: 'gpt-4o-mini' | 'gpt-4o';
   /** Temperature for AI */
   temperature?: number;
   /** Whether to include detailed reasoning */

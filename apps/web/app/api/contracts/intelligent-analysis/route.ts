@@ -20,6 +20,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { recordAICost, estimateTokenCost } from '@/lib/ai/model-router.service';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
@@ -305,9 +306,9 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
       }
     }
 
-    // Phase 1: Document Type Detection
+    // Phase 1: Document Type Detection (simple classification — gpt-4o-mini)
     const documentTypeResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -336,6 +337,10 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
     });
 
     const documentType = JSON.parse(documentTypeResponse.choices[0]?.message?.content || '{}');
+    const p1Usage = documentTypeResponse.usage;
+    if (p1Usage) {
+      recordAICost({ model: 'gpt-4o-mini', inputTokens: p1Usage.prompt_tokens, outputTokens: p1Usage.completion_tokens, cost: estimateTokenCost('gpt-4o-mini', p1Usage.prompt_tokens, p1Usage.completion_tokens), taskType: 'classification', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Get contract type profile and extraction hints
     let extractionHints: any = null;
@@ -407,6 +412,10 @@ Return JSON:
     const discoveredFields: DiscoveredField[] = JSON.parse(
       fieldsResponse.choices[0]?.message?.content || '{"fields":[]}'
     ).fields || [];
+    const p2Usage = fieldsResponse.usage;
+    if (p2Usage) {
+      recordAICost({ model: 'gpt-4o', inputTokens: p2Usage.prompt_tokens, outputTokens: p2Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p2Usage.prompt_tokens, p2Usage.completion_tokens), taskType: 'extraction', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Phase 2.5: Enhanced Pattern-Based Extraction for Reliability
     const enhancedFields = enhanceWithPatternMatching(textToAnalyze, discoveredFields);
@@ -552,6 +561,10 @@ Return JSON:
       riskSignals = JSON.parse(
         riskResponse.choices[0]?.message?.content || '{"risks":[]}'
       ).risks || [];
+      const p3Usage = riskResponse.usage;
+      if (p3Usage) {
+        recordAICost({ model: 'gpt-4o', inputTokens: p3Usage.prompt_tokens, outputTokens: p3Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p3Usage.prompt_tokens, p3Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+      }
     }
 
     // Phase 4: Negotiation Opportunities (unless skipped)
@@ -603,11 +616,15 @@ Return JSON:
       negotiationOpportunities = JSON.parse(
         negotiationResponse.choices[0]?.message?.content || '{"opportunities":[]}'
       ).opportunities || [];
+      const p4Usage = negotiationResponse.usage;
+      if (p4Usage) {
+        recordAICost({ model: 'gpt-4o', inputTokens: p4Usage.prompt_tokens, outputTokens: p4Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p4Usage.prompt_tokens, p4Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+      }
     }
 
-    // Phase 5: Key Insights
+    // Phase 5: Key Insights (summarization — gpt-4o-mini sufficient)
     const insightsResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -650,6 +667,10 @@ Return JSON:
     const keyInsights: DocumentInsight[] = JSON.parse(
       insightsResponse.choices[0]?.message?.content || '{"insights":[]}'
     ).insights || [];
+    const p5Usage = insightsResponse.usage;
+    if (p5Usage) {
+      recordAICost({ model: 'gpt-4o-mini', inputTokens: p5Usage.prompt_tokens, outputTokens: p5Usage.completion_tokens, cost: estimateTokenCost('gpt-4o-mini', p5Usage.prompt_tokens, p5Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Calculate processing time
     const processingTime = Date.now() - startTime;

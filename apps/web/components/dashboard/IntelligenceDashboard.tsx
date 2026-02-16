@@ -50,14 +50,14 @@ export function IntelligenceDashboard() {
           const d = json.data;
           setStats({
             totalContracts: d.totalContracts ?? 0,
-            activeProcessing: d.activeProcessing ?? 0,
+            activeProcessing: d.activeRecommendations ?? d.activeProcessing ?? 0,
             insightsGenerated: d.totalEvents ?? 0,
-            totalValue: d.totalValue ?? 0,
+            totalValue: d.totalOpportunityValue ?? d.totalValue ?? 0,
             avgHealthScore: d.avgHealthScore ?? 0,
             healthyContracts: d.healthyContracts ?? 0,
             atRiskContracts: d.atRiskContracts ?? 0,
-            opportunities: d.opportunities ?? 0,
-            potentialSavings: d.potentialSavings ?? 0,
+            opportunities: d.opportunitiesCount ?? d.opportunities ?? 0,
+            potentialSavings: d.totalOpportunityValue ?? d.potentialSavings ?? 0,
             learningRecords: d.learningRecords ?? 0,
           });
         }

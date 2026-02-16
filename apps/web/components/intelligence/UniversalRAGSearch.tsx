@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
@@ -305,6 +306,7 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, onViewSourc
         <button
           onClick={onViewSource}
           className="p-2 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded-lg transition-colors"
+          title="Open source document"
         >
           <ExternalLink className="w-4 h-4" />
         </button>
@@ -322,7 +324,10 @@ const SearchResultCard: React.FC<SearchResultCardProps> = ({ result, onViewSourc
             </>
           )}
         </div>
-        <button className="text-xs text-violet-500 hover:text-violet-600 font-medium flex items-center gap-1">
+        <button
+          onClick={onViewSource}
+          className="text-xs text-violet-500 hover:text-violet-600 font-medium flex items-center gap-1"
+        >
           View in context
           <ArrowRight className="w-3 h-3" />
         </button>
@@ -391,7 +396,11 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
               <SearchResultCard
                 key={result.id}
                 result={result}
-                onViewSource={() => {}}
+                onViewSource={() => {
+                  if (result.source.documentId) {
+                    window.open(`/contracts/${result.source.documentId}`, '_blank');
+                  }
+                }}
               />
             ))}
           </div>
@@ -416,13 +425,29 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
         {/* Actions for assistant messages */}
         {!isUser && !message.isLoading && (
           <div className="mt-2 flex items-center gap-2">
-            <button className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-50 rounded transition-colors">
+            <button
+              onClick={() => {
+                fetch('/api/search/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: message.id, rating: 'positive' }) }).catch(() => {});
+              }}
+              className="p-1.5 text-slate-400 hover:text-green-500 hover:bg-green-50 rounded transition-colors"
+              title="Helpful"
+            >
               <ThumbsUp className="w-4 h-4" />
             </button>
-            <button className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors">
+            <button
+              onClick={() => {
+                fetch('/api/search/feedback', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messageId: message.id, rating: 'negative' }) }).catch(() => {});
+              }}
+              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+              title="Not helpful"
+            >
               <ThumbsDown className="w-4 h-4" />
             </button>
-            <button className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded transition-colors">
+            <button
+              onClick={() => { navigator.clipboard.writeText(message.content).catch(() => {}); }}
+              className="p-1.5 text-slate-400 hover:text-violet-500 hover:bg-violet-50 rounded transition-colors"
+              title="Copy response"
+            >
               <Copy className="w-4 h-4" />
             </button>
           </div>
@@ -499,6 +524,8 @@ export const UniversalRAGSearch: React.FC = () => {
             mode: 'hybrid',
             rerank: true,
             expandQuery: true,
+            types: filters.types.length > 0 ? filters.types : undefined,
+            dateRange: filters.dateRange || undefined,
           }),
         });
         const json = await res.json();
@@ -528,6 +555,7 @@ export const UniversalRAGSearch: React.FC = () => {
         }
       } catch {
         results = [];
+        toast.error('Search service unavailable — please try again later');
       }
     }
 

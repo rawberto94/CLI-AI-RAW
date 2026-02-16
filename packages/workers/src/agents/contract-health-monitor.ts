@@ -21,11 +21,23 @@ export class ContractHealthMonitor extends BaseAgent {
   capabilities = ['health-monitoring', 'prediction', 'issue-detection'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    // Defensive: contract may not be provided directly
-    const contract = input.context?.contract || {
-      id: input.contractId,
-      // Build minimal contract from artifacts if available
-      ...(input.context?.artifacts?.find?.((a: any) => a.type === 'OVERVIEW')?.data || {}),
+    // Build contract from the enriched context provided by orchestrator
+    const ctxContract = input.context?.contract || {};
+    const contract = {
+      id: ctxContract.id || input.contractId,
+      title: ctxContract.title || ctxContract.contractTitle || '',
+      contractType: ctxContract.contractType || input.context?.contractType || 'OTHER',
+      parties: ctxContract.parties || [ctxContract.supplierName].filter(Boolean),
+      effectiveDate: ctxContract.effectiveDate,
+      expirationDate: ctxContract.expirationDate,
+      value: ctxContract.value || ctxContract.totalValue || 0,
+      status: ctxContract.status || 'ACTIVE',
+      department: ctxContract.department || '',
+      owner: ctxContract.owner || '',
+      description: ctxContract.description || '',
+      renewalInitiated: ctxContract.renewalInitiated || false,
+      autoRenewalEnabled: ctxContract.autoRenewalEnabled || false,
+      supplierName: ctxContract.supplierName || '',
     };
 
     if (!contract || !contract.id) {

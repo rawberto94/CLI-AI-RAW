@@ -159,138 +159,22 @@ interface _ToolUsageEvent {
 }
 
 // =============================================================================
-// MOCK DATA (would come from API in production)
+// DEFAULT EMPTY METRICS (shown when API returns no data)
 // =============================================================================
 
-const generateMockTraces = (): AgentTrace[] => [
-  {
-    id: 'trace-1',
-    agentId: 'react-agent',
-    agentName: 'ReAct Contract Analyzer',
-    agentType: 'react',
-    sessionId: 'session-123',
-    startTime: new Date(Date.now() - 120000),
-    endTime: new Date(Date.now() - 30000),
-    status: 'completed',
-    goal: 'Analyze termination clauses and identify potential risks',
-    steps: [
-      {
-        id: 'step-1',
-        stepNumber: 1,
-        type: 'thought',
-        content: 'I need to first identify all termination-related clauses in the contract.',
-        timestamp: new Date(Date.now() - 115000),
-        durationMs: 1200,
-        confidence: 0.9,
-        tokens: 45,
-      },
-      {
-        id: 'step-2',
-        stepNumber: 2,
-        type: 'tool_call',
-        content: 'Calling clause extraction tool',
-        timestamp: new Date(Date.now() - 113000),
-        durationMs: 2500,
-        toolId: 'clause-extractor',
-        toolInput: { clauseTypes: ['termination', 'cancellation'] },
-        toolOutput: { clauses: [{ type: 'termination', text: '30-day notice period' }] },
-        tokens: 120,
-      },
-      {
-        id: 'step-3',
-        stepNumber: 3,
-        type: 'observation',
-        content: 'Found 3 termination clauses: 30-day notice, for-cause termination, and convenience termination.',
-        timestamp: new Date(Date.now() - 110000),
-        durationMs: 800,
-        tokens: 65,
-      },
-      {
-        id: 'step-4',
-        stepNumber: 4,
-        type: 'thought',
-        content: 'Now I should analyze each clause for potential risks to our client.',
-        timestamp: new Date(Date.now() - 108000),
-        durationMs: 1100,
-        confidence: 0.85,
-        tokens: 55,
-      },
-      {
-        id: 'step-5',
-        stepNumber: 5,
-        type: 'decision',
-        content: 'Analysis complete: High risk - convenience termination has no cure period.',
-        timestamp: new Date(Date.now() - 35000),
-        durationMs: 1800,
-        confidence: 0.92,
-        tokens: 180,
-      },
-    ],
-    tokensUsed: 465,
-    estimatedCost: 0.0023,
-    contractId: 'contract-abc',
-    tenantId: 'tenant-1',
-    userId: 'user-1',
-  },
-  {
-    id: 'trace-2',
-    agentId: 'debate-agent',
-    agentName: 'Multi-Agent Debate',
-    agentType: 'debate',
-    sessionId: 'session-124',
-    startTime: new Date(Date.now() - 60000),
-    status: 'running',
-    goal: 'Evaluate liability cap adequacy for enterprise software contract',
-    steps: [
-      {
-        id: 'step-d1',
-        stepNumber: 1,
-        type: 'thought',
-        content: '[Primary Analyst] Analyzing liability cap structure...',
-        timestamp: new Date(Date.now() - 55000),
-        durationMs: 2000,
-        tokens: 150,
-      },
-      {
-        id: 'step-d2',
-        stepNumber: 2,
-        type: 'critique',
-        content: '[Critical Reviewer] The $1M cap seems low for enterprise scope...',
-        timestamp: new Date(Date.now() - 50000),
-        durationMs: 1800,
-        confidence: 0.75,
-        tokens: 180,
-      },
-    ],
-    tokensUsed: 330,
-    estimatedCost: 0.0016,
-    contractId: 'contract-xyz',
-    tenantId: 'tenant-1',
-    userId: 'user-1',
-  },
-];
-
-const generateMockMetrics = (): AgentMetrics => ({
-  totalAgents: 9,
-  activeAgents: 3,
-  completedToday: 47,
-  failedToday: 2,
-  avgCompletionTimeMs: 12500,
-  avgTokensPerTask: 520,
-  successRate: 0.958,
-  topAgents: [
-    { agentId: 'react-agent', name: 'ReAct Analyzer', taskCount: 23 },
-    { agentId: 'extraction-agent', name: 'Smart Extractor', taskCount: 18 },
-    { agentId: 'validation-agent', name: 'Validator', taskCount: 12 },
-  ],
-  topTools: [
-    { toolId: 'clause-extractor', name: 'Clause Extractor', usageCount: 156 },
-    { toolId: 'contract-analyzer', name: 'Contract Analyzer', usageCount: 89 },
-    { toolId: 'semantic-search', name: 'Semantic Search', usageCount: 67 },
-  ],
-  costToday: 12.45,
-  costTrend: -5.2,
-});
+const emptyMetrics: AgentMetrics = {
+  totalAgents: 0,
+  activeAgents: 0,
+  completedToday: 0,
+  failedToday: 0,
+  avgCompletionTimeMs: 0,
+  avgTokensPerTask: 0,
+  successRate: 0,
+  topAgents: [],
+  topTools: [],
+  costToday: 0,
+  costTrend: 0,
+};
 
 // =============================================================================
 // SUB-COMPONENTS
@@ -581,23 +465,21 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [agentTypeFilter, setAgentTypeFilter] = useState<string>('all');
 
-  // Fetch data from real API, fall back to mock
+  // Fetch data from real API, show empty states when no data
   const fetchObservabilityData = useCallback(async () => {
     try {
       const res = await fetch('/api/agents/observability');
       const json = await res.json();
-      if (json.success && (json.data?.traces?.length > 0 || json.data?.metrics)) {
-        if (json.data.traces?.length > 0) setTraces(json.data.traces);
-        else setTraces(generateMockTraces());
-        if (json.data.metrics) setMetrics(json.data.metrics);
-        else setMetrics(generateMockMetrics());
+      if (json.success) {
+        setTraces(json.data?.traces ?? []);
+        setMetrics(json.data?.metrics ?? emptyMetrics);
         return;
       }
     } catch {
-      // API unavailable — fall through to mock
+      // API unavailable — show empty states
     }
-    setTraces(generateMockTraces());
-    setMetrics(generateMockMetrics());
+    setTraces([]);
+    setMetrics(emptyMetrics);
   }, []);
 
   useEffect(() => {
@@ -838,8 +720,10 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
                       />
                     ))}
                     {filteredTraces.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No traces found
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Activity className="h-8 w-8 mx-auto mb-3 opacity-40" />
+                        <p className="font-medium">No agent traces recorded yet</p>
+                        <p className="text-sm mt-1">Agent traces will appear here as contracts are processed</p>
                       </div>
                     )}
                   </div>

@@ -22,7 +22,13 @@ export class WorkflowSuggestionEngine extends BaseAgent {
   capabilities = ['workflow-suggestion', 'pattern-analysis', 'optimization'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contract } = input.context;
+    // Read contract from enriched context — supports both nested and top-level contractType
+    const rawContract = input.context?.contract || {};
+    const contract = {
+      ...rawContract,
+      contractType: rawContract.contractType || input.context?.contractType || 'OTHER',
+      value: rawContract.value || rawContract.totalValue || 0,
+    };
 
     // Get historical workflow data
     const historicalData = await this.getHistoricalWorkflows(

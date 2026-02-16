@@ -11,6 +11,7 @@
 import type { MetadataFieldDefinition, MetadataFieldType } from "@/lib/services/metadata-schema.service";
 import { detectContractType, getExtractionHintsForType } from "./contract-templates";
 import { getCalibrationService } from "./confidence-calibration";
+import { getLearnedHints } from "./self-improving-prompt-loop";
 
 // ============================================================================
 // TYPES
@@ -135,6 +136,27 @@ export class AdaptivePromptBuilder {
   }
 
   /**
+   * Async variant that injects self-improving learned hints into the prompt.
+   * Use this when you have an async call-site (e.g. API routes, workers).
+   */
+  async buildEnhancedExtractionPrompt(context: PromptContext): Promise<GeneratedPrompt> {
+    const base = this.buildExtractionPrompt(context);
+
+    // Fetch learned patterns and append to system prompt
+    const detectedType = context.contractType ?? detectContractType(context.contractText);
+    const contractTypeId = typeof detectedType === 'string' ? detectedType : (detectedType as any)?.id;
+    const learnedBlock = await getLearnedHints(contractTypeId);
+
+    if (learnedBlock) {
+      base.systemPrompt += learnedBlock;
+      // Re-estimate tokens with the added content
+      base.expectedTokens = this.estimateTokens(base.systemPrompt, base.userPrompt, context.contractText);
+    }
+
+    return base;
+  }
+
+  /**
    * Build a focused prompt for re-extracting specific fields
    */
   buildReExtractionPrompt(
@@ -190,7 +212,7 @@ Return as JSON object with field keys as properties.`;
     return {
       systemPrompt,
       userPrompt,
-      modelRecommendation: "gpt-4-turbo-preview", // Use stronger model for re-extraction
+      modelRecommendation: "gpt-4o", // Use stronger model for re-extraction
       expectedTokens: this.estimateTokens(systemPrompt, userPrompt, contractText),
       chunkStrategy: "single",
     };
@@ -434,7 +456,7 @@ Return a JSON object where each key is the field key, containing:
     // - Large number of fields
     
     if (hasLowConfidence || complexity === "complex") {
-      return "gpt-4-turbo-preview";
+      return "gpt-4o";
     }
     
     if (fieldCount > 20 || complexity === "moderate") {
@@ -574,6 +596,10 @@ export const promptBuilder = new AdaptivePromptBuilder();
 
 export function buildExtractionPrompt(context: PromptContext): GeneratedPrompt {
   return promptBuilder.buildExtractionPrompt(context);
+}
+
+export async function buildEnhancedExtractionPrompt(context: PromptContext): Promise<GeneratedPrompt> {
+  return promptBuilder.buildEnhancedExtractionPrompt(context);
 }
 
 export function buildReExtractionPrompt(

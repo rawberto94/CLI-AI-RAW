@@ -24,14 +24,27 @@ export class ProactiveValidationAgent extends BaseAgent {
     const validationInput: ValidationInput = input.context?.partialData 
       ? input.context as ValidationInput
       : {
-          // Build from artifacts if provided
-          partialData: input.context?.artifacts?.reduce((acc: any, artifact: any) => {
-            const data = artifact?.data;
-            if (data && typeof data === 'object') {
-              Object.assign(acc, data);
+          // Build from artifacts — handle both Record<type, data> and Array formats
+          partialData: (() => {
+            const arts = input.context?.artifacts;
+            if (!arts) return {};
+            // If it's an array, reduce it
+            if (Array.isArray(arts)) {
+              return arts.reduce((acc: any, artifact: any) => {
+                const data = artifact?.data;
+                if (data && typeof data === 'object') Object.assign(acc, data);
+                return acc;
+              }, {});
             }
-            return acc;
-          }, {}) || {},
+            // If it's a Record<string, data>, iterate values
+            if (typeof arts === 'object') {
+              return Object.values(arts).reduce((acc: any, data: any) => {
+                if (data && typeof data === 'object') Object.assign(acc, data);
+                return acc;
+              }, {});
+            }
+            return {};
+          })(),
           contractText: input.context?.contractText || '',
           artifactType: input.context?.artifactType || input.context?.contractType || 'unknown',
           confidence: input.context?.confidence ?? 0.8,

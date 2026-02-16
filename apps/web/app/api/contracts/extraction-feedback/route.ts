@@ -10,6 +10,7 @@ import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { invalidateLearnedHintsCache } from '@/lib/ai/self-improving-prompt-loop';
 
 // ============================================================================
 // TYPES
@@ -94,11 +95,24 @@ async function handleSingleFeedback(body: FeedbackRequest, tenantId: string, ctx
     source: extractionSource || 'ai',
     feedbackType: wasCorrect ? 'confirmation' : 'correction',
     contractType: contractType || contract.contractType,
-    modelUsed: 'gpt-4-turbo',
+    modelUsed: 'gpt-4o',
     promptVersion: 'v2',
   }
 
   await prisma.extractionCorrection.create({ data })
+
+  // Dispatch continuous-learning agent when user submits a correction (not just confirmation)
+  if (!wasCorrect && correctedValue !== undefined) {
+    // Invalidate the self-improving prompt cache so next extraction uses the new correction
+    invalidateLearnedHintsCache(contractType || contract.contractType || undefined);
+
+    try {
+      const { runLearningFeedback } = await import('@contigo/workers/agents/agent-dispatch');
+      runLearningFeedback(contractId, tenantId, [
+        { fieldName, extractedValue: String(extractedValue ?? ''), correctedValue: String(correctedValue ?? ''), source: extractionSource },
+      ]).catch(() => {}); // fire-and-forget
+    } catch (_) { /* worker import may fail in edge runtime — non-critical */ }
+  }
 
   return createSuccessResponse(ctx, {
     message: wasCorrect ? 'Confirmation recorded' : 'Correction recorded',
@@ -138,7 +152,7 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string,
       source: item.extractionSource || 'ai',
       feedbackType: item.wasCorrect ? 'confirmation' : 'correction',
       contractType: contractType || contract.contractType,
-      modelUsed: 'gpt-4-turbo',
+      modelUsed: 'gpt-4o',
       promptVersion: 'v2',
     }
 
@@ -149,6 +163,27 @@ async function handleBatchFeedback(body: BatchFeedbackRequest, tenantId: string,
     } else {
       correctionCount++
     }
+  }
+
+  // Dispatch continuous-learning agent for any corrections in the batch
+  if (correctionCount > 0) {
+    // Invalidate the self-improving prompt cache
+    invalidateLearnedHintsCache(contractType || contract.contractType || undefined);
+
+    try {
+      const { runLearningFeedback } = await import('@contigo/workers/agents/agent-dispatch');
+      const corrections = feedback
+        .filter(item => !item.wasCorrect && item.correctedValue !== undefined)
+        .map(item => ({
+          fieldName: item.fieldName,
+          extractedValue: String(item.extractedValue ?? ''),
+          correctedValue: String(item.correctedValue ?? ''),
+          source: item.extractionSource,
+        }));
+      if (corrections.length > 0) {
+        runLearningFeedback(contractId, tenantId, corrections).catch(() => {}); // fire-and-forget
+      }
+    } catch (_) { /* worker import may fail in edge runtime — non-critical */ }
   }
 
   return createSuccessResponse(ctx, {

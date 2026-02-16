@@ -22,7 +22,53 @@ export class AutonomousDeadlineManager extends BaseAgent {
   capabilities = ['deadline-management', 'prediction', 'auto-escalation'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contracts } = input.context;
+    // Support both singular contract (from pipeline) and plural contracts (from scheduler)
+    let contracts: any[];
+    if (Array.isArray(input.context?.contracts)) {
+      contracts = input.context.contracts;
+    } else if (input.context?.contract) {
+      contracts = [input.context.contract];
+    } else {
+      // Fallback: query recent tenant contracts with expiration data
+      try {
+        const dbContracts = await prisma.contract.findMany({
+          where: { tenantId: input.tenantId },
+          select: {
+            id: true, contractTitle: true, status: true,
+            totalValue: true, effectiveDate: true, expirationDate: true,
+            supplierName: true, counterparty: true, autoRenewalEnabled: true,
+            renewalInitiatedAt: true, department: true,
+          },
+          take: 50,
+          orderBy: { expirationDate: 'asc' },
+        });
+        contracts = dbContracts.map(c => ({
+          id: c.id,
+          title: c.contractTitle || '',
+          status: c.status,
+          value: c.totalValue ?? 0,
+          effectiveDate: c.effectiveDate,
+          expirationDate: c.expirationDate,
+          supplierName: c.supplierName || c.counterparty || '',
+          autoRenewalEnabled: c.autoRenewalEnabled ?? false,
+          renewalInitiated: !!c.renewalInitiatedAt,
+          department: c.department || '',
+        }));
+      } catch {
+        contracts = [];
+      }
+    }
+
+    if (!contracts.length) {
+      return {
+        success: true,
+        data: { assessments: [], summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 } },
+        actions: [],
+        confidence: 1,
+        reasoning: 'No contracts available for deadline assessment',
+        metadata: { processingTime: 0 },
+      };
+    }
 
     // Monitor all contracts and generate actions
     const assessments = await Promise.all(

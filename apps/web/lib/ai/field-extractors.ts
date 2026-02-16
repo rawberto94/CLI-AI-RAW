@@ -69,7 +69,7 @@ Always respond in valid JSON format with these fields:
     
     try {
       const completion = await openai.chat.completions.create({
-        model: 'gpt-4-turbo-preview',
+        model: 'gpt-4o',
         messages: [
           { role: 'system', content: this.getSystemPrompt() },
           { role: 'user', content: prompt },

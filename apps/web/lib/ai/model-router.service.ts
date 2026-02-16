@@ -423,6 +423,23 @@ export function recordAICost(entry: RecordCostParams): void {
 }
 
 /**
+ * Estimate cost in USD for a given model + token count.
+ * Prices per 1M tokens (input/output) — approximations for gpt-4o family.
+ */
+const MODEL_PRICING: Record<string, { input: number; output: number }> = {
+  'gpt-4o': { input: 2.50, output: 10.0 },
+  'gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'gpt-4-turbo': { input: 10.0, output: 30.0 },
+  'claude-3-5-sonnet-20241022': { input: 3.0, output: 15.0 },
+  'mistral-small-latest': { input: 0.20, output: 0.60 },
+};
+
+export function estimateTokenCost(model: string, inputTokens: number, outputTokens: number): number {
+  const pricing = MODEL_PRICING[model] || MODEL_PRICING['gpt-4o'];
+  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000;
+}
+
+/**
  * Get cost summary for a time period.
  * Uses in-memory cache for sub-second response, with optional DB fallback.
  */

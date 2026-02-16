@@ -546,7 +546,10 @@ export type AgentEventType =
   | 'deadline_managed'
   | 'opportunity_discovered'
   | 'learning_recorded'
-  | 'search_executed';
+  | 'search_executed'
+  | 'compliance_checked'
+  | 'obligation_tracked'
+  | 'contract_summarized';
 
 // ============================================================================
 // Configuration Types

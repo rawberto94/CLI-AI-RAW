@@ -4,6 +4,7 @@ import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
+import { notificationBuffer } from '@/lib/notifications/notification-engine';
 
 export const dynamic = 'force-dynamic';
 
@@ -57,11 +58,21 @@ export async function GET(request: NextRequest) {
       return createSuccessResponse(ctx, {
         notifications,
         unreadCount,
+        agentNotifications: notificationBuffer.getRecent(tenantId, userId, 20),
+        agentUnreadCount: notificationBuffer.getUnreadCount(tenantId, userId),
         total: notifications.length,
         source: 'database',
       });
     } catch (error) {
-      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Database connection failed', 503);
+      // DB failed — fall back to in-memory agent notifications only
+      return createSuccessResponse(ctx, {
+        notifications: [],
+        unreadCount: 0,
+        agentNotifications: notificationBuffer.getRecent(tenantId, userId, 50),
+        agentUnreadCount: notificationBuffer.getUnreadCount(tenantId, userId),
+        total: 0,
+        source: 'buffer-only',
+      });
     }
   } catch (error) {
     return handleApiError(ctx, error);

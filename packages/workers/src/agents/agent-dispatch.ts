@@ -136,5 +136,52 @@ export async function runPostPipelineIntelligence(
     'workflow-suggestion-engine',
     'autonomous-deadline-manager',
     'opportunity-discovery-engine',
+    'compliance-monitoring-agent',
+    'obligation-tracking-agent',
+    'contract-summarization-agent',
   ], input);
+}
+
+/**
+ * Dispatch on pipeline failure — retry agent analyzes failures
+ * and returns a strategy for recovery.
+ */
+export async function runOnFailure(
+  contractId: string,
+  tenantId: string,
+  failureHistory: Array<{ stage: string; error: string; timestamp: Date }>,
+): Promise<AgentOutput> {
+  const input: AgentInput = {
+    contractId,
+    tenantId,
+    context: { failureHistory },
+    metadata: {
+      triggeredBy: 'system',
+      priority: 'high',
+      timestamp: new Date(),
+    },
+  };
+  return dispatchToAgent('adaptive-retry-agent', input);
+}
+
+/**
+ * Dispatch learning feedback — records user corrections
+ * for continuous extraction improvement.
+ */
+export async function runLearningFeedback(
+  contractId: string,
+  tenantId: string,
+  userCorrections: Array<{ field: string; originalValue: any; correctedValue: any; reason?: string }>,
+): Promise<AgentOutput> {
+  const input: AgentInput = {
+    contractId,
+    tenantId,
+    context: { userCorrections },
+    metadata: {
+      triggeredBy: 'user',
+      priority: 'medium',
+      timestamp: new Date(),
+    },
+  };
+  return dispatchToAgent('continuous-learning-agent', input);
 }

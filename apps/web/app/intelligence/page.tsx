@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { PageBreadcrumb } from '@/components/navigation';
+import { IntelligenceDashboard } from '@/components/dashboard/IntelligenceDashboard';
 import {
   Brain,
   Share2,
@@ -159,6 +160,11 @@ export default function IntelligencePage() {
           </div>
         </div>
       </motion.div>
+
+      {/* Intelligence Dashboard — aggregate agent metrics */}
+      <div className="max-w-6xl mx-auto mb-8">
+        <IntelligenceDashboard />
+      </div>
 
       {/* Quick Stats — LIVE from API */}
       <motion.div 

@@ -22,7 +22,29 @@ export class SmartGapFillingAgent extends BaseAgent {
   capabilities = ['gap-filling', 'cross-artifact-inference', 'targeted-extraction'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const gapInput = input.context as GapFillingInput;
+    // Build GapFillingInput from orchestrator context if not directly provided
+    const gapInput: GapFillingInput = input.context?.artifact
+      ? input.context as GapFillingInput
+      : (() => {
+          // Convert artifacts Record to array
+          const artifactArray = input.context?.artifactArray || (
+            input.context?.artifacts
+              ? Object.entries(input.context.artifacts).map(([type, data]) => ({ id: type, type, data }))
+              : []
+          );
+
+          // Pick the first artifact as the primary target (or OVERVIEW if available)
+          const primaryArtifact = artifactArray.find((a: any) => a.type === 'OVERVIEW') || artifactArray[0] || { id: 'unknown', type: 'unknown', data: {} };
+
+          return {
+            artifact: primaryArtifact,
+            allArtifacts: artifactArray,
+            contractText: input.context?.contractText || '',
+            contractMetadata: input.context?.contract || {},
+            aggressiveMode: false,
+            minimumCompleteness: 0.85,
+          } as GapFillingInput;
+        })();
     const result = await this.fillMissingFields(gapInput);
 
     const actions: AgentAction[] = [];
