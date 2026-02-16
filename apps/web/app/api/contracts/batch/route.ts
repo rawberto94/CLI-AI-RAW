@@ -14,9 +14,7 @@ import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { initializeStorage } from "@/lib/storage-service";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
-import clientsDb from 'clients-db';
-const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
-const prisma = getClient();
+import { prisma } from '@/lib/prisma';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 function isFile(value: unknown): value is File {

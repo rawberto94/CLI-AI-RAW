@@ -19,10 +19,9 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
-import clientsDb from 'clients-db';
+import { prisma } from '@/lib/prisma';
 import pino from 'pino';
 
-const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const logger = pino({ name: 'intelligence-brief' });
 
 // ============================================================================
@@ -210,7 +209,7 @@ export async function compareSimilarContracts(params: {
   const { contractId, tenantId, executiveSummary, contractType } = params;
 
   try {
-    const prisma = getClient();
+    
     
     // Find similar contracts via embedding similarity (excluding self)
     const similar = await prisma.$queryRaw<Array<{
@@ -276,7 +275,7 @@ export async function runIntelligencePipeline(params: {
   const startTime = Date.now();
 
   try {
-    const prisma = getClient();
+    
 
     // 1. Fetch contract
     const contract = await prisma.contract.findUnique({

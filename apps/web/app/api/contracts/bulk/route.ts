@@ -328,11 +328,11 @@ export const POST = withAuthApiHandler(async (request, ctx) => {
           })
         )
       );
-      const analyzeResults = analysisContractIds.map(contractId => ({ contractId, status: 'queued' }));
+      const batchAnalyzeResults = analysisContractIds.map(contractId => ({ contractId, status: 'queued' }));
       
       return createSuccessResponse(ctx, {
-        message: `Analysis queued for ${analyzeResults.filter(r => r.status === 'queued').length} contracts`,
-        results: analyzeResults
+        message: `Analysis queued for ${batchAnalyzeResults.filter(r => r.status === 'queued').length} contracts`,
+        results: batchAnalyzeResults
       })
 
     case 'ai-summarize':

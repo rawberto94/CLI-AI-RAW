@@ -203,17 +203,6 @@ export async function POST(
         )
       );
       results.groupsGranted = validGroups.length;
-            grantedBy: session.user.id,
-            expiresAt: expiresAt ? new Date(expiresAt) : null,
-          },
-          update: {
-            accessLevel,
-            grantedBy: session.user.id,
-            expiresAt: expiresAt ? new Date(expiresAt) : null,
-          },
-        });
-        results.groupsGranted++;
-      }
     }
     
     await auditLog({

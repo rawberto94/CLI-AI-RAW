@@ -267,8 +267,6 @@ export async function POST(request: NextRequest) {
         lastName: user.lastName,
       },
     });
-      },
-    });
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as { errors?: Array<{ message?: string }> };

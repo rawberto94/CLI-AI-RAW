@@ -8,7 +8,7 @@
  * @version 1.0.0
  */
 
-import { ReActAgent, type ReActContext, type ReActResult, type ReActConfig } from 'agents';
+import { ReActAgent, type ReActContext, type ReActResult, type ReActConfig } from '@repo/agents';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 import pino from 'pino';

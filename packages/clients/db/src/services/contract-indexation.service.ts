@@ -312,7 +312,7 @@ export class ContractIndexationService {
       // Build ORDER BY clause — whitelist column names to prevent SQL injection
       const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'contract_type', 'total_value', 'risk_score', 'expiration_date', 'start_date', 'end_date', 'title'];
       const safeSortBy = ALLOWED_SORT_COLUMNS.includes(searchQuery.sortBy || '') ? searchQuery.sortBy! : 'created_at';
-      const safeSortOrder = searchQuery.sortOrder === 'ASC' ? 'ASC' : 'DESC';
+      const safeSortOrder = searchQuery.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
       const relevanceOrderFragment = searchQuery.query
         ? Prisma.sql`ts_rank(cm.search_vector, plainto_tsquery('english', ${searchQuery.query})) DESC,`

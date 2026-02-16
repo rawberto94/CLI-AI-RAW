@@ -157,13 +157,7 @@ export type { PaginationProps } from './PaginationControls';
 export { SearchFiltersBar } from './SearchFiltersBar';
 export type { SearchFiltersBarProps } from './SearchFiltersBar';
 
-// Contract Quick Actions
-export { 
-  ContractQuickActions,
-  ContractQuickActionsIcon,
-  ContractQuickActionsMenu,
-} from './ContractQuickActions';
-export type { ContractQuickActionsProps } from './ContractQuickActions';
+// Contract Quick Actions — module removed (was never created)
 
 // Saved Filters Panel
 export { SavedFiltersPanel } from './SavedFiltersPanel';
