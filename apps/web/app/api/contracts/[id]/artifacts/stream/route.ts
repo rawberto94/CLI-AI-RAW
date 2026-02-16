@@ -5,10 +5,12 @@ import { getApiTenantId } from "@/lib/tenant-server";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Bulletproof constants
-const POLL_INTERVAL_MS = 1000; // Poll every 1 second
+const FAST_POLL_MS = 500; // Poll every 500ms during active processing
+const IDLE_POLL_MS = 3000; // Slow to 3s after no changes for a while
 const _HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
 const MAX_POLL_SECONDS = 300; // 5 minute timeout (increased from 3)
 const MAX_CONSECUTIVE_ERRORS = 5;
+const IDLE_THRESHOLD = 5; // consecutive no-change polls before slowing
 
 // --- P3-24: SSE Rate Limiting ---
 // Track active SSE connections per tenant to prevent resource exhaustion
@@ -164,7 +166,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       // --- P3-23: Backpressure tracking ---
       let queuedEventsCount = 0;
       let isBackpressured = false;
-      let currentPollInterval = POLL_INTERVAL_MS;
+      let currentPollInterval = FAST_POLL_MS;
+      let noChangeCount = 0; // Tracks consecutive polls with no changes
 
       // Send initial connection message with event ID for resume support
       let eventId = 0;
@@ -185,7 +188,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
         } else if (queuedEventsCount <= BACKPRESSURE_QUEUE_LIMIT / 2 && isBackpressured) {
           isBackpressured = false;
-          currentPollInterval = POLL_INTERVAL_MS;
+          currentPollInterval = FAST_POLL_MS;
+          noChangeCount = 0;
           if (pollInterval) {
             clearInterval(pollInterval);
             pollInterval = setInterval(pollFn, currentPollInterval);
@@ -443,6 +447,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             lastArtifactCount = artifacts.length;
             lastContractStatus = contractStatus;
             consecutiveErrors = 0; // Reset on successful update
+            noChangeCount = 0; // Reset idle counter
+
+            // Speed up polling when changes are detected
+            if (!isBackpressured && currentPollInterval !== FAST_POLL_MS) {
+              currentPollInterval = FAST_POLL_MS;
+              clearInterval(pollInterval);
+              pollInterval = setInterval(pollFn, currentPollInterval);
+            }
             
             const data = {
               type: 'update',
@@ -461,6 +473,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             controller.enqueue(
               encoder.encode(`data: ${JSON.stringify(data)}\n\n`)
             );
+          } else {
+            // No changes detected — increment idle counter and slow down polling
+            noChangeCount++;
+            if (noChangeCount >= IDLE_THRESHOLD && !isBackpressured && currentPollInterval !== IDLE_POLL_MS) {
+              currentPollInterval = IDLE_POLL_MS;
+              clearInterval(pollInterval);
+              pollInterval = setInterval(pollFn, currentPollInterval);
+            }
           }
 
           // If contract is completed or failed, close stream

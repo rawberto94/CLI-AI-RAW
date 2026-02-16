@@ -1,7 +1,7 @@
 /**
  * Artifact Export API Route
  * 
- * Export individual artifact data as JSON or CSV format.
+ * Export individual artifact data as JSON, CSV, PDF, or DOCX format.
  * Supports all 15 artifact types with proper content-type headers.
  */
 
@@ -9,9 +9,10 @@ import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { generateArtifactPDF, generateArtifactDOCX } from '@/lib/artifacts/artifact-export';
 
 /**
- * GET /api/contracts/[id]/artifacts/[artifactId]/export?format=json|csv
+ * GET /api/contracts/[id]/artifacts/[artifactId]/export?format=json|csv|pdf|docx
  * Export artifact data in specified format
  */
 export async function GET(
@@ -30,8 +31,8 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const format = (searchParams.get('format') || 'json').toLowerCase();
 
-    if (format !== 'json' && format !== 'csv') {
-      return createErrorResponse(ctx, 'BAD_REQUEST', 'Format must be "json" or "csv"', 400);
+    if (!['json', 'csv', 'pdf', 'docx'].includes(format)) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Format must be "json", "csv", "pdf", or "docx"', 400);
     }
 
     // Fetch artifact with contract context
@@ -88,6 +89,60 @@ export async function GET(
         headers: {
           'Content-Type': 'application/json',
           'Content-Disposition': `attachment; filename="${exportName}.json"`,
+        },
+      });
+    }
+
+    // PDF format — professional branded document
+    if (format === 'pdf') {
+      const pdfBytes = generateArtifactPDF({
+        artifact: {
+          id: artifact.id,
+          type: artifact.type,
+          data: artifact.data as Record<string, any>,
+          confidence: Number(artifact.confidence) || null,
+          qualityScore: artifact.qualityScore,
+          completenessScore: artifact.completenessScore,
+          modelUsed: (artifact as any).modelUsed,
+          createdAt: artifact.createdAt,
+        },
+        contract: {
+          fileName: artifact.contract?.fileName,
+          contractType: artifact.contract?.contractType,
+        },
+      });
+
+      return new Response(pdfBytes, {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${exportName}.pdf"`,
+        },
+      });
+    }
+
+    // DOCX format — professional Word document
+    if (format === 'docx') {
+      const docxBytes = await generateArtifactDOCX({
+        artifact: {
+          id: artifact.id,
+          type: artifact.type,
+          data: artifact.data as Record<string, any>,
+          confidence: Number(artifact.confidence) || null,
+          qualityScore: artifact.qualityScore,
+          completenessScore: artifact.completenessScore,
+          modelUsed: (artifact as any).modelUsed,
+          createdAt: artifact.createdAt,
+        },
+        contract: {
+          fileName: artifact.contract?.fileName,
+          contractType: artifact.contract?.contractType,
+        },
+      });
+
+      return new Response(docxBytes, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'Content-Disposition': `attachment; filename="${exportName}.docx"`,
         },
       });
     }

@@ -19,9 +19,6 @@ export {
   ArtifactSkeleton
 } from './ArtifactCards';
 
-export { EnhancedArtifactViewer } from './EnhancedArtifactViewer';
-
-export { 
-  GenerationFlowVisualization, 
-  CompactGenerationFlow 
-} from './GenerationFlowVisualization';
+export { SmartEditableArtifact, convertToEditableSections } from './SmartEditableArtifact';
+export { ArtifactFeedback } from './ArtifactFeedback';
+export { ComprehensiveAIAnalysis } from './ComprehensiveAIAnalysis';

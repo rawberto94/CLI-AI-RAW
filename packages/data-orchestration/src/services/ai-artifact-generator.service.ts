@@ -19,6 +19,7 @@ import { artifactVersioningService } from './artifact-versioning.service';
 import { artifactPromptTemplatesService } from './artifact-prompt-templates.service';
 import { artifactValidationService } from './artifact-validation.service';
 import { artifactCostSavingsIntegrationService } from './artifact-cost-savings-integration.service';
+import { createStructuredOutputFormat } from './structured-output-schemas.service';
 
 const logger = createLogger('ai-artifact-generator-service');
 
@@ -346,14 +347,16 @@ export class AIArtifactGeneratorService {
         );
 
         const response = await openai.chat.completions.create({
-          model: 'gpt-4',
+          model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt },
           ],
           temperature: 0.1,
           max_tokens: 4000,
-          response_format: { type: 'json_object' },
+          // Use structured output schema if available for this type,
+          // otherwise fall back to basic json_object mode
+          response_format: createStructuredOutputFormat(artifactType) || { type: 'json_object' as const },
         });
 
         const content = response.choices[0]?.message?.content;
