@@ -1,3 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Admin Dashboard | ConTigo',
+  description: 'Admin Dashboard — Manage and monitor your contract intelligence platform',
+};
+
 'use client';
 
 import { useState, useEffect } from 'react';

@@ -1,13 +1,16 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardManagementService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export const PATCH = async (request: NextRequest, props: { params: Promise<{ id: string }> }) => {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = params;
     const body = await request.json();
@@ -127,7 +130,10 @@ export const PATCH = async (request: NextRequest, props: { params: Promise<{ id:
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {
     const { id } = params;
     const tenantId = ctx.tenantId;

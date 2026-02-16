@@ -9,7 +9,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -25,7 +25,10 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const _contractId = params.id;
 
   try {

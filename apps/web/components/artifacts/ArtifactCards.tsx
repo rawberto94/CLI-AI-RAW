@@ -494,7 +494,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {data.parties.map((party, i) => (
               <div 
-                key={i} 
+                key={`${unwrapString(party.name) || unwrapString(party.legalName)}-${unwrapString(party.role)}`}
                 className="px-2.5 py-2 bg-white rounded border border-slate-100 hover:border-slate-200 transition-colors"
               >
                 <div className="flex items-center gap-1.5">
@@ -548,7 +548,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
           <div className="space-y-1">
             {data.keyTerms.map((item, i) => (
               <div 
-                key={i}
+                key={item.term}
                 className="flex items-center justify-between px-2 py-1.5 bg-slate-50/50 rounded hover:bg-slate-100 transition-colors group"
               >
                 <div className="flex items-center gap-2 min-w-0">
@@ -581,7 +581,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
           <div className="space-y-2">
             {data.definitions.map((def, i) => (
               <div 
-                key={i}
+                key={def.term}
                 className="px-2.5 py-2 bg-violet-50/50 rounded border border-indigo-100"
               >
                 <span className="text-xs font-medium text-violet-700">&ldquo;{def.term}&rdquo;</span>
@@ -602,7 +602,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
           <div className="space-y-1">
             {data.referencedDocuments.map((doc, i) => (
               <div 
-                key={i}
+                key={doc.name}
                 className="flex items-center gap-2 px-2 py-1.5 bg-slate-50/50 rounded"
               >
                 <FileText className="h-3 w-3 text-slate-400 shrink-0" />
@@ -630,7 +630,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
                 : String(value);
               return (
                 <div 
-                  key={i}
+                  key={key}
                   className="flex items-start gap-3 p-3 bg-violet-50/50 rounded-lg"
                 >
                   <span className="text-sm text-violet-600 font-medium capitalize shrink-0">
@@ -653,7 +653,7 @@ export function OverviewArtifact({ data, className, isLoading }: OverviewArtifac
         >
           <div className="space-y-4">
             {Object.entries(data.rawSections).map(([section, text], i) => (
-              <div key={i} className="border border-slate-200 rounded-lg overflow-hidden">
+              <div key={section} className="border border-slate-200 rounded-lg overflow-hidden">
                 <div className="bg-slate-100 px-3 py-2 border-b border-slate-200">
                   <span className="text-sm font-medium text-slate-700">{section}</span>
                 </div>
@@ -865,7 +865,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <ul className="space-y-0.5">
                             {clause.obligations.map((ob, i) => (
-                              <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600">
+                              <li key={ob} className="flex items-start gap-1.5 text-[10px] text-slate-600">
                                 <CheckCircle2 className="h-3 w-3 text-violet-500 shrink-0 mt-0.5" />
                                 <span className="break-words">{ob}</span>
                               </li>
@@ -881,7 +881,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <ul className="space-y-0.5">
                             {clause.risks.map((risk, i) => (
-                              <li key={i} className="flex items-start gap-1.5 text-[10px] text-slate-600 break-words">
+                              <li key={risk} className="flex items-start gap-1.5 text-[10px] text-slate-600 break-words">
                                 <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0 mt-0.5" />
                                 <span className="break-words">{risk}</span>
                               </li>
@@ -898,7 +898,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <div className="flex flex-wrap gap-1">
                             {clause.crossReferences.map((ref, i) => (
-                              <span key={i} className="inline-flex items-center gap-1 text-[10px] text-violet-600 bg-violet-50 rounded px-1.5 py-0.5">
+                              <span key={`${ref.from}-${ref.to}`} className="inline-flex items-center gap-1 text-[10px] text-violet-600 bg-violet-50 rounded px-1.5 py-0.5">
                                 <span className="font-mono">{ref.from}</span>
                                 <ChevronRight className="h-2.5 w-2.5" />
                                 <span className="font-mono">{ref.to}</span>
@@ -916,7 +916,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <div className="flex flex-wrap gap-1">
                             {clause.definedTermsUsed.map((term, i) => (
-                              <Badge key={i} variant="outline" className="text-[10px] border-violet-200 text-violet-600">
+                              <Badge key={term} variant="outline" className="text-[10px] border-violet-200 text-violet-600">
                                 {term}
                               </Badge>
                             ))}
@@ -932,7 +932,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
                           </h5>
                           <div className="space-y-2 ml-4 border-l-2 border-slate-200 pl-4">
                             {clause.subclauses.map((sub, i) => (
-                              <div key={i} className="text-sm">
+                              <div key={sub.id} className="text-sm">
                                 <div className="flex items-center gap-2">
                                   {sub.sectionNumber && (
                                     <span className="font-mono text-xs text-slate-500">{sub.sectionNumber}</span>
@@ -985,7 +985,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
         >
           <div className="space-y-2">
             {data.missingClauses.map((clause, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
+              <div key={clause} className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 rounded-lg px-3 py-2">
                 <AlertTriangle className="h-4 w-4 shrink-0" />
                 {clause}
               </div>
@@ -1003,7 +1003,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
         >
           <div className="space-y-2">
             {data.referencedExhibits.map((exhibit, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
+              <div key={exhibit.name} className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg">
                 <FileText className="h-4 w-4 text-slate-400 shrink-0" />
                 <div>
                   <span className="font-medium text-slate-900">{exhibit.name}</span>
@@ -1025,7 +1025,7 @@ export function ClausesArtifact({ data, className, isLoading, onClauseUpdate, ed
         <div className="flex flex-wrap gap-2 pt-2">
           <span className="text-xs text-slate-500">Custom clause types in this contract:</span>
           {data.customClauseTypes.map((type, i) => (
-            <Badge key={i} className="text-[10px] bg-violet-100 text-violet-700">
+            <Badge key={type} className="text-[10px] bg-violet-100 text-violet-700">
               {type}
             </Badge>
           ))}
@@ -1269,7 +1269,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
           {Array.isArray(data.paymentTerms) ? (
             <ul className="space-y-0.5">
               {data.paymentTerms.map((term, i) => (
-                <li key={i} className="text-xs text-slate-600 flex items-center gap-1.5">
+                <li key={typeof term === 'object' ? term.value : term} className="text-xs text-slate-600 flex items-center gap-1.5">
                   <span className="w-1 h-1 rounded-full bg-violet-500" />
                   {typeof term === 'object' ? term.value : term}
                 </li>
@@ -1358,7 +1358,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
         >
           <div className="space-y-2">
             {data.paymentSchedule.map((payment, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+              <div key={`${payment.milestone || payment.description}-${payment.dueDate || ''}`} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
                 <div>
                   <p className="font-medium text-slate-900">{payment.milestone || payment.description}</p>
                   {payment.dueDate && (
@@ -1387,7 +1387,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
         >
           <div className="space-y-2">
             {data.costBreakdown.map((cost, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
+              <div key={cost.category} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200">
                 <div>
                   <p className="font-medium text-slate-900">{cost.category}</p>
                   {cost.description && (
@@ -1600,7 +1600,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
         >
           <div className="space-y-2">
             {data.discounts.map((discount, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
+              <div key={`discount-${discount.type}-${discount.value}`} className="flex items-center justify-between p-3 bg-green-50 rounded-lg border border-green-200">
                 <div>
                   <p className="font-medium text-slate-900 capitalize">{discount.type?.replace(/_/g, ' ')}</p>
                   {discount.description && (
@@ -1625,7 +1625,7 @@ export function FinancialArtifact({ data, className, isLoading }: FinancialArtif
         >
           <div className="space-y-2">
             {data.penalties.map((penalty, i) => (
-              <div key={i} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-200">
+              <div key={`penalty-${penalty.type}-${penalty.amount}`} className="flex items-center justify-between p-3 bg-rose-50 rounded-lg border border-rose-200">
                 <div>
                   <p className="font-medium text-slate-900 capitalize">{penalty.type?.replace(/_/g, ' ')}</p>
                   {penalty.description && (
@@ -1757,7 +1757,7 @@ export function ComplianceArtifact({ data, className, isLoading }: ComplianceArt
         <div className="flex flex-wrap gap-1">
           {data.regulations.map((reg, i) => (
             <span 
-              key={i} 
+              key={reg} 
               className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-white border border-slate-100 rounded text-[10px] text-slate-600"
             >
               <Scale className="h-2.5 w-2.5" />
@@ -1926,7 +1926,7 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
               const config = getStatusConfig(sla.status);
               const StatusIcon = config.icon;
               return (
-                <div key={i} className={cn("px-2.5 py-2 rounded border", config.bg, "border-slate-100")}>
+                <div key={sla.metric} className={cn("px-2.5 py-2 rounded border", config.bg, "border-slate-100")}>
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-700 break-words">{sla.metric}</span>
                     <StatusIcon className={cn("h-3 w-3 shrink-0 ml-1", config.text)} />
@@ -1971,7 +1971,7 @@ export function ObligationsArtifact({ data, className, isLoading }: ObligationsA
                   {milestone.deliverables.length > 0 && (
                     <div className="mt-1.5 flex flex-wrap gap-1">
                       {milestone.deliverables.map((d, i) => (
-                        <span key={i} className="text-[10px] px-1.5 py-0.5 bg-white border border-slate-100 rounded text-slate-500">
+                        <span key={d} className="text-[10px] px-1.5 py-0.5 bg-white border border-slate-100 rounded text-slate-500">
                           {d}
                         </span>
                       ))}
@@ -2121,7 +2121,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
             const config = getAlertConfig(alert.type);
             const AlertIcon = config.icon;
             return (
-              <div key={i} className={cn("px-2.5 py-2 rounded border", config.bg, config.border)}>
+              <div key={`${alert.type}-${alert.message}`} className={cn("px-2.5 py-2 rounded border", config.bg, config.border)}>
                 <div className="flex items-start gap-2">
                   <AlertIcon className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", config.text)} />
                   <div className="flex-1 min-w-0">
@@ -2174,7 +2174,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
         >
           <div className="space-y-1.5">
             {data.priceEscalation.map((esc, i) => (
-              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+              <div key={`${esc.type}-${esc.effectiveDate || ''}`} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-slate-700">{esc.type}</span>
                   {esc.percentage && (
@@ -2202,7 +2202,7 @@ export function RenewalArtifact({ data, className, isLoading }: RenewalArtifactP
         >
           <div className="space-y-1.5">
             {data.optOutDeadlines.map((deadline, i) => (
-              <div key={i} className="px-2.5 py-2 bg-amber-50 rounded border border-amber-100">
+              <div key={`optout-${deadline.date}`} className="px-2.5 py-2 bg-amber-50 rounded border border-amber-100">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-slate-700">{formatDate(deadline.date)}</p>
@@ -2384,7 +2384,7 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
               </thead>
               <tbody>
                 {data.benchmarkGaps.map((gap, i) => (
-                  <tr key={i} className="border-b border-slate-50 last:border-0">
+                  <tr key={gap.area} className="border-b border-slate-50 last:border-0">
                     <td className="py-1.5 text-slate-700 font-medium">{gap.area}</td>
                     <td className="py-1.5 text-rose-500">{gap.currentTerm}</td>
                     <td className="py-1.5 text-violet-500">{gap.marketStandard}</td>
@@ -2406,7 +2406,7 @@ export function NegotiationPointsArtifact({ data, className, isLoading }: Negoti
         >
           <div className="space-y-2">
             {data.negotiationScript.map((script, i) => (
-              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+              <div key={script.topic} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <h4 className="text-xs font-medium text-slate-700">{script.topic}</h4>
                 <div className="mt-1.5 space-y-1">
                   <div className="px-2 py-1 bg-violet-50 rounded">
@@ -2531,7 +2531,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
                     {amendment.changedClauses.map((clause, i) => {
                       const config = getChangeTypeConfig(clause.changeType);
                       return (
-                        <div key={i} className={cn("px-2 py-1.5 rounded", config.bg)}>
+                        <div key={clause.clauseId} className={cn("px-2 py-1.5 rounded", config.bg)}>
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] text-slate-500">{clause.clauseId}</span>
                             <span className={cn("text-[10px] px-1 py-0.5 rounded", config.bg, config.text)}>
@@ -2574,7 +2574,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
             <div className="absolute left-2 top-0 bottom-0 w-px bg-slate-100" />
             <div className="space-y-1.5">
               {data.changeLog.map((entry, i) => (
-                <div key={i} className="relative pl-6">
+                <div key={`${entry.type}-${entry.date}`} className="relative pl-6">
                   <div className="absolute left-0.5 w-2 h-2 rounded-full bg-white border border-indigo-400" />
                   <div className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
                     <div className="flex items-center justify-between">
@@ -2599,7 +2599,7 @@ export function AmendmentsArtifact({ data, className, isLoading }: AmendmentsArt
         >
           <div className="space-y-1">
             {data.supersededClauses.map((clause, i) => (
-              <div key={i} className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
+              <div key={clause.originalClause} className="px-2 py-1.5 bg-slate-50 rounded border border-slate-100">
                 <div className="flex items-center gap-1.5 text-[10px]">
                   <span className="text-slate-400 line-through">{clause.originalClause}</span>
                   <span className="text-slate-300">→</span>
@@ -2731,7 +2731,7 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
             <div className="absolute left-2 top-0 bottom-0 w-px bg-gradient-to-b from-violet-400 via-amber-400 to-rose-400" />
             <div className="space-y-1.5">
               {data.escalationPath.map((level, i) => (
-                <div key={i} className="relative pl-6">
+                <div key={level.level} className="relative pl-6">
                   <div className="absolute left-0 w-4 h-4 rounded-full bg-white border border-indigo-400 flex items-center justify-center">
                     <span className="text-[8px] font-bold text-violet-500">{level.level}</span>
                   </div>
@@ -2765,7 +2765,7 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         >
           <div className="space-y-1.5">
             {data.notificationAddresses.map((addr, i) => (
-              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+              <div key={`${addr.party}-${addr.purpose}`} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-[10px] px-1 py-0.5 bg-slate-50 text-slate-500 rounded">{addr.purpose}</span>
@@ -2793,7 +2793,7 @@ export function ContactsArtifact({ data, className, isLoading }: ContactsArtifac
         >
           <div className="space-y-1.5">
             {data.keyPersonnel.map((person, i) => (
-              <div key={i} className="px-2.5 py-2 bg-white rounded border border-slate-100">
+              <div key={`${person.name}-${person.role}`} className="px-2.5 py-2 bg-white rounded border border-slate-100">
                 <div className="flex items-center justify-between">
                   <div>
                     <h4 className="text-xs font-medium text-slate-700">{person.name}</h4>

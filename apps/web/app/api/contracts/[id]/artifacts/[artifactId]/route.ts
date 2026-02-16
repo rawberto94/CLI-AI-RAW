@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Artifact types that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_ARTIFACT_TYPES = [
@@ -20,7 +20,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { dbAdaptor } = await import('data-orchestration');
     
@@ -57,7 +60,10 @@ export async function PUT(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { updates, reason, userId } = body;
@@ -124,7 +130,10 @@ export async function DELETE(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { dbAdaptor } = await import('data-orchestration');
     

@@ -21,6 +21,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Shield, ClipboardList as _ClipboardList } from 'lucide-react';
 
+
+
 function AuditLogsPageLoading() {
   return (
     <div className="min-h-screen bg-slate-50">

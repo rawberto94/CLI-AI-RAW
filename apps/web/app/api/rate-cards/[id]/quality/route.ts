@@ -1,13 +1,16 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { dataQualityScorerService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {
     const { id } = params;
 

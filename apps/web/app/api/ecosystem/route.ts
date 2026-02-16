@@ -63,19 +63,19 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       }),
 
       // 3. Spend metrics from raw tables
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw`
         SELECT
-          (SELECT COUNT(*)::int FROM purchase_orders WHERE tenant_id = $1) as total_pos,
-          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = $1) as total_invoices,
-          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = $1 AND match_status = 'MATCHED') as matched_invoices,
-          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = $1 AND match_status = 'DISCREPANCY') as discrepant_invoices,
-          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = $1 AND match_status = 'UNMATCHED') as unmatched_invoices,
-          (SELECT COUNT(*)::int FROM spend_exceptions WHERE tenant_id = $1 AND status = 'OPEN') as open_exceptions,
-          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM purchase_orders WHERE tenant_id = $1) as total_po_value,
-          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM invoices WHERE tenant_id = $1) as total_invoice_value,
-          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM purchase_orders WHERE tenant_id = $1 AND created_at > NOW() - INTERVAL '30 days') as po_value_30d,
-          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM invoices WHERE tenant_id = $1 AND created_at > NOW() - INTERVAL '30 days') as invoice_value_30d
-      `, tenantId).catch(() => [{}]),
+          (SELECT COUNT(*)::int FROM purchase_orders WHERE tenant_id = ${tenantId}) as total_pos,
+          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = ${tenantId}) as total_invoices,
+          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = ${tenantId} AND match_status = 'MATCHED') as matched_invoices,
+          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = ${tenantId} AND match_status = 'DISCREPANCY') as discrepant_invoices,
+          (SELECT COUNT(*)::int FROM invoices WHERE tenant_id = ${tenantId} AND match_status = 'UNMATCHED') as unmatched_invoices,
+          (SELECT COUNT(*)::int FROM spend_exceptions WHERE tenant_id = ${tenantId} AND status = 'OPEN') as open_exceptions,
+          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM purchase_orders WHERE tenant_id = ${tenantId}) as total_po_value,
+          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM invoices WHERE tenant_id = ${tenantId}) as total_invoice_value,
+          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM purchase_orders WHERE tenant_id = ${tenantId} AND created_at > NOW() - INTERVAL '30 days') as po_value_30d,
+          (SELECT COALESCE(SUM(total_amount), 0)::decimal(15,2) FROM invoices WHERE tenant_id = ${tenantId} AND created_at > NOW() - INTERVAL '30 days') as invoice_value_30d
+      `.catch(() => [{}]),
 
       // 4. Workflow stats
       prisma.workflowExecution.groupBy({
@@ -113,15 +113,15 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       }),
 
       // 8. Monthly spend trend (last 12 months)
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw`
         SELECT
           TO_CHAR(created_at, 'YYYY-MM') as month,
           SUM(total_amount)::decimal(15,2) as po_spend
         FROM purchase_orders
-        WHERE tenant_id = $1 AND created_at > NOW() - INTERVAL '12 months'
+        WHERE tenant_id = ${tenantId} AND created_at > NOW() - INTERVAL '12 months'
         GROUP BY TO_CHAR(created_at, 'YYYY-MM')
         ORDER BY month ASC
-      `, tenantId).catch(() => []),
+      `.catch(() => []),
     ]);
 
     // ═══════════════════════════════════════════════════════════════════

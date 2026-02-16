@@ -8,11 +8,14 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardExtractionService } from 'data-orchestration/services';
 import { roleStandardizationService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {    const tenantId = ctx.tenantId;
     const _userId = ctx.userId;
     const { contractId } = params;
@@ -122,7 +125,10 @@ try {    const tenantId = ctx.tenantId;
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {
     const { contractId } = params;
     const tenantId = ctx.tenantId;

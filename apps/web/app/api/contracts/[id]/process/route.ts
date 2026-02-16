@@ -7,13 +7,16 @@ import { NextRequest } from "next/server";
 import { contractService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   const contractId = params?.id;
 

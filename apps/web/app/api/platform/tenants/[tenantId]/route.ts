@@ -7,7 +7,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { monitoringService } from 'data-orchestration/services';
 
 /**
@@ -45,7 +45,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;
@@ -121,7 +124,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;
@@ -158,7 +164,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;

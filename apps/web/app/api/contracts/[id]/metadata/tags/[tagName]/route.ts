@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { metadataEditorService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * DELETE /api/contracts/[id]/metadata/tags/[tagName]
@@ -12,7 +12,10 @@ export async function DELETE(
   props: { params: Promise<{ id: string; tagName: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const tenantId = await getApiTenantId(request);

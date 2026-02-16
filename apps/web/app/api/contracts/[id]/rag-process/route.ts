@@ -3,13 +3,16 @@ import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service'
 import { getServerTenantId } from '@/lib/tenant-server'
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const startTime = Date.now()
   
   try {

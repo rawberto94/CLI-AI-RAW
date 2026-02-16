@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]/export?format=json|csv
@@ -19,7 +19,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;

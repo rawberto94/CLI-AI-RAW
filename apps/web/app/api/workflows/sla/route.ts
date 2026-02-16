@@ -14,17 +14,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   if (type === 'overview') {
     // Aggregate SLA metrics from workflow_instances and workflow_step_instances
     const [workflows, stepMetrics, breaches] = await Promise.all([
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw`
         SELECT 
           wi.status,
           COUNT(*)::int as count,
           AVG(EXTRACT(EPOCH FROM (COALESCE(wi.completed_at, NOW()) - wi.started_at)))::float as avg_duration_seconds
         FROM workflow_instances wi
-        WHERE wi.tenant_id = $1 AND wi.created_at >= $2::timestamp
+        WHERE wi.tenant_id = ${ctx.tenantId} AND wi.created_at >= ${since}::timestamp
         GROUP BY wi.status
-      `, ctx.tenantId, since),
+      `,
 
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw`
         SELECT
           wsi.step_name,
           wsi.step_type,
@@ -35,12 +35,12 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           AVG(EXTRACT(EPOCH FROM (COALESCE(wsi.completed_at, NOW()) - wsi.started_at)))::float as avg_duration_seconds
         FROM workflow_step_instances wsi
         JOIN workflow_instances wi ON wi.id = wsi.workflow_instance_id
-        WHERE wi.tenant_id = $1 AND wsi.created_at >= $2::timestamp
+        WHERE wi.tenant_id = ${ctx.tenantId} AND wsi.created_at >= ${since}::timestamp
         GROUP BY wsi.step_name, wsi.step_type
         ORDER BY breached DESC, total DESC
-      `, ctx.tenantId, since),
+      `,
 
-      prisma.$queryRawUnsafe(`
+      prisma.$queryRaw`
         SELECT
           wsi.id,
           wsi.step_name,
@@ -53,13 +53,13 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
           EXTRACT(EPOCH FROM (NOW() - wsi.sla_deadline))::float as overdue_seconds
         FROM workflow_step_instances wsi
         JOIN workflow_instances wi ON wi.id = wsi.workflow_instance_id
-        WHERE wi.tenant_id = $1
+        WHERE wi.tenant_id = ${ctx.tenantId}
           AND wsi.sla_deadline IS NOT NULL
           AND wsi.sla_deadline < NOW()
           AND wsi.status NOT IN ('COMPLETED', 'SKIPPED')
         ORDER BY wsi.sla_deadline ASC
         LIMIT 50
-      `, ctx.tenantId),
+      `,
     ]);
 
     // Compute totals
@@ -88,7 +88,7 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   }
 
   if (type === 'active-steps') {
-    const activeSteps = await prisma.$queryRawUnsafe(`
+    const activeSteps = await prisma.$queryRaw`
       SELECT
         wsi.id,
         wsi.step_name,
@@ -108,17 +108,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         EXTRACT(EPOCH FROM (wsi.sla_deadline - NOW()))::float as seconds_remaining
       FROM workflow_step_instances wsi
       JOIN workflow_instances wi ON wi.id = wsi.workflow_instance_id
-      WHERE wi.tenant_id = $1
+      WHERE wi.tenant_id = ${ctx.tenantId}
         AND wsi.status = 'ACTIVE'
       ORDER BY wsi.sla_deadline ASC NULLS LAST
       LIMIT 100
-    `, ctx.tenantId);
+    `;
 
     return createSuccessResponse(ctx, { activeSteps });
   }
 
   if (type === 'trends') {
-    const trends = await prisma.$queryRawUnsafe(`
+    const trends = await prisma.$queryRaw`
       SELECT
         DATE(wsi.completed_at) as date,
         COUNT(*)::int as completed,
@@ -126,10 +126,10 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
         COUNT(*) FILTER (WHERE wsi.sla_deadline IS NOT NULL AND wsi.completed_at > wsi.sla_deadline)::int as breached
       FROM workflow_step_instances wsi
       JOIN workflow_instances wi ON wi.id = wsi.workflow_instance_id
-      WHERE wi.tenant_id = $1 AND wsi.completed_at >= $2::timestamp
+      WHERE wi.tenant_id = ${ctx.tenantId} AND wsi.completed_at >= ${since}::timestamp
       GROUP BY DATE(wsi.completed_at)
       ORDER BY date ASC
-    `, ctx.tenantId, since);
+    `;
 
     return createSuccessResponse(ctx, { trends, timeRange });
   }
@@ -147,11 +147,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     if (!stepInstanceId) return createErrorResponse(ctx, 'MISSING_FIELD', 'stepInstanceId required', 400);
 
     const deadline = new Date(Date.now() + (deadlineHours || 24) * 60 * 60 * 1000);
-    await prisma.$queryRawUnsafe(`
+    await prisma.$queryRaw`
       UPDATE workflow_step_instances
-      SET sla_deadline = $1
-      WHERE id = $2
-    `, deadline, stepInstanceId);
+      SET sla_deadline = ${deadline}
+      WHERE id = ${stepInstanceId}
+    `;
 
     return createSuccessResponse(ctx, { stepInstanceId, slaDeadline: deadline });
   }

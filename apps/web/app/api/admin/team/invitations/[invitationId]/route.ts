@@ -4,7 +4,7 @@
  */
 
 import { NextRequest } from 'next/server';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { auditTrailService } from 'data-orchestration/services';
 
@@ -12,7 +12,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ invitationId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { invitationId } = await params;
 
@@ -59,7 +62,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ invitationId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { invitationId } = await params;
     const body = await request.json();

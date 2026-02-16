@@ -18,7 +18,7 @@ import { safeDeleteContract } from "@/lib/services/contract-deletion.service";
 import { contractUpdateSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -136,7 +136,10 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   const startTime = Date.now();
 
@@ -674,7 +677,10 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   try {
     const contractId = params.id;
@@ -766,7 +772,10 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   try {
     const contractId = params.id;

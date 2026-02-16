@@ -1,7 +1,7 @@
 import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
 import { getServerSession } from '@/lib/auth'
-import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
 import { uploadRequestSchema } from 'schemas'
 
 // Explicitly mark this route as dynamic (file uploads always dynamic)
@@ -11,7 +11,10 @@ export const revalidate = 0
 export const maxDuration = 300
 
 export async function POST(req: Request) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {

@@ -1,3 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Contracts | ConTigo',
+  description: 'Contracts — Manage and monitor your contract intelligence platform',
+};
+
 import { AutoBreadcrumbs } from '@/components/navigation/AutoBreadcrumbs';
 
 export default function ContractsLayout({

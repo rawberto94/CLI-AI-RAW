@@ -49,6 +49,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+
+
 // Notification type - matches database schema
 interface Notification {
   id: string;

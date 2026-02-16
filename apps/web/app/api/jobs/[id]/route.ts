@@ -1,10 +1,13 @@
 import { getJob } from "@/lib/jobs"
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = "nodejs"
 
 export async function GET(_req: Request, context: { params: Promise<{ id: string }> }) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params
   const job = getJob(params.id)
   if (!job) return createErrorResponse(ctx, 'NOT_FOUND', 'Not found', 404);

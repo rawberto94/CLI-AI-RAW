@@ -76,14 +76,14 @@ export class DatabaseSecurityService {
     cipher: string;
     verified: boolean;
   }> {
-    const result = await this.prisma.$queryRawUnsafe<any[]>(`
+    const result = await this.prisma.$queryRaw<any[]>`
       SELECT 
         ssl,
         version,
         cipher
       FROM pg_stat_ssl
       WHERE pid = pg_backend_pid()
-    `);
+    `;
 
     if (result.length === 0 || !result[0].ssl) {
       return { ssl: false, version: '', cipher: '', verified: false };
@@ -450,28 +450,28 @@ export class DatabaseSecurityService {
     auditTablesCount: number;
   }> {
     // Count SSL connections
-    const sslStats = await this.prisma.$queryRawUnsafe<any[]>(`
+    const sslStats = await this.prisma.$queryRaw<any[]>`
       SELECT 
         COUNT(*) FILTER (WHERE ssl) as ssl_count,
         COUNT(*) FILTER (WHERE NOT ssl) as non_ssl_count
       FROM pg_stat_ssl
       JOIN pg_stat_activity ON pg_stat_ssl.pid = pg_stat_activity.pid
-    `);
+    `;
 
     // Count RLS-enabled tables
-    const rlsStats = await this.prisma.$queryRawUnsafe<any[]>(`
+    const rlsStats = await this.prisma.$queryRaw<any[]>`
       SELECT COUNT(*) as rls_count
       FROM pg_tables t
       JOIN pg_class c ON t.tablename = c.relname
       WHERE c.relrowsecurity = true
-    `);
+    `;
 
     // Count audit triggers
-    const auditStats = await this.prisma.$queryRawUnsafe<any[]>(`
+    const auditStats = await this.prisma.$queryRaw<any[]>`
       SELECT COUNT(DISTINCT event_object_table) as audit_count
       FROM information_schema.triggers
       WHERE trigger_name LIKE 'audit_%'
-    `);
+    `;
 
     return {
       sslConnections: sslStats[0]?.ssl_count || 0,

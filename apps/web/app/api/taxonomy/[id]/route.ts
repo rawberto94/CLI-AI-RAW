@@ -13,7 +13,7 @@ import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { taxonomyService } from 'data-orchestration/services';
 
 // ============================================================================
@@ -75,7 +75,10 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -129,7 +132,10 @@ export async function PUT(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -266,7 +272,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = await params;
     const tenantId = ctx.tenantId;
@@ -385,6 +394,9 @@ export async function DELETE(
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   return cors.optionsResponse(request, "GET, PUT, DELETE, OPTIONS");
 }

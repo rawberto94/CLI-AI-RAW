@@ -3,7 +3,7 @@ import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts
 import { editableArtifactService } from 'data-orchestration/services';
 import { dbAdaptor } from 'data-orchestration';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Improve an artifact using a user-supplied refinement prompt
 export async function POST(
@@ -11,7 +11,10 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const tenantId = ctx.tenantId;
     if (!tenantId) {

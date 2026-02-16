@@ -8,10 +8,15 @@
  *   Returns the current embedding model and a summary of stale counts.
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthenticatedApiContext } from '@/lib/api-middleware';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const authCtx = getAuthenticatedApiContext(request);
+  if (!authCtx) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
   try {
     const currentModel = process.env.RAG_EMBED_MODEL || 'text-embedding-3-small';
 
@@ -48,7 +53,11 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const authCtx = getAuthenticatedApiContext(request);
+  if (!authCtx) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
   try {
     // Dynamic import to avoid bundling worker code in the web app
     const { triggerEmbeddingRefresh } = await import(

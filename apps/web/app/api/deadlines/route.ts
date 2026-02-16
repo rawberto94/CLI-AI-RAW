@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { getServerSession } from '@/lib/auth';
-import { getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
 import { z } from 'zod';
 
 const deadlinesQuerySchema = z.object({
@@ -17,7 +17,10 @@ export const dynamic = 'force-dynamic';
  * Get all contract deadlines and obligations
  */
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {

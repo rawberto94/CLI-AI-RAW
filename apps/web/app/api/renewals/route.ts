@@ -11,7 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { getServerSession } from '@/lib/auth';
-import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { contractService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
@@ -119,7 +119,10 @@ function calculateRiskLevel(healthScore: number): RenewalContract['riskLevel'] {
 }
 
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {
@@ -361,7 +364,10 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {
@@ -527,7 +533,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {

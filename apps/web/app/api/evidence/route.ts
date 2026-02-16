@@ -13,28 +13,20 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     let items;
     if (obligationId) {
-      items = await prisma.$queryRawUnsafe(
-        `SELECT * FROM evidence_items WHERE tenant_id = $1 AND obligation_id = $2 ORDER BY created_at DESC`,
-        ctx.tenantId, obligationId
-      );
+      items = await prisma.$queryRaw`SELECT * FROM evidence_items WHERE tenant_id = ${ctx.tenantId} AND obligation_id = ${obligationId} ORDER BY created_at DESC`;
     } else if (contractId) {
-      items = await prisma.$queryRawUnsafe(
-        `SELECT * FROM evidence_items WHERE tenant_id = $1 AND contract_id = $2 ORDER BY created_at DESC`,
-        ctx.tenantId, contractId
-      );
+      items = await prisma.$queryRaw`SELECT * FROM evidence_items WHERE tenant_id = ${ctx.tenantId} AND contract_id = ${contractId} ORDER BY created_at DESC`;
     } else {
-      items = await prisma.$queryRawUnsafe(
-        `SELECT * FROM evidence_items WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 100`, ctx.tenantId
-      );
+      items = await prisma.$queryRaw`SELECT * FROM evidence_items WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC LIMIT 100`;
     }
 
-    const metrics = await prisma.$queryRawUnsafe(`
+    const metrics = await prisma.$queryRaw`
       SELECT COUNT(*)::int as total,
         COUNT(*) FILTER(WHERE status = 'VERIFIED')::int as verified,
         COUNT(*) FILTER(WHERE status = 'PENDING_REVIEW')::int as pending,
         COUNT(*) FILTER(WHERE status = 'REJECTED')::int as rejected
-      FROM evidence_items WHERE tenant_id = $1
-    `, ctx.tenantId);
+      FROM evidence_items WHERE tenant_id = ${ctx.tenantId}
+    `;
 
     return createSuccessResponse(ctx, { evidence: items, metrics: (metrics as any[])[0] });
   } catch (error: unknown) {
@@ -46,15 +38,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO evidence_items (id, tenant_id, obligation_id, contract_id, title, description, evidence_type, file_url, file_name, file_size, mime_type, metadata, tags, uploaded_by)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
-      ctx.tenantId, body.obligationId, body.contractId, body.title,
-      body.description || null, body.evidenceType || 'DOCUMENT',
-      body.fileUrl || null, body.fileName || null, body.fileSize || null,
-      body.mimeType || null, JSON.stringify(body.metadata || {}),
-      JSON.stringify(body.tags || []), ctx.userId
-    );
+    const result = await prisma.$queryRaw`INSERT INTO evidence_items (id, tenant_id, obligation_id, contract_id, title, description, evidence_type, file_url, file_name, file_size, mime_type, metadata, tags, uploaded_by)
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.obligationId}, ${body.contractId}, ${body.title}, ${body.description || null}, ${body.evidenceType || 'DOCUMENT'}, ${body.fileUrl || null}, ${body.fileName || null}, ${body.fileSize || null}, ${body.mimeType || null}, ${JSON.stringify(body.metadata || {})}, ${JSON.stringify(body.tags || [])}, ${ctx.userId}) RETURNING *`;
     return createSuccessResponse(ctx, { evidence: (result as any[])[0] });
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to create evidence. Please try again.`, 500);
@@ -69,15 +54,9 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     let result;
     if (action === 'verify') {
-      result = await prisma.$queryRawUnsafe(
-        `UPDATE evidence_items SET status = 'VERIFIED', verified_by = $1, verified_at = NOW(), verification_notes = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4 RETURNING *`,
-        ctx.userId, body.notes || null, id, ctx.tenantId
-      );
+      result = await prisma.$queryRaw`UPDATE evidence_items SET status = 'VERIFIED', verified_by = ${ctx.userId}, verified_at = NOW(), verification_notes = ${body.notes || null}, updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
     } else if (action === 'reject') {
-      result = await prisma.$queryRawUnsafe(
-        `UPDATE evidence_items SET status = 'REJECTED', verified_by = $1, verified_at = NOW(), verification_notes = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4 RETURNING *`,
-        ctx.userId, body.notes || '', id, ctx.tenantId
-      );
+      result = await prisma.$queryRaw`UPDATE evidence_items SET status = 'REJECTED', verified_by = ${ctx.userId}, verified_at = NOW(), verification_notes = ${body.notes || ''}, updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
     }
     return createSuccessResponse(ctx, { evidence: (result as any[])?.[0] });
   } catch (error: unknown) {

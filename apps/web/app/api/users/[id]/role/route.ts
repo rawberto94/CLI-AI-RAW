@@ -6,7 +6,7 @@ import { NextRequest } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { auditTrailService } from 'data-orchestration/services';
 
 const VALID_ROLES = ['owner', 'admin', 'manager', 'member', 'viewer'];
@@ -16,7 +16,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     const { id: userId } = await params;

@@ -276,7 +276,7 @@ export function NavGroup({ label, children, className = '' }: NavGroupProps) {
           </motion.h3>
         )}
       </AnimatePresence>
-      <nav className="space-y-1">{children}</nav>
+      <nav className="space-y-1" aria-label="Main navigation">{children}</nav>
     </div>
   );
 }

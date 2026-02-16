@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const aiArtifactGenerator = aiArtifactGeneratorService;
 
@@ -28,7 +28,10 @@ interface BulkRegenerateRequest {
  * Processes asynchronously with progress tracking.
  */
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const tenantId = await getApiTenantId(request);
     const body: BulkRegenerateRequest = await request.json();
@@ -226,7 +229,10 @@ async function processBulkRegeneration(
  * Check status of bulk regeneration by querying artifact statuses
  */
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const tenantId = await getApiTenantId(request);
     const { searchParams } = new URL(request.url);

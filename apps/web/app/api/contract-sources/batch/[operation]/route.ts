@@ -14,7 +14,7 @@ import {
   BatchDownloadRequest,
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
-import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 // Validation schemas
 const batchDownloadSchema = z.object({
@@ -39,7 +39,10 @@ const batchDeleteSchema = z.object({
  * Batch download files from a contract source
  */
 async function handleDownload(req: NextRequest): Promise<NextResponse> {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
@@ -76,7 +79,10 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
  * Batch import files to create contracts
  */
 async function handleImport(req: NextRequest): Promise<NextResponse> {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId || !session.user.id) {
@@ -114,7 +120,10 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
  * Batch delete files from a contract source
  */
 async function handleDelete(req: NextRequest): Promise<NextResponse> {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
@@ -150,7 +159,10 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
 export const POST = withRateLimit(async (req: NextRequest) => {
   const url = new URL(req.url);
   const operation = url.pathname.split("/").pop();
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
 
   switch (operation) {
     case "download":

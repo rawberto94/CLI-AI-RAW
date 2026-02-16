@@ -8,7 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getErrorMessage } from '@/lib/types/common';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
@@ -18,7 +18,10 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
 
     const tenantId = await getApiTenantId(request);
@@ -54,7 +57,10 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
 
     const tenantId = await getApiTenantId(request);

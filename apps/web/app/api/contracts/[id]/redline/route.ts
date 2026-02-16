@@ -10,6 +10,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import prisma from '@repo/db';
 import { getSessionTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext } from '@/lib/api-middleware';
 
 /* ------------------------------------------------------------------ */
 /*  GET — load saved redline state                                     */
@@ -19,6 +20,10 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCtx = getAuthenticatedApiContext(_request);
+  if (!authCtx) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {
@@ -79,6 +84,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const authCtx = getAuthenticatedApiContext(request);
+  if (!authCtx) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user) {

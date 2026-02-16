@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
 import { dbAdaptor } from 'data-orchestration';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/improve-stream
@@ -14,7 +14,10 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const tenantId = ctx.tenantId;
   if (!tenantId) {
     return new Response(

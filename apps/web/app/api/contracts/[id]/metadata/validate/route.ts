@@ -12,7 +12,7 @@ import { getApiTenantId } from '@/lib/tenant-server';
 import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 import type { Prisma } from '@prisma/client';
 import { contractService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -69,7 +69,13 @@ export async function POST(
 ) {
   const { id: _contractId } = await params;
   
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body: ValidationRequest = await request.json();
     const { fields, contractText, validateAll = true, fieldsToValidate } = body;
@@ -124,7 +130,13 @@ export async function PUT(
 ) {
   const { id: contractId } = await params;
   
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body = await request.json();
     const { fieldKey, action, newValue, reason, allFields, resetAll } = body;

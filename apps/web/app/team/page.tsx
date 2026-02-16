@@ -7,6 +7,14 @@ import { Suspense } from 'react';
 import { TeamCollaboration } from '@/components/team';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Team Management | ConTigo',
+  description: 'Team Management — Manage and monitor your contract intelligence platform',
+};
+
+
 const breadcrumbItems = [
   { label: 'Team' },
 ];

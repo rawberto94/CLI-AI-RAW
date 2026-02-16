@@ -11,7 +11,7 @@ import { contractService } from 'data-orchestration/services';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { requiresApprovalWorkflow, getContractLifecycle } from '@/lib/contract-helpers';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,7 +19,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const tenantId = await getTenantIdFromRequest(request);
     const contractId = params.id;
@@ -119,7 +122,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const tenantId = await getTenantIdFromRequest(request);
     const contractId = params.id;

@@ -19,14 +19,17 @@ import {
   supplierRecommenderService,
   supplierTrendAnalyzerService
 } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Get trend analyzer instance (lazy-initialized with prisma)
 const getTrendAnalyzer = () => supplierTrendAnalyzerService.getInstance(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {
     const supplierId = params.id;
     const { searchParams } = new URL(request.url);

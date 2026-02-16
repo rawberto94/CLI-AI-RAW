@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { metadataEditorService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/metadata/tags
@@ -8,7 +8,10 @@ import { getApiContext, createSuccessResponse, createErrorResponse, handleApiErr
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { tags, tenantId, userId } = body;

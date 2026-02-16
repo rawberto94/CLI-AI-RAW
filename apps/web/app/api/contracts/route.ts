@@ -16,7 +16,7 @@ import { ContractStatus, type Prisma } from '@prisma/client';
 import { contractService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from "@/lib/cache";
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
-import {
+import { getAuthenticatedApiContext,
   getApiContext,
   createSuccessResponse,
   createErrorResponse,
@@ -29,7 +29,10 @@ export const maxDuration = 30;
 async function handler(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
 
   // Use proper tenant resolution (session > header > query > demo in dev only)
   const tenantId = await getTenantIdFromRequest(request);
@@ -388,7 +391,10 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     // Return proper error instead of silently serving mock data
     console.error('Contracts GET error:', error);
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch contracts. Please try again.', 500);
   }
 }

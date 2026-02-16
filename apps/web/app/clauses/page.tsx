@@ -6,6 +6,14 @@
 import { Suspense } from 'react';
 import { ClausesLibrary } from '@/components/clauses';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Clause Library | ConTigo',
+  description: 'Clause Library — Manage and monitor your contract intelligence platform',
+};
+
+
 export default function ClausesPage() {
   return (
     <div className="container mx-auto py-8 px-4">

@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardExtractionService } from 'data-orchestration/services';
 
 interface SaveRateCardRequest {
@@ -43,7 +43,10 @@ interface SaveRateCardRequest {
 
 export async function POST(request: NextRequest, props: { params: Promise<{ contractId: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {    const tenantId = ctx.tenantId;
     const userId = ctx.userId;
     const { contractId } = params;

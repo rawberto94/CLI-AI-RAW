@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -13,7 +13,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; commentId: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId, commentId } = params;
     const tenantId = await getApiTenantId(request);

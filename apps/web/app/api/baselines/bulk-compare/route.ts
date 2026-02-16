@@ -9,7 +9,7 @@ import { baselineManagementService } from 'data-orchestration/services';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { getServerSession } from '@/lib/auth';
-import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
 import { z } from 'zod';
 
 const bulkCompareSchema = z.object({
@@ -22,7 +22,10 @@ const bulkCompareSchema = z.object({
 // Using singleton prisma instance from @/lib/prisma
 
 export async function POST(req: NextRequest) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {

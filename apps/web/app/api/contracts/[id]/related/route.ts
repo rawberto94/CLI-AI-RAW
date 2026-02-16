@@ -6,7 +6,7 @@
 import { prisma } from '@/lib/prisma';
 import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 
@@ -14,7 +14,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getServerTenantId();

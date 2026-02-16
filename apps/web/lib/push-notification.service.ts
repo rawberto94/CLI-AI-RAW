@@ -31,10 +31,10 @@ export async function sendPushNotification(
 
   try {
     // Get user's push subscriptions
-    const subscriptions = await prisma.$queryRawUnsafe(`
+    const subscriptions = await prisma.$queryRaw`
       SELECT * FROM push_subscriptions 
-      WHERE user_id = $1 AND tenant_id = $2
-    `, userId, tenantId) as any[];
+      WHERE user_id = ${userId} AND tenant_id = ${tenantId}
+    ` as any[];
 
     if (!subscriptions || subscriptions.length === 0) {
       return { sent: 0, failed: 0 };
@@ -72,10 +72,7 @@ export async function sendPushNotification(
             failed++;
             // Remove expired subscriptions (410 Gone)
             if (err?.statusCode === 410) {
-              await prisma.$queryRawUnsafe(
-                `DELETE FROM push_subscriptions WHERE id = $1`,
-                sub.id
-              );
+              await prisma.$queryRaw`DELETE FROM push_subscriptions WHERE id = ${sub.id}`;
             }
           }
         }

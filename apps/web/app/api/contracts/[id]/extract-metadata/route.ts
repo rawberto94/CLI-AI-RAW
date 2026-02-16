@@ -20,7 +20,7 @@ import {
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface ExtractRequest {
   documentText?: string;
@@ -48,7 +48,13 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body: ExtractRequest = await request.json();
     const tenantId = await getApiTenantId(request);
@@ -129,7 +135,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const _tenantId = await getApiTenantId(request);
 
   try {
@@ -157,7 +166,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const tenantId = await getApiTenantId(request);
 
   try {

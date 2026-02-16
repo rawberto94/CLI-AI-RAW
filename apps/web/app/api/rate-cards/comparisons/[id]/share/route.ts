@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
@@ -9,7 +9,10 @@ import { rateCardBenchmarkingService } from 'data-orchestration/services';
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-    const ctx = getApiContext(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
 try {
     // Get session for user info
     // Require tenant ID for data isolation

@@ -1,11 +1,14 @@
 import { getJob, patchJobResult } from "@/lib/jobs"
 import type { RoleRow } from "@/lib/jobs"
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = "nodejs"
 
 export async function PATCH(req: Request, context: { params: Promise<{ id: string }> }) {
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params
     const id = params.id

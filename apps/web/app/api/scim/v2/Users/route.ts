@@ -7,9 +7,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const { prisma } = await import('@/lib/prisma');
-    const users = await prisma.$queryRawUnsafe(
-      `SELECT * FROM scim_sync_records WHERE tenant_id = $1 AND resource_type = 'User' ORDER BY display_name`, ctx.tenantId
-    );
+    const users = await prisma.$queryRaw`SELECT * FROM scim_sync_records WHERE tenant_id = ${ctx.tenantId} AND resource_type = 'User' ORDER BY display_name`;
 
     // SCIM ListResponse format
     return createSuccessResponse(ctx, {
@@ -53,15 +51,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     }
 
     // Store SCIM mapping
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO scim_sync_records (id, tenant_id, scim_id, resource_type, internal_id, display_name, email, active, sync_source, raw_attributes, last_synced_at)
-       VALUES (gen_random_uuid()::text, $1, $2, 'User', $3, $4, $5, $6, 'ENTRA_ID', $7, NOW())
-       ON CONFLICT (tenant_id, scim_id) DO UPDATE SET display_name = $4, email = $5, active = $6, raw_attributes = $7, last_synced_at = NOW(), updated_at = NOW()
-       RETURNING *`,
-      ctx.tenantId, body.externalId || body.id || user.id, user.id,
-      displayName, email, body.active ?? true,
-      JSON.stringify(body)
-    );
+    const result = await prisma.$queryRaw`INSERT INTO scim_sync_records (id, tenant_id, scim_id, resource_type, internal_id, display_name, email, active, sync_source, raw_attributes, last_synced_at)
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.externalId || body.id || user.id}, 'User', ${user.id}, ${displayName}, ${email}, ${body.active ?? true}, 'ENTRA_ID', ${JSON.stringify(body)}, NOW())
+       ON CONFLICT (tenant_id, scim_id) DO UPDATE SET display_name = ${displayName}, email = ${email}, active = ${body.active ?? true}, raw_attributes = ${JSON.stringify(body)}, last_synced_at = NOW(), updated_at = NOW()
+       RETURNING *`;
 
     const scimUser = (result as any[])[0];
 

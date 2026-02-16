@@ -14,6 +14,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { FileText, Download, TrendingUp, AlertTriangle, DollarSign, Shield, Building2, BarChart3, Settings, Sparkles } from 'lucide-react';
 
+
+
 type ReportType = 'executive' | 'financial' | 'risk' | 'compliance' | 'supplier' | 'custom';
 type ExportFormat = 'json' | 'pdf' | 'csv';
 

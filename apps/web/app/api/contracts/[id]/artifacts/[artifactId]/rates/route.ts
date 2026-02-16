@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/rates
@@ -11,7 +11,10 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { rate, userId } = body;

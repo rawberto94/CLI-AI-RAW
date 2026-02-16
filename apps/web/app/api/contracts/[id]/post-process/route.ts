@@ -17,7 +17,7 @@ import { AutoPopulateService, type AutoPopulateConfig } from "@/lib/services/aut
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { triggerContractReindex } from "@/lib/rag/reindex-trigger";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -49,7 +49,10 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);
@@ -302,6 +305,9 @@ export async function POST(
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   return cors.optionsResponse(request, "POST, OPTIONS");
 }

@@ -323,16 +323,22 @@ export function handleApiError(
 }
 
 /**
- * Wrapper for API route handlers with standardized error handling
+ * Wrapper for API route handlers with standardized error handling.
+ * Forwards Next.js route context (params) for dynamic routes.
  */
 export function withApiHandler<T>(
   handler: (request: NextRequest, context: ApiContext) => Promise<NextResponse<T>>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = getApiContext(request);
-    
+
+    // Merge Next.js route params into context for dynamic routes
+    const mergedContext = routeContext?.params
+      ? Object.assign(context, { params: routeContext.params })
+      : context;
+
     try {
-      return await handler(request, context);
+      return await handler(request, mergedContext);
     } catch (error) {
       return handleApiError(context, error);
     }
@@ -343,11 +349,12 @@ export function withApiHandler<T>(
  * Wrapper for authenticated API route handlers.
  * Combines defense-in-depth auth check + structured error handling + response formatting.
  * Uses middleware-injected headers (x-user-id, x-tenant-id) for identity.
+ * Forwards Next.js route context (params) for dynamic routes.
  */
 export function withAuthApiHandler<T>(
   handler: (request: NextRequest, context: AuthenticatedApiContext) => Promise<NextResponse<T>>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, routeContext?: { params: Promise<Record<string, string>> }): Promise<NextResponse> => {
     const context = getAuthenticatedApiContext(request);
 
     if (!context) {
@@ -357,8 +364,13 @@ export function withAuthApiHandler<T>(
       });
     }
 
+    // Merge Next.js route params into context for dynamic routes
+    const mergedContext = routeContext?.params
+      ? Object.assign(context, { params: routeContext.params })
+      : context;
+
     try {
-      return await handler(request, context);
+      return await handler(request, mergedContext);
     } catch (error) {
       return handleApiError(context, error);
     }

@@ -6,7 +6,7 @@
 
 import { NextRequest } from 'next/server';
 import { artifactValidationService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Type for the validation service (mirrors artifact-validation.service.ts)
 interface ValidationResult {
@@ -24,7 +24,10 @@ interface ValidationResult {
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const body = await request.json();

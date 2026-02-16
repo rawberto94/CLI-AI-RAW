@@ -2153,7 +2153,7 @@ export function EnhancedArtifactViewer({
               </div>
               <div className="space-y-2 max-h-64 overflow-auto">
                 {executiveSummary.map((line, i) => (
-                  <p key={i} className="text-xs text-slate-600 leading-relaxed">
+                  <p key={line} className="text-xs text-slate-600 leading-relaxed">
                     {line}
                   </p>
                 ))}
@@ -2205,7 +2205,7 @@ export function EnhancedArtifactViewer({
                 <div className="relative pl-5 space-y-3">
                   <div className="absolute left-1.5 top-1 bottom-1 w-px bg-slate-200" />
                   {allDates.map((item, i) => (
-                    <div key={i} className="relative">
+                    <div key={`${item.label}-${item.date}`} className="relative">
                       <div className={cn(
                         "absolute -left-3.5 w-3 h-3 rounded-full border-2 bg-white",
                         item.type === 'start' ? "border-violet-500" :
@@ -2351,7 +2351,7 @@ export function EnhancedArtifactViewer({
             <div className="mt-2 space-y-1">
               {smartSuggestions.map((suggestion, i) => (
                 <div
-                  key={i}
+                  key={`${suggestion.category}-${suggestion.suggestion}`}
                   className={cn(
                     "px-2.5 py-1.5 rounded border text-xs flex items-center gap-2",
                     suggestion.priority === 'high' 
@@ -2450,7 +2450,7 @@ export function EnhancedArtifactViewer({
         <div className="flex flex-wrap gap-1">
           {contractHealth.factors.slice(0, 3).map((factor, i) => (
             <span 
-              key={i}
+              key={factor.label}
               className={cn(
                 "px-1.5 py-0.5 rounded text-[10px] font-medium",
                 factor.status === 'good' && "bg-violet-100 text-violet-600",

@@ -11,7 +11,7 @@ import { categorizeContract } from "@/lib/categorization-service";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -35,7 +35,10 @@ export async function POST(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = ctx.tenantId;
@@ -95,7 +98,10 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ): Promise<NextResponse> {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getApiTenantId(request);

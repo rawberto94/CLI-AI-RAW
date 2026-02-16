@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { contractService } from 'data-orchestration/services'
 import { getServerSession } from '@/lib/auth'
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/notes/[noteId]
@@ -12,7 +12,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
@@ -62,7 +65,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
@@ -166,7 +172,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {

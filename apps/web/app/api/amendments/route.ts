@@ -11,17 +11,17 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     const items = contractId
-      ? await prisma.$queryRawUnsafe(`SELECT * FROM amendments WHERE tenant_id = $1 AND original_contract_id = $2 ORDER BY amendment_number DESC`, ctx.tenantId, contractId)
-      : await prisma.$queryRawUnsafe(`SELECT * FROM amendments WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 100`, ctx.tenantId);
+      ? await prisma.$queryRaw`SELECT * FROM amendments WHERE tenant_id = ${ctx.tenantId} AND original_contract_id = ${contractId} ORDER BY amendment_number DESC`
+      : await prisma.$queryRaw`SELECT * FROM amendments WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC LIMIT 100`;
 
-    const metrics = await prisma.$queryRawUnsafe(`
+    const metrics = await prisma.$queryRaw`
       SELECT COUNT(*)::int as total,
         COUNT(*) FILTER(WHERE status = 'DRAFT')::int as draft,
         COUNT(*) FILTER(WHERE status = 'IN_REVIEW')::int as in_review,
         COUNT(*) FILTER(WHERE status = 'APPROVED')::int as approved,
         COUNT(*) FILTER(WHERE status = 'EXECUTED')::int as executed
-      FROM amendments WHERE tenant_id = $1
-    `, ctx.tenantId);
+      FROM amendments WHERE tenant_id = ${ctx.tenantId}
+    `;
 
     return createSuccessResponse(ctx, { amendments: items, metrics: (metrics as any[])[0] });
   } catch (error: unknown) {
@@ -34,20 +34,10 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
 
-    const countResult = await prisma.$queryRawUnsafe(
-      `SELECT COUNT(*)::int + 1 as next_number FROM amendments WHERE tenant_id = $1 AND original_contract_id = $2`,
-      ctx.tenantId, body.originalContractId
-    );
+    const countResult = await prisma.$queryRaw`SELECT COUNT(*)::int + 1 as next_number FROM amendments WHERE tenant_id = ${ctx.tenantId} AND original_contract_id = ${body.originalContractId}`;
 
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO amendments (id, tenant_id, original_contract_id, amendment_number, title, description, amendment_type, status, changes_summary, effective_date, financial_impact, currency, requires_re_signature, initiated_by)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, 'DRAFT', $7, $8, $9, $10, $11, $12) RETURNING *`,
-      ctx.tenantId, body.originalContractId, (countResult as any[])[0]?.next_number || 1,
-      body.title, body.description || null, body.amendmentType || 'MODIFICATION',
-      JSON.stringify(body.changesSummary || []), body.effectiveDate || null,
-      body.financialImpact || null, body.currency || 'USD',
-      body.requiresReSignature ?? true, ctx.userId
-    );
+    const result = await prisma.$queryRaw`INSERT INTO amendments (id, tenant_id, original_contract_id, amendment_number, title, description, amendment_type, status, changes_summary, effective_date, financial_impact, currency, requires_re_signature, initiated_by)
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.originalContractId}, ${(countResult as any[])[0]?.next_number || 1}, ${body.title}, ${body.description || null}, ${body.amendmentType || 'MODIFICATION'}, 'DRAFT', ${JSON.stringify(body.changesSummary || [])}, ${body.effectiveDate || null}, ${body.financialImpact || null}, ${body.currency || 'USD'}, ${body.requiresReSignature ?? true}, ${ctx.userId}) RETURNING *`;
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });
   } catch (error: unknown) {
@@ -61,14 +51,14 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
     const { id, status } = body;
 
-    const extras = status === 'APPROVED' ? `, approved_by = $4, approved_at = NOW()` : status === 'EXECUTED' ? `, executed_at = NOW()` : '';
-    const baseParams = [status, id, ctx.tenantId];
-    const queryParams = status === 'APPROVED' ? [...baseParams, ctx.userId] : baseParams;
-
-    const result = await prisma.$queryRawUnsafe(
-      `UPDATE amendments SET status = $1 ${extras}, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
-      ...queryParams
-    );
+    let result;
+    if (status === 'APPROVED') {
+      result = await prisma.$queryRaw`UPDATE amendments SET status = ${status}, approved_by = ${ctx.userId}, approved_at = NOW(), updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
+    } else if (status === 'EXECUTED') {
+      result = await prisma.$queryRaw`UPDATE amendments SET status = ${status}, executed_at = NOW(), updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
+    } else {
+      result = await prisma.$queryRaw`UPDATE amendments SET status = ${status}, updated_at = NOW() WHERE id = ${id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
+    }
 
     return createSuccessResponse(ctx, { amendment: (result as any[])[0] });
   } catch (error: unknown) {

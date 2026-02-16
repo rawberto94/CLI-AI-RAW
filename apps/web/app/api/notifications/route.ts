@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-import { getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse } from '@/lib/api-middleware';
 import { notificationService } from 'data-orchestration/services';
 import { notificationBuffer } from '@/lib/notifications/notification-engine';
 
@@ -25,7 +25,10 @@ export const dynamic = 'force-dynamic';
  * GET /api/notifications - Get user notifications
  */
 export async function GET(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {
@@ -83,7 +86,10 @@ export async function GET(request: NextRequest) {
  * POST /api/notifications - Create a notification
  */
 export async function POST(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {
@@ -142,7 +148,10 @@ export async function POST(request: NextRequest) {
  * PATCH /api/notifications - Mark notifications as read
  */
 export async function PATCH(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {
@@ -206,7 +215,10 @@ export async function PATCH(request: NextRequest) {
  * DELETE /api/notifications - Delete notifications
  */
 export async function DELETE(request: NextRequest) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user) {

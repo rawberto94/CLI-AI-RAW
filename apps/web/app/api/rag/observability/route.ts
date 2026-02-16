@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSemanticCache } from '@/lib/rag/semantic-cache.service';
 import { getChunkGraph } from '@/lib/rag/chunk-graph.service';
 import { prisma } from '@/lib/prisma';
+import { getAuthenticatedApiContext } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,6 +22,12 @@ export const dynamic = 'force-dynamic';
 const lastRequestByIp = new Map<string, number>();
 
 export async function GET(request: NextRequest) {
+  // Auth check (defense-in-depth)
+  const authCtx = getAuthenticatedApiContext(request);
+  if (!authCtx) {
+    return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+  }
+
   // Rate limit
   const ip = request.headers.get('x-forwarded-for') || 'unknown';
   const now = Date.now();

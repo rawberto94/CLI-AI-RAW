@@ -4,7 +4,7 @@
 
 import { NextRequest } from 'next/server';
 import { WebhookConfigType, webhookStore } from '../../route';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -20,7 +20,10 @@ async function getPrisma() {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
 
     const { id } = await params;

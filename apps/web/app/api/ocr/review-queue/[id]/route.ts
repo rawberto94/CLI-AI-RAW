@@ -8,7 +8,7 @@
 import { NextRequest } from 'next/server';
 import { auth } from '@/lib/auth';
 import { z } from 'zod';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Update schema
 const updateSchema = z.object({
@@ -37,7 +37,10 @@ export async function GET(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -73,7 +76,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     if (!session?.user?.id) {
@@ -104,7 +110,10 @@ export async function DELETE(
   request: NextRequest,
   { params }: RouteParams
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     if (!session?.user?.id) {

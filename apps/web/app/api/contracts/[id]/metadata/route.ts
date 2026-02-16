@@ -13,7 +13,7 @@ import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { getContractQueue } from "@repo/utils/queue/contract-queue";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Fields that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_FIELDS = [
@@ -92,7 +92,10 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
@@ -398,7 +401,10 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;

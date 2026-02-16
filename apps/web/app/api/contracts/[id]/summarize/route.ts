@@ -15,7 +15,7 @@
 
 import { NextRequest } from 'next/server';
 import { customContractAnalysis } from '@/lib/ai/custom-analysis';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface SummarizeRequest {
   includeRisks?: boolean;
@@ -29,7 +29,10 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
 
   try {

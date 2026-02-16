@@ -851,7 +851,7 @@ export function ComprehensiveAIAnalysis({
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {insights.map((insight, i) => (
-              <InsightCard key={i} {...insight} />
+              <InsightCard key={insight.title} {...insight} />
             ))}
           </div>
         </div>
@@ -942,7 +942,7 @@ export function ComprehensiveAIAnalysis({
                       <div className="text-xs font-medium text-amber-700 mb-1">Fields requiring review:</div>
                       <div className="flex flex-wrap gap-1">
                         {deepAnalysisResult.extractionQuality.needsHumanReview.map((field, i) => (
-                          <Badge key={i} variant="outline" className="text-[10px] border-amber-300 text-amber-600">
+                          <Badge key={field} variant="outline" className="text-[10px] border-amber-300 text-amber-600">
                             {field}
                           </Badge>
                         ))}
@@ -995,7 +995,7 @@ export function ComprehensiveAIAnalysis({
                   <div className="space-y-2">
                     {deepAnalysisResult.industryBenchmarks.comparisons.map((comp, i) => (
                       <div 
-                        key={i}
+                        key={comp.fieldName}
                         className={cn(
                           "p-2 rounded-lg border bg-white/60",
                           comp.position === 'above_market' && "border-violet-300",
@@ -1066,7 +1066,7 @@ export function ComprehensiveAIAnalysis({
                       .slice(0, 8)
                       .map((pred, i) => (
                       <div 
-                        key={i}
+                        key={pred.displayName}
                         className={cn(
                           "p-2 rounded-lg border bg-white/60",
                           pred.likelihood > 0.9 && "border-rose-300",
@@ -1125,7 +1125,7 @@ export function ComprehensiveAIAnalysis({
                     })
                     .map((field, i) => (
                     <div 
-                      key={i}
+                      key={field.displayName}
                       className={cn(
                         "p-3 rounded-lg border",
                         field.importance === 'critical' && "bg-rose-50 border-rose-200",
@@ -1386,7 +1386,7 @@ export function ComprehensiveAIAnalysis({
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {data.overview.parties.map((party: any, i: number) => (
-                      <div key={i} className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg">
+                      <div key={typeof party === 'string' ? party : `${party.name}-${party.role}`} className="flex items-center gap-2 p-3 bg-white border border-slate-200 rounded-lg">
                         <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
                           <Users className="h-4 w-4 text-violet-600" />
                         </div>
@@ -1413,7 +1413,7 @@ export function ComprehensiveAIAnalysis({
                   </h4>
                   <ul className="space-y-1">
                     {data.overview.keyTerms.slice(0, 6).map((term: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                      <li key={term} className="flex items-start gap-2 text-sm text-slate-600">
                         <CircleDot className="h-3 w-3 text-violet-500 mt-1.5 shrink-0" />
                         <span>{term}</span>
                       </li>
@@ -1480,7 +1480,7 @@ export function ComprehensiveAIAnalysis({
                   <div className="space-y-2">
                     {(data.risk.riskFactors || data.risk.factors || []).map((factor: any, i: number) => (
                       <div 
-                        key={i}
+                        key={`${factor.category || factor.type || 'risk'}-${factor.severity}-${i}`}
                         className={cn(
                           "p-3 rounded-lg border",
                           factor.severity === 'critical' && "bg-rose-50 border-rose-200",
@@ -1573,7 +1573,7 @@ export function ComprehensiveAIAnalysis({
                   <div className="space-y-2">
                     {data.compliance.issues.map((issue: any, i: number) => (
                       <div 
-                        key={i}
+                        key={issue.regulation || `compliance-${i}`}
                         className={cn(
                           "p-3 rounded-lg border flex items-start gap-3",
                           issue.status === 'non-compliant' && "bg-rose-50 border-rose-200",
@@ -1621,7 +1621,7 @@ export function ComprehensiveAIAnalysis({
             <div className="space-y-3">
               {(data.clauses.clauses || data.clauses.keyClauses || []).slice(0, 6).map((clause: any, i: number) => (
                 <div 
-                  key={i}
+                  key={clause.id || clause.title || `clause-${i}`}
                   className="p-4 bg-white border border-slate-200 rounded-lg hover:border-indigo-200 transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
@@ -1724,7 +1724,7 @@ export function ComprehensiveAIAnalysis({
                       </thead>
                       <tbody>
                         {data.financial.rateCards.slice(0, 5).map((rate: any, i: number) => (
-                          <tr key={i} className="border-b border-slate-100">
+                          <tr key={`${rate.role || rate.item}-${rate.rate}-${rate.unit || 'hr'}`} className="border-b border-slate-100">
                             <td className="px-3 py-2 text-slate-700">{rate.role || rate.item}</td>
                             <td className="px-3 py-2 text-right font-medium">${rate.rate}</td>
                             <td className="px-3 py-2 text-slate-500">{rate.unit || 'hr'}</td>
@@ -1760,7 +1760,7 @@ export function ComprehensiveAIAnalysis({
             <div className="space-y-3">
               {(data.obligations.obligations || []).slice(0, 5).map((obligation: any, i: number) => (
                 <div 
-                  key={i}
+                  key={obligation.id || obligation.title || obligation.obligation || `obligation-${i}`}
                   className={cn(
                     "p-3 rounded-lg border flex items-center gap-3",
                     obligation.status === 'overdue' && "bg-rose-50 border-rose-200",

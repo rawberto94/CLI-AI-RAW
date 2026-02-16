@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function PATCH(
   request: NextRequest,
   { params: _params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { enabled } = body;
@@ -25,7 +28,10 @@ export async function DELETE(
   request: NextRequest,
   { params: _params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     // In production, delete from database and cancel cron job
 

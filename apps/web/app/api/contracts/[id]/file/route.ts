@@ -20,7 +20,7 @@ import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import cors from '@/lib/security/cors';
 import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
 import { createConnector } from '@/lib/integrations/connectors/factory';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize S3 client for MinIO - credentials required in production
 const getS3Client = () => {
@@ -52,7 +52,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const resolvedParams = await params;
     const contractId = resolvedParams.id;

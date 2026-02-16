@@ -8,6 +8,8 @@
 import { WorkflowAutomation } from '@/components/automation';
 import { Settings as _Settings, Zap } from 'lucide-react';
 
+
+
 export default function AutomationPage() {
   return (
     <div className="container mx-auto py-8 px-4 max-w-6xl">

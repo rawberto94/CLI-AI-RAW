@@ -449,7 +449,7 @@ function MobileSidebar({
             
             {/* Navigation */}
             <TooltipProvider delayDuration={500}>
-              <nav className="p-4 space-y-2">
+              <nav className="p-4 space-y-2" aria-label="Main navigation">
                 {navigationGroups.map((group) => (
                   <NavGroupSection key={group.id} group={group} pathname={pathname} />
                 ))}
@@ -658,7 +658,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-4 px-3">
-          <nav className="space-y-1">
+          <nav className="space-y-1" aria-label="Main navigation">
             {navigationGroups.map((group) => (
               <NavGroupSection key={group.id} group={group} pathname={pathname} />
             ))}

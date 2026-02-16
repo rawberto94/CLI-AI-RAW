@@ -7,7 +7,7 @@
 
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -109,7 +109,13 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const tenantId = ctx.tenantId;
     if (!tenantId) {

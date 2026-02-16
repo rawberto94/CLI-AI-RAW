@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
@@ -20,80 +21,67 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
 
     // Detail view — fetch a single entry with full before/after data
     if (detailId) {
-      const entries = await prisma.$queryRawUnsafe(`
+      const entries = await prisma.$queryRaw`
         SELECT al.*, 
           u.name as actor_name, u.email as actor_email
         FROM audit_log al
         LEFT JOIN "User" u ON al.user_id = u.id
-        WHERE al.id = $1::uuid AND al.tenant_id = $2
+        WHERE al.id = ${detailId}::uuid AND al.tenant_id = ${ctx.tenantId}
         LIMIT 1
-      `, detailId, ctx.tenantId) as any[];
+      ` as any[];
 
       if (entries.length === 0) return createErrorResponse(ctx, 'NOT_FOUND', 'Entry not found', 404);
       return createSuccessResponse(ctx, { entry: entries[0] });
     }
 
     // Build dynamic WHERE clauses
-    const conditions: string[] = ['al.tenant_id = $1'];
-    const params: any[] = [ctx.tenantId];
-    let paramIdx = 2;
+    const conditions: Prisma.Sql[] = [Prisma.sql`al.tenant_id = ${ctx.tenantId}`];
 
     if (category && category !== 'all') {
-      conditions.push(`al.category = $${paramIdx}`);
-      params.push(category);
-      paramIdx++;
+      conditions.push(Prisma.sql`al.category = ${category}`);
     }
     if (success && success !== 'all') {
-      conditions.push(`al.success = $${paramIdx}`);
-      params.push(success === 'true');
-      paramIdx++;
+      conditions.push(Prisma.sql`al.success = ${success === 'true'}`);
     }
     if (search) {
-      conditions.push(`(al.action ILIKE $${paramIdx} OR al.resource_name ILIKE $${paramIdx})`);
-      params.push(`%${search}%`);
-      paramIdx++;
+      const pattern = `%${search}%`;
+      conditions.push(Prisma.sql`(al.action ILIKE ${pattern} OR al.resource_name ILIKE ${pattern})`);
     }
     if (startDate) {
-      conditions.push(`al.created_at >= $${paramIdx}::timestamptz`);
-      params.push(startDate);
-      paramIdx++;
+      conditions.push(Prisma.sql`al.created_at >= ${startDate}::timestamptz`);
     }
     if (endDate) {
-      conditions.push(`al.created_at <= $${paramIdx}::timestamptz`);
-      params.push(endDate);
-      paramIdx++;
+      conditions.push(Prisma.sql`al.created_at <= ${endDate}::timestamptz`);
     }
     if (userId) {
-      conditions.push(`al.user_id = $${paramIdx}`);
-      params.push(userId);
-      paramIdx++;
+      conditions.push(Prisma.sql`al.user_id = ${userId}`);
     }
 
-    const whereClause = conditions.join(' AND ');
+    const where = Prisma.join(conditions, ' AND ');
     const offset = (page - 1) * pageSize;
 
     // Count total
-    const countResult = await prisma.$queryRawUnsafe(`
-      SELECT COUNT(*)::int as total FROM audit_log al WHERE ${whereClause}
-    `, ...params) as any[];
+    const countResult = await prisma.$queryRaw`
+      SELECT COUNT(*)::int as total FROM audit_log al WHERE ${where}
+    ` as any[];
 
     // Fetch paginated logs
-    const logs = await prisma.$queryRawUnsafe(`
+    const logs = await prisma.$queryRaw`
       SELECT al.*,
         u.name as actor_name, u.email as actor_email, u.role as actor_role
       FROM audit_log al
       LEFT JOIN "User" u ON al.user_id = u.id
-      WHERE ${whereClause}
+      WHERE ${where}
       ORDER BY al.created_at DESC
       LIMIT ${pageSize} OFFSET ${offset}
-    `, ...params);
+    `;
 
     // Category breakdown
-    const categoryBreakdown = await prisma.$queryRawUnsafe(`
+    const categoryBreakdown = await prisma.$queryRaw`
       SELECT al.category, COUNT(*)::int as count
-      FROM audit_log al WHERE ${whereClause}
+      FROM audit_log al WHERE ${where}
       GROUP BY al.category ORDER BY count DESC
-    `, ...params);
+    `;
 
     return createSuccessResponse(ctx, {
       logs,

@@ -7,13 +7,16 @@
 import { NextRequest } from 'next/server';
 import { baselineManagementService } from 'data-orchestration/services';
 import { prisma } from "@/lib/prisma";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(req: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(req);
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
 
     const { rateCardId } = params;

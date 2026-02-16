@@ -15,7 +15,7 @@ import {
   type AnalysisTemplate,
   type ConversationMessage,
 } from '@/lib/ai/custom-analysis';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Custom Analysis
@@ -26,7 +26,10 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
 
   try {
@@ -111,7 +114,10 @@ export async function POST(
 // ============================================================================
 
 export async function GET() {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const templates = getAnalysisTemplates();
     

@@ -27,10 +27,7 @@ const ensureTable = async () => {
 
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
   await ensureTable();
-  const schedules = await prisma.$queryRawUnsafe(
-    `SELECT * FROM report_schedules WHERE tenant_id = $1 ORDER BY created_at DESC`,
-    ctx.tenantId
-  );
+  const schedules = await prisma.$queryRaw`SELECT * FROM report_schedules WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC`;
   return createSuccessResponse(ctx, { schedules });
 });
 
@@ -45,16 +42,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx: Authent
 
   const nextRun = calculateNextRun({ frequency: frequency || 'weekly', dayOfWeek, dayOfMonth, time: time || '09:00' });
 
-  const [schedule] = await prisma.$queryRawUnsafe(`
+  const [schedule] = await prisma.$queryRaw`
     INSERT INTO report_schedules (tenant_id, created_by, name, template_id, frequency, day_of_week, day_of_month, time_of_day, recipients, enabled, next_run)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, $11)
+    VALUES (${ctx.tenantId}, ${ctx.userId}, ${name}, ${templateId}, ${frequency || 'weekly'}, ${dayOfWeek || null}, ${dayOfMonth || null}, ${time || '09:00'}, ${JSON.stringify(recipients || [])}::jsonb, ${enabled !== false}, ${nextRun})
     RETURNING *
-  `,
-    ctx.tenantId, ctx.userId, name, templateId,
-    frequency || 'weekly', dayOfWeek || null, dayOfMonth || null,
-    time || '09:00', JSON.stringify(recipients || []),
-    enabled !== false, nextRun
-  ) as any[];
+  ` as any[];
 
   return createSuccessResponse(ctx, { schedule });
 });
@@ -65,10 +57,7 @@ export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: Authe
   if (!id) return createErrorResponse(ctx, 'MISSING_ID', 'id is required', 400);
 
   await ensureTable();
-  await prisma.$queryRawUnsafe(
-    `DELETE FROM report_schedules WHERE id = $1::uuid AND tenant_id = $2`,
-    id, ctx.tenantId
-  );
+  await prisma.$queryRaw`DELETE FROM report_schedules WHERE id = ${id}::uuid AND tenant_id = ${ctx.tenantId}`;
   return createSuccessResponse(ctx, { deleted: true });
 });
 

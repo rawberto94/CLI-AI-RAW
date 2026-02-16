@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Bulletproof constants
 const POLL_INTERVAL_MS = 1000; // Poll every 1 second
@@ -95,7 +95,10 @@ function inferProcessingStage(contractStatus: string, artifactCount: number, com
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
   
   // EventSource can't send headers, so we also check query param for tenant ID

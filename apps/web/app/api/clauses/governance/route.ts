@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { Prisma } from '@prisma/client';
 import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
@@ -10,16 +11,14 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const status = searchParams.get('status');
     const { prisma } = await import('@/lib/prisma');
 
-    const conditions = [`ca.tenant_id = $1`];
-    const params: unknown[] = [ctx.tenantId];
-    if (status) { params.push(status); conditions.push(`ca.status = $${params.length}`); }
+    const conditions: Prisma.Sql[] = [Prisma.sql`ca.tenant_id = ${ctx.tenantId}`];
+    if (status) conditions.push(Prisma.sql`ca.status = ${status}`);
+    const where = Prisma.join(conditions, ' AND ');
 
-    const items = await prisma.$queryRawUnsafe(
-      `SELECT ca.*, cl.title as clause_title, cl.category as clause_category, cl.risk_level as clause_risk
+    const items = await prisma.$queryRaw`SELECT ca.*, cl.title as clause_title, cl.category as clause_category, cl.risk_level as clause_risk
        FROM clause_approvals ca
        LEFT JOIN clause_library cl ON ca.clause_id = cl.id
-       WHERE ${conditions.join(' AND ')} ORDER BY ca.submitted_at DESC`, ...params
-    );
+       WHERE ${where} ORDER BY ca.submitted_at DESC`;
 
     return createSuccessResponse(ctx, { approvals: items });
   } catch (error: unknown) {
@@ -32,12 +31,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
 
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO clause_approvals (id, tenant_id, clause_id, status, submitted_by, version, changes_summary)
-       VALUES (gen_random_uuid()::text, $1, $2, 'PENDING', $3, $4, $5) RETURNING *`,
-      ctx.tenantId, body.clauseId, ctx.userId, body.version || 1,
-      body.changesSummary || null
-    );
+    const result = await prisma.$queryRaw`INSERT INTO clause_approvals (id, tenant_id, clause_id, status, submitted_by, version, changes_summary)
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.clauseId}, 'PENDING', ${ctx.userId}, ${body.version || 1}, ${body.changesSummary || null}) RETURNING *`;
 
     return createSuccessResponse(ctx, { approval: (result as any[])[0] });
   } catch (error: unknown) {
@@ -51,26 +46,17 @@ export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const { prisma } = await import('@/lib/prisma');
 
     if (body.action === 'approve') {
-      const result = await prisma.$queryRawUnsafe(
-        `UPDATE clause_approvals SET status = 'APPROVED', reviewed_by = $1, reviewed_at = NOW(), review_notes = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4 RETURNING *`,
-        ctx.userId, body.notes || null, body.id, ctx.tenantId
-      );
+      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'APPROVED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${body.notes || null}, updated_at = NOW() WHERE id = ${body.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
       // Also update the clause library entry
       const approval = (result as any[])[0];
       if (approval) {
-        await prisma.$queryRawUnsafe(
-          `UPDATE clause_library SET approved_by = $1, approved_at = NOW(), updated_at = NOW() WHERE id = $2`,
-          ctx.userId, approval.clause_id
-        );
+        await prisma.$queryRaw`UPDATE clause_library SET approved_by = ${ctx.userId}, approved_at = NOW(), updated_at = NOW() WHERE id = ${approval.clause_id}`;
       }
       return createSuccessResponse(ctx, { approval });
     }
 
     if (body.action === 'reject') {
-      const result = await prisma.$queryRawUnsafe(
-        `UPDATE clause_approvals SET status = 'REJECTED', reviewed_by = $1, reviewed_at = NOW(), review_notes = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4 RETURNING *`,
-        ctx.userId, body.notes || '', body.id, ctx.tenantId
-      );
+      const result = await prisma.$queryRaw`UPDATE clause_approvals SET status = 'REJECTED', reviewed_by = ${ctx.userId}, reviewed_at = NOW(), review_notes = ${body.notes || ''}, updated_at = NOW() WHERE id = ${body.id} AND tenant_id = ${ctx.tenantId} RETURNING *`;
       return createSuccessResponse(ctx, { approval: (result as any[])[0] });
     }
 

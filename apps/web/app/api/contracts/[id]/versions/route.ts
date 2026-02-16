@@ -5,7 +5,7 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import crypto from 'crypto';
 import { initializeStorage } from '@/lib/storage-service';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -79,7 +82,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -245,7 +251,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);

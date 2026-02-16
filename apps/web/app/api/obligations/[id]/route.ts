@@ -1,7 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from '@/lib/auth';
 import { aiObligationTrackerService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -12,7 +12,10 @@ interface RouteParams {
  * Get a specific obligation by ID
  */
 export async function GET(request: Request, { params }: RouteParams) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
 
@@ -59,7 +62,10 @@ export async function GET(request: Request, { params }: RouteParams) {
  * Update an obligation (status, notes, etc.)
  */
 export async function PATCH(request: Request, { params }: RouteParams) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
 
@@ -169,7 +175,10 @@ export async function PATCH(request: Request, { params }: RouteParams) {
  * Delete an obligation
  */
 export async function DELETE(request: Request, { params }: RouteParams) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
 

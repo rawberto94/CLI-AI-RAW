@@ -13,7 +13,7 @@ import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
 import { EmailService } from '@/lib/services/email.service';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Validation schema for renewal request
 const renewalRequestSchema = z.object({
@@ -36,7 +36,10 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: originalContractId } = await params;
     const tenantId = await getServerTenantId();
@@ -313,7 +316,10 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getServerTenantId();

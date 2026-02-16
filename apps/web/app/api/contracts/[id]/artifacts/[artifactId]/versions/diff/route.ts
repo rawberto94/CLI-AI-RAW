@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/artifacts/[artifactId]/versions/diff?v1=1&v2=2
@@ -17,7 +17,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const v1 = parseInt(searchParams.get('v1') || '', 10);

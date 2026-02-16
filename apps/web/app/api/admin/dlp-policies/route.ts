@@ -7,9 +7,7 @@ export const dynamic = 'force-dynamic';
 export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   try {
     const { prisma } = await import('@/lib/prisma');
-    const policies = await prisma.$queryRawUnsafe(
-      `SELECT * FROM dlp_policies WHERE tenant_id = $1 ORDER BY created_at DESC`, ctx.tenantId
-    );
+    const policies = await prisma.$queryRaw`SELECT * FROM dlp_policies WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC`;
     return createSuccessResponse(ctx, { policies });
   } catch (error: unknown) {
     return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch DLP policies. Please try again.', 500);
@@ -21,14 +19,8 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
 
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO dlp_policies (id, tenant_id, name, description, policy_type, rules, actions, applies_to_roles, is_active, created_by)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
-      ctx.tenantId, body.name, body.description || null, body.policyType || 'DOWNLOAD_RESTRICTION',
-      JSON.stringify(body.rules || []),
-      JSON.stringify(body.actions || { block: false, alert: true, log: true }),
-      JSON.stringify(body.appliesToRoles || []), body.isActive ?? true, ctx.userId
-    );
+    const result = await prisma.$queryRaw`INSERT INTO dlp_policies (id, tenant_id, name, description, policy_type, rules, actions, applies_to_roles, is_active, created_by)
+       VALUES (gen_random_uuid()::text, ${ctx.tenantId}, ${body.name}, ${body.description || null}, ${body.policyType || 'DOWNLOAD_RESTRICTION'}, ${JSON.stringify(body.rules || [])}, ${JSON.stringify(body.actions || { block: false, alert: true, log: true })}, ${JSON.stringify(body.appliesToRoles || [])}, ${body.isActive ?? true}, ${ctx.userId}) RETURNING *`;
 
     return createSuccessResponse(ctx, { policy: (result as any[])[0] });
   } catch (error: unknown) {

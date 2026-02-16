@@ -4,7 +4,7 @@ import { chunkText as _chunkText, embedChunks as _embedChunks } from "clients-ra
 import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // aiArtifactGeneratorService is already an instance via getInstance()
 const aiArtifactGenerator = aiArtifactGeneratorService;
@@ -20,7 +20,10 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;
@@ -158,7 +161,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const artifactId = params.artifactId;
 

@@ -15,13 +15,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerTenantId } from '@/lib/tenant-server'
 import { validateContractIntegrity, formatIntegrityReport } from '@/lib/validation/contract-integrity'
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params
   try {
     const contractId = params.id

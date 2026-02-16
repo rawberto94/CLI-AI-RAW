@@ -9,13 +9,16 @@ import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 import { prisma } from "@/lib/prisma";
 import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
-import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const ctx = getApiContext(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params?.id;

@@ -28,11 +28,11 @@ export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
       )
     `);
 
-    const searches = await prisma.$queryRawUnsafe(`
+    const searches = await prisma.$queryRaw`
       SELECT * FROM saved_searches 
-      WHERE tenant_id = $1 AND user_id = $2
+      WHERE tenant_id = ${ctx.tenantId} AND user_id = ${ctx.userId}
       ORDER BY is_pinned DESC, updated_at DESC
-    `, ctx.tenantId, ctx.userId);
+    `;
 
     return createSuccessResponse(ctx, { searches });
   } catch (error: unknown) {
@@ -45,21 +45,11 @@ export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
     const body = await request.json();
     const { prisma } = await import('@/lib/prisma');
 
-    const saved = await prisma.$queryRawUnsafe(`
+    const saved = await prisma.$queryRaw`
       INSERT INTO saved_searches (tenant_id, user_id, name, query, filters, alert_enabled, alert_frequency, alert_channels, is_pinned)
-      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, $8::jsonb, $9)
+      VALUES (${ctx.tenantId}, ${ctx.userId}, ${body.name || 'Untitled Search'}, ${body.query || ''}, ${JSON.stringify(body.filters || {})}::jsonb, ${body.alertEnabled || false}, ${body.alertFrequency || 'daily'}, ${JSON.stringify(body.alertChannels || ['in_app'])}::jsonb, ${body.isPinned || false})
       RETURNING *
-    `,
-      ctx.tenantId,
-      ctx.userId,
-      body.name || 'Untitled Search',
-      body.query || '',
-      JSON.stringify(body.filters || {}),
-      body.alertEnabled || false,
-      body.alertFrequency || 'daily',
-      JSON.stringify(body.alertChannels || ['in_app']),
-      body.isPinned || false
-    );
+    `;
 
     return createSuccessResponse(ctx, { search: (saved as any[])[0] });
   } catch (error: unknown) {
