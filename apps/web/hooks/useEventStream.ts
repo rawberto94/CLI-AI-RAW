@@ -100,7 +100,7 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
       if (tenantId) params.set('tenantId', tenantId);
       if (userId) params.set('userId', userId);
 
-      const url = `/api/events/stream?${params.toString()}`;
+      const url = `/api/events?${params.toString()}`;
       const es = new EventSource(url);
       eventSourceRef.current = es;
 
@@ -131,7 +131,6 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
         const err = new Error('SSE connection error');
         setError(err);
         setIsConnected(false);
-        onErrorRef.current?.(err);
         onDisconnectRef.current?.();
 
         es.close();
@@ -144,12 +143,16 @@ export function useEventStream(options: UseEventStreamOptions = {}): UseEventStr
           reconnectAttemptsRef.current < maxReconnectAttempts
         ) {
           reconnectAttemptsRef.current += 1;
+          onErrorRef.current?.(err);
           reconnectTimerRef.current = setTimeout(() => {
             if (shouldConnectRef.current) {
               connect();
             }
           }, reconnectInterval * Math.min(reconnectAttemptsRef.current, 3));
         }
+        // When autoReconnect is disabled, don't fire onError to avoid
+        // incrementing connectionAttempts in the provider (which causes
+        // the "Reconnecting..." UI even though nothing is reconnecting).
       };
     } catch (e) {
       const err = e instanceof Error ? e : new Error('Failed to connect to event stream');

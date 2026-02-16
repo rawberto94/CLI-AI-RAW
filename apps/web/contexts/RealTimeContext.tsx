@@ -179,16 +179,9 @@ export function RealTimeProvider({
     }
   }, [dispatchRealTimeEvent, normalizeEventTypes, subscribers]);
 
-  // Handle connection errors
-  const handleError = useCallback((error: Error) => {
-    // Only log errors in development, don't show toasts for optional SSE feature
-    if (process.env.NODE_ENV === 'development') {
-      // SSE connection error - optional feature
-    }
+  // Handle connection errors — only called when autoReconnect is active
+  const handleError = useCallback((_error: Error) => {
     setConnectionAttempts(prev => prev + 1);
-    
-    // Don't show toast notifications for SSE errors since it's an optional feature
-    // The app works perfectly without real-time updates
   }, []);
 
   // Handle successful connection
