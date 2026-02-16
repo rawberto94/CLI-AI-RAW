@@ -102,10 +102,11 @@ services:
       MINIO_USE_SSL: "false"
       AUTH_SECRET: ${AUTH_SECRET:-change-me-in-production}
       AUTH_TRUST_HOST: "true"
-      NEXTAUTH_URL: ${NEXTAUTH_URL:-http://20.199.168.182:3000}
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://mycontigo.app}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
+      - "80:3000"
       - "3000:3000"
     depends_on:
       postgres:
