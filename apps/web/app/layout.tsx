@@ -93,7 +93,7 @@ export default function RootLayout({
                                 <CommandPaletteProvider>
                                   <ConfirmProvider>
                                     <AnnouncerProvider>
-                                    <WelcomeTourProvider autoShowForNewUsers={true}>
+                                    <WelcomeTourProvider autoShowForNewUsers={false}>
                                     <GlobalKeyboardShortcuts>
                                     <GlobalKeyboardShortcutsProvider>
                                     <Suspense fallback={null}>
