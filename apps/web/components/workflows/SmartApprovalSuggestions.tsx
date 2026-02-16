@@ -430,12 +430,12 @@ export function SmartSuggestionWidget({
   const topFactors = suggestion.factors.slice(0, 3);
 
   return (
-    <Card className={cn('border-2 border-purple-200 dark:border-purple-800', className)} role="region" aria-label="AI Suggestion">
+    <Card className={cn('border-2 border-violet-200 dark:border-violet-800', className)} role="region" aria-label="AI Suggestion">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-md bg-purple-100 dark:bg-purple-900/50" aria-hidden="true">
-              <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+            <div className="p-1.5 rounded-md bg-violet-100 dark:bg-violet-900/50" aria-hidden="true">
+              <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" />
             </div>
             <CardTitle className="text-sm">AI Suggestion</CardTitle>
           </div>
@@ -556,11 +556,11 @@ export function SmartSuggestionPanel({
   return (
     <Card className={cn('overflow-hidden', className)}>
       {/* Header */}
-      <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border-b">
+      <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20 border-b">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/50">
-              <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+            <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/50">
+              <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
               <CardTitle className="text-lg">AI Decision Assistant</CardTitle>
@@ -617,7 +617,7 @@ export function SmartSuggestionPanel({
                 <div className="text-xs text-muted-foreground">Rejected</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="text-2xl font-bold text-violet-600 dark:text-violet-400">
                   {Math.round((suggestion.similarContracts.approved / suggestion.similarContracts.total) * 100)}%
                 </div>
                 <div className="text-xs text-muted-foreground">Approval Rate</div>
@@ -660,15 +660,15 @@ export function SmartSuggestionPanel({
 
         {/* Recommended Actions */}
         {suggestion.recommendedActions && suggestion.recommendedActions.length > 0 && (
-          <div className="p-4 border-t bg-blue-50/50 dark:bg-blue-900/10">
+          <div className="p-4 border-t bg-violet-50/50 dark:bg-violet-900/10">
             <div className="flex items-center gap-2 mb-3">
-              <Lightbulb size={16} className="text-blue-600 dark:text-blue-400" />
+              <Lightbulb size={16} className="text-violet-600 dark:text-violet-400" />
               <span className="font-medium text-sm">Recommended Actions</span>
             </div>
             <ul className="space-y-2">
               {suggestion.recommendedActions.map((action, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm">
-                  <CheckCircle2 size={14} className="text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                  <CheckCircle2 size={14} className="text-violet-600 dark:text-violet-400 mt-0.5 flex-shrink-0" />
                   <span className="text-muted-foreground">{action}</span>
                 </li>
               ))}

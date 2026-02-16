@@ -3,12 +3,12 @@
  * Analytics and metrics for AI extraction quality monitoring
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Dynamic import to avoid build-time resolution issues
 async function getQualityDashboardService() {
-  const services = await import('@repo/data-orchestration/services');
+  const services = await import('data-orchestration/services');
   return (services as any).extractionQualityDashboardService;
 }
 
@@ -16,14 +16,8 @@ async function getQualityDashboardService() {
  * GET /api/ai/quality
  * Retrieve quality dashboard data
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get('period') as any) || 'week';
     const format = searchParams.get('format');
@@ -36,39 +30,23 @@ export async function GET(request: NextRequest) {
       return new Response(csv, {
         headers: {
           'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="quality-report-${period}.csv"`,
-        },
-      });
+          'Content-Disposition': `attachment; filename="quality-report-${period}.csv"` } });
     }
 
     // Get full dashboard
     const dashboard = qualityService.getDashboard(tenantId, period);
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       dashboard,
-      generatedAt: new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to retrieve quality dashboard' },
-      { status: 500 }
-    );
-  }
-}
+      generatedAt: new Date().toISOString() });
+  });
 
 /**
  * POST /api/ai/quality
  * Record extraction results and analyze quality
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action, ...data } = body;
 
@@ -88,10 +66,7 @@ export async function POST(request: NextRequest) {
       } = data;
 
       if (!extractionId || !contractId || !model || !fields) {
-        return NextResponse.json(
-          { error: 'extractionId, contractId, model, and fields are required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'extractionId, contractId, model, and fields are required', 400);
       }
 
       qualityService.recordExtraction(tenantId, {
@@ -102,21 +77,17 @@ export async function POST(request: NextRequest) {
         overallConfidence,
         durationMs,
         success,
-        errorType,
-      });
+        errorType });
 
       // Get immediate quality assessment
       const dashboard = qualityService.getDashboard(tenantId, 'day');
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'Extraction recorded',
         currentQuality: {
           overallScore: dashboard.overallScore,
           grade: dashboard.overallScore.grade,
-          activeAlerts: dashboard.alerts.filter((a: any) => !a.resolved).length,
-        },
-      });
+          activeAlerts: dashboard.alerts.filter((a: any) => !a.resolved).length } });
     }
 
     // Record correction (human feedback)
@@ -124,18 +95,13 @@ export async function POST(request: NextRequest) {
       const { extractionId, fieldName, originalValue, correctedValue } = data;
 
       if (!extractionId || !fieldName) {
-        return NextResponse.json(
-          { error: 'extractionId and fieldName are required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'extractionId and fieldName are required', 400);
       }
 
       qualityService.recordCorrection(tenantId, extractionId, fieldName, originalValue, correctedValue);
 
-      return NextResponse.json({
-        success: true,
-        message: 'Correction recorded',
-      });
+      return createSuccessResponse(ctx, {
+        message: 'Correction recorded' });
     }
 
     // Get field-specific analytics
@@ -143,19 +109,14 @@ export async function POST(request: NextRequest) {
       const { fieldName, period = 'week' } = data;
 
       if (!fieldName) {
-        return NextResponse.json(
-          { error: 'fieldName is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'fieldName is required', 400);
       }
 
       const analytics = qualityService.getFieldAnalytics(tenantId, fieldName, period);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         fieldName,
-        analytics,
-      });
+        analytics });
     }
 
     // Get model comparison
@@ -163,11 +124,9 @@ export async function POST(request: NextRequest) {
       const { period = 'week' } = data;
       const dashboard = qualityService.getDashboard(tenantId, period);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         modelPerformance: dashboard.modelPerformance,
-        period,
-      });
+        period });
     }
 
     // Get alerts
@@ -179,11 +138,9 @@ export async function POST(request: NextRequest) {
         ? dashboard.alerts 
         : dashboard.alerts.filter((a: any) => !a.resolved);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         alerts,
-        totalCount: alerts.length,
-      });
+        totalCount: alerts.length });
     }
 
     // Resolve an alert
@@ -191,18 +148,13 @@ export async function POST(request: NextRequest) {
       const { alertId } = data;
 
       if (!alertId) {
-        return NextResponse.json(
-          { error: 'alertId is required' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'alertId is required', 400);
       }
 
       qualityService.resolveAlert(alertId);
 
-      return NextResponse.json({
-        success: true,
-        message: 'Alert resolved',
-      });
+      return createSuccessResponse(ctx, {
+        message: 'Alert resolved' });
     }
 
     // Get trends
@@ -210,21 +162,10 @@ export async function POST(request: NextRequest) {
       const { period = 'week' } = data;
       const dashboard = qualityService.getDashboard(tenantId, period);
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         trends: dashboard.trends,
-        period,
-      });
+        period });
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action. Use: record, correction, fieldAnalytics, modelComparison, alerts, resolveAlert, or trends' },
-      { status: 400 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to process quality request' },
-      { status: 500 }
-    );
-  }
-}
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: record, correction, fieldAnalytics, modelComparison, alerts, resolveAlert, or trends', 400);
+  });

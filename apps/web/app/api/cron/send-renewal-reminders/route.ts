@@ -15,15 +15,13 @@
  * - 1 day before: Day before expiry
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import { EmailService } from '@/lib/services/email.service';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
-
-// Cron authentication
-const CRON_SECRET = process.env.CRON_SECRET;
 
 // Reminder thresholds in days
 const REMINDER_THRESHOLDS = [90, 60, 30, 14, 7, 3, 1];
@@ -37,19 +35,9 @@ interface ReminderResult {
   error?: string;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withCronHandler(async (request, ctx) => {
   const startTime = Date.now();
   
-  try {
-    // Verify authorization
-    const authHeader = request.headers.get('authorization');
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
     const body = await request.json().catch(() => ({}));
     const tenantId = body.tenantId as string | undefined;
     const dryRun = body.dryRun === true;
@@ -223,8 +211,7 @@ export async function POST(request: NextRequest) {
       dryRun,
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: `Processed ${results.length} renewal reminders`,
       summary: {
         totalContracts: expiringContracts.length,
@@ -237,20 +224,10 @@ export async function POST(request: NextRequest) {
       results,
       timestamp: new Date().toISOString(),
     });
-  } catch (error) {
-    logger.error('[CRON] Renewal reminder job failed', { error });
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to process renewal reminders',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // GET for manual testing
-export async function GET(request: NextRequest) {
+export const GET = withCronHandler(async (request, ctx) => {
   const { searchParams } = new URL(request.url);
   const dryRun = searchParams.get('dryRun') !== 'false';
   
@@ -262,4 +239,4 @@ export async function GET(request: NextRequest) {
   });
   
   return POST(mockRequest);
-}
+});

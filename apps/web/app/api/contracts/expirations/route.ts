@@ -6,14 +6,17 @@
  * Uses the ContractExpiration table for fast querying of expiration data
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
+// TODO: Migrate $queryRaw/$executeRaw calls to contractService when raw query support is added
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-interface ExpirationFilters {
+interface _ExpirationFilters {
   risk?: string;
   status?: string;
   isExpired?: boolean;
@@ -22,7 +25,7 @@ interface ExpirationFilters {
   assignedTo?: string;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -176,9 +179,7 @@ export async function GET(request: NextRequest) {
       updatedAt: exp.updated_at?.toISOString(),
     }));
 
-    return NextResponse.json({
-      success: true,
-      data: {
+    return createSuccessResponse(ctx, {
         expirations: data,
         stats: {
           total: Number(s.total || 0),
@@ -202,108 +203,80 @@ export async function GET(request: NextRequest) {
           offset,
           hasMore: data.length === limit,
         },
-      },
-      meta: {
-        source: 'database',
-        tenantId,
-        timestamp: new Date().toISOString(),
-        responseTime: `${Date.now() - startTime}ms`,
-      },
-    });
+      }, { dataSource: 'database' });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch expirations', details: String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch expirations', 500, { details: String(error) });
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const { action, contractId, data } = body;
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = await getServerTenantId();
+  const body = await request.json();
+  const { action, contractId, data } = body;
 
-    if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
-    }
-
-    const now = new Date();
-
-    switch (action) {
-      case 'assign':
-        await prisma.$executeRaw`
-          UPDATE contract_expirations 
-          SET assigned_to = ${data.assignedTo}, assigned_at = ${now}, updated_at = ${now}
-          WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-        `;
-        return NextResponse.json({
-          success: true,
-          message: 'Expiration assigned',
-          data: { contractId, assignedTo: data.assignedTo, assignedAt: now.toISOString() },
-        });
-
-      case 'give-notice':
-        await prisma.$executeRaw`
-          UPDATE contract_expirations 
-          SET notice_given = true, notice_given_at = ${now}, notice_given_by = ${data.userId || 'system'}, updated_at = ${now}
-          WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-        `;
-        return NextResponse.json({
-          success: true,
-          message: 'Notice recorded',
-          data: { contractId, noticeGiven: true, noticeGivenAt: now.toISOString() },
-        });
-
-      case 'update-status':
-        await prisma.$executeRaw`
-          UPDATE contract_expirations 
-          SET renewal_status = ${data.status}, updated_at = ${now}
-          WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-        `;
-        return NextResponse.json({
-          success: true,
-          message: 'Renewal status updated',
-          data: { contractId, renewalStatus: data.status },
-        });
-
-      case 'resolve':
-        await prisma.$executeRaw`
-          UPDATE contract_expirations 
-          SET resolution = ${data.resolution}, resolution_date = ${now}, resolution_by = ${data.userId || 'system'},
-              resolution_notes = ${data.notes || null}, new_contract_id = ${data.newContractId || null}, updated_at = ${now}
-          WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-        `;
-        return NextResponse.json({
-          success: true,
-          message: 'Expiration resolved',
-          data: { contractId, resolution: data.resolution, resolvedAt: now.toISOString() },
-        });
-
-      case 'toggle-alerts':
-        await prisma.$executeRaw`
-          UPDATE contract_expirations 
-          SET alerts_enabled = NOT alerts_enabled, updated_at = ${now}
-          WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-        `;
-        return NextResponse.json({
-          success: true,
-          message: 'Alert preference toggled',
-        });
-
-      default:
-        return NextResponse.json(
-          { success: false, error: 'Invalid action' },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to process action', details: String(error) },
-      { status: 500 }
-    );
+  if (!contractId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID is required', 400);
   }
-}
+
+  const now = new Date();
+
+  switch (action) {
+    case 'assign':
+      await prisma.$executeRaw`
+        UPDATE contract_expirations 
+        SET assigned_to = ${data.assignedTo}, assigned_at = ${now}, updated_at = ${now}
+        WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+      `;
+      return createSuccessResponse(ctx, {
+        message: 'Expiration assigned',
+        contractId, assignedTo: data.assignedTo, assignedAt: now.toISOString(),
+      });
+
+    case 'give-notice':
+      await prisma.$executeRaw`
+        UPDATE contract_expirations 
+        SET notice_given = true, notice_given_at = ${now}, notice_given_by = ${data.userId || 'system'}, updated_at = ${now}
+        WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+      `;
+      return createSuccessResponse(ctx, {
+        message: 'Notice recorded',
+        contractId, noticeGiven: true, noticeGivenAt: now.toISOString(),
+      });
+
+    case 'update-status':
+      await prisma.$executeRaw`
+        UPDATE contract_expirations 
+        SET renewal_status = ${data.status}, updated_at = ${now}
+        WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+      `;
+      return createSuccessResponse(ctx, {
+        message: 'Renewal status updated',
+        contractId, renewalStatus: data.status,
+      });
+
+    case 'resolve':
+      await prisma.$executeRaw`
+        UPDATE contract_expirations 
+        SET resolution = ${data.resolution}, resolution_date = ${now}, resolution_by = ${data.userId || 'system'},
+            resolution_notes = ${data.notes || null}, new_contract_id = ${data.newContractId || null}, updated_at = ${now}
+        WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+      `;
+      return createSuccessResponse(ctx, {
+        message: 'Expiration resolved',
+        contractId, resolution: data.resolution, resolvedAt: now.toISOString(),
+      });
+
+    case 'toggle-alerts':
+      await prisma.$executeRaw`
+        UPDATE contract_expirations 
+        SET alerts_enabled = NOT alerts_enabled, updated_at = ${now}
+        WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+      `;
+      return createSuccessResponse(ctx, {
+        message: 'Alert preference toggled',
+      });
+
+    default:
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
+  }
+});

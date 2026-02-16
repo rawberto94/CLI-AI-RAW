@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { withAuthApiHandler, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 interface ExportRequest {
   type: "supplier" | "rate-card" | "contract" | "performance" | "financial";
@@ -9,45 +10,40 @@ interface ExportRequest {
 }
 
 // Mock implementation - in production, use libraries like jsPDF or xlsx
-export async function POST(request: NextRequest) {
-  try {
-    const body: ExportRequest = await request.json();
-    const { type, fields, format, filters = {} } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body: ExportRequest = await request.json();
+  const { type, fields, format, filters = {} } = body;
 
-    // Generate data
-    let data: any[] = [];
-    switch (type) {
-      case "supplier":
-        data = await generateSupplierData(fields, filters);
-        break;
-      case "rate-card":
-        data = await generateRateCardData(fields, filters);
-        break;
-      case "contract":
-        data = await generateContractData(fields, filters);
-        break;
-      case "performance":
-        data = await generatePerformanceData(fields, filters);
-        break;
-      case "financial":
-        data = await generateFinancialData(fields, filters);
-        break;
-    }
-
-    if (format === "excel") {
-      return exportToExcel(data, fields);
-    } else {
-      return exportToPDF(data, fields);
-    }
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to export report" },
-      { status: 500 }
-    );
+  // Generate data
+  let data: any[] = [];
+  switch (type) {
+    case "supplier":
+      data = await generateSupplierData(fields, filters);
+      break;
+    case "rate-card":
+      data = await generateRateCardData(fields, filters);
+      break;
+    case "contract":
+      data = await generateContractData(fields, filters);
+      break;
+    case "performance":
+      data = await generatePerformanceData(fields, filters);
+      break;
+    case "financial":
+      data = await generateFinancialData(fields, filters);
+      break;
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid export type', 400);
   }
-}
 
-async function generateSupplierData(fields: string[], filters: any) {
+  if (format === "excel") {
+    return exportToExcel(data, fields);
+  } else {
+    return exportToPDF(data, fields);
+  }
+});
+
+async function generateSupplierData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany({
     include: {
       rateCards: true,
@@ -63,7 +59,7 @@ async function generateSupplierData(fields: string[], filters: any) {
   }));
 }
 
-async function generateRateCardData(fields: string[], filters: any) {
+async function generateRateCardData(_fields: string[], _filters: any) {
   const rateCards = await db.rateCardEntry.findMany({
     include: { supplier: true },
   });
@@ -76,7 +72,7 @@ async function generateRateCardData(fields: string[], filters: any) {
   }));
 }
 
-async function generateContractData(fields: string[], filters: any) {
+async function generateContractData(_fields: string[], _filters: any) {
   const contracts = await db.contract.findMany({
     include: { supplier: true },
   });
@@ -91,7 +87,7 @@ async function generateContractData(fields: string[], filters: any) {
   }));
 }
 
-async function generatePerformanceData(fields: string[], filters: any) {
+async function generatePerformanceData(_fields: string[], _filters: any) {
   const suppliers = await db.rateCardSupplier.findMany();
 
   return suppliers.map((s) => ({
@@ -103,7 +99,7 @@ async function generatePerformanceData(fields: string[], filters: any) {
   }));
 }
 
-async function generateFinancialData(fields: string[], filters: any) {
+async function generateFinancialData(_fields: string[], _filters: any) {
   const contracts = await db.contract.findMany();
 
   const monthlyData = new Map<string, any>();
@@ -122,7 +118,7 @@ async function generateFinancialData(fields: string[], filters: any) {
   return Array.from(monthlyData.values());
 }
 
-function exportToExcel(data: any[], fields: string[]) {
+function exportToExcel(data: any[], _fields: string[]) {
   // Mock CSV export (use xlsx library in production)
   const headers = Object.keys(data[0] || {}).join(",");
   const rows = data.map((row) => Object.values(row).join(",")).join("\n");
@@ -136,7 +132,7 @@ function exportToExcel(data: any[], fields: string[]) {
   });
 }
 
-function exportToPDF(data: any[], fields: string[]) {
+function exportToPDF(data: any[], _fields: string[]) {
   // Mock PDF export (use jsPDF or react-pdf in production)
   const pdfContent = `
     REPORT EXPORT

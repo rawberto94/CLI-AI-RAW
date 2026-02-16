@@ -26,9 +26,17 @@ import {
   Calendar, Users, MapPin, Clock, TrendingUp, AlertCircle,
   Scale, Award, Target, Sparkles, Copy, Check, Download,
   BarChart3, PieChart, TrendingDown, Zap, Brain, Eye,
-  ChevronDown, ChevronUp, ExternalLink, Info
+  ChevronDown, ChevronUp, ExternalLink, Info, List, Briefcase,
+  Package, Hash
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  ObligationsArtifact,
+  RenewalArtifact,
+  NegotiationPointsArtifact,
+  AmendmentsArtifact,
+  ContactsArtifact,
+} from '@/components/artifacts/ArtifactCards';
 
 interface EnhancedArtifactViewerProps {
   type: string;
@@ -116,10 +124,10 @@ export function EnhancedArtifactViewer({
       {/* Hero Summary Card with Gradient */}
       <motion.div variants={itemVariants}>
         <Card className="relative overflow-hidden border-0 shadow-lg">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 opacity-10" />
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 opacity-10" />
           <CardContent className="relative pt-6">
             <div className="flex items-start gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-md">
+              <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                 <FileText className="h-8 w-8 text-white" />
               </div>
               <div className="flex-1">
@@ -145,8 +153,8 @@ export function EnhancedArtifactViewer({
                     </div>
                   )}
                   <div className="flex items-center gap-1">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    <span className="font-medium text-purple-600">AI-Powered Analysis</span>
+                    <Sparkles className="h-4 w-4 text-violet-600" />
+                    <span className="font-medium text-violet-600">AI-Powered Analysis</span>
                   </div>
                 </div>
               </div>
@@ -169,10 +177,10 @@ export function EnhancedArtifactViewer({
       <div className="grid md:grid-cols-2 gap-6">
         {/* Contract Details with Icon */}
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-blue-200 hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-3 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <Card className="h-full border-violet-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-purple-50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Calendar className="h-4 w-4 text-white" />
                 </div>
                 Contract Details
@@ -186,9 +194,9 @@ export function EnhancedArtifactViewer({
                 { label: 'Duration', value: data.duration, icon: TrendingUp },
                 { label: 'Jurisdiction', value: data.jurisdiction || data.governingLaw, icon: Scale },
               ].filter(item => item.value).map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-blue-50 transition-colors">
+                <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-violet-50 transition-colors">
                   <span className="flex items-center gap-2 text-gray-600">
-                    <item.icon className="h-4 w-4 text-blue-600" />
+                    <item.icon className="h-4 w-4 text-violet-600" />
                     {item.label}:
                   </span>
                   <span className="font-semibold text-gray-900">{item.value}</span>
@@ -200,10 +208,10 @@ export function EnhancedArtifactViewer({
 
         {/* Parties with Elegant Design */}
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-purple-200 hover:shadow-lg transition-shadow duration-300">
-            <CardHeader className="pb-3 bg-gradient-to-r from-purple-50 to-pink-50">
+          <Card className="h-full border-violet-200 hover:shadow-lg transition-shadow duration-300">
+            <CardHeader className="pb-3 bg-gradient-to-r from-violet-50 to-pink-50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 bg-purple-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Users className="h-4 w-4 text-white" />
                 </div>
                 Parties Involved
@@ -221,8 +229,8 @@ export function EnhancedArtifactViewer({
                   transition={{ delay: idx * 0.1 }}
                   className="relative overflow-hidden"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-100 to-pink-100 opacity-50 rounded-lg" />
-                  <div className="relative p-4 border border-purple-200 rounded-lg backdrop-blur-sm">
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-100 to-pink-100 opacity-50 rounded-lg" />
+                  <div className="relative p-4 border border-violet-200 rounded-lg backdrop-blur-sm">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1">
                         <h4 className="font-bold text-gray-900 text-lg">
@@ -247,7 +255,7 @@ export function EnhancedArtifactViewer({
                       </div>
                     )}
                     {party.obligations && (
-                      <div className="mt-3 pt-3 border-t border-purple-200">
+                      <div className="mt-3 pt-3 border-t border-violet-200">
                         <p className="text-sm text-gray-700">{party.obligations}</p>
                       </div>
                     )}
@@ -264,7 +272,7 @@ export function EnhancedArtifactViewer({
         <motion.div variants={itemVariants}>
           <Card className="border-green-200 hover:shadow-lg transition-shadow duration-300">
             <CardHeader 
-              className="cursor-pointer bg-gradient-to-r from-green-50 to-emerald-50"
+              className="cursor-pointer bg-gradient-to-r from-violet-50 to-violet-50"
               onClick={() => toggleSection('keyTerms')}
             >
               <div className="flex items-center justify-between">
@@ -286,7 +294,7 @@ export function EnhancedArtifactViewer({
             </CardHeader>
             <AnimatePresence>
               {expandedSections.has('keyTerms') && (
-                <motion.div
+                <motion.div key="EnhancedArtifactViewer-ap-1"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
@@ -302,7 +310,7 @@ export function EnhancedArtifactViewer({
                           transition={{ delay: idx * 0.05 }}
                           className="flex items-start gap-3 p-3 bg-green-50 rounded-lg border border-green-200 hover:border-green-400 transition-colors"
                         >
-                          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-green-500 to-emerald-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">
+                          <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-br from-violet-500 to-violet-600 text-white rounded-full flex items-center justify-center font-bold shadow-md">
                             {idx + 1}
                           </div>
                           <p className="text-gray-700 pt-1 flex-1">{term}</p>
@@ -346,7 +354,7 @@ export function EnhancedArtifactViewer({
       {/* Hero Total Value */}
       <motion.div variants={itemVariants}>
         <Card className="relative overflow-hidden border-0 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600 opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-400 via-green-500 to-violet-600 opacity-90" />
           <div className="absolute inset-0">
             <div className="absolute top-0 left-0 w-64 h-64 bg-white opacity-10 rounded-full -translate-x-1/2 -translate-y-1/2" />
             <div className="absolute bottom-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full translate-x-1/3 translate-y-1/3" />
@@ -396,11 +404,11 @@ export function EnhancedArtifactViewer({
       {/* Payment Schedule */}
       {data.paymentSchedule && data.paymentSchedule.length > 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="border-blue-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+          <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <div className="p-2 bg-blue-500 rounded-lg">
+                  <div className="p-2 bg-violet-500 rounded-lg">
                     <Calendar className="h-4 w-4 text-white" />
                   </div>
                   Payment Schedule
@@ -431,11 +439,11 @@ export function EnhancedArtifactViewer({
                     transition={{ delay: idx * 0.1 }}
                     className="relative overflow-hidden"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-100 to-cyan-100 rounded-lg" />
-                    <div className="relative flex items-center justify-between p-5 border border-blue-200 rounded-lg backdrop-blur-sm hover:border-blue-400 transition-colors">
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-100 to-purple-100 rounded-lg" />
+                    <div className="relative flex items-center justify-between p-5 border border-violet-200 rounded-lg backdrop-blur-sm hover:border-violet-400 transition-colors">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
-                          <div className="w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
+                          <div className="w-8 h-8 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold text-sm">
                             {idx + 1}
                           </div>
                           <h4 className="font-semibold text-gray-900">{payment.milestone}</h4>
@@ -465,12 +473,12 @@ export function EnhancedArtifactViewer({
       {/* Rate Cards - Premium Design */}
       {data.rateCards && data.rateCards.length > 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="border-purple-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-purple-50 via-pink-50 to-rose-50">
+          <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-violet-50 via-pink-50 to-rose-50">
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg shadow-md">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-600 rounded-lg shadow-md">
                       <Award className="h-4 w-4 text-white" />
                     </div>
                     Professional Services Rate Cards
@@ -490,14 +498,14 @@ export function EnhancedArtifactViewer({
                     initial={{ scale: 0.95, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: idx * 0.1 }}
-                    className="group relative overflow-hidden rounded-xl border-2 border-purple-200 hover:border-purple-400 transition-all duration-300 hover:shadow-lg"
+                    className="group relative overflow-hidden rounded-xl border-2 border-violet-200 hover:border-violet-400 transition-all duration-300 hover:shadow-lg"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-50 via-pink-50 to-rose-50 opacity-50" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-violet-50 via-pink-50 to-rose-50 opacity-50" />
                     <div className="relative p-5">
                       <div className="flex items-start justify-between mb-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
-                            <div className="p-2 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg shadow-md">
+                            <div className="p-2 bg-gradient-to-br from-violet-600 to-pink-600 rounded-lg shadow-md">
                               <Users className="h-4 w-4 text-white" />
                             </div>
                             <h4 className="text-xl font-bold text-gray-900">{rate.role}</h4>
@@ -522,7 +530,7 @@ export function EnhancedArtifactViewer({
                           )}
                         </div>
                         <div className="text-right">
-                          <div className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                          <div className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                             ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
                           </div>
                           <div className="text-sm text-gray-600 font-medium mt-1">
@@ -532,9 +540,9 @@ export function EnhancedArtifactViewer({
                       </div>
                       
                       {rate.skills && rate.skills.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-3 border-t border-purple-200">
+                        <div className="flex flex-wrap gap-2 pt-3 border-t border-violet-200">
                           {rate.skills.slice(0, 6).map((skill: string, skillIdx: number) => (
-                            <Badge key={skillIdx} variant="outline" className="text-xs bg-white hover:bg-purple-50 transition-colors">
+                            <Badge key={skillIdx} variant="outline" className="text-xs bg-white hover:bg-violet-50 transition-colors">
                               {skill}
                             </Badge>
                           ))}
@@ -554,10 +562,10 @@ export function EnhancedArtifactViewer({
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border-2 border-blue-200"
+                className="mt-6 p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border-2 border-violet-200"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-500 rounded-lg">
+                  <div className="p-2 bg-violet-500 rounded-lg">
                     <Info className="h-4 w-4 text-white" />
                   </div>
                   <div>
@@ -579,10 +587,10 @@ export function EnhancedArtifactViewer({
       {/* Payment Terms Grid */}
       <div className="grid md:grid-cols-2 gap-4">
         <motion.div variants={itemVariants}>
-          <Card className="border-blue-200 h-full">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50 pb-3">
+          <Card className="border-violet-200 h-full">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50 pb-3">
               <CardTitle className="text-base font-medium flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-600" />
+                <Clock className="h-4 w-4 text-violet-600" />
                 Payment Terms
               </CardTitle>
             </CardHeader>
@@ -622,7 +630,7 @@ export function EnhancedArtifactViewer({
           <div className={`absolute inset-0 ${
             data.riskLevel === 'high' ? 'bg-gradient-to-br from-red-500 via-orange-500 to-yellow-600' :
             data.riskLevel === 'medium' ? 'bg-gradient-to-br from-yellow-400 via-orange-400 to-amber-600' :
-            'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-600'
+            'bg-gradient-to-br from-violet-400 via-violet-500 to-violet-600'
           } opacity-90`} />
           <div className="absolute inset-0">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full translate-x-1/3 -translate-y-1/3" />
@@ -692,7 +700,7 @@ export function EnhancedArtifactViewer({
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge variant="outline" className="bg-blue-50">
+                        <Badge variant="outline" className="bg-violet-50">
                           {risk.category}
                         </Badge>
                         <Badge 
@@ -711,7 +719,7 @@ export function EnhancedArtifactViewer({
                       </div>
                     </div>
                     <p className="font-semibold text-gray-900 mb-3 text-lg">{risk.description}</p>
-                    <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border-2 border-green-200">
+                    <div className="bg-gradient-to-r from-violet-50 to-violet-50 rounded-lg p-4 border-2 border-green-200">
                       <div className="flex items-start gap-2">
                         <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
                         <div>
@@ -766,14 +774,14 @@ export function EnhancedArtifactViewer({
       {/* Recommendations */}
       {data.recommendations && data.recommendations.length > 0 && (
         <motion.div variants={itemVariants}>
-          <Card className="border-blue-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+          <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Target className="h-4 w-4 text-white" />
                 </div>
                 Recommendations
-                <Badge variant="outline" className="ml-2 bg-blue-50">
+                <Badge variant="outline" className="ml-2 bg-violet-50">
                   {data.recommendations.length} actions
                 </Badge>
               </CardTitle>
@@ -786,9 +794,9 @@ export function EnhancedArtifactViewer({
                     initial={{ x: -20, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: idx * 0.05 }}
-                    className="flex items-start gap-3 p-4 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors"
+                    className="flex items-start gap-3 p-4 bg-violet-50 rounded-lg border border-violet-200 hover:bg-violet-100 transition-colors"
                   >
-                    <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
+                    <div className="w-6 h-6 bg-violet-500 text-white rounded-full flex items-center justify-center font-bold text-sm flex-shrink-0">
                       {idx + 1}
                     </div>
                     <p className="text-gray-700 pt-0.5">{rec}</p>
@@ -812,7 +820,7 @@ export function EnhancedArtifactViewer({
       {/* Compliance Score Hero */}
       <motion.div variants={itemVariants}>
         <Card className="relative overflow-hidden border-0 shadow-2xl">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-indigo-500 to-blue-600 opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-500 via-purple-500 to-purple-600 opacity-90" />
           <div className="absolute inset-0">
             <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -translate-x-1/2 translate-y-1/2" />
           </div>
@@ -857,7 +865,7 @@ export function EnhancedArtifactViewer({
       {data.applicableRegulations && data.applicableRegulations.length > 0 && (
         <motion.div variants={itemVariants}>
           <Card className="border-green-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-violet-50">
               <CardTitle className="text-lg flex items-center gap-2">
                 <div className="p-2 bg-green-500 rounded-lg">
                   <CheckCircle2 className="h-4 w-4 text-white" />
@@ -894,10 +902,10 @@ export function EnhancedArtifactViewer({
       {/* Data Protection */}
       {data.dataProtection && (
         <motion.div variants={itemVariants}>
-          <Card className="border-blue-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-cyan-50">
+          <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Shield className="h-4 w-4 text-white" />
                 </div>
                 Data Protection & Privacy
@@ -929,8 +937,8 @@ export function EnhancedArtifactViewer({
                 </div>
               </div>
               {data.dataProtection.dataRetention && (
-                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <p className="text-sm font-semibold text-blue-900 mb-2">Data Retention Policy:</p>
+                <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
+                  <p className="text-sm font-semibold text-violet-900 mb-2">Data Retention Policy:</p>
                   <p className="text-sm text-gray-700">{data.dataProtection.dataRetention}</p>
                 </div>
               )}
@@ -970,7 +978,7 @@ export function EnhancedArtifactViewer({
                         className={
                           issue.severity === 'high' ? 'bg-red-100 text-red-700 border-red-300' :
                           issue.severity === 'medium' ? 'bg-yellow-100 text-yellow-700 border-yellow-300' :
-                          'bg-blue-100 text-blue-700 border-blue-300'
+                          'bg-violet-100 text-violet-700 border-violet-300'
                         }
                       >
                         {issue.severity} severity
@@ -980,11 +988,11 @@ export function EnhancedArtifactViewer({
                       </Badge>
                     </div>
                     <p className="text-gray-900 font-semibold mb-3 text-lg">{issue.issue}</p>
-                    <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 border-2 border-blue-200">
+                    <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg p-4 border-2 border-violet-200">
                       <div className="flex items-start gap-2">
-                        <Sparkles className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                        <Sparkles className="h-5 w-5 text-violet-600 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-semibold text-blue-900 mb-1">Recommendation:</p>
+                          <p className="text-sm font-semibold text-violet-900 mb-1">Recommendation:</p>
                           <p className="text-sm text-gray-700">{issue.recommendation}</p>
                         </div>
                       </div>
@@ -1038,7 +1046,7 @@ export function EnhancedArtifactViewer({
       {data.recommendations && data.recommendations.length > 0 && (
         <motion.div variants={itemVariants}>
           <Card className="border-green-200 hover:shadow-xl transition-all duration-300">
-            <CardHeader className="bg-gradient-to-r from-green-50 to-emerald-50">
+            <CardHeader className="bg-gradient-to-r from-violet-50 to-violet-50">
               <CardTitle className="text-lg flex items-center gap-2">
                 <div className="p-2 bg-green-500 rounded-lg">
                   <Sparkles className="h-4 w-4 text-white" />
@@ -1081,16 +1089,16 @@ export function EnhancedArtifactViewer({
       {data.clauses && data.clauses.length > 0 ? (
         data.clauses.map((clause: any, idx: number) => (
           <motion.div key={idx} variants={itemVariants}>
-            <Card className="border-2 border-gray-200 hover:border-blue-400 hover:shadow-xl transition-all duration-300">
-              <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-blue-50">
+            <Card className="border-2 border-gray-200 hover:border-violet-400 hover:shadow-xl transition-all duration-300">
+              <CardHeader className="pb-3 bg-gradient-to-r from-gray-50 to-purple-50">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 text-white rounded-lg flex items-center justify-center font-bold shadow-md">
+                    <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 text-white rounded-lg flex items-center justify-center font-bold shadow-md">
                       {idx + 1}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
-                        <Badge variant="outline" className="bg-blue-50 border-blue-300">
+                        <Badge variant="outline" className="bg-violet-50 border-violet-300">
                           {clause.type}
                         </Badge>
                         <CardTitle className="text-base">{clause.title}</CardTitle>
@@ -1120,7 +1128,7 @@ export function EnhancedArtifactViewer({
                   </p>
                   <p className="text-sm text-gray-700 leading-relaxed">{clause.summary}</p>
                 </div>
-                <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-lg p-4 border-2 border-gray-200">
+                <div className="bg-gradient-to-br from-gray-50 to-purple-50 rounded-lg p-4 border-2 border-gray-200">
                   <p className="text-sm font-semibold text-gray-600 mb-2 flex items-center gap-1">
                     <FileText className="h-4 w-4" />
                     Full Text:
@@ -1139,6 +1147,296 @@ export function EnhancedArtifactViewer({
       )}
     </motion.div>
   );
+
+  const renderParties = (data: any) => {
+    const parties = data?.parties || data?.involvedParties || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-blue-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-blue-500 rounded-lg">
+                <Users className="h-4 w-4 text-white" />
+              </div>
+              Parties & Stakeholders
+              <Badge variant="secondary" className="ml-2">{parties.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 md:grid-cols-2">
+              {parties.map((party: any, idx: number) => (
+                <motion.div key={idx} variants={itemVariants}
+                  className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-200"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Briefcase className="h-4 w-4 text-blue-600" />
+                    <span className="font-semibold text-gray-900">{party.name || party.partyName || `Party ${idx + 1}`}</span>
+                  </div>
+                  {(party.role || party.type) && (
+                    <Badge variant="outline" className="mb-2 bg-blue-50">{party.role || party.type}</Badge>
+                  )}
+                  {party.address && <p className="text-sm text-gray-600 flex items-center gap-1"><MapPin className="h-3 w-3" />{party.address}</p>}
+                  {party.contact && <p className="text-sm text-gray-600 flex items-center gap-1"><Users className="h-3 w-3" />{party.contact}</p>}
+                  {party.obligations && <p className="text-sm mt-2 text-gray-700"><strong>Obligations:</strong> {party.obligations}</p>}
+                </motion.div>
+              ))}
+            </div>
+            {parties.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No party information extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderTimeline = (data: any) => {
+    const events = data?.milestones || data?.events || data?.timeline || data?.keyDates || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-amber-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-amber-50 to-orange-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-amber-500 rounded-lg">
+                <Calendar className="h-4 w-4 text-white" />
+              </div>
+              Timeline & Key Dates
+              <Badge variant="secondary" className="ml-2">{events.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="relative">
+              <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-amber-200" />
+              <div className="space-y-4 pl-10">
+                {events.map((event: any, idx: number) => (
+                  <motion.div key={idx} variants={itemVariants}
+                    className="relative p-4 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200"
+                  >
+                    <div className="absolute -left-8 top-4 h-4 w-4 rounded-full bg-amber-500 border-2 border-white shadow" />
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-semibold text-gray-900">{event.event || event.milestone || event.title || event.description || `Event ${idx + 1}`}</span>
+                      {(event.date || event.dueDate || event.deadline) && (
+                        <Badge variant="outline" className="bg-amber-50">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {event.date || event.dueDate || event.deadline}
+                        </Badge>
+                      )}
+                    </div>
+                    {event.description && event.title && <p className="text-sm text-gray-600">{event.description}</p>}
+                    {event.status && <Badge className="mt-1" variant="secondary">{event.status}</Badge>}
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+            {events.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No timeline data extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+        {(data?.effectiveDate || data?.expirationDate || data?.startDate || data?.endDate) && (
+          <Card className="border-amber-200">
+            <CardContent className="pt-6">
+              <div className="grid gap-4 md:grid-cols-2">
+                {(data.effectiveDate || data.startDate) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                    <Calendar className="h-5 w-5 text-green-600" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Effective Date</p>
+                      <p className="font-semibold text-gray-900">{data.effectiveDate || data.startDate}</p>
+                    </div>
+                  </div>
+                )}
+                {(data.expirationDate || data.endDate) && (
+                  <div className="flex items-center gap-3 p-3 rounded-lg bg-red-50 border border-red-200">
+                    <Calendar className="h-5 w-5 text-red-600" />
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase">Expiration Date</p>
+                      <p className="font-semibold text-gray-900">{data.expirationDate || data.endDate}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </motion.div>
+    );
+  };
+
+  const renderDeliverables = (data: any) => {
+    const items = data?.deliverables || data?.items || data?.workItems || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-teal-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-teal-50 to-emerald-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-teal-500 rounded-lg">
+                <Package className="h-4 w-4 text-white" />
+              </div>
+              Deliverables & Work Items
+              <Badge variant="secondary" className="ml-2">{items.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              {items.map((item: any, idx: number) => (
+                <motion.div key={idx} variants={itemVariants}
+                  className="p-4 rounded-xl bg-gradient-to-br from-teal-50 to-emerald-50 border-2 border-teal-200"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-teal-600" />
+                      <span className="font-semibold text-gray-900">{item.name || item.title || item.deliverable || `Deliverable ${idx + 1}`}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {item.status && (
+                        <Badge variant={item.status === 'completed' ? 'default' : 'secondary'} className={
+                          item.status === 'completed' ? 'bg-green-100 text-green-700' :
+                          item.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                          'bg-gray-100 text-gray-700'
+                        }>{item.status}</Badge>
+                      )}
+                      {(item.dueDate || item.deadline) && (
+                        <Badge variant="outline" className="bg-teal-50">
+                          <Clock className="h-3 w-3 mr-1" />
+                          {item.dueDate || item.deadline}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  {item.description && <p className="text-sm text-gray-600 mb-2">{item.description}</p>}
+                  {item.acceptanceCriteria && (
+                    <div className="mt-2 p-2 rounded-lg bg-white/50 border border-teal-100">
+                      <p className="text-xs text-gray-500 uppercase mb-1">Acceptance Criteria</p>
+                      <p className="text-sm text-gray-700">{item.acceptanceCriteria}</p>
+                    </div>
+                  )}
+                  {item.responsibleParty && (
+                    <p className="text-sm text-gray-500 mt-2 flex items-center gap-1"><Users className="h-3 w-3" />{item.responsibleParty}</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+            {items.length === 0 && (
+              <p className="text-sm text-gray-500 text-center py-4">No deliverables extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  const renderExecutiveSummary = (data: any) => (
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+      <Card className="border-violet-200 hover:shadow-xl transition-all duration-300">
+        <CardHeader className="bg-gradient-to-r from-violet-50 to-purple-50">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <div className="p-2 bg-violet-500 rounded-lg">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            Executive Summary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          {data?.summary && (
+            <div className="p-4 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50 border-2 border-violet-200">
+              <p className="text-gray-800 leading-relaxed">{data.summary}</p>
+            </div>
+          )}
+          {data?.keyPoints && data.keyPoints.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Target className="h-4 w-4 text-violet-600" /> Key Points
+              </h4>
+              <ul className="space-y-2">
+                {data.keyPoints.map((point: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                    <CheckCircle2 className="h-4 w-4 text-violet-500 flex-shrink-0 mt-0.5" />
+                    {point}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data?.recommendations && data.recommendations.length > 0 && (
+            <div>
+              <h4 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+                <Zap className="h-4 w-4 text-amber-600" /> Recommendations
+              </h4>
+              <ul className="space-y-2">
+                {data.recommendations.map((rec: string, idx: number) => (
+                  <li key={idx} className="flex items-start gap-2 text-sm text-gray-700">
+                    <Zap className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    {typeof rec === 'string' ? rec : (rec as any).recommendation || JSON.stringify(rec)}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {data?.overallAssessment && (
+            <div className="p-4 rounded-xl bg-gradient-to-r from-gray-50 to-violet-50 border border-gray-200">
+              <h4 className="font-semibold text-gray-900 mb-1">Overall Assessment</h4>
+              <p className="text-sm text-gray-700">{data.overallAssessment}</p>
+            </div>
+          )}
+          {!data?.summary && !data?.keyPoints && !data?.recommendations && (
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border-2 border-gray-200">
+              <pre className="text-sm overflow-auto max-h-96 text-gray-700 whitespace-pre-wrap font-mono">
+                {JSON.stringify(data, null, 2)}
+              </pre>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+
+  const renderRates = (data: any) => {
+    const rates = data?.rates || data?.rateSchedule || data?.lineItems || (Array.isArray(data) ? data : []);
+    return (
+      <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-4">
+        <Card className="border-emerald-200 hover:shadow-xl transition-all duration-300">
+          <CardHeader className="bg-gradient-to-r from-emerald-50 to-green-50">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <div className="p-2 bg-emerald-500 rounded-lg">
+                <DollarSign className="h-4 w-4 text-white" />
+              </div>
+              Rate Schedule
+              <Badge variant="secondary" className="ml-2">{rates.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {rates.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-emerald-200">
+                      <th className="text-left p-2 font-semibold text-gray-700">Description</th>
+                      <th className="text-right p-2 font-semibold text-gray-700">Rate</th>
+                      <th className="text-left p-2 font-semibold text-gray-700">Unit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rates.map((rate: any, idx: number) => (
+                      <tr key={idx} className="border-b border-gray-100 hover:bg-emerald-50/50">
+                        <td className="p-2 text-gray-900">{rate.description || rate.role || rate.item || `Item ${idx + 1}`}</td>
+                        <td className="p-2 text-right font-semibold text-emerald-700">
+                          {typeof rate.rate === 'number' ? `$${rate.rate.toLocaleString()}` : rate.rate || rate.amount || '-'}
+                        </td>
+                        <td className="p-2 text-gray-600">{rate.unit || rate.per || rate.period || '-'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 text-center py-4">No rate data extracted.</p>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
 
   const renderDefault = (data: any) => (
     <Card className="border-gray-200">
@@ -1172,6 +1470,26 @@ export function EnhancedArtifactViewer({
         return renderCompliance(data);
       case 'CLAUSES':
         return renderClauses(data);
+      case 'OBLIGATIONS':
+        return <ObligationsArtifact data={data} />;
+      case 'RENEWAL':
+        return <RenewalArtifact data={data} />;
+      case 'NEGOTIATION_POINTS':
+        return <NegotiationPointsArtifact data={data} />;
+      case 'AMENDMENTS':
+        return <AmendmentsArtifact data={data} />;
+      case 'CONTACTS':
+        return <ContactsArtifact data={data} />;
+      case 'PARTIES':
+        return renderParties(data);
+      case 'TIMELINE':
+        return renderTimeline(data);
+      case 'DELIVERABLES':
+        return renderDeliverables(data);
+      case 'EXECUTIVE_SUMMARY':
+        return renderExecutiveSummary(data);
+      case 'RATES':
+        return renderRates(data);
       default:
         return renderDefault(data);
     }
@@ -1186,12 +1504,12 @@ export function EnhancedArtifactViewer({
         initial={{ y: 20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-blue-50 rounded-xl border-2 border-gray-200"
+        className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-purple-50 rounded-xl border-2 border-gray-200"
       >
         <div className="flex items-center gap-6 text-sm text-gray-600">
           {processingTime && (
             <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-violet-600" />
               <span><strong>{processingTime}ms</strong> processing time</span>
             </div>
           )}
@@ -1202,8 +1520,8 @@ export function EnhancedArtifactViewer({
             </div>
           )}
           <div className="flex items-center gap-2">
-            <Brain className="h-4 w-4 text-purple-600" />
-            <span className="font-medium text-purple-600">AI-Enhanced Extraction</span>
+            <Brain className="h-4 w-4 text-violet-600" />
+            <span className="font-medium text-violet-600">AI-Enhanced Extraction</span>
           </div>
         </div>
         {onExport && (

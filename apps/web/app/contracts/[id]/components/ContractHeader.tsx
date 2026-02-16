@@ -36,6 +36,8 @@ import {
   Scale,
   Target,
   Edit3,
+  ClipboardList,
+  Loader2,
 } from 'lucide-react'
 
 interface ContractHeaderProps {
@@ -46,11 +48,13 @@ interface ContractHeaderProps {
   showPdfViewer: boolean
   isEditing: boolean
   isExtractingAI: boolean
+  isExtractingObligations?: boolean
   isExpiredOrExpiring?: boolean
   onRefresh: () => void
   onTogglePdf: () => void
   onEdit: () => void
   onAIExtract: () => void
+  onExtractObligations?: () => void
   onDownload: () => void
   onShare: () => void
   onCompare: () => void
@@ -65,11 +69,13 @@ export const ContractHeader = memo(function ContractHeader({
   showPdfViewer,
   isEditing,
   isExtractingAI,
+  isExtractingObligations = false,
   isExpiredOrExpiring = false,
   onRefresh,
   onTogglePdf,
   onEdit,
   onAIExtract,
+  onExtractObligations,
   onDownload,
   onShare,
   onCompare,
@@ -95,7 +101,7 @@ export const ContractHeader = memo(function ContractHeader({
             <Separator orientation="vertical" className="h-6 bg-slate-200 dark:bg-slate-700 hidden sm:block" />
             <div className="flex items-center gap-3 min-w-0">
               <div className="relative group shrink-0">
-                <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 shadow-lg shadow-purple-500/25 transition-transform group-hover:scale-105">
+                <div className="flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 shadow-lg shadow-violet-500/25 transition-transform group-hover:scale-105">
                   <FileText className="h-4 w-4 sm:h-5 sm:w-5 text-white drop-shadow-sm" />
                 </div>
               </div>
@@ -175,6 +181,19 @@ export const ContractHeader = memo(function ContractHeader({
                   <Sparkles className="h-4 w-4 mr-2" />
                   {isExtractingAI ? 'Extracting...' : 'AI Extract'}
                 </DropdownMenuItem>
+                {onExtractObligations && (
+                  <DropdownMenuItem onClick={onExtractObligations} disabled={isExtractingObligations} className="cursor-pointer">
+                    <ClipboardList className="h-4 w-4 mr-2" />
+                    {isExtractingObligations ? (
+                      <>
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                        Extracting Obligations...
+                      </>
+                    ) : (
+                      'Extract Obligations'
+                    )}
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={onDownload} className="cursor-pointer">
                   <Download className="h-4 w-4 mr-2" />
@@ -191,28 +210,28 @@ export const ContractHeader = memo(function ContractHeader({
                   Compare Versions
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <div className="px-2 py-1.5 text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50/50 dark:bg-purple-950/30">
+                <div className="px-2 py-1.5 text-xs font-semibold text-violet-600 dark:text-violet-400 bg-violet-50/50 dark:bg-violet-950/30">
                   ✨ Premium AI Features
                 </div>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
                   <Link href={`/contracts/${contractId}/legal-review`}>
-                    <Scale className="h-4 w-4 mr-2 text-purple-600" />
+                    <Scale className="h-4 w-4 mr-2 text-violet-600" />
                     Legal Review & Redlining
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
                   <Link href={`/contracts/${contractId}/redline`}>
-                    <Edit3 className="h-4 w-4 mr-2 text-purple-600" />
+                    <Edit3 className="h-4 w-4 mr-2 text-violet-600" />
                     Redline Editor
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/30 dark:to-pink-950/30 text-purple-700 dark:text-purple-300 focus:from-purple-100 focus:to-pink-100 dark:focus:from-purple-900/40 dark:focus:to-pink-900/40">
+                <DropdownMenuItem asChild className="cursor-pointer bg-gradient-to-r from-violet-50 to-pink-50 dark:from-violet-950/30 dark:to-pink-950/30 text-violet-700 dark:text-violet-300 focus:from-violet-100 focus:to-pink-100 dark:focus:from-violet-900/40 dark:focus:to-pink-900/40">
                   <Link href={`/obligations?contract=${contractId}`}>
-                    <Target className="h-4 w-4 mr-2 text-purple-600" />
+                    <Target className="h-4 w-4 mr-2 text-violet-600" />
                     Track Obligations
-                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-purple-600 text-white rounded font-medium">AI</span>
+                    <span className="ml-auto text-[10px] px-1.5 py-0.5 bg-violet-600 text-white rounded font-medium">AI</span>
                   </Link>
                 </DropdownMenuItem>
                 {onCreateRenewal && (

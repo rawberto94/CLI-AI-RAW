@@ -120,21 +120,21 @@ interface GradientButtonProps extends Omit<HTMLMotionProps<'button'>, 'ref' | 'c
 }
 
 const gradientVariants = {
-  primary: 'from-blue-600 via-indigo-600 to-purple-600 hover:from-blue-700 hover:via-indigo-700 hover:to-purple-700',
-  success: 'from-emerald-500 via-green-500 to-teal-500 hover:from-emerald-600 hover:via-green-600 hover:to-teal-600',
+  primary: 'from-violet-600 via-purple-600 to-purple-600 hover:from-violet-700 hover:via-purple-700 hover:to-purple-700',
+  success: 'from-violet-500 via-green-500 to-violet-500 hover:from-violet-600 hover:via-green-600 hover:to-violet-600',
   danger: 'from-red-500 via-rose-500 to-pink-500 hover:from-red-600 hover:via-rose-600 hover:to-pink-600',
-  purple: 'from-purple-600 via-violet-600 to-fuchsia-600 hover:from-purple-700 hover:via-violet-700 hover:to-fuchsia-700',
+  purple: 'from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700',
   orange: 'from-orange-500 via-amber-500 to-yellow-500 hover:from-orange-600 hover:via-amber-600 hover:to-yellow-600',
-  cyan: 'from-cyan-500 via-teal-500 to-emerald-500 hover:from-cyan-600 hover:via-teal-600 hover:to-emerald-600',
+  cyan: 'from-violet-500 via-purple-500 to-violet-500 hover:from-violet-600 hover:via-violet-600 hover:to-violet-600',
 };
 
 const glowVariants = {
-  primary: 'shadow-blue-500/30 hover:shadow-blue-500/50',
-  success: 'shadow-emerald-500/30 hover:shadow-emerald-500/50',
+  primary: 'shadow-violet-500/30 hover:shadow-violet-500/50',
+  success: 'shadow-violet-500/30 hover:shadow-violet-500/50',
   danger: 'shadow-red-500/30 hover:shadow-red-500/50',
-  purple: 'shadow-purple-500/30 hover:shadow-purple-500/50',
+  purple: 'shadow-violet-500/30 hover:shadow-violet-500/50',
   orange: 'shadow-orange-500/30 hover:shadow-orange-500/50',
-  cyan: 'shadow-cyan-500/30 hover:shadow-cyan-500/50',
+  cyan: 'shadow-violet-500/30 hover:shadow-violet-500/50',
 };
 
 const sizeClasses = {
@@ -351,7 +351,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(
         {/* Tooltip */}
         <AnimatePresence>
           {showTooltip && !isDisabled && (
-            <motion.div
+            <motion.div key="tooltip"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -444,7 +444,7 @@ export const AsyncActionButton = forwardRef<HTMLButtonElement, AsyncActionButton
     const stateStyles = {
       idle: asyncButtonVariants[variant],
       loading: asyncButtonVariants[variant],
-      success: 'bg-emerald-500 text-white hover:bg-emerald-500',
+      success: 'bg-violet-500 text-white hover:bg-violet-500',
       error: 'bg-red-500 text-white hover:bg-red-500',
     };
 
@@ -538,9 +538,9 @@ interface FABProps extends Omit<HTMLMotionProps<'button'>, 'ref'> {
 }
 
 const fabVariants = {
-  primary: 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-500/30',
+  primary: 'bg-violet-600 text-white hover:bg-violet-700 shadow-violet-500/30',
   secondary: 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-900/30 dark:bg-white dark:text-slate-900',
-  success: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-500/30',
+  success: 'bg-violet-600 text-white hover:bg-violet-700 shadow-violet-500/30',
   danger: 'bg-red-600 text-white hover:bg-red-700 shadow-red-500/30',
 };
 
@@ -695,7 +695,7 @@ export function SplitButton({
 
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -729,7 +729,7 @@ export function SplitButton({
                 </button>
               ))}
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </div>

@@ -26,12 +26,14 @@ The Next.js build process completes successfully through **code compilation** bu
 Build in environments with adequate memory:
 
 **GitHub Actions** (Free - 7GB RAM):
+
 ```yaml
 # .github/workflows/deploy.yml already configured
 # Builds automatically on push to main/staging
 ```
 
 **AWS CodeBuild**:
+
 ```bash
 # buildspec.yml
 version: 0.2
@@ -43,6 +45,7 @@ phases:
 ```
 
 **Azure Pipelines**:
+
 ```yaml
 # azure-pipelines.yml
 pool:
@@ -54,6 +57,7 @@ steps:
 ```
 
 **GCP Cloud Build**:
+
 ```yaml
 # cloudbuild.yaml
 steps:
@@ -108,6 +112,7 @@ docker-compose -f docker-compose.prod.yml up -d
 If you need to build locally, you can skip the problematic phase:
 
 **Update `next.config.mjs`**:
+
 ```javascript
 // Add to experimental section
 experimental: {
@@ -118,6 +123,7 @@ experimental: {
 ```
 
 **Then build**:
+
 ```bash
 cd apps/web
 NODE_OPTIONS="--max-old-space-size=8192" \
@@ -135,6 +141,7 @@ output: "standalone"
 ```
 
 This means you can:
+
 1. Build on a powerful machine once
 2. Copy `.next/` directory to production
 3. Run without rebuilding
@@ -158,12 +165,14 @@ cd /app && node server.js
 After deploying with any method above, verify everything works:
 
 ### 1. Health Check
+
 ```bash
 curl https://your-app.com/api/health
 # Expected: {"status":"ok"}
 ```
 
 ### 2. Agent Routes
+
 ```bash
 # Check all 5 agent API routes are accessible
 curl https://your-app.com/api/agents/status
@@ -174,6 +183,7 @@ curl https://your-app.com/api/agents/dashboard-stats
 ```
 
 ### 3. Database Tables
+
 ```sql
 -- Verify agent tables exist
 SELECT tablename FROM pg_tables 
@@ -190,6 +200,7 @@ AND (tablename LIKE 'agent%'
 ```
 
 ### 4. Test Agent Execution
+
 ```bash
 curl -X POST https://your-app.com/api/agents/execute \
   -H "Content-Type: application/json" \
@@ -220,6 +231,7 @@ The build process has two phases:
    - **Result**: Build worker crashes ❌
 
 **However**: The compiled code from Phase 1 is complete and functional. The Phase 2 failure doesn't affect runtime because:
+
 - API routes don't need static generation
 - Workers initialize properly in production with connection pooling
 - Runtime has different memory characteristics than build-time
@@ -229,6 +241,7 @@ The build process has two phases:
 ## Production Recommendation
 
 **Use GitHub Actions (already configured)** - It will:
+
 1. ✅ Build with adequate memory (7GB free tier)
 2. ✅ Run migrations
 3. ✅ Build Docker images
@@ -237,6 +250,7 @@ The build process has two phases:
 6. ✅ Verify deployment
 
 **Just push to main**:
+
 ```bash
 git add .
 git commit -m "Deploy agentic AI platform"

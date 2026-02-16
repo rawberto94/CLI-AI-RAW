@@ -94,10 +94,10 @@ const getActivityIcon = (type: ActivityType) => {
 const getActivityColor = (type: ActivityType) => {
   switch (type) {
     case 'approve': return 'text-green-500 bg-green-500/10';
-    case 'edit': return 'text-blue-500 bg-blue-500/10';
+    case 'edit': return 'text-violet-500 bg-violet-500/10';
     case 'comment': return 'text-yellow-500 bg-yellow-500/10';
-    case 'upload': return 'text-purple-500 bg-purple-500/10';
-    case 'create': return 'text-indigo-500 bg-indigo-500/10';
+    case 'upload': return 'text-violet-500 bg-violet-500/10';
+    case 'create': return 'text-violet-500 bg-violet-500/10';
     case 'share': return 'text-pink-500 bg-pink-500/10';
     default: return 'text-muted-foreground bg-muted';
   }
@@ -306,7 +306,7 @@ export function TeamActivityWidget({
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-500" />
+              <Users className="h-4 w-4 text-violet-500" />
               Team Activity
             </CardTitle>
             

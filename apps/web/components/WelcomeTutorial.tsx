@@ -54,7 +54,7 @@ const tutorialSteps: TutorialStep[] = [
       { text: "Smart contract health scoring", icon: Shield },
       { text: "Natural language Q&A", icon: MessageSquare },
     ],
-    gradient: "from-violet-600 via-purple-600 to-indigo-600",
+    gradient: "from-violet-600 via-purple-600 to-purple-600",
     bgPattern: "radial-gradient(circle at 20% 80%, rgba(139, 92, 246, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.3) 0%, transparent 50%)",
     accentColor: "violet",
   },
@@ -74,7 +74,7 @@ const tutorialSteps: TutorialStep[] = [
       label: "Explore Contracts",
       href: "/contracts",
     },
-    gradient: "from-emerald-500 via-teal-500 to-cyan-500",
+    gradient: "from-violet-500 via-violet-500 to-purple-500",
     bgPattern: "radial-gradient(circle at 30% 70%, rgba(16, 185, 129, 0.3) 0%, transparent 50%), radial-gradient(circle at 70% 30%, rgba(6, 182, 212, 0.3) 0%, transparent 50%)",
     accentColor: "emerald",
   },
@@ -114,7 +114,7 @@ const tutorialSteps: TutorialStep[] = [
       label: "Build Report",
       href: "/reports/ai-builder",
     },
-    gradient: "from-blue-500 via-indigo-500 to-violet-500",
+    gradient: "from-violet-500 via-purple-500 to-violet-500",
     bgPattern: "radial-gradient(circle at 20% 60%, rgba(59, 130, 246, 0.3) 0%, transparent 50%), radial-gradient(circle at 80% 40%, rgba(139, 92, 246, 0.3) 0%, transparent 50%)",
     accentColor: "blue",
   },
@@ -144,7 +144,7 @@ export function WelcomeTutorial() {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [direction, setDirection] = useState<'next' | 'prev'>('next');
-  const [dontShowAgain, setDontShowAgain] = useState(false);
+  const [dontShowAgain, _setDontShowAgain] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const router = useRouter();
 
@@ -244,7 +244,7 @@ export function WelcomeTutorial() {
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div 
+      <motion.div key="WelcomeTutorial-ap-1" 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

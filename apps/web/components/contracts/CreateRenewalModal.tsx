@@ -226,9 +226,9 @@ export function CreateRenewalModal({
 
   const formatCurrency = (value: number | null | undefined) => {
     if (!value) return 'N/A';
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('de-CH', {
       style: 'currency',
-      currency: contract.currency || 'USD',
+      currency: contract.currency || 'CHF',
       maximumFractionDigits: 0,
     }).format(value);
   };
@@ -238,7 +238,7 @@ export function CreateRenewalModal({
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="h-5 w-5 text-blue-600" />
+            <RefreshCw className="h-5 w-5 text-violet-600" />
             Create Contract Renewal
           </DialogTitle>
           <DialogDescription>
@@ -299,8 +299,8 @@ export function CreateRenewalModal({
 
               {/* Arrow indicator */}
               <div className="flex justify-center">
-                <div className="flex items-center justify-center w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                  <ArrowRight className="h-4 w-4 text-blue-600" />
+                <div className="flex items-center justify-center w-8 h-8 bg-violet-100 dark:bg-violet-900/30 rounded-full">
+                  <ArrowRight className="h-4 w-4 text-violet-600" />
                 </div>
               </div>
 
@@ -481,8 +481,8 @@ export function CreateRenewalModal({
                 {/* Renewal Summary */}
                 <div className="p-4 bg-slate-50 dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 text-left">
                   <div className="flex items-center gap-2 mb-2">
-                    <Link2 className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-600">Linked Contracts</span>
+                    <Link2 className="h-4 w-4 text-violet-600" />
+                    <span className="text-sm font-medium text-violet-600">Linked Contracts</span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">

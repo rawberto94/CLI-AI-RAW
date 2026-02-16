@@ -7,14 +7,15 @@
  * or use pre-built analysis templates.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { 
   customContractAnalysis, 
-  continueConversation,
+  continueConversation as _continueConversation,
   getAnalysisTemplates,
   type AnalysisTemplate,
   type ConversationMessage,
 } from '@/lib/ai/custom-analysis';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Custom Analysis
@@ -25,6 +26,10 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
 
   try {
@@ -40,10 +45,7 @@ export async function POST(
 
     // Validate request
     if (!prompt && !template) {
-      return NextResponse.json(
-        { error: 'Either prompt or template is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Either prompt or template is required', 400);
     }
 
     // Fetch contract text
@@ -64,10 +66,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get contract text - prefer rawText, fall back to artifact data
@@ -85,10 +84,7 @@ export async function POST(
     }
 
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'No contract text available for analysis' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No contract text available for analysis', 400);
     }
 
     // Perform analysis
@@ -102,17 +98,14 @@ export async function POST(
       format,
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       contractName: contract.fileName,
       analysis: result,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Analysis failed' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -121,18 +114,19 @@ export async function POST(
 // ============================================================================
 
 export async function GET() {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const templates = getAnalysisTemplates();
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       templates,
       supportedLanguages: ['en', 'de', 'fr', 'it'],
       supportedFormats: ['text', 'json', 'markdown', 'bullet-points'],
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch templates' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

@@ -107,7 +107,7 @@ export function InlineEditor({
   const unlockSection = ws?.unlockSection ?? (() => {})
   const broadcastEdit = ws?.broadcastEdit ?? (() => {})
   const sendComment = ws?.sendComment ?? (() => {})
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const onEvent = ws?.onEvent ?? (() => () => {})
 
   // Get collaborators viewing/editing this field
@@ -137,7 +137,7 @@ export function InlineEditor({
         unlockSection(fieldId)
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [enableCollaboration, connected, fieldId, lockSection, unlockSection])
 
   // Focus input on mount
@@ -496,7 +496,7 @@ export function InlineEditor({
       {/* Edit History Panel */}
       <AnimatePresence>
         {showHistory && editHistory.length > 0 && (
-          <motion.div
+          <motion.div key="history"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -534,14 +534,14 @@ export function InlineEditor({
       {/* Comment Panel */}
       <AnimatePresence>
         {showComment && (
-          <motion.div
+          <motion.div key="comment"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-2 bg-blue-50 rounded-lg border border-blue-200 space-y-2">
-              <div className="flex items-center gap-2 text-xs font-medium text-blue-600">
+            <div className="p-2 bg-violet-50 rounded-lg border border-violet-200 space-y-2">
+              <div className="flex items-center gap-2 text-xs font-medium text-violet-600">
                 <MessageSquare className="w-3 h-3" />
                 Add a comment about this change
               </div>

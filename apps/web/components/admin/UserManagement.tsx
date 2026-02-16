@@ -17,7 +17,7 @@ import {
   Ban,
   CheckCircle2,
   XCircle,
-  Edit,
+  Edit as _Edit,
   Trash2,
   Key,
   Loader2,
@@ -62,7 +62,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { toast } from 'sonner';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format as _format, formatDistanceToNow } from 'date-fns';
 
 export interface User {
   id: string;
@@ -88,12 +88,12 @@ const roleConfig: Record<string, { color: string; label: string; permissions: st
     permissions: ['contracts:*', 'users:*', 'settings:*', 'api:*', 'audit:read']
   },
   manager: { 
-    color: 'bg-blue-100 text-blue-700', 
+    color: 'bg-violet-100 text-violet-700', 
     label: 'Manager',
     permissions: ['contracts:*', 'users:read', 'settings:read', 'api:read']
   },
   analyst: { 
-    color: 'bg-purple-100 text-purple-700', 
+    color: 'bg-violet-100 text-violet-700', 
     label: 'Analyst',
     permissions: ['contracts:read', 'contracts:write', 'ai:analyze']
   },
@@ -229,7 +229,7 @@ export const UserManagement = memo(function UserManagement({
 
       setShowInviteDialog(false);
       setInviteForm({ email: '', name: '', role: 'viewer', department: '' });
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to send invitation');
     } finally {
       setInviting(false);
@@ -238,7 +238,7 @@ export const UserManagement = memo(function UserManagement({
 
   const handleStatusChange = async (userId: string, newStatus: User['status']) => {
     try {
-      const response = await fetch(`/api/users/${userId}/status`, {
+      const _response = await fetch(`/api/users/${userId}/status`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
@@ -271,7 +271,7 @@ export const UserManagement = memo(function UserManagement({
     toast.success('User removed');
   };
 
-  const handleResetPassword = async (userId: string) => {
+  const handleResetPassword = async (_userId: string) => {
     toast.success('Password reset email sent');
   };
 
@@ -285,7 +285,7 @@ export const UserManagement = memo(function UserManagement({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-blue-600" />
+              <Users className="h-5 w-5 text-violet-600" />
               User Management
             </CardTitle>
             <CardDescription>
@@ -468,7 +468,7 @@ export const UserManagement = memo(function UserManagement({
         {/* Users Table */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading users...</span>
           </div>
         ) : (

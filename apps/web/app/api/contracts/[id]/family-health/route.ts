@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import { getTenantIdFromRequest } from '@/lib/tenant-server'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic'
 
@@ -12,6 +14,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params
     let tenantId: string
@@ -19,7 +25,7 @@ export async function GET(
     try {
       tenantId = await getTenantIdFromRequest(request)
     } catch {
-      tenantId = 'demo'
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unable to resolve tenant', 401)
     }
 
     // Fetch the contract with its hierarchy
@@ -79,10 +85,7 @@ export async function GET(
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Calculate family statistics
@@ -317,7 +320,7 @@ export async function GET(
       daysUntilExpiry: null,
     } : null
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       root,
       members,
@@ -327,23 +330,8 @@ export async function GET(
       completeness,
       issues,
       suggestedParents
-    })
-  } catch {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to retrieve family health',
-        // Provide fallback data
-        root: null,
-        members: [],
-        totalContracts: 1,
-        totalValue: 0,
-        healthScore: 100,
-        completeness: 100,
-        issues: [],
-        suggestedParents: []
-      },
-      { status: 200 } // Return 200 with fallback data
-    )
+    });
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

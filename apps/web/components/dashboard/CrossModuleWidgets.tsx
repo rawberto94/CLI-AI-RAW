@@ -109,11 +109,11 @@ export function IntelligenceWidget({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-purple-50 via-indigo-50 to-blue-50 rounded-xl border border-purple-100 p-5"
+      className="bg-gradient-to-br from-violet-50 via-purple-50 to-violet-50 rounded-xl border border-violet-100 p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-500 rounded-lg">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
             <Zap className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -123,7 +123,7 @@ export function IntelligenceWidget({
         </div>
         <Link
           href="/intelligence"
-          className="px-3 py-1.5 text-xs font-medium bg-white/80 text-purple-700 rounded-lg hover:bg-white transition-colors flex items-center gap-1"
+          className="px-3 py-1.5 text-xs font-medium bg-white/80 text-violet-700 rounded-lg hover:bg-white transition-colors flex items-center gap-1"
         >
           View All <ArrowRight className="h-3 w-3" />
         </Link>
@@ -131,7 +131,7 @@ export function IntelligenceWidget({
 
       <div className="grid grid-cols-4 gap-3 mb-4">
         <div className="text-center p-3 bg-white/60 rounded-lg">
-          <div className="text-2xl font-bold text-purple-600">{healthSummary.avgScore}</div>
+          <div className="text-2xl font-bold text-violet-600">{healthSummary.avgScore}</div>
           <div className="text-xs text-slate-500">Avg Score</div>
         </div>
         <div className="text-center p-3 bg-green-50 rounded-lg">
@@ -158,7 +158,7 @@ export function IntelligenceWidget({
         </Link>
         <Link 
           href="/intelligence/search"
-          className="flex-1 px-3 py-2 text-sm font-medium bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center justify-center gap-2"
+          className="flex-1 px-3 py-2 text-sm font-medium bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors flex items-center justify-center gap-2"
         >
           <Eye className="h-4 w-4" />
           AI Search
@@ -372,11 +372,11 @@ export function RenewalsWidget({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
-      className="bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 rounded-xl border border-green-100 p-5"
+      className="bg-gradient-to-br from-violet-50 via-violet-50 to-violet-50 rounded-xl border border-green-100 p-5"
     >
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <div className="p-2 bg-gradient-to-br from-green-500 to-emerald-500 rounded-lg">
+          <div className="p-2 bg-gradient-to-br from-violet-500 to-violet-500 rounded-lg">
             <Calendar className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -403,7 +403,7 @@ export function RenewalsWidget({
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-slate-900 group-hover:text-green-700">{item.contractName}</span>
                   {item.autoRenewal && (
-                    <span className="px-1.5 py-0.5 text-xs bg-purple-100 text-purple-700 rounded">Auto</span>
+                    <span className="px-1.5 py-0.5 text-xs bg-violet-100 text-violet-700 rounded">Auto</span>
                   )}
                 </div>
                 <span className="text-xs text-slate-500">${(item.value / 1000).toFixed(0)}K value</span>
@@ -551,8 +551,8 @@ interface QuickStatsRowProps {
 }
 
 const defaultStats: QuickStat[] = [
-  { label: 'Active Contracts', value: 24, change: { value: 3, direction: 'up' }, href: '/contracts', icon: FileText, color: 'text-blue-600' },
-  { label: 'Intelligence Alerts', value: 6, href: '/intelligence', icon: Zap, color: 'text-purple-600' },
+  { label: 'Active Contracts', value: 24, change: { value: 3, direction: 'up' }, href: '/contracts', icon: FileText, color: 'text-violet-600' },
+  { label: 'Intelligence Alerts', value: 6, href: '/intelligence', icon: Zap, color: 'text-violet-600' },
   { label: 'Pending Approvals', value: 4, change: { value: 2, direction: 'up' }, href: '/approvals', icon: CheckCircle2, color: 'text-amber-600' },
   { label: 'Upcoming Renewals', value: 5, href: '/renewals', icon: Calendar, color: 'text-green-600' },
   { label: 'Policy Alerts', value: 3, href: '/governance', icon: Shield, color: 'text-red-600' },
@@ -582,8 +582,8 @@ export function QuickStatsRow({
         if (json.success && json.data) {
           const d = json.data;
           setStats([
-            { label: 'Active Contracts', value: d.contracts?.active ?? 24, change: d.contracts?.change ? { value: d.contracts.change, direction: 'up' } : undefined, href: '/contracts', icon: FileText, color: 'text-blue-600' },
-            { label: 'Intelligence Alerts', value: d.intelligence?.alertCount ?? 6, href: '/intelligence', icon: Zap, color: 'text-purple-600' },
+            { label: 'Active Contracts', value: d.contracts?.active ?? 24, change: d.contracts?.change ? { value: d.contracts.change, direction: 'up' } : undefined, href: '/contracts', icon: FileText, color: 'text-violet-600' },
+            { label: 'Intelligence Alerts', value: d.intelligence?.alertCount ?? 6, href: '/intelligence', icon: Zap, color: 'text-violet-600' },
             { label: 'Pending Approvals', value: d.approvals?.pending ?? 4, change: d.approvals?.change ? { value: d.approvals.change, direction: 'up' } : undefined, href: '/approvals', icon: CheckCircle2, color: 'text-amber-600' },
             { label: 'Upcoming Renewals', value: d.renewals?.upcoming ?? 5, href: '/renewals', icon: Calendar, color: 'text-green-600' },
             { label: 'Policy Alerts', value: d.governance?.violations ?? 3, href: '/governance', icon: Shield, color: 'text-red-600' },
@@ -614,11 +614,11 @@ export function QuickStatsRow({
 
   return (
     <div className="grid grid-cols-5 gap-4">
-      {stats.map((stat, index) => {
+      {stats.map((stat) => {
         const Icon = stat.icon;
         return (
           <Link
-            key={index}
+            key={stat.label}
             href={stat.href}
             className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-lg hover:border-slate-300 transition-all group"
           >

@@ -9,16 +9,19 @@ The AI chatbot components (`FloatingAIBubble.tsx` and `AIChatbot.tsx`) are **wel
 ## ✅ What's Working Well
 
 ### 1. OpenAI Integration
+
 - ✅ `OPENAI_API_KEY` is configured in `.env`
 - ✅ Model: `gpt-4o-mini` is set
 - ✅ Embedding model: `text-embedding-3-small` (via `RAG_EMBED_MODEL`)
 
 ### 2. Database Infrastructure
+
 - ✅ `ContractEmbedding` table exists with pgvector support
 - ✅ 29 contracts exist in the database
 - ✅ PostgreSQL with pgvector extension is properly configured
 
 ### 3. RAG System Architecture
+
 - ✅ `advanced-rag.service.ts` - Full hybrid search implementation with:
   - Semantic chunking
   - Query expansion
@@ -28,6 +31,7 @@ The AI chatbot components (`FloatingAIBubble.tsx` and `AIChatbot.tsx`) are **wel
 - ✅ Auto-RAG after OCR (`AUTO_RAG_INDEXING=true` by default)
 
 ### 4. UI Components
+
 - ✅ `FloatingAIBubble.tsx` (900+ lines) - Production-ready with:
   - Voice input
   - Keyboard shortcuts (Ctrl+I)
@@ -42,11 +46,13 @@ The AI chatbot components (`FloatingAIBubble.tsx` and `AIChatbot.tsx`) are **wel
 ## ⚠️ Issues Found & Fixes Applied
 
 ### Issue 1: No Contract Embeddings Generated
+
 **Problem:** `ContractEmbedding` table has 0 rows despite 29 contracts existing.
 
 **Root Cause:** Existing contracts were uploaded before RAG worker was integrated, or worker wasn't running.
 
 **Fix Required:** Run batch embedding generation:
+
 ```bash
 # Option 1: Via API (when app is running)
 curl -X POST http://localhost:3000/api/rag/batch-process \
@@ -58,6 +64,7 @@ pnpm tsx scripts/generate-embeddings.ts --force
 ```
 
 ### Issue 2: Mock Mode Default ✅ FIXED
+
 **Problem:** `AIChatbot.tsx` defaulted to `useMockMode: true`
 
 **Fix Applied:** Changed to `useMockMode: false` in `/apps/web/components/AIChatbot.tsx`

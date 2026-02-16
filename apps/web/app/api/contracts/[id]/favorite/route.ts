@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import { getServerSession } from '@/lib/auth'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/favorite
@@ -10,10 +12,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     const tenantId = session.user.tenantId
     const userId = session.user.id
@@ -33,10 +39,7 @@ export async function POST(
     })
     
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     // Get or create user preferences
@@ -94,17 +97,14 @@ export async function POST(
       }
     })
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       favorite,
       message: favorite ? 'Contract added to favorites' : 'Contract removed from favorites'
-    })
+    });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update favorite status' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -113,13 +113,17 @@ export async function POST(
  * Check if a contract is favorited by the current user
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     const userId = session.user.id
     const { id: contractId } = await params
@@ -131,20 +135,17 @@ export async function GET(
     })
     
     if (!userPrefs) {
-      return NextResponse.json({ favorite: false })
+      return createSuccessResponse(ctx, { favorite: false });
     }
     
     const customSettings = (userPrefs.customSettings as Record<string, unknown>) || {}
     const favoriteContracts = (customSettings.favoriteContracts as string[]) || []
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       favorite: favoriteContracts.includes(contractId)
-    })
+    });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to check favorite status' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

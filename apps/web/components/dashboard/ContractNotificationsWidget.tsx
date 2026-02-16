@@ -107,14 +107,14 @@ interface ContractNotificationsWidgetProps {
 
 const typeConfig: Record<NotificationType, { icon: React.ElementType; color: string; label: string }> = {
   expiring: { icon: Calendar, color: 'text-orange-500', label: 'Expiring Soon' },
-  renewal: { icon: RefreshCw, color: 'text-blue-500', label: 'Renewal' },
+  renewal: { icon: RefreshCw, color: 'text-violet-500', label: 'Renewal' },
   approval: { icon: Check, color: 'text-green-500', label: 'Approval' },
   risk: { icon: AlertTriangle, color: 'text-red-500', label: 'Risk Alert' },
-  compliance: { icon: Shield, color: 'text-purple-500', label: 'Compliance' },
-  value: { icon: DollarSign, color: 'text-emerald-500', label: 'Value Change' },
-  mention: { icon: Users, color: 'text-cyan-500', label: 'Mention' },
+  compliance: { icon: Shield, color: 'text-violet-500', label: 'Compliance' },
+  value: { icon: DollarSign, color: 'text-violet-500', label: 'Value Change' },
+  mention: { icon: Users, color: 'text-violet-500', label: 'Mention' },
   comment: { icon: FileText, color: 'text-slate-500', label: 'Comment' },
-  update: { icon: Info, color: 'text-blue-400', label: 'Update' },
+  update: { icon: Info, color: 'text-violet-400', label: 'Update' },
   system: { icon: Settings, color: 'text-gray-500', label: 'System' },
 };
 

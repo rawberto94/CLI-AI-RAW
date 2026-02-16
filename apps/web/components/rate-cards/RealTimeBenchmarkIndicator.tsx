@@ -50,7 +50,7 @@ export function RealTimeBenchmarkIndicator({
   const getStatusIcon = () => {
     switch (currentStatus.status) {
       case 'CALCULATING':
-        return <RefreshCw className="h-4 w-4 animate-spin text-blue-500" />;
+        return <RefreshCw className="h-4 w-4 animate-spin text-violet-500" />;
       case 'COMPLETED':
         return <CheckCircle className="h-4 w-4 text-green-500" />;
       case 'FAILED':
@@ -76,7 +76,7 @@ export function RealTimeBenchmarkIndicator({
   const getStatusColor = () => {
     switch (currentStatus.status) {
       case 'CALCULATING':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-violet-50 text-violet-700 border-violet-200';
       case 'COMPLETED':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'FAILED':
@@ -182,7 +182,7 @@ export function NotificationToast({
       case 'MEDIUM':
         return 'bg-yellow-50 border-yellow-200 text-yellow-900';
       default:
-        return 'bg-blue-50 border-blue-200 text-blue-900';
+        return 'bg-violet-50 border-violet-200 text-violet-900';
     }
   };
 
@@ -298,7 +298,7 @@ export function CalculatingOverlay({
   return (
     <div className="absolute inset-0 bg-white bg-opacity-90 flex items-center justify-center z-10 rounded-lg">
       <div className="flex flex-col items-center gap-3">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-500" />
+        <RefreshCw className="h-8 w-8 animate-spin text-violet-500" />
         <p className="text-sm font-medium text-gray-700">{message}</p>
         <p className="text-xs text-gray-500">This usually takes less than 5 seconds</p>
       </div>

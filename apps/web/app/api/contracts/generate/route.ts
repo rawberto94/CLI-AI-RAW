@@ -6,76 +6,55 @@
  * @module api/contracts/generate
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
 import { 
   getContractGenerationService, 
   ContractTemplateType,
   GenerationLanguage 
-} from '@repo/data-orchestration/services/contract-generation.service';
+} from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/generate
  * 
  * Generate a contract from natural language description
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+export const POST = withAuthApiHandler(async (request, ctx) => {
 
-    const body = await request.json();
-    const {
-      prompt,
-      templateType,
-      variables,
-      options,
-    } = body;
+  const body = await request.json();
+  const {
+    prompt,
+    templateType,
+    variables,
+    options,
+  } = body;
 
-    if (!prompt || typeof prompt !== 'string') {
-      return NextResponse.json(
-        { error: 'Prompt is required' },
-        { status: 400 }
-      );
-    }
-
-    const generationService = getContractGenerationService();
-
-    const result = await generationService.generateContract({
-      prompt,
-      templateType: templateType as ContractTemplateType,
-      variables: variables || {},
-      options: {
-        language: options?.language as GenerationLanguage || 'en',
-        tone: options?.tone || 'balanced',
-        complexity: options?.complexity || 'standard',
-        jurisdiction: options?.jurisdiction,
-        includeSchedules: options?.includeSchedules,
-        complianceRequirements: options?.complianceRequirements || [],
-        playbookId: options?.playbookId,
-        maxLength: options?.maxLength,
-        styleGuide: options?.styleGuide,
-      },
-      tenantId: getSessionTenantId(session),
-      userId: session.user.id,
-    });
-
-    return NextResponse.json({
-      success: true,
-      contract: result,
-    });
-  } catch (error) {
-    console.error('Contract generation error:', error);
-    return NextResponse.json(
-      { error: 'Failed to generate contract' },
-      { status: 500 }
-    );
+  if (!prompt || typeof prompt !== 'string') {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Prompt is required', 400);
   }
-}
+
+  const generationService = getContractGenerationService();
+
+  const result = await generationService.generateContract({
+    prompt,
+    templateType: templateType as ContractTemplateType,
+    variables: variables || {},
+    options: {
+      language: options?.language as GenerationLanguage || 'en',
+      tone: options?.tone || 'balanced',
+      complexity: options?.complexity || 'standard',
+      jurisdiction: options?.jurisdiction,
+      includeSchedules: options?.includeSchedules,
+      complianceRequirements: options?.complianceRequirements || [],
+      playbookId: options?.playbookId,
+      maxLength: options?.maxLength,
+      styleGuide: options?.styleGuide,
+    },
+    tenantId: ctx.tenantId,
+    userId: ctx.userId,
+  });
+
+  return createSuccessResponse(ctx, {
+    contract: result,
+  });
+});

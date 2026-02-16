@@ -1,16 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { pppAdjustmentService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { rate, fromCountry, toCountry } = body;
 
     if (!rate || !fromCountry) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: rate, fromCountry' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required parameters: rate, fromCountry', 400);
     }
 
     const adjusted = pppAdjustmentService.adjustRateForPPP(
@@ -19,24 +16,17 @@ export async function POST(request: NextRequest) {
       toCountry || 'USA'
     );
 
-    return NextResponse.json(adjusted);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to adjust rate for PPP' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, adjusted);
+  });
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get('action');
 
     if (action === 'factors') {
       // Get all PPP factors
       const factors = pppAdjustmentService.getAllPPPFactors();
-      return NextResponse.json({ factors });
+      return createSuccessResponse(ctx, { factors });
     }
 
     if (action === 'compare') {
@@ -47,10 +37,7 @@ export async function GET(request: NextRequest) {
       const country2 = searchParams.get('country2');
 
       if (!rate1 || !country1 || !rate2 || !country2) {
-        return NextResponse.json(
-          { error: 'Missing required parameters for comparison' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required parameters for comparison', 400);
       }
 
       const comparison = pppAdjustmentService.compareRatesWithPPP(
@@ -58,17 +45,8 @@ export async function GET(request: NextRequest) {
         { value: rate2, country: country2 }
       );
 
-      return NextResponse.json(comparison);
+      return createSuccessResponse(ctx, comparison);
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action parameter' },
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to process PPP adjustment request' },
-      { status: 500 }
-    );
-  }
-}
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action parameter', 400);
+  });

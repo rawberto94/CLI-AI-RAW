@@ -107,7 +107,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
       <Card className={className}>
         <CardHeader className="pb-3">
           <CardTitle className="text-lg flex items-center gap-2">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+            <BarChart3 className="h-5 w-5 text-violet-600" />
             Approval Overview
           </CardTitle>
         </CardHeader>
@@ -149,7 +149,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
 
           {/* CTA */}
           <Link href="/approvals">
-            <button className="w-full py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center justify-center gap-2">
+            <button className="w-full py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors text-sm font-medium flex items-center justify-center gap-2">
               View All Approvals
               <ArrowUpRight className="h-4 w-4" />
             </button>
@@ -188,7 +188,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
-          <Card className="bg-gradient-to-br from-green-50 to-green-100/50 border-green-200">
+          <Card className="bg-gradient-to-br from-violet-50 to-purple-100/50 border-green-200">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 bg-green-500 rounded-lg">
@@ -226,16 +226,16 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.4 }}
         >
-          <Card className="bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200">
+          <Card className="bg-gradient-to-br from-violet-50 to-purple-100/50 border-violet-200">
             <CardContent className="p-4">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 bg-blue-500 rounded-lg">
+                <div className="p-2 bg-violet-500 rounded-lg">
                   <Target className="h-5 w-5 text-white" />
                 </div>
-                <span className="text-sm text-blue-700 font-medium">Approval Rate</span>
+                <span className="text-sm text-violet-700 font-medium">Approval Rate</span>
               </div>
-              <p className="text-3xl font-bold text-blue-900">{stats.approvalRate}%</p>
-              <p className="text-xs text-blue-600 mt-1">Overall success</p>
+              <p className="text-3xl font-bold text-violet-900">{stats.approvalRate}%</p>
+              <p className="text-xs text-violet-600 mt-1">Overall success</p>
             </CardContent>
           </Card>
         </motion.div>
@@ -289,7 +289,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
                 {stats.topApprovers.map((approver, idx) => (
                   <div key={approver.name} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
                     <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 bg-blue-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                      <span className="w-6 h-6 bg-violet-600 text-white text-xs rounded-full flex items-center justify-center font-medium">
                         {idx + 1}
                       </span>
                       <span className="text-sm text-slate-700">{approver.name}</span>
@@ -306,7 +306,7 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
         <Card>
           <CardHeader>
             <CardTitle className="text-lg flex items-center gap-2">
-              <Activity className="h-5 w-5 text-purple-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Recent Activity
             </CardTitle>
           </CardHeader>
@@ -322,14 +322,14 @@ export function ApprovalAnalytics({ className, variant = 'full' }: ApprovalAnaly
                   <div className={`p-1.5 rounded-full ${
                     activity.action === 'approved' ? 'bg-green-100' :
                     activity.action === 'rejected' ? 'bg-red-100' :
-                    'bg-blue-100'
+                    'bg-violet-100'
                   }`}>
                     {activity.action === 'approved' ? (
                       <CheckCircle2 className="h-4 w-4 text-green-600" />
                     ) : activity.action === 'rejected' ? (
                       <XCircle className="h-4 w-4 text-red-600" />
                     ) : (
-                      <Clock className="h-4 w-4 text-blue-600" />
+                      <Clock className="h-4 w-4 text-violet-600" />
                     )}
                   </div>
                   <div className="flex-1 min-w-0">

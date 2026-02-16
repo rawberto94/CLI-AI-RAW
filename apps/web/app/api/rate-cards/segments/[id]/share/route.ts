@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { segmentManagementService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const segmentService = new segmentManagementService(prisma);
 
@@ -11,30 +11,27 @@ const segmentService = new segmentManagementService(prisma);
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const body = await request.json();
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
+    const _body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
 
     const segment = await segmentService.shareSegment(params.id, tenantId, userId);
 
-    return NextResponse.json(segment);
+    return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to share segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to share segment. Please try again.', 400);
   }
 }
 
@@ -44,27 +41,24 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
 
     const segment = await segmentService.unshareSegment(params.id, tenantId, userId);
 
-    return NextResponse.json(segment);
+    return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to unshare segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to unshare segment. Please try again.', 400);
   }
 }

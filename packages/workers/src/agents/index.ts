@@ -13,6 +13,9 @@ import { contractHealthMonitor } from './contract-health-monitor';
 import { continuousLearningAgent } from './continuous-learning-agent';
 import { opportunityDiscoveryEngine } from './opportunity-discovery-engine';
 import { intelligentSearchAgent } from './intelligent-search-agent';
+import { complianceMonitoringAgent } from './compliance-monitoring-agent';
+import { obligationTrackingAgent } from './obligation-tracking-agent';
+import { contractSummarizationAgent } from './contract-summarization-agent';
 
 export class AgentRegistry {
   private agents: Map<string, BaseAgent>;
@@ -40,6 +43,11 @@ export class AgentRegistry {
     // Phase 3: Advanced Intelligence
     this.register(opportunityDiscoveryEngine);
     this.register(intelligentSearchAgent);
+
+    // Phase 4: Compliance & Summarization
+    this.register(complianceMonitoringAgent);
+    this.register(obligationTrackingAgent);
+    this.register(contractSummarizationAgent);
   }
 
   /**
@@ -102,6 +110,9 @@ export {
   continuousLearningAgent,
   opportunityDiscoveryEngine,
   intelligentSearchAgent,
+  complianceMonitoringAgent,
+  obligationTrackingAgent,
+  contractSummarizationAgent,
 };
 
 // Export types

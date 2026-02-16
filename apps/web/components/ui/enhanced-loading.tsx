@@ -374,9 +374,9 @@ const spinnerSizes = {
 
 const spinnerColors = {
   default: 'border-slate-200 dark:border-slate-700 border-t-slate-600 dark:border-t-slate-300',
-  primary: 'border-blue-200 border-t-blue-600',
+  primary: 'border-violet-200 border-t-violet-600',
   white: 'border-white/30 border-t-white',
-  success: 'border-emerald-200 border-t-emerald-600',
+  success: 'border-violet-200 border-t-violet-600',
 };
 
 export function AnimatedSpinner({ size = 'md', color = 'default', label }: AnimatedSpinnerProps) {
@@ -409,7 +409,7 @@ const dotSizes = {
   lg: 'w-3 h-3',
 };
 
-export function BouncingDots({ size = 'md', color = 'bg-blue-500' }: BouncingDotsProps) {
+export function BouncingDots({ size = 'md', color = 'bg-violet-500' }: BouncingDotsProps) {
   return (
     <div className="flex items-center gap-1">
       {[0, 1, 2].map((index) => (
@@ -449,11 +449,11 @@ const progressSizes = {
 };
 
 const progressColors = {
-  default: 'bg-blue-500',
-  success: 'bg-emerald-500',
+  default: 'bg-violet-500',
+  success: 'bg-violet-500',
   warning: 'bg-amber-500',
   danger: 'bg-red-500',
-  gradient: 'bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500',
+  gradient: 'bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500',
 };
 
 export function AnimatedProgressBar({

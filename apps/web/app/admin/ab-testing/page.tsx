@@ -1,22 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+
 import {
   Select,
   SelectContent,
@@ -38,7 +29,6 @@ import {
   Play,
   Pause,
   CheckCircle2,
-  XCircle,
   TrendingUp,
   BarChart3,
   Plus,
@@ -96,92 +86,46 @@ interface VariantMetrics {
 }
 
 // =============================================================================
-// MOCK DATA
+// API HELPERS
 // =============================================================================
 
-const mockExperiments: Experiment[] = [
-  {
-    id: 'exp1',
-    name: 'GPT-4o vs GPT-4o-mini for Date Extraction',
-    description: 'Compare extraction accuracy and cost between GPT-4o and GPT-4o-mini for date fields',
-    status: 'running',
+function mapApiTestToExperiment(test: Record<string, any>): Experiment {
+  const variants: Variant[] = [];
+  if (test.modelA) {
+    variants.push({
+      id: 'modelA',
+      name: test.modelA.modelId || 'Model A',
+      description: `Provider: ${test.modelA.provider || 'openai'}`,
+      isControl: true,
+      trafficPercent: test.trafficSplit ?? 50,
+      config: test.modelA,
+    });
+  }
+  if (test.modelB) {
+    variants.push({
+      id: 'modelB',
+      name: test.modelB.modelId || 'Model B',
+      description: `Provider: ${test.modelB.provider || 'openai'}`,
+      isControl: false,
+      trafficPercent: 100 - (test.trafficSplit ?? 50),
+      config: test.modelB,
+    });
+  }
+
+  return {
+    id: test.id,
+    name: test.name || 'Unnamed Test',
+    description: test.description || '',
+    status: test.status || 'draft',
     type: 'model',
-    startDate: new Date(Date.now() - 7 * 86400000),
-    variants: [
-      { id: 'v1', name: 'GPT-4o (Control)', description: 'Current production model', isControl: true, trafficPercent: 50, config: { model: 'gpt-4o' } },
-      { id: 'v2', name: 'GPT-4o-mini', description: 'Faster, cheaper alternative', isControl: false, trafficPercent: 50, config: { model: 'gpt-4o-mini' } },
-    ],
-    metrics: {
-      totalSamples: 1247,
-      byVariant: {
-        v1: { samples: 623, accuracy: 0.94, latencyMs: 2100, costPerExtraction: 0.015, userSatisfaction: 4.2, confidenceInterval: [0.92, 0.96], significanceLevel: 0.95 },
-        v2: { samples: 624, accuracy: 0.91, latencyMs: 890, costPerExtraction: 0.003, userSatisfaction: 4.0, confidenceInterval: [0.88, 0.94], significanceLevel: 0.92 },
-      },
-    },
-    trafficAllocation: 100,
-  },
-  {
-    id: 'exp2',
-    name: 'Enhanced Prompt for Financial Terms',
-    description: 'Test new prompt template with additional context for financial field extraction',
-    status: 'running',
-    type: 'prompt',
-    startDate: new Date(Date.now() - 14 * 86400000),
-    variants: [
-      { id: 'v1', name: 'Current Prompt', description: 'Existing extraction prompt', isControl: true, trafficPercent: 50, config: { promptVersion: '1.0' } },
-      { id: 'v2', name: 'Enhanced Prompt', description: 'New prompt with currency hints', isControl: false, trafficPercent: 50, config: { promptVersion: '2.0' } },
-    ],
-    metrics: {
-      totalSamples: 2156,
-      byVariant: {
-        v1: { samples: 1078, accuracy: 0.82, latencyMs: 1800, costPerExtraction: 0.012, userSatisfaction: 3.8, confidenceInterval: [0.79, 0.85], significanceLevel: 0.94 },
-        v2: { samples: 1078, accuracy: 0.89, latencyMs: 1950, costPerExtraction: 0.014, userSatisfaction: 4.3, confidenceInterval: [0.86, 0.92], significanceLevel: 0.97 },
-      },
-    },
-    trafficAllocation: 100,
-    winner: 'v2',
-  },
-  {
-    id: 'exp3',
-    name: 'Confidence Threshold Optimization',
-    description: 'Find optimal confidence threshold for auto-acceptance',
-    status: 'completed',
-    type: 'threshold',
-    startDate: new Date(Date.now() - 30 * 86400000),
-    endDate: new Date(Date.now() - 7 * 86400000),
-    variants: [
-      { id: 'v1', name: '80% Threshold', description: 'Current threshold', isControl: true, trafficPercent: 33, config: { threshold: 0.80 } },
-      { id: 'v2', name: '85% Threshold', description: 'Higher threshold', isControl: false, trafficPercent: 33, config: { threshold: 0.85 } },
-      { id: 'v3', name: '90% Threshold', description: 'Strictest threshold', isControl: false, trafficPercent: 34, config: { threshold: 0.90 } },
-    ],
-    metrics: {
-      totalSamples: 5432,
-      byVariant: {
-        v1: { samples: 1811, accuracy: 0.76, latencyMs: 1200, costPerExtraction: 0.01, userSatisfaction: 3.5, confidenceInterval: [0.73, 0.79], significanceLevel: 0.99 },
-        v2: { samples: 1810, accuracy: 0.84, latencyMs: 1200, costPerExtraction: 0.01, userSatisfaction: 4.1, confidenceInterval: [0.81, 0.87], significanceLevel: 0.99 },
-        v3: { samples: 1811, accuracy: 0.91, latencyMs: 1200, costPerExtraction: 0.01, userSatisfaction: 4.4, confidenceInterval: [0.88, 0.94], significanceLevel: 0.99 },
-      },
-    },
-    trafficAllocation: 0,
-    winner: 'v3',
-  },
-  {
-    id: 'exp4',
-    name: 'RAG Context Window Size',
-    description: 'Test different context window sizes for RAG retrieval',
-    status: 'draft',
-    type: 'extraction',
-    variants: [
-      { id: 'v1', name: '4K Context', description: 'Current window size', isControl: true, trafficPercent: 50, config: { contextSize: 4000 } },
-      { id: 'v2', name: '8K Context', description: 'Larger context window', isControl: false, trafficPercent: 50, config: { contextSize: 8000 } },
-    ],
-    metrics: {
-      totalSamples: 0,
-      byVariant: {},
-    },
-    trafficAllocation: 0,
-  },
-];
+    startDate: test.startDate ? new Date(test.startDate) : undefined,
+    endDate: test.endDate ? new Date(test.endDate) : undefined,
+    variants,
+    metrics: test.metrics || { totalSamples: 0, byVariant: {} },
+    winner: test.winner,
+    trafficAllocation: test.trafficSplit ?? 50,
+  };
+}
 
 // =============================================================================
 // COMPONENTS
@@ -308,30 +252,60 @@ function VariantCard({
 // =============================================================================
 
 export default function ABTestingPage() {
-  const [experiments, setExperiments] = useState<Experiment[]>(mockExperiments);
+  const [experiments, setExperiments] = useState<Experiment[]>([]);
   const [selectedExperiment, setSelectedExperiment] = useState<Experiment | null>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [filter, setFilter] = useState<string>('all');
+  const [loading, setLoading] = useState(true);
 
-  const handleToggleExperiment = (expId: string) => {
-    setExperiments(prev => prev.map(exp => {
-      if (exp.id === expId) {
-        const newStatus = exp.status === 'running' ? 'paused' : 'running';
-        toast.success(`Experiment ${newStatus === 'running' ? 'started' : 'paused'}`);
-        return { ...exp, status: newStatus };
+  const fetchExperiments = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/ai/ab-test');
+      const json = await res.json();
+      if (json.success && json.data?.tests) {
+        setExperiments(json.data.tests.map(mapApiTestToExperiment));
       }
-      return exp;
-    }));
+    } catch {
+      toast.error('Failed to load experiments');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchExperiments(); }, [fetchExperiments]);
+
+  const handleToggleExperiment = async (expId: string) => {
+    const exp = experiments.find(e => e.id === expId);
+    if (!exp) return;
+    const newStatus = exp.status === 'running' ? 'paused' : 'running';
+    try {
+      await fetch('/api/ai/ab-test', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: expId, status: newStatus }),
+      });
+      toast.success(`Experiment ${newStatus === 'running' ? 'started' : 'paused'}`);
+      fetchExperiments();
+    } catch {
+      toast.error('Failed to update experiment');
+    }
   };
 
-  const handleDeclareWinner = (expId: string, variantId: string) => {
-    setExperiments(prev => prev.map(exp => {
-      if (exp.id === expId) {
-        toast.success('Winner declared and applied to production!');
-        return { ...exp, status: 'completed', winner: variantId };
-      }
-      return exp;
-    }));
+  const handleDeclareWinner = async (expId: string, variantId: string) => {
+    try {
+      await fetch('/api/ai/ab-test', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ testId: expId, status: 'completed' }),
+      });
+      setExperiments(prev => prev.map(exp =>
+        exp.id === expId ? { ...exp, status: 'completed', winner: variantId } : exp
+      ));
+      toast.success('Winner declared and applied to production!');
+    } catch {
+      toast.error('Failed to declare winner');
+    }
   };
 
   const filteredExperiments = experiments.filter(exp => {
@@ -426,7 +400,7 @@ export default function ABTestingPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-blue-600" />
+            <CheckCircle2 className="h-4 w-4 text-violet-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{completedCount}</div>
@@ -436,7 +410,7 @@ export default function ABTestingPage() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Samples</CardTitle>
-            <BarChart3 className="h-4 w-4 text-purple-600" />
+            <BarChart3 className="h-4 w-4 text-violet-600" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">

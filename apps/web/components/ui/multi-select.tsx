@@ -78,7 +78,7 @@ export function MultiSelect({
         <span className="text-gray-500 dark:text-gray-400 text-xs">{label}</span>
         <span className="text-gray-900 dark:text-gray-100">{summary}</span>
         {selected.length > 0 && (
-          <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded bg-indigo-100 text-indigo-700">
+          <span className="ml-1 inline-flex items-center justify-center px-1.5 py-0.5 text-[10px] rounded bg-violet-100 text-violet-700">
             {selected.length}
           </span>
         )}
@@ -111,7 +111,7 @@ export function MultiSelect({
               </button>
               <button
                 onClick={selectAll}
-                className="px-2 py-1 text-xs rounded bg-indigo-600 text-white"
+                className="px-2 py-1 text-xs rounded bg-violet-600 text-white"
               >
                 All
               </button>
@@ -130,7 +130,7 @@ export function MultiSelect({
                         onClick={() => toggle(opt)}
                         className={cn(
                           "w-full flex items-center gap-2 px-2 py-2 rounded text-sm",
-                          active ? "bg-indigo-50 dark:bg-indigo-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                          active ? "bg-violet-50 dark:bg-violet-900/20" : "hover:bg-gray-50 dark:hover:bg-gray-800"
                         )}
                         role="option"
                         aria-selected={active}
@@ -140,7 +140,7 @@ export function MultiSelect({
                           className={cn(
                             "inline-flex items-center justify-center w-4 h-4 rounded border",
                             active
-                              ? "bg-indigo-600 border-indigo-600 text-white"
+                              ? "bg-violet-600 border-violet-600 text-white"
                               : "border-gray-300 dark:border-gray-600"
                           )}
                         >

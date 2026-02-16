@@ -1,5 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 /** Rate card entry update data structure */
 interface RateCardUpdateData {
@@ -19,28 +21,21 @@ interface RateCardUpdateData {
  * POST /api/rate-cards/bulk-update
  * Bulk update rate card entries
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const body = await request.json();
     const { ids, updates, userId = 'system' } = body;
 
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
-      return NextResponse.json(
-        { error: 'Invalid or empty ids array' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid or empty ids array', 400);
     }
 
     if (!updates || typeof updates !== 'object') {
-      return NextResponse.json(
-        { error: 'Invalid updates object' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid updates object', 400);
     }
 
     // Prepare update data
@@ -111,15 +106,9 @@ export async function POST(request: NextRequest) {
       await rateCardEvents.imported(result.count, tenantId, 'BULK_UPDATE');
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       updatedCount: result.count,
       message: `Successfully updated ${result.count} rate card(s)`,
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to bulk update rate cards', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+  });

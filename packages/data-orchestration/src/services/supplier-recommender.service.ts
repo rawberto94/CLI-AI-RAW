@@ -7,11 +7,11 @@
  * Requirements: 4.4
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { SupplierScore, supplierIntelligenceService } from './supplier-intelligence.service';
 import { SimilarityScore, similarityCalculatorService } from './similarity-calculator.service';
 
-const prisma = new PrismaClient();
 
 export interface SupplierRecommendation {
   supplierId: string;
@@ -308,29 +308,26 @@ export class SupplierRecommenderService {
     minDataQuality: string = 'MEDIUM'
   ): Promise<Array<{ id: string; name: string }>> {
     const excludeList = [currentSupplierId, ...excludeSuppliers];
-    
-    let query = `
+
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`s.tenant_id = ${tenantId}`,
+      Prisma.sql`s.id != ALL(${excludeList}::text[])`,
+      Prisma.sql`e.data_quality IN ('HIGH', 'MEDIUM')`,
+    ];
+
+    if (lineOfService) {
+      conditions.push(Prisma.sql`e.line_of_service = ${lineOfService}`);
+    }
+
+    const where = Prisma.join(conditions, Prisma.sql` AND `);
+
+    const suppliers = await prisma.$queryRaw<Array<{ id: string; name: string }>>`
       SELECT DISTINCT s.id, s.name
       FROM rate_card_suppliers s
       INNER JOIN rate_card_entries e ON e.supplier_id = s.id
-      WHERE s.tenant_id = $1
-      AND s.id != ALL($2::text[])
-      AND e.data_quality IN ('HIGH', 'MEDIUM')
+      WHERE ${where}
+      LIMIT 50
     `;
-
-    const params: any[] = [tenantId, excludeList];
-
-    if (lineOfService) {
-      query += ` AND e.line_of_service = $3`;
-      params.push(lineOfService);
-    }
-
-    query += ` LIMIT 50`;
-
-    const suppliers = await prisma.$queryRawUnsafe<Array<{ id: string; name: string }>>(
-      query,
-      ...params
-    );
 
     return suppliers;
   }

@@ -149,8 +149,8 @@ export function BestRateNotifications() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <AlertCircle className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <AlertCircle className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <div className="text-2xl font-bold">{data.summary.totalAffectedRateCards}</div>

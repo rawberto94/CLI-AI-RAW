@@ -4,11 +4,12 @@
  * DELETE /api/contracts/[id]/hierarchy - Unlink from parent contract
  */
 
-import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = "nodejs";
 
@@ -17,67 +18,52 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
     const tenantId = await getServerTenantId();
     
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
     
     const body = await req.json();
     const { parentContractId, relationshipType, relationshipNote } = body;
     
     if (!parentContractId) {
-      return NextResponse.json(
-        { error: "Parent contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Parent contract ID is required', 400);
     }
     
-    // Verify both contracts exist and belong to the same tenant
-    const [contract, parentContract] = await Promise.all([
-      prisma.contract.findFirst({
-        where: { id: contractId, tenantId },
-      }),
-      prisma.contract.findFirst({
-        where: { id: parentContractId, tenantId },
-      }),
+    // Verify both contracts exist and belong to the same tenant via service layer
+    const [contractResult, parentResult] = await Promise.all([
+      contractService.getContract(contractId, tenantId!),
+      contractService.getContract(parentContractId, tenantId!),
     ]);
+
+    const contract = contractResult.data;
+    const parentContract = parentResult.data;
     
     if (!contract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     if (!parentContract) {
-      return NextResponse.json(
-        { error: "Parent contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Parent contract not found', 404);
     }
     
     // Prevent self-linking
     if (contractId === parentContractId) {
-      return NextResponse.json(
-        { error: "Contract cannot be linked to itself" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract cannot be linked to itself', 400);
     }
     
     // Prevent circular references - check if parent is already a child of this contract
     const wouldCreateCycle = await checkForCycle(contractId, parentContractId, tenantId);
     if (wouldCreateCycle) {
-      return NextResponse.json(
-        { error: "This link would create a circular reference" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'This link would create a circular reference', 400);
     }
     
     // Update the contract with parent reference
@@ -122,7 +108,7 @@ export async function PUT(
       reason: 'hierarchy relationship linked',
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contract: {
         id: updatedContract.id,
@@ -142,11 +128,8 @@ export async function PUT(
         } : null,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to link contracts" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -155,47 +138,39 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
     const tenantId = await getServerTenantId();
     
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
     
-    // Verify contract exists
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
-    });
+    // Verify contract exists via service layer
+    const contractResult = await contractService.getContract(contractId, tenantId!);
+    const contract = contractResult.data;
     
     if (!contract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     if (!contract.parentContractId) {
-      return NextResponse.json(
-        { error: "Contract is not linked to a parent" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract is not linked to a parent', 400);
     }
     
-    // Remove the parent reference
-    const updatedContract = await prisma.contract.update({
-      where: { id: contractId },
-      data: {
-        parentContractId: null,
-        relationshipType: null,
-        relationshipNote: null,
-        linkedAt: null,
-      },
-    });
+    // Remove the parent reference via service layer
+    const updateResult = await contractService.updateContract(contractId, tenantId!, {
+      parentContractId: null,
+      relationshipType: null,
+      relationshipNote: null,
+      linkedAt: null,
+    } as any);
+    const updatedContract = updateResult.data;
 
     await publishRealtimeEvent({
       event: "contract:updated",
@@ -214,7 +189,7 @@ export async function DELETE(
       reason: 'hierarchy relationship unlinked',
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contract: {
         id: updatedContract.id,
@@ -224,11 +199,8 @@ export async function DELETE(
         linkedAt: null,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to unlink contract" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -237,16 +209,17 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
     const tenantId = await getServerTenantId();
     
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
     
     const contract = await prisma.contract.findFirst({
@@ -286,13 +259,10 @@ export async function GET(
     });
     
     if (!contract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       contractId: contract.id,
       parentContractId: contract.parentContractId,
       relationshipType: contract.relationshipType,
@@ -322,11 +292,8 @@ export async function GET(
         createdAt: child.createdAt?.toISOString(),
       })) || [],
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to get contract hierarchy" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 

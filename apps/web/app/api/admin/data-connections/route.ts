@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 import { randomUUID } from 'crypto';
 
 /** Data connection configuration stored in tenant settings */
@@ -23,166 +24,111 @@ interface DataConnection {
  * GET /api/admin/data-connections
  * List all data connections for the tenant
  */
-export async function GET() {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const connections = await prisma.tenantSettings.findFirst({
+    where: { tenantId: ctx.tenantId },
+    select: {
+      id: true,
+      customFields: true,
+    },
+  });
+
+  let dataConnections: DataConnection[] = [];
+
+  if (connections?.customFields) {
+    try {
+      const customFields = typeof connections.customFields === 'string'
+        ? JSON.parse(connections.customFields)
+        : connections.customFields;
+      dataConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
+    } catch {
+      dataConnections = [];
     }
-
-    const tenantId = (session.user as { tenantId?: string }).tenantId;
-    const userRole = (session.user as { role?: string }).role;
-    
-    // Only admins can view connections
-    if (!tenantId || !['admin', 'owner'].includes(userRole || '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
-    // For now, we'll store connections in a simple format
-    // In production, you'd have a proper DataConnection model
-    const connections = await prisma.tenantSettings.findFirst({
-      where: { tenantId },
-      select: { 
-        id: true,
-        customFields: true,
-      },
-    });
-
-    let dataConnections: DataConnection[] = [];
-    
-    if (connections?.customFields) {
-      try {
-        const customFields = typeof connections.customFields === 'string' 
-          ? JSON.parse(connections.customFields) 
-          : connections.customFields;
-        dataConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
-      } catch {
-        dataConnections = [];
-      }
-    }
-
-    return NextResponse.json({
-      success: true,
-      connections: dataConnections,
-    });
-
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch connections' },
-      { status: 500 }
-    );
   }
-}
+
+  return createSuccessResponse(ctx, { connections: dataConnections });
+});
 
 /**
  * POST /api/admin/data-connections
  * Create a new data connection
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  const { type, name, config, syncMode, autoSync, syncFrequency } = body;
+
+  if (!type || !name) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Type and name are required', 400);
+  }
+
+  const newConnection = {
+    id: randomUUID(),
+    type,
+    name,
+    status: 'disconnected',
+    host: config.host,
+    database: config.database,
+    syncMode: syncMode || 'reference',
+    autoSync: autoSync !== false,
+    syncFrequency: syncFrequency || 'daily',
+    contractTableName: config.contractTableName,
+    createdAt: new Date().toISOString(),
+    encryptedConfig: Buffer.from(JSON.stringify({
+      ...config,
+      password: '***ENCRYPTED***',
+      secretAccessKey: '***ENCRYPTED***',
+      clientSecret: '***ENCRYPTED***',
+    })).toString('base64'),
+  };
+
+  const settings = await prisma.tenantSettings.findFirst({
+    where: { tenantId: ctx.tenantId },
+  });
+
+  let existingConnections: DataConnection[] = [];
+
+  if (settings?.customFields) {
+    try {
+      const customFields = typeof settings.customFields === 'string'
+        ? JSON.parse(settings.customFields)
+        : settings.customFields;
+      existingConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
+    } catch {
+      existingConnections = [];
     }
+  }
 
-    const tenantId = (session.user as { tenantId?: string }).tenantId;
-    const userRole = (session.user as { role?: string }).role;
-    
-    if (!tenantId || !['admin', 'owner'].includes(userRole || '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
+  const updatedConnections = [...existingConnections, newConnection];
 
-    const body = await request.json();
-    const { type, name, config, syncMode, autoSync, syncFrequency } = body;
+  if (settings) {
+    const existingCustomFields = typeof settings.customFields === 'string'
+      ? JSON.parse(settings.customFields)
+      : (settings.customFields || {});
 
-    if (!type || !name) {
-      return NextResponse.json({ error: 'Type and name are required' }, { status: 400 });
-    }
-
-    // Create new connection object
-    const newConnection = {
-      id: randomUUID(),
-      type,
-      name,
-      status: 'disconnected',
-      host: config.host,
-      database: config.database,
-      syncMode: syncMode || 'reference',
-      autoSync: autoSync !== false,
-      syncFrequency: syncFrequency || 'daily',
-      contractTableName: config.contractTableName,
-      createdAt: new Date().toISOString(),
-      // Note: In production, encrypt sensitive fields before storing
-      encryptedConfig: Buffer.from(JSON.stringify({
-        ...config,
-        // Remove sensitive fields from plain text
-        password: '***ENCRYPTED***',
-        secretAccessKey: '***ENCRYPTED***',
-        clientSecret: '***ENCRYPTED***',
-      })).toString('base64'),
-    };
-
-    // Get existing settings
-    const settings = await prisma.tenantSettings.findFirst({
-      where: { tenantId },
-    });
-
-    let existingConnections: DataConnection[] = [];
-    
-    if (settings?.customFields) {
-      try {
-        const customFields = typeof settings.customFields === 'string' 
-          ? JSON.parse(settings.customFields) 
-          : settings.customFields;
-        existingConnections = (customFields as Record<string, unknown>).dataConnections as DataConnection[] || [];
-      } catch {
-        existingConnections = [];
-      }
-    }
-
-    // Add new connection
-    const updatedConnections = [...existingConnections, newConnection];
-
-    // Update or create settings
-    if (settings) {
-      const existingCustomFields = typeof settings.customFields === 'string' 
-        ? JSON.parse(settings.customFields) 
-        : (settings.customFields || {});
-      
-      await prisma.tenantSettings.update({
-        where: { id: settings.id },
-        data: {
-          customFields: JSON.stringify({
-            ...existingCustomFields,
-            dataConnections: updatedConnections,
-          }),
-        },
-      });
-    } else {
-      await prisma.tenantSettings.create({
-        data: {
-          tenantId,
-          customFields: JSON.stringify({
-            dataConnections: updatedConnections,
-          }),
-        },
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      connection: {
-        ...newConnection,
-        encryptedConfig: undefined, // Don't return encrypted config
+    await prisma.tenantSettings.update({
+      where: { id: settings.id },
+      data: {
+        customFields: JSON.stringify({
+          ...existingCustomFields,
+          dataConnections: updatedConnections,
+        }),
       },
     });
-
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to create connection' },
-      { status: 500 }
-    );
+  } else {
+    await prisma.tenantSettings.create({
+      data: {
+        tenantId: ctx.tenantId,
+        customFields: JSON.stringify({
+          dataConnections: updatedConnections,
+        }),
+      },
+    });
   }
-}
+
+  return createSuccessResponse(ctx, {
+    connection: {
+      ...newConnection,
+      encryptedConfig: undefined,
+    },
+  });
+});

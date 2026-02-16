@@ -1,6 +1,7 @@
 # Real-Time Orchestrator Progress Implementation
 
 ## Overview
+
 Implemented a comprehensive real-time orchestrator progress tracking system for contract details pages with AI chatbot integration. The system provides live updates on contract processing status, smart artifact suggestions, and on-demand generation capabilities.
 
 ## Architecture
@@ -8,6 +9,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 ### 1. Client-Side Components
 
 #### **useContractOrchestrator Hook** (`apps/web/hooks/useContractOrchestrator.ts`)
+
 - Real-time progress tracking via Server-Sent Events (SSE)
 - Automatic fallback to polling when SSE unavailable
 - Auto-reconnect on connection loss
@@ -19,6 +21,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
   - `generateArtifact(type)`, `triggerOrchestrator()`, `refresh()` actions
 
 #### **OrchestratorProgress Component** (`apps/web/components/contracts/OrchestratorProgress.tsx`)
+
 - Visual display of orchestrator status
 - Features:
   - Overall progress bar
@@ -31,6 +34,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
   - Re-run orchestrator trigger
 
 #### **useOrchestratorChatbot Hook** (`apps/web/hooks/useOrchestratorChatbot.ts`)
+
 - Combines chatbot with orchestrator awareness
 - Automatically includes orchestrator state in system context
 - Handles orchestrator commands:
@@ -40,6 +44,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 - Returns: `messages`, `isLoading`, `sendMessage`, `orchestratorProgress`, `generateArtifact`, `triggerOrchestrator`
 
 #### **OrchestratorAwareChatbot Component** (`apps/web/components/contracts/OrchestratorAwareChatbot.tsx`)
+
 - Full-featured chatbot UI with orchestrator integration
 - Features:
   - Live connection badge
@@ -52,6 +57,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 ### 2. API Routes
 
 #### **GET /api/contracts/[id]/orchestrator/progress** (`route.ts`)
+
 - REST endpoint for orchestrator state
 - Returns:
   - Current status (idle/running/completed)
@@ -64,6 +70,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 - Generates context-aware suggestions based on contract type
 
 #### **GET /api/contracts/[id]/orchestrator/stream** (`route.ts`)
+
 - Server-Sent Events endpoint for real-time updates
 - Polls ProcessingJob every 2 seconds
 - Sends events:
@@ -76,11 +83,13 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 - Auto-cleanup on disconnect
 
 #### **POST /api/contracts/[id]/orchestrator/trigger** (`route.ts`)
+
 - Manually trigger orchestrator processing
 - Enqueues agent orchestrator job with priority 40
 - Returns job ID and trace ID for tracking
 
 #### **POST /api/contracts/[id]/orchestrator/generate-artifact** (`route.ts`)
+
 - Trigger generation of specific artifact type
 - Validates contract has sufficient text (>100 chars)
 - Enqueues artifact generation job with priority 35
@@ -89,6 +98,7 @@ Implemented a comprehensive real-time orchestrator progress tracking system for 
 ### 3. Integration
 
 #### **Contract Details Page** (`apps/web/app/contracts/[id]/state-of-the-art/page.tsx`)
+
 - Added `<OrchestratorProgress>` component prominently
 - Added floating chatbot button with live indicator
 - Integrated `<OrchestratorAwareChatbot>` component
@@ -135,20 +145,23 @@ OrchestratorAwareChatbot Component
 ## Features
 
 ### Real-Time Updates
+
 - **SSE-first**: Immediate updates via Server-Sent Events
 - **Polling fallback**: Automatic degradation for compatibility
 - **Auto-reconnect**: Resilient connection handling
 - **Live indicators**: Visual feedback on connection status
 
 ### Smart Artifact Suggestions
+
 - **Contract-type aware**: Suggestions based on contract type profile
 - **Relevance categorization**: Required vs Optional artifacts
 - **Context-aware reasons**: Explains why each artifact is suggested
 - **One-click generation**: Generate artifacts directly from UI
 
 ### AI Chatbot Integration
+
 - **Orchestrator awareness**: Chatbot knows current processing status
-- **Natural language commands**: 
+- **Natural language commands**:
   - "What's the status?"
   - "Generate OVERVIEW artifact"
   - "Re-run processing"
@@ -156,6 +169,7 @@ OrchestratorAwareChatbot Component
 - **Suggestions in chat**: Quick action buttons for common queries
 
 ### Granular Control
+
 - **Manual orchestrator trigger**: Re-run processing on demand
 - **Per-artifact generation**: Generate specific artifacts
 - **Progress visibility**: See what's running in real-time
@@ -164,12 +178,14 @@ OrchestratorAwareChatbot Component
 ## Contract Type Profiles Integration
 
 The system uses contract type profiles (`packages/workers/src/contract-type-profiles.ts`) to:
+
 - Determine which artifacts are relevant for a contract type
 - Categorize artifact relevance (required/optional/not-applicable)
 - Generate smart suggestions with contextual reasons
 - Filter suggestions to show only actionable items
 
 Example:
+
 ```typescript
 // For SOW contracts
 {
@@ -197,20 +213,25 @@ Example:
 ## Usage Examples
 
 ### 1. Viewing Progress
+
 User uploads contract → `OrchestratorProgress` component automatically shows:
+
 - Current iteration (e.g., "Iteration 2/20")
 - Step progress (metadata extraction: completed, categorization: running)
 - Artifacts completed (3/7)
 - Suggested artifacts (FINANCIAL, RISK, COMPLIANCE)
 
 ### 2. Generating Artifact
+
 User clicks "Generate FINANCIAL" → System:
+
 1. Enqueues artifact generation job
 2. Shows loading state
 3. Streams progress updates via SSE
 4. Displays completed artifact
 
 ### 3. Chatbot Interaction
+
 ```
 User: "What's happening with this contract?"
 Bot: **Current Status:** running
@@ -252,20 +273,25 @@ Bot: I've triggered generation of the COMPLIANCE artifact.
 ## Configuration
 
 ### Environment Variables
+
 None required - uses existing OpenAI and database configs
 
 ### Queue Priorities
+
 - Agent orchestrator: 40 (high priority)
 - Artifact generation: 35 (medium-high priority)
 
 ### Timeouts
+
 - SSE connection: 5 minutes
 - Heartbeat interval: 15 seconds
 - Polling interval: 2 seconds (configurable via hook)
 - Reconnect delay: 3 seconds
 
 ### Rate Limits
+
 Consider adding rate limits to prevent:
+
 - Excessive artifact generation requests
 - Rapid orchestrator re-runs
 - Chatbot message spam
@@ -289,12 +315,14 @@ Consider adding rate limits to prevent:
 ## Deployment
 
 No additional deployment steps required. The system uses:
+
 - Existing Next.js API routes
 - Existing queue infrastructure
 - Existing database models
 - Standard HTTP/SSE protocols (no special server config)
 
 Works with:
+
 - Vercel
 - AWS
 - Docker

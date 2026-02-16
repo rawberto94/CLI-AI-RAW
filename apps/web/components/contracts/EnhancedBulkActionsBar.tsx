@@ -523,14 +523,14 @@ interface ReclassifyDialogProps {
 }
 
 const DOCUMENT_CLASSIFICATIONS = [
-  { value: 'contract', label: 'Contract', icon: FileCheck, color: 'text-emerald-600' },
+  { value: 'contract', label: 'Contract', icon: FileCheck, color: 'text-violet-600' },
   { value: 'purchase_order', label: 'Purchase Order', icon: ShoppingCart, color: 'text-amber-600' },
-  { value: 'invoice', label: 'Invoice', icon: Receipt, color: 'text-blue-600' },
-  { value: 'quote', label: 'Quote / Proposal', icon: FileQuestion, color: 'text-purple-600' },
+  { value: 'invoice', label: 'Invoice', icon: Receipt, color: 'text-violet-600' },
+  { value: 'quote', label: 'Quote / Proposal', icon: FileQuestion, color: 'text-violet-600' },
   { value: 'work_order', label: 'Work Order', icon: FileText, color: 'text-orange-600' },
-  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-cyan-600' },
+  { value: 'amendment', label: 'Amendment', icon: FileText, color: 'text-violet-600' },
   { value: 'addendum', label: 'Addendum', icon: FileText, color: 'text-rose-600' },
-  { value: 'letter_of_intent', label: 'Letter of Intent', icon: FileText, color: 'text-teal-600' },
+  { value: 'letter_of_intent', label: 'Letter of Intent', icon: FileText, color: 'text-violet-600' },
   { value: 'memorandum', label: 'Memorandum', icon: FileText, color: 'text-slate-600' },
 ];
 
@@ -752,7 +752,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
   return (
     <>
       <AnimatePresence>
-        <motion.div
+        <motion.div key="EnhancedBulkActionsBar-ap-1"
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
@@ -772,7 +772,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
             <motion.div
               initial={{ scale: 0.5 }}
               animate={{ scale: 1 }}
-              className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-500/30"
+              className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30"
             >
               <span className="text-sm sm:text-lg font-bold">{selectedCount}</span>
             </motion.div>
@@ -818,7 +818,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-purple-400 hover:text-purple-300 hover:bg-purple-900/30 h-8 w-8 p-0 sm:w-auto sm:px-3"
+                    className="text-violet-400 hover:text-violet-300 hover:bg-violet-900/30 h-8 w-8 p-0 sm:w-auto sm:px-3"
                     onClick={() => handleAction("analyze")}
                     disabled={processing !== null}
                   >
@@ -838,7 +838,7 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                 <TooltipTrigger asChild>
                   <Button
                     size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 h-8 px-2 sm:px-3"
+                    className="bg-violet-600 hover:bg-violet-700 h-8 px-2 sm:px-3"
                     onClick={() => handleAction("ai_report")}
                     disabled={processing !== null}
                   >
@@ -932,11 +932,11 @@ export const EnhancedBulkActionsBar = memo(function EnhancedBulkActionsBar({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="center" className="w-56">
                   <DropdownMenuItem onClick={() => setReclassifyDialogOpen(true)}>
-                    <FileCheck className="w-4 h-4 mr-2 text-teal-500" />
+                    <FileCheck className="w-4 h-4 mr-2 text-violet-500" />
                     Reclassify Documents
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAction("mark-signed")}>
-                    <PenLine className="w-4 h-4 mr-2 text-emerald-500" />
+                    <PenLine className="w-4 h-4 mr-2 text-violet-500" />
                     Mark as Signed
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleAction("mark-unsigned")}>

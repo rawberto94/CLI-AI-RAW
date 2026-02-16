@@ -120,10 +120,10 @@ export function BulkOperations() {
 
       {/* Bulk Actions */}
       {selectedCount > 0 && (
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-violet-50 border-violet-200">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
-              <p className="font-medium text-blue-900">
+              <p className="font-medium text-violet-900">
                 {selectedCount} contract{selectedCount > 1 ? 's' : ''} selected
               </p>
               <div className="flex items-center gap-2">
@@ -203,7 +203,7 @@ export function BulkOperations() {
               <div
                 key={contract.id}
                 className={`flex items-center gap-4 p-4 border rounded-lg transition-colors ${
-                  contract.selected ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50'
+                  contract.selected ? 'bg-violet-50 border-violet-200' : 'hover:bg-gray-50'
                 }`}
               >
                 <Checkbox

@@ -16,7 +16,7 @@ export const ComplianceRenderer = memo(function ComplianceRenderer({ data }: Com
   return (
     <div className="space-y-5">
       {data.summary && (
-        <div className="p-6 bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/50 dark:to-purple-950/50 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-sm">
+        <div className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 rounded-xl border-2 border-indigo-200 dark:border-indigo-800 shadow-sm">
           <h4 className="font-bold text-base text-indigo-900 dark:text-indigo-100 mb-3 flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Compliance Summary
@@ -42,7 +42,7 @@ export const ComplianceRenderer = memo(function ComplianceRenderer({ data }: Com
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 leading-relaxed">{item.notes || item.details}</p>
                 {item.excerpt && (
-                  <p className="text-sm italic text-gray-500 dark:text-gray-400 mt-3 pl-4 border-l-4 border-indigo-300 dark:border-indigo-700 leading-relaxed">
+                  <p className="text-sm italic text-gray-500 dark:text-gray-400 mt-3 pl-4 border-l-4 border-indigo-300 dark:border-violet-700 leading-relaxed">
                     &ldquo;{item.excerpt}&rdquo;
                   </p>
                 )}

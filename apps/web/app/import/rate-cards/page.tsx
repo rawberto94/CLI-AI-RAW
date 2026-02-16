@@ -114,7 +114,7 @@ export default function RateCardImportPage() {
           </h2>
           <ol className="space-y-3 text-gray-600 dark:text-slate-400">
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full flex items-center justify-center text-sm font-medium">
                 1
               </span>
               <span>
@@ -122,7 +122,7 @@ export default function RateCardImportPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full flex items-center justify-center text-sm font-medium">
                 2
               </span>
               <span>
@@ -130,7 +130,7 @@ export default function RateCardImportPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full flex items-center justify-center text-sm font-medium">
                 3
               </span>
               <span>
@@ -138,7 +138,7 @@ export default function RateCardImportPage() {
               </span>
             </li>
             <li className="flex gap-3">
-              <span className="flex-shrink-0 w-6 h-6 bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center text-sm font-medium">
+              <span className="flex-shrink-0 w-6 h-6 bg-violet-100 dark:bg-violet-900/50 text-violet-600 dark:text-violet-400 rounded-full flex items-center justify-center text-sm font-medium">
                 4
               </span>
               <span>

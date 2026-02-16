@@ -82,7 +82,7 @@ export function AtRiskRatesAlert({ atRiskRates }: AtRiskRatesAlertProps) {
                 <div className="text-sm text-muted-foreground mb-1">
                   <strong>Issue:</strong> {rate.reason}
                 </div>
-                <div className="text-sm text-blue-600">
+                <div className="text-sm text-violet-600">
                   <strong>Recommended:</strong> {rate.recommendedAction}
                 </div>
               </div>

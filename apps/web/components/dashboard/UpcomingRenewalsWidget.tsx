@@ -121,14 +121,14 @@ const URGENCY_CONFIG = {
 
 const STATUS_CONFIG = {
   pending: { color: 'text-slate-600', bg: 'bg-slate-100', label: 'Pending' },
-  initiated: { color: 'text-blue-600', bg: 'bg-blue-100', label: 'Initiated' },
-  in_progress: { color: 'text-indigo-600', bg: 'bg-indigo-100', label: 'In Progress' },
+  initiated: { color: 'text-violet-600', bg: 'bg-violet-100', label: 'Initiated' },
+  in_progress: { color: 'text-violet-600', bg: 'bg-violet-100', label: 'In Progress' },
   completed: { color: 'text-green-600', bg: 'bg-green-100', label: 'Completed' },
   declined: { color: 'text-red-600', bg: 'bg-red-100', label: 'Declined' },
 }
 
-const formatCurrency = (value: number, currency = 'USD'): string => {
-  return new Intl.NumberFormat('en-US', {
+const formatCurrency = (value: number, currency = 'CHF'): string => {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,
@@ -151,7 +151,7 @@ interface RenewalItemProps {
 
 function RenewalItem({ 
   renewal, 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   onInitiateRenewal, 
   onSetReminder, 
   variant = 'card' 
@@ -189,7 +189,7 @@ function RenewalItem({
             <Link 
               href={`/contracts/${renewal.id}`}
               className={cn(
-                "font-medium hover:text-indigo-600 truncate",
+                "font-medium hover:text-violet-600 truncate",
                 isCompact ? "text-xs" : "text-sm"
               )}
             >
@@ -337,9 +337,9 @@ function RenewalSummary({ renewals }: RenewalSummaryProps) {
         <div className="text-lg font-bold text-orange-600">{stats.high}</div>
         <div className="text-[10px] text-orange-600">High</div>
       </div>
-      <div className="text-center p-2 bg-indigo-50 rounded-lg">
-        <div className="text-lg font-bold text-indigo-600">{formatCurrency(stats.totalValue).replace('$', '')}</div>
-        <div className="text-[10px] text-indigo-600">At Risk</div>
+      <div className="text-center p-2 bg-violet-50 rounded-lg">
+        <div className="text-lg font-bold text-violet-600">{formatCurrency(stats.totalValue)}</div>
+        <div className="text-[10px] text-violet-600">At Risk</div>
       </div>
       <div className="text-center p-2 bg-green-50 rounded-lg">
         <div className="text-lg font-bold text-green-600">{stats.autoRenewal}</div>

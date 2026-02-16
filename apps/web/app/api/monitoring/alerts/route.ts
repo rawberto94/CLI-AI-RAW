@@ -1,53 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { alertingService } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/monitoring/alerts
  * Returns active alerts and alert history
  */
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const includeHistory = searchParams.get('history') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50');
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const searchParams = request.nextUrl.searchParams;
+  const includeHistory = searchParams.get('history') === 'true';
+  const limit = parseInt(searchParams.get('limit') || '50');
 
-    const activeAlerts = alertingService.getActiveAlerts();
-    const history = includeHistory ? alertingService.getAlertHistory(limit) : [];
+  const activeAlerts = alertingService.getActiveAlerts();
+  const history = includeHistory ? alertingService.getAlertHistory(limit) : [];
 
-    return NextResponse.json({
-      active: activeAlerts,
-      history,
-      count: {
-        active: activeAlerts.length,
-        history: history.length,
-      },
-      timestamp: new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch alerts' },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, {
+    active: activeAlerts,
+    history,
+    count: {
+      active: activeAlerts.length,
+      history: history.length,
+    },
+    timestamp: new Date().toISOString(),
+  });
+});
 
 /**
  * POST /api/monitoring/alerts/check
  * Manually trigger threshold checks
  */
-export async function POST(request: NextRequest) {
-  try {
-    const newAlerts = await alertingService.checkThresholds();
+export const POST = withApiHandler(async (_request: NextRequest, ctx) => {
+  const newAlerts = await alertingService.checkThresholds();
 
-    return NextResponse.json({
-      newAlerts,
-      count: newAlerts.length,
-      timestamp: new Date().toISOString(),
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to check thresholds' },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, {
+    newAlerts,
+    count: newAlerts.length,
+    timestamp: new Date().toISOString(),
+  });
+});

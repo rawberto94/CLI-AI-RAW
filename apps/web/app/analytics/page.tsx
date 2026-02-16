@@ -2,11 +2,11 @@
 
 export const dynamic = 'force-dynamic'
 
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect as _useEffect, useState, useMemo } from 'react'
 import { AnalyticsHub } from '@/components/analytics/AnalyticsHub'
 import { PageBreadcrumb } from '@/components/navigation'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
+import { Button as _Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import {
@@ -81,29 +81,29 @@ export default function ImprovedAnalyticsPage() {
       title: 'Documents',
       description: 'Document classification & signature trends',
       href: '/analytics/documents',
-      gradient: 'from-teal-500 to-emerald-500',
-      shadowColor: 'shadow-teal-500/20'
+      gradient: 'from-violet-500 to-violet-500',
+      shadowColor: 'shadow-violet-500/20'
     },
     {
       title: 'Artifacts',
       description: 'Artifact extraction analytics',
       href: '/analytics/artifacts',
-      gradient: 'from-blue-500 to-cyan-500',
-      shadowColor: 'shadow-blue-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     },
     {
       title: 'Cost Savings',
       description: 'Savings opportunities',
       href: '/analytics/savings',
-      gradient: 'from-emerald-500 to-green-500',
-      shadowColor: 'shadow-emerald-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     },
     {
       title: 'Renewals',
       description: 'Contract renewals',
       href: '/analytics/renewals',
-      gradient: 'from-purple-500 to-violet-500',
-      shadowColor: 'shadow-purple-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     },
     {
       title: 'Suppliers',
@@ -123,8 +123,8 @@ export default function ImprovedAnalyticsPage() {
       title: 'Procurement',
       description: 'Procurement intelligence',
       href: '/analytics/procurement',
-      gradient: 'from-indigo-500 to-blue-500',
-      shadowColor: 'shadow-indigo-500/20'
+      gradient: 'from-violet-500 to-purple-500',
+      shadowColor: 'shadow-violet-500/20'
     }
   ]
 
@@ -139,11 +139,11 @@ export default function ImprovedAnalyticsPage() {
         transition={{ duration: 0.5 }}
         className="flex items-center gap-4"
       >
-        <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-purple-500/30">
+        <div className="p-4 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-pink-500 text-white shadow-xl shadow-violet-500/30">
           <BarChart3 className="h-8 w-8" />
         </div>
         <div>
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
             Analytics Hub
           </h1>
           <p className="text-muted-foreground text-lg">
@@ -200,10 +200,10 @@ export default function ImprovedAnalyticsPage() {
                           >
                             <PageIcon className="h-5 w-5" />
                           </motion.div>
-                          <h4 className="font-semibold text-lg group-hover:text-blue-600 transition-colors">{page.title}</h4>
+                          <h4 className="font-semibold text-lg group-hover:text-violet-600 transition-colors">{page.title}</h4>
                           <p className="text-sm text-muted-foreground">{page.description}</p>
                         </div>
-                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                        <ArrowRight className="h-5 w-5 text-muted-foreground group-hover:text-violet-600 group-hover:translate-x-1 transition-all" />
                       </div>
                     </CardContent>
                   </Card>

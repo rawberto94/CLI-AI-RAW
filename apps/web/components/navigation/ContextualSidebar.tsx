@@ -50,7 +50,7 @@ interface ContextualSidebarProps {
 const getItemConfig = (type: ContextualItem['type']) => {
   switch (type) {
     case 'contract':
-      return { icon: FileText, color: 'bg-blue-100 text-blue-600' };
+      return { icon: FileText, color: 'bg-violet-100 text-violet-600' };
     case 'approval':
       return { icon: CheckCircle2, color: 'bg-amber-100 text-amber-600' };
     case 'renewal':
@@ -58,7 +58,7 @@ const getItemConfig = (type: ContextualItem['type']) => {
     case 'alert':
       return { icon: AlertTriangle, color: 'bg-red-100 text-red-600' };
     case 'insight':
-      return { icon: Zap, color: 'bg-purple-100 text-purple-600' };
+      return { icon: Zap, color: 'bg-violet-100 text-violet-600' };
     default:
       return { icon: Activity, color: 'bg-slate-100 text-slate-600' };
   }
@@ -118,7 +118,7 @@ export function ContextualSidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -231,7 +231,7 @@ export function ContextualSidebar({
                     <Eye className="h-4 w-4" />
                     View All
                   </button>
-                  <button className="flex-1 px-3 py-2 text-sm font-medium bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                  <button className="flex-1 px-3 py-2 text-sm font-medium bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors flex items-center justify-center gap-2">
                     Take Action
                     <ArrowRight className="h-4 w-4" />
                   </button>
@@ -239,7 +239,7 @@ export function ContextualSidebar({
               </div>
             )}
           </motion.aside>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -258,12 +258,12 @@ export function QuickContextButton({ count, onClick }: QuickContextButtonProps) 
   return (
     <button
       onClick={onClick}
-      className="fixed right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-white border border-slate-200 rounded-full shadow-lg hover:shadow-xl hover:border-blue-300 transition-all group"
+      className="fixed right-4 top-1/2 -translate-y-1/2 z-30 p-3 bg-white border border-slate-200 rounded-full shadow-lg hover:shadow-xl hover:border-violet-300 transition-all group"
       title="View related items"
     >
-      <Activity className="h-5 w-5 text-slate-600 group-hover:text-blue-500 transition-colors" />
+      <Activity className="h-5 w-5 text-slate-600 group-hover:text-violet-500 transition-colors" />
       {count !== undefined && count > 0 && (
-        <span className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 h-5 w-5 bg-violet-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
           {count > 9 ? '9+' : count}
         </span>
       )}

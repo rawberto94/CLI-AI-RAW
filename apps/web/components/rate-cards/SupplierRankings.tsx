@@ -97,7 +97,7 @@ export function SupplierRankings() {
 
   useEffect(() => {
     fetchRankings();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [periodMonths]);
 
   const getSortedRankings = () => {
@@ -149,7 +149,7 @@ export function SupplierRankings() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
     );
   }
@@ -450,30 +450,30 @@ export function SupplierRankings() {
                 ))}
             </div>
 
-            <div className="p-4 bg-blue-50 rounded-lg">
+            <div className="p-4 bg-violet-50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <Star className="h-5 w-5 text-blue-600" />
-                <p className="font-medium text-blue-900">Most Competitive</p>
+                <Star className="h-5 w-5 text-violet-600" />
+                <p className="font-medium text-violet-900">Most Competitive</p>
               </div>
               {sortedRankings
                 .sort((a, b) => b.competitivenessScore - a.competitivenessScore)
                 .slice(0, 1)
                 .map((supplier) => (
                   <div key={supplier.supplierId}>
-                    <p className="text-lg font-bold text-blue-900">
+                    <p className="text-lg font-bold text-violet-900">
                       {supplier.supplierName}
                     </p>
-                    <p className="text-sm text-blue-700">
+                    <p className="text-sm text-violet-700">
                       {supplier.competitivenessScore.toFixed(0)}% score
                     </p>
                   </div>
                 ))}
             </div>
 
-            <div className="p-4 bg-purple-50 rounded-lg">
+            <div className="p-4 bg-violet-50 rounded-lg">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-5 w-5 text-purple-600" />
-                <p className="font-medium text-purple-900">Best Coverage</p>
+                <MapPin className="h-5 w-5 text-violet-600" />
+                <p className="font-medium text-violet-900">Best Coverage</p>
               </div>
               {sortedRankings
                 .sort(
@@ -484,10 +484,10 @@ export function SupplierRankings() {
                 .slice(0, 1)
                 .map((supplier) => (
                   <div key={supplier.supplierId}>
-                    <p className="text-lg font-bold text-purple-900">
+                    <p className="text-lg font-bold text-violet-900">
                       {supplier.supplierName}
                     </p>
-                    <p className="text-sm text-purple-700">
+                    <p className="text-sm text-violet-700">
                       {supplier.geographicCoverage.countries.length} countries
                     </p>
                   </div>

@@ -4,24 +4,48 @@
  * Compare all rate card entries against baselines
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { baselineManagementService } from 'data-orchestration';
+import { NextRequest } from 'next/server';
+import { baselineManagementService } from 'data-orchestration/services';
 import { prisma } from "@/lib/prisma";
 import { getServerTenantId } from "@/lib/tenant-server";
+import { getServerSession } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const bulkCompareSchema = z.object({
+  minVariancePercentage: z.number().min(0).max(100).default(5),
+  baselineTypes: z.array(z.string()).optional(),
+  categoryL1: z.string().optional(),
+  categoryL2: z.string().optional(),
+});
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function POST(req: NextRequest) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
     const tenantId = await getServerTenantId();
     const body = await req.json();
 
+    const parsed = bulkCompareSchema.safeParse(body);
+    if (!parsed.success) {
+      return createValidationErrorResponse(ctx, parsed.error);
+    }
+
     const {
-      minVariancePercentage = 5,
+      minVariancePercentage,
       baselineTypes,
       categoryL1,
       categoryL2,
-    } = body;
+    } = parsed.data;
 
     const service = new baselineManagementService(prisma);
     const result = await service.bulkCompareAgainstBaselines(tenantId, {
@@ -31,17 +55,8 @@ export async function POST(req: NextRequest) {
       categoryL2,
     });
 
-    return NextResponse.json({
-      success: true,
-      ...result,
-    });
+    return createSuccessResponse(ctx, result);
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to perform bulk baseline comparison',
-        details: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

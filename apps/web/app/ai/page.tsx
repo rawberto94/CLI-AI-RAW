@@ -70,8 +70,8 @@ const AI_DASHBOARDS = [
     title: 'AI Decision Audit',
     description: 'Track AI decisions, governance compliance, and model accountability',
     icon: Shield,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     features: ['Decision Logging', 'Compliance Tracking', 'Risk Flags', 'Usage Analytics'],
   },
   {
@@ -79,8 +79,8 @@ const AI_DASHBOARDS = [
     title: 'Knowledge Graph',
     description: 'Visualize entity relationships and contract connections',
     icon: Network,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-100',
+    color: 'text-violet-600',
+    bgColor: 'bg-violet-100',
     features: ['Entity Mapping', 'Relationship Viz', 'Cluster Detection', 'Search & Filter'],
   },
   {
@@ -145,15 +145,22 @@ export default function AICommandCenterPage() {
 
       {/* Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="flex flex-wrap gap-1 h-auto p-1">
-          <TabsTrigger value="overview" className="gap-2">
+        <TabsList className="flex flex-wrap gap-1 h-auto p-1.5 bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/30 dark:shadow-slate-900/30 rounded-xl">
+          <TabsTrigger 
+            value="overview" 
+            className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 rounded-lg transition-all duration-200"
+          >
             <Sparkles className="w-4 h-4" />
             Overview
           </TabsTrigger>
           {AI_DASHBOARDS.map(dashboard => {
             const Icon = dashboard.icon;
             return (
-              <TabsTrigger key={dashboard.id} value={dashboard.id} className="gap-2">
+              <TabsTrigger 
+                key={dashboard.id} 
+                value={dashboard.id} 
+                className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-primary data-[state=active]:via-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-primary/30 rounded-lg transition-all duration-200"
+              >
                 <Icon className="w-4 h-4" />
                 <span className="hidden md:inline">{dashboard.title}</span>
               </TabsTrigger>
@@ -165,37 +172,52 @@ export default function AICommandCenterPage() {
         <TabsContent value="overview" className="space-y-6">
           {/* Quick Stats */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-5">
-            <Card>
-              <CardContent className="p-5 text-center">
-                <Zap className="w-6 h-6 mx-auto text-amber-500" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-amber-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-5 text-center relative">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Zap className="w-6 h-6" />
+                </div>
                 <p className="text-2xl font-bold mt-2">5</p>
                 <p className="text-xs text-muted-foreground">AI Modules</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5 text-center">
-                <Activity className="w-6 h-6 mx-auto text-green-500" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-green-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-5 text-center relative">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Activity className="w-6 h-6" />
+                </div>
                 <p className="text-2xl font-bold mt-2">99.8%</p>
                 <p className="text-xs text-muted-foreground">Uptime</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5 text-center">
-                <Brain className="w-6 h-6 mx-auto text-purple-500" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-violet-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-5 text-center relative">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Brain className="w-6 h-6" />
+                </div>
                 <p className="text-2xl font-bold mt-2">125K</p>
                 <p className="text-xs text-muted-foreground">AI Requests</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5 text-center">
-                <Shield className="w-6 h-6 mx-auto text-blue-500" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-violet-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-5 text-center relative">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <Shield className="w-6 h-6" />
+                </div>
                 <p className="text-2xl font-bold mt-2">98.7%</p>
                 <p className="text-xs text-muted-foreground">Compliance</p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5 text-center">
-                <TrendingUp className="w-6 h-6 mx-auto text-rose-500" />
+            <Card className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg hover:shadow-xl hover:shadow-rose-200/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-rose-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <CardContent className="p-5 text-center relative">
+                <div className="inline-flex p-2.5 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 text-white shadow-lg shadow-rose-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <TrendingUp className="w-6 h-6" />
+                </div>
                 <p className="text-2xl font-bold mt-2">94%</p>
                 <p className="text-xs text-muted-foreground">Accuracy</p>
               </CardContent>
@@ -209,12 +231,13 @@ export default function AICommandCenterPage() {
               return (
                 <Card 
                   key={dashboard.id}
-                  className="hover:shadow-lg transition-all cursor-pointer group"
+                  className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 hover:shadow-2xl hover:shadow-primary/10 transition-all duration-300 cursor-pointer hover:-translate-y-1"
                   onClick={() => setActiveTab(dashboard.id)}
                 >
-                  <CardHeader className="pb-2">
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <CardHeader className="pb-2 relative">
                     <div className="flex items-start gap-3">
-                      <div className={cn('p-3 rounded-xl', dashboard.bgColor)}>
+                      <div className={cn('p-3 rounded-xl shadow-lg group-hover:scale-110 transition-transform duration-300', dashboard.bgColor)}>
                         <Icon className={cn('w-6 h-6', dashboard.color)} />
                       </div>
                       <div className="flex-1">
@@ -227,15 +250,15 @@ export default function AICommandCenterPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="relative">
                     <div className="flex flex-wrap gap-1.5 mb-4">
                       {dashboard.features.map(feature => (
-                        <Badge key={feature} variant="secondary" className="text-xs">
+                        <Badge key={feature} variant="secondary" className="text-xs bg-slate-100/80 dark:bg-slate-800/80">
                           {feature}
                         </Badge>
                       ))}
                     </div>
-                    <Button variant="ghost" className="w-full justify-between group-hover:bg-primary/5">
+                    <Button variant="ghost" className="w-full justify-between group-hover:bg-primary/10 transition-colors">
                       Open Dashboard
                       <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                     </Button>
@@ -246,30 +269,47 @@ export default function AICommandCenterPage() {
           </div>
 
           {/* Documentation */}
-          <Card>
-            <CardHeader>
+          <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-lg overflow-hidden">
+            <CardHeader className="border-b border-slate-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-white dark:from-slate-800/50 dark:to-slate-900/50">
               <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="w-5 h-5" />
+                <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md">
+                  <BookOpen className="w-4 h-4" />
+                </div>
                 Getting Started with AI Features
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               <div className="grid md:grid-cols-3 gap-4">
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="font-medium mb-2">1. Configure Models</h4>
-                  <p className="text-sm text-muted-foreground">
+                <div className="group p-5 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-100/50 dark:border-violet-800/30 hover:shadow-lg hover:shadow-violet-200/30 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-md group-hover:scale-110 transition-transform">
+                      <Cpu className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-semibold text-violet-900 dark:text-violet-100">1. Configure Models</h4>
+                  </div>
+                  <p className="text-sm text-violet-700/80 dark:text-violet-300/80">
                     Set up your preferred AI models in the Model Registry for optimal performance.
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="font-medium mb-2">2. Enable Extraction</h4>
-                  <p className="text-sm text-muted-foreground">
+                <div className="group p-5 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-violet-950/30 border border-violet-100/50 dark:border-violet-800/30 hover:shadow-lg hover:shadow-violet-200/30 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-md group-hover:scale-110 transition-transform">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-semibold text-violet-900 dark:text-violet-100">2. Enable Extraction</h4>
+                  </div>
+                  <p className="text-sm text-violet-700/80 dark:text-violet-300/80">
                     Upload contracts to automatically extract obligations, entities, and insights.
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-muted/50">
-                  <h4 className="font-medium mb-2">3. Monitor & Optimize</h4>
-                  <p className="text-sm text-muted-foreground">
+                <div className="group p-5 rounded-xl bg-gradient-to-br from-violet-50 to-purple-50/50 dark:from-violet-950/30 dark:to-purple-950/30 border border-violet-100/50 dark:border-violet-800/30 hover:shadow-lg hover:shadow-violet-200/30 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 text-white shadow-md group-hover:scale-110 transition-transform">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                    <h4 className="font-semibold text-violet-900 dark:text-violet-100">3. Monitor & Optimize</h4>
+                  </div>
+                  <p className="text-sm text-violet-700/80 dark:text-violet-300/80">
                     Use the Decision Audit dashboard to track AI performance and compliance.
                   </p>
                 </div>

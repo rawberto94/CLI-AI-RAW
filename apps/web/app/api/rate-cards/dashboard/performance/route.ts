@@ -1,16 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Get all benchmarks for performance calculations
@@ -70,17 +68,11 @@ export async function GET(request: NextRequest) {
       ? totalSavings / totalRateCards 
       : 0;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       percentAboveMarket,
       percentTopQuartile,
       percentNegotiated,
       avgSavingsPerRate,
       totalRatesAnalyzed: totalRates,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch performance indicators' },
-      { status: 500 }
-    );
-  }
-}
+  });

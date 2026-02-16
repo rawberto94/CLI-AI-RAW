@@ -15,21 +15,25 @@ This document outlines the disaster recovery (DR) procedures for the Contigo pla
 ## Disaster Categories
 
 ### Category 1: Application Failure
+
 **Impact**: Single service or component failure  
 **RTO**: 15 minutes  
 **Recovery**: Auto-healing via Kubernetes, manual pod restart
 
 ### Category 2: Database Failure
+
 **Impact**: Primary database unavailable  
 **RTO**: 30 minutes  
 **Recovery**: Failover to read replica, point-in-time recovery
 
 ### Category 3: Availability Zone Failure
+
 **Impact**: Single AZ outage  
 **RTO**: 1 hour  
 **Recovery**: Automatic failover to secondary AZ
 
 ### Category 4: Regional Failure
+
 **Impact**: Entire region unavailable  
 **RTO**: 4 hours  
 **Recovery**: Manual failover to DR region
@@ -299,18 +303,21 @@ curl -X POST "https://api.statuspage.io/v1/pages/$PAGE_ID/incidents" \
 ## Recovery Checklist
 
 ### Pre-Recovery
+
 - [ ] Incident declared and severity assigned
 - [ ] On-call team notified
 - [ ] Status page updated
 - [ ] Customer communication sent (if P1/P2)
 
 ### During Recovery
+
 - [ ] Root cause identified
 - [ ] Recovery procedure selected
 - [ ] Changes documented in incident log
 - [ ] Progress updates every 30 minutes
 
 ### Post-Recovery
+
 - [ ] Services verified operational
 - [ ] All health checks passing
 - [ ] Customer notification of resolution
@@ -323,10 +330,10 @@ curl -X POST "https://api.statuspage.io/v1/pages/$PAGE_ID/incidents" \
 
 | Role | Name | Phone | Email |
 |------|------|-------|-------|
-| Primary On-Call | Rotating | PagerDuty | oncall@contigo.app |
-| Engineering Lead | TBD | TBD | eng-lead@contigo.app |
-| Infrastructure Lead | TBD | TBD | infra@contigo.app |
-| CTO | TBD | TBD | cto@contigo.app |
+| Primary On-Call | Rotating | PagerDuty | <oncall@contigo.app> |
+| Engineering Lead | TBD | TBD | <eng-lead@contigo.app> |
+| Infrastructure Lead | TBD | TBD | <infra@contigo.app> |
+| CTO | TBD | TBD | <cto@contigo.app> |
 
 ## Document Control
 

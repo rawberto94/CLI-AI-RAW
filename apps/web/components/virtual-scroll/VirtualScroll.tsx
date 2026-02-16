@@ -141,7 +141,7 @@ export function VirtualScroll<T>({
         <div className="absolute bottom-4 left-1/2 -translate-x-1/2">
           {loadingIndicator || (
             <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-full shadow-lg">
-              <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+              <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
               <span className="text-sm text-gray-600 dark:text-gray-300">Loading...</span>
             </div>
           )}
@@ -151,12 +151,12 @@ export function VirtualScroll<T>({
       {/* Scroll to top button */}
       <AnimatePresence>
         {scrollToTop && showScrollTop && (
-          <motion.button
+          <motion.button key="scroll-to-top"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={scrollToTopHandler}
-            className="fixed bottom-6 right-6 p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg z-10"
+            className="fixed bottom-6 right-6 p-3 bg-violet-600 hover:bg-violet-700 text-white rounded-full shadow-lg z-10"
           >
             <ChevronUp className="w-5 h-5" />
           </motion.button>
@@ -224,7 +224,7 @@ export function InfiniteScroll<T>({
       {/* Loading indicator */}
       {isLoading && (
         <div className="flex items-center justify-center py-4">
-          <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+          <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
         </div>
       )}
 
@@ -474,7 +474,7 @@ export function PullToRefresh({
       >
         {isRefreshing ? (
           refreshingContent || (
-            <div className="flex items-center gap-2 text-blue-500">
+            <div className="flex items-center gap-2 text-violet-500">
               <Loader2 className="w-5 h-5 animate-spin" />
               <span className="text-sm">Refreshing...</span>
             </div>
@@ -575,7 +575,7 @@ export function PaginatedList<T>({
                     onClick={() => goToPage(pageNum)}
                     className={`w-8 h-8 text-sm rounded-lg ${
                       pageNum === currentPage
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-violet-600 text-white'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                     }`}
                   >

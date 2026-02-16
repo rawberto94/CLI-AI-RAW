@@ -45,6 +45,7 @@
 Update status page at: `https://status.yourapp.com` (or internal status channel)
 
 Templates:
+
 - **Investigating**: "We are investigating reports of [ISSUE]. More updates to follow."
 - **Identified**: "We have identified the cause of [ISSUE] and are working on a fix."
 - **Resolved**: "The issue with [FEATURE] has been resolved. Service is back to normal."
@@ -56,11 +57,13 @@ Templates:
 ### 🔴 INC-001: Application Not Responding
 
 **Symptoms:**
+
 - Health check returns 503
 - No response from web server
 - Container restarts
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check container status
 docker compose -f docker-compose.prod.yml ps
@@ -76,6 +79,7 @@ curl -v http://localhost:3005/api/monitoring/health
 ```
 
 **Resolution:**
+
 ```bash
 # Option 1: Restart the application container
 docker compose -f docker-compose.prod.yml restart app
@@ -93,11 +97,13 @@ docker compose -f docker-compose.prod.yml up -d --force-recreate app
 ### 🔴 INC-002: Database Connection Issues
 
 **Symptoms:**
+
 - "Connection refused" errors
 - "Too many connections" errors
 - Slow queries
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check PostgreSQL status
 docker compose -f docker-compose.prod.yml exec postgres pg_isready -U postgres
@@ -116,6 +122,7 @@ docker compose -f docker-compose.prod.yml exec postgres df -h
 ```
 
 **Resolution:**
+
 ```bash
 # Kill long-running queries
 docker compose -f docker-compose.prod.yml exec postgres \
@@ -133,11 +140,13 @@ docker system prune -f
 ### 🔴 INC-003: Redis Connection/Memory Issues
 
 **Symptoms:**
+
 - Cache misses increasing
 - Session errors
 - "OOM" errors in Redis logs
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check Redis status
 docker compose -f docker-compose.prod.yml exec redis redis-cli ping
@@ -153,6 +162,7 @@ docker compose -f docker-compose.prod.yml exec redis redis-cli INFO stats | grep
 ```
 
 **Resolution:**
+
 ```bash
 # Clear expired keys
 docker compose -f docker-compose.prod.yml exec redis redis-cli --scan --pattern '*' | head -100
@@ -169,11 +179,13 @@ docker compose -f docker-compose.prod.yml restart redis
 ### 🟡 INC-004: High Memory Usage
 
 **Symptoms:**
+
 - Slow responses
 - Container OOM kills
 - Memory alerts
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check memory per container
 docker stats --no-stream
@@ -186,6 +198,7 @@ curl http://localhost:3005/api/monitoring/prometheus | grep memory
 ```
 
 **Resolution:**
+
 ```bash
 # Restart application to clear memory
 docker compose -f docker-compose.prod.yml restart app
@@ -206,11 +219,13 @@ kubectl scale deployment/app --replicas=3
 ### 🟡 INC-005: Worker Queue Backup
 
 **Symptoms:**
+
 - Contract processing delayed
 - Artifacts not generating
 - Queue length increasing
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check worker logs
 docker compose -f docker-compose.prod.yml logs --tail=200 workers
@@ -223,6 +238,7 @@ docker compose -f docker-compose.prod.yml exec redis redis-cli LLEN bull:contrac
 ```
 
 **Resolution:**
+
 ```bash
 # Restart workers
 docker compose -f docker-compose.prod.yml restart workers
@@ -239,11 +255,13 @@ kubectl scale deployment/workers --replicas=3
 ### 🟡 INC-006: File Upload Failures
 
 **Symptoms:**
+
 - Upload timeout errors
 - "Storage unavailable" errors
 - S3/MinIO errors
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check MinIO status
 curl http://localhost:9000/minio/health/live
@@ -257,6 +275,7 @@ docker compose -f docker-compose.prod.yml exec minio \
 ```
 
 **Resolution:**
+
 ```bash
 # Restart MinIO
 docker compose -f docker-compose.prod.yml restart minio
@@ -274,11 +293,13 @@ df -h
 ### 🔴 INC-007: Authentication Failures
 
 **Symptoms:**
+
 - Users cannot log in
 - Session expired errors
 - 401 Unauthorized on all requests
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check auth logs
 docker compose -f docker-compose.prod.yml logs app 2>&1 | grep -i "auth\|session\|jwt"
@@ -291,6 +312,7 @@ docker compose -f docker-compose.prod.yml exec app printenv | grep NEXTAUTH
 ```
 
 **Resolution:**
+
 ```bash
 # Verify environment variables
 echo $NEXTAUTH_SECRET | wc -c  # Should be 32+
@@ -307,11 +329,13 @@ docker compose -f docker-compose.prod.yml restart app
 ### 🟡 INC-008: API Rate Limiting Triggered
 
 **Symptoms:**
+
 - 429 Too Many Requests errors
 - Legitimate users blocked
 - Rate limit headers in response
 
 **Diagnostic Steps:**
+
 ```bash
 # 1. Check rate limit logs
 docker compose -f docker-compose.prod.yml logs app 2>&1 | grep "rate limit"
@@ -321,6 +345,7 @@ docker compose -f docker-compose.prod.yml exec redis redis-cli KEYS "ratelimit:*
 ```
 
 **Resolution:**
+
 ```bash
 # Clear rate limit for specific IP
 docker compose -f docker-compose.prod.yml exec redis redis-cli DEL "ratelimit:1.2.3.4"

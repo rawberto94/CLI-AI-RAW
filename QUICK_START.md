@@ -1,5 +1,9 @@
 # 🚀 Quick Start Guide
 
+> **DEPRECATED:** See the [README.md](README.md) Quick Start section for current setup instructions. Retained for historical reference only.
+
+---
+
 Get the Contract Intelligence Platform running in 5 minutes!
 
 ## Prerequisites
@@ -34,6 +38,7 @@ SESSION_SECRET=your-generated-session-secret-here
 ```
 
 This will:
+
 - Install all dependencies
 - Setup the database schema
 - Prepare the application
@@ -45,6 +50,7 @@ This will:
 ```
 
 This will:
+
 - Start PostgreSQL database
 - Start Redis cache
 - Run database migrations
@@ -52,7 +58,7 @@ This will:
 
 **That's it!** 🎉
 
-Open your browser to: **http://localhost:3005**
+Open your browser to: **<http://localhost:3005>**
 
 ## 📋 Available Commands
 
@@ -83,30 +89,34 @@ Open your browser to: **http://localhost:3005**
 
 After starting, check these endpoints:
 
-1. **Application**: http://localhost:3005
-2. **Health Check**: http://localhost:3005/api/health
+1. **Application**: <http://localhost:3005>
+2. **Health Check**: <http://localhost:3005/api/health>
 3. **Database**: PostgreSQL on localhost:5432
 4. **Redis**: Redis on localhost:6379
 
 ## 🎨 What You Can Do
 
 ### 1. Upload Contracts
+
 - Navigate to the Contracts page
 - Drag & drop PDF/DOCX files
 - AI automatically extracts metadata
 
 ### 2. View Analytics
+
 - **Supplier Analytics**: Analyze supplier performance
 - **Renewal Radar**: Track upcoming renewals
 - **Savings Pipeline**: Identify cost savings
 - **Rate Benchmarking**: Compare rates across contracts
 
 ### 3. Use RAG Chat
+
 - Ask questions about your contracts
 - Get AI-powered insights
 - Search across all documents
 
 ### 4. Explore Intelligence
+
 - View procurement insights
 - Analyze spending patterns
 - Get compliance reports
@@ -116,6 +126,7 @@ After starting, check these endpoints:
 ### Database
 
 The default configuration uses Docker PostgreSQL:
+
 ```bash
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/contracts
 ```
@@ -123,6 +134,7 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/contracts
 ### AI Model
 
 Change the OpenAI model:
+
 ```bash
 OPENAI_MODEL=gpt-4o-mini  # Fast and cost-effective
 # or
@@ -132,12 +144,14 @@ OPENAI_MODEL=gpt-4        # More powerful
 ### File Storage
 
 Local storage (default):
+
 ```bash
 UPLOAD_DIR=./uploads
 MAX_FILE_SIZE=104857600  # 100MB
 ```
 
 For cloud storage (AWS S3), uncomment and configure:
+
 ```bash
 AWS_S3_BUCKET=your-bucket-name
 AWS_REGION=us-east-1
@@ -150,6 +164,7 @@ AWS_SECRET_ACCESS_KEY=your-secret
 ### Port Already in Use
 
 If port 3005 is busy, change it in `.env`:
+
 ```bash
 PORT=3006
 NEXT_PUBLIC_APP_URL=http://localhost:3006
@@ -168,12 +183,13 @@ Start Docker Desktop before running the application.
 ### OpenAI API Errors
 
 1. Verify your API key is correct
-2. Check you have credits: https://platform.openai.com/usage
+2. Check you have credits: <https://platform.openai.com/usage>
 3. Ensure no extra spaces in the `.env` file
 
 ### Missing Dependencies
 
 Run setup again:
+
 ```powershell
 .\run.ps1 clean
 .\run.ps1 setup
@@ -196,11 +212,13 @@ Run setup again:
 ### Development
 
 For development with hot reload:
+
 ```powershell
 .\run.ps1 dev
 ```
 
 This enables:
+
 - Automatic code reloading
 - Detailed error messages
 - Query logging
@@ -226,6 +244,7 @@ Before deploying to production:
 Never commit `.env` files to version control!
 
 The `.gitignore` already excludes:
+
 - `.env`
 - `.env.local`
 - `.env.*.local`
@@ -249,6 +268,7 @@ The `.gitignore` already excludes:
 ### Monitoring
 
 Enable monitoring in `.env`:
+
 ```bash
 ENABLE_PERFORMANCE_MONITORING=true
 ENABLE_ERROR_TRACKING=true
@@ -271,7 +291,7 @@ SENTRY_DSN=your-sentry-dsn
 
 ### Health Check
 
-Visit: http://localhost:3005/api/health
+Visit: <http://localhost:3005/api/health>
 
 ### Common Issues
 
@@ -297,13 +317,13 @@ Visit: http://localhost:3005/api/health
 
 After setup, you should be able to:
 
-- ✅ Access http://localhost:3005
+- ✅ Access <http://localhost:3005>
 - ✅ See the dashboard
 - ✅ Upload a contract
 - ✅ View extracted metadata
 - ✅ Access analytics pages
 - ✅ Use RAG chat
-- ✅ View health check: http://localhost:3005/api/health
+- ✅ View health check: <http://localhost:3005/api/health>
 
 ## 📞 Support
 
@@ -313,4 +333,4 @@ After setup, you should be able to:
 
 ---
 
-**Ready to start?** Run `.\run.ps1 start` and open http://localhost:3005 🚀
+**Ready to start?** Run `.\run.ps1 start` and open <http://localhost:3005> 🚀

@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Info, 
+  Info as _Info, 
   X, 
   TrendingUp, 
   Zap, 
@@ -105,8 +105,8 @@ export const CompetitiveTooltip: React.FC<CompetitiveTooltipProps> = ({
 
   const getColorClasses = (color: string) => {
     const colors = {
-      blue: 'border-blue-200 bg-blue-50 text-blue-900',
-      purple: 'border-purple-200 bg-purple-50 text-purple-900',
+      blue: 'border-violet-200 bg-violet-50 text-violet-900',
+      purple: 'border-violet-200 bg-violet-50 text-violet-900',
       green: 'border-green-200 bg-green-50 text-green-900',
       orange: 'border-orange-200 bg-orange-50 text-orange-900',
       red: 'border-red-200 bg-red-50 text-red-900'
@@ -323,9 +323,9 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
 
   const getColorClasses = (color: string) => {
     const colors = {
-      blue: 'border-blue-500 bg-gradient-to-br from-blue-50 to-blue-100',
-      green: 'border-green-500 bg-gradient-to-br from-green-50 to-green-100',
-      purple: 'border-purple-500 bg-gradient-to-br from-purple-50 to-purple-100',
+      blue: 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-100',
+      green: 'border-green-500 bg-gradient-to-br from-violet-50 to-purple-100',
+      purple: 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-100',
       orange: 'border-orange-500 bg-gradient-to-br from-orange-50 to-orange-100'
     };
     return colors[color as keyof typeof colors] || colors.blue;
@@ -380,12 +380,12 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
                     {/* Quantified Benefit */}
                     <div className="space-y-2">
                       <div className="flex items-center gap-2">
-                        <TrendingUp className="w-4 h-4 text-blue-500" />
-                        <span className="font-semibold text-blue-700 text-sm">
+                        <TrendingUp className="w-4 h-4 text-violet-500" />
+                        <span className="font-semibold text-violet-700 text-sm">
                           Quantified Benefit
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-blue-800">{advantage.benefit}</p>
+                      <p className="text-sm font-medium text-violet-800">{advantage.benefit}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -411,7 +411,7 @@ export const CompetitivePopup: React.FC<CompetitivePopupProps> = ({
             <Button variant="outline" onClick={onClose}>
               Close Analysis
             </Button>
-            <Button className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+            <Button className="bg-gradient-to-r from-violet-500 to-purple-600 text-white">
               <ArrowRight className="w-4 h-4 mr-2" />
               Continue Demo
             </Button>

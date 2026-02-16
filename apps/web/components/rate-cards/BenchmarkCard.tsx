@@ -50,7 +50,7 @@ function getPositionColor(position: MarketPosition['position']): string {
     case 'BOTTOM_QUARTILE':
       return 'bg-green-100 text-green-800 border-green-300';
     case 'BELOW_AVERAGE':
-      return 'bg-blue-100 text-blue-800 border-blue-300';
+      return 'bg-violet-100 text-violet-800 border-violet-300';
     case 'AVERAGE':
       return 'bg-gray-100 text-gray-800 border-gray-300';
     case 'ABOVE_AVERAGE':
@@ -125,7 +125,7 @@ function PercentileDistributionChart({
   return (
     <div className="space-y-4">
       {/* Visual percentile bar */}
-      <div className="relative h-12 bg-gradient-to-r from-green-200 via-yellow-200 to-red-200 rounded-lg">
+      <div className="relative h-12 bg-gradient-to-r from-violet-200 via-yellow-200 to-red-200 rounded-lg">
         {/* Percentile markers */}
         {percentiles.map((p, idx) => {
           const position = getPosition(p.value);
@@ -145,8 +145,8 @@ function PercentileDistributionChart({
           className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center"
           style={{ left: `${currentPosition}%`, transform: 'translate(-50%, -50%)' }}
         >
-          <div className="w-3 h-3 bg-blue-600 rounded-full border-2 border-white shadow-lg" />
-          <div className="absolute top-6 bg-blue-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
+          <div className="w-3 h-3 bg-violet-600 rounded-full border-2 border-white shadow-lg" />
+          <div className="absolute top-6 bg-violet-600 text-white text-xs px-2 py-1 rounded whitespace-nowrap">
             Your Rate
           </div>
         </div>

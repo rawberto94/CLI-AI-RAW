@@ -200,14 +200,15 @@ export class GoalPersistenceService {
   async setPlan(goalId: string, steps: GoalPlanStep[]) {
     try {
       // Create steps in the database
-      await prisma.$transaction(async (tx) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await prisma.$transaction(async (tx: any) => {
         // Delete existing steps
-        await tx.agentGoalStep.deleteMany({
+        await (tx as any).agentGoalStep.deleteMany({
           where: { goalId },
         });
 
         // Create new steps
-        await tx.agentGoalStep.createMany({
+        await (tx as any).agentGoalStep.createMany({
           data: steps.map((step, index) => ({
             goalId,
             name: step.name,
@@ -219,7 +220,7 @@ export class GoalPersistenceService {
         });
 
         // Update goal with plan metadata
-        await tx.agentGoal.update({
+        await (tx as any).agentGoal.update({
           where: { id: goalId },
           data: {
             plan: steps,
@@ -451,7 +452,7 @@ export class GoalPersistenceService {
       }),
     ]);
 
-    const statusCounts = byStatus.reduce((acc, item) => {
+    const statusCounts = byStatus.reduce((acc: Record<string, number>, item: { status: string; _count: number }) => {
       acc[item.status] = item._count;
       return acc;
     }, {} as Record<string, number>);

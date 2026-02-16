@@ -67,7 +67,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
 
   useEffect(() => {
     fetchRateCards();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [filters]);
 
   const fetchRateCards = async () => {
@@ -167,7 +167,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <GitCompare className="h-6 w-6 text-blue-600" />
+              <GitCompare className="h-6 w-6 text-violet-600" />
               <div>
                 <CardTitle>Rate Comparison Tool</CardTitle>
                 <p className="text-sm text-muted-foreground mt-1">
@@ -349,7 +349,7 @@ export function RateComparisonTool({ initialFilters, onCompare }: RateComparison
                   key={rateCard.id}
                   className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
                     selectedIds.has(rateCard.id)
-                      ? 'bg-blue-50 border-blue-300'
+                      ? 'bg-violet-50 border-violet-300'
                       : 'hover:bg-gray-50'
                   }`}
                   onClick={() => toggleSelection(rateCard.id)}

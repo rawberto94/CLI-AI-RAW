@@ -21,7 +21,54 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
   capabilities = ['opportunity-discovery', 'cost-analysis', 'optimization'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contracts, marketData } = input.context;
+    // Support both plural contracts (from scheduler) and singular contract (from pipeline)
+    let contracts: any[];
+    let marketData = input.context?.marketData;
+
+    if (Array.isArray(input.context?.contracts)) {
+      contracts = input.context.contracts;
+    } else {
+      // Query tenant portfolio for cross-contract analysis
+      try {
+        const dbContracts = await prisma.contract.findMany({
+          where: { tenantId: input.tenantId },
+          select: {
+            id: true, contractTitle: true, status: true, contractType: true,
+            totalValue: true, annualValue: true, effectiveDate: true, expirationDate: true,
+            supplierName: true, counterparty: true, vendor: true,
+            autoRenewalEnabled: true, department: true,
+          },
+          take: 100,
+        });
+        contracts = dbContracts.map(c => ({
+          id: c.id,
+          title: c.contractTitle || '',
+          status: c.status,
+          contractType: c.contractType || 'OTHER',
+          value: c.totalValue ?? c.annualValue ?? 0,
+          supplier: c.supplierName || c.counterparty || c.vendor || '',
+          parties: [c.supplierName, c.counterparty, c.vendor].filter(Boolean),
+          effectiveDate: c.effectiveDate,
+          expirationDate: c.expirationDate,
+          autoRenewal: c.autoRenewalEnabled ?? false,
+          department: c.department || '',
+        }));
+      } catch {
+        // Fallback to single contract if DB query fails
+        contracts = input.context?.contract ? [input.context.contract] : [];
+      }
+    }
+
+    if (!contracts.length) {
+      return {
+        success: true,
+        data: { opportunities: [], summary: { total: 0, totalValue: 0, byType: {} } },
+        recommendations: [],
+        confidence: 1,
+        reasoning: 'No contracts available for opportunity analysis',
+        metadata: { processingTime: 0 },
+      };
+    }
 
     // Discover opportunities
     const opportunities = await this.discoverOpportunities(contracts, marketData);
@@ -76,7 +123,7 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
         ),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
@@ -466,34 +513,90 @@ export class OpportunityDiscoveryEngine extends BaseAgent {
   }
 
   /**
-   * Get market rate data (mock for now)
+   * Get market rate data from cross-contract analysis
    */
   private async getMarketRate(
     serviceType: string,
     region: string
   ): Promise<MarketData | null> {
-    // In production, this would query a market data API or database
-    return {
-      serviceType,
-      region,
-      averageRate: 100,
-      medianRate: 95,
-      percentile25: 85,
-      percentile75: 110,
-      sampleSize: 150,
-      lastUpdated: new Date(),
-    };
+    try {
+      // Aggregate comparable contracts across tenants of same type
+      const contracts = await prisma.contract.findMany({
+        where: {
+          contractType: { contains: serviceType, mode: 'insensitive' },
+          isDeleted: false,
+          totalValue: { not: null, gt: 0 },
+        },
+        select: { totalValue: true },
+        take: 200,
+        orderBy: { createdAt: 'desc' },
+      });
+
+      if (contracts.length < 3) return null;
+
+      const values = contracts
+        .map(c => Number(c.totalValue))
+        .filter(v => v > 0)
+        .sort((a, b) => a - b);
+
+      if (values.length === 0) return null;
+
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const median = values[Math.floor(values.length / 2)];
+      const p25 = values[Math.floor(values.length * 0.25)];
+      const p75 = values[Math.floor(values.length * 0.75)];
+
+      return {
+        serviceType,
+        region,
+        averageRate: Math.round(avg),
+        medianRate: Math.round(median),
+        percentile25: Math.round(p25),
+        percentile75: Math.round(p75),
+        sampleSize: values.length,
+        lastUpdated: new Date(),
+      };
+    } catch (error) {
+      logger.warn({ error, serviceType }, 'Failed to get market rate');
+      return null;
+    }
   }
 
   /**
-   * Find better alternative suppliers (mock)
+   * Find alternative suppliers offering better terms
    */
   private async findBetterAlternatives(
     contract: any,
     marketData?: any
   ): Promise<Array<{ supplier: string; estimatedCost: number; rating: number }>> {
-    // Mock alternatives
-    return [];
+    try {
+      if (!contract.supplierName || !contract.totalValue) return [];
+
+      const contractValue = Number(contract.totalValue);
+
+      // Find other suppliers with the same contract type and lower cost
+      const alternatives = await prisma.contract.findMany({
+        where: {
+          contractType: contract.contractType,
+          isDeleted: false,
+          supplierName: { not: contract.supplierName },
+          totalValue: { not: null, gt: 0, lt: contractValue },
+        },
+        select: { supplierName: true, totalValue: true },
+        distinct: ['supplierName'],
+        orderBy: { totalValue: 'asc' },
+        take: 5,
+      });
+
+      return alternatives.map(alt => ({
+        supplier: alt.supplierName || 'Unknown',
+        estimatedCost: Number(alt.totalValue),
+        rating: Math.min(5, 3 + (1 - Number(alt.totalValue) / contractValue) * 2),
+      }));
+    } catch (error) {
+      logger.warn({ error }, 'Failed to find alternatives');
+      return [];
+    }
   }
 
   /**

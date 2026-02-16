@@ -68,6 +68,20 @@ interface ValidationRule {
   message: string;
 }
 
+interface FieldDependencyRule {
+  sourceFieldId: string;
+  operator: 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'greater_than' | 'less_than' | 'is_empty' | 'is_not_empty' | 'in' | 'not_in';
+  value: any;
+  action: 'show' | 'hide' | 'require' | 'disable' | 'set_value';
+  actionValue?: any;
+}
+
+interface ConditionalLogic {
+  enabled: boolean;
+  matchType: 'all' | 'any';
+  rules: FieldDependencyRule[];
+}
+
 interface MetadataFieldDefinition {
   id: string;
   name: string;
@@ -96,6 +110,9 @@ interface MetadataFieldDefinition {
   showInCard?: boolean;
   searchable?: boolean;
   filterable?: boolean;
+  dependsOn?: FieldDependencyRule[];
+  conditionalLogic?: ConditionalLogic;
+  validationRules?: ValidationRule[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -150,9 +167,9 @@ const FIELD_TYPES = [
 ];
 
 const CATEGORY_COLORS = [
-  { value: 'blue', label: 'Blue', class: 'bg-blue-100 text-blue-800 border-blue-300' },
+  { value: 'blue', label: 'Blue', class: 'bg-violet-100 text-violet-800 border-violet-300' },
   { value: 'green', label: 'Green', class: 'bg-green-100 text-green-800 border-green-300' },
-  { value: 'purple', label: 'Purple', class: 'bg-purple-100 text-purple-800 border-purple-300' },
+  { value: 'purple', label: 'Purple', class: 'bg-violet-100 text-violet-800 border-violet-300' },
   { value: 'red', label: 'Red', class: 'bg-red-100 text-red-800 border-red-300' },
   { value: 'orange', label: 'Orange', class: 'bg-orange-100 text-orange-800 border-orange-300' },
   { value: 'yellow', label: 'Yellow', class: 'bg-yellow-100 text-yellow-800 border-yellow-300' },
@@ -187,7 +204,7 @@ export function MetadataSchemaEditor({
   // Load schema
   useEffect(() => {
     loadSchema();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const loadSchema = async () => {
@@ -247,7 +264,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleUpdateField = useCallback(async (fieldData: MetadataFieldDefinition) => {
@@ -282,7 +299,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleDeleteField = useCallback(async (fieldId: string) => {
@@ -307,7 +324,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================
@@ -342,7 +359,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================
@@ -375,7 +392,7 @@ export function MetadataSchemaEditor({
     } finally {
       setSaving(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   const handleExport = useCallback(() => {
@@ -415,7 +432,7 @@ export function MetadataSchemaEditor({
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to import');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId]);
 
   // =========================================================================
@@ -435,7 +452,7 @@ export function MetadataSchemaEditor({
   };
 
   const getFieldsByCategory = (categoryName: string) => {
-    if (!schema) return [];
+    if (!schema || !Array.isArray(schema.fields)) return [];
     return schema.fields
       .filter(f => f.category === categoryName)
       .filter(f => !searchQuery || 
@@ -469,7 +486,7 @@ export function MetadataSchemaEditor({
         <p className="text-gray-600">Failed to load metadata schema</p>
         <button
           onClick={loadSchema}
-          className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          className="mt-4 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
         >
           Try Again
         </button>
@@ -497,7 +514,7 @@ export function MetadataSchemaEditor({
               className={cn(
                 "px-3 py-1.5 text-sm rounded-lg border flex items-center gap-1.5",
                 showPreview 
-                  ? "bg-purple-50 text-purple-700 border-purple-300" 
+                  ? "bg-violet-50 text-violet-700 border-violet-300" 
                   : "hover:bg-gray-50"
               )}
             >
@@ -561,7 +578,7 @@ export function MetadataSchemaEditor({
             placeholder="Search fields..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+            className="w-full pl-9 pr-4 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-violet-500"
           />
         </div>
         <button
@@ -573,7 +590,7 @@ export function MetadataSchemaEditor({
         </button>
         <button
           onClick={() => setIsAddingField(true)}
-          className="px-3 py-2 text-sm rounded-lg bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1.5"
+          className="px-3 py-2 text-sm rounded-lg bg-violet-600 text-white hover:bg-violet-700 flex items-center gap-1.5"
         >
           <Plus className="h-4 w-4" />
           Add Field
@@ -585,7 +602,7 @@ export function MetadataSchemaEditor({
         {/* Categories & Fields */}
         <div className={cn("flex-1 p-6", showPreview && "w-1/2")}>
           <div className="space-y-4">
-            {schema.categories.map((category) => {
+            {Array.isArray(schema.categories) && schema.categories.map((category) => {
               const fields = getFieldsByCategory(category.name);
               const isExpanded = expandedCategories.has(category.name);
               const foundColor = CATEGORY_COLORS.find(c => c.value === category.color);
@@ -659,7 +676,7 @@ export function MetadataSchemaEditor({
               Field Preview
             </h3>
             <div className="bg-white rounded-lg border p-4 space-y-4">
-              {schema.fields.slice(0, 8).map((field) => (
+              {Array.isArray(schema.fields) && schema.fields.slice(0, 8).map((field) => (
                 <FieldPreview key={field.id} field={field} />
               ))}
             </div>
@@ -671,7 +688,7 @@ export function MetadataSchemaEditor({
       {(editingField || isAddingField) && (
         <FieldEditorModal
           field={editingField}
-          categories={schema.categories}
+          categories={Array.isArray(schema.categories) ? schema.categories : []}
           onSave={(field) => {
             if (editingField) {
               handleUpdateField(field as MetadataFieldDefinition);
@@ -740,7 +757,7 @@ function FieldRow({
               <span className="text-xs text-red-500">*</span>
             )}
             {field.aiExtractionEnabled && (
-              <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+              <Sparkles className="h-3.5 w-3.5 text-violet-500" />
             )}
             {field.hidden && (
               <EyeOff className="h-3.5 w-3.5 text-gray-400" />
@@ -753,7 +770,7 @@ function FieldRow({
             {field.showInList && (
               <>
                 <span>•</span>
-                <span className="text-blue-500">List</span>
+                <span className="text-violet-500">List</span>
               </>
             )}
             {field.filterable && (
@@ -990,7 +1007,7 @@ function FieldEditorModal({
               </label>
               <div className="space-y-2">
                 {formData.options?.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2">
+                  <div key={`option-${index}`} className="flex items-center gap-2">
                     <input
                       type="text"
                       value={option.label}
@@ -1062,7 +1079,7 @@ function FieldEditorModal({
                 className="rounded"
               />
               <span className="text-sm flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
                 AI Extraction
               </span>
             </label>
@@ -1101,6 +1118,173 @@ function FieldEditorModal({
             </label>
           </div>
 
+          {/* Validation Rules */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
+              Validation Rules
+            </h4>
+            <div className="space-y-2">
+              {(formData.validationRules || []).map((rule, idx) => (
+                <div key={`rule-${rule.type}-${idx}`} className="flex items-center gap-2 p-2 bg-gray-50 rounded border">
+                  <select
+                    value={rule.type}
+                    onChange={(e) => {
+                      const rules = [...(formData.validationRules || [])];
+                      rules[idx] = { ...rule, type: e.target.value as ValidationRule['type'] };
+                      setFormData({ ...formData, validationRules: rules });
+                    }}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    <option value="required">Required</option>
+                    <option value="min">Min Value</option>
+                    <option value="max">Max Value</option>
+                    <option value="minLength">Min Length</option>
+                    <option value="maxLength">Max Length</option>
+                    <option value="pattern">Regex Pattern</option>
+                    <option value="custom">Custom Rule</option>
+                  </select>
+                  {rule.type !== 'required' && (
+                    <input
+                      type="text"
+                      value={rule.value || ''}
+                      onChange={(e) => {
+                        const rules = [...(formData.validationRules || [])];
+                        rules[idx] = { ...rule, value: e.target.value };
+                        setFormData({ ...formData, validationRules: rules });
+                      }}
+                      placeholder="Value"
+                      className="flex-1 px-2 py-1 border rounded text-xs"
+                    />
+                  )}
+                  <input
+                    type="text"
+                    value={rule.message || ''}
+                    onChange={(e) => {
+                      const rules = [...(formData.validationRules || [])];
+                      rules[idx] = { ...rule, message: e.target.value };
+                      setFormData({ ...formData, validationRules: rules });
+                    }}
+                    placeholder="Error message"
+                    className="flex-1 px-2 py-1 border rounded text-xs"
+                  />
+                  <button onClick={() => { const r = [...(formData.validationRules || [])]; r.splice(idx, 1); setFormData({ ...formData, validationRules: r }); }} className="p-1 hover:bg-red-100 rounded text-red-500">
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+              <button
+                onClick={() => setFormData({ ...formData, validationRules: [...(formData.validationRules || []), { type: 'required', message: 'This field is required' }] })}
+                className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+              >
+                <Plus className="h-3 w-3" /> Add validation rule
+              </button>
+            </div>
+          </div>
+
+          {/* Field Dependency / Conditional Logic */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Conditional Logic
+            </h4>
+            <label className="flex items-center gap-2 mb-2">
+              <input
+                type="checkbox"
+                checked={formData.conditionalLogic?.enabled || false}
+                onChange={(e) => setFormData({ ...formData, conditionalLogic: { enabled: e.target.checked, matchType: formData.conditionalLogic?.matchType || 'all', rules: formData.conditionalLogic?.rules || [] } })}
+                className="rounded"
+              />
+              <span className="text-sm">Enable conditional display</span>
+            </label>
+            {formData.conditionalLogic?.enabled && (
+              <div className="pl-4 border-l-2 border-violet-200 space-y-2">
+                <div className="flex items-center gap-2 text-xs">
+                  <span>Show this field when</span>
+                  <select
+                    value={formData.conditionalLogic?.matchType || 'all'}
+                    onChange={(e) => setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, matchType: e.target.value as 'all' | 'any' } })}
+                    className="px-2 py-1 border rounded text-xs"
+                  >
+                    <option value="all">ALL</option>
+                    <option value="any">ANY</option>
+                  </select>
+                  <span>conditions are met:</span>
+                </div>
+                {(formData.conditionalLogic?.rules || []).map((rule, idx) => (
+                  <div key={`cond-${rule.sourceFieldId || idx}-${idx}`} className="flex items-center gap-2 p-2 bg-violet-50 rounded border border-violet-100">
+                    <input
+                      type="text"
+                      value={rule.sourceFieldId || ''}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, sourceFieldId: e.target.value };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      placeholder="Source field name"
+                      className="w-28 px-2 py-1 border rounded text-xs"
+                    />
+                    <select
+                      value={rule.operator}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, operator: e.target.value as FieldDependencyRule['operator'] };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      className="px-2 py-1 border rounded text-xs"
+                    >
+                      <option value="equals">equals</option>
+                      <option value="not_equals">not equals</option>
+                      <option value="contains">contains</option>
+                      <option value="not_contains">not contains</option>
+                      <option value="greater_than">greater than</option>
+                      <option value="less_than">less than</option>
+                      <option value="is_empty">is empty</option>
+                      <option value="is_not_empty">is not empty</option>
+                    </select>
+                    {!['is_empty', 'is_not_empty'].includes(rule.operator) && (
+                      <input
+                        type="text"
+                        value={rule.value || ''}
+                        onChange={(e) => {
+                          const rules = [...(formData.conditionalLogic?.rules || [])];
+                          rules[idx] = { ...rule, value: e.target.value };
+                          setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                        }}
+                        placeholder="Value"
+                        className="w-24 px-2 py-1 border rounded text-xs"
+                      />
+                    )}
+                    <select
+                      value={rule.action}
+                      onChange={(e) => {
+                        const rules = [...(formData.conditionalLogic?.rules || [])];
+                        rules[idx] = { ...rule, action: e.target.value as FieldDependencyRule['action'] };
+                        setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules } });
+                      }}
+                      className="px-2 py-1 border rounded text-xs"
+                    >
+                      <option value="show">Show</option>
+                      <option value="hide">Hide</option>
+                      <option value="require">Require</option>
+                      <option value="disable">Disable</option>
+                      <option value="set_value">Set Value</option>
+                    </select>
+                    <button onClick={() => { const r = [...(formData.conditionalLogic?.rules || [])]; r.splice(idx, 1); setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules: r } }); }} className="p-1 hover:bg-red-100 rounded text-red-500">
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => setFormData({ ...formData, conditionalLogic: { ...formData.conditionalLogic!, rules: [...(formData.conditionalLogic?.rules || []), { sourceFieldId: '', operator: 'equals', value: '', action: 'show' }] } })}
+                  className="text-xs text-violet-600 hover:text-violet-700 flex items-center gap-1"
+                >
+                  <Plus className="h-3 w-3" /> Add condition
+                </button>
+              </div>
+            )}
+          </div>
+
           {/* AI Extraction Hint */}
           {formData.aiExtractionEnabled && (
             <div>
@@ -1133,7 +1317,7 @@ function FieldEditorModal({
           <button
             onClick={() => onSave(formData)}
             disabled={saving || !formData.name || !formData.label}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {field ? 'Update Field' : 'Add Field'}
@@ -1215,7 +1399,7 @@ function CategoryEditorModal({
                   className={cn(
                     "px-3 py-1.5 rounded-lg border-2 text-sm",
                     color.class,
-                    formData.color === color.value ? "ring-2 ring-offset-2 ring-blue-500" : ""
+                    formData.color === color.value ? "ring-2 ring-offset-2 ring-violet-500" : ""
                   )}
                 >
                   {color.label}
@@ -1248,7 +1432,7 @@ function CategoryEditorModal({
           <button
             onClick={() => onSave(formData)}
             disabled={saving || !formData.name || !formData.label}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 flex items-center gap-2"
           >
             {saving && <Loader2 className="h-4 w-4 animate-spin" />}
             {category ? 'Update' : 'Add Category'}

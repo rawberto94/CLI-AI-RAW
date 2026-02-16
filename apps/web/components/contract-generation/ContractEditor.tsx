@@ -313,7 +313,7 @@ function ClauseBlock({
               </Badge>
             )}
             {clause.status === 'NEGOTIATING' && (
-              <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+              <Badge variant="outline" className="text-xs bg-violet-50 text-violet-700 border-violet-200">
                 Negotiating
               </Badge>
             )}
@@ -611,13 +611,13 @@ function AISuggestionsPanel() {
           <Card key={suggestion.id} className={cn(
             'transition-colors hover:border-primary cursor-pointer',
             suggestion.type === 'risk' && 'border-l-4 border-l-red-500',
-            suggestion.type === 'improvement' && 'border-l-4 border-l-blue-500',
+            suggestion.type === 'improvement' && 'border-l-4 border-l-violet-500',
             suggestion.type === 'negotiation' && 'border-l-4 border-l-amber-500',
           )}>
             <CardHeader className="p-3 pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 {suggestion.type === 'risk' && <AlertTriangle className="h-4 w-4 text-red-500" />}
-                {suggestion.type === 'improvement' && <Lightbulb className="h-4 w-4 text-blue-500" />}
+                {suggestion.type === 'improvement' && <Lightbulb className="h-4 w-4 text-violet-500" />}
                 {suggestion.type === 'negotiation' && <Users className="h-4 w-4 text-amber-500" />}
                 {suggestion.title}
               </CardTitle>

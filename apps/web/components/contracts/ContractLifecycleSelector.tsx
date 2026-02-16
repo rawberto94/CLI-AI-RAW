@@ -37,10 +37,10 @@ const lifecycleOptions = [
     description: 'Contract being created/negotiated - requires approval workflow',
     icon: FilePlus,
     color: 'blue',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
-    textColor: 'text-blue-700',
-    iconColor: 'text-blue-600',
+    bgColor: 'bg-violet-50',
+    borderColor: 'border-violet-200',
+    textColor: 'text-violet-700',
+    iconColor: 'text-violet-600',
     badge: 'Approval Required',
     badgeVariant: 'default' as const,
     workflow: true,
@@ -51,10 +51,10 @@ const lifecycleOptions = [
     description: 'Changes to existing contract - requires approval',
     icon: FileEdit,
     color: 'purple',
-    bgColor: 'bg-purple-50',
-    borderColor: 'border-purple-200',
-    textColor: 'text-purple-700',
-    iconColor: 'text-purple-600',
+    bgColor: 'bg-violet-50',
+    borderColor: 'border-violet-200',
+    textColor: 'text-violet-700',
+    iconColor: 'text-violet-600',
     badge: 'Approval Required',
     badgeVariant: 'default' as const,
     workflow: true,
@@ -156,7 +156,7 @@ export function ContractLifecycleSelector({
                   )}
                   
                   {isSelected && option.workflow && (
-                    <div className="flex items-center gap-1.5 mt-2 text-xs text-blue-600">
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-violet-600">
                       <Clock className="h-3.5 w-3.5" />
                       <span>Approval workflow will be triggered after upload</span>
                     </div>

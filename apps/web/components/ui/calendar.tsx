@@ -242,10 +242,10 @@ export function Calendar({
                 disabled={isDisabled}
                 className={cn(
                   "h-8 w-8 rounded-md text-sm transition-colors flex items-center justify-center",
-                  "hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1",
-                  isToday && !isSelected && "border border-blue-500 text-blue-600",
-                  isSelected && "bg-blue-600 text-white hover:bg-blue-700",
-                  inRange && !isSelected && "bg-blue-100 text-blue-900",
+                  "hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-1",
+                  isToday && !isSelected && "border border-violet-500 text-violet-600",
+                  isSelected && "bg-violet-600 text-white hover:bg-violet-700",
+                  inRange && !isSelected && "bg-violet-100 text-violet-900",
                   isDisabled && "opacity-50 cursor-not-allowed hover:bg-transparent"
                 )}
               >

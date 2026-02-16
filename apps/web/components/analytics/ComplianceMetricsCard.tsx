@@ -31,7 +31,7 @@ export function ComplianceMetricsCard({ metrics, isLoading }: ComplianceMetricsC
       case 'non-compliant':
         return <XCircle className="h-5 w-5 text-red-600" />;
       case 'pending':
-        return <Clock className="h-5 w-5 text-blue-600" />;
+        return <Clock className="h-5 w-5 text-violet-600" />;
     }
   };
 
@@ -44,7 +44,7 @@ export function ComplianceMetricsCard({ metrics, isLoading }: ComplianceMetricsC
       case 'non-compliant':
         return 'bg-red-100 text-red-800 border-red-200';
       case 'pending':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-violet-100 text-violet-800 border-violet-200';
     }
   };
 

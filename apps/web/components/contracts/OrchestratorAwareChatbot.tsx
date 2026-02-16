@@ -102,9 +102,9 @@ export function OrchestratorAwareChatbot({
         className
       )}
     >
-      <Card className="flex flex-col h-[600px] overflow-hidden border-2 border-purple-200">
+      <Card className="flex flex-col h-[600px] overflow-hidden border-2 border-violet-200">
         {/* Header */}
-        <CardHeader className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 px-4">
+        <CardHeader className="bg-gradient-to-r from-violet-600 to-purple-600 text-white py-3 px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-white/20 rounded-lg">
@@ -177,7 +177,7 @@ export function OrchestratorAwareChatbot({
                 <div ref={scrollRef} className="p-4 space-y-3">
                   {messages.length === 0 && (
                     <div className="text-center text-gray-500 py-8">
-                      <Bot className="h-12 w-12 mx-auto mb-3 text-purple-400" />
+                      <Bot className="h-12 w-12 mx-auto mb-3 text-violet-400" />
                       <p className="text-sm">
                         Hi! I can help with contract questions
                         {contractId && (
@@ -195,7 +195,7 @@ export function OrchestratorAwareChatbot({
                               onClick={() =>
                                 sendMessage("What's the current status?")
                               }
-                              className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 transition-colors"
+                              className="px-3 py-1.5 bg-violet-50 hover:bg-violet-100 rounded-lg text-violet-700 transition-colors"
                             >
                               What&apos;s the current status?
                             </button>
@@ -203,7 +203,7 @@ export function OrchestratorAwareChatbot({
                               onClick={() =>
                                 sendMessage('What artifacts are ready?')
                               }
-                              className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 rounded-lg text-purple-700 transition-colors"
+                              className="px-3 py-1.5 bg-violet-50 hover:bg-violet-100 rounded-lg text-violet-700 transition-colors"
                             >
                               What artifacts are ready?
                             </button>
@@ -230,8 +230,8 @@ export function OrchestratorAwareChatbot({
                           className={cn(
                             'flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center',
                             message.role === 'user'
-                              ? 'bg-blue-500'
-                              : 'bg-purple-500'
+                              ? 'bg-violet-500'
+                              : 'bg-violet-500'
                           )}
                         >
                           {message.role === 'user' ? (
@@ -246,7 +246,7 @@ export function OrchestratorAwareChatbot({
                           className={cn(
                             'flex-1 rounded-2xl px-4 py-2.5 text-sm max-w-[85%]',
                             message.role === 'user'
-                              ? 'bg-blue-500 text-white ml-auto'
+                              ? 'bg-violet-500 text-white ml-auto'
                               : 'bg-gray-100 text-gray-900'
                           )}
                         >
@@ -254,6 +254,10 @@ export function OrchestratorAwareChatbot({
                             className="whitespace-pre-wrap break-words"
                             dangerouslySetInnerHTML={{
                               __html: message.content
+                                .replace(/&/g, '&amp;')
+                                .replace(/</g, '&lt;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/"/g, '&quot;')
                                 .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                                 .replace(/\n/g, '<br />'),
                             }}
@@ -298,11 +302,11 @@ export function OrchestratorAwareChatbot({
                       animate={{ opacity: 1, y: 0 }}
                       className="flex gap-3"
                     >
-                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center">
+                      <div className="flex-shrink-0 w-8 h-8 rounded-full bg-violet-500 flex items-center justify-center">
                         <Bot className="h-4 w-4 text-white" />
                       </div>
                       <div className="bg-gray-100 rounded-2xl px-4 py-2.5">
-                        <Loader2 className="h-4 w-4 animate-spin text-purple-600" />
+                        <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
                       </div>
                     </motion.div>
                   )}
@@ -325,7 +329,7 @@ export function OrchestratorAwareChatbot({
                 <Button
                   onClick={handleSend}
                   disabled={!input.trim() || isLoading}
-                  className="self-end bg-purple-600 hover:bg-purple-700"
+                  className="self-end bg-violet-600 hover:bg-violet-700"
                   size="icon"
                 >
                   <Send className="h-4 w-4" />

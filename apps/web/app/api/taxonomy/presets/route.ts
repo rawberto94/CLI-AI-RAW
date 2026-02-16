@@ -11,11 +11,11 @@
  * - HR & Employment
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
-
+import { withAuthApiHandler, withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { taxonomyService } from 'data-orchestration/services';
 // ============================================================================
 // PRESET TAXONOMIES
 // ============================================================================
@@ -799,7 +799,7 @@ const PRESET_TAXONOMIES = {
 // GET - List available presets
 // ============================================================================
 
-export async function GET(): Promise<NextResponse> {
+export const GET = withApiHandler(async (_request, ctx) => {
   const presets = Object.values(PRESET_TAXONOMIES).map((preset) => ({
     id: preset.id,
     name: preset.name,
@@ -810,107 +810,90 @@ export async function GET(): Promise<NextResponse> {
     ),
   }));
 
-  return NextResponse.json({
-    success: true,
-    data: presets,
-  });
-}
+  return createSuccessResponse(ctx, presets);
+});
 
 // ============================================================================
 // POST - Apply a preset
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const body = await request.json();
-    const { presetId, clearExisting = false } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
+  const body = await request.json();
+  const { presetId, clearExisting = false } = body;
 
-    const preset = PRESET_TAXONOMIES[presetId as keyof typeof PRESET_TAXONOMIES];
+  const preset = PRESET_TAXONOMIES[presetId as keyof typeof PRESET_TAXONOMIES];
 
-    if (!preset) {
-      return NextResponse.json(
-        { success: false, error: "Preset not found" },
-        { status: 404 }
-      );
-    }
+  if (!preset) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Preset not found', 404);
+  }
 
-    // Optionally clear existing categories
-    if (clearExisting) {
-      await prisma.taxonomyCategory.deleteMany({
-        where: { tenantId },
-      });
-    }
+  // Optionally clear existing categories
+  if (clearExisting) {
+    await prisma.taxonomyCategory.deleteMany({
+      where: { tenantId },
+    });
+  }
 
-    // Create categories from preset
-    let createdCount = 0;
+  // Create categories from preset
+  let createdCount = 0;
 
-    for (const category of preset.categories) {
-      // Create parent category
-      const parent = await prisma.taxonomyCategory.create({
-        data: {
-          tenantId,
-          name: category.name,
-          description: category.description,
-          icon: category.icon || "folder",
-          color: category.color || "#3B82F6",
-          level: 0,
-          path: `/${category.name}`,
-          sortOrder: createdCount,
-          keywords: category.keywords || [],
-          aiClassificationPrompt: category.aiClassificationPrompt,
-          isActive: true,
-        },
-      });
-      createdCount++;
+  for (const category of preset.categories) {
+    // Create parent category
+    const parent = await prisma.taxonomyCategory.create({
+      data: {
+        tenantId,
+        name: category.name,
+        description: category.description,
+        icon: category.icon || "folder",
+        color: category.color || "#3B82F6",
+        level: 0,
+        path: `/${category.name}`,
+        sortOrder: createdCount,
+        keywords: category.keywords || [],
+        aiClassificationPrompt: category.aiClassificationPrompt,
+        isActive: true,
+      },
+    });
+    createdCount++;
 
-      // Create children
-      if (category.children) {
-        for (let i = 0; i < category.children.length; i++) {
-          const child = category.children[i];
-          if (!child) continue;
-          await prisma.taxonomyCategory.create({
-            data: {
-              tenantId,
-              name: child.name,
-              description: 'description' in child ? String(child.description) : null,
-              icon: category.icon || "folder",
-              color: category.color || "#3B82F6",
-              level: 1,
-              path: `/${category.name}/${child.name}`,
-              parentId: parent.id,
-              sortOrder: i,
-              keywords: child.keywords || [],
-              aiClassificationPrompt: 'aiClassificationPrompt' in child ? String(child.aiClassificationPrompt) : null,
-              isActive: true,
-            },
-          });
-          createdCount++;
-        }
+    // Create children
+    if (category.children) {
+      for (let i = 0; i < category.children.length; i++) {
+        const child = category.children[i];
+        if (!child) continue;
+        await prisma.taxonomyCategory.create({
+          data: {
+            tenantId,
+            name: child.name,
+            description: 'description' in child ? String(child.description) : null,
+            icon: category.icon || "folder",
+            color: category.color || "#3B82F6",
+            level: 1,
+            path: `/${category.name}/${child.name}`,
+            parentId: parent.id,
+            sortOrder: i,
+            keywords: child.keywords || [],
+            aiClassificationPrompt: 'aiClassificationPrompt' in child ? String(child.aiClassificationPrompt) : null,
+            isActive: true,
+          },
+        });
+        createdCount++;
       }
     }
-
-    return NextResponse.json({
-      success: true,
-      message: `Applied "${preset.name}" preset with ${createdCount} categories`,
-      categoriesCreated: createdCount,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to apply preset",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
   }
-}
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: `Applied "${preset.name}" preset with ${createdCount} categories`,
+    categoriesCreated: createdCount,
+  });
+});
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+export const OPTIONS = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cors.optionsResponse(request, "GET, POST, OPTIONS");
-}
+});

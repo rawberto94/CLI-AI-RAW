@@ -13,13 +13,14 @@
  * - draft: existing draft ID to edit
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useCallback, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { PageBreadcrumb } from '@/components/navigation';
 import { Sparkles, FileText, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 // Dynamic import to avoid SSR issues
 const CopilotDraftingCanvas = dynamic(
@@ -34,8 +35,8 @@ const CopilotDraftingCanvas = dynamic(
           className="text-center"
         >
           <div className="relative mx-auto mb-4">
-            <div className="w-16 h-16 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
-            <Sparkles className="w-6 h-6 text-purple-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin" />
+            <Sparkles className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 font-medium">Loading AI Copilot...</p>
           <p className="text-sm text-slate-500 mt-1">Preparing intelligent drafting assistant</p>
@@ -47,14 +48,84 @@ const CopilotDraftingCanvas = dynamic(
 
 export default function CopilotDraftPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const mode = searchParams?.get('mode');
   const templateId = searchParams?.get('template');
   const templateName = searchParams?.get('name');
   const draftId = searchParams?.get('draft');
+  
+  // Track if we've created a draft already
+  const [currentDraftId, setCurrentDraftId] = useState<string | null>(draftId || null);
+  const savedTitleRef = useRef<string | null>(null);
+
+  // Save handler - persists to database
+  const handleSave = useCallback(async (content: string) => {
+    try {
+      if (currentDraftId) {
+        // Update existing draft
+        const response = await fetch(`/api/drafts/${currentDraftId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            content,
+            updatedAt: new Date().toISOString(),
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to save draft');
+        }
+        
+        toast.success('Draft saved');
+      } else {
+        // Create new draft
+        const title = savedTitleRef.current || templateName 
+          ? `Draft - ${decodeURIComponent(templateName || 'New Contract')}`
+          : `Draft - ${new Date().toLocaleDateString()}`;
+        
+        const response = await fetch('/api/drafts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            title,
+            content,
+            type: 'contract',
+            status: 'DRAFT',
+            sourceType: templateId ? 'template' : 'blank',
+            sourceTemplateId: templateId || undefined,
+          }),
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to create draft');
+        }
+        
+        const data = await response.json();
+        if (data.success && data.data?.draft?.id) {
+          setCurrentDraftId(data.data.draft.id);
+          savedTitleRef.current = title;
+          
+          // Update URL to include draft ID
+          const url = new URL(window.location.href);
+          url.searchParams.delete('mode');
+          url.searchParams.delete('template');
+          url.searchParams.delete('name');
+          url.searchParams.set('draft', data.data.draft.id);
+          router.replace(url.pathname + url.search);
+          
+          toast.success('Draft created');
+        }
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save draft');
+      throw error;
+    }
+  }, [currentDraftId, templateId, templateName, router]);
 
   // Determine the context for the header
   const getHeaderInfo = () => {
-    if (draftId) {
+    if (draftId || currentDraftId) {
       return {
         title: 'Edit Draft',
         description: 'Continue working on your contract draft',
@@ -96,16 +167,16 @@ export default function CopilotDraftPage() {
         <div className="max-w-[1600px] mx-auto">
           <PageBreadcrumb />
           <div className="flex items-center gap-3 mt-2">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl shadow-lg">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-pink-500 rounded-xl shadow-lg">
               <HeaderIcon className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                   {headerInfo.title}
                 </h1>
                 {headerInfo.badge && (
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-700 text-xs">
+                  <Badge variant="secondary" className="bg-violet-100 text-violet-700 text-xs">
                     {headerInfo.badge}
                   </Badge>
                 )}
@@ -122,8 +193,9 @@ export default function CopilotDraftPage() {
       <Suspense fallback={null}>
         <CopilotDraftingCanvas 
           templateId={templateId || undefined}
-          draftId={draftId || undefined}
+          draftId={currentDraftId || draftId || undefined}
           isBlankDocument={mode === 'blank'}
+          onSave={handleSave}
         />
       </Suspense>
     </div>

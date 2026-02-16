@@ -93,7 +93,7 @@ export function SwipeableApprovalCard({
 
   const priorityConfig = {
     low: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300', label: 'Low' },
-    medium: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400', label: 'Medium' },
+    medium: { color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400', label: 'Medium' },
     high: { color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400', label: 'High' },
     urgent: { color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400', label: 'Urgent' }
   };
@@ -215,9 +215,9 @@ export function SwipeableApprovalCard({
 
             {/* AI Suggestion preview */}
             {item.aiSuggestion && (
-              <div className="flex items-center gap-2 p-2 rounded-md bg-purple-50 dark:bg-purple-900/20 mb-3">
-                <Sparkles size={14} className="text-purple-600 dark:text-purple-400" />
-                <span className="text-xs text-purple-700 dark:text-purple-300">
+              <div className="flex items-center gap-2 p-2 rounded-md bg-violet-50 dark:bg-violet-900/20 mb-3">
+                <Sparkles size={14} className="text-violet-600 dark:text-violet-400" />
+                <span className="text-xs text-violet-700 dark:text-violet-300">
                   AI suggests: <span className="font-medium capitalize">{item.aiSuggestion}</span>
                   {item.aiConfidence && ` (${item.aiConfidence}%)`}
                 </span>
@@ -343,7 +343,7 @@ export function MobileApprovalList({
       {/* Pull to refresh indicator */}
       <AnimatePresence>
         {pullDistance > 0 && (
-          <motion.div 
+          <motion.div key="pull-distance" 
             className="flex items-center justify-center py-4"
             style={{ height: pullDistance }}
             initial={{ opacity: 0 }}

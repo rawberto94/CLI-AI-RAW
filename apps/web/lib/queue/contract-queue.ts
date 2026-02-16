@@ -35,7 +35,7 @@ export interface ProcessContractJobData {
   filePath: string;
   originalName: string;
   userId?: string;
-  ocrMode?: string;
+  ocrMode?: 'openai' | 'mistral' | 'azure-ch' | 'azure-di-layout' | 'azure-di-contract' | 'azure-di-invoice' | 'auto' | (string & {});
 }
 
 export interface ContractQueueManager {
@@ -76,39 +76,35 @@ export interface ContractQueueManager {
 
 // Singleton instance
 let queueInstance: ContractQueueManager | null = null;
+let queueInitFailed = false;
 
 /**
  * Get the contract queue manager instance
  * Lazy loads the actual implementation from packages/utils
  */
 export function getContractQueue(): ContractQueueManager {
+  // If initialization has already failed, throw immediately to trigger fallback
+  if (queueInitFailed) {
+    throw new Error('Queue service not available - Redis not connected');
+  }
+  
   if (!queueInstance) {
     try {
       // Ensure the QueueService singleton is initialized before constructing queue managers
-      initializeQueueService();
+      const queueService = initializeQueueService();
+      
+      if (!queueService) {
+        console.log('[ContractQueue] Queue service initialization returned null, falling back to legacy processing');
+        queueInitFailed = true;
+        throw new Error('Queue service not available - initialization failed');
+      }
+      
       queueInstance = getContractQueueFromUtils();
-    } catch {
-      // Return a stub implementation for when queue is not available
-      queueInstance = {
-        async queueMetadataExtraction(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueContractProcessing(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueCategorization(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueArtifactGeneration(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async queueAgentOrchestration(_data, _options) {
-          return `stub-job-${Date.now()}`;
-        },
-        async getJobStatus(_queueName, _jobId) {
-          return { state: 'pending' };
-        },
-      };
+      console.log('[ContractQueue] Queue manager initialized successfully');
+    } catch (error) {
+      console.error('[ContractQueue] Failed to initialize queue:', error);
+      queueInitFailed = true;
+      throw error; // Re-throw to trigger fallback
     }
   }
   return queueInstance!;

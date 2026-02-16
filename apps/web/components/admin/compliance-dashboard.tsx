@@ -13,13 +13,13 @@ import {
   Shield,
   FileText,
   Database,
-  Lock,
+  Lock as _Lock,
   Users,
   Server,
   Clock,
   Download,
   RefreshCcw,
-  ExternalLink,
+  ExternalLink as _ExternalLink,
   ChevronRight,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';

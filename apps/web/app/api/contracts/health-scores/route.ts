@@ -6,10 +6,12 @@
  * Uses the ContractHealthScore table for fast querying
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import type { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,7 +37,7 @@ interface TrendHistoryEntry {
   score: number;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -51,15 +53,8 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Build where conditions
-    const conditions: string[] = [`tenant_id = '${tenantId}'`];
-    if (alertLevel) conditions.push(`alert_level = '${alertLevel}'`);
-    if (trendDirection) conditions.push(`trend_direction = '${trendDirection}'`);
-    if (minScore) conditions.push(`overall_score >= ${parseInt(minScore)}`);
-    if (maxScore) conditions.push(`overall_score <= ${parseInt(maxScore)}`);
-    if (contractId) conditions.push(`contract_id = '${contractId}'`);
-
-    const whereClause = conditions.join(' AND ');
+    // Build where conditions (validated; unused _whereClause removed — query uses tagged template below)
+    // Filters are applied via the tagged template query which auto-parameterizes
 
     // Query health scores
     const healthScores = await prisma.$queryRaw<Array<{
@@ -234,97 +229,71 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        healthScores: data,
-        stats: {
-          total: Number(s.total || 0),
-          averages: {
-            overall: Math.round(Number(s.avg_score || 0)),
-            risk: Math.round(Number(s.avg_risk || 0)),
-            compliance: Math.round(Number(s.avg_compliance || 0)),
-            financial: Math.round(Number(s.avg_financial || 0)),
-            renewalReadiness: Math.round(Number(s.avg_renewal_readiness || 0)),
-          },
-          byAlertLevel: {
-            critical: Number(s.critical_count || 0),
-            high: Number(s.high_count || 0),
-            medium: Number(s.medium_count || 0),
-            low: Number(s.low_count || 0),
-            healthy: Number(s.healthy_count || 0),
-          },
-          byTrend: {
-            improving: Number(s.improving || 0),
-            declining: Number(s.declining || 0),
-            stable: Number(s.stable || 0),
-          },
+    return createSuccessResponse(ctx, {
+      healthScores: data,
+      stats: {
+        total: Number(s.total || 0),
+        averages: {
+          overall: Math.round(Number(s.avg_score || 0)),
+          risk: Math.round(Number(s.avg_risk || 0)),
+          compliance: Math.round(Number(s.avg_compliance || 0)),
+          financial: Math.round(Number(s.avg_financial || 0)),
+          renewalReadiness: Math.round(Number(s.avg_renewal_readiness || 0)),
         },
-        pagination: {
-          limit,
-          offset,
-          hasMore: data.length === limit,
+        byAlertLevel: {
+          critical: Number(s.critical_count || 0),
+          high: Number(s.high_count || 0),
+          medium: Number(s.medium_count || 0),
+          low: Number(s.low_count || 0),
+          healthy: Number(s.healthy_count || 0),
+        },
+        byTrend: {
+          improving: Number(s.improving || 0),
+          declining: Number(s.declining || 0),
+          stable: Number(s.stable || 0),
         },
       },
-      meta: {
-        source: 'database',
-        tenantId,
-        timestamp: new Date().toISOString(),
-        responseTime: `${Date.now() - startTime}ms`,
+      pagination: {
+        limit,
+        offset,
+        hasMore: data.length === limit,
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch health scores', details: String(error) },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const { action, contractIds } = body;
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = await getServerTenantId();
+  const body = await request.json();
+  const { action, contractIds } = body;
 
-    if (action === 'recalculate') {
-      // Trigger recalculation through the sync API
-      const response = await fetch(`${request.nextUrl.origin}/api/contracts/sync-health-scores`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId, contractIds }),
-      });
+  if (action === 'recalculate') {
+    // Trigger recalculation through the sync API
+    const response = await fetch(`${request.nextUrl.origin}/api/contracts/sync-health-scores`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tenantId, contractIds }),
+    });
 
-      const result = await response.json();
-      return NextResponse.json(result);
+    const result = await response.json();
+    return createSuccessResponse(ctx, result);
+  }
+
+  if (action === 'acknowledge-alert') {
+    const { contractId, alertId } = body;
+    if (!contractId) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID is required', 400);
     }
 
-    if (action === 'acknowledge-alert') {
-      const { contractId, alertId } = body;
-      if (!contractId) {
-        return NextResponse.json(
-          { success: false, error: 'Contract ID is required' },
-          { status: 400 }
-        );
-      }
-
-      // Update the active alerts to mark as acknowledged
-      // This would need to parse the JSONB and update it
-      return NextResponse.json({
-        success: true,
-        message: 'Alert acknowledged',
-        data: { contractId, alertId },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to process action', details: String(error) },
-      { status: 500 }
-    );
+    // Update the active alerts to mark as acknowledged
+    // This would need to parse the JSONB and update it
+    return createSuccessResponse(ctx, {
+      message: 'Alert acknowledged',
+      contractId, alertId,
+    });
   }
-}
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});

@@ -231,3 +231,6 @@ export const jsonSchemas = {
 // Export rate card ingestion schemas
 export * from './rate-card-ingestion';
 
+// Export API request/response contracts
+export * from './api-contracts';
+

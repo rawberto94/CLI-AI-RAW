@@ -148,7 +148,7 @@ export const isNewContract = (createdAt?: string, daysThreshold = 7): boolean =>
 export const getStatusConfig = (status: string) => {
   const configs: Record<string, { label: string; color: string; bgColor: string }> = {
     completed: { label: 'Active', color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
-    processing: { label: 'Processing', color: 'text-blue-700', bgColor: 'bg-blue-50' },
+    processing: { label: 'Processing', color: 'text-violet-700', bgColor: 'bg-violet-50' },
     failed: { label: 'Failed', color: 'text-red-700', bgColor: 'bg-red-50' },
     pending: { label: 'Pending', color: 'text-amber-700', bgColor: 'bg-amber-50' },
     uploaded: { label: 'Uploaded', color: 'text-slate-700', bgColor: 'bg-slate-50' },

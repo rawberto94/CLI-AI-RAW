@@ -62,6 +62,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { ObligationsCalendar } from '@/components/calendar/ObligationsCalendar';
 
 // Types
 interface Obligation {
@@ -110,7 +111,7 @@ const priorityColors = {
 // Status colors
 const statusColors = {
   pending: 'bg-slate-100 text-slate-700 border-slate-200',
-  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
+  in_progress: 'bg-violet-100 text-violet-700 border-violet-200',
   completed: 'bg-green-100 text-green-700 border-green-200',
   overdue: 'bg-red-100 text-red-700 border-red-200',
   at_risk: 'bg-amber-100 text-amber-700 border-amber-200',
@@ -133,6 +134,7 @@ export default function ObligationsDashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [showAddDialog, setShowAddDialog] = useState(false);
+  const [contracts, setContracts] = useState<Array<{ id: string; title: string }>>([]);
   
   // New obligation form state
   const [newObligation, setNewObligation] = useState({
@@ -142,6 +144,7 @@ export default function ObligationsDashboardPage() {
     priority: 'medium',
     dueDate: '',
     owner: '',
+    contractId: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -157,6 +160,10 @@ export default function ObligationsDashboardPage() {
       toast.error('Please fill in required fields (Title and Due Date)');
       return;
     }
+    if (!newObligation.contractId) {
+      toast.error('Please select a contract for this obligation');
+      return;
+    }
     
     setIsSubmitting(true);
     try {
@@ -164,8 +171,17 @@ export default function ObligationsDashboardPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...newObligation,
-          status: 'pending',
+          action: 'create',
+          contractId: newObligation.contractId,
+          obligation: {
+            title: newObligation.title,
+            description: newObligation.description,
+            type: newObligation.type,
+            priority: newObligation.priority,
+            dueDate: newObligation.dueDate,
+            owner: newObligation.owner || 'us',
+            status: 'pending',
+          },
         }),
       });
       
@@ -179,11 +195,13 @@ export default function ObligationsDashboardPage() {
           priority: 'medium',
           dueDate: '',
           owner: '',
+          contractId: '',
         });
         fetchObligations();
         fetchMetrics();
       } else {
-        toast.error('Failed to add obligation');
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to add obligation');
       }
     } catch (error) {
       toast.error('Failed to add obligation');
@@ -202,10 +220,10 @@ export default function ObligationsDashboardPage() {
       
       const response = await fetch(`/api/obligations?${params.toString()}`);
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setObligations(data.obligations || []);
-        }
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        // API returns { obligations, pagination, metrics } in data envelope
+        setObligations(data.obligations || []);
       }
     } catch (error) {
       console.error('Failed to fetch obligations:', error);
@@ -218,9 +236,39 @@ export default function ObligationsDashboardPage() {
     try {
       const response = await fetch('/api/obligations/metrics');
       if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          setMetrics(data.metrics);
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        // API returns metrics in data envelope
+        if (!data.error) {
+          // Transform API response to match expected DashboardMetrics interface
+          setMetrics({
+            total: data.totalObligations || 0,
+            byStatus: data.byStatus || {},
+            byPriority: data.byPriority || {},
+            byType: data.byType || {},
+            byOwner: data.byOwner || {},
+            overdueCount: data.overdueCount || 0,
+            atRiskCount: data.atRiskCount || 0,
+            complianceRate: data.complianceRate || 100,
+            upcomingDeadlines: (data.upcomingDeadlines || []).map((d: Record<string, unknown>) => ({
+              id: d.obligationId,
+              title: d.title,
+              dueDate: d.dueDate,
+              priority: d.priority,
+            })),
+            criticalItems: (data.criticalItems || []).map((c: Record<string, unknown>) => ({
+              id: c.obligationId,
+              title: c.title,
+              dueDate: c.dueDate,
+              status: 'overdue',
+            })),
+            trends: {
+              completedThisWeek: 0,
+              completedLastWeek: 0,
+              createdThisWeek: 0,
+              createdLastWeek: 0,
+            },
+          });
         }
       }
     } catch (error) {
@@ -228,11 +276,29 @@ export default function ObligationsDashboardPage() {
     }
   }, []);
 
+  // Fetch contracts for the add dialog
+  const fetchContracts = useCallback(async () => {
+    try {
+      const response = await fetch('/api/contracts?limit=100');
+      if (response.ok) {
+        const raw = await response.json();
+        const data = raw.data ?? raw;
+        const contractList = (data.contracts || []).map((c: Record<string, unknown>) => ({
+          id: c.id as string,
+          title: (c.contractTitle || c.title || 'Untitled Contract') as string,
+        }));
+        setContracts(contractList);
+      }
+    } catch (error) {
+      console.error('Failed to fetch contracts:', error);
+    }
+  }, []);
+
   // Initial load
   useEffect(() => {
-    Promise.all([fetchObligations(), fetchMetrics()])
+    Promise.all([fetchObligations(), fetchMetrics(), fetchContracts()])
       .finally(() => setLoading(false));
-  }, [fetchObligations, fetchMetrics]);
+  }, [fetchObligations, fetchMetrics, fetchContracts]);
 
   // Refresh on filter change
   useEffect(() => {
@@ -324,8 +390,8 @@ export default function ObligationsDashboardPage() {
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-purple-200 dark:border-purple-800 border-t-purple-600 dark:border-t-purple-400 rounded-full animate-spin" />
-            <Target className="w-6 h-6 text-purple-600 dark:text-purple-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-violet-200 dark:border-violet-800 border-t-violet-600 dark:border-t-violet-400 rounded-full animate-spin" />
+            <Target className="w-6 h-6 text-violet-600 dark:text-violet-400 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 dark:text-slate-300 font-medium">Loading obligations dashboard...</p>
         </motion.div>
@@ -341,7 +407,7 @@ export default function ObligationsDashboardPage() {
           <div className="flex items-center justify-between">
             <div>
               <PageBreadcrumb />
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent mt-1">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent mt-1">
                 Obligation Tracker
               </h1>
               <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
@@ -361,7 +427,7 @@ export default function ObligationsDashboardPage() {
               </Button>
               <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                 <DialogTrigger asChild>
-                  <Button size="sm" className="gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700">
+                  <Button size="sm" className="gap-2 bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700">
                     <Plus className="w-4 h-4" />
                     Add Obligation
                   </Button>
@@ -369,7 +435,7 @@ export default function ObligationsDashboardPage() {
                 <DialogContent className="sm:max-w-[500px]">
                   <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                      <Target className="w-5 h-5 text-purple-600" />
+                      <Target className="w-5 h-5 text-violet-600" />
                       Add New Obligation
                     </DialogTitle>
                     <DialogDescription>
@@ -377,6 +443,24 @@ export default function ObligationsDashboardPage() {
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="contract">Contract <span className="text-red-500">*</span></Label>
+                      <Select
+                        value={newObligation.contractId}
+                        onValueChange={(value) => setNewObligation(prev => ({ ...prev, contractId: value }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a contract..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {contracts.map((contract) => (
+                            <SelectItem key={contract.id} value={contract.id}>
+                              {contract.title}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="space-y-2">
                       <Label htmlFor="title">Title <span className="text-red-500">*</span></Label>
                       <Input
@@ -462,7 +546,7 @@ export default function ObligationsDashboardPage() {
                     <Button 
                       onClick={handleAddObligation}
                       disabled={isSubmitting}
-                      className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+                      className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700"
                     >
                       {isSubmitting ? (
                         <>
@@ -487,16 +571,25 @@ export default function ObligationsDashboardPage() {
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50">
-            <TabsTrigger value="overview" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+          <TabsList className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 shadow-lg shadow-slate-200/30 dark:shadow-slate-900/30 p-1.5 rounded-xl">
+            <TabsTrigger 
+              value="overview" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
+            >
               <BarChart3 className="w-4 h-4" />
               Overview
             </TabsTrigger>
-            <TabsTrigger value="obligations" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+            <TabsTrigger 
+              value="obligations" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
+            >
               <FileText className="w-4 h-4" />
               All Obligations
             </TabsTrigger>
-            <TabsTrigger value="calendar" className="gap-2 data-[state=active]:text-slate-900 dark:data-[state=active]:text-slate-100">
+            <TabsTrigger 
+              value="calendar" 
+              className="gap-2 data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:via-violet-500 data-[state=active]:to-pink-500 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/30 rounded-lg transition-all duration-200"
+            >
               <CalendarClock className="w-4 h-4" />
               Calendar
             </TabsTrigger>
@@ -508,15 +601,15 @@ export default function ObligationsDashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {/* Total Obligations */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-violet-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Total Obligations</p>
                         <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1">{metrics?.total || 0}</p>
                       </div>
-                      <div className="p-3 bg-purple-100 dark:bg-purple-900/50 rounded-xl">
-                        <Target className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                      <div className="p-3 bg-gradient-to-br from-violet-400 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <Target className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm">
@@ -531,7 +624,7 @@ export default function ObligationsDashboardPage() {
 
               {/* Compliance Rate */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-green-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -540,8 +633,8 @@ export default function ObligationsDashboardPage() {
                           {((metrics?.complianceRate || 0) * 100).toFixed(1)}%
                         </p>
                       </div>
-                      <div className="p-3 bg-green-100 dark:bg-green-900/50 rounded-xl">
-                        <Shield className="w-6 h-6 text-green-600 dark:text-green-400" />
+                      <div className="p-3 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl shadow-lg shadow-green-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <Shield className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4">
@@ -553,15 +646,15 @@ export default function ObligationsDashboardPage() {
 
               {/* Overdue */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-red-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm text-slate-600 dark:text-slate-400">Overdue</p>
                         <p className="text-3xl font-bold text-red-600 dark:text-red-400 mt-1">{metrics?.overdueCount || 0}</p>
                       </div>
-                      <div className="p-3 bg-red-100 dark:bg-red-900/50 rounded-xl">
-                        <XCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
+                      <div className="p-3 bg-gradient-to-br from-red-400 to-rose-600 rounded-xl shadow-lg shadow-red-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <XCircle className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
@@ -574,7 +667,7 @@ export default function ObligationsDashboardPage() {
 
               {/* Completed This Week */}
               <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
-                <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-lg dark:hover:shadow-slate-900/50 transition-shadow">
+                <Card className="group bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50 hover:shadow-xl hover:shadow-violet-200/30 dark:hover:shadow-slate-900/50 transition-all duration-300">
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
                       <div>
@@ -583,8 +676,8 @@ export default function ObligationsDashboardPage() {
                           {metrics?.trends?.completedThisWeek || 0}
                         </p>
                       </div>
-                      <div className="p-3 bg-emerald-100 dark:bg-emerald-900/50 rounded-xl">
-                        <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                      <div className="p-3 bg-gradient-to-br from-violet-400 to-violet-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
+                        <CheckCircle2 className="w-6 h-6 text-white" />
                       </div>
                     </div>
                     <div className="mt-4 flex items-center gap-2 text-sm">
@@ -649,7 +742,7 @@ export default function ObligationsDashboardPage() {
                 <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
-                      <Calendar className="w-5 h-5 text-purple-500 dark:text-purple-400" />
+                      <Calendar className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                       Upcoming Deadlines
                     </CardTitle>
                     <CardDescription className="dark:text-slate-400">Next 7 days</CardDescription>
@@ -690,7 +783,7 @@ export default function ObligationsDashboardPage() {
               <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-lg text-slate-900 dark:text-slate-100">
-                    <BarChart3 className="w-5 h-5 text-indigo-500 dark:text-indigo-400" />
+                    <BarChart3 className="w-5 h-5 text-violet-500 dark:text-violet-400" />
                     Status Breakdown
                   </CardTitle>
                 </CardHeader>
@@ -704,7 +797,7 @@ export default function ObligationsDashboardPage() {
                             status === 'completed' ? 'text-green-500' :
                             status === 'overdue' ? 'text-red-500' :
                             status === 'at_risk' ? 'text-amber-500' :
-                            status === 'in_progress' ? 'text-blue-500' :
+                            status === 'in_progress' ? 'text-violet-500' :
                             'text-slate-400 dark:text-slate-500'
                           }`} />
                           <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{count}</p>
@@ -867,7 +960,7 @@ export default function ObligationsDashboardPage() {
                                   {obligation.contractTitle && (
                                     <Link 
                                       href={`/contracts/${obligation.contractId}`}
-                                      className="flex items-center gap-1 text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                                      className="flex items-center gap-1 text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300"
                                     >
                                       <FileText className="w-4 h-4" />
                                       {obligation.contractTitle}
@@ -925,7 +1018,7 @@ export default function ObligationsDashboardPage() {
                 ) : (
                   <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
                     <CardContent className="py-12 text-center">
-                      <Target className="w-16 h-16 mx-auto mb-4 text-purple-300 dark:text-purple-700" />
+                      <Target className="w-16 h-16 mx-auto mb-4 text-violet-300 dark:text-violet-700" />
                       <h3 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">No obligations found</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto mb-6">
                         {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all'
@@ -935,7 +1028,7 @@ export default function ObligationsDashboardPage() {
                       {!(searchQuery || statusFilter !== 'all' || priorityFilter !== 'all' || typeFilter !== 'all') && (
                         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                           <Link href="/upload">
-                            <Button className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 gap-2">
+                            <Button className="bg-gradient-to-r from-violet-600 to-pink-600 hover:from-violet-700 hover:to-pink-700 gap-2">
                               <FileText className="w-4 h-4" />
                               Upload Contract
                             </Button>
@@ -952,19 +1045,19 @@ export default function ObligationsDashboardPage() {
                         <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-2">How it works:</h4>
                         <ol className="text-sm text-slate-600 dark:text-slate-400 text-left space-y-2">
                           <li className="flex items-start gap-2">
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">1</span>
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">1</span>
                             Open any contract from the Contracts page
                           </li>
                           <li className="flex items-start gap-2">
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">2</span>
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">2</span>
                             Click &quot;Legal Review&quot; from the Actions menu
                           </li>
                           <li className="flex items-start gap-2">
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">3</span>
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">3</span>
                             AI extracts obligations, deadlines, and compliance requirements
                           </li>
                           <li className="flex items-start gap-2">
-                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 text-xs flex items-center justify-center font-medium">4</span>
+                            <span className="flex-shrink-0 w-5 h-5 rounded-full bg-violet-100 dark:bg-violet-900/50 text-violet-700 dark:text-violet-300 text-xs flex items-center justify-center font-medium">4</span>
                             Track and manage all obligations from this dashboard
                           </li>
                         </ol>
@@ -978,16 +1071,11 @@ export default function ObligationsDashboardPage() {
 
           {/* Calendar Tab */}
           <TabsContent value="calendar" className="space-y-4">
-            <Card className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm border-slate-200/50 dark:border-slate-700/50">
-              <CardContent className="py-12 text-center">
-                <CalendarClock className="w-16 h-16 mx-auto mb-4 text-purple-300 dark:text-purple-700" />
-                <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-1">Calendar View Coming Soon</h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-md mx-auto">
-                  A visual calendar view for tracking obligations and deadlines is being developed.
-                  For now, use the Overview and All Obligations tabs.
-                </p>
-              </CardContent>
-            </Card>
+            <ObligationsCalendar 
+              obligations={obligations}
+              onStatusUpdate={handleStatusUpdate}
+              onComplete={handleComplete}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -354,27 +354,32 @@ Document → Assess → Preprocess (if needed)
 ## Architecture Benefits
 
 ### ✅ Reliability
+
 - Multi-layer fallback (Vision → pdf-parse)
 - Automatic error recovery
 - Graceful degradation
 
 ### ✅ Performance
+
 - Parallel processing where possible
 - Smart caching opportunities
 - Optimized preprocessing
 
 ### ✅ Cost Efficiency
+
 - Intelligent mode selection
 - Only use expensive methods when needed
 - Batch processing support
 
 ### ✅ Accuracy
+
 - 95-99% on complex documents
 - 99%+ on tables (Textract)
 - Layout preservation
 - Form field extraction
 
 ### ✅ Scalability
+
 - Handle 10GB files
 - Batch processing ready
 - Concurrent uploads

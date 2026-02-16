@@ -9,7 +9,7 @@ export type OnStep = (step: AgentStep) => void | Promise<void>;
 
 const overviewSchema = z.object({ summary: z.string().min(1), parties: z.array(z.string()).optional(), effectiveDate: z.string().optional() });
 const clausesSchema = z.object({ clauses: z.array(z.object({ name: z.string(), present: z.boolean(), snippet: z.string().optional() })) });
-const ratesSchema = z.object({ roles: z.array(z.object({ role: z.string(), uom: z.string().default('Day'), rate: z.number().or(z.string()), currency: z.string().default('USD') })) });
+const ratesSchema = z.object({ roles: z.array(z.object({ role: z.string(), uom: z.string().default('Day'), rate: z.number().or(z.string()), currency: z.string().default('CHF') })) });
 
 export class ContractOrchestrator {
   llm: ChatOpenAI;
@@ -34,7 +34,7 @@ export class ContractOrchestrator {
             for (const line of lines) {
               const m = line.match(/(Analyst|Consultant|Manager|Engineer|Director)/i);
               const r = line.match(/(\$|€|£)?\s?(\d{2,4})/);
-              if (m && r) roles.push({ role: m[1], uom: 'Day', rate: Number(r[2]), currency: r[1] ? 'USD' : 'USD' });
+              if (m && r) roles.push({ role: m[1], uom: 'Day', rate: Number(r[2]), currency: r[1] ? 'CHF' : 'CHF' });
               if (roles.length >= 8) break;
             }
             return { content: JSON.stringify({ roles }) };

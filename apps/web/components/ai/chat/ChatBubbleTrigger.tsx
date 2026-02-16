@@ -14,7 +14,7 @@ import {
   ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { EnhancedChatbot } from './EnhancedChatbot';
+import { FloatingAIBubble } from '@/components/ai/FloatingAIBubble';
 
 interface ChatBubbleTriggerProps {
   contractContext?: { id: string; name: string } | null;
@@ -100,7 +100,7 @@ export const ChatBubbleTrigger = memo(({
       {/* Floating bubble */}
       <AnimatePresence>
         {!isOpen && (
-          <motion.div
+          <motion.div key="ChatBubbleTrigger-ap-1"
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
@@ -113,7 +113,7 @@ export const ChatBubbleTrigger = memo(({
             {/* Proactive message */}
             <AnimatePresence>
               {showProactive && (
-                <motion.div
+                <motion.div key="proactive"
                   initial={{ opacity: 0, y: 10, scale: 0.9 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.9 }}
@@ -147,11 +147,11 @@ export const ChatBubbleTrigger = memo(({
               onMouseEnter={() => setIsHovered(true)}
               onMouseLeave={() => setIsHovered(false)}
               data-testid="chatbot-trigger"
-              className="relative p-4 bg-gradient-to-br from-indigo-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
+              className="relative p-4 bg-gradient-to-br from-violet-600 to-purple-600 text-white rounded-full shadow-lg hover:shadow-xl transition-shadow"
             >
               {/* Pulse animation */}
               <motion.div
-                className="absolute inset-0 rounded-full bg-indigo-500"
+                className="absolute inset-0 rounded-full bg-violet-500"
                 animate={{
                   scale: [1, 1.3, 1],
                   opacity: [0.5, 0, 0.5],
@@ -191,7 +191,7 @@ export const ChatBubbleTrigger = memo(({
               {/* Unread badge */}
               <AnimatePresence>
                 {unreadCount > 0 && (
-                  <motion.span
+                  <motion.span key="unread-count"
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
@@ -206,7 +206,7 @@ export const ChatBubbleTrigger = memo(({
             {/* Keyboard shortcut hint */}
             <AnimatePresence>
               {isHovered && (
-                <motion.div
+                <motion.div key="hovered"
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 5 }}
@@ -227,11 +227,7 @@ export const ChatBubbleTrigger = memo(({
       {/* Chatbot */}
       <AnimatePresence>
         {isOpen && (
-          <EnhancedChatbot
-            isOpen={isOpen}
-            onClose={handleClose}
-            contractContext={contractContext}
-          />
+          <FloatingAIBubble key="open" />
         )}
       </AnimatePresence>
     </>

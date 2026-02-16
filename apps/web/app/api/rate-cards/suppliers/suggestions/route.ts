@@ -4,21 +4,22 @@
  * Returns supplier name suggestions for autocomplete
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
 
     if (query.length < 2) {
-      return NextResponse.json({ suggestions: [] });
+      return createSuccessResponse(ctx, { suggestions: [] });
     }
 
     const suppliers = await prisma.rateCardSupplier.findMany({
@@ -41,11 +42,5 @@ export async function GET(request: NextRequest) {
 
     const suggestions = suppliers.map((s: { name: string }) => s.name);
 
-    return NextResponse.json({ suggestions });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch suggestions' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { suggestions });
+  });

@@ -1,48 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import crypto from 'crypto';
+import { initializeStorage } from '@/lib/storage-service';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
-
-// Mock version data for demonstration
-const getMockVersions = () => [
-      {
-        id: '1',
-        versionNumber: 1,
-        uploadedBy: 'Sarah Chen',
-        uploadedAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: false,
-        summary: 'Initial contract version',
-      },
-      {
-        id: '2',
-        versionNumber: 2,
-        uploadedBy: 'Roberto Ostojic',
-        uploadedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: false,
-        summary: 'Updated payment terms and expiration date',
-        changes: {
-          totalValue: { old: '$500,000', new: '$525,000' },
-          expirationDate: { old: '2025-12-31', new: '2026-03-31' },
-        }
-      },
-      {
-        id: '3',
-        versionNumber: 3,
-        uploadedBy: 'Mike Johnson',
-        uploadedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-        isActive: true,
-        summary: 'Final negotiated terms',
-        changes: {
-          totalValue: { old: '$525,000', new: '$550,000' },
-          paymentTerms: { old: 'Net 30', new: 'Net 45' },
-          autoRenewal: { old: null, new: 'Yes' },
-        }
-      },
-    ];
 
 /**
  * GET /api/contracts/:id/versions
@@ -52,18 +17,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
-    const useMock = request.nextUrl.searchParams.get('mock') === 'true';
-
-    if (useMock) {
-      return NextResponse.json({
-        success: true,
-        versions: getMockVersions(),
-        source: 'mock'
-      });
-    }
 
     try {
       const db = await getDb();
@@ -95,29 +55,18 @@ export async function GET(
         };
       });
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         versions: transformedVersions,
         source: 'database'
       });
 
-    } catch {
-      return NextResponse.json({
-        success: true,
-        versions: getMockVersions(),
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch versions',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -133,6 +82,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -144,10 +97,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get the highest version number
@@ -183,7 +133,7 @@ export async function POST(
       }
 
       if (file) {
-        // Save file to uploads directory
+        // Save file to object storage (MinIO/S3) with local fallback
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
         
@@ -191,15 +141,38 @@ export async function POST(
         const hash = crypto.createHash('sha256').update(buffer).digest('hex').substring(0, 16);
         const ext = file.name.split('.').pop() || 'pdf';
         const filename = `${contractId}_v${newVersionNumber}_${hash}.${ext}`;
-        
-        // Ensure uploads directory exists
-        const uploadsDir = join(process.cwd(), 'uploads', 'versions');
-        await mkdir(uploadsDir, { recursive: true });
-        
-        const filePath = join(uploadsDir, filename);
-        await writeFile(filePath, buffer);
-        
-        fileUrl = `/api/files/versions/${filename}`;
+        const objectKey = `versions/${tenantId}/${filename}`;
+
+        try {
+          const storageService = initializeStorage();
+          if (storageService) {
+            const uploadResult = await storageService.upload({
+              fileName: objectKey,
+              buffer,
+              contentType: file.type || 'application/pdf',
+              metadata: {
+                tenantId,
+                contractId,
+                versionNumber: String(newVersionNumber),
+              },
+            });
+
+            if (uploadResult.success) {
+              fileUrl = `/api/files/versions/${filename}`;
+            } else {
+              throw new Error(uploadResult.error || 'Upload failed');
+            }
+          } else {
+            throw new Error('Storage service not available');
+          }
+        } catch {
+          // Fallback to local filesystem
+          const uploadsDir = join(process.cwd(), 'uploads', 'versions');
+          await mkdir(uploadsDir, { recursive: true });
+          const filePath = join(uploadsDir, filename);
+          await writeFile(filePath, buffer);
+          fileUrl = `/api/files/versions/${filename}`;
+        }
       }
     } else {
       // Handle JSON request (metadata-only version / snapshot)
@@ -250,7 +223,7 @@ export async function POST(
       // Ignore if currentVersionNumber doesn't exist
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       version: {
         id: newVersion.id,
@@ -266,14 +239,7 @@ export async function POST(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to create version',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -285,6 +251,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const tenantId = await getApiTenantId(request);
@@ -293,10 +263,7 @@ export async function PUT(
     const { versionId, versionNumber } = await request.json();
 
     if (!versionId && !versionNumber) {
-      return NextResponse.json(
-        { success: false, error: 'versionId or versionNumber is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'versionId or versionNumber is required', 400);
     }
 
     // Find the target version
@@ -309,10 +276,7 @@ export async function PUT(
     });
 
     if (!targetVersion) {
-      return NextResponse.json(
-        { success: false, error: 'Version not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Version not found', 404);
     }
 
     // Deactivate all versions
@@ -327,7 +291,7 @@ export async function PUT(
       data: { isActive: true }
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `Reverted to version ${targetVersion.versionNumber}`,
       activeVersion: {
@@ -338,13 +302,6 @@ export async function PUT(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to activate version',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

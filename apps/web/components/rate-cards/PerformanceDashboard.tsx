@@ -48,7 +48,7 @@ export function PerformanceDashboard() {
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/rate-cards/performance-metrics');
+      const response = await fetch('/api/rate-cards/performance');
       const data = await response.json();
       setMetrics(data);
     } catch {

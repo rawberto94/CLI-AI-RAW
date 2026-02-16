@@ -142,9 +142,9 @@ const ColumnHeader = memo(({ column, sortState, onSort }: ColumnHeaderProps) => 
           <span className="flex-shrink-0">
             {isSorted ? (
               sortState.direction === 'asc' ? (
-                <ChevronUp className="h-4 w-4 text-indigo-600" />
+                <ChevronUp className="h-4 w-4 text-violet-600" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-indigo-600" />
+                <ChevronDown className="h-4 w-4 text-violet-600" />
               )
             ) : (
               <ArrowUpDown className="h-4 w-4 text-slate-400" />
@@ -211,7 +211,7 @@ function TableRowComponent<T>({
       className={cn(
         "group transition-colors",
         isSelected
-          ? "bg-indigo-50 dark:bg-indigo-900/20"
+          ? "bg-violet-50 dark:bg-violet-900/20"
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50",
         onClick && "cursor-pointer"
       )}
@@ -228,7 +228,7 @@ function TableRowComponent<T>({
             className="flex items-center justify-center"
           >
             {isSelected ? (
-              <CheckSquare className="h-5 w-5 text-indigo-600" />
+              <CheckSquare className="h-5 w-5 text-violet-600" />
             ) : (
               <Square className="h-5 w-5 text-slate-400 hover:text-slate-600" />
             )}
@@ -278,7 +278,7 @@ function TableRowComponent<T>({
 
             <AnimatePresence>
               {showActions && (
-                <motion.div
+                <motion.div key="actions"
                   initial={{ opacity: 0, scale: 0.95, y: -5 }}
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: -5 }}
@@ -401,7 +401,7 @@ const Pagination = memo(({
                 className={cn(
                   "w-8 h-8 text-sm rounded transition-colors",
                   currentPage === page
-                    ? "bg-indigo-600 text-white"
+                    ? "bg-violet-600 text-white"
                     : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                 )}
               >
@@ -472,7 +472,7 @@ function ToolbarComponent<T>({
             placeholder="Search..."
             value={searchValue}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-9 pr-3 py-2 w-64 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="pl-9 pr-3 py-2 w-64 text-sm rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-500"
           />
           {searchValue && (
             <button
@@ -487,13 +487,13 @@ function ToolbarComponent<T>({
         {/* Bulk actions */}
         <AnimatePresence>
           {selectedCount > 0 && (
-            <motion.div
+            <motion.div key="selected-count"
               initial={{ opacity: 0, x: -10 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -10 }}
               className="flex items-center gap-2 pl-3 border-l border-slate-200 dark:border-slate-700"
             >
-              <span className="text-sm font-medium text-indigo-600 dark:text-indigo-400">
+              <span className="text-sm font-medium text-violet-600 dark:text-indigo-400">
                 {selectedCount} selected
               </span>
               {bulkActions?.map((action) => (
@@ -738,11 +738,11 @@ export function EnhancedDataTable<T>({
                   <th className="w-12 px-4 py-3 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
                     <button onClick={toggleAll} className="flex items-center justify-center">
                       {isAllSelected ? (
-                        <CheckSquare className="h-5 w-5 text-indigo-600" />
+                        <CheckSquare className="h-5 w-5 text-violet-600" />
                       ) : isIndeterminate ? (
                         <div className="relative">
-                          <Square className="h-5 w-5 text-indigo-600" />
-                          <Minus className="absolute inset-0 h-5 w-5 text-indigo-600" />
+                          <Square className="h-5 w-5 text-violet-600" />
+                          <Minus className="absolute inset-0 h-5 w-5 text-violet-600" />
                         </div>
                       ) : (
                         <Square className="h-5 w-5 text-slate-400" />
@@ -766,7 +766,7 @@ export function EnhancedDataTable<T>({
             <tbody>
               <AnimatePresence mode="popLayout">
                 {paginatedData.length === 0 ? (
-                  <tr>
+                  <tr key="paginated-data-length">
                     <td
                       colSpan={columns.filter(c => !c.hidden).length + (selectable ? 1 : 0) + (actions ? 1 : 0)}
                       className="px-4 py-12 text-center text-slate-500 dark:text-slate-400"

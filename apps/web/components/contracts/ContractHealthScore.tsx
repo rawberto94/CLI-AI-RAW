@@ -69,7 +69,7 @@ function HealthScoreRing({
   const offset = circumference - (score / 100) * circumference;
 
   const getColor = (score: number) => {
-    if (score >= 80) return { stroke: '#10b981', bg: 'from-emerald-500 to-teal-500', text: 'text-emerald-600' };
+    if (score >= 80) return { stroke: '#7C3AED', bg: 'from-violet-500 to-purple-500', text: 'text-violet-600' };
     if (score >= 60) return { stroke: '#f59e0b', bg: 'from-amber-500 to-orange-500', text: 'text-amber-600' };
     return { stroke: '#ef4444', bg: 'from-red-500 to-rose-500', text: 'text-red-600' };
   };
@@ -136,7 +136,7 @@ function HealthScoreRing({
 
 function HealthFactorRow({ factor }: { factor: HealthFactor }) {
   const statusColors = {
-    healthy: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle2 },
+    healthy: { bg: 'bg-violet-100', text: 'text-violet-700', icon: CheckCircle2 },
     warning: { bg: 'bg-amber-100', text: 'text-amber-700', icon: AlertTriangle },
     critical: { bg: 'bg-red-100', text: 'text-red-700', icon: AlertTriangle },
   };
@@ -188,7 +188,7 @@ function HealthFactorRow({ factor }: { factor: HealthFactor }) {
         <TrendIcon
           className={cn(
             "w-4 h-4",
-            factor.trend === 'up' && 'text-emerald-500',
+            factor.trend === 'up' && 'text-violet-500',
             factor.trend === 'down' && 'text-red-500',
             factor.trend === 'stable' && 'text-slate-400'
           )}
@@ -281,7 +281,7 @@ export function ContractHealthScore({
   }, [factors]);
 
   const getOverallStatus = (score: number) => {
-    if (score >= 80) return { label: 'Healthy', color: 'text-emerald-600', bg: 'bg-emerald-100' };
+    if (score >= 80) return { label: 'Healthy', color: 'text-violet-600', bg: 'bg-violet-100' };
     if (score >= 60) return { label: 'Needs Attention', color: 'text-amber-600', bg: 'bg-amber-100' };
     return { label: 'Critical', color: 'text-red-600', bg: 'bg-red-100' };
   };
@@ -333,7 +333,7 @@ export function ContractHealthScore({
       <CardHeader className="pb-4 bg-gradient-to-r from-slate-50 to-white">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base font-semibold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600">
               <Shield className="w-4 h-4 text-white" />
             </div>
             Contract Health Score
@@ -366,7 +366,7 @@ export function ContractHealthScore({
             <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">
               Health Factors
             </span>
-            <Sparkles className="w-3 h-3 text-purple-500" />
+            <Sparkles className="w-3 h-3 text-violet-500" />
           </div>
           {factors.map((factor) => (
             <HealthFactorRow key={factor.id} factor={factor} />
@@ -376,7 +376,7 @@ export function ContractHealthScore({
         {/* Quick Stats */}
         <div className="grid grid-cols-3 gap-3 pt-4 border-t border-slate-100">
           <div className="text-center">
-            <div className="text-lg font-bold text-emerald-600">
+            <div className="text-lg font-bold text-violet-600">
               {factors.filter((f) => f.status === 'healthy').length}
             </div>
             <div className="text-xs text-slate-500">Healthy</div>
@@ -432,7 +432,7 @@ export function HealthScoreWidget({ contracts, className }: HealthScoreWidgetPro
     <Card className={cn("shadow-sm border-slate-200/50", className)}>
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
-          <Shield className="w-4 h-4 text-emerald-500" />
+          <Shield className="w-4 h-4 text-violet-500" />
           Portfolio Health
         </CardTitle>
       </CardHeader>
@@ -446,9 +446,9 @@ export function HealthScoreWidget({ contracts, className }: HealthScoreWidgetPro
         </div>
 
         <div className="grid grid-cols-3 gap-2 mb-4">
-          <div className="p-2 rounded-lg bg-emerald-50 text-center">
-            <div className="text-lg font-bold text-emerald-600">{statusCounts.healthy}</div>
-            <div className="text-xs text-emerald-600">Healthy</div>
+          <div className="p-2 rounded-lg bg-violet-50 text-center">
+            <div className="text-lg font-bold text-violet-600">{statusCounts.healthy}</div>
+            <div className="text-xs text-violet-600">Healthy</div>
           </div>
           <div className="p-2 rounded-lg bg-amber-50 text-center">
             <div className="text-lg font-bold text-amber-600">{statusCounts.warning}</div>

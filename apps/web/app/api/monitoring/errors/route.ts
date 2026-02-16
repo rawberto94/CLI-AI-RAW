@@ -3,8 +3,9 @@
  * Receives and logs client-side errors
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { monitoringService } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,44 +24,31 @@ interface ClientError {
   userAgent?: string;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: ClientError = await request.json();
-    
-    // Log the error
-    monitoringService.logError(
-      new Error(body.error.message),
-      {
-        name: body.error.name,
-        stack: body.error.stack,
-        componentStack: body.errorInfo?.componentStack,
-        level: body.level,
-        url: body.url,
-        userAgent: body.userAgent,
-        timestamp: body.timestamp,
-      }
-    );
-    
-    // Increment error counter
-    monitoringService.incrementCounter('client.errors', {
-      errorType: body.error.name,
-      level: body.level || 'unknown',
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const body: ClientError = await request.json();
+
+  // Log the error
+  monitoringService.logError(
+    new Error(body.error.message),
+    {
+      name: body.error.name,
+      stack: body.error.stack,
+      componentStack: body.errorInfo?.componentStack,
+      level: body.level,
+      url: body.url,
+      userAgent: body.userAgent,
+      timestamp: body.timestamp,
+    }
+  );
+
+  // Increment error counter
+  monitoringService.incrementCounter('client.errors', {
+    errorType: body.error.name,
+    level: body.level || 'unknown',
+  });
+
+  return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Error logged successfully',
     });
-    
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Error logged successfully',
-      },
-      { status: 200 }
-    );
-  } catch {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to log error',
-      },
-      { status: 500 }
-    );
-  }
-}
+});

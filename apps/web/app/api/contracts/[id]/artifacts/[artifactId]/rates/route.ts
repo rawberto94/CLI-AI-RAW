@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/rates
@@ -10,22 +11,20 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { rate, userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     if (!rate) {
-      return NextResponse.json(
-        { error: 'rate data is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'rate data is required', 400);
     }
 
     const rateId = await editableArtifactService.addRateCardEntry(
@@ -34,14 +33,11 @@ export async function POST(
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Rate card entry added successfully',
       rateId,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to add rate card entry' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

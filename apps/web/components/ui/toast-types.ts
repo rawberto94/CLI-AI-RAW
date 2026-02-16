@@ -1,16 +1,14 @@
 /**
- * Toast Type Definitions
- * Shared types for toast notifications
+ * Toast Types
+ * Shared type definitions for the toast notification system
  */
 
 export interface Toast {
   id: string;
-  type?: "success" | "error" | "info" | "warning";
-  /** Shadcn/ui compatibility: "destructive" maps to "error" */
-  variant?: "default" | "destructive";
+  type?: 'success' | 'error' | 'info' | 'warning';
+  variant?: 'default' | 'destructive';
   title: string;
   message?: string;
-  /** Alias for message - for compatibility */
   description?: string;
   duration?: number;
   dismissible?: boolean;
@@ -18,8 +16,4 @@ export interface Toast {
     label: string;
     onClick: () => void;
   };
-}
-
-export interface ToastProps extends Toast {
-  onDismiss: (id: string) => void;
 }

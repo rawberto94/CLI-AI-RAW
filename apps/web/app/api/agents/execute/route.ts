@@ -3,28 +3,22 @@
  * Manually trigger an agent execution
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { agentRegistry } from '@repo/workers/agents';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { agentName, contractId, tenantId, context } = body;
 
     if (!agentName || !contractId || !tenantId) {
-      return NextResponse.json(
-        { error: 'agentName, contractId, and tenantId are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'agentName, contractId, and tenantId are required', 400);
     }
 
     // Get agent from registry
     const agent = agentRegistry.get(agentName);
     if (!agent) {
-      return NextResponse.json(
-        { error: `Agent '${agentName}' not found` },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', `Agent '${agentName}' not found`, 404);
     }
 
     // Execute agent
@@ -35,22 +29,9 @@ export async function POST(request: NextRequest) {
       metadata: {
         triggeredBy: 'user',
         priority: 'medium',
-        timestamp: new Date(),
-      },
-    });
+        timestamp: new Date() } });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       agent: agentName,
-      result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Internal server error',
-      },
-      { status: 500 }
-    );
-  }
-}
+      result });
+  });

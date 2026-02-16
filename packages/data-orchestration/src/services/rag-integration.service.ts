@@ -105,7 +105,30 @@ class RagIntegrationService {
       const embedding = await this.generateEmbedding(combinedSummary);
       
       if (!embedding) {
-        logger.warn({ contractId }, 'Failed to generate embedding');
+        // Fallback: Store metadata without embedding for later processing
+        logger.warn({ contractId }, 'Failed to generate embedding - storing text without vector for future indexing');
+        
+        if (existingMetadataChunk) {
+          await prisma.contractEmbedding.update({
+            where: { id: existingMetadataChunk.id },
+            data: { 
+              chunkText: combinedSummary,
+              updatedAt: new Date(),
+            },
+          });
+          logger.info({ contractId }, 'Updated metadata text without embedding (quota/API unavailable)');
+        } else {
+          await prisma.contractEmbedding.create({
+            data: {
+              contractId,
+              chunkIndex: 9999,
+              chunkText: combinedSummary,
+              chunkType: 'metadata',
+              section: 'Extracted Metadata & Artifacts',
+            },
+          });
+          logger.info({ contractId }, 'Created metadata entry without embedding (quota/API unavailable)');
+        }
         return;
       }
 
@@ -137,7 +160,8 @@ class RagIntegrationService {
 
       logger.info({ contractId }, 'Contract re-indexed successfully');
     } catch (error) {
-      logger.error({ error, contractId }, 'Failed to re-index contract');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage, contractId }, 'Failed to re-index contract');
       // Don't throw - this is a background operation
     }
   }
@@ -154,10 +178,15 @@ class RagIntegrationService {
       const data = artifact.data as any;
       if (!data) continue;
 
-      lines.push(`\n[${artifact.artifactType.toUpperCase()}]`);
+      // Artifact model uses 'type' not 'artifactType'
+      const artifactType = artifact.type || artifact.artifactType;
+      if (!artifactType) continue;
 
-      // Handle different artifact types
-      switch (artifact.artifactType) {
+      lines.push(`\n[${artifactType.toUpperCase()}]`);
+
+      // Handle different artifact types - use normalized type
+      const normalizedType = artifactType.toLowerCase();
+      switch (normalizedType) {
         case 'contract_metadata':
           if (data.partyA) lines.push(`Party A: ${data.partyA}`);
           if (data.partyB) lines.push(`Party B (Supplier): ${data.partyB}`);
@@ -217,7 +246,6 @@ class RagIntegrationService {
           break;
 
         case 'overview':
-        case 'OVERVIEW':
           // Handle enhanced overview artifact with flexible fields
           if (data.summary?.value) lines.push(`Summary: ${data.summary.value}`);
           if (Array.isArray(data.parties)) {
@@ -267,7 +295,6 @@ class RagIntegrationService {
           break;
 
         case 'clauses':
-        case 'CLAUSES':
           // Handle enhanced clauses artifact with hierarchy and raw text
           if (Array.isArray(data.clauses)) {
             for (const clause of data.clauses.slice(0, 15)) {
@@ -305,7 +332,6 @@ class RagIntegrationService {
           break;
 
         case 'rates':
-        case 'RATES':
           // Handle enhanced rates artifact with raw tables and conditions
           if (Array.isArray(data.rateCards)) {
             lines.push('Rate Cards:');
@@ -348,7 +374,6 @@ class RagIntegrationService {
           break;
 
         case 'compliance':
-        case 'COMPLIANCE':
           // Handle enhanced compliance artifact
           if (Array.isArray(data.regulations)) {
             lines.push('Regulations:');
@@ -390,7 +415,6 @@ class RagIntegrationService {
           break;
 
         case 'risk':
-        case 'RISK':
           // Handle enhanced risk artifact
           if (data.overallScore !== undefined) {
             lines.push(`Overall Risk Score: ${data.overallScore}/100 (${data.riskLevel || 'unknown'})`);
@@ -454,7 +478,6 @@ class RagIntegrationService {
           break;
 
         case 'financial':
-        case 'FINANCIAL':
           // Handle financial artifact with tables, offers, and breakdowns
           if (data.totalValue?.value) {
             lines.push(`Total Contract Value: $${Number(data.totalValue.value).toLocaleString()}`);
@@ -556,7 +579,6 @@ class RagIntegrationService {
           break;
 
         case 'obligations':
-        case 'OBLIGATIONS':
           // Handle obligations artifact
           if (Array.isArray(data.obligations)) {
             lines.push('Contractual Obligations:');
@@ -611,7 +633,6 @@ class RagIntegrationService {
           break;
 
         case 'renewal':
-        case 'RENEWAL':
           // Handle renewal artifact
           // Handle boolean autoRenewal from OCR worker
           if (typeof data.autoRenewal === 'boolean') {
@@ -948,12 +969,13 @@ class RagIntegrationService {
 
   /**
    * Generate embedding for text using OpenAI
+   * Handles quota exceeded and other API errors gracefully
    */
   private async generateEmbedding(text: string): Promise<number[] | null> {
     try {
       const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        logger.warn('OpenAI API key not configured');
+      if (!apiKey || apiKey.includes('your-') || apiKey.length < 20) {
+        logger.warn('OpenAI API key not configured or invalid');
         return null;
       }
 
@@ -967,8 +989,23 @@ class RagIntegrationService {
       });
 
       return response.data[0]?.embedding || null;
-    } catch (error) {
-      logger.error({ error }, 'Failed to generate embedding');
+    } catch (error: any) {
+      // Handle specific OpenAI errors
+      if (error?.code === 'insufficient_quota' || error?.status === 429) {
+        logger.warn({ 
+          code: error?.code,
+          message: 'OpenAI quota exceeded - embedding skipped, text will be stored without vector' 
+        }, 'OpenAI quota exceeded');
+        return null;
+      }
+      
+      if (error?.code === 'invalid_api_key' || error?.status === 401) {
+        logger.error({ code: error?.code }, 'Invalid OpenAI API key');
+        return null;
+      }
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error({ error: errorMessage }, 'Failed to generate embedding');
       return null;
     }
   }

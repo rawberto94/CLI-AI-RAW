@@ -4,14 +4,14 @@
  * POST /api/ai/analyze - Deep analysis of contract content
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { analyticalIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 interface AnalysisResult {
   summary: string;
@@ -49,7 +49,7 @@ interface Obligation {
   type: 'payment' | 'delivery' | 'compliance' | 'reporting' | 'other';
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
 
   try {
@@ -57,20 +57,12 @@ export async function POST(request: NextRequest) {
     const { contractId, analysisType = 'full' } = body;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
-
-    const tenantId = await getServerTenantId();
 
     // Fetch contract
     const contract = await prisma.contract.findUnique({
@@ -81,29 +73,18 @@ export async function POST(request: NextRequest) {
         rawText: true,
         tenantId: true,
         status: true,
-        createdAt: true,
-      },
-    });
+        createdAt: true } });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (contract.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Access denied' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 
     if (!contract.rawText) {
-      return NextResponse.json(
-        { error: 'Contract has no text content to analyze' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract has no text content to analyze', 400);
     }
 
     // Truncate for token limits
@@ -118,17 +99,14 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert legal contract analyst. Analyze contracts thoroughly and provide structured insights. Always respond in valid JSON format.`,
-        },
+          content: `You are an expert legal contract analyst. Analyze contracts thoroughly and provide structured insights. Always respond in valid JSON format.` },
         {
           role: 'user',
-          content: analysisPrompt,
-        },
+          content: analysisPrompt },
       ],
       temperature: 0.3,
       max_tokens: 2000,
-      response_format: { type: 'json_object' },
-    });
+      response_format: { type: 'json_object' } });
 
     const responseContent = completion.choices[0]?.message?.content || '{}';
     
@@ -150,29 +128,18 @@ export async function POST(request: NextRequest) {
       metadata: {
         analyzedAt: new Date().toISOString(),
         wordCount: contract.rawText.split(/\s+/).length,
-        processingTime,
-      },
-    };
+        processingTime } };
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       contractId,
       contractName: contract.fileName,
       analysisType,
-      ...result,
-    });
+      ...result });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Analysis failed',
-        processingTime: Date.now() - startTime,
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 function getAnalysisPrompt(type: string, contractText: string): string {
   const baseInstruction = `Analyze this contract and provide a JSON response with the following structure:
@@ -206,8 +173,8 @@ function getAnalysisPrompt(type: string, contractText: string): string {
   }
 }
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return createSuccessResponse(ctx, {
     endpoint: '/api/ai/analyze',
     method: 'POST',
     description: 'AI-powered contract analysis',
@@ -217,15 +184,11 @@ export async function GET() {
         type: 'string', 
         required: false, 
         default: 'full',
-        options: ['full', 'risks', 'obligations', 'summary'],
-      },
-    },
+        options: ['full', 'risks', 'obligations', 'summary'] } },
     returns: {
       summary: 'Executive summary',
       keyTerms: 'Extracted key terms and values',
       risks: 'Identified risks with severity',
       obligations: 'Party obligations',
-      recommendations: 'AI recommendations',
-    },
-  });
-}
+      recommendations: 'AI recommendations' } });
+});

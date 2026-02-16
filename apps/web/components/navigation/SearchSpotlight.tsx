@@ -203,7 +203,7 @@ export function SearchSpotlight({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -272,19 +272,19 @@ export function SearchSpotlight({
                             className={cn(
                               "w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors",
                               isSelected
-                                ? "bg-indigo-50 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-100"
+                                ? "bg-violet-50 dark:bg-violet-900/30 text-violet-900 dark:text-violet-100"
                                 : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300"
                             )}
                           >
                             <div className={cn(
                               "flex-shrink-0 p-2 rounded-lg",
                               isSelected
-                                ? "bg-indigo-100 dark:bg-indigo-900/50"
+                                ? "bg-violet-100 dark:bg-violet-900/50"
                                 : "bg-slate-100 dark:bg-slate-800"
                             )}>
                               <item.icon className={cn(
                                 "h-4 w-4",
-                                isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-slate-500"
+                                isSelected ? "text-violet-600 dark:text-violet-400" : "text-slate-500"
                               )} />
                             </div>
                             <div className="flex-1 text-left">
@@ -301,7 +301,7 @@ export function SearchSpotlight({
                               </kbd>
                             )}
                             {isSelected && (
-                              <ArrowRight className="h-4 w-4 text-indigo-500" />
+                              <ArrowRight className="h-4 w-4 text-violet-500" />
                             )}
                           </button>
                         );
@@ -334,7 +334,7 @@ export function SearchSpotlight({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

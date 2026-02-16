@@ -5,10 +5,12 @@
  * Supports the learning loop for improving categorization accuracy.
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from "@/lib/tenant-server";
 import { getServerSession } from "@/lib/auth";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/category
@@ -18,6 +20,10 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
@@ -37,7 +43,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get current category details
@@ -66,7 +72,7 @@ export async function GET(
       orderBy: { sortOrder: "asc" },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         contractId,
@@ -92,10 +98,7 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: "Failed to get category", details: error instanceof Error ? error.message : "Unknown" },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -108,6 +111,10 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
@@ -118,7 +125,7 @@ export async function PUT(
     // feedbackType: "confirmation" (AI was right), "correction" (user changed it), "rejection" (user removed it)
 
     if (!categoryId && feedbackType !== "rejection") {
-      return NextResponse.json({ error: "categoryId is required" }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'categoryId is required', 400);
     }
 
     // Get contract with current category
@@ -136,7 +143,7 @@ export async function PUT(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get the new category details
@@ -153,7 +160,7 @@ export async function PUT(
       });
 
       if (!newCategory) {
-        return NextResponse.json({ error: "Category not found" }, { status: 404 });
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Category not found', 404);
       }
 
       // Determine L1/L2 names
@@ -225,7 +232,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         categoryId,
@@ -236,10 +243,7 @@ export async function PUT(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: "Failed to update category", details: error instanceof Error ? error.message : "Unknown" },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -251,12 +255,16 @@ export async function POST(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
     const tenantId = await getServerTenantId();
     const body = await request.json().catch(() => ({}));
-    const { force = false, useAISelection = true } = body;
+    const { force = false, useAISelection: _useAISelection = true } = body;
 
     const contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
@@ -264,7 +272,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json({ error: "Contract not found" }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Queue categorization job
@@ -279,7 +287,7 @@ export async function POST(
       source: "manual",
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         jobId,
@@ -287,9 +295,6 @@ export async function POST(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: "Failed to trigger categorization", details: error instanceof Error ? error.message : "Unknown" },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

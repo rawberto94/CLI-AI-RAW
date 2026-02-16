@@ -75,7 +75,7 @@ export const ViewModeToggle = memo(function ViewModeToggle({
               className={cn(
                 "h-8 w-8 p-0 rounded-md transition-all",
                 mode === value 
-                  ? "bg-white shadow-sm text-blue-600" 
+                  ? "bg-white shadow-sm text-violet-600" 
                   : "text-slate-500 hover:text-slate-900"
               )}
             >
@@ -130,7 +130,7 @@ export const SortDropdown = memo(function SortDropdown({
             onClick={() => onFieldChange(option.value)}
             className={cn(
               "cursor-pointer",
-              field === option.value && "bg-blue-50 text-blue-700"
+              field === option.value && "bg-violet-50 text-violet-700"
             )}
           >
             {option.label}
@@ -210,7 +210,7 @@ export const Pagination = memo(function Pagination({
                 onClick={() => onPageSizeChange(size)}
                 className={cn(
                   "cursor-pointer",
-                  pageSize === size && "bg-blue-50 text-blue-700"
+                  pageSize === size && "bg-violet-50 text-violet-700"
                 )}
               >
                 {size}
@@ -265,7 +265,7 @@ export const Pagination = memo(function Pagination({
                 onClick={() => onPageChange(page as number)}
                 className={cn(
                   "h-8 w-8 p-0",
-                  currentPage === page && "bg-blue-600 text-white"
+                  currentPage === page && "bg-violet-600 text-white"
                 )}
               >
                 {page}

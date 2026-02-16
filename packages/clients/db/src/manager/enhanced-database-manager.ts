@@ -398,6 +398,8 @@ export class EnhancedDatabaseManager {
    * Execute raw SQL query
    */
   async executeRaw<T>(query: string, params: unknown[] = []): Promise<T[]> {
+    // $queryRawUnsafe is intentional here — generic executor with parameterized placeholders ($1, $2).
+    // Callers pass pre-built SQL strings with positional params; this is the correct Prisma API for that pattern.
     return DatabaseErrorHandler.execute(
       () => this.prisma.$queryRawUnsafe<T[]>(query, ...params),
       { operation: 'raw_query', query }

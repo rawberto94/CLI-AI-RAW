@@ -4,10 +4,12 @@
  * POST /api/rate-cards/import - Bulk import rate card entries from wizard
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { Prisma } from '@prisma/client';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,16 +32,12 @@ interface ImportRequest {
   metadata?: Record<string, unknown>;
 }
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getServerTenantId();
     const body: ImportRequest = await request.json();
 
     if (!body.entries || !Array.isArray(body.entries) || body.entries.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No entries provided' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'No entries provided', 400)
     }
 
     const source = body.source || 'IMPORT_WIZARD';
@@ -161,7 +159,7 @@ export async function POST(request: NextRequest) {
       // Audit log table may not exist, continue
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         entriesCreated: result.count,
@@ -171,14 +169,4 @@ export async function POST(request: NextRequest) {
       },
     });
 
-  } catch (error) {
-    console.error('[RateCardImport] Error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

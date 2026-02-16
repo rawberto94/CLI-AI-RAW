@@ -203,7 +203,7 @@ export function SmartReExtraction({
       <div
         key={field.fieldKey}
         className={`border rounded-lg p-4 transition-all ${
-          isSelected ? "border-blue-500 bg-blue-50" : "border-gray-200"
+          isSelected ? "border-violet-500 bg-violet-50" : "border-gray-200"
         } ${hasFeedback ? "opacity-60" : ""}`}
       >
         <div className="flex items-start justify-between mb-2">

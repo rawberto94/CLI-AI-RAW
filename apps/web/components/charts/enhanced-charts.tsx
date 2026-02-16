@@ -42,12 +42,12 @@ import {
 
 // Color palette for charts
 const COLORS = {
-  primary: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe'],
+  primary: ['#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd'],
   success: ['#22c55e', '#4ade80', '#86efac', '#bbf7d0'],
   warning: ['#f59e0b', '#fbbf24', '#fcd34d', '#fde68a'],
   error: ['#ef4444', '#f87171', '#fca5a5', '#fecaca'],
   purple: ['#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'],
-  gradient: ['#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e']
+  gradient: ['#7c3aed', '#8b5cf6', '#a855f7', '#c026d3']
 };
 
 interface TrendChartProps {
@@ -147,8 +147,8 @@ export function TrendChart({
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#7c3aed" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#7c3aed" stopOpacity={0} />
               </linearGradient>
               {showComparison && (
                 <linearGradient id="colorPrevious" x1="0" y1="0" x2="0" y2="1">
@@ -187,7 +187,7 @@ export function TrendChart({
             <Area
               type="monotone"
               dataKey="value"
-              stroke="#3b82f6"
+              stroke="#7c3aed"
               strokeWidth={2}
               fillOpacity={1}
               fill="url(#colorValue)"

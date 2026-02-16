@@ -4,23 +4,26 @@
  * Get detailed information about a specific cluster
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardClusteringService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     const clusterId = params.id;
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Fetch cluster with all members - scoped to tenant
@@ -37,10 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!cluster) {
-      return NextResponse.json(
-        { error: 'Cluster not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Cluster not found or access denied', 404);
     }
 
     // Fetch rate card entries for all members - scoped to tenant
@@ -121,7 +121,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       delete (group as Partial<SupplierGroup>).rates; // Remove raw rates from response
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       cluster: {
         ...cluster,
@@ -137,25 +137,23 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       arbitrageOpportunities,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 }
 
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     const clusterId = params.id;
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Verify cluster belongs to tenant before deletion
@@ -164,10 +162,7 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     });
 
     if (!cluster) {
-      return NextResponse.json(
-        { error: 'Cluster not found or access denied' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Cluster not found or access denied', 404);
     }
 
     // Delete cluster (cascade will delete members)
@@ -175,14 +170,11 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
       where: { id: clusterId },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Cluster deleted successfully',
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500);
   }
 }

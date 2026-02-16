@@ -135,7 +135,7 @@ export function Rating({
       })}
 
       {showValue && (
-        <span className="ml-2 text-sm font-medium text-slate-600">
+        <span className="ml-2 text-sm font-medium text-violet-600 dark:text-violet-400">
           {value.toFixed(allowHalf ? 1 : 0)}
         </span>
       )}
@@ -305,7 +305,7 @@ export function NPSScore({ value, onChange, className }: NPSScoreProps) {
               ? 'bg-red-100 hover:bg-red-200 text-red-700'
               : i <= 8
               ? 'bg-amber-100 hover:bg-amber-200 text-amber-700'
-              : 'bg-emerald-100 hover:bg-emerald-200 text-emerald-700';
+              : 'bg-violet-100 hover:bg-violet-200 text-violet-700';
 
           return (
             <motion.button
@@ -316,7 +316,7 @@ export function NPSScore({ value, onChange, className }: NPSScoreProps) {
               className={cn(
                 'w-10 h-10 rounded-lg text-sm font-medium transition-all',
                 isSelected
-                  ? 'ring-2 ring-offset-2 ring-indigo-500'
+                  ? 'ring-2 ring-offset-2 ring-violet-500'
                   : '',
                 colorClass
               )}

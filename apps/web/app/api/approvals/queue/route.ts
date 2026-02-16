@@ -4,10 +4,11 @@
  * Endpoints for managing approval workflows and queue items.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { workflowService } from 'data-orchestration/services';
 
 // =============================================================================
 // SCHEMAS
@@ -29,261 +30,226 @@ const BulkApprovalSchema = z.object({
 // GET - Fetch approval queue items
 // =============================================================================
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const { searchParams } = new URL(req.url);
+  const status = searchParams.get('status') || 'pending';
+  const category = searchParams.get('category');
+  const priority = searchParams.get('priority');
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '20');
 
-    const { searchParams } = new URL(req.url);
-    const status = searchParams.get('status') || 'pending';
-    const category = searchParams.get('category');
-    const priority = searchParams.get('priority');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+  // Get tenant ID from session
+  const tenantId = ctx.tenantId;
 
-    // Get tenant ID from session
-    const tenantId = session.user.tenantId;
+  // Build query filters
+  const where: any = {
+    tenantId,
+  };
 
-    // Build query filters
-    const where: any = {
-      tenantId,
+  // Filter by approver (items where current user is pending approver)
+  if (searchParams.get('myQueue') === 'true') {
+    where.approvalChain = {
+      some: {
+        approverId: ctx.userId,
+        status: 'PENDING',
+      },
     };
-
-    // Filter by approver (items where current user is pending approver)
-    if (searchParams.get('myQueue') === 'true') {
-      where.approvalChain = {
-        some: {
-          approverId: session.user.id,
-          status: 'PENDING',
-        },
-      };
-    }
-
-    if (status && status !== 'all') {
-      where.status = status.toUpperCase();
-    }
-
-    if (category && category !== 'all') {
-      where.category = category.toUpperCase();
-    }
-
-    if (priority && priority !== 'all') {
-      where.priority = priority.toUpperCase();
-    }
-
-    // Fetch workflow executions as approval items
-    const [items, total] = await Promise.all([
-      prisma.workflowExecution.findMany({
-        where: {
-          workflow: {
-            tenantId,
-          },
-          status: status === 'pending' ? 'IN_PROGRESS' : undefined,
-        },
-        include: {
-          workflow: {
-            include: {
-              steps: true,
-            },
-          },
-          stepExecutions: {
-            include: {
-              step: true,
-            },
-            orderBy: {
-              step: {
-                order: 'asc',
-              },
-            },
-          },
-          contract: {
-            select: {
-              id: true,
-              contractTitle: true,
-              category: true,
-              totalValue: true,
-              currency: true,
-            },
-          },
-        },
-        orderBy: [
-          { dueDate: 'asc' },
-        ],
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.workflowExecution.count({
-        where: {
-          workflow: {
-            tenantId,
-          },
-          status: status === 'pending' ? 'IN_PROGRESS' : undefined,
-        },
-      }),
-    ]);
-
-    // Calculate stats
-    const stats = await prisma.workflowExecution.groupBy({
-      by: ['status'],
-      where: {
-        workflow: {
-          tenantId,
-        },
-      },
-      _count: {
-        status: true,
-      },
-    });
-
-    const overdueCount = await prisma.workflowExecution.count({
-      where: {
-        workflow: {
-          tenantId,
-        },
-        status: 'IN_PROGRESS',
-        dueDate: {
-          lt: new Date(),
-        },
-      },
-    });
-
-    // Transform items to match frontend schema
-    const transformedItems = items.map(item => ({
-      id: item.id,
-      category: item.contract ? 'contract' : 'workflow',
-      title: item.workflow.name,
-      subtitle: item.contract?.contractTitle || 'Workflow Execution',
-      requestedBy: {
-        id: item.initiatedBy || 'system',
-        name: 'System',
-        email: '',
-      },
-      requestedAt: item.startedAt,
-      dueDate: item.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      priority: 'medium',
-      status: item.status === 'IN_PROGRESS' ? 'pending' : item.status.toLowerCase(),
-      contractId: item.contractId,
-      contractName: item.contract?.contractTitle,
-      value: item.contract?.totalValue,
-      currency: item.contract?.currency || 'USD',
-      approvalChain: item.stepExecutions.map((se, idx) => ({
-        id: se.id,
-        approver: {
-          id: se.completedBy || 'pending',
-          name: se.step.assignedRole || 'Pending Reviewer',
-          email: '',
-          role: se.step.assignedRole || 'Approver',
-        },
-        status: se.status === 'COMPLETED' ? 'approved' : 
-                se.status === 'REJECTED' ? 'rejected' : 'pending',
-        decidedAt: se.completedAt,
-        comment: typeof se.result === 'string' ? se.result : undefined,
-        order: idx + 1,
-      })),
-      currentStep: item.stepExecutions.filter(se => se.status === 'COMPLETED').length + 1,
-    }));
-
-    return NextResponse.json({
-      items: transformedItems,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
-      stats: {
-        pending: stats.find(s => s.status === 'IN_PROGRESS')?._count.status || 0,
-        approved: stats.find(s => s.status === 'COMPLETED')?._count.status || 0,
-        rejected: stats.find(s => s.status === 'REJECTED')?._count.status || 0,
-        overdue: overdueCount,
-      },
-    });
-  } catch (error) {
-    console.error('Error fetching approval queue:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch approval queue' },
-      { status: 500 }
-    );
   }
-}
+
+  if (status && status !== 'all') {
+    where.status = status.toUpperCase();
+  }
+
+  if (category && category !== 'all') {
+    where.category = category.toUpperCase();
+  }
+
+  if (priority && priority !== 'all') {
+    where.priority = priority.toUpperCase();
+  }
+
+  // Fetch workflow executions as approval items
+  const [items, total] = await Promise.all([
+    prisma.workflowExecution.findMany({
+      where: {
+        workflow: {
+          tenantId,
+        },
+        status: status === 'pending' ? 'IN_PROGRESS' : undefined,
+      },
+      include: {
+        workflow: {
+          include: {
+            steps: true,
+          },
+        },
+        stepExecutions: {
+          include: {
+            step: true,
+          },
+          orderBy: {
+            step: {
+              order: 'asc',
+            },
+          },
+        },
+        contract: {
+          select: {
+            id: true,
+            contractTitle: true,
+            category: true,
+            totalValue: true,
+            currency: true,
+          },
+        },
+      },
+      orderBy: [
+        { dueDate: 'asc' },
+      ],
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.workflowExecution.count({
+      where: {
+        workflow: {
+          tenantId,
+        },
+        status: status === 'pending' ? 'IN_PROGRESS' : undefined,
+      },
+    }),
+  ]);
+
+  // Calculate stats
+  const stats = await prisma.workflowExecution.groupBy({
+    by: ['status'],
+    where: {
+      workflow: {
+        tenantId,
+      },
+    },
+    _count: {
+      status: true,
+    },
+  });
+
+  const overdueCount = await prisma.workflowExecution.count({
+    where: {
+      workflow: {
+        tenantId,
+      },
+      status: 'IN_PROGRESS',
+      dueDate: {
+        lt: new Date(),
+      },
+    },
+  });
+
+  // Transform items to match frontend schema
+  const transformedItems = items.map(item => ({
+    id: item.id,
+    category: item.contract ? 'contract' : 'workflow',
+    title: item.workflow.name,
+    subtitle: item.contract?.contractTitle || 'Workflow Execution',
+    requestedBy: {
+      id: item.initiatedBy || 'system',
+      name: 'System',
+      email: '',
+    },
+    requestedAt: item.startedAt,
+    dueDate: item.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+    priority: 'medium',
+    status: item.status === 'IN_PROGRESS' ? 'pending' : item.status.toLowerCase(),
+    contractId: item.contractId,
+    contractName: item.contract?.contractTitle,
+    value: item.contract?.totalValue,
+    currency: item.contract?.currency || 'USD',
+    approvalChain: item.stepExecutions.map((se, idx) => ({
+      id: se.id,
+      approver: {
+        id: se.completedBy || 'pending',
+        name: se.step.assignedRole || 'Pending Reviewer',
+        email: '',
+        role: se.step.assignedRole || 'Approver',
+      },
+      status: se.status === 'COMPLETED' ? 'approved' : 
+              se.status === 'REJECTED' ? 'rejected' : 'pending',
+      decidedAt: se.completedAt,
+      comment: typeof se.result === 'string' ? se.result : undefined,
+      order: idx + 1,
+    })),
+    currentStep: item.stepExecutions.filter(se => se.status === 'COMPLETED').length + 1,
+  }));
+
+  return createSuccessResponse(ctx, {
+    items: transformedItems,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    },
+    stats: {
+      pending: stats.find(s => s.status === 'IN_PROGRESS')?._count.status || 0,
+      approved: stats.find(s => s.status === 'COMPLETED')?._count.status || 0,
+      rejected: stats.find(s => s.status === 'REJECTED')?._count.status || 0,
+      overdue: overdueCount,
+    },
+  });
+});
 
 // =============================================================================
 // POST - Take action on an approval item
 // =============================================================================
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const POST = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const body = await req.json();
+  const { searchParams } = new URL(req.url);
+  const itemId = searchParams.get('itemId');
 
-    const body = await req.json();
-    const { searchParams } = new URL(req.url);
-    const itemId = searchParams.get('itemId');
-    
-    // Handle bulk actions
-    if (body.itemIds) {
-      const validated = BulkApprovalSchema.parse(body);
-      
-      const results = await Promise.allSettled(
-        validated.itemIds.map(async (id) => {
-          return updateApprovalStatus(
-            id,
-            validated.action,
-            session.user!.id!,
-            validated.comment
-          );
-        })
-      );
+  // Handle bulk actions
+  if (body.itemIds) {
+    const validated = BulkApprovalSchema.parse(body);
 
-      const succeeded = results.filter(r => r.status === 'fulfilled').length;
-      const failed = results.filter(r => r.status === 'rejected').length;
-
-      return NextResponse.json({
-        message: `${succeeded} items processed, ${failed} failed`,
-        succeeded,
-        failed,
-      });
-    }
-
-    // Handle single item action
-    if (!itemId) {
-      return NextResponse.json(
-        { error: 'itemId is required' },
-        { status: 400 }
-      );
-    }
-
-    const validated = ApprovalActionSchema.parse(body);
-    
-    await updateApprovalStatus(
-      itemId,
-      validated.action,
-      session.user.id,
-      validated.comment || validated.reason
+    const results = await Promise.allSettled(
+      validated.itemIds.map(async (id) => {
+        return updateApprovalStatus(
+          id,
+          validated.action,
+          ctx.userId,
+          validated.comment
+        );
+      })
     );
 
-    return NextResponse.json({
-      message: `Item ${validated.action}d successfully`,
-      itemId,
+    const succeeded = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+
+    return createSuccessResponse(ctx, {
+      message: `${succeeded} items processed, ${failed} failed`,
+      succeeded,
+      failed,
     });
-  } catch (error) {
-    console.error('Error processing approval action:', error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request body', details: error.errors },
-        { status: 400 }
-      );
-    }
-    return NextResponse.json(
-      { error: 'Failed to process approval action' },
-      { status: 500 }
-    );
   }
-}
+
+  // Handle single item action
+  if (!itemId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'itemId is required', 400);
+  }
+
+  const validated = ApprovalActionSchema.parse(body);
+
+  await updateApprovalStatus(
+    itemId,
+    validated.action,
+    ctx.userId,
+    validated.comment || validated.reason
+  );
+
+  return createSuccessResponse(ctx, {
+    message: `Item ${validated.action}d successfully`,
+    itemId,
+  });
+});
 
 // =============================================================================
 // HELPERS

@@ -1,6 +1,8 @@
-import { NextResponse } from "next/server"
 import { API_BASE_URL } from "@/lib/config"
 import { getErrorMessage, isUploadedFile } from "@/lib/types/common"
+import { getServerSession } from '@/lib/auth'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
+import { uploadRequestSchema } from 'schemas'
 
 // Explicitly mark this route as dynamic (file uploads always dynamic)
 export const runtime = "nodejs"
@@ -9,8 +11,31 @@ export const revalidate = 0
 export const maxDuration = 300
 
 export async function POST(req: Request) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
+    }
+
     const form = await req.formData()
+
+    // Validate file metadata if JSON metadata field is provided
+    const metadataRaw = form.get('metadata')
+    if (metadataRaw && typeof metadataRaw === 'string') {
+      try {
+        const metadataParsed = uploadRequestSchema.safeParse(JSON.parse(metadataRaw))
+        if (!metadataParsed.success) {
+          return createValidationErrorResponse(ctx, metadataParsed.error)
+        }
+      } catch {
+        // metadata field is optional; skip validation if not valid JSON
+      }
+    }
+
     const files = form.getAll("files")
     const items: Array<{ name: string; blob: Blob; filename: string }> = []
     for (const f of files) {
@@ -23,7 +48,7 @@ export async function POST(req: Request) {
       // Fallback: accept a single "file" field
       const one = form.get("file")
       if (!one || !isUploadedFile(one)) {
-        return NextResponse.json({ error: "Missing files" }, { status: 400 })
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing files', 400)
       }
       const name = one.name || "upload.bin"
       items.push({ name, blob: one as Blob, filename: name })
@@ -42,7 +67,7 @@ export async function POST(req: Request) {
     
     // Require tenant ID - no fallback to demo
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant ID is required" }, { status: 400 })
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400)
     }
 
     const results = []
@@ -89,12 +114,12 @@ export async function POST(req: Request) {
       }
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       items: results,
       success: results.filter(r => r.status === 'success').length,
       failed: results.filter(r => r.status === 'error').length
-    }, { status: 201 })
+    });
   } catch (e: unknown) {
-    return NextResponse.json({ error: `Upload failed: ${getErrorMessage(e)}` }, { status: 500 })
+    return handleApiError(ctx, e);
   }
 }

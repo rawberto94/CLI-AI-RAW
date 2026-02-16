@@ -83,7 +83,7 @@ export function ArtifactDisplay({ artifacts, onRegenerate }: ArtifactDisplayProp
           <Card key={artifact.type} className="hover:shadow-md transition-shadow">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center space-y-2">
-                <div className="p-3 bg-blue-50 rounded-full">
+                <div className="p-3 bg-violet-50 rounded-full">
                   {artifactIcons[artifact.type]}
                 </div>
                 <div className="font-semibold text-sm">{artifactLabels[artifact.type]}</div>
@@ -179,16 +179,16 @@ export function ArtifactDisplay({ artifacts, onRegenerate }: ArtifactDisplayProp
                     <h4 className="font-semibold text-sm">Validation Issues</h4>
                     {artifact.validation.issues.map((issue, index) => (
                       <div
-                        key={index}
+                        key={`${issue.field}-${issue.severity}-${issue.message}`}
                         className={`flex items-start gap-2 p-3 rounded-lg ${
                           issue.severity === 'critical' ? 'bg-red-50 border border-red-200' :
                           issue.severity === 'warning' ? 'bg-yellow-50 border border-yellow-200' :
-                          'bg-blue-50 border border-blue-200'
+                          'bg-violet-50 border border-violet-200'
                         }`}
                       >
                         {issue.severity === 'critical' && <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />}
                         {issue.severity === 'warning' && <AlertTriangle className="h-4 w-4 text-yellow-600 mt-0.5" />}
-                        {issue.severity === 'info' && <Info className="h-4 w-4 text-blue-600 mt-0.5" />}
+                        {issue.severity === 'info' && <Info className="h-4 w-4 text-violet-600 mt-0.5" />}
                         <div className="flex-1">
                           <div className="font-medium text-sm">{issue.field}</div>
                           <div className="text-sm text-gray-600">{issue.message}</div>
@@ -255,7 +255,7 @@ function OverviewDisplay({ data }: { data: any }) {
         <label className="text-sm font-medium text-gray-700">Parties</label>
         <div className="mt-2 space-y-2">
           {data.parties?.map((party: any, index: number) => (
-            <div key={index} className="flex items-center gap-2 text-sm">
+            <div key={`${party.role}-${party.name}`} className="flex items-center gap-2 text-sm">
               <Badge variant="outline">{party.role}</Badge>
               <span>{party.name}</span>
             </div>
@@ -296,7 +296,7 @@ function FinancialDisplay({ data }: { data: any }) {
           <label className="text-sm font-medium text-gray-700">Payment Terms</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.paymentTerms.map((term: string, index: number) => (
-              <Badge key={index} variant="secondary">{term}</Badge>
+              <Badge key={term} variant="secondary">{term}</Badge>
             ))}
           </div>
         </div>
@@ -309,7 +309,7 @@ function FinancialDisplay({ data }: { data: any }) {
           </label>
           <div className="mt-2 space-y-2">
             {data.costSavingsOpportunities.map((opp: any, index: number) => (
-              <div key={index} className="text-sm">
+              <div key={opp.title} className="text-sm">
                 <div className="font-medium">{opp.title}</div>
                 <div className="text-green-700">
                   {opp.currency} {opp.amount?.toLocaleString()} potential savings
@@ -327,7 +327,7 @@ function ClausesDisplay({ data }: { data: any }) {
   return (
     <div className="space-y-3">
       {data.clauses?.map((clause: any, index: number) => (
-        <div key={index} className="p-4 border rounded-lg">
+        <div key={`clause-${clause.type}-${(clause.content || '').slice(0, 40)}`} className="p-4 border rounded-lg">
           <div className="flex items-start justify-between mb-2">
             <div className="flex items-center gap-2">
               <Badge variant="outline">{clause.type}</Badge>
@@ -363,7 +363,7 @@ function RatesDisplay({ data }: { data: any }) {
           </thead>
           <tbody>
             {data.rateCards?.map((rate: any, index: number) => (
-              <tr key={index} className="border-t">
+              <tr key={`${rate.role}-${rate.level}-${rate.location || 'default'}`} className="border-t">
                 <td className="px-4 py-2">{rate.role}</td>
                 <td className="px-4 py-2">{rate.level}</td>
                 <td className="px-4 py-2 text-right font-medium">
@@ -388,7 +388,7 @@ function ComplianceDisplay({ data }: { data: any }) {
           <label className="text-sm font-medium text-gray-700">Regulations</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.regulations.map((reg: string, index: number) => (
-              <Badge key={index} variant="secondary">{reg}</Badge>
+              <Badge key={reg} variant="secondary">{reg}</Badge>
             ))}
           </div>
         </div>
@@ -398,7 +398,7 @@ function ComplianceDisplay({ data }: { data: any }) {
           <label className="text-sm font-medium text-gray-700">Certifications</label>
           <div className="mt-2 flex flex-wrap gap-2">
             {data.certifications.map((cert: string, index: number) => (
-              <Badge key={index} variant="secondary">{cert}</Badge>
+              <Badge key={cert} variant="secondary">{cert}</Badge>
             ))}
           </div>
         </div>
@@ -432,7 +432,7 @@ function RiskDisplay({ data }: { data: any }) {
           <label className="text-sm font-medium text-gray-700">Risk Factors</label>
           <div className="mt-2 space-y-2">
             {data.riskFactors.map((factor: any, index: number) => (
-              <div key={index} className="p-3 border rounded-lg">
+              <div key={`${factor.category}-${factor.severity}`} className="p-3 border rounded-lg">
                 <div className="flex items-center gap-2 mb-1">
                   <Badge variant="outline">{factor.category}</Badge>
                   <Badge className={

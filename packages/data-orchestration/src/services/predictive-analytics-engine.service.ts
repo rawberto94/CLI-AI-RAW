@@ -12,6 +12,7 @@
  */
 
 import { randomUUID } from 'crypto';
+import { prisma as prismaSingleton } from '../lib/prisma';
 
 // Types
 export type PredictionType = 
@@ -196,8 +197,35 @@ export interface PortfolioPrediction {
 }
 
 class PredictiveAnalyticsEngine {
-  private predictions: Map<string, Prediction> = new Map();
+  private predictions: Map<string, Prediction> = new Map(); // In-memory cache only
   private modelVersion = '1.0.0';
+
+  /**
+   * Persist a prediction to the database (alongside in-memory cache)
+   */
+  private async persistPrediction(prediction: Prediction): Promise<void> {
+    this.predictions.set(prediction.id, prediction);
+    try {
+      await prismaSingleton.rateForecast.create({
+        data: {
+          id: prediction.id,
+          tenantId: prediction.tenantId,
+          contractId: prediction.contractId,
+          forecastType: prediction.type,
+          predictedValue: prediction.predictedValue,
+          confidence: prediction.confidence,
+          horizon: prediction.horizon,
+          factors: prediction.factors as any,
+          recommendations: prediction.recommendations as any,
+          modelVersion: prediction.modelVersion,
+          validUntil: prediction.validUntil,
+        },
+      });
+    } catch (e) {
+      // DB persistence is best-effort; in-memory always works
+      console.warn('Failed to persist prediction to DB:', e);
+    }
+  }
 
   /**
    * Predict renewal probability
@@ -338,7 +366,7 @@ class PredictiveAnalyticsEngine {
       featureImportance: this.calculateFeatureImportance(factors),
     };
 
-    this.predictions.set(prediction.id, prediction);
+    this.persistPrediction(prediction);
     return prediction;
   }
 

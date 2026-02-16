@@ -4,24 +4,21 @@
  * Returns role name suggestions for autocomplete
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { roleStandardizationService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     if (query.length < 2) {
-      return NextResponse.json({ suggestions: [] });
+      return createSuccessResponse(ctx, { suggestions: [] });
     }
 
     const suggestions = await roleStandardizationService.getRoleSuggestions(
@@ -30,11 +27,5 @@ export async function GET(request: NextRequest) {
       10
     );
 
-    return NextResponse.json({ suggestions });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch suggestions' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { suggestions });
+  });

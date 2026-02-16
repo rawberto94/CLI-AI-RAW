@@ -2,12 +2,23 @@
  * Semantic Chunking Service
  * 
  * Advanced document chunking that respects document structure.
- * Produces semantically meaningful chunks instead of fixed-size splits.
+ * Delegates core chunking to @repo/utils/rag/semantic-chunker (single source of truth).
+ * This module adds AI-powered metadata enrichment on top.
  */
 
 import OpenAI from 'openai';
+import {
+  semanticChunk as coreSemanticChunk,
+  type SemanticChunk as CoreSemanticChunk,
+  type ChunkMetadata as CoreChunkMetadata,
+  type ChunkingOptions as CoreChunkingOptions,
+} from '@repo/utils/rag/semantic-chunker';
 
-// Types
+// Re-export core types so existing consumers keep working
+export type { CoreChunkMetadata as ChunkMetadata };
+export type { CoreChunkingOptions as ChunkingOptions };
+
+// Extended types for the AI-enriched variant (adds more metadata fields)
 export interface SemanticChunk {
   text: string;
   chunkIndex: number;
@@ -18,14 +29,6 @@ export interface SemanticChunk {
   startChar: number;
   endChar: number;
   metadata: Record<string, unknown>;
-}
-
-export interface ChunkingOptions {
-  maxChunkSize?: number;
-  minChunkSize?: number;
-  overlap?: number;
-  preserveStructure?: boolean;
-  extractMetadata?: boolean;
 }
 
 // Section patterns for legal documents

@@ -15,11 +15,13 @@ Five powerful new features have been added to enhance your contract management e
 ## 🔍 Advanced Search System (NEW!)
 
 ### Location
+
 Visible on the **contracts list page** (`/contracts`)
 
 ### What It Includes
 
 **Advanced Filter Panel**
+
 - 7 status filters (Draft, Pending, Processing, Active, Completed, Failed, Expired)
 - 4 document role filters (New Contract, Existing, Amendment, Renewal)
 - Date range picker for created dates
@@ -28,12 +30,14 @@ Visible on the **contracts list page** (`/contracts`)
 - Quick toggles (Has Deadline, Expiring Soon)
 
 **Active Filter Chips**
+
 - Visual display of all active filters
 - Color-coded by filter type
 - Individual chip removal with X button
 - Clear all filters button
 
 **Saved Search Presets**
+
 - Save current filters with custom name
 - Pin frequently used searches
 - Quick load saved searches
@@ -41,6 +45,7 @@ Visible on the **contracts list page** (`/contracts`)
 - Up to 20 saved searches per user
 
 **Search Highlighting**
+
 - Yellow highlight on matching search terms
 - Multi-word search support
 - Case-insensitive matching
@@ -48,12 +53,14 @@ Visible on the **contracts list page** (`/contracts`)
 ### How to Use
 
 **Opening Advanced Filters:**
+
 1. Click "Advanced Filters" button (top right of search area)
 2. Panel slides in from right
 3. Select your filters
 4. Click "Apply Filters" or click outside to close
 
 **Saving Searches:**
+
 1. Apply your desired filters
 2. Click the bookmark icon dropdown
 3. Click "Save Current Search"
@@ -61,11 +68,13 @@ Visible on the **contracts list page** (`/contracts`)
 5. Click "Save"
 
 **Loading Saved Searches:**
+
 1. Click the bookmark icon dropdown
 2. Click on any saved search name
 3. Filters applied instantly
 
 **Removing Filters:**
+
 - Click X on individual filter chip to remove that filter
 - Click "Clear All" to remove all filters at once
 
@@ -83,31 +92,37 @@ Visible on the **contracts list page** (`/contracts`)
 ## 📍 Smart Context Sidebar
 
 ### Location
+
 Visible on the **left side** of every contract detail page (`/contracts/[id]`)
 
 ### What It Shows
 
 **Contract Identity**
+
 - Contract name and status
 - Contract ID
 - Live status updates
 
 **Quick Stats** (at-a-glance)
+
 - 💰 **Contract Value** - Total value with currency
 - 🛡️ **Risk Score** - Color-coded: Green (<30), Yellow (30-70), Red (>70)
 - 📅 **Days Until Expiration** - Urgent warnings for expiring contracts
 
 **Key Dates Timeline**
+
 - Start date (when contract began)
 - Expiration date (with urgency indicators)
 - Visual status: Passed → Current → Upcoming → Future
 
 **Parties Information**
+
 - Client/Buyer details with contact email
 - Supplier/Vendor details with contact email
 - One-click email links
 
 **Quick Actions** (one-click)
+
 - 📥 **Export** - Download as PDF/Word
 - 🔗 **Share** - Share with team
 - 🔔 **Remind** - Set reminders
@@ -127,6 +142,7 @@ Visible on the **left side** of every contract detail page (`/contracts/[id]`)
 ### How to Open
 
 **Keyboard:**
+
 - Mac: `Cmd + K`
 - Windows/Linux: `Ctrl + K`
 
@@ -176,17 +192,20 @@ Visible on the **left side** of every contract detail page (`/contracts/[id]`)
 ### Tips for Power Users
 
 **Pro Tip #1: Chain Commands**
+
 - Open palette → Type action → Execute → Repeat
 - Example: `Cmd+K` → "comment" → Enter → Type comment
 
 **Pro Tip #2: Learn 3 Shortcuts**
 Focus on these for 80% productivity gain:
+
 - `Cmd+K` - Open command palette
 - `Cmd+Shift+C` - Quick comment
 - `Cmd+E` - Quick export
 
 **Pro Tip #3: Use Search**
 Don't memorize! Just open palette and type what you want:
+
 - "sign" → Request Signature
 - "export" → Export Contract
 - "deadline" → Go to Deadlines
@@ -196,21 +215,25 @@ Don't memorize! Just open palette and type what you want:
 ## 📋 Usage Examples
 
 ### Example 1: Quick Comment
+
 **Old way:** Scroll down → Find comment section → Click textarea → Type → Submit  
 **New way:** `Cmd+Shift+C` → Type → Submit  
 **Time saved:** 15 seconds → 2 seconds ⚡
 
 ### Example 2: Check Contract Value
+
 **Old way:** Scroll up to find value card  
 **New way:** Look at sidebar (always visible)  
 **Time saved:** 5 seconds → 0 seconds ⚡
 
 ### Example 3: Export Contract
+
 **Old way:** Scroll to top → Click export menu → Select format  
 **New way:** `Cmd+E` → Select format  
 **Time saved:** 10 seconds → 2 seconds ⚡
 
 ### Example 4: Request Signature
+
 **Old way:** Scroll to buttons → Click "Request Signature" → Fill form  
 **New way:** `Cmd+Shift+S` → Fill form  
 **Time saved:** 8 seconds → 2 seconds ⚡
@@ -222,19 +245,23 @@ Don't memorize! Just open palette and type what you want:
 ### Context Sidebar Colors
 
 **Contract Value Card**
+
 - Green background = High-value contract
 
 **Risk Score Card**
+
 - 🟢 Green = Low risk (0-29)
 - 🟡 Yellow = Medium risk (30-69)
 - 🔴 Red = High risk (70-100)
 
 **Days Until Expiration**
+
 - 🔴 Red = Expired (past due)
 - 🟠 Orange = Expiring soon (<90 days)
 - 🔵 Blue = Future (>90 days)
 
 **Date Timeline Points**
+
 - ✅ Gray checkmark = Past date
 - 🔵 Blue clock = Current/upcoming date
 - 🟢 Green calendar = Future date
@@ -247,7 +274,8 @@ Don't memorize! Just open palette and type what you want:
 ### Command Palette Not Opening
 
 **Problem:** `Cmd+K` doesn't work  
-**Solution:** 
+**Solution:**
+
 1. Click outside any text input first (shortcuts are disabled while typing)
 2. Check your browser/OS isn't overriding the shortcut
 3. Try reloading the page and retry
@@ -256,6 +284,7 @@ Don't memorize! Just open palette and type what you want:
 
 **Problem:** Context sidebar is missing  
 **Solution:**
+
 1. Refresh the page (`Cmd+R`)
 2. Check you're on contract detail page (`/contracts/[id]`)
 3. Try zooming out if screen is narrow
@@ -264,6 +293,7 @@ Don't memorize! Just open palette and type what you want:
 
 **Problem:** Clicking command does nothing  
 **Solution:**
+
 1. Make sure the target exists (e.g., can't comment if comments disabled)
 2. Check console for errors (F12 → Console)
 3. Refresh page
@@ -273,16 +303,19 @@ Don't memorize! Just open palette and type what you want:
 ## 🎯 Best Practices
 
 ### For New Users
+
 1. **Explore the sidebar** - Familiarize yourself with what info is always visible
 2. **Try `Cmd+K`** - Open command palette and browse available actions
 3. **Learn 1 shortcut per day** - Start with `Cmd+Shift+C` for comments
 
 ### For Power Users
+
 1. **Use keyboard for everything** - Avoid mouse when possible
 2. **Customize your workflow** - Find shortcuts that fit your tasks
 3. **Share tips** - Teach team members the shortcuts
 
 ### For Administrators
+
 1. **Track usage** - Monitor which commands are most used
 2. **Train team** - Show new users the command palette
 3. **Collect feedback** - Ask what shortcuts would help most
@@ -294,16 +327,19 @@ Don't memorize! Just open palette and type what you want:
 ### Measured Improvements
 
 **Information Access**
+
 - Before: 30 seconds of scrolling
 - After: <1 second (sidebar)
 - **Improvement: 97% faster**
 
 **Common Actions**
+
 - Before: 5-8 clicks average
 - After: 1-2 clicks (or keyboard)
 - **Improvement: 75% fewer clicks**
 
 **Task Completion**
+
 - Before: 20-40 seconds per task
 - After: 3-5 seconds per task
 - **Improvement: 85% faster**
@@ -315,12 +351,14 @@ Don't memorize! Just open palette and type what you want:
 ### Planned Enhancements
 
 **Context Sidebar:**
+
 - 📱 Mobile optimization
 - 📌 Pin/unpin option
 - 🎨 Customizable quick actions
 - 📊 Mini activity feed
 
 **Command Palette:**
+
 - 🎨 Theme customization
 - 🔧 Custom shortcuts
 - 📝 Recent commands

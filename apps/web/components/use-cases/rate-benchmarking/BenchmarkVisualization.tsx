@@ -102,7 +102,7 @@ export function BenchmarkVisualization({
 
   const getPositionIndicator = (yourRate: number, p25: number, p50: number, p75: number) => {
     if (yourRate < p25) return { text: 'Below P25', color: 'text-green-600', icon: ArrowDownRight };
-    if (yourRate < p50) return { text: 'P25-P50', color: 'text-blue-600', icon: ArrowDownRight };
+    if (yourRate < p50) return { text: 'P25-P50', color: 'text-violet-600', icon: ArrowDownRight };
     if (yourRate < p75) return { text: 'P50-P75', color: 'text-orange-600', icon: ArrowUpRight };
     return { text: 'Above P75', color: 'text-red-600', icon: ArrowUpRight };
   };
@@ -116,8 +116,8 @@ export function BenchmarkVisualization({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+          <div className="p-2 bg-violet-100 rounded-lg">
+            <BarChart3 className="h-5 w-5 text-violet-600" />
           </div>
           <div>
             <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -129,7 +129,7 @@ export function BenchmarkVisualization({
             onClick={() => setShowFilters(!showFilters)}
             className={cn(
               "p-2 rounded-lg transition-colors",
-              showFilters ? "bg-blue-100 text-blue-600" : "hover:bg-gray-100 text-gray-500"
+              showFilters ? "bg-violet-100 text-violet-600" : "hover:bg-gray-100 text-gray-500"
             )}
           >
             <Filter className="h-4 w-4" />
@@ -162,7 +162,7 @@ export function BenchmarkVisualization({
             className={cn(
               "px-3 py-1.5 rounded-md text-sm font-medium transition-colors",
               viewMode === mode
-                ? "bg-white text-blue-600 shadow-sm"
+                ? "bg-white text-violet-600 shadow-sm"
                 : "text-gray-600 hover:text-gray-900"
             )}
           >
@@ -173,10 +173,10 @@ export function BenchmarkVisualization({
 
       {/* Summary Cards */}
       <div className="grid grid-cols-3 gap-3 p-4 border-b border-gray-100">
-        <div className="p-3 bg-blue-50 rounded-lg">
-          <p className="text-xs text-blue-600 font-medium">Average Percentile</p>
-          <p className="text-2xl font-bold text-blue-700">{summary.avgPercentile}%</p>
-          <p className="text-xs text-blue-500">vs market median</p>
+        <div className="p-3 bg-violet-50 rounded-lg">
+          <p className="text-xs text-violet-600 font-medium">Average Percentile</p>
+          <p className="text-2xl font-bold text-violet-700">{summary.avgPercentile}%</p>
+          <p className="text-xs text-violet-500">vs market median</p>
         </div>
         <div className="p-3 bg-green-50 rounded-lg">
           <p className="text-xs text-green-600 font-medium">Below Market</p>
@@ -215,7 +215,7 @@ export function BenchmarkVisualization({
                     className={cn(
                       "p-3 rounded-lg border cursor-pointer transition-all",
                       isSelected 
-                        ? "border-blue-300 bg-blue-50" 
+                        ? "border-violet-300 bg-violet-50" 
                         : "border-gray-100 hover:border-gray-200 hover:bg-gray-50"
                     )}
                   >
@@ -240,7 +240,7 @@ export function BenchmarkVisualization({
                     <div className="relative h-8 bg-gray-100 rounded-full overflow-hidden">
                       {/* Market Range (P25-P75) */}
                       <div
-                        className="absolute h-full bg-blue-100"
+                        className="absolute h-full bg-violet-100"
                         style={{
                           left: getBarWidth(item.marketP25),
                           width: `${((item.marketP75 - item.marketP25) / maxValue) * 100}%`
@@ -248,7 +248,7 @@ export function BenchmarkVisualization({
                       />
                       {/* Your Rate */}
                       <div
-                        className="absolute h-full w-1 bg-blue-600"
+                        className="absolute h-full w-1 bg-violet-600"
                         style={{ left: getBarWidth(item.yourRate) }}
                       />
                       {/* Industry Avg */}
@@ -266,18 +266,18 @@ export function BenchmarkVisualization({
                     {/* Legend */}
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
                       <span>${item.marketP25}/hr</span>
-                      <span className="font-medium text-blue-600">${item.yourRate}/hr (You)</span>
+                      <span className="font-medium text-violet-600">${item.yourRate}/hr (You)</span>
                       <span>${item.marketP75}/hr</span>
                     </div>
 
                     {/* Expanded Details */}
                     <AnimatePresence>
                       {isSelected && (
-                        <motion.div
+                        <motion.div key="selected"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
-                          className="mt-3 pt-3 border-t border-blue-200 overflow-hidden"
+                          className="mt-3 pt-3 border-t border-violet-200 overflow-hidden"
                         >
                           <div className="grid grid-cols-4 gap-3">
                             <div className="text-center">
@@ -299,7 +299,7 @@ export function BenchmarkVisualization({
                           </div>
                           <div className="mt-3 p-2 bg-white rounded-lg">
                             <p className="text-xs text-gray-500">
-                              Your rate is at the <span className="font-medium text-blue-600">{item.percentile}th percentile</span> of market rates.
+                              Your rate is at the <span className="font-medium text-violet-600">{item.percentile}th percentile</span> of market rates.
                               {item.yourRate < item.marketP50 
                                 ? " You're priced competitively below the median."
                                 : item.yourRate > item.marketP75
@@ -325,9 +325,9 @@ export function BenchmarkVisualization({
               exit={{ opacity: 0 }}
               className="space-y-6"
             >
-              <div className="flex items-center gap-2 p-3 bg-blue-50 rounded-lg">
-                <Info className="h-4 w-4 text-blue-500" />
-                <span className="text-sm text-blue-700">
+              <div className="flex items-center gap-2 p-3 bg-violet-50 rounded-lg">
+                <Info className="h-4 w-4 text-violet-500" />
+                <span className="text-sm text-violet-700">
                   Distribution view shows how your rates compare to the market spread
                 </span>
               </div>
@@ -341,7 +341,7 @@ export function BenchmarkVisualization({
                   <div className="relative h-6 bg-gray-100 rounded">
                     {/* Full range background */}
                     <div 
-                      className="absolute h-full bg-gradient-to-r from-green-200 via-yellow-200 to-red-200 rounded"
+                      className="absolute h-full bg-gradient-to-r from-violet-200 via-yellow-200 to-red-200 rounded"
                       style={{ width: '100%' }}
                     />
                     {/* Your position marker */}
@@ -349,7 +349,7 @@ export function BenchmarkVisualization({
                       className="absolute top-0 h-full flex items-center"
                       style={{ left: `calc(${(item.yourRate / maxValue) * 100}% - 8px)` }}
                     >
-                      <div className="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md" />
+                      <div className="w-4 h-4 bg-violet-600 rounded-full border-2 border-white shadow-md" />
                     </div>
                   </div>
                   <div className="flex justify-between text-xs text-gray-400">
@@ -431,11 +431,11 @@ export function BenchmarkVisualization({
       {/* Footer Legend */}
       <div className="flex items-center justify-center gap-6 p-3 border-t border-gray-100 bg-gray-50">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-600 rounded" />
+          <div className="w-3 h-3 bg-violet-600 rounded" />
           <span className="text-xs text-gray-600">Your Rate</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-100 rounded" />
+          <div className="w-3 h-3 bg-violet-100 rounded" />
           <span className="text-xs text-gray-600">P25-P75 Range</span>
         </div>
         <div className="flex items-center gap-2">

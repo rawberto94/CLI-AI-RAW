@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getContractQueue } from '@repo/utils/queue/contract-queue';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Artifact types that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_ARTIFACT_TYPES = [
@@ -19,6 +20,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { dbAdaptor } = await import('data-orchestration');
     
@@ -33,25 +38,16 @@ export async function GET(
     });
 
     if (!artifact) {
-      return NextResponse.json(
-        { error: 'Artifact not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
     }
 
     if (artifact.contractId !== params.id) {
-      return NextResponse.json(
-        { error: 'Artifact does not belong to this contract' },
-        { status: 403 }
-      );
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Artifact does not belong to this contract', 403);
     }
 
-    return NextResponse.json(artifact);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch artifact' },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, artifact);
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -64,22 +60,20 @@ export async function PUT(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { updates, reason, userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     if (!updates) {
-      return NextResponse.json(
-        { error: 'updates are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'updates are required', 400);
     }
 
     // Update the artifact using the service
@@ -93,7 +87,7 @@ export async function PUT(
 
     // Queue RAG re-indexing if this is a critical artifact type
     let ragReindexQueued = false;
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     
     if (tenantId && RAG_TRIGGER_ARTIFACT_TYPES.includes(updatedArtifact.artifactType as typeof RAG_TRIGGER_ARTIFACT_TYPES[number])) {
       try {
@@ -115,7 +109,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       artifact: updatedArtifact,
       message: ragReindexQueued 
         ? 'Artifact updated successfully. AI search index will be updated shortly.'
@@ -123,10 +117,7 @@ export async function PUT(
       ragReindexQueued,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update artifact' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -139,6 +130,10 @@ export async function DELETE(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { dbAdaptor } = await import('data-orchestration');
     
@@ -146,13 +141,10 @@ export async function DELETE(
       where: { id: params.artifactId },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Artifact deleted successfully',
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete artifact' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

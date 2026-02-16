@@ -164,7 +164,7 @@ export const ProgressiveImage = memo(function ProgressiveImage({
     >
       {/* Placeholder */}
       {placeholder && !loaded && (
-        /* eslint-disable-next-line @next/next/no-img-element */
+        
         <img
           src={placeholder}
           alt=""
@@ -174,7 +174,7 @@ export const ProgressiveImage = memo(function ProgressiveImage({
       )}
 
       {/* Main image */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
+      {}
       <img
         ref={imgRef}
         src={optimizedSrc}
@@ -310,7 +310,7 @@ export function RenderBudget({
       {items.slice(0, renderedCount)}
       {renderedCount < items.length && (
         <div className="flex justify-center p-4">
-          <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
     </div>

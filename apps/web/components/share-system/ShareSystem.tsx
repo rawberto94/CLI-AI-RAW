@@ -132,19 +132,19 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
       name: 'Twitter',
       icon: Twitter,
       url: `https://twitter.com/intent/tweet?text=${encodedTitle}&url=${encodedUrl}`,
-      color: 'hover:bg-blue-100 dark:hover:bg-blue-900',
+      color: 'hover:bg-violet-100 dark:hover:bg-violet-900',
     },
     {
       name: 'Facebook',
       icon: Facebook,
       url: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
-      color: 'hover:bg-blue-100 dark:hover:bg-blue-900',
+      color: 'hover:bg-violet-100 dark:hover:bg-violet-900',
     },
     {
       name: 'LinkedIn',
       icon: Linkedin,
       url: `https://www.linkedin.com/shareArticle?mini=true&url=${encodedUrl}&title=${encodedTitle}`,
-      color: 'hover:bg-blue-100 dark:hover:bg-blue-900',
+      color: 'hover:bg-violet-100 dark:hover:bg-violet-900',
     },
     {
       name: 'WhatsApp',
@@ -163,7 +163,7 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -222,7 +222,7 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
                   className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     copied
                       ? 'bg-green-600 text-white'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-violet-600 hover:bg-violet-700 text-white'
                   }`}
                 >
                   {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
@@ -230,7 +230,7 @@ export function ShareModal({ isOpen, onClose, data }: ShareModalProps) {
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -369,7 +369,7 @@ export function QRShareButton({ url, className = '' }: QRShareButtonProps) {
 
       <AnimatePresence>
         {showQR && (
-          <>
+          <div key="q-r" className="contents">
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -407,7 +407,7 @@ export function QRShareButton({ url, className = '' }: QRShareButtonProps) {
                 Scan with your phone to open
               </p>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </>
@@ -484,7 +484,7 @@ export function ShareSheet({ isOpen, onClose, data, additionalActions = [] }: Sh
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -549,7 +549,7 @@ export function ShareSheet({ isOpen, onClose, data, additionalActions = [] }: Sh
               </button>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

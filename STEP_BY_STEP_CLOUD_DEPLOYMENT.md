@@ -1,5 +1,9 @@
 # Step-by-Step Cloud Deployment Guide 🚀
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §14 (Deployment) for current deployment documentation. Retained for historical reference only.
+
+---
+
 ## Complete Beginner's Guide to Deploying ConTigo to the Cloud
 
 ---
@@ -79,6 +83,7 @@ There are THREE main approaches to cloud deployment:
 ### Understanding Your Options
 
 #### 🖥️ **Option 1: Virtual Machines (IaaS)**
+
 You rent a computer in the cloud and manage everything yourself.
 
 ```
@@ -100,11 +105,13 @@ You rent a computer in the cloud and manage everything yourself.
 ```
 
 **Pros:**
+
 - Full control over everything
 - Can customize anything
 - Similar to your local setup
 
 **Cons:**
+
 - You manage OS updates, security patches
 - More complex setup
 - Scaling requires manual configuration
@@ -112,6 +119,7 @@ You rent a computer in the cloud and manage everything yourself.
 ---
 
 #### 🐳 **Option 2: Containers (Recommended)**
+
 Package your app in Docker containers and run them on managed container services.
 
 ```
@@ -130,17 +138,20 @@ Package your app in Docker containers and run them on managed container services
 ```
 
 **Pros:**
+
 - Consistent across environments
 - Easy scaling
 - Less infrastructure management
 
 **Cons:**
+
 - Need to learn Docker basics
 - Container registry required
 
 ---
 
 #### ☁️ **Option 3: Managed Services (PaaS)**
+
 Let the cloud provider handle almost everything.
 
 ```
@@ -160,11 +171,13 @@ Let the cloud provider handle almost everything.
 ```
 
 **Pros:**
+
 - Fastest deployment
 - Automatic updates and patches
 - Built-in monitoring
 
 **Cons:**
+
 - Less control
 - Can be more expensive
 - Potential vendor lock-in
@@ -216,17 +229,20 @@ Let the cloud provider handle almost everything.
 Before you start, ensure you have:
 
 ### ✅ Accounts & Access
+
 - [ ] Cloud provider account (Azure/AWS/GCP)
 - [ ] Credit card linked (for billing)
 - [ ] Domain name (e.g., `yourcompany.com`)
 - [ ] OpenAI API key (for AI features)
 
 ### ✅ Local Setup
+
 - [ ] Git installed
 - [ ] Docker Desktop installed (for building images)
 - [ ] Cloud CLI installed (Azure CLI, AWS CLI, or gcloud)
 
 ### ✅ Project Ready
+
 - [ ] Code pushed to Git repository
 - [ ] `.env.example` file configured
 - [ ] All tests passing locally
@@ -258,6 +274,7 @@ gcloud init
 ### Step 1: Create a Virtual Machine
 
 #### On Azure:
+
 ```bash
 # Login to Azure
 az login
@@ -285,6 +302,7 @@ az vm show -d -g contigo-rg -n contigo-vm --query publicIps -o tsv
 ```
 
 #### On AWS:
+
 ```bash
 # Create a key pair
 aws ec2 create-key-pair --key-name contigo-key --query 'KeyMaterial' --output text > contigo-key.pem
@@ -430,6 +448,7 @@ docker build -t contigo-websocket:latest -f Dockerfile.websocket .
 ### Step 2: Push to Container Registry
 
 #### Azure Container Registry:
+
 ```bash
 # Create Azure Container Registry
 az acr create --resource-group contigo-rg --name contigoacr --sku Basic
@@ -448,6 +467,7 @@ docker push contigoacr.azurecr.io/contigo-websocket:latest
 ```
 
 #### AWS ECR:
+
 ```bash
 # Create ECR repository
 aws ecr create-repository --repository-name contigo-web
@@ -985,6 +1005,7 @@ docker exec -it <container> bash  # Shell into container
 5. **Go live** with confidence!
 
 **Need more help?** Check the other documentation files:
+
 - [CLOUD_DEPLOYMENT_GUIDE.md](./CLOUD_DEPLOYMENT_GUIDE.md) - Detailed infrastructure code
 - [AZURE_DEPLOYMENT_CHECKLIST.md](./AZURE_DEPLOYMENT_CHECKLIST.md) - Azure-specific checklist
 - [PRODUCTION_DEPLOYMENT.md](./PRODUCTION_DEPLOYMENT.md) - Production best practices

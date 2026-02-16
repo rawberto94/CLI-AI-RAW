@@ -70,7 +70,7 @@ export const StatCard = memo(function StatCard({
   iconGradient,
   iconShadow,
   isActive = false,
-  ringColor = "ring-blue-500 border-blue-300 shadow-blue-100",
+  ringColor = "ring-violet-500 border-violet-300 shadow-violet-100",
   onClick,
   delay = 0.1,
 }: StatCardProps) {
@@ -135,10 +135,10 @@ export const TotalContractsCard = memo(function TotalContractsCard({
       value={count}
       subtitle="All contracts in portfolio"
       icon={FileText}
-      iconGradient="bg-gradient-to-br from-blue-500 to-indigo-600"
-      iconShadow="shadow-blue-500/30"
+      iconGradient="bg-gradient-to-br from-violet-500 to-purple-600"
+      iconShadow="shadow-violet-500/30"
       isActive={isActive}
-      ringColor="ring-blue-500 border-blue-300 shadow-blue-100"
+      ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.1}
     />
@@ -162,12 +162,12 @@ export const ActiveContractsCard = memo(function ActiveContractsCard({
       value={count}
       subtitle="Ready for business"
       subtitleIcon={TrendingUp}
-      subtitleColor="text-emerald-500"
+      subtitleColor="text-violet-500"
       icon={CheckCircle}
-      iconGradient="bg-gradient-to-br from-emerald-500 to-green-600"
-      iconShadow="shadow-emerald-500/30"
+      iconGradient="bg-gradient-to-br from-violet-500 to-purple-600"
+      iconShadow="shadow-violet-500/30"
       isActive={isActive}
-      ringColor="ring-emerald-500 border-emerald-300 shadow-emerald-100"
+      ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.15}
     />
@@ -195,7 +195,7 @@ export const ProcessingContractsCard = memo(function ProcessingContractsCard({
         data-testid="stat-processing" 
         className={cn(
           "group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-1 bg-white/80 backdrop-blur-sm border-white/50",
-          isActive && "ring-2 ring-blue-500 border-blue-300 shadow-blue-100"
+          isActive && "ring-2 ring-violet-500 border-violet-300 shadow-violet-100"
         )}
         onClick={onClick}
       >
@@ -203,13 +203,13 @@ export const ProcessingContractsCard = memo(function ProcessingContractsCard({
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-slate-500">Processing</p>
-              <p className="text-3xl font-bold text-blue-600 mt-1">{count}</p>
-              <p className="text-xs text-blue-500 mt-1 flex items-center gap-1">
+              <p className="text-3xl font-bold text-violet-600 mt-1">{count}</p>
+              <p className="text-xs text-violet-500 mt-1 flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 AI analyzing...
               </p>
             </div>
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
               <Brain className="h-6 w-6 text-white" />
             </div>
           </div>
@@ -238,12 +238,12 @@ export const TotalValueCard = memo(function TotalValueCard({
       value={formatCurrency(value)}
       subtitle="Portfolio worth"
       subtitleIcon={Sparkles}
-      subtitleColor="text-purple-500"
+      subtitleColor="text-violet-500"
       icon={DollarSign}
-      iconGradient="bg-gradient-to-br from-purple-500 to-pink-600"
-      iconShadow="shadow-purple-500/30"
+      iconGradient="bg-gradient-to-br from-violet-500 to-pink-600"
+      iconShadow="shadow-violet-500/30"
       isActive={isActive}
-      ringColor="ring-purple-500 border-purple-300 shadow-purple-100"
+      ringColor="ring-violet-500 border-violet-300 shadow-violet-100"
       onClick={onClick}
       delay={0.25}
     />
@@ -287,7 +287,7 @@ export const CategorizedCard = memo(function CategorizedCard({
               </p>
               <p className={cn(
                 "text-xs mt-1 flex items-center gap-1",
-                uncategorizedCount > 0 ? "text-amber-500" : "text-emerald-500"
+                uncategorizedCount > 0 ? "text-amber-500" : "text-violet-500"
               )}>
                 {uncategorizedCount > 0 ? (
                   <>
@@ -302,7 +302,7 @@ export const CategorizedCard = memo(function CategorizedCard({
                 )}
               </p>
             </div>
-            <div className="p-3 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-xl shadow-lg shadow-indigo-500/30 group-hover:scale-110 transition-transform">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform">
               <Tag className="h-6 w-6 text-white" />
             </div>
           </div>
@@ -329,7 +329,7 @@ export const HighRiskCard = memo(function HighRiskCard({
       value={count}
       subtitle="Require attention"
       subtitleIcon={AlertTriangle}
-      subtitleColor={count > 0 ? "text-red-500" : "text-emerald-500"}
+      subtitleColor={count > 0 ? "text-red-500" : "text-violet-500"}
       icon={Shield}
       iconGradient="bg-gradient-to-br from-red-500 to-rose-600"
       iconShadow="shadow-red-500/30"
@@ -460,7 +460,7 @@ export const InlineStatsSummary = memo(function InlineStatsSummary({
       </div>
       <div className="h-4 w-px bg-slate-200" />
       <div className="flex items-center gap-2">
-        <DollarSign className="h-4 w-4 text-emerald-500" />
+        <DollarSign className="h-4 w-4 text-violet-500" />
         <span className="text-slate-600">
           Total: <span className="font-semibold text-slate-800">{formatCurrency(totalValue)}</span>
         </span>

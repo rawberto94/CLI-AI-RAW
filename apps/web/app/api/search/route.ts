@@ -1,31 +1,37 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from '@/lib/auth'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware'
+import { z } from 'zod'
+import { contractService } from 'data-orchestration/services';
+
+const searchRequestSchema = z.object({
+  query: z.string().min(1, 'Search query is required'),
+  filters: z.object({
+    status: z.string().optional(),
+    minValue: z.number().optional(),
+    maxValue: z.number().optional(),
+    dateRange: z.string().optional(),
+  }).optional(),
+})
 
 export async function POST(request: NextRequest) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const { query, filters } = await request.json()
-    const dataMode = request.headers.get('x-data-mode') || 'real'
-
-    if (dataMode !== 'real') {
-      // Return mock data
-      return NextResponse.json({
-        results: [
-          {
-            id: '1',
-            title: 'Software Development Services Agreement',
-            type: 'contract',
-            snippet: `...found matching terms for "${query}" in the contract scope...`,
-            metadata: {
-              supplier: 'TechCorp Inc',
-              value: 1250000,
-              date: '2024-01-15',
-              status: 'Active'
-            },
-            relevance: 0.95
-          }
-        ]
-      })
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
+
+    const body = await request.json()
+    const parsed = searchRequestSchema.safeParse(body)
+    if (!parsed.success) {
+      return createValidationErrorResponse(ctx, parsed.error)
+    }
+    const { query, filters } = parsed.data
 
     // Build where clause
     const where: Record<string, unknown> = {
@@ -94,11 +100,8 @@ export async function POST(request: NextRequest) {
       relevance: 0.85 // Simple relevance score
     }))
 
-    return NextResponse.json({ results })
-  } catch {
-    return NextResponse.json(
-      { error: 'Search failed' },
-      { status: 500 }
-    )
+    return createSuccessResponse(ctx, { results })
+  } catch (error) {
+    return handleApiError(ctx, error)
   }
 }

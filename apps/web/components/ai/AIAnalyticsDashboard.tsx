@@ -234,8 +234,8 @@ function StatCard({
               </div>
             )}
           </div>
-          <div className="p-3 bg-blue-50 rounded-lg">
-            <Icon className="w-6 h-6 text-blue-500" />
+          <div className="p-3 bg-violet-50 rounded-lg">
+            <Icon className="w-6 h-6 text-violet-500" />
           </div>
         </div>
       </CardContent>
@@ -329,7 +329,7 @@ export function AIAnalyticsDashboard() {
   if (isLoading || !metrics) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <RefreshCw className="w-8 h-8 animate-spin text-blue-500" />
+        <RefreshCw className="w-8 h-8 animate-spin text-violet-500" />
       </div>
     );
   }
@@ -593,7 +593,7 @@ export function AIAnalyticsDashboard() {
                     </code>
                     <div className="flex items-center gap-3 text-sm">
                       <span className="text-slate-500">{endpoint.calls} calls</span>
-                      <span className="text-blue-600">{endpoint.avgLatency}ms</span>
+                      <span className="text-violet-600">{endpoint.avgLatency}ms</span>
                       <Badge variant={endpoint.errorRate < 2 ? 'secondary' : 'destructive'}>
                         {endpoint.errorRate}% errors
                       </Badge>
@@ -601,7 +601,7 @@ export function AIAnalyticsDashboard() {
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2">
                     <div
-                      className="bg-blue-500 h-2 rounded-full"
+                      className="bg-violet-500 h-2 rounded-full"
                       style={{ width: `${(endpoint.calls / 3000) * 100}%` }}
                     />
                   </div>

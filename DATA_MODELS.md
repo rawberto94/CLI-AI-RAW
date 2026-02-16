@@ -1,5 +1,9 @@
 # PostgreSQL Data Models Documentation
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §4 (Database Architecture) for current data model documentation. Retained for historical reference only.
+
+---
+
 This document explains all PostgreSQL tables in the CLI-AI contract management system, their purposes, relationships, and how they are populated.
 
 ---
@@ -23,6 +27,7 @@ This document explains all PostgreSQL tables in the CLI-AI contract management s
 ## 1. Multi-Tenant Foundation
 
 ### Tenant
+
 The root entity for multi-tenancy. Every other record in the system belongs to a tenant.
 
 | Field | Type | Description |
@@ -38,6 +43,7 @@ The root entity for multi-tenancy. Every other record in the system belongs to a
 **Population:** Created via admin API when a new organization signs up.
 
 ### TenantConfig
+
 Extended configuration for tenant features.
 
 | Field | Type | Description |
@@ -51,6 +57,7 @@ Extended configuration for tenant features.
 **Population:** Auto-created when tenant is created, updated via settings API.
 
 ### TenantSubscription
+
 Billing and subscription management.
 
 | Field | Type | Description |
@@ -63,6 +70,7 @@ Billing and subscription management.
 **Population:** Created during onboarding, updated by billing system.
 
 ### TenantUsage
+
 Usage tracking for billing and limits.
 
 | Field | Type | Description |
@@ -79,6 +87,7 @@ Usage tracking for billing and limits.
 ## 2. User & Access Management
 
 ### User
+
 User accounts within a tenant.
 
 | Field | Type | Description |
@@ -94,6 +103,7 @@ User accounts within a tenant.
 **Population:** Created via sign-up flow, SSO, or admin invitation.
 
 ### Role
+
 Role-based access control definitions.
 
 | Field | Type | Description |
@@ -106,6 +116,7 @@ Role-based access control definitions.
 **Population:** System roles auto-created on tenant creation; custom roles via admin UI.
 
 ### Permission
+
 Granular permissions for RBAC.
 
 | Field | Type | Description |
@@ -117,11 +128,13 @@ Granular permissions for RBAC.
 **Population:** Seeded on database initialization.
 
 ### UserRole / RolePermission
+
 Junction tables linking users to roles and roles to permissions.
 
 **Population:** Updated when user roles are assigned via admin interface.
 
 ### UserSession
+
 Active user sessions for authentication.
 
 | Field | Type | Description |
@@ -135,6 +148,7 @@ Active user sessions for authentication.
 **Population:** Created on login, deleted on logout.
 
 ### UserPreferences
+
 User-specific settings and onboarding state.
 
 | Field | Type | Description |
@@ -151,6 +165,7 @@ User-specific settings and onboarding state.
 ## 3. Contract Core Models
 
 ### Contract
+
 The central entity representing a contract document.
 
 | Field | Type | Description |
@@ -190,6 +205,7 @@ The central entity representing a contract document.
 | amendmentNumber | Int? | Amendment sequence |
 
 **Population Flow:**
+
 1. **Upload API** (`/api/contracts/upload`): Creates record with UPLOADED status
 2. **Processing Queue**: Updates status to PROCESSING
 3. **Ingestion Worker**: Extracts rawText, updates metadata
@@ -198,6 +214,7 @@ The central entity representing a contract document.
 6. **Status Update**: Sets to COMPLETED when all processing done
 
 ### ContractMetadata
+
 Extended metadata for contracts with ~60 fields.
 
 | Field | Type | Description |
@@ -223,6 +240,7 @@ Extended metadata for contracts with ~60 fields.
 **Population:** Created/updated by AI analysis workers after ingestion.
 
 ### Party
+
 Organizations involved in contracts.
 
 | Field | Type | Description |
@@ -236,6 +254,7 @@ Organizations involved in contracts.
 **Population:** Extracted from contracts during AI analysis or manually created.
 
 ### TaxonomyCategory
+
 Hierarchical categorization for contracts.
 
 | Field | Type | Description |
@@ -257,6 +276,7 @@ Hierarchical categorization for contracts.
 ## 4. Contract Processing & Analysis
 
 ### ProcessingJob
+
 Tracks contract processing pipeline.
 
 | Field | Type | Description |
@@ -271,12 +291,14 @@ Tracks contract processing pipeline.
 | queueId | String? | BullMQ job ID |
 
 **Population Flow:**
+
 1. Created when contract upload starts
 2. Updated by BullMQ workers at each stage
 3. Progress events sent via WebSocket
 4. Final status set on completion/failure
 
 ### Run
+
 High-level processing run tracking.
 
 | Field | Type | Description |
@@ -291,6 +313,7 @@ High-level processing run tracking.
 **Population:** Created by processing orchestrator, updated by workers.
 
 ### ProgressEvent
+
 Granular progress updates for real-time UI.
 
 | Field | Type | Description |
@@ -303,6 +326,7 @@ Granular progress updates for real-time UI.
 **Population:** Created by workers, consumed by WebSocket for live updates.
 
 ### ContractVersion
+
 Version history for contracts.
 
 | Field | Type | Description |
@@ -321,6 +345,7 @@ Version history for contracts.
 ## 5. Artifacts & AI Analysis
 
 ### Artifact
+
 AI-generated analysis results stored as structured data.
 
 | Field | Type | Description |
@@ -350,11 +375,13 @@ AI-generated analysis results stored as structured data.
 | processingCost | Decimal? | API cost in USD |
 
 **Population Flow:**
+
 1. Created by artifact generation workers
 2. Updated when user provides feedback/ratings
 3. Edit history tracked in ArtifactEdit table
 
 **Artifact Types:**
+
 - `INGESTION`: Raw extraction results
 - `OVERVIEW`: Contract summary and key parties
 - `CLAUSES`: Extracted clauses with risk analysis
@@ -367,6 +394,7 @@ AI-generated analysis results stored as structured data.
 - `REPORT`: Generated reports
 
 ### ContractArtifact
+
 Simple key-value artifacts for quick lookups.
 
 | Field | Type | Description |
@@ -380,6 +408,7 @@ Simple key-value artifacts for quick lookups.
 **Population:** Created during processing for quick data access.
 
 ### Clause
+
 Extracted contract clauses.
 
 | Field | Type | Description |
@@ -395,6 +424,7 @@ Extracted contract clauses.
 **Population:** Created by clause extraction AI analysis.
 
 ### Embedding / ContractEmbedding
+
 Vector embeddings for semantic search.
 
 | Field | Type | Description |
@@ -409,17 +439,21 @@ Vector embeddings for semantic search.
 **Population:** Created by embedding generation worker using OpenAI embeddings API.
 
 ### Analysis Models
+
 Specialized analysis results:
 
 **TemplateAnalysis**
+
 - Template detection and compliance scoring
 - Deviations from standard templates
 
 **FinancialAnalysis**
+
 - Cost breakdown, payment terms
 - Pricing tables, discounts, escalation clauses
 
 **OverviewAnalysis**
+
 - Contract summary, key terms
 - Parties, dates, jurisdiction
 
@@ -430,6 +464,7 @@ Specialized analysis results:
 ## 6. Rate Card & Benchmarking
 
 ### ImportJob
+
 Tracks rate card file imports.
 
 | Field | Type | Description |
@@ -444,6 +479,7 @@ Tracks rate card file imports.
 **Population:** Created when user uploads rate card file.
 
 ### RateCard
+
 Rate card header information.
 
 | Field | Type | Description |
@@ -456,6 +492,7 @@ Rate card header information.
 | status | RateCardStatus | DRAFT, PENDING_APPROVAL, APPROVED, etc. |
 
 ### RoleRate
+
 Individual rate entries.
 
 | Field | Type | Description |
@@ -468,6 +505,7 @@ Individual rate entries.
 | confidence | Decimal | Data quality confidence |
 
 ### RateCardEntry
+
 Comprehensive rate entries with benchmarking.
 
 | Field | Type | Description |
@@ -482,6 +520,7 @@ Comprehensive rate entries with benchmarking.
 | isNegotiated | Boolean | Negotiated rate flag |
 
 ### RateCardSupplier
+
 Supplier master data for benchmarking.
 
 | Field | Type | Description |
@@ -492,6 +531,7 @@ Supplier master data for benchmarking.
 | totalContracts | Int | Contract count |
 
 ### BenchmarkSnapshot
+
 Point-in-time benchmark comparisons.
 
 | Field | Type | Description |
@@ -503,6 +543,7 @@ Point-in-time benchmark comparisons.
 | marketTrend | String? | Trend direction |
 
 ### MarketRateIntelligence
+
 Aggregated market rate analysis.
 
 | Field | Type | Description |
@@ -515,6 +556,7 @@ Aggregated market rate analysis.
 | supplierDistribution | Json | Supplier breakdown |
 
 ### RateSavingsOpportunity
+
 Identified cost savings opportunities.
 
 | Field | Type | Description |
@@ -525,6 +567,7 @@ Identified cost savings opportunities.
 | status | OpportunityStatus | IDENTIFIED, IN_PROGRESS, IMPLEMENTED, etc. |
 
 **Population Flow:**
+
 1. User uploads rate card file
 2. ImportJob created with extracted data
 3. Mapping template applied (auto or manual)
@@ -537,6 +580,7 @@ Identified cost savings opportunities.
 ## 7. Procurement & Categorization
 
 ### ProcurementCategory
+
 Procurement-specific categorization.
 
 | Field | Type | Description |
@@ -551,6 +595,7 @@ Procurement-specific categorization.
 **Population:** Seeded with standard procurement categories, customized per tenant.
 
 ### RateCardBaseline
+
 Target rates for negotiation and benchmarking.
 
 | Field | Type | Description |
@@ -562,6 +607,7 @@ Target rates for negotiation and benchmarking.
 | approvalStatus | ApprovalStatus | PENDING, APPROVED, etc. |
 
 ### RoleTaxonomy
+
 Standardized role definitions.
 
 | Field | Type | Description |
@@ -572,6 +618,7 @@ Standardized role definitions.
 | keywords | String[] | Matching keywords |
 
 ### RoleMapping
+
 Historical role name mappings.
 
 | Field | Type | Description |
@@ -588,6 +635,7 @@ Historical role name mappings.
 ## 8. Workflow & Collaboration
 
 ### Workflow
+
 Workflow definitions (approval, review).
 
 | Field | Type | Description |
@@ -597,6 +645,7 @@ Workflow definitions (approval, review).
 | isDefault | Boolean | Default workflow flag |
 
 ### WorkflowStep
+
 Individual workflow steps.
 
 | Field | Type | Description |
@@ -609,6 +658,7 @@ Individual workflow steps.
 | timeout | Int? | Timeout in hours |
 
 ### WorkflowExecution
+
 Active workflow instances.
 
 | Field | Type | Description |
@@ -619,6 +669,7 @@ Active workflow instances.
 | currentStep | String? | Current step ID |
 
 ### WorkflowStepExecution
+
 Individual step executions.
 
 | Field | Type | Description |
@@ -630,6 +681,7 @@ Individual step executions.
 | result | Json? | Approval result with comments |
 
 **Population Flow:**
+
 1. Workflow initiated via API or auto-trigger
 2. WorkflowExecution created
 3. WorkflowStepExecution created for each step
@@ -637,6 +689,7 @@ Individual step executions.
 5. Notifications sent at each transition
 
 ### ContractComment
+
 Threaded comments on contracts.
 
 | Field | Type | Description |
@@ -649,6 +702,7 @@ Threaded comments on contracts.
 | reactions | Json | Emoji reactions |
 
 ### ContractActivity
+
 Activity log for contracts.
 
 | Field | Type | Description |
@@ -659,6 +713,7 @@ Activity log for contracts.
 | metadata | Json? | Activity-specific data |
 
 ### Notification
+
 User notifications.
 
 | Field | Type | Description |
@@ -670,6 +725,7 @@ User notifications.
 | isRead | Boolean | Read status |
 
 ### DocumentShare
+
 Document sharing permissions.
 
 | Field | Type | Description |
@@ -687,6 +743,7 @@ Document sharing permissions.
 ## 9. Analytics & Reporting
 
 ### Metric
+
 Time-series metrics for analytics.
 
 | Field | Type | Description |
@@ -698,6 +755,7 @@ Time-series metrics for analytics.
 | timestamp | DateTime | Metric timestamp |
 
 ### AuditLog
+
 Comprehensive audit trail.
 
 | Field | Type | Description |
@@ -711,11 +769,13 @@ Comprehensive audit trail.
 **Population:** Created by API middleware on significant actions.
 
 ### OnboardingAnalytics / HelpAnalytics / WidgetAnalytics
+
 User behavior analytics for UX optimization.
 
 **Population:** Created by frontend analytics tracking.
 
 ### ContractHealthScore
+
 Contract health metrics.
 
 | Field | Type | Description |
@@ -729,6 +789,7 @@ Contract health metrics.
 | trendHistory | Json | Historical scores |
 
 ### ContractExpiration
+
 Expiration tracking and alerts.
 
 | Field | Type | Description |
@@ -742,6 +803,7 @@ Expiration tracking and alerts.
 | noticeDeadline | DateTime? | Notice deadline |
 
 ### ExpirationAlert
+
 Expiration notifications.
 
 | Field | Type | Description |
@@ -752,6 +814,7 @@ Expiration notifications.
 | scheduledFor | DateTime | Scheduled send time |
 
 ### RenewalHistory
+
 Historical renewal records.
 
 | Field | Type | Description |
@@ -762,6 +825,7 @@ Historical renewal records.
 | keyChanges | Json | Summary of changes |
 
 ### ScheduledReport
+
 Automated report scheduling.
 
 | Field | Type | Description |
@@ -778,6 +842,7 @@ Automated report scheduling.
 ## 10. Integration Hub
 
 ### Integration
+
 External system connections.
 
 | Field | Type | Description |
@@ -790,12 +855,14 @@ External system connections.
 | capabilities | String[] | Supported operations |
 
 **Providers:**
+
 - Cloud Storage: google-drive, sharepoint, dropbox
 - E-Signature: DocuSign, Adobe Sign
 - ERP: SAP, Oracle
 - Procurement: Coupa, Ariba
 
 ### SyncLog
+
 Integration sync history.
 
 | Field | Type | Description |
@@ -813,6 +880,7 @@ Integration sync history.
 ## 11. Production Infrastructure
 
 ### Webhook
+
 Webhook configurations.
 
 | Field | Type | Description |
@@ -823,6 +891,7 @@ Webhook configurations.
 | maxRetries | Int | Retry count |
 
 ### WebhookDelivery
+
 Webhook delivery tracking.
 
 | Field | Type | Description |
@@ -835,6 +904,7 @@ Webhook delivery tracking.
 | response | String? | Response body |
 
 ### IdempotencyKey
+
 Prevents duplicate operations.
 
 | Field | Type | Description |
@@ -845,6 +915,7 @@ Prevents duplicate operations.
 | expiresAt | DateTime | Key expiration |
 
 ### OutboxEvent
+
 Transactional outbox for event publishing.
 
 | Field | Type | Description |
@@ -856,6 +927,7 @@ Transactional outbox for event publishing.
 | status | String | pending, published, failed |
 
 ### ExchangeRate
+
 Currency exchange rates.
 
 | Field | Type | Description |
@@ -936,6 +1008,7 @@ Completion → WorkflowExecution (COMPLETED)
 ## Indexes
 
 All tables include strategic indexes for:
+
 - **Tenant Isolation**: `tenantId` indexed on all tenant-scoped tables
 - **Time-based Queries**: `createdAt`, `updatedAt`, timestamps
 - **Status Filtering**: `status` fields indexed
@@ -947,17 +1020,20 @@ All tables include strategic indexes for:
 ## Schema Location
 
 The complete Prisma schema is located at:
+
 ```
 packages/clients/db/schema.prisma
 ```
 
 To apply schema changes:
+
 ```bash
 cd packages/clients/db
 npx prisma migrate dev --name <migration-name>
 ```
 
 To generate Prisma Client:
+
 ```bash
 npx prisma generate
 ```

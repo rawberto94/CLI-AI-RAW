@@ -136,7 +136,7 @@ export function BottomSheet({
     <DrawerContext.Provider value={contextValue}>
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             {/* Overlay */}
             {overlay && (
               <motion.div
@@ -186,7 +186,7 @@ export function BottomSheet({
                 {children}
               </div>
             </motion.div>
-          </>
+          </div>
         )}
       </AnimatePresence>
     </DrawerContext.Provider>
@@ -240,7 +240,7 @@ export function SideDrawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Overlay */}
           {overlay && (
             <motion.div
@@ -294,7 +294,7 @@ export function SideDrawer({
               </div>
             )}
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -404,7 +404,7 @@ export function ResizablePanel({
         <div
           onMouseDown={handleMouseDown}
           className={`
-            absolute z-10 bg-transparent hover:bg-blue-500/50
+            absolute z-10 bg-transparent hover:bg-violet-500/50
             transition-colors group
             ${handleClasses}
           `}
@@ -415,7 +415,7 @@ export function ResizablePanel({
               opacity-0 group-hover:opacity-100 transition-opacity
             `}
           >
-            <GripVertical className="w-3 h-3 text-blue-500" />
+            <GripVertical className="w-3 h-3 text-violet-500" />
           </div>
         </div>
       )}
@@ -535,7 +535,7 @@ export function SplitView({
         onMouseDown={handleMouseDown}
         className={`
           flex-shrink-0 bg-gray-200 dark:bg-gray-700
-          hover:bg-blue-500 transition-colors
+          hover:bg-violet-500 transition-colors
           ${isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'}
         `}
       />
@@ -649,7 +649,7 @@ export function MinimizableWindow({
       {/* Content */}
       <AnimatePresence>
         {!isMinimized && (
-          <motion.div
+          <motion.div key="Drawers-ap-1"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}

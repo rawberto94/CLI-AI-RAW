@@ -39,15 +39,43 @@ export default function RoleBenchmarks() {
     setLoading(false);
   };
 
+  const [filterOptions, setFilterOptions] = React.useState<{
+    suppliers: string[];
+    countries: string[];
+    linesOfService: string[];
+  }>({
+    suppliers: ["Manual", "Unknown"],
+    countries: ["US", "UK", "IN", "PL", "Unknown"],
+    linesOfService: ["Consulting", "BPO", "Tech", "Unknown"],
+  });
+
+  // Fetch dynamic filter options from API
+  React.useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/benchmarks/filter-options`);
+        if (res.ok) {
+          const data = await res.json();
+          setFilterOptions({
+            suppliers: data.suppliers?.length ? data.suppliers : filterOptions.suppliers,
+            countries: data.countries?.length ? data.countries : filterOptions.countries,
+            linesOfService: data.linesOfService?.length ? data.linesOfService : filterOptions.linesOfService,
+          });
+        }
+      } catch {
+        // Keep default options on error
+      }
+    };
+    fetchOptions();
+  }, []);
+
   React.useEffect(() => {
     fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groupBy, target, JSON.stringify(filters)]);
 
-  // TODO: Pull dynamic options from API if needed
-  const supplierOpts = ["Manual", "Unknown"]; // populated progressively from results
-  const countryOpts = ["US", "UK", "IN", "PL", "Unknown"];
-  const losOpts = ["Consulting", "BPO", "Tech", "Unknown"];
+  const supplierOpts = filterOptions.suppliers;
+  const countryOpts = filterOptions.countries;
+  const losOpts = filterOptions.linesOfService;
 
   return (
     <div className="space-y-4">

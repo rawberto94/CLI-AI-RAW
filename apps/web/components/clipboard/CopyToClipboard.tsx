@@ -82,7 +82,7 @@ export function CopyButton({
   const variants = {
     default: 'bg-slate-100 hover:bg-slate-200 text-slate-600',
     code: 'bg-slate-700 hover:bg-slate-600 text-slate-300',
-    link: 'bg-indigo-100 hover:bg-indigo-200 text-indigo-600',
+    link: 'bg-violet-100 hover:bg-violet-200 text-violet-600',
     minimal: 'hover:bg-slate-100 text-slate-400 hover:text-slate-600',
   };
 
@@ -114,7 +114,7 @@ export function CopyButton({
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             exit={{ scale: 0 }}
-            className="text-emerald-500"
+            className="text-violet-500"
           >
             <Check className={iconSizes[size]} />
           </motion.div>
@@ -181,7 +181,7 @@ export function CopyableText({
         className={cn(
           'opacity-0 group-hover:opacity-100 transition-opacity',
           'p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded',
-          copied && 'opacity-100 text-emerald-500'
+          copied && 'opacity-100 text-violet-500'
         )}
       >
         {copied ? (
@@ -280,8 +280,8 @@ export function ShareLink({ url, label = 'Share link', className }: ShareLinkPro
         className={cn(
           'px-4 py-2 text-sm font-medium rounded-lg transition-all',
           copied
-            ? 'bg-emerald-100 text-emerald-700'
-            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            ? 'bg-violet-100 text-violet-700'
+            : 'bg-violet-600 text-white hover:bg-violet-700'
         )}
       >
         {copied ? (

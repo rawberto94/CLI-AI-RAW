@@ -18,8 +18,10 @@
  * - Smart auto-correction of values
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { recordAICost, estimateTokenCost } from '@/lib/ai/model-router.service';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Import advanced intelligence services (lazy loaded for edge compatibility)
 let advancedIntelligence: any = null;
@@ -171,7 +173,7 @@ interface NegotiationOpportunity {
 // INTELLIGENT ANALYSIS PROMPTS
 // ============================================================================
 
-const COMPREHENSIVE_ANALYSIS_PROMPT = `You are an expert contract analyst with deep expertise in legal document analysis, risk assessment, and contract management.
+const _COMPREHENSIVE_ANALYSIS_PROMPT = `You are an expert contract analyst with deep expertise in legal document analysis, risk assessment, and contract management.
 
 Your task is to perform a COMPREHENSIVE analysis of this contract document. Go beyond standard templates - discover ALL important information that would be valuable for managing this contract.
 
@@ -233,7 +235,7 @@ Return a comprehensive JSON analysis.`;
 // HANDLER
 // ============================================================================
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -241,18 +243,12 @@ export async function POST(request: NextRequest) {
     const { documentText, contractId, contractType: hintedContractType, industry, options = {} } = body;
 
     if (!documentText || documentText.trim().length < 100) {
-      return NextResponse.json(
-        { error: 'Document text is required and must be at least 100 characters' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Document text is required and must be at least 100 characters', 400);
     }
 
     // Check for OpenAI API key
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 
     const openai = new OpenAI({
@@ -310,9 +306,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Phase 1: Document Type Detection
+    // Phase 1: Document Type Detection (simple classification — gpt-4o-mini)
     const documentTypeResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -341,6 +337,10 @@ export async function POST(request: NextRequest) {
     });
 
     const documentType = JSON.parse(documentTypeResponse.choices[0]?.message?.content || '{}');
+    const p1Usage = documentTypeResponse.usage;
+    if (p1Usage) {
+      recordAICost({ model: 'gpt-4o-mini', inputTokens: p1Usage.prompt_tokens, outputTokens: p1Usage.completion_tokens, cost: estimateTokenCost('gpt-4o-mini', p1Usage.prompt_tokens, p1Usage.completion_tokens), taskType: 'classification', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Get contract type profile and extraction hints
     let extractionHints: any = null;
@@ -412,6 +412,10 @@ Return JSON:
     const discoveredFields: DiscoveredField[] = JSON.parse(
       fieldsResponse.choices[0]?.message?.content || '{"fields":[]}'
     ).fields || [];
+    const p2Usage = fieldsResponse.usage;
+    if (p2Usage) {
+      recordAICost({ model: 'gpt-4o', inputTokens: p2Usage.prompt_tokens, outputTokens: p2Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p2Usage.prompt_tokens, p2Usage.completion_tokens), taskType: 'extraction', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Phase 2.5: Enhanced Pattern-Based Extraction for Reliability
     const enhancedFields = enhanceWithPatternMatching(textToAnalyze, discoveredFields);
@@ -557,6 +561,10 @@ Return JSON:
       riskSignals = JSON.parse(
         riskResponse.choices[0]?.message?.content || '{"risks":[]}'
       ).risks || [];
+      const p3Usage = riskResponse.usage;
+      if (p3Usage) {
+        recordAICost({ model: 'gpt-4o', inputTokens: p3Usage.prompt_tokens, outputTokens: p3Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p3Usage.prompt_tokens, p3Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+      }
     }
 
     // Phase 4: Negotiation Opportunities (unless skipped)
@@ -608,11 +616,15 @@ Return JSON:
       negotiationOpportunities = JSON.parse(
         negotiationResponse.choices[0]?.message?.content || '{"opportunities":[]}'
       ).opportunities || [];
+      const p4Usage = negotiationResponse.usage;
+      if (p4Usage) {
+        recordAICost({ model: 'gpt-4o', inputTokens: p4Usage.prompt_tokens, outputTokens: p4Usage.completion_tokens, cost: estimateTokenCost('gpt-4o', p4Usage.prompt_tokens, p4Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+      }
     }
 
-    // Phase 5: Key Insights
+    // Phase 5: Key Insights (summarization — gpt-4o-mini sufficient)
     const insightsResponse = await openai.chat.completions.create({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         {
           role: 'system',
@@ -655,6 +667,10 @@ Return JSON:
     const keyInsights: DocumentInsight[] = JSON.parse(
       insightsResponse.choices[0]?.message?.content || '{"insights":[]}'
     ).insights || [];
+    const p5Usage = insightsResponse.usage;
+    if (p5Usage) {
+      recordAICost({ model: 'gpt-4o-mini', inputTokens: p5Usage.prompt_tokens, outputTokens: p5Usage.completion_tokens, cost: estimateTokenCost('gpt-4o-mini', p5Usage.prompt_tokens, p5Usage.completion_tokens), taskType: 'analysis', tenantId: ctx.tenantId, userId: ctx.userId });
+    }
 
     // Calculate processing time
     const processingTime = Date.now() - startTime;
@@ -876,18 +892,12 @@ Return JSON:
       }
     };
 
-    return NextResponse.json(analysisResult);
+    return createSuccessResponse(ctx, analysisResult);
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Analysis failed', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -1107,7 +1117,7 @@ function enhanceWithPatternMatching(
   aiFields: DiscoveredField[]
 ): DiscoveredField[] {
   const enhanced = [...aiFields];
-  const existingFieldNames = new Set(aiFields.map(f => f.fieldName.toLowerCase()));
+  const _existingFieldNames = new Set(aiFields.map(f => f.fieldName.toLowerCase()));
 
   for (const pattern of EXTRACTION_PATTERNS) {
     // Skip if AI already found this field with good confidence

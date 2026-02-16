@@ -61,9 +61,9 @@ interface ApprovalQueueProps {
 function StatusBadge({ status }: { status: AgentGoal['status'] }) {
   const statusConfig: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
     PENDING: { color: 'bg-gray-100 text-gray-800', icon: <Clock className="h-3 w-3" />, label: 'Pending' },
-    PLANNING: { color: 'bg-blue-100 text-blue-800', icon: <Target className="h-3 w-3" />, label: 'Planning' },
+    PLANNING: { color: 'bg-violet-100 text-violet-800', icon: <Target className="h-3 w-3" />, label: 'Planning' },
     AWAITING_APPROVAL: { color: 'bg-yellow-100 text-yellow-800', icon: <AlertTriangle className="h-3 w-3" />, label: 'Awaiting Approval' },
-    EXECUTING: { color: 'bg-indigo-100 text-indigo-800', icon: <Play className="h-3 w-3" />, label: 'Executing' },
+    EXECUTING: { color: 'bg-violet-100 text-indigo-800', icon: <Play className="h-3 w-3" />, label: 'Executing' },
     PAUSED: { color: 'bg-orange-100 text-orange-800', icon: <Pause className="h-3 w-3" />, label: 'Paused' },
     COMPLETED: { color: 'bg-green-100 text-green-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Completed' },
     FAILED: { color: 'bg-red-100 text-red-800', icon: <XCircle className="h-3 w-3" />, label: 'Failed' },
@@ -86,7 +86,7 @@ function StepList({ steps, expanded }: { steps: AgentGoalStep[]; expanded: boole
 
   const stepStatusConfig: Record<string, { color: string; icon: React.ReactNode }> = {
     PENDING: { color: 'text-gray-400', icon: <Clock className="h-4 w-4" /> },
-    RUNNING: { color: 'text-blue-500', icon: <RotateCcw className="h-4 w-4 animate-spin" /> },
+    RUNNING: { color: 'text-violet-500', icon: <RotateCcw className="h-4 w-4 animate-spin" /> },
     COMPLETED: { color: 'text-green-500', icon: <CheckCircle2 className="h-4 w-4" /> },
     FAILED: { color: 'text-red-500', icon: <XCircle className="h-4 w-4" /> },
     SKIPPED: { color: 'text-gray-400', icon: <XCircle className="h-4 w-4" /> },
@@ -199,7 +199,7 @@ function GoalCard({
         {goal.progress > 0 && (
           <div className="mt-3 w-full bg-gray-200 rounded-full h-1.5">
             <div
-              className="bg-indigo-600 h-1.5 rounded-full transition-all"
+              className="bg-violet-600 h-1.5 rounded-full transition-all"
               style={{ width: `${goal.progress}%` }}
             />
           </div>
@@ -248,7 +248,7 @@ function GoalCard({
               placeholder={feedbackAction === 'reject' 
                 ? 'Explain why this goal is being rejected...' 
                 : 'Describe what changes are needed...'}
-              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border rounded-md text-sm focus:ring-2 focus:ring-violet-500"
               rows={3}
             />
             <div className="mt-2 flex justify-end gap-2">
@@ -261,7 +261,7 @@ function GoalCard({
               <button
                 onClick={handleSubmitFeedback}
                 disabled={!feedback.trim()}
-                className="px-3 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-3 py-1.5 bg-violet-600 text-white text-sm font-medium rounded-md hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Submit
               </button>
@@ -294,9 +294,9 @@ function GoalCard({
 
           {/* Plan */}
           {goal.plan && Object.keys(goal.plan).length > 0 && (
-            <div className="mt-2 p-3 bg-blue-50 rounded-lg">
-              <h4 className="text-sm font-medium text-blue-800 mb-2">Execution Plan</h4>
-              <pre className="text-xs text-blue-700 overflow-x-auto">
+            <div className="mt-2 p-3 bg-violet-50 rounded-lg">
+              <h4 className="text-sm font-medium text-violet-800 mb-2">Execution Plan</h4>
+              <pre className="text-xs text-violet-700 overflow-x-auto">
                 {JSON.stringify(goal.plan, null, 2)}
               </pre>
             </div>

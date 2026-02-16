@@ -42,7 +42,7 @@ export function VersionHistoryPanel({
     if (isOpen) {
       loadVersions();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isOpen]);
 
   const loadVersions = async () => {
@@ -173,7 +173,7 @@ export function VersionHistoryPanel({
                   <span className="font-medium">Change type:</span>{' '}
                   {(selectedVersion.reason && selectedVersion.reason.includes('AI Improvement')) || 
                    selectedVersion.changeType === 'ai_improvement' ? (
-                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-800">
                       <Sparkles className="h-3 w-3 mr-1" />
                       AI Improvement
                     </Badge>
@@ -182,11 +182,11 @@ export function VersionHistoryPanel({
                   )}
                 </div>
                 {selectedVersion.reason && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-2">
-                    <span className="font-medium text-blue-900">
+                  <div className="bg-violet-50 border border-violet-200 rounded-lg p-3 mt-2">
+                    <span className="font-medium text-violet-900">
                       {selectedVersion.reason.includes('AI Improvement') ? 'Improvement Request:' : 'Reason:'}
                     </span>
-                    <p className="text-blue-800 mt-1">{selectedVersion.reason}</p>
+                    <p className="text-violet-800 mt-1">{selectedVersion.reason}</p>
                   </div>
                 )}
                 {selectedVersion.previousConfidence !== undefined && selectedVersion.newConfidence !== undefined && (
@@ -290,7 +290,7 @@ export function VersionHistoryPanel({
                           </span>
                           {((version.reason && version.reason.includes('AI Improvement')) || 
                             version.changeType === 'ai_improvement') && (
-                            <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                            <Badge variant="secondary" className="bg-violet-100 text-violet-800">
                               <Sparkles className="h-3 w-3 mr-1" />
                               AI Improved
                             </Badge>
@@ -305,7 +305,7 @@ export function VersionHistoryPanel({
                           Edited by {version.editedBy}
                         </div>
                         {version.reason && (
-                          <div className="text-sm bg-blue-50 text-blue-800 mt-2 p-2 rounded border border-blue-200">
+                          <div className="text-sm bg-violet-50 text-violet-800 mt-2 p-2 rounded border border-violet-200">
                             {version.reason.includes('AI Improvement') ? '🤖' : '📝'} {version.reason}
                           </div>
                         )}

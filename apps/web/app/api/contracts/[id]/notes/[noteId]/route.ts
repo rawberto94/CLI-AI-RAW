@@ -1,19 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import { getServerSession } from '@/lib/auth'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * GET /api/contracts/[id]/notes/[noteId]
  * Get a single note
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     const tenantId = session.user.tenantId
     const { id: contractId, noteId } = await params
@@ -27,13 +33,10 @@ export async function GET(
     })
     
     if (!note) {
-      return NextResponse.json(
-        { error: 'Note not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Note not found', 404);
     }
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       note: {
         id: note.id,
         content: note.content,
@@ -47,13 +50,10 @@ export async function GET(
         isPinned: (note.reactions as Array<{ type?: string }> || []).some(r => r.type === 'pinned'),
         mentions: note.mentions
       }
-    })
+    });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch note' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -65,10 +65,14 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     const tenantId = session.user.tenantId
     const userId = session.user.id
@@ -87,10 +91,7 @@ export async function PATCH(
     })
     
     if (!existingNote) {
-      return NextResponse.json(
-        { error: 'Note not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Note not found', 404);
     }
     
     // Build update data
@@ -98,10 +99,7 @@ export async function PATCH(
     
     if (content !== undefined) {
       if (!content.trim()) {
-        return NextResponse.json(
-          { error: 'Note content cannot be empty' },
-          { status: 400 }
-        )
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Note content cannot be empty', 400);
       }
       updateData.content = content.trim()
     }
@@ -144,7 +142,7 @@ export async function PATCH(
       }
     })
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       note: {
         id: updatedNote.id,
@@ -159,13 +157,10 @@ export async function PATCH(
         isPinned: (updatedNote.reactions as Array<{ type?: string }> || []).some(r => r.type === 'pinned'),
         mentions: updatedNote.mentions
       }
-    })
+    });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update note' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -174,13 +169,17 @@ export async function PATCH(
  * Delete a note
  */
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string; noteId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     const tenantId = session.user.tenantId
     const userId = session.user.id
@@ -196,10 +195,7 @@ export async function DELETE(
     })
     
     if (!existingNote) {
-      return NextResponse.json(
-        { error: 'Note not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Note not found', 404);
     }
     
     // Delete the note
@@ -219,15 +215,12 @@ export async function DELETE(
       }
     })
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Note deleted successfully'
-    })
+    });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete note' },
-      { status: 500 }
-    )
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

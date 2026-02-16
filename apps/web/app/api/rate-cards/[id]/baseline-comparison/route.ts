@@ -1,23 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
     }
-
+try {
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: ctx.userId },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const { id } = params;
@@ -29,21 +28,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!entry || entry.tenantId !== user.tenantId) {
-      return NextResponse.json(
-        { error: 'Rate card entry not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card entry not found', 404);
     }
 
     // Compare against baselines
     const baselineService = new baselineManagementService(prisma);
     const comparisons = await baselineService.compareAgainstBaselines(id);
 
-    return NextResponse.json({ comparisons });
+    return createSuccessResponse(ctx, { comparisons });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to compare against baselines' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to compare against baselines', 500);
   }
 }

@@ -9,11 +9,11 @@
  * - Action status queries
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { executeAction, detectUpdateIntent } from '@/lib/chatbot/action-handlers';
 import { getPendingAction } from '@/lib/chatbot/action-handlers/update-actions';
 import type { ChatContext, DetectedIntent } from '@/lib/chatbot/types';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,15 +31,9 @@ interface ActionRequest {
   confirm?: boolean;
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
     const body: ActionRequest = await request.json();
     const { message, contractId, action, entities, pendingActionId, confirm } = body;
 
@@ -47,30 +41,24 @@ export async function POST(request: NextRequest) {
     const context: ChatContext = {
       tenantId,
       userId,
-      currentContractId: contractId,
-    };
+      currentContractId: contractId };
 
     // Handle confirmation/rejection of pending actions
     if (pendingActionId !== undefined) {
       const pendingAction = getPendingAction(pendingActionId);
       
       if (!pendingAction) {
-        return NextResponse.json({
-          success: false,
-          message: 'Action not found or has expired. Please try again.',
-          error: 'ACTION_EXPIRED',
-        });
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Action not found or has expired. Please try again.', 404);
       }
 
       const intent = {
         type: 'action' as const,
         action: (confirm ? 'confirm_action' : 'reject_action') as DetectedIntent['action'],
         entities: { pendingActionId },
-        confidence: 1.0,
-      } satisfies DetectedIntent;
+        confidence: 1.0 } satisfies DetectedIntent;
 
       const result = await executeAction(intent, context);
-      return NextResponse.json(result);
+      return createSuccessResponse(ctx, result);
     }
 
     // Handle natural language message
@@ -85,18 +73,14 @@ export async function POST(request: NextRequest) {
         }
         
         const result = await executeAction(updateIntent as DetectedIntent, context);
-        return NextResponse.json(result);
+        return createSuccessResponse(ctx, result);
       }
 
       // Not an update intent - return guidance
-      return NextResponse.json({
-        success: false,
-        message: 'This endpoint handles contract updates. Try phrases like:\n' +
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'This endpoint handles contract updates. Try phrases like:\n' +
           '- "Set the expiration date to Jan 2027"\n' +
           '- "Update the contract value to 1.5 million"\n' +
-          '- "Change status to ACTIVE"',
-        error: 'NOT_UPDATE_INTENT',
-      });
+          '- "Change status to ACTIVE"', 400);
     }
 
     // Handle direct action request
@@ -106,32 +90,21 @@ export async function POST(request: NextRequest) {
         action: action as DetectedIntent['action'],
         entities: {
           ...entities,
-          contractId: (contractId || entities.contractId) as string,
-        },
-        confidence: 1.0,
-      } satisfies DetectedIntent;
+          contractId: (contractId || entities.contractId) as string },
+        confidence: 1.0 } satisfies DetectedIntent;
 
       const result = await executeAction(intent, context);
-      return NextResponse.json(result);
+      return createSuccessResponse(ctx, result);
     }
 
-    return NextResponse.json(
-      { error: 'Invalid request. Provide message, action/entities, or pendingActionId.' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid request. Provide message, action/entities, or pendingActionId.', 400);
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET /api/ai/chat/actions - Get action status or available actions
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const searchParams = request.nextUrl.searchParams;
   const actionId = searchParams.get('actionId');
   
@@ -139,15 +112,10 @@ export async function GET(request: NextRequest) {
     const pendingAction = getPendingAction(actionId);
     
     if (!pendingAction) {
-      return NextResponse.json({
-        success: false,
-        message: 'Action not found or has expired',
-        error: 'ACTION_NOT_FOUND',
-      });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Action not found or has expired', 404);
     }
     
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action: {
         id: pendingAction.id,
         type: pendingAction.type,
@@ -156,56 +124,44 @@ export async function GET(request: NextRequest) {
         newValue: pendingAction.newValue,
         status: pendingAction.status,
         expiresAt: pendingAction.expiresAt.toISOString(),
-        createdAt: pendingAction.createdAt.toISOString(),
-      },
-    });
+        createdAt: pendingAction.createdAt.toISOString() } });
   }
   
   // Return available actions
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     availableActions: [
       {
         action: 'update_expiration',
         description: 'Update contract expiration date',
-        examples: ['Set expiration to Jan 2027', 'Extend contract to next year'],
-      },
+        examples: ['Set expiration to Jan 2027', 'Extend contract to next year'] },
       {
         action: 'update_effective_date',
         description: 'Update contract effective/start date',
-        examples: ['Set start date to March 1, 2025'],
-      },
+        examples: ['Set start date to March 1, 2025'] },
       {
         action: 'update_value',
         description: 'Update contract total value',
-        examples: ['Set value to 1.5 million', 'Update amount to $500,000'],
-      },
+        examples: ['Set value to 1.5 million', 'Update amount to $500,000'] },
       {
         action: 'update_status',
         description: 'Update contract status',
         examples: ['Change status to ACTIVE', 'Mark as EXPIRED'],
-        validStatuses: ['DRAFT', 'ACTIVE', 'PENDING_SIGNATURE', 'PENDING_APPROVAL', 'EXPIRED', 'TERMINATED', 'ON_HOLD'],
-      },
+        validStatuses: ['DRAFT', 'ACTIVE', 'PENDING_SIGNATURE', 'PENDING_APPROVAL', 'EXPIRED', 'TERMINATED', 'ON_HOLD'] },
       {
         action: 'update_title',
         description: 'Update contract title/name',
-        examples: ['Rename to "2025 MSA Agreement"'],
-      },
+        examples: ['Rename to "2025 MSA Agreement"'] },
       {
         action: 'update_supplier',
         description: 'Update supplier/vendor name',
-        examples: ['Change supplier to Acme Corp'],
-      },
+        examples: ['Change supplier to Acme Corp'] },
       {
         action: 'update_client',
         description: 'Update client/customer name',
-        examples: ['Set client to XYZ Industries'],
-      },
+        examples: ['Set client to XYZ Industries'] },
     ],
     usage: {
       naturalLanguage: 'POST with { message: "update text", contractId: "..." }',
       directAction: 'POST with { action: "update_expiration", entities: { newValue: "..." }, contractId: "..." }',
-      confirmation: 'POST with { pendingActionId: "...", confirm: true/false }',
-    },
-  });
-}
+      confirmation: 'POST with { pendingActionId: "...", confirm: true/false }' } });
+});

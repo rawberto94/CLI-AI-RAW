@@ -88,7 +88,7 @@ export const ProfessionalCard = memo(function ProfessionalCard({
 // ============================================================================
 
 const statusConfig = {
-  active: { color: 'emerald', label: 'Active', pulse: true },
+  active: { color: 'violet', label: 'Active', pulse: true },
   pending: { color: 'amber', label: 'Pending', pulse: false },
   expired: { color: 'red', label: 'Expired', pulse: false },
   draft: { color: 'slate', label: 'Draft', pulse: false },
@@ -125,11 +125,11 @@ export const StatusIndicator = memo(function StatusIndicator({
   }
   
   const colorClasses = {
-    emerald: 'bg-emerald-500',
+    emerald: 'bg-violet-500',
     amber: 'bg-amber-500',
     red: 'bg-red-500',
     slate: 'bg-slate-400',
-    blue: 'bg-blue-500',
+    blue: 'bg-violet-500',
     green: 'bg-green-500',
     orange: 'bg-orange-500',
   }
@@ -226,26 +226,26 @@ export const MetricDisplay = memo(function MetricDisplay({
 }: MetricDisplayProps) {
   const colorClasses = {
     default: 'text-slate-900',
-    success: 'text-emerald-600',
+    success: 'text-violet-600',
     warning: 'text-amber-600',
     error: 'text-red-600',
-    info: 'text-blue-600',
+    info: 'text-violet-600',
   }
   
   const bgColorClasses = {
     default: 'bg-slate-100',
-    success: 'bg-emerald-100',
+    success: 'bg-violet-100',
     warning: 'bg-amber-100',
     error: 'bg-red-100',
-    info: 'bg-blue-100',
+    info: 'bg-violet-100',
   }
   
   const iconColorClasses = {
     default: 'text-slate-600',
-    success: 'text-emerald-600',
+    success: 'text-violet-600',
     warning: 'text-amber-600',
     error: 'text-red-600',
-    info: 'text-blue-600',
+    info: 'text-violet-600',
   }
   
   const sizeClasses = {
@@ -279,7 +279,7 @@ export const MetricDisplay = memo(function MetricDisplay({
         {trend && trendValue && (
           <span className={cn(
             "text-xs font-medium",
-            trend === 'up' ? 'text-emerald-600' : 
+            trend === 'up' ? 'text-violet-600' : 
             trend === 'down' ? 'text-red-600' : 'text-slate-500'
           )}>
             {trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→'} {trendValue}
@@ -373,11 +373,11 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default: "bg-slate-100 text-slate-700 border-slate-200",
-        primary: "bg-indigo-100 text-indigo-700 border-indigo-200",
-        success: "bg-emerald-100 text-emerald-700 border-emerald-200",
+        primary: "bg-violet-100 text-violet-700 border-indigo-200",
+        success: "bg-violet-100 text-violet-700 border-violet-200",
         warning: "bg-amber-100 text-amber-700 border-amber-200",
         error: "bg-red-100 text-red-700 border-red-200",
-        info: "bg-blue-100 text-blue-700 border-blue-200",
+        info: "bg-violet-100 text-violet-700 border-violet-200",
         outline: "bg-transparent text-slate-600 border-slate-300",
       },
       size: {

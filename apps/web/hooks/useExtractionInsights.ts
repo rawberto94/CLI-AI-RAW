@@ -189,7 +189,7 @@ export function getGradeColor(grade: 'A' | 'B' | 'C' | 'D' | 'F'): string {
     case 'A':
       return 'text-green-600 bg-green-100';
     case 'B':
-      return 'text-blue-600 bg-blue-100';
+      return 'text-violet-600 bg-violet-100';
     case 'C':
       return 'text-yellow-600 bg-yellow-100';
     case 'D':

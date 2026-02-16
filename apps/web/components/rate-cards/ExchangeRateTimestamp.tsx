@@ -23,7 +23,7 @@ export function ExchangeRateTimestamp({
 
   useEffect(() => {
     fetchExchangeRate();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [fromCurrency, toCurrency]);
 
   const fetchExchangeRate = async () => {
@@ -80,7 +80,7 @@ export function ExchangeRateTimestamp({
       <button
         onClick={handleRefresh}
         disabled={refreshing}
-        className="flex items-center gap-1 px-2 py-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors disabled:opacity-50"
+        className="flex items-center gap-1 px-2 py-1 text-xs text-violet-600 hover:text-violet-700 hover:bg-violet-50 rounded transition-colors disabled:opacity-50"
       >
         <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
         Refresh

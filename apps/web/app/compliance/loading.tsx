@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Shield, CheckCircle, FileCheck, Scale } from 'lucide-react';
+import { Shield, CheckCircle, FileCheck as _FileCheck, Scale } from 'lucide-react';
 
 export default function ComplianceLoading() {
   return (
@@ -15,7 +15,7 @@ export default function ComplianceLoading() {
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 flex items-center justify-center shadow-2xl shadow-green-500/30"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-violet-500 to-violet-500 flex items-center justify-center shadow-2xl shadow-green-500/30"
           >
             <Shield className="w-10 h-10 text-white" />
           </motion.div>
@@ -26,7 +26,7 @@ export default function ComplianceLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <CheckCircle className="h-4 w-4 text-emerald-500" />
+              <CheckCircle className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
           
@@ -36,7 +36,7 @@ export default function ComplianceLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <Scale className="h-4 w-4 text-blue-500" />
+              <Scale className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
         </div>
@@ -47,7 +47,7 @@ export default function ComplianceLoading() {
           transition={{ delay: 0.2 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
             Loading Compliance
           </h2>
           <p className="text-sm text-slate-500 mt-2">Checking compliance status...</p>
@@ -59,7 +59,7 @@ export default function ComplianceLoading() {
               key={i}
               animate={{ scale: [1, 1.3, 1], opacity: [0.5, 1, 0.5] }}
               transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
-              className="w-2 h-2 rounded-full bg-gradient-to-r from-green-500 to-emerald-500"
+              className="w-2 h-2 rounded-full bg-gradient-to-r from-violet-500 to-violet-500"
             />
           ))}
         </div>

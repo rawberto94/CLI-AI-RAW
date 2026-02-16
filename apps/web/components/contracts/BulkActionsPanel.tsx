@@ -214,7 +214,7 @@ export const BulkActionsPanel = memo(function BulkActionsPanel({
         <div className="flex items-center justify-between mb-3">
           <h4 className="font-semibold flex items-center gap-2">
             {processing ? (
-              <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+              <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
             ) : successCount === results.length ? (
               <CheckCircle2 className="h-4 w-4 text-green-600" />
             ) : (

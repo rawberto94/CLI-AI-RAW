@@ -1,13 +1,15 @@
 # Rate Card Schema Migration Plan
 
 ## Overview
+
 The rate card API routes have been implemented using `@ts-ignore` comments for models that exist in the schema but have field name mismatches. This document outlines the required schema updates to align with API usage.
 
 ## Current Status
 
 ### ✅ Models That Exist
+
 - `RateCardSupplier`
-- `RateCardEntry` 
+- `RateCardEntry`
 - `BenchmarkSnapshot`
 - `MarketRateIntelligence`
 - `RateSavingsOpportunity`
@@ -21,11 +23,13 @@ The rate card API routes have been implemented using `@ts-ignore` comments for m
 ## 1. RateSavingsOpportunity Model
 
 ### Issues Found in API Routes:
+
 - `/api/rate-cards/dashboard/financial/route.ts`
 - `/api/rate-cards/dashboard/performance/route.ts`
 - `/api/rate-cards/dashboard/trends/route.ts`
 
 ### Current Schema Fields:
+
 ```prisma
 model RateSavingsOpportunity {
   annualSavings         Decimal  // Line 1476
@@ -34,12 +38,14 @@ model RateSavingsOpportunity {
 ```
 
 ### API Routes Expect:
+
 ```typescript
 annualSavingsPotential  // Used in queries
 actualSavingsRealized   // Used in queries
 ```
 
 ### Required Changes:
+
 ```prisma
 model RateSavingsOpportunity {
   // OLD: annualSavings
@@ -53,14 +59,17 @@ model RateSavingsOpportunity {
 ## 2. BenchmarkSnapshot Model
 
 ### Issues Found in API Routes:
+
 - `/api/rate-cards/dashboard/financial/route.ts`
 - `/api/rate-cards/dashboard/performance/route.ts`
 
 ### Current Schema Has:
+
 - ✅ `percentileRank` - Correct
 - ❓ Need to verify `rateValue` and `marketMedian` fields
 
 ### API Routes Expect:
+
 ```typescript
 rateValue: true,      // The actual rate being benchmarked
 marketMedian: true,   // Market median for comparison
@@ -68,7 +77,9 @@ percentileRank: true, // Already exists
 ```
 
 ### Required Changes:
+
 The `BenchmarkSnapshot` model needs to add these fields if missing:
+
 ```prisma
 model BenchmarkSnapshot {
   // Add if missing:
@@ -84,6 +95,7 @@ model BenchmarkSnapshot {
 ## 3. BenchmarkSnapshot - Relationship Fix
 
 ### Current Schema:
+
 ```prisma
 model BenchmarkSnapshot {
   rateCardEntry  RateCardEntry @relation(fields: [rateCardEntryId], references: [id], onDelete: Cascade)
@@ -93,7 +105,9 @@ model BenchmarkSnapshot {
 The `rateValue` should reference the `RateCardEntry.dailyRateUSD` at snapshot time, or store a copy.
 
 ### Recommended Approach:
+
 Store a snapshot copy of the rate value at the time of benchmarking:
+
 ```prisma
 model BenchmarkSnapshot {
   rateCardEntryId  String
@@ -109,6 +123,7 @@ model BenchmarkSnapshot {
 ## Migration Steps
 
 ### Step 1: Create Migration File
+
 ```sql
 -- Migration: 016_rate_card_field_alignment.sql
 
@@ -147,6 +162,7 @@ ALTER TABLE benchmark_snapshots
 ```
 
 ### Step 2: Update Schema File
+
 Update `/packages/clients/db/schema.prisma`:
 
 ```prisma
@@ -260,6 +276,7 @@ model BenchmarkSnapshot {
 ```
 
 ### Step 3: Run Migration Commands
+
 ```bash
 cd /workspaces/CLI-AI-RAW
 
@@ -317,12 +334,15 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/contracts" npx prism
 ```
 
 ### Step 4: Remove @ts-ignore Comments
+
 After migration, remove `@ts-ignore` comments from:
+
 - `/apps/web/app/api/rate-cards/dashboard/financial/route.ts`
 - `/apps/web/app/api/rate-cards/dashboard/performance/route.ts`
 - `/apps/web/app/api/rate-cards/dashboard/trends/route.ts`
 
 ### Step 5: Test
+
 ```bash
 # Run tests
 npm run test:rate-card-integration
@@ -346,6 +366,7 @@ npm run dev
 ## Rollback Plan
 
 If issues occur:
+
 ```sql
 -- Rollback: Rename fields back
 ALTER TABLE rate_savings_opportunities 

@@ -288,10 +288,14 @@ export class ArtifactQualityValidator {
       RISK: ['overallRisk', 'risks'],
       COMPLIANCE: ['checks'],
       OBLIGATIONS: ['obligations'],
-      RENEWAL: ['renewalDate'],
-      NEGOTIATION_POINTS: ['keyPoints'],
+      RENEWAL: ['autoRenewal', 'renewalTerms'],
+      NEGOTIATION_POINTS: ['negotiationPoints', 'leveragePoints'],
       AMENDMENTS: ['amendments'],
       CONTACTS: ['contacts'],
+      PARTIES: ['parties'],
+      TIMELINE: ['contractTimeline', 'milestones'],
+      DELIVERABLES: ['deliverables'],
+      EXECUTIVE_SUMMARY: ['strategicSummary', 'keyMetrics'],
     };
 
     return fieldMap[artifactType] || [];

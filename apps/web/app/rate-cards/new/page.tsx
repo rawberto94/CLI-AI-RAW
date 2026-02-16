@@ -134,7 +134,7 @@ export default function AddRateCardPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         {/* Header */}
         <motion.div 
@@ -149,7 +149,7 @@ export default function AddRateCardPage() {
             </button>
           </Link>
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
               <FileText className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -183,7 +183,7 @@ export default function AddRateCardPage() {
                     type="text"
                     value={supplierName}
                     onChange={(e) => setSupplierName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
                     placeholder="e.g., TechStaff Solutions"
                     required
                   />
@@ -197,7 +197,7 @@ export default function AddRateCardPage() {
                     type="text"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
                     placeholder="e.g., SwissBank AG"
                   />
                 </div>
@@ -212,7 +212,7 @@ export default function AddRateCardPage() {
                     id="currency"
                     value={currency}
                     onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
                   >
                     <option value="CHF">CHF</option>
                     <option value="EUR">EUR</option>
@@ -228,7 +228,7 @@ export default function AddRateCardPage() {
                     type="date"
                     value={validFrom}
                     onChange={(e) => setValidFrom(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
                   />
                 </div>
                 <div>
@@ -240,7 +240,7 @@ export default function AddRateCardPage() {
                     type="date"
                     value={validTo}
                     onChange={(e) => setValidTo(e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 bg-white"
                   />
                 </div>
               </div>
@@ -293,7 +293,7 @@ export default function AddRateCardPage() {
                         type="text"
                         value={role.role}
                         onChange={(e) => updateRole(role.id, 'role', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
                         placeholder="Select or type role"
                         list={`roles-${role.id}`}
                         required
@@ -314,7 +314,7 @@ export default function AddRateCardPage() {
                         type="text"
                         value={role.level}
                         onChange={(e) => updateRole(role.id, 'level', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
                         placeholder="Select or type level"
                         list={`levels-${role.id}`}
                         required
@@ -335,7 +335,7 @@ export default function AddRateCardPage() {
                         type="text"
                         value={role.location}
                         onChange={(e) => updateRole(role.id, 'location', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
                         placeholder="Select or type location"
                         list={`locations-${role.id}`}
                         required
@@ -356,7 +356,7 @@ export default function AddRateCardPage() {
                         type="number"
                         value={role.dailyRate || ''}
                         onChange={(e) => updateRole(role.id, 'dailyRate', Number(e.target.value))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
                         placeholder="e.g., 1200"
                         min="0"
                         step="50"
@@ -373,7 +373,7 @@ export default function AddRateCardPage() {
                         type="text"
                         value={role.serviceLine}
                         onChange={(e) => updateRole(role.id, 'serviceLine', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-violet-500"
                         placeholder="Select or type service line"
                         list={`services-${role.id}`}
                       />
@@ -399,7 +399,7 @@ export default function AddRateCardPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-6 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -417,9 +417,9 @@ export default function AddRateCardPage() {
         </form>
 
         {/* Help Text */}
-        <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="font-semibold text-blue-900 mb-2">💡 Tips for Adding Rate Cards</h4>
-          <ul className="text-sm text-blue-800 space-y-1">
+        <div className="mt-8 bg-violet-50 border border-violet-200 rounded-lg p-4">
+          <h4 className="font-semibold text-violet-900 mb-2">💡 Tips for Adding Rate Cards</h4>
+          <ul className="text-sm text-violet-800 space-y-1">
             <li>• Use consistent role and level naming for better benchmarking</li>
             <li>• Add multiple roles in one rate card for the same supplier</li>
             <li>• Set validity dates to track rate changes over time</li>

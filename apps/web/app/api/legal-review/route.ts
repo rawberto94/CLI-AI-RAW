@@ -4,60 +4,40 @@
  * Comprehensive legal review and redlining endpoints
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
-import { getLegalReviewService } from '@repo/data-orchestration';
+import { NextRequest } from 'next/server';
+import { getLegalReviewService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // ============================================================================
 // POST - Perform legal review against playbook
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { 
+    contractText,
+    playbookId = 'default_playbook',
+    contractType,
+    counterpartyName: _counterpartyName,
+    includePatternAnalysis: _includePatternAnalysis = false,
+    includePrecedents: _includePrecedents = false,
+  } = body;
 
-    const body = await request.json();
-    const { 
-      contractText,
-      playbookId = 'default_playbook',
-      contractType,
-      counterpartyName,
-      includePatternAnalysis = false,
-      includePrecedents = false,
-    } = body;
-
-    if (!contractText) {
-      return NextResponse.json(
-        { error: 'Contract text is required' },
-        { status: 400 }
-      );
-    }
-
-    const tenantId = getSessionTenantId(session);
-
-    const legalReviewService = getLegalReviewService();
-    const result = await legalReviewService.reviewContract(contractText, {
-      tenantId,
-      playbookId,
-      contractType,
-    });
-
-    return NextResponse.json({
-      success: true,
-      ...result,
-    });
-  } catch (error) {
-    console.error('Legal review error:', error);
-    return NextResponse.json(
-      { 
-        error: 'Failed to perform legal review',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+  if (!contractText) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text is required', 400);
   }
-}
+
+  const tenantId = ctx.tenantId;
+
+  const legalReviewService = getLegalReviewService();
+  const result = await legalReviewService.reviewContract(contractText, {
+    tenantId,
+    playbookId,
+    contractType,
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    ...result,
+  });
+});

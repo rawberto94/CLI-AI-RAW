@@ -1,4 +1,5 @@
 # Comprehensive UX/UI Audit Report
+
 ## ConTigo Contract Intelligence Platform
 
 **Date:** December 28, 2025  
@@ -14,6 +15,7 @@
 The ConTigo platform demonstrates a **professional, modern, and well-architected** UI/UX foundation with significant strengths in animation, loading states, and component consistency. The application showcases:
 
 **Key Strengths:**
+
 - ✅ Extensive use of Framer Motion for polished animations
 - ✅ Comprehensive loading states with skeleton screens
 - ✅ Strong component architecture with shadcn/ui
@@ -24,6 +26,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Empty states and error handling present
 
 **Critical Areas for Improvement:**
+
 - ⚠️ **Inconsistent dark mode implementation** (partial support)
 - ⚠️ **Missing focus management** in some modals/dialogs
 - ⚠️ **Color contrast issues** in some gradient backgrounds
@@ -40,6 +43,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B+**
 
 **What's Working Well:**
+
 - ✅ Excellent tabbed interface (Intelligence vs Analytics)
 - ✅ Smooth Framer Motion animations on load
 - ✅ Professional gradient hero section with icons
@@ -47,16 +51,20 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Clear visual hierarchy
 
 **Issues Identified:**
+
 - ⚠️ Dark mode: Missing dark mode styles for gradient backgrounds
 - ⚠️ Accessibility: Tab labels need better focus indicators
 - ⚠️ Performance: Lazy loading is implemented (good!) but could show loading state
 - ⚠️ Mobile: Text truncation on small screens for "Intelligence" tab
 
 **Recommendations:**
+
 1. **Add dark mode gradients** to hero section:
+
    ```tsx
    className="from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-600 dark:via-purple-600 dark:to-pink-600"
    ```
+
 2. **Enhance tab focus states** with visible ring indicator
 3. **Add loading state** for lazy-loaded components
 4. **Adjust responsive breakpoints** for tab labels
@@ -70,6 +78,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A-**
 
 **What's Working Well:**
+
 - ✅ **Outstanding feature set**: Live updates, filters, bulk actions
 - ✅ Skeleton loading states implemented beautifully
 - ✅ Animated counters and live indicators
@@ -80,6 +89,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Comprehensive empty states
 
 **Issues Identified:**
+
 - ⚠️ **File is too large** (3088 lines) - should be split into smaller modules
 - ⚠️ Dark mode: Limited dark mode support in gradient sections
 - ⚠️ Accessibility: Bulk selection checkbox needs better labeling
@@ -87,15 +97,18 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Color contrast: Light blue badges on white background may not meet WCAG AA
 
 **Recommendations:**
+
 1. **Split file** into multiple feature modules:
    - `ContractsListView.tsx`
    - `ContractsGridView.tsx`
    - `ContractFilters.tsx`
    - `BulkActions.tsx`
 2. **Virtualize long lists** for better performance:
+
    ```tsx
    import { useVirtualizer } from '@tanstack/react-virtual'
    ```
+
 3. **Improve color contrast** for status badges:
    - Check all badge colors with WCAG contrast checker
    - Use darker shades for light backgrounds
@@ -114,6 +127,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A**
 
 **What's Working Well:**
+
 - ✅ **Excellent OCR engine selector** with clear visual differentiation
 - ✅ Beautiful drag-and-drop interface
 - ✅ Real-time progress tracking
@@ -123,13 +137,16 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Estimated time display
 
 **Issues Identified:**
+
 - ⚠️ Accessibility: Dropzone needs better keyboard navigation
 - ⚠️ Missing: File preview before upload
 - ⚠️ Missing: Batch progress summary
 - ⚠️ Dark mode: Engine selector cards lack dark mode styles
 
 **Recommendations:**
+
 1. **Add keyboard support** to dropzone:
+
    ```tsx
    <div 
      role="button"
@@ -137,6 +154,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      onKeyDown={(e) => e.key === 'Enter' && openFileDialog()}
    />
    ```
+
 2. **Add file preview** component:
    - Show thumbnails for PDFs
    - Display first page preview
@@ -156,6 +174,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B+**
 
 **What's Working Well:**
+
 - ✅ Excellent chat interface with message history
 - ✅ Quick action suggestions
 - ✅ Typing indicators and streaming responses
@@ -165,6 +184,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Feedback buttons (thumbs up/down)
 
 **Issues Identified:**
+
 - ⚠️ Accessibility: Chat messages need proper ARIA roles
 - ⚠️ Missing: Message threading for follow-up questions
 - ⚠️ Missing: Export conversation feature
@@ -172,11 +192,14 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Dark mode: Message bubbles need dark variants
 
 **Recommendations:**
+
 1. **Add ARIA roles** to chat messages:
+
    ```tsx
    <div role="log" aria-live="polite" aria-label="Chat messages">
      <div role="article" aria-label={`${msg.role} message`}>
    ```
+
 2. **Implement virtual scrolling** for long conversations
 3. **Add conversation export**:
    - PDF export with formatting
@@ -199,6 +222,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Status:** Redirects to `/workflows?tab=queue`
 
 **Recommendations:**
+
 - ✅ Good: Unified workflow approach
 - Document this redirect in user documentation
 - Ensure all navigation links point to correct workflow URL
@@ -210,6 +234,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B**
 
 **What's Working Well:**
+
 - ✅ Professional header with gradient background
 - ✅ Live monitoring indicator
 - ✅ Compliance badge (FADP)
@@ -217,18 +242,21 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Responsive layout
 
 **Issues Identified:**
+
 - ⚠️ Limited page content (delegates to AuditLogViewer component)
 - ⚠️ Dark mode: Gradient header lacks dark variant
 - ⚠️ Missing: Quick stats in header could be more interactive
 - ⚠️ Accessibility: Live monitoring status needs aria-live region
 
 **Recommendations:**
+
 1. **Enhance header statistics**:
    - Make live indicator clickable to show connection status
    - Add filter quick actions in header
    - Display "last audit event" timestamp
 2. **Add dark mode** to gradient background
 3. **Add ARIA live region** for monitoring status:
+
    ```tsx
    <div aria-live="polite" aria-atomic="true">
      Live Monitoring Active
@@ -244,6 +272,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B+**
 
 **What's Working Well:**
+
 - ✅ Excellent tab-based navigation
 - ✅ Accordion for grouped settings
 - ✅ Toggle components for binary options
@@ -252,6 +281,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Animated header with gradient icon
 
 **Issues Identified:**
+
 - ⚠️ Missing: Form validation feedback
 - ⚠️ Missing: Unsaved changes warning
 - ⚠️ Missing: Search within settings
@@ -259,7 +289,9 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Dark mode: Gradient backgrounds need dark variants
 
 **Recommendations:**
+
 1. **Add unsaved changes detection**:
+
    ```tsx
    useEffect(() => {
      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -271,6 +303,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      window.addEventListener('beforeunload', handleBeforeUnload);
    }, [hasUnsavedChanges]);
    ```
+
 2. **Settings search**:
    - Fuzzy search across all settings
    - Highlight matching settings
@@ -292,6 +325,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A-**
 
 **What's Working Well:**
+
 - ✅ **Stunning visual design** with floating particles and gradient orbs
 - ✅ Professional testimonial carousel
 - ✅ Password visibility toggle
@@ -300,17 +334,21 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Error handling
 
 **Issues Identified:**
+
 - ⚠️ Performance: Heavy animations may impact low-end devices
 - ⚠️ Accessibility: Decorative animations need reduced motion support
 - ⚠️ Missing: Social login visual feedback
 - ⚠️ Dark mode: Could benefit from dark variant
 
 **Recommendations:**
+
 1. **Respect reduced motion**:
+
    ```tsx
    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
    {!prefersReducedMotion.matches && <FloatingParticles />}
    ```
+
 2. **Optimize animations** for performance:
    - Use CSS transforms instead of position changes
    - Reduce particle count on mobile
@@ -329,18 +367,21 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B**
 
 **What's Working Well:**
+
 - ✅ Dashboard with good metric cards
 - ✅ Responsive grid layouts
 - ✅ Loading states present
 - ✅ Dark mode styles in some areas
 
 **Issues Identified:**
+
 - ⚠️ Inconsistent: Dark mode partially implemented
 - ⚠️ Missing: Better empty states for new users
 - ⚠️ Performance: Large rate card tables may lag
 - ⚠️ UX: Bulk edit features could be more prominent
 
 **Recommendations:**
+
 1. **Complete dark mode** implementation
 2. **Add virtual scrolling** to rate card tables
 3. **Improve bulk editing**:
@@ -365,6 +406,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A-**
 
 **Strengths:**
+
 - ✅ Excellent organization with grouped navigation
 - ✅ Tooltip support for collapsed state
 - ✅ Active state indication
@@ -372,16 +414,20 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Tour ID integration for onboarding
 
 **Issues:**
+
 - ⚠️ Dark mode: Background gradients need dark variants
 - ⚠️ Missing: Sidebar width preference persistence
 - ⚠️ Missing: Keyboard navigation between groups
 - ⚠️ Accessibility: Group labels need proper heading roles
 
 **Recommendations:**
+
 1. **Add dark mode** to navigation gradients:
+
    ```tsx
    gradient: 'from-blue-500 to-indigo-500 dark:from-blue-600 dark:to-indigo-700'
    ```
+
 2. **Persist sidebar state** in localStorage
 3. **Keyboard navigation**:
    - Arrow keys to navigate items
@@ -398,6 +444,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A**
 
 **Strengths:**
+
 - ✅ Clean design with good spacing
 - ✅ Intelligent search component
 - ✅ Notifications center
@@ -406,10 +453,12 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Tooltip support
 
 **Issues:**
+
 - ⚠️ Missing: Breadcrumb integration option
 - ⚠️ Dark mode: Some elements need contrast improvement
 
 **Recommendations:**
+
 1. **Add optional breadcrumb slot** in topbar
 2. **Improve search visibility** on mobile (currently hidden)
 3. **Add notification preview** in dropdown (show 3 most recent)
@@ -425,6 +474,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B+**
 
 **Strengths:**
+
 - ✅ Good base styles with transitions
 - ✅ Focus-visible ring implementation
 - ✅ Disabled state styling
@@ -432,13 +482,16 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Responsive text sizing
 
 **Issues:**
+
 - ⚠️ Missing: Helper text / description slot
 - ⚠️ Missing: Prefix/suffix icon support
 - ⚠️ Missing: Character count for limited inputs
 - ⚠️ Accessibility: No label association helper
 
 **Recommendations:**
+
 1. **Create FormField wrapper** component:
+
    ```tsx
    <FormField>
      <FormLabel>Email</FormLabel>
@@ -447,13 +500,16 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      <FormErrorText>Please enter a valid email</FormErrorText>
    </FormField>
    ```
+
 2. **Add input adornments**:
+
    ```tsx
    <Input 
      prefix={<SearchIcon />}
      suffix={<ClearIcon />}
    />
    ```
+
 3. **Character counter** for textarea/input with maxLength
 
 **Priority:** High | **Effort:** Medium
@@ -465,6 +521,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A**
 
 **Strengths:**
+
 - ✅ Excellent variant system
 - ✅ Loading state built-in
 - ✅ Active scale animation (0.98)
@@ -473,16 +530,21 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Icon sizing automatic
 
 **Issues:**
+
 - ⚠️ Missing: Icon-only button with tooltip pattern
 - ⚠️ Missing: Button group component
 - ⚠️ Could improve: Disabled state could be more obvious
 
 **Recommendations:**
+
 1. **Create IconButton variant**:
+
    ```tsx
    <IconButton icon={<SearchIcon />} label="Search" />
    ```
+
 2. **ButtonGroup component** for grouped actions:
+
    ```tsx
    <ButtonGroup>
      <Button>Left</Button>
@@ -490,6 +552,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      <Button>Right</Button>
    </ButtonGroup>
    ```
+
 3. **Enhance disabled state**:
    - Add cursor-not-allowed
    - Consider showing tooltip explaining why disabled
@@ -505,24 +568,30 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A-**
 
 **Strengths:**
+
 - ✅ Clean, minimal design
 - ✅ Responsive padding
 - ✅ Transition effects
 - ✅ Proper semantic structure
 
 **Issues:**
+
 - ⚠️ Missing: Interactive card variant (hoverable, clickable)
 - ⚠️ Missing: Card with header action slot
 - ⚠️ Missing: Card loading state
 
 **Recommendations:**
+
 1. **Add interactive variant**:
+
    ```tsx
    <Card variant="interactive" onClick={handleClick}>
      // Adds hover lift, cursor pointer, focus ring
    </Card>
    ```
+
 2. **CardHeader with actions**:
+
    ```tsx
    <CardHeader>
      <CardTitle>Title</CardTitle>
@@ -531,7 +600,9 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      </CardActions>
    </CardHeader>
    ```
+
 3. **Card skeleton**:
+
    ```tsx
    <Card isLoading />
    ```
@@ -545,12 +616,14 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B+**
 
 **Strengths:**
+
 - ✅ Semantic HTML structure
 - ✅ Overflow handling
 - ✅ Row hover states
 - ✅ Selected state support
 
 **Issues:**
+
 - ⚠️ Missing: Sorting indicator
 - ⚠️ Missing: Column resizing
 - ⚠️ Missing: Sticky headers for long tables
@@ -558,20 +631,27 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Accessibility: Missing scope attributes on headers
 
 **Recommendations:**
+
 1. **Add sorting support**:
+
    ```tsx
    <TableHead sortable sortDirection="asc" onSort={handleSort}>
      Name <SortIcon />
    </TableHead>
    ```
+
 2. **Sticky header**:
+
    ```tsx
    <TableHeader sticky top={0} />
    ```
+
 3. **Table skeleton**:
+
    ```tsx
    <Table isLoading rowCount={5} />
    ```
+
 4. **Add scope="col"** to all header cells
 
 **Priority:** High | **Effort:** Medium
@@ -585,6 +665,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: B**
 
 **Strengths:**
+
 - ✅ Radix UI base (excellent accessibility)
 - ✅ Overlay backdrop
 - ✅ Close button
@@ -592,6 +673,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Portal rendering
 
 **Issues:**
+
 - ⚠️ Missing: Focus trap implementation
 - ⚠️ Missing: Initial focus management
 - ⚠️ Missing: Size variants (sm, md, lg, xl, fullscreen)
@@ -599,19 +681,25 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Accessibility: No aria-describedby connection to content
 
 **Recommendations:**
+
 1. **Add size variants**:
+
    ```tsx
    <DialogContent size="lg"> // max-w-lg, max-w-2xl, etc.
    ```
+
 2. **Focus management**:
+
    ```tsx
    <Dialog 
      initialFocus={firstInputRef}
      onClose={() => returnFocusRef.current?.focus()}
    />
    ```
+
 3. **Add dark mode** styles
 4. **Connect description**:
+
    ```tsx
    aria-describedby={hasDescription ? 'dialog-description' : undefined}
    ```
@@ -627,25 +715,32 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A**
 
 **Strengths:**
+
 - ✅ Multiple spinner variants
 - ✅ Size variants
 - ✅ Color customization
 - ✅ Framer Motion animations
 
 **Issues:**
+
 - ⚠️ Missing: Progress bar component
 - ⚠️ Missing: Inline loading indicator
 - ⚠️ Could improve: Loading text customization
 
 **Recommendations:**
+
 1. **Add ProgressBar**:
+
    ```tsx
    <ProgressBar value={progress} max={100} label="Loading..." />
    ```
+
 2. **Add InlineLoader**:
+
    ```tsx
    <InlineLoader>Saving changes...</InlineLoader>
    ```
+
 3. **Add loading text prop** to spinners
 
 **Priority:** Low | **Effort:** Small
@@ -657,20 +752,25 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A-**
 
 **Strengths:**
+
 - ✅ Shimmer animation effect
 - ✅ Flexible sizing
 
 **Issues:**
+
 - ⚠️ Missing: Pre-built skeleton patterns (Card, List, Table)
 - ⚠️ Dark mode: Needs adjustment for dark backgrounds
 
 **Recommendations:**
+
 1. **Add skeleton patterns**:
+
    ```tsx
    <SkeletonCard />
    <SkeletonList rows={5} />
    <SkeletonTable rows={10} columns={5} />
    ```
+
 2. **Dark mode** shimmer animation
 3. **Accessibility**: Add aria-label="Loading content"
 
@@ -683,6 +783,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current State: A**
 
 **Strengths:**
+
 - ✅ Multiple pre-configured types
 - ✅ Action button support
 - ✅ Size variants
@@ -690,17 +791,21 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Icon + title + description pattern
 
 **Issues:**
+
 - ⚠️ Minor: Animation could respect reduced motion
 - ⚠️ Missing: Illustration slot for custom graphics
 
 **Recommendations:**
+
 1. **Add illustration support**:
+
    ```tsx
    <EmptyState 
      illustration={<CustomSVG />}
      title="No contracts yet"
    />
    ```
+
 2. **Check reduced motion** preference before animating
 
 **Priority:** Low | **Effort:** Small
@@ -714,6 +819,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current Status: Partial (C)**
 
 **Implementation:**
+
 - ✅ ThemeProvider in root layout
 - ✅ CSS variables defined in globals.css
 - ✅ Some components have dark: variants
@@ -722,7 +828,9 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ⚠️ Some cards and backgrounds don't adapt
 
 **Critical Issues:**
+
 1. Many pages use light-only gradients:
+
    ```tsx
    // Current (light only):
    "from-indigo-500 via-purple-500 to-pink-500"
@@ -738,6 +846,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Comprehensive Fix Required:**
 
 **Affected Files (High Priority):**
+
 - `app/dashboard/page.tsx` - Hero gradients
 - `app/auth/signin/page.tsx` - All backgrounds
 - `app/auth/signup/page.tsx` - All backgrounds
@@ -747,8 +856,10 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - `app/settings/SettingsClient.tsx` - Header gradient
 
 **Recommendations:**
+
 1. **Audit all gradient usage** and add dark variants
 2. **Create gradient utility**:
+
    ```tsx
    const gradients = {
      primary: 'from-blue-500 to-indigo-500 dark:from-blue-600 dark:to-indigo-700',
@@ -756,6 +867,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
      // ...
    };
    ```
+
 3. **Add dark mode toggle** to top bar (currently missing!)
 4. **Test all pages** in dark mode systematically
 
@@ -768,6 +880,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Current Status: Good (B+)**
 
 **Strengths:**
+
 - ✅ Skip to main content link in root layout
 - ✅ Some ARIA labels present
 - ✅ Focus-visible states implemented
@@ -777,6 +890,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 - ✅ Touch-friendly button sizes (44px min)
 
 **Issues:**
+
 1. **Missing ARIA attributes** in many components:
    - Chat messages need role="log"
    - Lists need proper role and aria-label
@@ -800,6 +914,7 @@ The ConTigo platform demonstrates a **professional, modern, and well-architected
 **Critical Fixes:**
 
 1. **Add Focus Trap to Dialogs:**
+
 ```tsx
 import { useFocusTrap } from '@/hooks/useFocusTrap';
 
@@ -810,6 +925,7 @@ function Dialog() {
 ```
 
 2. **Add Live Regions:**
+
 ```tsx
 <div aria-live="polite" aria-atomic="true" className="sr-only">
   {loadingMessage}
@@ -817,6 +933,7 @@ function Dialog() {
 ```
 
 3. **Check All Badge Contrast:**
+
 ```tsx
 // Run contrast checker on:
 - Primary badges (blue on white)
@@ -825,6 +942,7 @@ function Dialog() {
 ```
 
 4. **Add Skip Links:**
+
 ```tsx
 <a href="#main-filters" className="sr-only focus:not-sr-only">
   Skip to filters
@@ -840,6 +958,7 @@ function Dialog() {
 **Current Status: Good (B+)**
 
 **Strengths:**
+
 - ✅ Responsive breakpoints throughout (sm:, md:, lg:, xl:)
 - ✅ Mobile-specific components (MobileContractCard, MobileFiltersSheet)
 - ✅ Touch-friendly targets (44px minimum)
@@ -848,6 +967,7 @@ function Dialog() {
 - ✅ Hidden elements on mobile (hidden md:block)
 
 **Issues:**
+
 1. **Navigation**: Sidebar should collapse to hamburger on mobile
 2. **Tables**: Need horizontal scroll or card view on mobile
 3. **Topbar**: Search hidden on mobile (should show)
@@ -857,6 +977,7 @@ function Dialog() {
 **Recommendations:**
 
 1. **Add Mobile Navigation:**
+
 ```tsx
 <Sheet>
   <SheetTrigger asChild>
@@ -871,6 +992,7 @@ function Dialog() {
 ```
 
 2. **Table Responsive Patterns:**
+
 ```tsx
 // Show cards on mobile, table on desktop
 <div className="md:hidden">
@@ -882,6 +1004,7 @@ function Dialog() {
 ```
 
 3. **Search on Mobile:**
+
 ```tsx
 // Make search prominent on mobile
 <div className="flex-1 max-w-md">
@@ -898,6 +1021,7 @@ function Dialog() {
 **Current Status: Good (B+)**
 
 **Strengths:**
+
 - ✅ Lazy loading with React.lazy()
 - ✅ Framer Motion optimizations
 - ✅ Memoization (memo, useMemo, useCallback)
@@ -905,6 +1029,7 @@ function Dialog() {
 - ✅ Real-time updates with debouncing
 
 **Issues:**
+
 1. **Large files**: contracts/page.tsx is 3088 lines (too large!)
 2. **Virtual scrolling**: Not implemented for long lists
 3. **Image optimization**: No Next.js Image component usage
@@ -914,6 +1039,7 @@ function Dialog() {
 **Recommendations:**
 
 1. **Code Splitting:**
+
 ```tsx
 // Split large pages
 const ContractsView = lazy(() => import('@/components/contracts/ContractsView'));
@@ -921,6 +1047,7 @@ const ContractsFilters = lazy(() => import('@/components/contracts/ContractsFilt
 ```
 
 2. **Virtual Scrolling:**
+
 ```tsx
 import { useVirtualizer } from '@tanstack/react-virtual';
 
@@ -935,6 +1062,7 @@ function LargeList({ items }) {
 ```
 
 3. **Image Optimization:**
+
 ```tsx
 import Image from 'next/image';
 
@@ -948,6 +1076,7 @@ import Image from 'next/image';
 ```
 
 4. **Bundle Analysis:**
+
 ```bash
 npm run build -- --analyze
 # Or add @next/bundle-analyzer
@@ -962,6 +1091,7 @@ npm run build -- --analyze
 **Current Status: Good (B)**
 
 **Strengths:**
+
 - ✅ Inter font with optimal settings
 - ✅ Fluid typography with clamp()
 - ✅ Text-wrap balance for headings
@@ -969,6 +1099,7 @@ npm run build -- --analyze
 - ✅ Responsive font sizing
 
 **Issues:**
+
 1. **Inconsistent heading hierarchy**:
    - Some pages use h1, others use div with h1 classes
    - Heading levels sometimes skip (h1 → h3)
@@ -985,6 +1116,7 @@ npm run build -- --analyze
 **Recommendations:**
 
 1. **Standardize Heading Scale:**
+
 ```css
 /* Add to globals.css */
 h1, .h1 { @apply text-4xl font-bold tracking-tight; }
@@ -996,6 +1128,7 @@ h6, .h6 { @apply text-base font-medium; }
 ```
 
 2. **Fix Line Heights:**
+
 ```tsx
 // For long-form content:
 <p className="leading-relaxed">...</p>
@@ -1005,6 +1138,7 @@ h6, .h6 { @apply text-base font-medium; }
 ```
 
 3. **Add Typography Component:**
+
 ```tsx
 <Typography variant="h1" component="h1">
   Page Title
@@ -1020,6 +1154,7 @@ h6, .h6 { @apply text-base font-medium; }
 **Current Status: Excellent (A)**
 
 **Strengths:**
+
 - ✅ **Extensive Framer Motion usage** throughout
 - ✅ Page transitions with AnimatePresence
 - ✅ Button active states (scale-[0.98])
@@ -1030,6 +1165,7 @@ h6, .h6 { @apply text-base font-medium; }
 - ✅ Skeleton shimmer animations
 
 **Minor Issues:**
+
 1. **Reduced motion**: Need to verify all animations respect prefers-reduced-motion
 2. **Performance**: Some pages have many animated elements (e.g., auth page particles)
 3. **Duration consistency**: Some animations use different durations
@@ -1037,6 +1173,7 @@ h6, .h6 { @apply text-base font-medium; }
 **Recommendations:**
 
 1. **Animation Constants:**
+
 ```tsx
 // Create constants file
 export const ANIMATION_DURATION = {
@@ -1054,6 +1191,7 @@ export const EASING = {
 ```
 
 2. **Universal Reduced Motion Check:**
+
 ```tsx
 import { useReducedMotion } from 'framer-motion';
 
@@ -1077,6 +1215,7 @@ function AnimatedComponent() {
 ### P1: Critical Issues (Must Fix)
 
 #### 1.1 Complete Dark Mode Implementation
+
 - **Impact:** Major usability issue for dark mode users
 - **Effort:** Large (1-2 weeks)
 - **Files Affected:** 15+ pages and components
@@ -1088,6 +1227,7 @@ function AnimatedComponent() {
   5. Test all pages in dark mode
 
 #### 1.2 Fix Accessibility Gaps
+
 - **Impact:** Legal compliance, inclusivity
 - **Effort:** Large (2-3 weeks)
 - **Action Items:**
@@ -1098,6 +1238,7 @@ function AnimatedComponent() {
   5. Test with screen readers (NVDA, JAWS, VoiceOver)
 
 #### 1.3 Split Large Files
+
 - **Impact:** Developer experience, maintainability
 - **Effort:** Large (1 week)
 - **Files:**
@@ -1113,6 +1254,7 @@ function AnimatedComponent() {
 ### P2: High Priority (Should Fix Soon)
 
 #### 2.1 Implement Virtual Scrolling
+
 - **Impact:** Performance for large datasets
 - **Effort:** Medium (3-4 days)
 - **Components:**
@@ -1122,6 +1264,7 @@ function AnimatedComponent() {
 - **Package:** `@tanstack/react-virtual`
 
 #### 2.2 Add Form Field Wrapper Components
+
 - **Impact:** Consistency, accessibility
 - **Effort:** Medium (2-3 days)
 - **Action Items:**
@@ -1131,6 +1274,7 @@ function AnimatedComponent() {
   4. Add validation patterns
 
 #### 2.3 Improve Table Component
+
 - **Impact:** Data-heavy pages usability
 - **Effort:** Medium (3-4 days)
 - **Action Items:**
@@ -1141,6 +1285,7 @@ function AnimatedComponent() {
   5. Add keyboard navigation
 
 #### 2.4 Mobile Navigation Improvements
+
 - **Impact:** Mobile user experience
 - **Effort:** Medium (2-3 days)
 - **Action Items:**
@@ -1154,6 +1299,7 @@ function AnimatedComponent() {
 ### P3: Medium Priority (Nice to Have)
 
 #### 3.1 Enhanced Loading States
+
 - **Impact:** Perceived performance
 - **Effort:** Small-Medium (2-3 days)
 - **Action Items:**
@@ -1163,6 +1309,7 @@ function AnimatedComponent() {
   4. Ensure consistent loading messages
 
 #### 3.2 Improved Settings UX
+
 - **Impact:** User configuration experience
 - **Effort:** Medium (3-4 days)
 - **Action Items:**
@@ -1172,6 +1319,7 @@ function AnimatedComponent() {
   4. Improve toggle labels
 
 #### 3.3 Chat Interface Enhancements
+
 - **Impact:** AI assistant usability
 - **Effort:** Medium (4-5 days)
 - **Action Items:**
@@ -1181,6 +1329,7 @@ function AnimatedComponent() {
   4. Improve accessibility with ARIA roles
 
 #### 3.4 Upload Page Improvements
+
 - **Impact:** File upload experience
 - **Effort:** Medium (3-4 days)
 - **Action Items:**
@@ -1190,6 +1339,7 @@ function AnimatedComponent() {
   4. Improve keyboard support for dropzone
 
 #### 3.5 Typography Standardization
+
 - **Impact:** Visual consistency
 - **Effort:** Medium (2-3 days)
 - **Action Items:**
@@ -1203,6 +1353,7 @@ function AnimatedComponent() {
 ### P4: Low Priority (Future Enhancements)
 
 #### 4.1 Interactive Card Variants
+
 - **Impact:** Component polish
 - **Effort:** Small (1 day)
 - **Action Items:**
@@ -1211,6 +1362,7 @@ function AnimatedComponent() {
   3. Create card with loading state
 
 #### 4.2 Button Group Component
+
 - **Impact:** Component library completeness
 - **Effort:** Small (1 day)
 - **Action Items:**
@@ -1219,6 +1371,7 @@ function AnimatedComponent() {
   3. Add keyboard navigation
 
 #### 4.3 Animation Constants
+
 - **Impact:** Code consistency
 - **Effort:** Small (0.5 days)
 - **Action Items:**
@@ -1227,6 +1380,7 @@ function AnimatedComponent() {
   3. Add easing curves
 
 #### 4.4 Empty State Illustrations
+
 - **Impact:** Visual appeal
 - **Effort:** Small-Medium (2-3 days)
 - **Action Items:**
@@ -1241,6 +1395,7 @@ function AnimatedComponent() {
 ### 5.1 Color Scheme Improvements
 
 **Current Palette: Professional Blue Theme**
+
 - Primary: Blue (`221 83% 53%`)
 - Secondary: Gray (`210 40% 96%`)
 - Success: Green (`142 76% 36%`)
@@ -1250,6 +1405,7 @@ function AnimatedComponent() {
 **Recommendations:**
 
 1. **Add Semantic Color Variants:**
+
 ```css
 :root {
   /* Information */
@@ -1275,6 +1431,7 @@ function AnimatedComponent() {
 ```
 
 2. **Status Color System:**
+
 ```tsx
 // Create unified status colors
 export const STATUS_COLORS = {
@@ -1287,6 +1444,7 @@ export const STATUS_COLORS = {
 ```
 
 3. **Check Color Contrast:**
+
 - Run all badge colors through WCAG contrast checker
 - Ensure 4.5:1 ratio for normal text
 - Ensure 3:1 ratio for large text
@@ -1296,6 +1454,7 @@ export const STATUS_COLORS = {
 ### 5.2 Spacing and Layout Improvements
 
 **Current System:**
+
 - Good responsive padding (px-6 sm:px-8 lg:px-12)
 - Consistent gap usage (gap-4, gap-6)
 - Max-width containers (max-w-7xl, max-w-[1600px])
@@ -1303,6 +1462,7 @@ export const STATUS_COLORS = {
 **Recommendations:**
 
 1. **Standardize Container Widths:**
+
 ```tsx
 // Create layout constants
 export const CONTAINER_WIDTHS = {
@@ -1315,6 +1475,7 @@ export const CONTAINER_WIDTHS = {
 ```
 
 2. **Add Vertical Rhythm:**
+
 ```css
 /* Add to globals.css */
 .page-section {
@@ -1327,6 +1488,7 @@ export const CONTAINER_WIDTHS = {
 ```
 
 3. **Consistent Card Padding:**
+
 ```tsx
 // Standardize card padding
 <Card>
@@ -1340,6 +1502,7 @@ export const CONTAINER_WIDTHS = {
 ### 5.3 Form UX Improvements
 
 **Current State:**
+
 - Basic form inputs
 - Some validation present
 - Missing consistent error handling
@@ -1347,6 +1510,7 @@ export const CONTAINER_WIDTHS = {
 **Comprehensive Form System Needed:**
 
 1. **Form Field Component:**
+
 ```tsx
 // components/ui/form-field.tsx
 interface FormFieldProps {
@@ -1393,6 +1557,7 @@ export function FormField({
 ```
 
 2. **Validation Patterns:**
+
 ```tsx
 // lib/validation.ts
 export const VALIDATION_PATTERNS = {
@@ -1411,6 +1576,7 @@ export const VALIDATION_MESSAGES = {
 ```
 
 3. **Real-time Validation:**
+
 ```tsx
 function EmailInput() {
   const [value, setValue] = useState('');
@@ -1445,12 +1611,14 @@ function EmailInput() {
 ### 5.4 Data Visualization Enhancements
 
 **Current Charts:**
+
 - Some chart components present
 - Good use of colors
 
 **Recommendations:**
 
 1. **Add Chart Library:**
+
 ```bash
 npm install recharts
 # Or
@@ -1458,6 +1626,7 @@ npm install @tremor/react
 ```
 
 2. **Standardize Chart Colors:**
+
 ```tsx
 // Use theme chart colors
 export const CHART_COLORS = [
@@ -1470,6 +1639,7 @@ export const CHART_COLORS = [
 ```
 
 3. **Add Chart Accessibility:**
+
 ```tsx
 <div role="img" aria-label={chartDescription}>
   <Chart data={data} />
@@ -1485,6 +1655,7 @@ export const CHART_COLORS = [
 ### 5.5 Navigation Improvements
 
 **Current Navigation:**
+
 - ✅ Good sidebar organization
 - ✅ Topbar with search
 - ⚠️ Missing breadcrumbs on some pages
@@ -1493,6 +1664,7 @@ export const CHART_COLORS = [
 **Recommendations:**
 
 1. **Add Breadcrumbs Everywhere:**
+
 ```tsx
 // components/Breadcrumbs.tsx - Make it universal
 <Breadcrumbs 
@@ -1505,12 +1677,14 @@ export const CHART_COLORS = [
 ```
 
 2. **Persist Navigation State:**
+
 ```tsx
 // Store sidebar state
 const [isCollapsed, setIsCollapsed] = useLocalStorage('sidebar-collapsed', false);
 ```
 
 3. **Add Navigation Search:**
+
 ```tsx
 // Add to Command Palette
 const navigation = [
@@ -1527,6 +1701,7 @@ const navigation = [
 ### 6.1 Accessibility Testing
 
 **Tools to Use:**
+
 1. **axe DevTools** - Browser extension
 2. **WAVE** - Web accessibility evaluation tool
 3. **Lighthouse** - Built into Chrome DevTools
@@ -1536,6 +1711,7 @@ const navigation = [
    - VoiceOver (Mac)
 
 **Testing Checklist:**
+
 - [ ] All interactive elements keyboard accessible
 - [ ] Focus visible on all focusable elements
 - [ ] Skip links working
@@ -1552,12 +1728,14 @@ const navigation = [
 ### 6.2 Performance Testing
 
 **Tools:**
+
 1. **Lighthouse** - Performance score
 2. **Chrome DevTools** - Performance profiling
 3. **React DevTools** - Component render analysis
 4. **Bundle Analyzer** - Check bundle size
 
 **Metrics to Track:**
+
 - First Contentful Paint (FCP) < 1.8s
 - Largest Contentful Paint (LCP) < 2.5s
 - First Input Delay (FID) < 100ms
@@ -1565,6 +1743,7 @@ const navigation = [
 - Time to Interactive (TTI) < 3.5s
 
 **Testing Checklist:**
+
 - [ ] Run Lighthouse on all major pages
 - [ ] Test on 3G network (throttled)
 - [ ] Test on low-end devices
@@ -1578,11 +1757,13 @@ const navigation = [
 ### 6.3 Responsive Testing
 
 **Devices/Breakpoints:**
+
 - Mobile: 375px (iPhone SE), 390px (iPhone 12)
 - Tablet: 768px (iPad), 1024px (iPad Pro)
 - Desktop: 1280px, 1440px, 1920px
 
 **Testing Checklist:**
+
 - [ ] All pages tested on mobile
 - [ ] Tables adapt to small screens
 - [ ] Forms stack properly
@@ -1599,6 +1780,7 @@ const navigation = [
 These can be implemented quickly with high impact:
 
 ### 7.1 Add Theme Toggle (1 hour)
+
 ```tsx
 // components/ThemeToggle.tsx
 import { Moon, Sun } from 'lucide-react';
@@ -1625,6 +1807,7 @@ export function ThemeToggle() {
 ```
 
 ### 7.2 Add Global Error Boundary Message (30 min)
+
 ```tsx
 // Improve GlobalErrorBoundary with user-friendly message
 <div className="text-center">
@@ -1639,15 +1822,18 @@ export function ThemeToggle() {
 ```
 
 ### 7.3 Add Toast Notifications Everywhere (2 hours)
+
 - Ensure all form submissions show success/error toasts
 - Add undo capability to delete actions
 - Show progress for long operations
 
 ### 7.4 Fix Button Loading States (1 hour)
+
 - Replace `disabled={isLoading}` with `loading={isLoading}`
 - Use built-in Button loading prop everywhere
 
 ### 7.5 Add Tooltips to Icon Buttons (2 hours)
+
 - Audit all icon-only buttons
 - Add Tooltip wrapper with descriptive labels
 - Improves accessibility and UX
@@ -1659,11 +1845,13 @@ export function ThemeToggle() {
 ### 8.1 File Organization
 
 **Current Issues:**
+
 - Some files too large (contracts/page.tsx: 3088 lines)
 - Inconsistent folder structure
 - Mixed component styles
 
 **Recommended Structure:**
+
 ```
 app/
   contracts/
@@ -1687,6 +1875,7 @@ lib/
 ### 8.2 TypeScript Improvements
 
 **Add Stricter Types:**
+
 ```tsx
 // Instead of:
 const [data, setData] = useState<any>(null);
@@ -1706,6 +1895,7 @@ const [data, setData] = useState<ContractData | null>(null);
 **Recommended Patterns:**
 
 1. **Extract Complex Logic to Hooks:**
+
 ```tsx
 // Instead of inline logic in component:
 function usePagination(items: any[], pageSize: number) {
@@ -1715,6 +1905,7 @@ function usePagination(items: any[], pageSize: number) {
 ```
 
 2. **Use Composition:**
+
 ```tsx
 // Instead of props explosion:
 <Card variant="elevated" border="none" shadow="lg" padding="xl">
@@ -1727,6 +1918,7 @@ function usePagination(items: any[], pageSize: number) {
 ```
 
 3. **Separate Container/Presentational:**
+
 ```tsx
 // Container (logic)
 function ContractsContainer() {
@@ -1747,11 +1939,13 @@ function ContractsView({ data, loading }) {
 ### 9.1 Component Documentation
 
 **Create Storybook:**
+
 ```bash
 npx storybook init
 ```
 
 **Document Each Component:**
+
 - Props interface
 - Usage examples
 - Accessibility notes
@@ -1760,6 +1954,7 @@ npx storybook init
 ### 9.2 UX Guidelines
 
 **Create Guidelines Doc:**
+
 - When to use which component
 - Color usage guidelines
 - Spacing standards
@@ -1769,6 +1964,7 @@ npx storybook init
 ### 9.3 Development Guidelines
 
 **Add to README:**
+
 - Code style guide
 - Component creation checklist
 - Testing requirements
@@ -1793,28 +1989,33 @@ npx storybook init
 ### Recommended Approach:
 
 **Phase 1 (Weeks 1-2): Critical Fixes**
+
 - Start dark mode implementation
 - Begin accessibility audit
 - Split large files
 
 **Phase 2 (Weeks 3-4): Critical Completion**
+
 - Complete dark mode
 - Fix critical accessibility issues
 - Test with screen readers
 
 **Phase 3 (Weeks 5-7): High Priority**
+
 - Implement virtual scrolling
 - Add form field wrappers
 - Improve table component
 - Mobile navigation
 
 **Phase 4 (Weeks 8-10): Medium Priority**
+
 - Enhanced loading states
 - Settings improvements
 - Chat enhancements
 - Typography standardization
 
 **Phase 5 (Weeks 11-12): Low Priority**
+
 - Component polish
 - Animation refinements
 - Documentation

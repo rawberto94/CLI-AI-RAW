@@ -299,7 +299,7 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5 text-blue-600" />
+              <Upload className="h-5 w-5 text-violet-600" />
               Import Custom Taxonomy
             </CardTitle>
             <CardDescription className="mt-1.5">
@@ -320,22 +320,22 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
         {/* Help Section */}
         <AnimatePresence>
           {showHelp && (
-            <motion.div
+            <motion.div key="help"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               className="overflow-hidden"
             >
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-4">
-                <h4 className="font-medium text-blue-900">Supported Formats</h4>
+              <div className="p-4 bg-violet-50 rounded-lg border border-violet-200 space-y-4">
+                <h4 className="font-medium text-violet-900">Supported Formats</h4>
                 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
+                    <div className="flex items-center gap-2 text-sm font-medium text-violet-800">
                       <FileSpreadsheet className="h-4 w-4" />
                       CSV Format
                     </div>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-violet-700">
                       Columns: name, description, parent, keywords (semicolon-separated), color, icon
                     </p>
                     <Button
@@ -350,11 +350,11 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
                   </div>
                   
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm font-medium text-blue-800">
+                    <div className="flex items-center gap-2 text-sm font-medium text-violet-800">
                       <FileJson className="h-4 w-4" />
                       JSON Format
                     </div>
-                    <p className="text-xs text-blue-700">
+                    <p className="text-xs text-violet-700">
                       Flat array or hierarchical with &ldquo;children&rdquo; property
                     </p>
                     <Button
@@ -407,7 +407,7 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
           className={cn(
             "relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all",
             isDragging 
-              ? "border-blue-500 bg-blue-50" 
+              ? "border-violet-500 bg-violet-50" 
               : "border-slate-200 hover:border-slate-300 hover:bg-slate-50/50",
             isUploading && "pointer-events-none opacity-50"
           )}
@@ -422,17 +422,17 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
           
           {isUploading ? (
             <div className="flex flex-col items-center gap-3">
-              <Loader2 className="h-10 w-10 text-blue-500 animate-spin" />
+              <Loader2 className="h-10 w-10 text-violet-500 animate-spin" />
               <p className="text-sm text-slate-600">Importing categories...</p>
             </div>
           ) : (
             <>
               <div className="flex justify-center gap-4 mb-4">
-                <div className="p-3 rounded-xl bg-blue-100">
-                  <FileSpreadsheet className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-xl bg-violet-100">
+                  <FileSpreadsheet className="h-6 w-6 text-violet-600" />
                 </div>
-                <div className="p-3 rounded-xl bg-purple-100">
-                  <FileJson className="h-6 w-6 text-purple-600" />
+                <div className="p-3 rounded-xl bg-violet-100">
+                  <FileJson className="h-6 w-6 text-violet-600" />
                 </div>
               </div>
               <p className="text-sm font-medium text-slate-700">
@@ -500,20 +500,20 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
         {/* Results */}
         <AnimatePresence>
           {result && (
-            <motion.div
+            <motion.div key="result"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className={cn(
                 "p-4 rounded-lg border",
                 result.success 
-                  ? "bg-emerald-50 border-emerald-200" 
+                  ? "bg-violet-50 border-violet-200" 
                   : "bg-amber-50 border-amber-200"
               )}
             >
               <div className="flex items-start gap-3">
                 {result.success ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
+                  <CheckCircle2 className="h-5 w-5 text-violet-600 shrink-0" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
                 )}
@@ -521,19 +521,19 @@ Consulting,Management and strategy consulting,Professional Services,consulting;s
                 <div className="flex-1 space-y-2">
                   <p className={cn(
                     "font-medium",
-                    result.success ? "text-emerald-800" : "text-amber-800"
+                    result.success ? "text-violet-800" : "text-amber-800"
                   )}>
                     {result.success ? 'Import Successful' : 'Import Completed with Issues'}
                   </p>
                   
                   <div className="flex flex-wrap gap-2">
                     {result.categoriesCreated > 0 && (
-                      <Badge className="bg-emerald-100 text-emerald-700">
+                      <Badge className="bg-violet-100 text-violet-700">
                         {result.categoriesCreated} created
                       </Badge>
                     )}
                     {result.categoriesUpdated > 0 && (
-                      <Badge className="bg-blue-100 text-blue-700">
+                      <Badge className="bg-violet-100 text-violet-700">
                         {result.categoriesUpdated} updated
                       </Badge>
                     )}

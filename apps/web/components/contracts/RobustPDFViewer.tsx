@@ -518,13 +518,13 @@ export function RobustPDFViewer({
                       className={cn(
                         'w-full p-1 rounded transition-all',
                         'hover:bg-slate-600',
-                        'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                        currentPage === thumb.pageNum && 'ring-2 ring-blue-500 bg-slate-700'
+                        'focus:outline-none focus:ring-2 focus:ring-violet-500',
+                        currentPage === thumb.pageNum && 'ring-2 ring-violet-500 bg-slate-700'
                       )}
                     >
                       <div className="relative bg-white rounded shadow-sm overflow-hidden">
                         {thumb.dataUrl ? (
-                          /* eslint-disable-next-line @next/next/no-img-element */
+                          
                           <img
                             src={thumb.dataUrl}
                             alt={`Page ${thumb.pageNum}`}
@@ -798,13 +798,13 @@ export function RobustPDFViewer({
                     className={cn(
                       'w-full p-1 rounded transition-all',
                       'hover:bg-slate-600',
-                      'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                      currentPage === thumb.pageNum && 'ring-2 ring-blue-500 bg-slate-700'
+                      'focus:outline-none focus:ring-2 focus:ring-violet-500',
+                      currentPage === thumb.pageNum && 'ring-2 ring-violet-500 bg-slate-700'
                     )}
                   >
                     <div className="relative bg-white rounded shadow-sm overflow-hidden">
                       {thumb.dataUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
+                        
                         <img
                           src={thumb.dataUrl}
                           alt={`Page ${thumb.pageNum}`}
@@ -831,9 +831,9 @@ export function RobustPDFViewer({
             {/* Resize Handle */}
             <div
               className={cn(
-                'w-1 cursor-col-resize bg-slate-700 hover:bg-blue-500 transition-colors flex-shrink-0',
+                'w-1 cursor-col-resize bg-slate-700 hover:bg-violet-500 transition-colors flex-shrink-0',
                 'flex items-center justify-center',
-                isResizing && 'bg-blue-500'
+                isResizing && 'bg-violet-500'
               )}
               onMouseDown={handleMouseDown}
             >
@@ -847,7 +847,7 @@ export function RobustPDFViewer({
           {/* Loading state */}
           {mode === 'loading' && (
             <div className="flex flex-col items-center justify-center h-full">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-400 mb-3" />
+              <Loader2 className="h-8 w-8 animate-spin text-violet-400 mb-3" />
               <p className="text-sm text-slate-300">Loading document...</p>
             </div>
           )}

@@ -1,22 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 // GET /api/clauses - List all clauses from clause library
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
 
-    const { searchParams } = new URL(request.url);
-    const category = searchParams.get('category');
-    const riskLevel = searchParams.get('riskLevel');
-    const favorite = searchParams.get('favorite');
-    const search = searchParams.get('search');
-    const limit = parseInt(searchParams.get('limit') || '50');
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get('category');
+  const riskLevel = searchParams.get('riskLevel');
+  const _favorite = searchParams.get('favorite');
+  const search = searchParams.get('search');
+  const limit = parseInt(searchParams.get('limit') || '50');
 
     // Build where clause
     const where: Record<string, unknown> = { tenantId };
@@ -60,36 +56,22 @@ export async function GET(request: NextRequest) {
       updatedAt: c.updatedAt.toISOString(),
     }));
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       clauses: transformedClauses, 
       total: clauses.length,
       source: 'database' 
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch clauses' },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // POST /api/clauses - Create new clause
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
-    const body = await request.json();
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+  const body = await request.json();
     const { title, content, category, tags, riskLevel, alternativeText, isStandard, isMandatory, isNegotiable } = body;
 
     if (!title || !content || !category) {
-      return NextResponse.json(
-        { error: 'Title, content, and category are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Title, content, and category are required', 400);
     }
 
     // Generate unique name from title
@@ -140,17 +122,11 @@ export async function POST(request: NextRequest) {
       updatedAt: clause.updatedAt.toISOString(),
     };
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       clause: transformedClause, 
       source: 'database' 
     }, { status: 201 });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create clause' },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // Helper to extract variables from content
 function extractVariables(content: string): string[] {

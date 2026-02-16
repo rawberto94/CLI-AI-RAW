@@ -72,9 +72,9 @@ const formatRelativeTime = (dateString: string): string => {
 }
 
 const getVersionColor = (version: ContractVersion, index: number, total: number): string => {
-  if (version.isActive) return 'bg-emerald-500 border-emerald-600'
+  if (version.isActive) return 'bg-violet-500 border-violet-600'
   const age = (total - index - 1) / Math.max(total - 1, 1)
-  if (age < 0.3) return 'bg-blue-400 border-blue-500'
+  if (age < 0.3) return 'bg-violet-400 border-violet-500'
   if (age < 0.6) return 'bg-slate-400 border-slate-500'
   return 'bg-slate-300 border-slate-400'
 }
@@ -121,7 +121,7 @@ function TimelineNode({
                 "rounded-full border-2 flex items-center justify-center transition-all",
                 compact ? "w-8 h-8" : "w-12 h-12",
                 colorClass,
-                isSelected && "ring-2 ring-offset-2 ring-indigo-500"
+                isSelected && "ring-2 ring-offset-2 ring-violet-500"
               )}
             >
               <span className={cn(
@@ -136,7 +136,7 @@ function TimelineNode({
             {version.isActive && (
               <Badge 
                 className={cn(
-                  "absolute bg-emerald-500 text-white border-0",
+                  "absolute bg-violet-500 text-white border-0",
                   compact ? "-top-1 -right-1 text-[8px] px-1" : "-top-2 -right-2 text-[10px]"
                 )}
               >
@@ -163,7 +163,7 @@ function TimelineNode({
                   onCompare()
                 }}
                 className={cn(
-                  "bg-indigo-500 rounded-full p-0.5 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity",
+                  "bg-violet-500 rounded-full p-0.5 text-white shadow-lg opacity-0 group-hover:opacity-100 transition-opacity",
                   compact ? "hidden" : ""
                 )}
               >
@@ -219,7 +219,7 @@ function VersionDetailPanel({
               Version {version.versionNumber}
             </h4>
             {version.isActive && (
-              <Badge className="bg-emerald-100 text-emerald-700 border-0">
+              <Badge className="bg-violet-100 text-violet-700 border-0">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Current
               </Badge>
@@ -388,9 +388,9 @@ export function VersionTimeline({
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: 'auto' }}
           exit={{ opacity: 0, height: 0 }}
-          className="bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-2 flex items-center justify-between"
+          className="bg-violet-50 border border-indigo-200 rounded-lg px-4 py-2 flex items-center justify-between"
         >
-          <div className="flex items-center gap-2 text-sm text-indigo-700">
+          <div className="flex items-center gap-2 text-sm text-violet-700">
             <GitCompare className="h-4 w-4" />
             <span>
               {compareVersions.length === 0 
@@ -408,7 +408,7 @@ export function VersionTimeline({
               setCompareMode(false)
               setCompareVersions([])
             }}
-            className="text-indigo-600 hover:text-indigo-800"
+            className="text-violet-600 hover:text-indigo-800"
           >
             Cancel
           </Button>
@@ -457,7 +457,7 @@ export function VersionTimeline({
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors">
+                    <div className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-400 hover:border-indigo-400 hover:text-violet-500 transition-colors">
                       <Plus className="h-5 w-5" />
                     </div>
                     <span className="mt-2 text-[10px] text-slate-400 whitespace-nowrap">
@@ -475,7 +475,7 @@ export function VersionTimeline({
       {/* Selected version detail panel */}
       <AnimatePresence>
         {selectedVersion && !compareMode && (
-          <VersionDetailPanel
+          <VersionDetailPanel key="selected-version"
             version={selectedVersion}
             onCompare={() => handleCompareClick(selectedVersion)}
             onRevert={() => handleRevert(selectedVersion)}

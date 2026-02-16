@@ -346,13 +346,13 @@ const errorConfig = {
     icon: <WifiOff />,
     title: 'Connection lost',
     description: "You appear to be offline. Check your internet connection and try again.",
-    color: 'bg-blue-100 dark:bg-blue-900/30 text-blue-500',
+    color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-500',
   },
   permission: {
     icon: <Lock />,
     title: 'Access denied',
     description: "You don't have permission to view this content. Contact your administrator if you think this is a mistake.",
-    color: 'bg-purple-100 dark:bg-purple-900/30 text-purple-500',
+    color: 'bg-violet-100 dark:bg-violet-900/30 text-violet-500',
   },
   server: {
     icon: <AlertCircle />,
@@ -510,7 +510,7 @@ export function EnhancedSuccessState({
         className={cn(
           'flex items-center justify-center rounded-full mb-6',
           sizeConfig.iconWrapper,
-          'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-500'
+          'bg-violet-100 dark:bg-violet-900/30 text-violet-500'
         )}
       >
         <motion.div
@@ -555,7 +555,7 @@ export function EnhancedSuccessState({
               whileTap={{ scale: 0.98 }}
               onClick={action.onClick}
               className={cn(
-                'inline-flex items-center gap-2 font-medium rounded-xl bg-emerald-500 text-white hover:bg-emerald-600 transition-colors',
+                'inline-flex items-center gap-2 font-medium rounded-xl bg-violet-500 text-white hover:bg-violet-600 transition-colors',
                 sizeConfig.button
               )}
             >
@@ -602,20 +602,20 @@ export function ProFeatureTeaser({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-2xl border border-purple-200 dark:border-purple-800 bg-gradient-to-br from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-8"
+      className="relative overflow-hidden rounded-2xl border border-violet-200 dark:border-violet-800 bg-gradient-to-br from-violet-50 to-pink-50 dark:from-violet-900/20 dark:to-pink-900/20 p-8"
     >
       {/* Decorative gradient orbs */}
-      <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-400/20 rounded-full blur-3xl" />
+      <div className="absolute -top-20 -right-20 w-40 h-40 bg-violet-400/20 rounded-full blur-3xl" />
       <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-pink-400/20 rounded-full blur-3xl" />
 
       <div className="relative z-10 text-center">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 text-white mb-6 shadow-lg shadow-purple-500/30">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-pink-500 text-white mb-6 shadow-lg shadow-violet-500/30">
           <span className="w-8 h-8">{icon}</span>
         </div>
 
         <div className="inline-flex items-center gap-2 mb-4">
           <h3 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h3>
-          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full">
+          <span className="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-gradient-to-r from-violet-500 to-pink-500 text-white rounded-full">
             Pro
           </span>
         </div>
@@ -629,7 +629,7 @@ export function ProFeatureTeaser({
                 key={index}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/60 dark:bg-slate-800/60 text-sm text-slate-700 dark:text-slate-300"
               >
-                <CheckCircle2 className="w-3.5 h-3.5 text-purple-500" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-violet-500" />
                 {feature}
               </li>
             ))}
@@ -642,7 +642,7 @@ export function ProFeatureTeaser({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={onUpgrade}
-              className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 text-white hover:from-purple-600 hover:to-pink-600 transition-all shadow-lg shadow-purple-500/30"
+              className="inline-flex items-center gap-2 px-6 py-3 font-semibold rounded-xl bg-gradient-to-r from-violet-500 to-pink-500 text-white hover:from-violet-600 hover:to-pink-600 transition-all shadow-lg shadow-violet-500/30"
             >
               <Zap className="w-4 h-4" />
               Upgrade to Pro
@@ -651,7 +651,7 @@ export function ProFeatureTeaser({
           {onLearnMore && (
             <button
               onClick={onLearnMore}
-              className="text-sm font-medium text-purple-600 dark:text-purple-400 hover:underline"
+              className="text-sm font-medium text-violet-600 dark:text-violet-400 hover:underline"
             >
               Learn more
             </button>
@@ -682,21 +682,21 @@ interface AlertBannerProps {
 const alertConfig = {
   info: {
     icon: Info,
-    bg: 'bg-blue-50 dark:bg-blue-900/20',
-    border: 'border-blue-200 dark:border-blue-800',
-    iconBg: 'bg-blue-100 dark:bg-blue-800',
-    iconColor: 'text-blue-600 dark:text-blue-400',
-    titleColor: 'text-blue-900 dark:text-blue-100',
-    textColor: 'text-blue-700 dark:text-blue-300',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
+    border: 'border-violet-200 dark:border-violet-800',
+    iconBg: 'bg-violet-100 dark:bg-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    titleColor: 'text-violet-900 dark:text-violet-100',
+    textColor: 'text-violet-700 dark:text-violet-300',
   },
   success: {
     icon: CheckCircle2,
-    bg: 'bg-emerald-50 dark:bg-emerald-900/20',
-    border: 'border-emerald-200 dark:border-emerald-800',
-    iconBg: 'bg-emerald-100 dark:bg-emerald-800',
-    iconColor: 'text-emerald-600 dark:text-emerald-400',
-    titleColor: 'text-emerald-900 dark:text-emerald-100',
-    textColor: 'text-emerald-700 dark:text-emerald-300',
+    bg: 'bg-violet-50 dark:bg-violet-900/20',
+    border: 'border-violet-200 dark:border-violet-800',
+    iconBg: 'bg-violet-100 dark:bg-violet-800',
+    iconColor: 'text-violet-600 dark:text-violet-400',
+    titleColor: 'text-violet-900 dark:text-violet-100',
+    textColor: 'text-violet-700 dark:text-violet-300',
   },
   warning: {
     icon: AlertTriangle,

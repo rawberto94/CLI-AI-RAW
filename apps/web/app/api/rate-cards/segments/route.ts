@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { segmentManagementService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const segmentService = new segmentManagementService(prisma);
 
@@ -9,22 +9,17 @@ const segmentService = new segmentManagementService(prisma);
  * GET /api/rate-cards/segments
  * List segments for the current user
  */
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
     
     const includeShared = searchParams.get('includeShared') === 'true';
     const skip = searchParams.get('skip') ? parseInt(searchParams.get('skip')!) : undefined;
@@ -36,35 +31,24 @@ export async function GET(request: NextRequest) {
       take,
     });
 
-    return NextResponse.json(result);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to list segments', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, result);
+  });
 
 /**
  * POST /api/rate-cards/segments
  * Create a new segment
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
 
     const segment = await segmentService.createSegment(tenantId, userId, {
       name: body.name,
@@ -73,11 +57,5 @@ export async function POST(request: NextRequest) {
       shared: body.shared,
     });
 
-    return NextResponse.json(segment, { status: 201 });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to create segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, segment, { status: 201 });
+  });

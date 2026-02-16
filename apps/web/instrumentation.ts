@@ -13,6 +13,10 @@ const logInfo = (message: string) => console.warn(`[INFO] ${message}`);
 export async function register() {
   // Only run validation on Node.js runtime (not Edge)
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // Initialize OpenTelemetry (skips in dev unless OTEL_ENABLED=true)
+    const { initTelemetry } = await import('./lib/telemetry/opentelemetry');
+    const otelSdk = await initTelemetry();
+
     let isShuttingDown = false;
 
     /**
@@ -37,9 +41,15 @@ export async function register() {
       }, 30000); // 30 second timeout
       
       try {
-        // Close Prisma connections using direct @prisma/client to avoid bundling issues
-        const { PrismaClient } = await import('@prisma/client');
-        const prisma = new PrismaClient();
+        // Shutdown OpenTelemetry SDK first (flush pending spans/metrics)
+        if (otelSdk) {
+          logInfo('[Shutdown] Shutting down OpenTelemetry...');
+          await otelSdk.shutdown();
+          logInfo('[Shutdown] OpenTelemetry shut down');
+        }
+
+        // Close the app's actual Prisma singleton (imported from @repo/db via lib/prisma)
+        const { prisma } = await import('./lib/prisma');
         logInfo('[Shutdown] Disconnecting database...');
         await prisma.$disconnect();
         logInfo('[Shutdown] Database disconnected');

@@ -1,9 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: { id: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { enabled } = body;
@@ -11,33 +16,29 @@ export async function PATCH(
     // In production, update database record
     // For now, just return success
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: `Schedule ${enabled ? "enabled" : "disabled"}`,
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to update schedule" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params: _params }: { params: { id: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     // In production, delete from database and cancel cron job
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: "Schedule deleted",
     });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to delete schedule" },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

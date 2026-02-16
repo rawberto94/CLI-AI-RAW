@@ -30,8 +30,8 @@ export function TopOpportunitiesTable({ opportunities }: TopOpportunitiesTablePr
   };
 
   const getImpactColor = (impact: string) => {
-    if (impact === 'high') return 'bg-purple-100 text-purple-800';
-    if (impact === 'medium') return 'bg-blue-100 text-blue-800';
+    if (impact === 'high') return 'bg-violet-100 text-violet-800';
+    if (impact === 'medium') return 'bg-violet-100 text-violet-800';
     return 'bg-gray-100 text-gray-800';
   };
 

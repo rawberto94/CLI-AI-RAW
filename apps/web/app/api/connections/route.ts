@@ -3,10 +3,9 @@
  * Provides endpoints for monitoring and managing SSE connections
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { sseConnectionManager } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
@@ -14,111 +13,74 @@ export const dynamic = 'force-dynamic';
  * GET /api/connections
  * Get connection metrics and statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    // Admin-only route for connection management
-    if (session.user.role !== 'admin' && session.user.role !== 'owner') {
-      return NextResponse.json({ error: 'Forbidden - Admin access required' }, { status: 403 });
-    }
-    const tenantId = session.user.tenantId;
-
-    const searchParams = request.nextUrl.searchParams;
-    const action = searchParams.get('action');
-
-    switch (action) {
-      case 'metrics':
-        return getMetrics();
-      
-      case 'history':
-        return getMetricsHistory();
-      
-      case 'tenant':
-        return getConnectionsByTenant(tenantId);
-      
-      case 'user':
-        return getConnectionsByUser(searchParams.get('userId'));
-      
-      case 'stale':
-        return getStaleConnections();
-      
-      case 'degradation':
-        return getDegradationStatus();
-      
-      case 'queue':
-        return getQueueStatus();
-      
-      default:
-        return getMetrics();
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to get connection data',
-        },
-      },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  // Admin-only route for connection management
+  if (ctx.userRole !== 'admin' && ctx.userRole !== 'owner') {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden - Admin access required', 403);
   }
-}
+  const tenantId = ctx.tenantId;
+
+  const searchParams = request.nextUrl.searchParams;
+  const action = searchParams.get('action');
+
+  switch (action) {
+    case 'metrics':
+      return getMetrics(ctx);
+
+    case 'history':
+      return getMetricsHistory(ctx);
+
+    case 'tenant':
+      return getConnectionsByTenant(ctx, tenantId);
+
+    case 'user':
+      return getConnectionsByUser(ctx, searchParams.get('userId'));
+
+    case 'stale':
+      return getStaleConnections(ctx);
+
+    case 'degradation':
+      return getDegradationStatus(ctx);
+
+    case 'queue':
+      return getQueueStatus(ctx);
+
+    default:
+      return getMetrics(ctx);
+  }
+});
 
 /**
  * POST /api/connections
  * Perform connection management actions
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, connectionId, tenantId, userId } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action, connectionId, tenantId: _tenantId, userId: _userId } = body;
 
-    switch (action) {
-      case 'cleanup':
-        return performCleanup();
-      
-      case 'disconnect':
-        return disconnectConnection(connectionId);
-      
-      case 'broadcast':
-        return broadcastMessage(body);
-      
-      default:
-        return NextResponse.json(
-          {
-            error: {
-              code: 'INVALID_ACTION',
-              message: 'Invalid action specified',
-            },
-          },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to perform action',
-        },
-      },
-      { status: 500 }
-    );
+  switch (action) {
+    case 'cleanup':
+      return performCleanup(ctx);
+
+    case 'disconnect':
+      return disconnectConnection(ctx, connectionId);
+
+    case 'broadcast':
+      return broadcastMessage(ctx, body);
+
+    default:
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action specified', 400);
   }
-}
+});
 
 /**
  * Get connection metrics
  */
-function getMetrics() {
+function getMetrics(ctx: any) {
   const metrics = sseConnectionManager.getMetrics();
   
-  return NextResponse.json({
-    success: true,
-    data: metrics,
+  return createSuccessResponse(ctx, {
+    ...metrics,
     timestamp: new Date().toISOString(),
   });
 }
@@ -126,12 +88,11 @@ function getMetrics() {
 /**
  * Get metrics history
  */
-function getMetricsHistory() {
+function getMetricsHistory(ctx: any) {
   const history = sseConnectionManager.getMetricsHistory();
   
-  return NextResponse.json({
-    success: true,
-    data: history,
+  return createSuccessResponse(ctx, {
+    ...history,
     timestamp: new Date().toISOString(),
   });
 }
@@ -139,35 +100,24 @@ function getMetricsHistory() {
 /**
  * Get connections by tenant
  */
-function getConnectionsByTenant(tenantId: string | null) {
+function getConnectionsByTenant(ctx: any, tenantId: string | null) {
   if (!tenantId) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'MISSING_PARAMETER',
-          message: 'tenantId parameter is required',
-        },
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'MISSING_PARAMETER', 'tenantId parameter is required', 400);
   }
 
   const connections = sseConnectionManager.getConnectionsByTenant(tenantId);
   
-  return NextResponse.json({
-    success: true,
-    data: {
-      tenantId,
-      count: connections.length,
-      connections: connections.map(conn => ({
-        id: conn.id,
-        userId: conn.userId,
-        state: conn.state,
-        createdAt: conn.createdAt,
-        lastActivity: conn.lastActivity,
-        reconnectAttempts: conn.reconnectAttempts,
-      })),
-    },
+  return createSuccessResponse(ctx, {
+    tenantId,
+    count: connections.length,
+    connections: connections.map(conn => ({
+      id: conn.id,
+      userId: conn.userId,
+      state: conn.state,
+      createdAt: conn.createdAt,
+      lastActivity: conn.lastActivity,
+      reconnectAttempts: conn.reconnectAttempts,
+    })),
     timestamp: new Date().toISOString(),
   });
 }
@@ -175,35 +125,24 @@ function getConnectionsByTenant(tenantId: string | null) {
 /**
  * Get connections by user
  */
-function getConnectionsByUser(userId: string | null) {
+function getConnectionsByUser(ctx: any, userId: string | null) {
   if (!userId) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'MISSING_PARAMETER',
-          message: 'userId parameter is required',
-        },
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'MISSING_PARAMETER', 'userId parameter is required', 400);
   }
 
   const connections = sseConnectionManager.getConnectionsByUser(userId);
   
-  return NextResponse.json({
-    success: true,
-    data: {
-      userId,
-      count: connections.length,
-      connections: connections.map(conn => ({
-        id: conn.id,
-        tenantId: conn.tenantId,
-        state: conn.state,
-        createdAt: conn.createdAt,
-        lastActivity: conn.lastActivity,
-        reconnectAttempts: conn.reconnectAttempts,
-      })),
-    },
+  return createSuccessResponse(ctx, {
+    userId,
+    count: connections.length,
+    connections: connections.map(conn => ({
+      id: conn.id,
+      tenantId: conn.tenantId,
+      state: conn.state,
+      createdAt: conn.createdAt,
+      lastActivity: conn.lastActivity,
+      reconnectAttempts: conn.reconnectAttempts,
+    })),
     timestamp: new Date().toISOString(),
   });
 }
@@ -211,35 +150,32 @@ function getConnectionsByUser(userId: string | null) {
 /**
  * Get stale connections
  */
-function getStaleConnections() {
+function getStaleConnections(ctx: any) {
   const staleConnections = sseConnectionManager.findStaleConnections();
   const timedOutConnections = sseConnectionManager.findTimedOutConnections();
   
-  return NextResponse.json({
-    success: true,
-    data: {
-      stale: {
-        count: staleConnections.length,
-        connections: staleConnections.map(conn => ({
-          id: conn.id,
-          tenantId: conn.tenantId,
-          userId: conn.userId,
-          state: conn.state,
-          lastActivity: conn.lastActivity,
-          inactiveDuration: Date.now() - conn.lastActivity.getTime(),
-        })),
-      },
-      timedOut: {
-        count: timedOutConnections.length,
-        connections: timedOutConnections.map(conn => ({
-          id: conn.id,
-          tenantId: conn.tenantId,
-          userId: conn.userId,
-          state: conn.state,
-          createdAt: conn.createdAt,
-          connectionDuration: Date.now() - conn.createdAt.getTime(),
-        })),
-      },
+  return createSuccessResponse(ctx, {
+    stale: {
+      count: staleConnections.length,
+      connections: staleConnections.map(conn => ({
+        id: conn.id,
+        tenantId: conn.tenantId,
+        userId: conn.userId,
+        state: conn.state,
+        lastActivity: conn.lastActivity,
+        inactiveDuration: Date.now() - conn.lastActivity.getTime(),
+      })),
+    },
+    timedOut: {
+      count: timedOutConnections.length,
+      connections: timedOutConnections.map(conn => ({
+        id: conn.id,
+        tenantId: conn.tenantId,
+        userId: conn.userId,
+        state: conn.state,
+        createdAt: conn.createdAt,
+        connectionDuration: Date.now() - conn.createdAt.getTime(),
+      })),
     },
     timestamp: new Date().toISOString(),
   });
@@ -248,15 +184,12 @@ function getStaleConnections() {
 /**
  * Perform connection cleanup
  */
-function performCleanup() {
+function performCleanup(ctx: any) {
   const cleanedCount = sseConnectionManager.cleanupConnections();
   
-  return NextResponse.json({
-    success: true,
-    data: {
-      cleanedCount,
-      message: `Cleaned up ${cleanedCount} stale/timed-out connections`,
-    },
+  return createSuccessResponse(ctx, {
+    cleanedCount,
+    message: `Cleaned up ${cleanedCount} stale/timed-out connections`,
     timestamp: new Date().toISOString(),
   });
 }
@@ -264,46 +197,27 @@ function performCleanup() {
 /**
  * Disconnect a specific connection
  */
-function disconnectConnection(connectionId: string) {
+function disconnectConnection(ctx: any, connectionId: string) {
   if (!connectionId) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'MISSING_PARAMETER',
-          message: 'connectionId is required',
-        },
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'MISSING_PARAMETER', 'connectionId is required', 400);
   }
 
   const connection = sseConnectionManager.getConnection(connectionId);
   if (!connection) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'NOT_FOUND',
-          message: 'Connection not found',
-        },
-      },
-      { status: 404 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Connection not found', 404);
   }
 
   try {
     connection.controller.close();
-  } catch (error) {
+  } catch (_error) {
     // Controller might already be closed
   }
 
   const success = sseConnectionManager.unregisterConnection(connectionId);
   
-  return NextResponse.json({
-    success,
-    data: {
-      connectionId,
-      message: success ? 'Connection disconnected' : 'Failed to disconnect connection',
-    },
+  return createSuccessResponse(ctx, {
+    connectionId,
+    message: success ? 'Connection disconnected' : 'Failed to disconnect connection',
     timestamp: new Date().toISOString(),
   });
 }
@@ -311,12 +225,11 @@ function disconnectConnection(connectionId: string) {
 /**
  * Get degradation status
  */
-function getDegradationStatus() {
+function getDegradationStatus(ctx: any) {
   const status = sseConnectionManager.getDegradationStatus();
   
-  return NextResponse.json({
-    success: true,
-    data: status,
+  return createSuccessResponse(ctx, {
+    ...status,
     timestamp: new Date().toISOString(),
   });
 }
@@ -324,12 +237,11 @@ function getDegradationStatus() {
 /**
  * Get queue status
  */
-function getQueueStatus() {
+function getQueueStatus(ctx: any) {
   const status = sseConnectionManager.getQueueStatus();
   
-  return NextResponse.json({
-    success: true,
-    data: status,
+  return createSuccessResponse(ctx, {
+    ...status,
     timestamp: new Date().toISOString(),
   });
 }
@@ -337,7 +249,7 @@ function getQueueStatus() {
 /**
  * Broadcast message to connections
  */
-function broadcastMessage(body: Record<string, unknown>) {
+function broadcastMessage(ctx: any, body: Record<string, unknown>) {
   const { target, tenantId, userId, message } = body as {
     target?: string;
     tenantId?: string;
@@ -346,15 +258,7 @@ function broadcastMessage(body: Record<string, unknown>) {
   };
 
   if (!message) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'MISSING_PARAMETER',
-          message: 'message is required',
-        },
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'MISSING_PARAMETER', 'message is required', 400);
   }
 
   const payload =
@@ -377,52 +281,25 @@ function broadcastMessage(body: Record<string, unknown>) {
     
     case 'tenant':
       if (!tenantId) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'MISSING_PARAMETER',
-              message: 'tenantId is required for tenant broadcast',
-            },
-          },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'MISSING_PARAMETER', 'tenantId is required for tenant broadcast', 400);
       }
       successCount = sseConnectionManager.broadcastToTenant(tenantId as string, payload);
       break;
     
     case 'user':
       if (!userId) {
-        return NextResponse.json(
-          {
-            error: {
-              code: 'MISSING_PARAMETER',
-              message: 'userId is required for user broadcast',
-            },
-          },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'MISSING_PARAMETER', 'userId is required for user broadcast', 400);
       }
       successCount = sseConnectionManager.broadcastToUser(userId as string, payload);
       break;
     
     default:
-      return NextResponse.json(
-        {
-          error: {
-            code: 'INVALID_TARGET',
-            message: 'Invalid broadcast target',
-          },
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'INVALID_TARGET', 'Invalid broadcast target', 400);
   }
 
-  return NextResponse.json({
-    success: true,
-    data: {
-      successCount,
-      message: `Broadcast sent to ${successCount} connections`,
-    },
+  return createSuccessResponse(ctx, {
+    successCount,
+    message: `Broadcast sent to ${successCount} connections`,
     timestamp: new Date().toISOString(),
   });
 }

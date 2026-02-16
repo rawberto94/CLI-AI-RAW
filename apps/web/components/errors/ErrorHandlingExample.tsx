@@ -116,11 +116,11 @@ export function ErrorHandlingExample() {
           </div>
         )}
 
-        <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <h4 className="text-sm font-semibold text-blue-900 mb-2">
+        <div className="mt-6 p-4 bg-violet-50 border border-violet-200 rounded-md">
+          <h4 className="text-sm font-semibold text-violet-900 mb-2">
             Features Demonstrated:
           </h4>
-          <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <ul className="text-sm text-violet-800 space-y-1 list-disc list-inside">
             <li>Automatic retry logic with exponential backoff</li>
             <li>User-friendly error messages</li>
             <li>Loading states</li>

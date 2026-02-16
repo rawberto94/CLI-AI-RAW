@@ -97,7 +97,7 @@ export function CollaborativeEditorWrapper({
         color: p.color,
       }))
     : [];
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const updateCursor = wsContext?.updateCursor ?? ((_pos: { x: number; y: number }) => {});
   const lockSection = wsContext?.lockSection ?? (async (_id: string) => false);
   const unlockSection = wsContext?.unlockSection ?? ((_id: string) => {});
@@ -305,7 +305,7 @@ export function CollaborativeEditorWrapper({
             )}
             {syncStatus === "syncing" && (
               <>
-                <Clock className="h-3.5 w-3.5 animate-spin text-blue-500" />
+                <Clock className="h-3.5 w-3.5 animate-spin text-violet-500" />
                 <span>Syncing...</span>
               </>
             )}
@@ -319,7 +319,7 @@ export function CollaborativeEditorWrapper({
 
           {/* Pending Changes Indicator */}
           {pendingChanges.length > 0 && (
-            <span className="text-xs text-blue-600">
+            <span className="text-xs text-violet-600">
               {pendingChanges.length} pending change
               {pendingChanges.length !== 1 ? "s" : ""}
             </span>
@@ -339,7 +339,7 @@ export function CollaborativeEditorWrapper({
             className={cn(
               "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm transition-colors",
               showCollabPanel
-                ? "bg-blue-100 text-blue-700"
+                ? "bg-violet-100 text-violet-700"
                 : "text-slate-600 hover:bg-slate-100"
             )}
           >
@@ -413,7 +413,7 @@ export function CollaborativeEditorWrapper({
       {/* Collaboration Side Panel */}
       <AnimatePresence>
         {showCollabPanel && (
-          <motion.div
+          <motion.div key="collab-panel"
             initial={{ x: "100%" }}
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
@@ -445,7 +445,7 @@ export function CollaborativeEditorWrapper({
                     >
                       <div className="flex items-center gap-2">
                         <div
-                          className="h-8 w-8 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-sm font-medium"
+                          className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-400 to-purple-600 flex items-center justify-center text-white text-sm font-medium"
                         >
                           {user.name.charAt(0)}
                         </div>
@@ -455,7 +455,7 @@ export function CollaborativeEditorWrapper({
                           </p>
                           <p className="text-xs text-slate-500">
                             {user.status === "editing" ? (
-                              <span className="flex items-center gap-1 text-blue-600">
+                              <span className="flex items-center gap-1 text-violet-600">
                                 <Edit3 className="h-3 w-3" />
                                 Editing
                               </span>
@@ -515,7 +515,7 @@ export function CollaborativeEditorWrapper({
                 </h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2 text-slate-600">
-                    <Edit3 className="mt-0.5 h-4 w-4 text-blue-500" />
+                    <Edit3 className="mt-0.5 h-4 w-4 text-violet-500" />
                     <div>
                       <p>
                         <span className="font-medium">Sarah</span> edited Section 3
@@ -533,7 +533,7 @@ export function CollaborativeEditorWrapper({
                     </div>
                   </div>
                   <div className="flex items-start gap-2 text-slate-600">
-                    <Users className="mt-0.5 h-4 w-4 text-purple-500" />
+                    <Users className="mt-0.5 h-4 w-4 text-violet-500" />
                     <div>
                       <p>
                         <span className="font-medium">Mike</span> joined the session

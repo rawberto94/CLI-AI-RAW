@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { artifactService } from 'data-orchestration/services';
 
 // File type validation
 const ALLOWED_FILE_TYPES = [
@@ -37,72 +38,36 @@ interface UploadResponse {
   details?: string;
 }
 
-export async function POST(request: NextRequest): Promise<NextResponse<UploadResponse>> {
-  try {
-    // Get tenant ID from headers or session
-    const tenantId = await getApiTenantId(request);
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  // Get tenant ID from context
+  const tenantId = ctx.tenantId;
     
     // Parse multipart form data
     const formData = await request.formData();
     const file = formData.get('file') as File;
     
     if (!file) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'No file provided',
-          details: 'Please select a file to upload',
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No file provided', 400);
     }
 
     // Validate file type
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
     
     if (!ALLOWED_EXTENSIONS.includes(fileExtension)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid file type',
-          details: `Only ${ALLOWED_EXTENSIONS.join(', ')} files are allowed`,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Only ${ALLOWED_EXTENSIONS.join(', ')} files are allowed`, 400);
     }
 
     if (!ALLOWED_FILE_TYPES.includes(file.type) && file.type !== '') {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Invalid file MIME type',
-          details: `File type ${file.type} is not supported`,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `File type ${file.type} is not supported`, 400);
     }
 
     // Validate file size
     if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'File too large',
-          details: `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `File size must be less than ${MAX_FILE_SIZE / (1024 * 1024)}MB`, 400);
     }
 
     if (file.size === 0) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Empty file',
-          details: 'The uploaded file is empty',
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'The uploaded file is empty', 400);
     }
 
     // Generate unique job ID and file path
@@ -149,41 +114,24 @@ export async function POST(request: NextRequest): Promise<NextResponse<UploadRes
       },
     });
 
-    return NextResponse.json(
-      {
-        success: true,
-        jobId: importJob.id,
-        fileName: file.name,
-        fileSize: file.size,
-        fileType: fileExtension,
-      },
-      { status: 201 }
-    );
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Upload failed',
-        details: error instanceof Error ? error.message : 'Unknown error occurred',
-      },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, {
+      success: true,
+      jobId: importJob.id,
+      fileName: file.name,
+      fileSize: file.size,
+      fileType: fileExtension,
+    }, { status: 201 });
+});
 
 // GET endpoint to check upload status
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get('jobId');
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get('jobId');
 
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required' },
-        { status: 400 }
-      );
-    }
+  if (!jobId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Job ID is required', 400);
+  }
 
     // Query import job status from database
     const importJob = await prisma.importJob.findFirst({
@@ -205,10 +153,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     });
 
     if (!importJob) {
-      return NextResponse.json(
-        { error: 'Import job not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Import job not found', 404);
     }
 
     // Calculate progress based on status
@@ -246,7 +191,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         break;
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       jobId: importJob.id,
       status: importJob.status,
       progress,
@@ -264,18 +209,9 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       rateCardsCreated: importJob.rateCards.length,
       mappingConfidence: Number(importJob.mappingConfidence),
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to check status',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // OPTIONS endpoint for CORS preflight
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+export const OPTIONS = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cors.optionsResponse(request, 'GET, POST, OPTIONS');
-}
+});

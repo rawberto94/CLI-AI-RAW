@@ -144,7 +144,7 @@ function TreeNode({
   const FileIcon = node.type === 'file' ? getFileIcon(node.name) : null;
 
   return (
-    <div role="treeitem" aria-expanded={isExpanded}>
+    <div role="treeitem" aria-expanded={isExpanded} aria-selected={isSelected}>
       <div
         onClick={() => {
           if (hasChildren) {
@@ -157,7 +157,7 @@ function TreeNode({
           flex items-center gap-2 py-1.5 px-2 cursor-pointer rounded-lg mx-1
           transition-colors
           ${isSelected 
-            ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300' 
+            ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300' 
             : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
           }
         `}
@@ -192,7 +192,7 @@ function TreeNode({
       
       <AnimatePresence>
         {isExpanded && hasChildren && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -320,7 +320,7 @@ export function FileBrowser({
                 className={`
                   flex flex-col items-center gap-2 p-3 rounded-lg transition-colors
                   ${selectedId === node.id 
-                    ? 'bg-blue-100 dark:bg-blue-900' 
+                    ? 'bg-violet-100 dark:bg-violet-900' 
                     : 'hover:bg-gray-100 dark:hover:bg-gray-800'
                   }
                 `}
@@ -390,7 +390,7 @@ export function CollapsibleSection({
       
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -471,7 +471,7 @@ export function Accordion({
           
           <AnimatePresence>
             {openIds.has(item.id) && (
-              <motion.div
+              <motion.div key="TreeList-ap-1"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}

@@ -111,4 +111,76 @@ export class TenantRepository extends AbstractRepository<
       monthlyProcessed: usage?.contractsProcessed || 0,
     };
   }
+
+  /**
+   * Get tenant extraction settings with defaults
+   */
+  async getExtractionSettings(tenantId: string): Promise<TenantExtractionSettings> {
+    const config = await this.prisma.tenantConfig.findUnique({
+      where: { tenantId },
+    });
+
+    const defaults: TenantExtractionSettings = {
+      contractTypeConfidenceThreshold: 0.75,
+      autoApplyContractType: true,
+      gapFillingCompletenessThreshold: 0.85,
+      alwaysRunGapFilling: false,
+      aggressiveGapFilling: true,
+      ocrProvider: 'openai',
+      preferredModel: 'gpt-4o-mini',
+    };
+
+    if (!config?.extractionSettings) {
+      return defaults;
+    }
+
+    // Merge with defaults to ensure all fields exist
+    const settings = config.extractionSettings as Record<string, unknown>;
+    return {
+      contractTypeConfidenceThreshold: (settings.contractTypeConfidenceThreshold as number) ?? defaults.contractTypeConfidenceThreshold,
+      autoApplyContractType: (settings.autoApplyContractType as boolean) ?? defaults.autoApplyContractType,
+      gapFillingCompletenessThreshold: (settings.gapFillingCompletenessThreshold as number) ?? defaults.gapFillingCompletenessThreshold,
+      alwaysRunGapFilling: (settings.alwaysRunGapFilling as boolean) ?? defaults.alwaysRunGapFilling,
+      aggressiveGapFilling: (settings.aggressiveGapFilling as boolean) ?? defaults.aggressiveGapFilling,
+      ocrProvider: (settings.ocrProvider as string) ?? defaults.ocrProvider,
+      preferredModel: (settings.preferredModel as string) ?? defaults.preferredModel,
+    };
+  }
+
+  /**
+   * Update tenant extraction settings
+   */
+  async updateExtractionSettings(tenantId: string, settings: Partial<TenantExtractionSettings>): Promise<void> {
+    const existing = await this.getExtractionSettings(tenantId);
+    const updated = { ...existing, ...settings };
+
+    await this.prisma.tenantConfig.upsert({
+      where: { tenantId },
+      update: { extractionSettings: updated },
+      create: {
+        tenantId,
+        extractionSettings: updated,
+      },
+    });
+  }
+}
+
+/**
+ * Tenant extraction settings interface
+ */
+export interface TenantExtractionSettings {
+  /** Minimum confidence for auto-applying detected contract type (0.0-1.0) */
+  contractTypeConfidenceThreshold: number;
+  /** Whether to automatically apply detected contract type */
+  autoApplyContractType: boolean;
+  /** Minimum completeness to skip gap filling (0.0-1.0) */
+  gapFillingCompletenessThreshold: number;
+  /** Whether to always run gap filling regardless of completeness */
+  alwaysRunGapFilling: boolean;
+  /** Enable aggressive gap filling with lower confidence thresholds */
+  aggressiveGapFilling: boolean;
+  /** Preferred OCR provider: 'openai' | 'mistral' */
+  ocrProvider: string;
+  /** Preferred AI model for extraction */
+  preferredModel: string;
 }

@@ -62,22 +62,22 @@ import { formatDistanceToNow } from "date-fns";
 
 // Provider icons and info
 const PROVIDERS = {
-  SHAREPOINT: { name: "SharePoint", icon: Cloud, color: "text-blue-600" },
-  ONEDRIVE: { name: "OneDrive", icon: Cloud, color: "text-blue-500" },
+  SHAREPOINT: { name: "SharePoint", icon: Cloud, color: "text-violet-600" },
+  ONEDRIVE: { name: "OneDrive", icon: Cloud, color: "text-violet-500" },
   GOOGLE_DRIVE: { name: "Google Drive", icon: Cloud, color: "text-green-600" },
-  AZURE_BLOB: { name: "Azure Blob", icon: HardDrive, color: "text-cyan-600" },
+  AZURE_BLOB: { name: "Azure Blob", icon: HardDrive, color: "text-violet-600" },
   AWS_S3: { name: "Amazon S3", icon: HardDrive, color: "text-orange-600" },
   SFTP: { name: "SFTP", icon: Server, color: "text-gray-600" },
   FTP: { name: "FTP", icon: Server, color: "text-gray-500" },
-  DROPBOX: { name: "Dropbox", icon: Cloud, color: "text-blue-400" },
-  BOX: { name: "Box", icon: Cloud, color: "text-blue-700" },
-  CUSTOM_API: { name: "Custom API", icon: Server, color: "text-purple-600" },
+  DROPBOX: { name: "Dropbox", icon: Cloud, color: "text-violet-400" },
+  BOX: { name: "Box", icon: Cloud, color: "text-violet-700" },
+  CUSTOM_API: { name: "Custom API", icon: Server, color: "text-violet-600" },
 };
 
 const STATUS_BADGES = {
   CONNECTED: { label: "Connected", variant: "default" as const, icon: CheckCircle2, color: "text-green-600" },
   DISCONNECTED: { label: "Disconnected", variant: "secondary" as const, icon: XCircle, color: "text-gray-500" },
-  SYNCING: { label: "Syncing", variant: "default" as const, icon: Loader2, color: "text-blue-600" },
+  SYNCING: { label: "Syncing", variant: "default" as const, icon: Loader2, color: "text-violet-600" },
   ERROR: { label: "Error", variant: "destructive" as const, icon: AlertCircle, color: "text-red-600" },
   AUTH_EXPIRED: { label: "Auth Expired", variant: "destructive" as const, icon: Clock, color: "text-yellow-600" },
 };
@@ -131,7 +131,8 @@ export default function ContractSourcesPage() {
       const res = await fetch("/api/contract-sources");
       const data = await res.json();
       if (data.success) {
-        setSources(data.data.sources);
+        const sourcesData = data.data?.sources;
+        setSources(Array.isArray(sourcesData) ? sourcesData : []);
       }
     } catch {
       toast.error("Failed to fetch contract sources");
@@ -232,7 +233,7 @@ export default function ContractSourcesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50 dark:from-slate-950 dark:via-slate-900 dark:to-blue-950">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50 dark:from-slate-950 dark:via-slate-900 dark:to-purple-950">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         <PageBreadcrumb
           items={[
@@ -261,8 +262,8 @@ export default function ContractSourcesPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                  <FolderSync className="w-6 h-6 text-blue-600" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900 rounded-lg">
+                  <FolderSync className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Total Sources</p>
@@ -289,8 +290,8 @@ export default function ContractSourcesPage() {
           <Card>
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-purple-100 dark:bg-purple-900 rounded-lg">
-                  <FileText className="w-6 h-6 text-purple-600" />
+                <div className="p-3 bg-violet-100 dark:bg-violet-900 rounded-lg">
+                  <FileText className="w-6 h-6 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-slate-500">Files Synced</p>
@@ -329,7 +330,7 @@ export default function ContractSourcesPage() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
               </div>
             ) : sources.length === 0 ? (
               <div className="text-center py-12">

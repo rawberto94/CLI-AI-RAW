@@ -6,10 +6,10 @@
  * DELETE /api/chat/conversations/[id] - Delete conversation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { aiCopilotService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,16 +18,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id } = await params;
     const { searchParams } = new URL(request.url);
     
@@ -35,33 +32,21 @@ export async function GET(
     const messageOffset = parseInt(searchParams.get('messageOffset') || '0');
 
     const conversation = await prisma.chatConversation.findFirst({
-      where: { id, tenantId, userId: session.user.id },
+      where: { id, tenantId, userId: ctx.userId },
       include: {
         messages: {
           orderBy: { createdAt: 'asc' },
           take: messageLimit,
-          skip: messageOffset,
-        },
-      },
-    });
+          skip: messageOffset } } });
 
     if (!conversation) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: { conversation },
-    });
+    return createSuccessResponse(ctx, {
+      data: { conversation } });
   } catch (error) {
-    console.error('Error fetching conversation:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch conversation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -70,29 +55,22 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id } = await params;
     const body = await request.json();
 
     // Verify ownership
     const existing = await prisma.chatConversation.findFirst({
-      where: { id, tenantId, userId: session.user.id },
-    });
+      where: { id, tenantId, userId: ctx.userId } });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     const { title, isPinned, isArchived } = body;
@@ -104,19 +82,12 @@ export async function PATCH(
 
     const conversation = await prisma.chatConversation.update({
       where: { id },
-      data: updateData,
-    });
+      data: updateData });
 
-    return NextResponse.json({
-      success: true,
-      data: { conversation },
-    });
+    return createSuccessResponse(ctx, {
+      data: { conversation } });
   } catch (error) {
-    console.error('Error updating conversation:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update conversation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -125,44 +96,30 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id } = await params;
 
     // Verify ownership
     const existing = await prisma.chatConversation.findFirst({
-      where: { id, tenantId, userId: session.user.id },
-    });
+      where: { id, tenantId, userId: ctx.userId } });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     // Delete conversation (cascades to messages)
     await prisma.chatConversation.delete({
-      where: { id },
-    });
+      where: { id } });
 
-    return NextResponse.json({
-      success: true,
-      message: 'Conversation deleted',
-    });
+    return createSuccessResponse(ctx, {
+      message: 'Conversation deleted' });
   } catch (error) {
-    console.error('Error deleting conversation:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete conversation' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -12,22 +12,22 @@ import {
   Play,
   Settings,
   Users,
-  Clock,
+  Clock as _Clock,
   CheckCircle2,
   AlertTriangle,
   Plus,
   Trash2,
-  GripVertical,
+  GripVertical as _GripVertical,
   ChevronDown,
   ChevronUp,
   FileText,
   Zap,
-  Bell,
-  Mail,
+  Bell as _Bell,
+  Mail as _Mail,
   Shield,
-  DollarSign,
-  Edit2,
-  Copy,
+  DollarSign as _DollarSign,
+  Edit2 as _Edit2,
+  Copy as _Copy,
   RefreshCw,
   Loader2,
 } from 'lucide-react';
@@ -109,7 +109,7 @@ export default function ContractWorkflowPage() {
 
   useEffect(() => {
     loadContractAndWorkflow();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadContractAndWorkflow = async () => {
@@ -248,7 +248,7 @@ export default function ContractWorkflowPage() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-600 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 text-violet-600 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading workflow...</p>
         </div>
       </div>
@@ -271,7 +271,7 @@ export default function ContractWorkflowPage() {
               <Separator orientation="vertical" className="h-6" />
               <div>
                 <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                  <GitBranch className="w-5 h-5 text-purple-600" />
+                  <GitBranch className="w-5 h-5 text-violet-600" />
                   Contract Workflow
                 </h1>
                 <p className="text-sm text-slate-500">
@@ -290,7 +290,7 @@ export default function ContractWorkflowPage() {
               <Button 
                 onClick={saveWorkflow} 
                 disabled={saving}
-                className="bg-gradient-to-r from-purple-600 to-pink-600"
+                className="bg-gradient-to-r from-violet-600 to-pink-600"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -411,7 +411,7 @@ export default function ContractWorkflowPage() {
                     toast.success('Template applied');
                   }}
                 >
-                  <GitBranch className="w-4 h-4 mr-2 text-blue-600" />
+                  <GitBranch className="w-4 h-4 mr-2 text-violet-600" />
                   Standard (3 steps)
                 </Button>
                 <Button 
@@ -429,7 +429,7 @@ export default function ContractWorkflowPage() {
                     toast.success('Template applied');
                   }}
                 >
-                  <Shield className="w-4 h-4 mr-2 text-purple-600" />
+                  <Shield className="w-4 h-4 mr-2 text-violet-600" />
                   Comprehensive (5 steps)
                 </Button>
               </CardContent>
@@ -496,7 +496,7 @@ export default function ContractWorkflowPage() {
                               <ChevronDown className="w-4 h-4" />
                             </button>
                           </div>
-                          <div className="w-8 h-8 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
+                          <div className="w-8 h-8 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center font-bold text-sm">
                             {step.order}
                           </div>
                           <div className="flex-1">
@@ -652,7 +652,7 @@ export default function ContractWorkflowPage() {
                         {steps.map((step, index) => (
                           <React.Fragment key={step.id}>
                             <div className="flex items-center gap-2 px-3 py-2 bg-white rounded-lg border border-slate-200">
-                              <div className="w-6 h-6 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                              <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-bold">
                                 {index + 1}
                               </div>
                               <span className="text-sm font-medium">{step.name}</span>
@@ -692,7 +692,7 @@ export default function ContractWorkflowPage() {
               <Button 
                 onClick={saveWorkflow} 
                 disabled={saving}
-                className="bg-gradient-to-r from-purple-600 to-pink-600 gap-2"
+                className="bg-gradient-to-r from-violet-600 to-pink-600 gap-2"
               >
                 {saving ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

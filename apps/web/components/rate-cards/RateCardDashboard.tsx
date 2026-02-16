@@ -113,7 +113,7 @@ export function RateCardDashboard() {
             <FileText className="w-4 h-4 mr-2" />
             Export Report
           </Button>
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600">
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600">
             <Sparkles className="w-4 h-4 mr-2" />
             Add Rate Card
           </Button>
@@ -123,11 +123,11 @@ export function RateCardDashboard() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Rate Cards */}
-        <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+        <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-blue-600">Total Rate Cards</p>
+                <p className="text-sm font-medium text-violet-600">Total Rate Cards</p>
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.totalRateCards.toLocaleString()}
                 </h3>
@@ -137,7 +137,7 @@ export function RateCardDashboard() {
                   </Badge>
                 </div>
               </div>
-              <div className="p-3 bg-blue-600 rounded-lg">
+              <div className="p-3 bg-violet-600 rounded-lg">
                 <FileText className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -145,7 +145,7 @@ export function RateCardDashboard() {
         </Card>
 
         {/* Annual Spend */}
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+        <Card className="bg-gradient-to-br from-violet-50 to-violet-50 border-green-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -194,11 +194,11 @@ export function RateCardDashboard() {
         </Card>
 
         {/* Market Position */}
-        <Card className="bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200">
+        <Card className="bg-gradient-to-br from-violet-50 to-pink-50 border-violet-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-purple-600">Market Position</p>
+                <p className="text-sm font-medium text-violet-600">Market Position</p>
                 <h3 className="text-3xl font-bold text-gray-900 mt-2">
                   {stats.avgRateVsMarket > 0 ? '+' : ''}{stats.avgRateVsMarket.toFixed(1)}%
                 </h3>
@@ -206,7 +206,7 @@ export function RateCardDashboard() {
                   {stats.ratesAboveMarket} rates above market
                 </p>
               </div>
-              <div className="p-3 bg-purple-600 rounded-lg">
+              <div className="p-3 bg-violet-600 rounded-lg">
                 <Award className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -220,7 +220,7 @@ export function RateCardDashboard() {
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-blue-600" />
+              <TrendingUp className="w-5 h-5 text-violet-600" />
               Market Trends - Roles
             </CardTitle>
           </CardHeader>
@@ -315,14 +315,14 @@ export function RateCardDashboard() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Users className="w-5 h-5 text-indigo-600" />
+            <Users className="w-5 h-5 text-violet-600" />
             Top Suppliers by Competitiveness
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
             {topSuppliers.map((supplier) => (
-              <Card key={supplier.id} className="bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-200">
+              <Card key={supplier.id} className="bg-gradient-to-br from-violet-50 to-purple-50 border-indigo-200">
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1 min-w-0">
@@ -377,7 +377,7 @@ export function RateCardDashboard() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4 text-center">
-            <Globe className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+            <Globe className="w-8 h-8 text-violet-600 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900">{stats.geographicCoverage}</div>
             <div className="text-sm text-gray-600">Countries</div>
           </CardContent>
@@ -401,7 +401,7 @@ export function RateCardDashboard() {
         
         <Card>
           <CardContent className="p-4 text-center">
-            <Award className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+            <Award className="w-8 h-8 text-violet-600 mx-auto mb-2" />
             <div className="text-2xl font-bold text-gray-900">
               {((stats.totalRateCards - stats.ratesAboveMarket) / stats.totalRateCards * 100).toFixed(0)}%
             </div>

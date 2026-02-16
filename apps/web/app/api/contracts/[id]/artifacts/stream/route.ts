@@ -1,13 +1,82 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Bulletproof constants
 const POLL_INTERVAL_MS = 1000; // Poll every 1 second
-const HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
+const _HEARTBEAT_INTERVAL_MS = 15000; // Heartbeat every 15 seconds
 const MAX_POLL_SECONDS = 300; // 5 minute timeout (increased from 3)
-const EXPECTED_ARTIFACT_COUNT = 10;
 const MAX_CONSECUTIVE_ERRORS = 5;
+
+// --- P3-24: SSE Rate Limiting ---
+// Track active SSE connections per tenant to prevent resource exhaustion
+const activeConnections = new Map<string, Set<string>>(); // tenantId -> Set<contractId>
+const MAX_CONNECTIONS_PER_TENANT = 10;
+const MAX_CONNECTIONS_PER_CONTRACT = 3; // Allow a few concurrent viewers
+
+function acquireConnection(tenantId: string, contractId: string): boolean {
+  if (!activeConnections.has(tenantId)) {
+    activeConnections.set(tenantId, new Set());
+  }
+  const tenantConns = activeConnections.get(tenantId)!;
+
+  // Check tenant-level limit
+  if (tenantConns.size >= MAX_CONNECTIONS_PER_TENANT) {
+    return false;
+  }
+
+  // Check per-contract limit (count how many entries match this contractId)
+  let contractCount = 0;
+  for (const key of tenantConns) {
+    if (key.startsWith(contractId + ':')) contractCount++;
+  }
+  if (contractCount >= MAX_CONNECTIONS_PER_CONTRACT) {
+    return false;
+  }
+
+  const connKey = `${contractId}:${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+  tenantConns.add(connKey);
+  return true;
+}
+
+function releaseConnection(tenantId: string, contractId: string): void {
+  const tenantConns = activeConnections.get(tenantId);
+  if (!tenantConns) return;
+  // Remove oldest matching connection
+  for (const key of tenantConns) {
+    if (key.startsWith(contractId + ':')) {
+      tenantConns.delete(key);
+      break;
+    }
+  }
+  if (tenantConns.size === 0) {
+    activeConnections.delete(tenantId);
+  }
+}
+
+// --- P3-23: SSE Backpressure ---
+// Track queue depth per stream to throttle writes when client can't keep up
+const BACKPRESSURE_QUEUE_LIMIT = 50; // Max queued events before throttling
+const BACKPRESSURE_POLL_SLOWDOWN_MS = 3000; // Slow polling when backpressure detected
+
+// Processing stage mapping for richer status tracking
+const PROCESSING_STAGES = [
+  'uploading', 'ocr_processing', 'text_enhancement', 'type_detection',
+  'artifact_generation', 'quality_validation', 'rag_indexing', 'complete'
+] as const;
+
+type ProcessingStage = typeof PROCESSING_STAGES[number];
+
+function inferProcessingStage(contractStatus: string, artifactCount: number, completedCount: number): ProcessingStage {
+  if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED') return 'complete';
+  if (completedCount > 0 && completedCount < artifactCount) return 'artifact_generation';
+  if (artifactCount > 0 && completedCount === 0) return 'quality_validation';
+  if (contractStatus === 'PROCESSING') return 'artifact_generation';
+  if (contractStatus === 'UPLOADED') return 'ocr_processing';
+  return 'uploading';
+}
 
 /**
  * GET /api/contracts/[id]/artifacts/stream
@@ -15,7 +84,10 @@ const MAX_CONSECUTIVE_ERRORS = 5;
  * Server-Sent Events (SSE) endpoint for streaming artifact generation progress
  * Returns real-time updates as artifacts are generated
  * 
- * Bulletproof features:
+ * Enhanced features:
+ * - Per-artifact status tracking with transition events
+ * - Overall progress percentage calculation
+ * - Processing stage inference (OCR → enhancement → generation → validation)
  * - Graceful degradation on database errors
  * - Automatic completion detection when all artifacts done
  * - Heartbeat to keep connection alive
@@ -23,16 +95,37 @@ const MAX_CONSECUTIVE_ERRORS = 5;
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
-  const tenantId = await getApiTenantId(request);
+  
+  // EventSource can't send headers, so we also check query param for tenant ID
+  const { searchParams } = new URL(request.url);
+  const queryTenantId = searchParams.get('tenantId');
+  
+  // Use query param tenant ID if provided, otherwise fall back to header/session
+  const tenantId = queryTenantId || await getApiTenantId(request);
+
+  // --- P3-24: Rate limiting check ---
+  if (!acquireConnection(tenantId, contractId)) {
+    return new Response(
+      JSON.stringify({ error: 'Too many active streams. Please close other contract views and retry.' }),
+      { 
+        status: 429,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' }
+      }
+    );
+  }
 
   // Check initial contract status - if already completed, we can send data immediately
   let contract: { id: string; status: string } | null = null;
-  let useMockData = false;
   let isInitiallyCompleted = false;
   
   try {
-    contract = await prisma.contract.findUnique({
+    // Use findFirst with tenant filter for proper multi-tenant isolation
+    contract = await prisma.contract.findFirst({
       where: { id: contractId, tenantId },
       select: { id: true, status: true }
     });
@@ -50,7 +143,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       isInitiallyCompleted = contract.status === 'COMPLETED' || contract.status === 'FAILED';
     }
   } catch {
-    useMockData = true;
+    // Database error - return 503 instead of silently using mock data
+    return new Response(
+      JSON.stringify({ error: 'Database unavailable' }),
+      { 
+        status: 503,
+        headers: { 'Content-Type': 'application/json', 'Retry-After': '5' }
+      }
+    );
   }
 
   // Create SSE stream
@@ -61,13 +161,46 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
 
   const stream = new ReadableStream({
     async start(controller) {
+      // --- P3-23: Backpressure tracking ---
+      let queuedEventsCount = 0;
+      let isBackpressured = false;
+      let currentPollInterval = POLL_INTERVAL_MS;
+
       // Send initial connection message with event ID for resume support
       let eventId = 0;
       const sendEvent = (data: object) => {
+        if (isClosed) return;
         eventId++;
-        controller.enqueue(
-          encoder.encode(`id: ${eventId}\ndata: ${JSON.stringify(data)}\n\n`)
-        );
+        queuedEventsCount++;
+        
+        // Backpressure detection: if we're queuing too many events, slow down
+        if (queuedEventsCount > BACKPRESSURE_QUEUE_LIMIT && !isBackpressured) {
+          isBackpressured = true;
+          currentPollInterval = BACKPRESSURE_POLL_SLOWDOWN_MS;
+          console.warn(`[SSE] Backpressure detected for contract ${contractId}, slowing to ${BACKPRESSURE_POLL_SLOWDOWN_MS}ms`);
+          // Restart the poll interval with slower rate
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = setInterval(pollFn, currentPollInterval);
+          }
+        } else if (queuedEventsCount <= BACKPRESSURE_QUEUE_LIMIT / 2 && isBackpressured) {
+          isBackpressured = false;
+          currentPollInterval = POLL_INTERVAL_MS;
+          if (pollInterval) {
+            clearInterval(pollInterval);
+            pollInterval = setInterval(pollFn, currentPollInterval);
+          }
+        }
+
+        try {
+          controller.enqueue(
+            encoder.encode(`id: ${eventId}\ndata: ${JSON.stringify(data)}\n\n`)
+          );
+          // Decrement after successful write
+          queuedEventsCount = Math.max(0, queuedEventsCount - 1);
+        } catch (_e) {
+          // Stream closed
+        }
       };
       
       sendEvent({
@@ -85,7 +218,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               contractId,
               timestamp: new Date().toISOString()
             });
-          } catch (e) {
+          } catch (_e) {
             // Connection closed
             clearInterval(heartbeatInterval);
           }
@@ -99,9 +232,50 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       let lastArtifactCount = 0;
       const maxPolls = MAX_POLL_SECONDS;
       let consecutiveErrors = 0;
+      // Track per-artifact status for transition detection
+      let previousArtifactStatuses: Record<string, string> = {};
+      let lastContractStatus = '';
+
+      // Helper to build artifact payload with enhanced fields
+      const buildArtifactPayload = (dbArtifacts: Array<{ id: string; type: string; validationStatus: string | null; data: any; qualityScore: number | null; completenessScore: number | null; confidence: any; createdAt: Date; updatedAt: Date }>) => {
+        return dbArtifacts.map(a => {
+          const dataStr = JSON.stringify(a.data);
+          return {
+            id: a.id,
+            type: a.type,
+            status: (!!a.data && dataStr.length > 2) ? 'COMPLETED' : 'PROCESSING',
+            hasContent: !!a.data,
+            contentLength: dataStr.length || 0,
+            qualityScore: a.qualityScore ?? null,
+            completenessScore: a.completenessScore ?? null,
+            confidence: Number(a.confidence) || null,
+            metadata: {},
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt
+          };
+        });
+      };
+
+      // Detect which artifacts changed between polls
+      const detectTransitions = (artifacts: Array<{ id: string; type: string; status: string }>) => {
+        const transitions: Array<{ artifactId: string; type: string; from: string; to: string }> = [];
+        for (const a of artifacts) {
+          const prev = previousArtifactStatuses[a.id];
+          if (prev && prev !== a.status) {
+            transitions.push({ artifactId: a.id, type: a.type, from: prev, to: a.status });
+          } else if (!prev && a.status) {
+            transitions.push({ artifactId: a.id, type: a.type, from: 'NONE', to: a.status });
+          }
+        }
+        // Update tracking
+        for (const a of artifacts) {
+          previousArtifactStatuses[a.id] = a.status;
+        }
+        return transitions;
+      };
       
       // If already completed, send data once and close immediately
-      if (isInitiallyCompleted && !useMockData) {
+      if (isInitiallyCompleted) {
         try {
           const dbArtifacts = await prisma.artifact.findMany({
             where: { contractId, tenantId },
@@ -111,21 +285,16 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               type: true,
               validationStatus: true,
               data: true,
+              qualityScore: true,
+              completenessScore: true,
+              confidence: true,
               createdAt: true,
               updatedAt: true
             }
           });
           
-          const artifacts = dbArtifacts.map(a => ({
-            id: a.id,
-            type: a.type,
-            status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
-            hasContent: !!a.data,
-            contentLength: JSON.stringify(a.data).length || 0,
-            metadata: {},
-            createdAt: a.createdAt,
-            updatedAt: a.updatedAt
-          }));
+          const artifacts = buildArtifactPayload(dbArtifacts);
+          const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
           
           // Send update
           controller.enqueue(
@@ -134,8 +303,11 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               contractId,
               contractStatus: contract!.status,
               processingStage: 'complete',
+              progress: 100,
               errorMessage: null,
               artifacts,
+              completedCount,
+              totalCount: artifacts.length,
               timestamp: new Date().toISOString()
             })}\n\n`)
           );
@@ -147,6 +319,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
               contractId,
               status: contract!.status,
               artifactCount: artifacts.length,
+              completedCount,
+              progress: 100,
               artifacts
             })}\n\n`)
           );
@@ -159,7 +333,23 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
       }
       
-      pollInterval = setInterval(async () => {
+      pollInterval = setInterval(pollFn, currentPollInterval);
+
+      // Cleanup on close — release rate limit slot
+      request.signal.addEventListener('abort', () => {
+        clearInterval(pollInterval);
+        clearInterval(heartbeatInterval);
+        isClosed = true;
+        releaseConnection(tenantId, contractId);
+        try {
+          controller.close();
+        } catch (_e) {
+          // Already closed
+        }
+      });
+
+      // Named poll function for backpressure re-scheduling
+      async function pollFn() {
         if (isClosed) {
           clearInterval(pollInterval);
           return;
@@ -174,6 +364,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             contractId,
             status: 'TIMEOUT',
             artifactCount: 0,
+            completedCount: 0,
+            progress: 0,
             artifacts: [],
             message: 'Processing timeout - please retry'
           });
@@ -184,13 +376,13 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
         
         // Also timeout if we have some artifacts but processing seems stuck
-        if (updateCount >= maxPolls && lastArtifactCount > 0 && lastArtifactCount < EXPECTED_ARTIFACT_COUNT) {
-          // Send what we have and mark as complete
-          sendEvent({ 
+        if (updateCount >= maxPolls && lastArtifactCount > 0) {
+          sendEvent({
             type: 'complete', 
             contractId,
             status: 'PARTIAL',
             artifactCount: lastArtifactCount,
+            progress: 50,
             message: 'Processing partially complete - some artifacts may still be generating'
           });
           clearInterval(pollInterval);
@@ -200,92 +392,67 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
         }
 
         try {
-          interface StreamArtifact {
-            id?: string;
-            type: string;
-            status?: string;
-            confidence?: number;
-            data?: Record<string, unknown>;
-          }
-
-          let artifacts: StreamArtifact[] = [];
           let contractStatus = 'PROCESSING';
           
-          if (useMockData) {
-            // Mock data for when database is unavailable
-            const progress = Math.min(updateCount * 10, 100);
-            
-            // Simulate artifact generation
-            const mockArtifacts = [
-              { type: 'OVERVIEW', status: progress >= 20 ? 'valid' : 'pending' },
-              { type: 'CLAUSES', status: progress >= 40 ? 'valid' : 'pending' },
-              { type: 'FINANCIAL', status: progress >= 60 ? 'valid' : 'pending' },
-              { type: 'RISK', status: progress >= 80 ? 'valid' : 'pending' },
-              { type: 'COMPLIANCE', status: progress >= 100 ? 'valid' : 'pending' },
-            ].filter(a => progress >= 20 || a.type === 'OVERVIEW');
-            
-            artifacts = mockArtifacts.map((a, i) => ({
-              id: `mock-artifact-${i}`,
-              type: a.type,
-              status: a.status,
-              hasContent: a.status === 'valid',
-              contentLength: a.status === 'valid' ? 1024 : 0,
-              metadata: {},
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            }));
-            
-            contractStatus = progress >= 100 ? 'COMPLETED' : 'PROCESSING';
-          } else {
-            // If initially completed, we can skip contract status check after first fetch
-            const shouldCheckStatus = !isInitiallyCompleted || updateCount === 0;
-            
-            // Fetch current artifacts from database (with connection pooling)
-            const [dbArtifacts, updatedContract] = await Promise.all([
-              prisma.artifact.findMany({
-                where: { contractId, tenantId },
-                orderBy: { createdAt: 'asc' },
-                select: {
-                  id: true,
-                  type: true,
-                  validationStatus: true,
-                  data: true,
-                  createdAt: true,
-                  updatedAt: true
-                }
-              }),
-              shouldCheckStatus ? prisma.contract.findUnique({
-                where: { id: contractId },
-                select: { 
-                  status: true
-                }
-              }) : Promise.resolve(contract)
-            ]);
-            
-            artifacts = dbArtifacts.map(a => ({
-              id: a.id,
-              type: a.type,
-              status: (a.validationStatus === 'valid') ? 'COMPLETED' : 'PROCESSING',
-              hasContent: !!a.data,
-              contentLength: JSON.stringify(a.data).length || 0,
-              metadata: {},
-              createdAt: a.createdAt,
-              updatedAt: a.updatedAt
-            }));
-            
-            contractStatus = updatedContract?.status || 'PROCESSING';
-          }
+          // If initially completed, we can skip contract status check after first fetch
+          const shouldCheckStatus = !isInitiallyCompleted || updateCount === 0;
+          
+          // Fetch current artifacts from database (with connection pooling)
+          const [dbArtifacts, updatedContract] = await Promise.all([
+            prisma.artifact.findMany({
+              where: { contractId, tenantId },
+              orderBy: { createdAt: 'asc' },
+              select: {
+                id: true,
+                type: true,
+                validationStatus: true,
+                data: true,
+                qualityScore: true,
+                completenessScore: true,
+                confidence: true,
+                createdAt: true,
+                updatedAt: true
+              }
+            }),
+            shouldCheckStatus ? prisma.contract.findFirst({
+              where: { id: contractId, tenantId },
+              select: { 
+                status: true
+              }
+            }) : Promise.resolve(contract)
+          ]);
+          
+          const artifacts = buildArtifactPayload(dbArtifacts);
+          contractStatus = updatedContract?.status || 'PROCESSING';
 
-          // Only send update if artifacts changed or status changed
-          if (artifacts.length !== lastArtifactCount || contractStatus === 'COMPLETED' || contractStatus === 'FAILED') {
+          // Detect per-artifact status transitions
+          const transitions = detectTransitions(artifacts);
+          const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
+          const totalCount = artifacts.length;
+          const progress = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+          const stage = inferProcessingStage(contractStatus, totalCount, completedCount);
+
+          // Send update if anything changed: new artifacts, status transitions, or contract status changes
+          const hasChanges = artifacts.length !== lastArtifactCount 
+            || transitions.length > 0 
+            || contractStatus !== lastContractStatus
+            || contractStatus === 'COMPLETED' 
+            || contractStatus === 'FAILED';
+          
+          if (hasChanges) {
             lastArtifactCount = artifacts.length;
+            lastContractStatus = contractStatus;
             consecutiveErrors = 0; // Reset on successful update
             
             const data = {
               type: 'update',
               contractId,
               contractStatus,
-              processingStage: contractStatus === 'COMPLETED' ? 'complete' : 'processing',
+              processingStage: stage,
+              progress,
+              completedCount,
+              totalCount,
+              transitions: transitions.length > 0 ? transitions : undefined,
               errorMessage: null,
               artifacts,
               timestamp: new Date().toISOString()
@@ -297,9 +464,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
           }
 
           // If contract is completed or failed, close stream
-          // Also close if we have 10 completed artifacts (all artifacts generated)
-          const completedArtifacts = artifacts.filter((a: StreamArtifact) => a.status === 'COMPLETED').length;
-          const allArtifactsComplete = completedArtifacts >= 10;
+          // Also close if all fetched artifacts are complete (dynamic, not hardcoded)
+          const allArtifactsComplete = artifacts.length > 0 && completedCount >= artifacts.length;
           
           if (contractStatus === 'COMPLETED' || contractStatus === 'FAILED' || allArtifactsComplete) {
             // Send final update with artifacts
@@ -309,6 +475,8 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
                 contractId,
                 status: allArtifactsComplete ? 'COMPLETED' : contractStatus,
                 artifactCount: artifacts.length,
+                completedCount,
+                progress: allArtifactsComplete ? 100 : progress,
                 artifacts
               })}\n\n`)
             );
@@ -342,25 +510,15 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
             timestamp: new Date().toISOString()
           });
         }
-      }, POLL_INTERVAL_MS);
+      }
 
-      // Cleanup on close
-      request.signal.addEventListener('abort', () => {
-        clearInterval(pollInterval);
-        clearInterval(heartbeatInterval);
-        isClosed = true;
-        try {
-          controller.close();
-        } catch (e) {
-          // Already closed
-        }
-      });
     },
 
     cancel() {
       clearInterval(pollInterval);
       clearInterval(heartbeatInterval);
       isClosed = true;
+      releaseConnection(tenantId, contractId);
     }
   });
 

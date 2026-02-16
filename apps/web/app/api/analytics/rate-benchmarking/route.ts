@@ -1,70 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { analyticalIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const action = searchParams.get('action');
-    const contractId = searchParams.get('contractId');
-    const supplierId = searchParams.get('supplierId');
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action');
+  const contractId = searchParams.get('contractId');
+  const supplierId = searchParams.get('supplierId');
 
-    const rateCardEngine = analyticalIntelligenceService.getRateCardEngine();
+  const rateCardEngine = analyticalIntelligenceService.getRateCardEngine();
 
-    switch (action) {
-      case 'parse':
-        if (!contractId) {
-          return NextResponse.json({ error: 'Contract ID required' }, { status: 400 });
-        }
-        const parseResult = await rateCardEngine.parseRateCards(contractId);
-        return NextResponse.json(parseResult);
+  switch (action) {
+    case 'parse':
+      if (!contractId) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID required', 400);
+      }
+      const parseResult = await rateCardEngine.parseRateCards(contractId);
+      return createSuccessResponse(ctx, parseResult);
 
-      case 'report':
-        if (!supplierId) {
-          return NextResponse.json({ error: 'Supplier ID required' }, { status: 400 });
-        }
-        const report = await rateCardEngine.generateRateCardReport(supplierId);
-        return NextResponse.json(report);
+    case 'report':
+      if (!supplierId) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Supplier ID required', 400);
+      }
+      const report = await rateCardEngine.generateRateCardReport(supplierId);
+      return createSuccessResponse(ctx, report);
 
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, rates, cohort, currentRates, benchmarks } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const body = await request.json();
+  const { action, rates, cohort: _cohort, currentRates, benchmarks: _benchmarks } = body;
 
-    const rateCardEngine = analyticalIntelligenceService.getRateCardEngine();
+  const rateCardEngine = analyticalIntelligenceService.getRateCardEngine();
 
-    switch (action) {
-      case 'calculate-benchmarks':
-        if (!rates) {
-          return NextResponse.json({ error: 'Rates required' }, { status: 400 });
-        }
-        const benchmarkResult = await rateCardEngine.calculateBenchmarks(rates);
-        return NextResponse.json(benchmarkResult);
+  switch (action) {
+    case 'calculate-benchmarks':
+      if (!rates) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Rates required', 400);
+      }
+      const benchmarkResult = await rateCardEngine.calculateBenchmarks(rates);
+      return createSuccessResponse(ctx, benchmarkResult);
 
-      case 'estimate-savings':
-        if (!currentRates) {
-          return NextResponse.json({ error: 'Current rates required' }, { status: 400 });
-        }
-        const savingsResult = await rateCardEngine.estimateSavings(currentRates);
-        return NextResponse.json(savingsResult);
+    case 'estimate-savings':
+      if (!currentRates) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Current rates required', 400);
+      }
+      const savingsResult = await rateCardEngine.estimateSavings(currentRates);
+      return createSuccessResponse(ctx, savingsResult);
 
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
-    }
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
   }
-}
+});

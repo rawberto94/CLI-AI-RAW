@@ -6,81 +6,46 @@
  * - POST: Track new AI usage events
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { aiAnalytics, type AIUsageEvent } from '@/lib/ai/analytics.service';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
     const { searchParams } = new URL(request.url);
     const period = (searchParams.get('period') || '7d') as '7d' | '30d' | '90d';
     const view = searchParams.get('view') || 'full'; // full, today, user
 
     // Validate period
     if (!['7d', '30d', '90d'].includes(period)) {
-      return NextResponse.json(
-        { error: 'Invalid period. Use 7d, 30d, or 90d' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid period. Use 7d, 30d, or 90d', 400);
     }
-
-    const tenantId = session.user.tenantId as string | undefined;
 
     if (view === 'today') {
       const todayUsage = await aiAnalytics.getTodayUsage(tenantId);
-      return NextResponse.json({
-        success: true,
-        data: todayUsage,
-      });
+      return createSuccessResponse(ctx, todayUsage);
     }
 
     if (view === 'user') {
-      const userId = session.user.id as string;
       const userUsage = await aiAnalytics.getUserUsage(userId, period);
-      return NextResponse.json({
-        success: true,
-        data: userUsage,
-      });
+      return createSuccessResponse(ctx, userUsage);
     }
 
     // Full metrics
     const metrics = await aiAnalytics.getMetrics(period, tenantId);
 
-    return NextResponse.json({
-      success: true,
-      data: metrics,
-    });
-  } catch (error) {
-    console.error('AI Analytics GET error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch analytics' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, metrics);
+  });
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
 
     // Validate required fields
     const requiredFields = ['model', 'endpoint', 'feature', 'inputTokens', 'outputTokens', 'latencyMs', 'success'];
     for (const field of requiredFields) {
       if (body[field] === undefined) {
-        return NextResponse.json(
-          { error: `Missing required field: ${field}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Missing required field: ${field}`, 400);
       }
     }
 
@@ -93,23 +58,12 @@ export async function POST(request: NextRequest) {
       latencyMs: body.latencyMs,
       success: body.success,
       errorType: body.errorType,
-      userId: session.user.id as string,
-      tenantId: session.user.tenantId as string | undefined,
+      userId: ctx.userId as string,
+      tenantId: ctx.tenantId as string | undefined,
       contractId: body.contractId,
-      metadata: body.metadata,
-    };
+      metadata: body.metadata };
 
     await aiAnalytics.trackUsage(event);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Usage tracked successfully',
-    });
-  } catch (error) {
-    console.error('AI Analytics POST error:', error);
-    return NextResponse.json(
-      { error: 'Failed to track usage' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, { message: 'Usage tracked successfully' });
+  });

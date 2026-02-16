@@ -1,392 +1,138 @@
 /**
- * Intelligence Health API - Uses stored health scores from dedicated table
- * GET /api/intelligence/health - Get contract health scores
- * POST /api/intelligence/health - Trigger health reassessment
- * 
- * Primary source: contract_health_scores table (synced via /api/contracts/sync-health-scores)
- * Fallback: Calculate from RISK artifacts
+ * Intelligence Health API — Contract health scores for the dashboard
+ *
+ * GET /api/intelligence/health         — List contract health scores
+ * POST /api/intelligence/health/refresh — Recalculate all health scores
+ *
+ * @version 1.0.0
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
-import { Prisma } from '@prisma/client';
+import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import { calculateContractHealth } from '@/lib/health/contract-health-score';
 
-export const dynamic = 'force-dynamic';
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { tenantId } = ctx;
 
-/**
- * Stored factor data structure
- */
-interface StoredFactor {
-  name?: string;
-  score?: number;
-  weight?: number;
-  description?: string;
-}
+  // Fetch contracts with their artifacts and health-related fields
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId },
+    orderBy: { updatedAt: 'desc' },
+    take: 100,
+    select: {
+      id: true,
+      contractTitle: true,
+      fileName: true,
+      counterparty: true,
+      vendor: true,
+      status: true,
+      expirationDate: true,
+      expirationRisk: true,
+      totalValue: true,
+      metadata: true,
+      artifacts: { select: { id: true, type: true } },
+      updatedAt: true,
+    },
+  });
 
-/**
- * Stored alert data structure
- */
-interface StoredAlert {
-  message?: string;
-  severity?: 'low' | 'medium' | 'high';
-}
+  const healthContracts = contracts.map(c => {
+    const meta = (c.metadata || {}) as Record<string, unknown>;
+    const healthScore = (meta.healthScore as number) || 75;
+    const previousScore = (meta.previousHealthScore as number) || healthScore;
 
-/**
- * Risk artifact data structure
- */
-interface RiskArtifactData {
-  overallScore?: number;
-  risks?: unknown[];
-}
+    // Calculate factors from available data
+    const hasArtifacts = c.artifacts.length > 0;
+    const hasMetadata = meta && Object.keys(meta).length > 5;
+    const completeness = (hasArtifacts ? 50 : 0) + (hasMetadata ? 50 : 0);
 
-interface HealthScore {
-  contractId: string;
-  contractName: string;
-  supplierName: string | null;
-  overallScore: number;
-  previousScore?: number;
-  trend: 'improving' | 'declining' | 'stable';
-  status: 'healthy' | 'at-risk' | 'critical';
-  factors: Array<{
-    id: string;
-    name: string;
-    score: number;
-    weight: number;
-    status: string;
-    description: string;
-  }>;
-  actionItems: Array<{
-    id: string;
-    type: 'urgent' | 'recommended' | 'optional';
-    title: string;
-    description: string;
-    impact: string;
-  }>;
-  lastAssessed: string;
-  nextReview: string;
-}
+    const daysToExpiry = c.expirationDate
+      ? Math.ceil((new Date(c.expirationDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+      : 999;
+    const expirationScore = daysToExpiry > 90 ? 100 : daysToExpiry > 30 ? 70 : daysToExpiry > 0 ? 40 : 10;
 
-function calculateHealthStatus(score: number): 'healthy' | 'at-risk' | 'critical' {
-  if (score >= 70) return 'healthy';
-  if (score >= 40) return 'at-risk';
-  return 'critical';
-}
+    const riskScore = c.expirationRisk === 'CRITICAL' ? 20 : c.expirationRisk === 'HIGH' ? 40 : c.expirationRisk === 'MEDIUM' ? 70 : 90;
 
-export async function GET(request: NextRequest) {
-  const startTime = Date.now();
-  
-  try {
-    const tenantId = await getServerTenantId();
-    const { searchParams } = new URL(request.url);
-    const contractId = searchParams.get('contractId');
-    const status = searchParams.get('status');
-    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 500);
-
-    // Build safe parameterized query using Prisma.sql
-    const conditions: Prisma.Sql[] = [Prisma.sql`tenant_id = ${tenantId}`];
-    
-    if (contractId) {
-      // Validate UUID format to prevent injection
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (uuidRegex.test(contractId)) {
-        conditions.push(Prisma.sql`contract_id = ${contractId}`);
-      }
-    }
-    
-    const whereClause = Prisma.join(conditions, ' AND ');
-      
-    const storedScores = await prisma.$queryRaw<Array<{
-      contract_id: string;
-      overall_score: number;
-      risk_score: number;
-      compliance_score: number;
-      financial_score: number;
-      operational_score: number;
-      renewal_readiness: number;
-      document_quality: number;
-      previous_score: number;
-      score_change: number;
-      trend_direction: string;
-      alert_level: string;
-      factors: StoredFactor[];
-      strengths: string[];
-      weaknesses: string[];
-      opportunities: string[];
-      active_alerts: StoredAlert[];
-      calculated_at: Date;
-    }>>(Prisma.sql`
-      SELECT 
-        contract_id, overall_score, risk_score, compliance_score, financial_score,
-        operational_score, renewal_readiness, document_quality,
-        previous_score, score_change, trend_direction, alert_level,
-        factors, strengths, weaknesses, opportunities, active_alerts, calculated_at
-      FROM contract_health_scores
-      WHERE ${whereClause}
-      ORDER BY overall_score ASC
-      LIMIT ${limit}
-    `);
-
-    // Get contract details
-    const contractIds = storedScores.map(s => s.contract_id);
-    type ContractInfo = {
-      id: string;
-      contractTitle: string | null;
-      originalName: string | null;
-      fileName: string | null;
-      supplierName: string | null;
-      expirationDate: Date | null;
-      endDate: Date | null;
-    };
-
-    const contracts: ContractInfo[] =
-      contractIds.length > 0
-        ? ((await prisma.contract.findMany({
-            where: { id: { in: contractIds } },
-            select: {
-              id: true,
-              contractTitle: true,
-              originalName: true,
-              fileName: true,
-              supplierName: true,
-              expirationDate: true,
-              endDate: true,
-            },
-          })) as ContractInfo[])
-        : [];
-
-    const contractMap = new Map<string, ContractInfo>(contracts.map(c => [c.id, c]));
-
-    // Transform to HealthScore format
-    let healthScores: HealthScore[] = storedScores.map(score => {
-      const contract = contractMap.get(score.contract_id);
-      const overallScore = score.overall_score;
-      
-      // Build factors from stored data
-      const storedFactors = Array.isArray(score.factors) ? score.factors : [];
-      const factors = storedFactors.length > 0 ? storedFactors.map((f: StoredFactor, i: number) => ({
-        id: `factor-${i}`,
-        name: f.name || 'Unknown Factor',
-        score: f.score || 50,
-        weight: f.weight || 0.2,
-        status: (f.score || 50) >= 70 ? 'good' : (f.score || 50) >= 40 ? 'warning' : 'critical',
-        description: f.description || '',
-      })) : [
-        { id: 'risk', name: 'Risk Analysis', score: score.risk_score, weight: 0.25, status: score.risk_score >= 70 ? 'good' : score.risk_score >= 40 ? 'warning' : 'critical', description: 'Contract risk assessment' },
-        { id: 'compliance', name: 'Compliance', score: score.compliance_score, weight: 0.20, status: score.compliance_score >= 70 ? 'good' : score.compliance_score >= 40 ? 'warning' : 'critical', description: 'Regulatory compliance status' },
-        { id: 'financial', name: 'Financial Health', score: score.financial_score, weight: 0.20, status: score.financial_score >= 70 ? 'good' : score.financial_score >= 40 ? 'warning' : 'critical', description: 'Financial terms and value' },
-        { id: 'operational', name: 'Operational', score: score.operational_score, weight: 0.15, status: score.operational_score >= 70 ? 'good' : score.operational_score >= 40 ? 'warning' : 'critical', description: 'Operational efficiency' },
-        { id: 'renewal', name: 'Renewal Readiness', score: score.renewal_readiness, weight: 0.10, status: score.renewal_readiness >= 70 ? 'good' : score.renewal_readiness >= 40 ? 'warning' : 'critical', description: 'Preparation for renewal' },
-        { id: 'docs', name: 'Documentation', score: score.document_quality, weight: 0.10, status: score.document_quality >= 70 ? 'good' : score.document_quality >= 40 ? 'warning' : 'critical', description: 'Document completeness' },
-      ];
-
-      // Build action items from weaknesses and alerts
-      const weaknesses = Array.isArray(score.weaknesses) ? score.weaknesses : [];
-      const alerts = Array.isArray(score.active_alerts) ? score.active_alerts : [];
-      
-      const actionItems = [
-        ...weaknesses.map((w: string, i: number) => ({
-          id: `action-weakness-${i}`,
-          type: 'recommended' as const,
-          title: 'Address Identified Weakness',
-          description: w,
-          impact: 'Medium',
-        })),
-        ...alerts.map((a: StoredAlert, i: number) => ({
-          id: `action-alert-${i}`,
-          type: a.severity === 'high' ? 'urgent' as const : 'recommended' as const,
-          title: a.message || 'Alert Action Required',
-          description: a.message || '',
-          impact: a.severity === 'high' ? 'High' : 'Medium',
-        })),
-      ];
-
-      return {
-        contractId: score.contract_id,
-        contractName: contract?.contractTitle || contract?.originalName || contract?.fileName || 'Unknown Contract',
-        supplierName: contract?.supplierName || null,
-        overallScore,
-        previousScore: score.previous_score || undefined,
-        trend: (score.trend_direction as 'improving' | 'declining' | 'stable') || 'stable',
-        status: calculateHealthStatus(overallScore),
-        factors,
-        actionItems,
-        lastAssessed: score.calculated_at?.toISOString() || new Date().toISOString(),
-        nextReview: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      };
-    });
-
-    // If no stored scores, fall back to calculating from RISK artifacts
-    if (healthScores.length === 0) {
-      const contracts = await prisma.contract.findMany({
-        where: {
-          tenantId,
-          status: { in: ['COMPLETED', 'ACTIVE'] },
-          ...(contractId && { id: contractId }),
+    return {
+      contractId: c.id,
+      contractName: c.contractTitle || c.fileName || 'Untitled',
+      supplierName: c.counterparty || c.vendor || 'Unknown',
+      overallScore: healthScore,
+      previousScore,
+      trend: healthScore > previousScore ? 'improving' : healthScore < previousScore ? 'declining' : 'stable',
+      status: healthScore >= 70 ? 'healthy' : healthScore >= 50 ? 'at-risk' : 'critical',
+      factors: [
+        {
+          id: `${c.id}-completeness`,
+          name: 'Document Completeness',
+          score: completeness,
+          weight: 0.2,
+          status: completeness >= 80 ? 'good' : completeness >= 50 ? 'warning' : 'critical',
+          description: `${c.artifacts.length} artifacts generated`,
         },
-        include: {
-          artifacts: {
-            where: { type: 'RISK' },
-            select: { id: true, type: true, data: true },
+        {
+          id: `${c.id}-expiration`,
+          name: 'Expiration Risk',
+          score: expirationScore,
+          weight: 0.25,
+          status: expirationScore >= 70 ? 'good' : expirationScore >= 40 ? 'warning' : 'critical',
+          description: daysToExpiry > 0 ? `${daysToExpiry} days until expiration` : 'Expired',
+        },
+        {
+          id: `${c.id}-risk`,
+          name: 'Risk Assessment',
+          score: riskScore,
+          weight: 0.25,
+          status: riskScore >= 70 ? 'good' : riskScore >= 40 ? 'warning' : 'critical',
+          description: `Risk level: ${c.expirationRisk || 'LOW'}`,
+        },
+      ],
+      lastAssessed: c.updatedAt.toISOString(),
+      nextReview: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+      actionItems: [
+        ...(completeness < 80 ? [{ id: `${c.id}-ai`, action: 'Run AI artifact generation', priority: 'medium' }] : []),
+        ...(expirationScore < 40 ? [{ id: `${c.id}-renew`, action: 'Review expiration and plan renewal', priority: 'high' }] : []),
+        ...(riskScore < 40 ? [{ id: `${c.id}-risk`, action: 'Conduct detailed risk assessment', priority: 'high' }] : []),
+      ],
+    };
+  });
+
+  return NextResponse.json({
+    success: true,
+    data: { contracts: healthContracts },
+  });
+});
+
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { tenantId } = ctx;
+
+  // Batch recalculate health scores for all tenant contracts
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId },
+    select: { id: true },
+    take: 100,
+  });
+
+  let updated = 0;
+  for (const c of contracts) {
+    try {
+      const health = await calculateContractHealth(c.id);
+      await prisma.contract.update({
+        where: { id: c.id },
+        data: {
+          metadata: {
+            ...(await prisma.contract.findUnique({ where: { id: c.id }, select: { metadata: true } }).then(r => (r?.metadata || {}) as Record<string, unknown>)),
+            healthScore: health.overallScore,
+            previousHealthScore: health.overallScore,
+            healthGrade: health.grade,
           },
         },
-        take: limit,
       });
-
-      healthScores = contracts.map(contract => {
-        const riskArtifact = contract.artifacts.find(a => a.type === 'RISK');
-        let riskScore = 75;
-        
-        if (riskArtifact?.data) {
-          const riskData = riskArtifact.data as RiskArtifactData;
-          if (riskData.overallScore !== undefined) {
-            riskScore = 100 - riskData.overallScore;
-          } else if (riskData.risks?.length) {
-            riskScore = Math.max(20, 100 - (riskData.risks.length * 15));
-          }
-        }
-        
-        const overallScore = Math.round(riskScore);
-        
-        return {
-          contractId: contract.id,
-          contractName: contract.contractTitle || contract.originalName || contract.fileName,
-          supplierName: contract.supplierName,
-          overallScore,
-          trend: 'stable' as const,
-          status: calculateHealthStatus(overallScore),
-          factors: [
-            { id: 'risk', name: 'Risk Analysis', score: overallScore, weight: 0.25, status: overallScore >= 70 ? 'good' : 'warning', description: 'From RISK artifact' },
-            { id: 'compliance', name: 'Compliance', score: Math.round(overallScore + 5), weight: 0.20, status: 'good', description: 'Estimated' },
-            { id: 'financial', name: 'Financial', score: Math.round(overallScore - 5), weight: 0.20, status: 'good', description: 'Estimated' },
-            { id: 'operational', name: 'Operational', score: overallScore, weight: 0.15, status: 'good', description: 'Estimated' },
-          ],
-          actionItems: [],
-          lastAssessed: new Date().toISOString(),
-          nextReview: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-        };
-      });
+      updated++;
+    } catch {
+      // Continue with next contract
     }
-
-    // Filter by status if requested
-    if (status) {
-      healthScores = healthScores.filter(h => h.status === status);
-    }
-
-    // Calculate portfolio stats
-    const totalContracts = healthScores.length;
-    const stats = {
-      averageScore: totalContracts > 0 
-        ? Math.round(healthScores.reduce((sum, h) => sum + h.overallScore, 0) / totalContracts)
-        : 0,
-      healthy: healthScores.filter(h => h.status === 'healthy').length,
-      atRisk: healthScores.filter(h => h.status === 'at-risk').length,
-      critical: healthScores.filter(h => h.status === 'critical').length,
-      totalContracts,
-      trends: {
-        improving: healthScores.filter(h => h.trend === 'improving').length,
-        declining: healthScores.filter(h => h.trend === 'declining').length,
-        stable: healthScores.filter(h => h.trend === 'stable').length,
-      },
-      urgentActions: healthScores.reduce((sum, h) => 
-        sum + h.actionItems.filter(a => a.type === 'urgent').length, 0),
-    };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        contracts: healthScores,
-        stats,
-      },
-      meta: {
-        source: storedScores.length > 0 ? 'health_scores_table' : 'risk_artifacts',
-        tenantId,
-        timestamp: new Date().toISOString(),
-        responseTime: `${Date.now() - startTime}ms`,
-      },
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch health data', details: String(error) },
-      { status: 500 }
-    );
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const { contractId, reassess, refreshAll } = body;
-
-    if (refreshAll) {
-      // Trigger full sync via the sync-health-scores endpoint
-      const response = await fetch(`${request.nextUrl.origin}/api/contracts/sync-health-scores`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tenantId }),
-      });
-
-      const result = await response.json();
-      return NextResponse.json({
-        success: true,
-        message: 'Health scores refresh triggered',
-        data: result.data,
-      });
-    }
-
-    if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Get the current health score
-    const healthScore = await prisma.$queryRaw<Array<{
-      overall_score: number;
-      calculated_at: Date;
-    }>>`
-      SELECT overall_score, calculated_at FROM contract_health_scores
-      WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-    `;
-
-    // Get contract info
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
-      select: {
-        id: true,
-        contractTitle: true,
-        originalName: true,
-        supplierName: true,
-      },
-    });
-
-    if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
-    }
-
-    const score = healthScore[0];
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        contractId: contract.id,
-        contractName: contract.contractTitle || contract.originalName,
-        supplierName: contract.supplierName,
-        overallScore: score?.overall_score || 75,
-        status: calculateHealthStatus(score?.overall_score || 75),
-        lastAssessed: score?.calculated_at?.toISOString() || new Date().toISOString(),
-        reassessmentTriggered: reassess,
-      },
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request', details: String(error) },
-      { status: 400 }
-    );
-  }
-}
+  return NextResponse.json({ success: true, updated });
+});

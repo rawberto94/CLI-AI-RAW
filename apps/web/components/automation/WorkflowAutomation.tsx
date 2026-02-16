@@ -261,7 +261,7 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Workflow className="h-5 w-5 text-blue-600" />
+              <Workflow className="h-5 w-5 text-violet-600" />
               Workflow Automation
             </CardTitle>
             <CardDescription>
@@ -317,14 +317,14 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
                           className={cn(
                             'p-3 rounded-lg border-2 text-left transition-all',
                             newWorkflow.triggerType === type
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-violet-500 bg-violet-50'
                               : 'border-slate-200 hover:border-slate-300'
                           )}
                         >
                           <div className="flex items-center gap-2 mb-1">
                             <Icon className={cn(
                               'h-4 w-4',
-                              newWorkflow.triggerType === type ? 'text-blue-600' : 'text-slate-400'
+                              newWorkflow.triggerType === type ? 'text-violet-600' : 'text-slate-400'
                             )} />
                             <span className="font-medium text-sm">{config.label}</span>
                           </div>
@@ -348,17 +348,17 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
                           className={cn(
                             'p-3 rounded-lg border text-left transition-all flex items-start gap-3',
                             isSelected
-                              ? 'border-blue-500 bg-blue-50'
+                              ? 'border-violet-500 bg-violet-50'
                               : 'border-slate-200 hover:border-slate-300'
                           )}
                         >
                           <div className={cn(
                             'p-1.5 rounded',
-                            isSelected ? 'bg-blue-100' : 'bg-slate-100'
+                            isSelected ? 'bg-violet-100' : 'bg-slate-100'
                           )}>
                             <Icon className={cn(
                               'h-4 w-4',
-                              isSelected ? 'text-blue-600' : 'text-slate-400'
+                              isSelected ? 'text-violet-600' : 'text-slate-400'
                             )} />
                           </div>
                           <div>
@@ -394,7 +394,7 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 rounded-lg bg-slate-50 text-center">
-            <Workflow className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+            <Workflow className="h-6 w-6 mx-auto mb-2 text-violet-600" />
             <p className="text-2xl font-bold">{workflows.length}</p>
             <p className="text-xs text-slate-500">Total Workflows</p>
           </div>
@@ -405,9 +405,9 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
             </p>
             <p className="text-xs text-slate-500">Active</p>
           </div>
-          <div className="p-4 rounded-lg bg-blue-50 text-center">
-            <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-            <p className="text-2xl font-bold text-blue-600">
+          <div className="p-4 rounded-lg bg-violet-50 text-center">
+            <CheckCircle2 className="h-6 w-6 mx-auto mb-2 text-violet-600" />
+            <p className="text-2xl font-bold text-violet-600">
               {workflows.reduce((acc, w) => acc + w.runCount, 0)}
             </p>
             <p className="text-xs text-slate-500">Total Runs</p>
@@ -417,7 +417,7 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
         {/* Workflow List */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading workflows...</span>
           </div>
         ) : workflows.length === 0 ? (
@@ -446,11 +446,11 @@ export const WorkflowAutomation = memo(function WorkflowAutomation({
                       <div className="flex items-start gap-3">
                         <div className={cn(
                           'p-2 rounded-lg',
-                          workflow.enabled ? 'bg-blue-100' : 'bg-slate-200'
+                          workflow.enabled ? 'bg-violet-100' : 'bg-slate-200'
                         )}>
                           <TriggerIcon className={cn(
                             'h-5 w-5',
-                            workflow.enabled ? 'text-blue-600' : 'text-slate-400'
+                            workflow.enabled ? 'text-violet-600' : 'text-slate-400'
                           )} />
                         </div>
                         <div>

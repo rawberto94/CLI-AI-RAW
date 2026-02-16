@@ -23,13 +23,13 @@ export default function RunsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6">
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4 mb-8"
         >
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
             <Activity className="w-7 h-7 text-white" />
           </div>
           <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">Runs</h1>
@@ -39,7 +39,7 @@ export default function RunsPage() {
           animate={{ opacity: 1 }}
           className="flex flex-col items-center justify-center py-24"
         >
-          <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 mb-6">
+          <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/25 mb-6">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
           </div>
           <p className="text-slate-600 font-medium">Loading runs...</p>
@@ -76,13 +76,13 @@ export default function RunsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 p-6 space-y-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6 space-y-6">
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center gap-4"
       >
-        <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+        <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
           <Activity className="w-7 h-7 text-white" />
         </div>
         <div>
@@ -119,10 +119,10 @@ export default function RunsPage() {
                 className="p-4 hover:bg-slate-50/80 transition-colors"
               >
                 <a href={`/runs/${r.runId}`} className="flex items-center justify-between">
-                  <span className="text-blue-600 hover:text-blue-700 font-medium">{r.runId}</span>
+                  <span className="text-violet-600 hover:text-violet-700 font-medium">{r.runId}</span>
                   <span className={`px-3 py-1 text-xs font-medium rounded-full ${
                     r.status === 'completed' ? 'bg-green-100 text-green-700' :
-                    r.status === 'running' ? 'bg-blue-100 text-blue-700' :
+                    r.status === 'running' ? 'bg-violet-100 text-violet-700' :
                     r.status === 'failed' ? 'bg-red-100 text-red-700' :
                     'bg-slate-100 text-slate-700'
                   }`}>{r.status}</span>

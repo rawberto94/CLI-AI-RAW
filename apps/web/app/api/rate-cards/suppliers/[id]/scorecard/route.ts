@@ -1,17 +1,15 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { supplierBenchmarkService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
     }
-
+try {
     const supplierId = params.id;
     const { searchParams } = new URL(request.url);
     const periodMonths = parseInt(searchParams.get('periodMonths') || '12');
@@ -21,14 +19,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     // Try to get latest benchmark first
     let scorecard = await benchmarkService.getLatestBenchmark(
       supplierId,
-      session.user.tenantId
+      ctx.tenantId
     );
 
     // If no recent benchmark, calculate new one
     if (!scorecard) {
       scorecard = await benchmarkService.calculateSupplierBenchmark({
         supplierId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
         periodMonths,
       });
     }
@@ -36,30 +34,26 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     // Get rate stability data
     const stability = await benchmarkService.trackRateStability(
       supplierId,
-      session.user.tenantId,
+      ctx.tenantId,
       periodMonths
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       scorecard,
       stability,
     });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch supplier scorecard' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch supplier scorecard', 500);
   }
 }
 
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
     }
-
+try {
     const supplierId = params.id;
     const body = await request.json();
     const periodMonths = body.periodMonths || 12;
@@ -69,15 +63,12 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     // Force recalculation
     const scorecard = await benchmarkService.calculateSupplierBenchmark({
       supplierId,
-      tenantId: session.user.tenantId,
+      tenantId: ctx.tenantId,
       periodMonths,
     });
 
-    return NextResponse.json({ scorecard });
+    return createSuccessResponse(ctx, { scorecard });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to calculate supplier scorecard' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to calculate supplier scorecard', 500);
   }
 }

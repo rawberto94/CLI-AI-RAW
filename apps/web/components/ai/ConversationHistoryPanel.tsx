@@ -163,7 +163,7 @@ export function ConversationHistoryPanel({
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
         <div className="flex items-center gap-2">
-          <History className="w-5 h-5 text-purple-500" />
+          <History className="w-5 h-5 text-violet-500" />
           <h3 className="font-semibold text-gray-900">History</h3>
           <Badge variant="secondary" className="text-xs">
             {conversations.length}
@@ -211,7 +211,7 @@ export function ConversationHistoryPanel({
           <Button
             variant="default"
             size="sm"
-            className="h-8 text-xs bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+            className="h-8 text-xs bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
             onClick={onNewConversation}
           >
             + New Chat
@@ -224,7 +224,7 @@ export function ConversationHistoryPanel({
         <div className="p-2">
           {isLoading ? (
             <div className="flex flex-col items-center justify-center py-8 text-gray-500">
-              <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mb-3" />
+              <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin mb-3" />
               <p className="text-sm">Loading history...</p>
             </div>
           ) : groupedConversations.length === 0 ? (
@@ -250,7 +250,7 @@ export function ConversationHistoryPanel({
                       animate={{ opacity: 1 }}
                       className={`group relative rounded-lg transition-all cursor-pointer ${
                         currentConversationId === conv.id
-                          ? "bg-purple-50 border border-purple-200"
+                          ? "bg-violet-50 border border-violet-200"
                           : "hover:bg-gray-50 border border-transparent"
                       }`}
                       onClick={() => onSelectConversation(conv.id)}
@@ -280,7 +280,7 @@ export function ConversationHistoryPanel({
                               {conv.contextType === "contract" && (
                                 <Badge
                                   variant="secondary"
-                                  className="text-[10px] h-4 px-1.5 bg-blue-50 text-blue-600"
+                                  className="text-[10px] h-4 px-1.5 bg-violet-50 text-violet-600"
                                 >
                                   <FileText className="w-2.5 h-2.5 mr-0.5" />
                                   Contract

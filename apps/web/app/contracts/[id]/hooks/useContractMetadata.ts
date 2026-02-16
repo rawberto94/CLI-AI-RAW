@@ -74,8 +74,31 @@ interface ContractData {
  * Prioritizes: DB fields > AI-extracted > defaults
  */
 export function useContractMetadata(contract: ContractData | null) {
-  const overviewData = contract?.extractedData?.overview
-  const financialData = contract?.extractedData?.financial
+  // Support multiple possible locations for artifact data
+  const overviewData = contract?.extractedData?.overview || contract?.extractedData?.metadata || contract?.metadata || contract?.overview
+  const financialData = contract?.extractedData?.financial || contract?.financial
+  
+  // Helper to extract value from wrapped or direct values
+  // AI may return { value: X, source: '...' } or just X
+  const unwrapValue = useCallback((val: any): any => {
+    if (val === null || val === undefined) return null
+    if (typeof val === 'object' && 'value' in val) return val.value
+    return val
+  }, [])
+  
+  // Helper to extract numeric value from various formats
+  const extractNumericValue = useCallback((val: any): number => {
+    const unwrapped = unwrapValue(val)
+    if (unwrapped === null || unwrapped === undefined) return 0
+    if (typeof unwrapped === 'number') return unwrapped
+    if (typeof unwrapped === 'string') {
+      // Remove currency symbols and parse
+      const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim()
+      const parsed = parseFloat(cleaned)
+      return isNaN(parsed) ? 0 : parsed
+    }
+    return 0
+  }, [unwrapValue])
   
   const formatDateStr = useCallback((date: string | Date | null | undefined): string => {
     if (!date) return ''
@@ -90,19 +113,38 @@ export function useContractMetadata(contract: ContractData | null) {
   const buildExternalParties = useCallback((): Array<{ legalName: string; role?: string; legalForm?: string }> => {
     if (!contract) return []
     
-    // First check if contract has external_parties array
-    if (contract.external_parties && Array.isArray(contract.external_parties)) {
-      return contract.external_parties
+    // First check if contract has external_parties array (built by API from artifacts)
+    if (contract.external_parties && Array.isArray(contract.external_parties) && contract.external_parties.length > 0) {
+      return contract.external_parties.filter((p: any) => p.legalName)
     }
-    // Fallback to AI-extracted parties
-    if (overviewData?.parties && Array.isArray(overviewData.parties)) {
-      return overviewData.parties.map((p: any) => ({
-        legalName: p.name || p.legalName || '',
-        role: p.role || '',
-        legalForm: p.legalForm || ''
-      }))
+    
+    // Fallback to AI-extracted parties from overview artifact
+    // Handle various possible structures
+    const partiesData = overviewData?.parties
+    if (partiesData && Array.isArray(partiesData) && partiesData.length > 0) {
+      return partiesData
+        .filter((p: any) => unwrapValue(p.name) || unwrapValue(p.legalName) || p.value?.name)
+        .map((p: any) => ({
+          // Handle wrapped values (e.g., { value: 'Name', source: '...' })
+          legalName: unwrapValue(p.legalName) || unwrapValue(p.name) || p.value?.name || unwrapValue(p.value) || '',
+          role: unwrapValue(p.role) || unwrapValue(p.type) || '',
+          legalForm: unwrapValue(p.legalForm) || unwrapValue(p.entityType) || ''
+        }))
     }
-    // Fallback to legacy clientName/supplierName fields
+    
+    // Fallback to enterprise metadata (aiMetadata.external_parties from worker)
+    const aiMeta = (contract as any).aiMetadata
+    if (aiMeta?.external_parties && Array.isArray(aiMeta.external_parties) && aiMeta.external_parties.length > 0) {
+      return aiMeta.external_parties
+        .filter((p: any) => p.legalName || p.name)
+        .map((p: any) => ({
+          legalName: p.legalName || p.name || '',
+          role: p.role || '',
+          legalForm: p.legalForm || ''
+        }))
+    }
+    
+    // Fallback to legacy clientName/supplierName fields on contract
     const parties: Array<{ legalName: string; role?: string; legalForm?: string }> = []
     if (contract.clientName) {
       parties.push({ legalName: contract.clientName, role: 'Client' })
@@ -110,8 +152,31 @@ export function useContractMetadata(contract: ContractData | null) {
     if (contract.supplierName) {
       parties.push({ legalName: contract.supplierName, role: 'Supplier' })
     }
+    
+    // Also check overview for party names if still empty
+    if (parties.length === 0 && overviewData) {
+      // Some AI outputs have partyA/partyB structure
+      const partyAName = unwrapValue(overviewData.partyA?.name) || unwrapValue(overviewData.party_a_name)
+      const partyBName = unwrapValue(overviewData.partyB?.name) || unwrapValue(overviewData.party_b_name)
+      if (partyAName) {
+        parties.push({ legalName: partyAName, role: 'Party A' })
+      }
+      if (partyBName) {
+        parties.push({ legalName: partyBName, role: 'Party B' })
+      }
+      // Check for client_name/supplier_name in artifact data
+      const clientName = unwrapValue(overviewData.client_name) || unwrapValue(overviewData.clientName)
+      const supplierName = unwrapValue(overviewData.supplier_name) || unwrapValue(overviewData.supplierName) || unwrapValue(overviewData.vendor_name)
+      if (clientName && !parties.some(p => p.legalName === clientName)) {
+        parties.push({ legalName: clientName, role: 'Client' })
+      }
+      if (supplierName && !parties.some(p => p.legalName === supplierName)) {
+        parties.push({ legalName: supplierName, role: 'Supplier' })
+      }
+    }
+    
     return parties
-  }, [contract, overviewData?.parties])
+  }, [contract, overviewData, unwrapValue])
   
   const metadata: ContractMetadata = useMemo(() => {
     if (!contract) {
@@ -143,30 +208,55 @@ export function useContractMetadata(contract: ContractData | null) {
       }
     }
     
+    // Get executive summary data if available
+    const execSummaryData = contract?.extractedData?.executive_summary
+    
     return {
       // Identification
       document_number: contract.document_number || contract.id || '',
-      document_title: contract.document_title || contract.filename || '',
-      contract_short_description: contract.contract_short_description || contract.description || overviewData?.summary || '',
-      contract_type: overviewData?.contractType || overviewData?.type || '',
-      jurisdiction: contract.jurisdiction || overviewData?.jurisdiction || '',
-      contract_language: contract.contract_language || overviewData?.language || 'en',
-      document_classification: contract.document_classification || overviewData?.documentClassification || 'contract' as DocumentClassification,
-      document_classification_warning: contract.document_classification_warning || overviewData?.documentClassificationWarning,
+      document_title: contract.document_title || (contract as any).contractTitle || unwrapValue(overviewData?.title) || unwrapValue(overviewData?.contractTitle) || contract.filename || '',
+      contract_short_description: contract.contract_short_description || contract.description || unwrapValue(execSummaryData?.executiveSummary) || unwrapValue(execSummaryData?.summary) || unwrapValue(overviewData?.summary) || '',
+      contract_type: (contract as any).contractType || unwrapValue(overviewData?.contractType) || unwrapValue(overviewData?.type) || unwrapValue(overviewData?.contract_type) || '',
+      jurisdiction: contract.jurisdiction || unwrapValue(overviewData?.jurisdiction) || '',
+      contract_language: contract.contract_language || unwrapValue(overviewData?.language) || unwrapValue(overviewData?.contract_language) || '',
+      document_classification: contract.document_classification || unwrapValue(overviewData?.documentClassification) || 'contract' as DocumentClassification,
+      document_classification_warning: contract.document_classification_warning || unwrapValue(overviewData?.documentClassificationWarning),
       
       // Parties
       external_parties: buildExternalParties(),
       
-      // Commercials
-      tcv_amount: contract.tcv_amount ?? financialData?.totalValue ?? (typeof contract.totalValue === 'number' ? contract.totalValue : 0),
-      tcv_text: contract.tcv_text || financialData?.description || '',
-      payment_type: contract.payment_type || financialData?.paymentType || 'none',
-      billing_frequency_type: contract.billing_frequency_type || financialData?.billingFrequency || 'none',
-      periodicity: contract.periodicity || financialData?.periodicity || 'none',
-      currency: contract.currency || financialData?.currency || 'USD',
+      // Commercials - check multiple sources and handle wrapped values
+      tcv_amount: extractNumericValue(
+        contract.tcv_amount ?? 
+        contract.totalValue ?? 
+        overviewData?.totalValue ?? 
+        financialData?.totalValue ?? 
+        overviewData?.total_value ?? 
+        financialData?.total_value ??
+        overviewData?.contractValue ??
+        0
+      ),
+      tcv_text: contract.tcv_text || 
+        unwrapValue(financialData?.description) || 
+        unwrapValue(overviewData?.summary) || '',
+      payment_type: contract.payment_type || 
+        unwrapValue(financialData?.paymentType) || 
+        unwrapValue(financialData?.payment_type) || 'none',
+      billing_frequency_type: contract.billing_frequency_type || 
+        unwrapValue(financialData?.billingFrequency) || 
+        unwrapValue(financialData?.billing_frequency) || 'none',
+      periodicity: contract.periodicity || 
+        unwrapValue(financialData?.periodicity) || 'none',
+      currency: contract.currency || 
+        unwrapValue(financialData?.currency) || 
+        unwrapValue(overviewData?.currency) || 'USD',
       
-      // Dates
-      signature_date: formatDateStr(contract.signature_date),
+      // Dates - handle wrapped values
+      signature_date: formatDateStr(
+        contract.signature_date || 
+        unwrapValue(overviewData?.signatureDate) || 
+        unwrapValue(overviewData?.signature_date)
+      ),
       signature_status: contract.signature_status || 'unknown',
       signature_required_flag: contract.signature_required_flag ?? (
         // Auto-flag if unsigned or partially signed
@@ -174,16 +264,37 @@ export function useContractMetadata(contract: ContractData | null) {
         contract.signature_status === 'partially_signed' ||
         (!contract.signature_date && contract.signature_status !== 'signed')
       ),
-      start_date: formatDateStr(contract.start_date || contract.effectiveDate || overviewData?.effectiveDate),
-      end_date: formatDateStr(contract.end_date || contract.expirationDate || overviewData?.expirationDate),
-      termination_date: formatDateStr(contract.termination_date),
+      start_date: formatDateStr(
+        contract.start_date || 
+        (contract as any).startDate ||
+        contract.effectiveDate || 
+        unwrapValue(overviewData?.effectiveDate) || 
+        unwrapValue(overviewData?.effective_date) ||
+        unwrapValue(overviewData?.startDate) ||
+        unwrapValue(overviewData?.start_date)
+      ),
+      end_date: formatDateStr(
+        contract.end_date || 
+        (contract as any).endDate ||
+        contract.expirationDate || 
+        unwrapValue(overviewData?.expirationDate) || 
+        unwrapValue(overviewData?.expiration_date) ||
+        unwrapValue(overviewData?.endDate) ||
+        unwrapValue(overviewData?.end_date)
+      ),
+      termination_date: formatDateStr(
+        contract.termination_date || 
+        (contract as any).terminationDate ||
+        unwrapValue(overviewData?.terminationDate) ||
+        unwrapValue(overviewData?.termination_date)
+      ),
       
       // Reminders & Notices
       reminder_enabled: contract.reminder_enabled ?? true,
       reminder_days_before_end: contract.reminder_days_before_end ?? 60,
-      notice_period: contract.notice_period || overviewData?.noticePeriod || ''
+      notice_period: contract.notice_period || unwrapValue(overviewData?.noticePeriod) || unwrapValue(overviewData?.notice_period) || ''
     }
-  }, [contract, overviewData, financialData, buildExternalParties, formatDateStr])
+  }, [contract, overviewData, financialData, buildExternalParties, formatDateStr, extractNumericValue, unwrapValue])
   
   // Derived state calculations
   const riskInfo = useMemo(() => {
@@ -191,16 +302,20 @@ export function useContractMetadata(contract: ContractData | null) {
     const score = riskData?.riskScore || riskData?.overallScore
     const level = riskData?.riskLevel || riskData?.overallRisk
     
+    // If no risk data at all (no artifact), mark as not-assessed rather than fabricating 'medium'
+    const hasRiskData = riskData && !riskData?._meta?.fallback && !riskData?.error
+    
     let riskLevel: 'low' | 'medium' | 'high'
     if (level) {
       riskLevel = level.toLowerCase() as 'low' | 'medium' | 'high'
-    } else if (score !== undefined) {
+    } else if (score !== undefined && score !== null) {
       riskLevel = score < 30 ? 'low' : score < 60 ? 'medium' : 'high'
     } else {
-      riskLevel = 'medium'
+      // No risk data — default to 'low' (neutral) rather than alarming 'medium'
+      riskLevel = hasRiskData ? 'medium' : 'low'
     }
     
-    const riskScore = score ?? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75)
+    const riskScore = score ?? (hasRiskData ? (riskLevel === 'low' ? 25 : riskLevel === 'medium' ? 50 : 75) : 0)
     const risks = riskData?.risks || []
     
     // Extract risk factors as string array for display

@@ -107,7 +107,7 @@ export default function RateCardForecastsPage() {
 
   useEffect(() => {
     fetchForecasts(currentPage);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [currentPage, riskLevel, trendDirection, minConfidence]);
 
   const handleRefresh = () => {
@@ -145,7 +145,7 @@ export default function RateCardForecastsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/20">
       <div className="container mx-auto py-8 space-y-6">
         {/* Page Header */}
         <motion.div 
@@ -154,7 +154,7 @@ export default function RateCardForecastsPage() {
           className="flex items-center justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-violet-500/25">
               <TrendingUp className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -213,7 +213,7 @@ export default function RateCardForecastsPage() {
                     Risk Level
                   </label>
                   <select
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
                 value={riskLevel}
                 onChange={(e) => {
                   setRiskLevel(e.target.value);
@@ -232,7 +232,7 @@ export default function RateCardForecastsPage() {
                 Trend Direction
               </label>
               <select
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
                 value={trendDirection}
                 onChange={(e) => {
                   setTrendDirection(e.target.value);
@@ -253,7 +253,7 @@ export default function RateCardForecastsPage() {
               <input
                 id="minConfidence"
                 type="number"
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500"
                 value={minConfidence || ''}
                 onChange={(e) => {
                   setMinConfidence(parseInt(e.target.value) || 0);
@@ -278,7 +278,7 @@ export default function RateCardForecastsPage() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardContent className="py-12">
                 <div className="flex flex-col items-center justify-center">
-                  <div className="p-4 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl shadow-lg shadow-emerald-500/25 mb-4">
+                  <div className="p-4 bg-gradient-to-br from-violet-500 to-violet-600 rounded-2xl shadow-lg shadow-violet-500/25 mb-4">
                     <RefreshCw className="w-8 h-8 text-white animate-spin" />
                   </div>
                   <p className="text-slate-600 font-medium">Loading forecasts...</p>

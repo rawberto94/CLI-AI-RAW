@@ -162,7 +162,7 @@ export function FeedbackExamples() {
           </button>
           <button
             onClick={handleInfo}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
           >
             Show Info
           </button>
@@ -174,7 +174,7 @@ export function FeedbackExamples() {
         <h3 className="text-lg font-semibold">Progress Notifications</h3>
         <button
           onClick={handleProgress}
-          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
         >
           Show Progress
         </button>
@@ -185,7 +185,7 @@ export function FeedbackExamples() {
         <h3 className="text-lg font-semibold">Multiple Notifications</h3>
         <button
           onClick={handleMultiple}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
         >
           Trigger Multiple
         </button>
@@ -245,7 +245,7 @@ export function FeedbackExamples() {
           </div>
           <button
             type="submit"
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700"
           >
             Submit
           </button>

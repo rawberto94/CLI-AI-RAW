@@ -332,8 +332,8 @@ const useCases: UseCase[] = [
 
 const categoryColors = {
   'quick-wins': 'bg-green-100 text-green-800 border-green-200',
-  'scalable': 'bg-blue-100 text-blue-800 border-blue-200',
-  'differentiating': 'bg-purple-100 text-purple-800 border-purple-200',
+  'scalable': 'bg-violet-100 text-violet-800 border-violet-200',
+  'differentiating': 'bg-violet-100 text-violet-800 border-violet-200',
   'client-facing': 'bg-orange-100 text-orange-800 border-orange-200'
 }
 
@@ -389,8 +389,8 @@ export default function UseCasesSection() {
             <CardHeader>
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <useCase.icon className="w-6 h-6 text-blue-600" />
+                  <div className="p-2 bg-violet-100 rounded-lg">
+                    <useCase.icon className="w-6 h-6 text-violet-600" />
                   </div>
                   <div className="flex-1">
                     <CardTitle className="text-lg leading-tight">{useCase.title}</CardTitle>
@@ -418,8 +418,8 @@ export default function UseCasesSection() {
                 
                 <div>
                   <div className="flex items-center gap-2 mb-1">
-                    <Brain className="w-4 h-4 text-blue-500" />
-                    <span className="font-medium text-blue-700">AI CLM Solution:</span>
+                    <Brain className="w-4 h-4 text-violet-500" />
+                    <span className="font-medium text-violet-700">AI CLM Solution:</span>
                   </div>
                   <p className="text-sm text-gray-600 pl-6">{useCase.solution}</p>
                 </div>
@@ -440,7 +440,7 @@ export default function UseCasesSection() {
                   <div className="text-xs text-gray-600">Savings Range</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-blue-600">{useCase.roi}</div>
+                  <div className="text-lg font-bold text-violet-600">{useCase.roi}</div>
                   <div className="text-xs text-gray-600">ROI</div>
                 </div>
               </div>
@@ -478,10 +478,10 @@ export default function UseCasesSection() {
 
               {/* Demo Results */}
               {activeDemo === useCase.id && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-4 p-4 bg-violet-50 border border-violet-200 rounded-lg">
                   <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-blue-600" />
-                    <span className="font-medium text-blue-800">Demo Running: {useCase.title}</span>
+                    <Sparkles className="w-5 h-5 text-violet-600" />
+                    <span className="font-medium text-violet-800">Demo Running: {useCase.title}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -517,7 +517,7 @@ export default function UseCasesSection() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <selectedUseCase.icon className="w-8 h-8 text-blue-600" />
+                  <selectedUseCase.icon className="w-8 h-8 text-violet-600" />
                   <h3 className="text-2xl font-bold">{selectedUseCase.title}</h3>
                 </div>
                 <Button variant="outline" onClick={() => setSelectedUseCase(null)}>
@@ -545,15 +545,15 @@ export default function UseCasesSection() {
                       </Card>
                       <Card>
                         <CardContent className="p-4 text-center">
-                          <Clock className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                          <div className="text-xl font-bold text-blue-600">{selectedUseCase.timeToValue}</div>
+                          <Clock className="w-8 h-8 text-violet-600 mx-auto mb-2" />
+                          <div className="text-xl font-bold text-violet-600">{selectedUseCase.timeToValue}</div>
                           <div className="text-sm text-gray-600">Time to Value</div>
                         </CardContent>
                       </Card>
                       <Card>
                         <CardContent className="p-4 text-center">
-                          <TrendingUp className="w-8 h-8 text-purple-600 mx-auto mb-2" />
-                          <div className="text-xl font-bold text-purple-600">{selectedUseCase.roi}</div>
+                          <TrendingUp className="w-8 h-8 text-violet-600 mx-auto mb-2" />
+                          <div className="text-xl font-bold text-violet-600">{selectedUseCase.roi}</div>
                           <div className="text-sm text-gray-600">ROI</div>
                         </CardContent>
                       </Card>
@@ -565,9 +565,9 @@ export default function UseCasesSection() {
                         <p className="text-red-700">{selectedUseCase.problem}</p>
                       </div>
                       
-                      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <h4 className="font-semibold text-blue-800 mb-2">AI CLM Solution:</h4>
-                        <p className="text-blue-700">{selectedUseCase.solution}</p>
+                      <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
+                        <h4 className="font-semibold text-violet-800 mb-2">AI CLM Solution:</h4>
+                        <p className="text-violet-700">{selectedUseCase.solution}</p>
                       </div>
                       
                       <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
@@ -618,9 +618,9 @@ export default function UseCasesSection() {
                   <div className="space-y-4">
                     <h4 className="text-lg font-semibold">Key Insights & Findings:</h4>
                     {selectedUseCase.demoData.keyInsights.map((insight, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-                        <Lightbulb className="w-5 h-5 text-blue-600 mt-0.5" />
-                        <span className="text-blue-800">{insight}</span>
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg">
+                        <Lightbulb className="w-5 h-5 text-violet-600 mt-0.5" />
+                        <span className="text-violet-800">{insight}</span>
                       </div>
                     ))}
                   </div>
@@ -631,7 +631,7 @@ export default function UseCasesSection() {
                     <h4 className="text-lg font-semibold">Implementation Steps:</h4>
                     {selectedUseCase.demoData.implementationSteps.map((step, idx) => (
                       <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                        <div className="w-6 h-6 bg-violet-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
                           {idx + 1}
                         </div>
                         <span className="text-gray-800">{step}</span>
@@ -646,10 +646,10 @@ export default function UseCasesSection() {
       )}
 
       {/* Summary Section */}
-      <Card className="bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+      <Card className="bg-gradient-to-r from-violet-50 to-purple-50 border-violet-200">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Award className="w-6 h-6 text-blue-600" />
+            <Award className="w-6 h-6 text-violet-600" />
             Why These Use Cases Work as Starting Points
           </CardTitle>
         </CardHeader>
@@ -664,19 +664,19 @@ export default function UseCasesSection() {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-violet-600 mt-0.5" />
                 <div>
-                  <div className="font-semibold text-blue-800">Scalable:</div>
-                  <div className="text-sm text-blue-700">Compliance checks & snapshots apply across all categories.</div>
+                  <div className="font-semibold text-violet-800">Scalable:</div>
+                  <div className="text-sm text-violet-700">Compliance checks & snapshots apply across all categories.</div>
                 </div>
               </div>
             </div>
             <div className="space-y-4">
               <div className="flex items-start gap-3">
-                <CheckCircle className="w-5 h-5 text-purple-600 mt-0.5" />
+                <CheckCircle className="w-5 h-5 text-violet-600 mt-0.5" />
                 <div>
-                  <div className="font-semibold text-purple-800">Differentiating:</div>
-                  <div className="text-sm text-purple-700">Cross-client insights (with anonymization) are unique to Chain IQ&apos;s BPO model.</div>
+                  <div className="font-semibold text-violet-800">Differentiating:</div>
+                  <div className="text-sm text-violet-700">Cross-client insights (with anonymization) are unique to Chain IQ&apos;s BPO model.</div>
                 </div>
               </div>
               <div className="flex items-start gap-3">

@@ -7,7 +7,7 @@ import {
   Clock,
   FileText,
   User,
-  Mail,
+  Mail as _Mail,
   Send,
   Pen,
   Archive,
@@ -18,10 +18,10 @@ import {
   Trash2,
   Loader2,
   Building2,
-  Calendar,
+  Calendar as _Calendar,
   AlertCircle,
-  ExternalLink,
-  Copy,
+  ExternalLink as _ExternalLink,
+  Copy as _Copy,
   Check,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -95,7 +95,7 @@ function WorkflowSteps({ currentStep }: { currentStep: 'approve' | 'sign' | 'sto
                 className={cn(
                   "w-8 h-8 rounded-full flex items-center justify-center",
                   isComplete && "bg-green-500 text-white",
-                  isActive && !isComplete && "bg-blue-500 text-white",
+                  isActive && !isComplete && "bg-violet-500 text-white",
                   !isActive && !isComplete && "bg-slate-200 text-slate-400"
                 )}
               >
@@ -108,7 +108,7 @@ function WorkflowSteps({ currentStep }: { currentStep: 'approve' | 'sign' | 'sto
               <span className={cn(
                 "text-sm font-medium hidden sm:inline",
                 isComplete && "text-green-600",
-                isActive && !isComplete && "text-blue-600",
+                isActive && !isComplete && "text-violet-600",
                 !isActive && !isComplete && "text-slate-400"
               )}>
                 {step.label}
@@ -140,7 +140,7 @@ interface SignerCardProps {
 function SignerCard({ signer, onRemove, onResend }: SignerCardProps) {
   const statusConfig = {
     pending: { label: 'Pending', color: 'bg-slate-100 text-slate-600' },
-    sent: { label: 'Invitation Sent', color: 'bg-blue-100 text-blue-700' },
+    sent: { label: 'Invitation Sent', color: 'bg-violet-100 text-violet-700' },
     viewed: { label: 'Viewed', color: 'bg-amber-100 text-amber-700' },
     signed: { label: 'Signed', color: 'bg-green-100 text-green-700' },
     declined: { label: 'Declined', color: 'bg-red-100 text-red-700' },
@@ -160,7 +160,7 @@ function SignerCard({ signer, onRemove, onResend }: SignerCardProps) {
       </div>
 
       {/* Avatar */}
-      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold">
         {signer.name.charAt(0)}
       </div>
 
@@ -188,7 +188,7 @@ function SignerCard({ signer, onRemove, onResend }: SignerCardProps) {
             variant="ghost"
             size="sm"
             onClick={onResend}
-            className="text-blue-600 hover:text-blue-700"
+            className="text-violet-600 hover:text-violet-700"
           >
             <Send className="w-4 h-4" />
           </Button>
@@ -221,7 +221,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
   const [showAddSigner, setShowAddSigner] = useState(false);
   const [newSigner, setNewSigner] = useState({ name: '', email: '', role: 'signer' });
 
-  // Fetch contract details
+  // Fetch contract details and existing signature request
   useEffect(() => {
     async function fetchContract() {
       try {
@@ -242,25 +242,31 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
         // Error handled silently
       }
       
-      // Demo signers
-      setSigners([
-        {
-          id: 's1',
-          name: 'John Smith',
-          email: 'john.smith@company.com',
-          role: 'signer',
-          order: 1,
-          status: 'pending',
-        },
-        {
-          id: 's2',
-          name: 'Sarah Johnson',
-          email: 'sarah.johnson@supplier.com',
-          role: 'signer',
-          order: 2,
-          status: 'pending',
-        },
-      ]);
+      // Load existing signature request for this contract
+      try {
+        const sigRes = await fetch(`/api/signatures?contractId=${id}&limit=1`);
+        if (sigRes.ok) {
+          const sigData = await sigRes.json();
+          const items = sigData?.data?.items || [];
+          if (items.length > 0) {
+            const existing = items[0];
+            const existingSigners = (existing.signers || []).map((s: Record<string, unknown>, i: number) => ({
+              id: (s.id as string) || `s_${i}`,
+              name: s.name as string,
+              email: s.email as string,
+              role: (s.role as Signer['role']) || 'signer',
+              order: (s.order as number) || i + 1,
+              status: (s.status as Signer['status']) || 'pending',
+              signedAt: s.signedAt as string | undefined,
+            }));
+            if (existingSigners.length > 0) {
+              setSigners(existingSigners);
+            }
+          }
+        }
+      } catch {
+        // If fetching existing signatures fails, start with empty list
+      }
       
       setLoading(false);
     }
@@ -296,8 +302,35 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
     toast.success('Signer removed');
   };
 
-  const handleResendInvite = (signerId: string) => {
-    toast.success('Invitation resent');
+  const handleResendInvite = async (signerId: string) => {
+    try {
+      // Find the signature request for this contract to get the workflow ID
+      const sigRes = await fetch(`/api/signatures?contractId=${id}&limit=1`);
+      if (!sigRes.ok) throw new Error('Failed to find signature request');
+      
+      const sigData = await sigRes.json();
+      const items = sigData?.data?.items || [];
+      if (items.length === 0) {
+        toast.error('No active signature request found');
+        return;
+      }
+
+      const workflowId = items[0].id;
+      const response = await fetch(`/api/signatures/${workflowId}/remind`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ signerId }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to resend invitation');
+      }
+
+      toast.success('Invitation resent');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to resend invitation');
+    }
   };
 
   const handleSendForSignature = async () => {
@@ -354,15 +387,15 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/20 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
           <div className="relative w-16 h-16 mx-auto mb-4">
-            <div className="absolute inset-0 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-            <Pen className="w-6 h-6 text-indigo-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute inset-0 border-4 border-indigo-200 border-t-violet-600 rounded-full animate-spin" />
+            <Pen className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <p className="text-slate-600 font-medium">Loading signature workflow...</p>
         </motion.div>
@@ -371,9 +404,9 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-violet-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 shadow-xl">
+      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 shadow-xl">
         <div className="max-w-5xl mx-auto px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -419,10 +452,10 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
           <div className="col-span-2 space-y-6">
             {/* Signers */}
             <Card className="shadow-xl border-0 bg-white/90 backdrop-blur-sm">
-              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-indigo-50 to-violet-50 rounded-t-xl">
+              <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-violet-50 to-purple-50 rounded-t-xl">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg shadow-lg shadow-indigo-500/25">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-lg shadow-violet-500/25">
                       <User className="w-4 h-4 text-white" />
                     </div>
                     Signers
@@ -434,7 +467,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
                 {!anySent && (
                   <Button
                     onClick={() => setShowAddSigner(true)}
-                    className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 shadow-lg shadow-indigo-500/25 gap-2"
+                    className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25 gap-2"
                     size="sm"
                   >
                     <Plus className="w-4 h-4" />
@@ -472,7 +505,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-blue-500" />
+                  <FileText className="w-5 h-5 text-violet-500" />
                   Document Preview
                 </CardTitle>
               </CardHeader>
@@ -539,7 +572,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
                   <Button
                     onClick={handleSendForSignature}
                     disabled={signers.length === 0 || sending}
-                    className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+                    className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
                     size="lg"
                   >
                     {sending ? (
@@ -580,15 +613,15 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             </Card>
 
             {/* Help */}
-            <Card className="bg-gradient-to-br from-indigo-50 to-violet-50 border-indigo-200 shadow-lg">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-50 border-indigo-200 shadow-lg">
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg shadow-md">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
                     <AlertCircle className="w-4 h-4 text-white" />
                   </div>
                   <div className="text-sm text-indigo-900">
                     <p className="font-semibold mb-1">What happens next?</p>
-                    <ul className="space-y-1 text-indigo-700">
+                    <ul className="space-y-1 text-violet-700">
                       <li>• Signers receive email invitations</li>
                       <li>• They review and sign the document</li>
                       <li>• Once all sign, contract is stored</li>
@@ -606,7 +639,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
         <DialogContent className="bg-white/95 backdrop-blur-md border-slate-200/80 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                 <Plus className="w-4 h-4 text-white" />
               </div>
               Add Signer
@@ -660,7 +693,7 @@ export default function SignaturePage({ params }: { params: Promise<{ id: string
             </Button>
             <Button 
               onClick={handleAddSigner}
-              className="bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               Add Signer
             </Button>

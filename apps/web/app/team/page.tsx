@@ -7,6 +7,14 @@ import { Suspense } from 'react';
 import { TeamCollaboration } from '@/components/team';
 import { Breadcrumbs } from '@/components/breadcrumbs';
 
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Team Management | ConTigo',
+  description: 'Team Management — Manage and monitor your contract intelligence platform',
+};
+
+
 const breadcrumbItems = [
   { label: 'Team' },
 ];
@@ -21,7 +29,7 @@ export default function TeamPage() {
 
       <Suspense fallback={
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600" />
         </div>
       }>
         <TeamCollaboration />

@@ -27,7 +27,7 @@ function ToolbarButton({ icon, active, onClick, title }: ToolbarButtonProps) {
       title={title}
       className={`p-2 rounded-lg transition-colors ${
         active
-          ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+          ? 'bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-400'
           : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300'
       }`}
     >
@@ -215,7 +215,7 @@ export function RichTextEditor({
               title="Insert Link"
             />
             <ToolbarButton
-              icon={<Image className="w-4 h-4" />}
+              icon={<Image className="w-4 h-4" aria-label="Insert image" />}
               onClick={insertImage}
               title="Insert Image"
             />
@@ -374,7 +374,7 @@ export function MarkdownEditor({
             onClick={() => setShowPreview(!showPreview)}
             className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${
               showPreview
-                ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                ? 'bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-400'
                 : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'
             }`}
           >
@@ -511,13 +511,13 @@ export function MentionInput({
         value={value}
         onChange={handleChange}
         placeholder={placeholder}
-        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+        className="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent resize-none"
         rows={3}
       />
 
       <AnimatePresence>
         {showSuggestions && filteredMentions.length > 0 && (
-          <motion.div
+          <motion.div key="suggestions"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -536,7 +536,7 @@ export function MentionInput({
                     className="w-8 h-8 rounded-full"
                   />
                 ) : (
-                  <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium">
+                  <div className="w-8 h-8 bg-violet-100 dark:bg-violet-900 rounded-full flex items-center justify-center text-violet-600 dark:text-violet-400 font-medium">
                     {mention.name[0]}
                   </div>
                 )}
@@ -607,7 +607,7 @@ export function TagEditor({
     <div className={`relative ${className}`}>
       <div
         onClick={() => inputRef.current?.focus()}
-        className="flex flex-wrap items-center gap-2 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent cursor-text"
+        className="flex flex-wrap items-center gap-2 p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-transparent cursor-text"
       >
         {tags.map((tag, index) => (
           <motion.span
@@ -615,12 +615,12 @@ export function TagEditor({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
-            className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-md text-sm"
+            className="inline-flex items-center gap-1 px-2 py-1 bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300 rounded-md text-sm"
           >
             {tag}
             <button
               onClick={() => removeTag(index)}
-              className="hover:text-blue-900 dark:hover:text-blue-100"
+              className="hover:text-violet-900 dark:hover:text-violet-100"
             >
               <X className="w-3 h-3" />
             </button>
@@ -644,7 +644,7 @@ export function TagEditor({
 
       <AnimatePresence>
         {showSuggestions && filteredSuggestions.length > 0 && (
-          <motion.div
+          <motion.div key="suggestions"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

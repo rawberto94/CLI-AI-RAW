@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/comparisons/[id]
@@ -8,13 +10,14 @@ import { getApiTenantId } from '@/lib/tenant-server';
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
   }
   
   try {
@@ -26,18 +29,12 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!comparison) {
-      return NextResponse.json(
-        { error: 'Comparison not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
     }
 
-    return NextResponse.json({ comparison });
+    return createSuccessResponse(ctx, { comparison });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to fetch comparison', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch comparison. Please try again.', 500);
   }
 }
 
@@ -47,13 +44,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
   }
   
   try {
@@ -64,10 +62,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Comparison not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
     }
 
     const body = await request.json();
@@ -85,12 +80,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       },
     });
 
-    return NextResponse.json({ comparison });
+    return createSuccessResponse(ctx, { comparison });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to update comparison', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update comparison. Please try again.', 500);
   }
 }
 
@@ -100,13 +92,14 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
   }
   
   try {
@@ -117,21 +110,15 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { error: 'Comparison not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Comparison not found', 404);
     }
 
     await prisma.rateComparison.delete({
       where: { id: existing.id },
     });
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { success: true });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to delete comparison', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete comparison. Please try again.', 500);
   }
 }

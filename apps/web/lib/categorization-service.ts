@@ -826,6 +826,9 @@ export async function categorizeContract(
     // Get AI-extracted metadata for smarter categorization
     const extractedMetadata = await getExtractedMetadata(contractId, tenantId);
 
+    // Track which methods were attempted for diagnostics
+    const aiAvailable = !!openai;
+
     // Try AI categorization first (with extracted metadata for better accuracy)
     let result = await categorizeByAI(fullText, categoryTree, extractedMetadata);
 
@@ -845,17 +848,70 @@ export async function categorizeContract(
     }
 
     if (!result) {
-      return {
-        success: false,
-        contractId,
-        category: null,
-        categoryId: null,
-        categoryPath: null,
-        confidence: 0,
-        method: "none",
-        alternativeCategories: [],
-        error: "Could not categorize contract",
-      };
+      // Try to find a fallback category (Other, Uncategorized, General, etc.)
+      const flatCategories = flattenCategories([...categoryTree]);
+      
+      // Check if any categories have keywords defined
+      const categoriesWithKeywords = flatCategories.filter(c => c.keywords && c.keywords.length > 0);
+      
+      const fallbackCategory = flatCategories.find(
+        (cat) =>
+          cat.name.toLowerCase() === 'other' ||
+          cat.name.toLowerCase() === 'uncategorized' ||
+          cat.name.toLowerCase() === 'general' ||
+          cat.name.toLowerCase() === 'misc' ||
+          cat.name.toLowerCase() === 'miscellaneous' ||
+          cat.name.toLowerCase().includes('other')
+      );
+
+      if (fallbackCategory) {
+        // Use fallback category with low confidence
+        result = {
+          success: true,
+          contractId,
+          category: fallbackCategory.name,
+          categoryId: fallbackCategory.id,
+          categoryPath: fallbackCategory.path,
+          confidence: 20,
+          method: "keyword" as const,
+          alternativeCategories: flatCategories
+            .filter((c) => c.id !== fallbackCategory.id)
+            .slice(0, 3)
+            .map((c) => ({
+              category: c.name,
+              categoryId: c.id,
+              confidence: 10,
+            })),
+          reasoning: "No exact match found. Using fallback category.",
+        };
+      } else {
+        // Build helpful error message
+        let errorMsg = "Could not determine category.";
+        if (!aiAvailable) {
+          errorMsg += " AI not configured (OPENAI_API_KEY missing).";
+        }
+        if (categoriesWithKeywords.length === 0) {
+          errorMsg += " No category keywords defined - add keywords in Settings → Taxonomy.";
+        } else {
+          errorMsg += " Consider adding an 'Other' category or more specific keywords to your taxonomy.";
+        }
+        
+        return {
+          success: false,
+          contractId,
+          category: null,
+          categoryId: null,
+          categoryPath: null,
+          confidence: 0,
+          method: "none",
+          alternativeCategories: flatCategories.slice(0, 5).map((c) => ({
+            category: c.name,
+            categoryId: c.id,
+            confidence: 10,
+          })),
+          error: errorMsg,
+        };
+      }
     }
 
     // Validate category belongs to tenant before updating

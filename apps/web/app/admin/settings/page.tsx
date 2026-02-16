@@ -15,9 +15,9 @@ import {
   ClipboardList,
   HardDrive,
   Download,
-  Shield,
-  Database,
-  Activity
+  Shield as _Shield,
+  Database as _Database,
+  Activity as _Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -26,13 +26,15 @@ import { UserManagement, BackupRestore } from '@/components/admin';
 import { AuditLogViewer } from '@/components/audit';
 import { ExportManager } from '@/components/export';
 
+
+
 const tabs = [
-  { id: 'api-keys', label: 'API Keys', icon: Key, gradient: 'from-blue-500 to-cyan-500' },
-  { id: 'webhooks', label: 'Webhooks', icon: Webhook, gradient: 'from-purple-500 to-pink-500' },
-  { id: 'users', label: 'Users', icon: Users, gradient: 'from-emerald-500 to-teal-500' },
+  { id: 'api-keys', label: 'API Keys', icon: Key, gradient: 'from-violet-500 to-purple-500' },
+  { id: 'webhooks', label: 'Webhooks', icon: Webhook, gradient: 'from-violet-500 to-pink-500' },
+  { id: 'users', label: 'Users', icon: Users, gradient: 'from-violet-500 to-violet-500' },
   { id: 'audit', label: 'Audit Log', icon: ClipboardList, gradient: 'from-amber-500 to-orange-500' },
   { id: 'backups', label: 'Backups', icon: HardDrive, gradient: 'from-rose-500 to-red-500' },
-  { id: 'export', label: 'Export', icon: Download, gradient: 'from-indigo-500 to-violet-500' },
+  { id: 'export', label: 'Export', icon: Download, gradient: 'from-violet-500 to-purple-500' },
 ];
 
 export default function AdminSettingsPage() {
@@ -49,7 +51,7 @@ export default function AdminSettingsPage() {
         >
           <div className="flex items-center gap-4">
             <motion.div 
-              className="p-4 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-600 text-white shadow-xl shadow-indigo-500/30"
+              className="p-4 rounded-2xl bg-gradient-to-br from-violet-600 via-purple-600 to-purple-600 text-white shadow-xl shadow-violet-500/30"
               whileHover={{ scale: 1.05, rotate: 5 }}
               transition={{ type: "spring", stiffness: 300 }}
             >

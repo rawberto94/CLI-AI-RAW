@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -41,28 +41,20 @@ import {
   TrendingUp,
   AlertCircle,
   Clock,
-  CheckCircle2,
   Loader2,
   Bot,
   User,
   Lightbulb,
   BookOpen,
-  Play,
-  FileEdit,
-  Calendar,
   Mic,
   MicOff,
   Paperclip,
   Download,
   Trash2,
   Copy,
-  RotateCcw,
   History,
-  Settings,
-  ChevronDown,
   Keyboard,
   Zap,
-  Upload,
   RefreshCw,
   MoreVertical,
   ExternalLink,
@@ -82,13 +74,12 @@ import {
   Shrink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import { MarkdownContent } from '@/components/ai/MarkdownContent';
 
 // Keyboard shortcuts
-const KEYBOARD_SHORTCUTS = {
+const _KEYBOARD_SHORTCUTS = {
   openChat: { key: 'k', ctrl: true, description: 'Open/close chat' },
   newChat: { key: 'n', ctrl: true, shift: true, description: 'New conversation' },
   focus: { key: '/', ctrl: false, description: 'Focus input' },
@@ -177,7 +168,7 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isStartingWorkflow, setIsStartingWorkflow] = useState(false);
+  const [_isStartingWorkflow, setIsStartingWorkflow] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
@@ -198,33 +189,41 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
   const [isPinned, setIsPinned] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [responseTime, setResponseTime] = useState<number | null>(null);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [_typingUsers, _setTypingUsers] = useState<string[]>([]);
   const [pendingRetry, setPendingRetry] = useState<Message | null>(null);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Message[]>([]);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  const [activeTools, setActiveTools] = useState<Array<{ name: string; status: 'running' | 'done'; summary?: string }>>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
   const responseStartTimeRef = useRef<number>(0);
 
-  const contextualSuggestions: Record<string, string[]> = {
+  // Cleanup: abort any in-flight streaming request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
+
+  const contextualSuggestions = useMemo<Record<string, string[]>>(() => ({
     global: [
       'What needs my attention today?',
       'What contracts expire in the next 30 days?',
       'Show me a summary of all active contracts',
       'Find contracts with termination clauses',
+      'What are the termination terms in the Acme MSA?',
       'Analyze spending by supplier',
-      'Which contracts have auto-renewal enabled?',
     ],
     contracts: [
-      'Summarize the key terms',
-      'What are the main risks in this contract?',
-      'Show me the rate card',
-      'What are our obligations?',
-      'When does this expire and what are renewal terms?',
-      'Compare with similar contracts',
+      'What are the termination clauses?',
+      'Summarize the key risks',
+      'What are the payment terms?',
+      'Show me our obligations',
+      'What happens if delivery is late?',
+      'What are the liability limits?',
     ],
     templates: [
       'Show me NDA templates',
@@ -238,20 +237,22 @@ export function AIChatbot({ contractId, context = 'global' }: AIChatbotProps) {
       'Which high-value contracts need attention?',
       'Create a renewal timeline report',
     ],
-  };
+  }), []);
 
   useEffect(() => {
     if (messages.length === 0) {
       setSuggestions(contextualSuggestions[context] ?? []);
       // Send welcome message
       const welcomeContent = contractId 
-        ? `Hi! I'm ConTigo AI - your intelligent contract assistant. I've loaded the details of this contract and can help you with:
+        ? `Hi! I'm ConTigo AI - your intelligent contract assistant. I've loaded the details of this contract and can answer **any question** about it:
 
-• **Quick Analysis** - "Summarize the key terms" or "What are the risks?"
-• **Deep Dive** - "Show me our obligations" or "What are the payment terms?"
-• **Rate Cards** - "Show me the rate card" or "What are the hourly rates?"
-• **Comparisons** - "How does this compare to similar contracts?"
-• **Actions** - "Start renewal process" or "Flag for review"
+• **📑 Clause Analysis** - "What are the termination clauses?" or "Show me liability provisions"
+• **⚠️ Risk Review** - "What are the main risks?" or "Are there any concerning terms?"
+• **💰 Financial Terms** - "What are the payment terms?" or "Show me the rate card"
+• **📋 Obligations** - "What are our obligations?" or "What happens if delivery is late?"
+• **🔄 Comparisons** - "How does this compare to similar contracts?"
+
+*I use AI to search the actual contract text and give you precise, cited answers.*
 
 What would you like to know about this contract?`
         : `Hi! I'm ConTigo AI - your intelligent contract assistant. I have access to your entire contract portfolio and can help you with:
@@ -261,11 +262,11 @@ What would you like to know about this contract?`
 • **⚠️ Alerts** - "What needs my attention?" or "Show high-risk contracts"
 • **📋 Lists** - "Show contracts expiring in 30 days" or "List all Accenture contracts"
 • **🔄 Comparisons** - "Compare Deloitte vs Accenture contracts"
-• **📄 Details** - "Tell me about the Microsoft MSA" or "Summarize the IBM contract"
 
-**Quick Actions:**
-- Ask "What needs attention today?" for urgent items
-- Ask "Show dashboard overview" for portfolio health
+**💡 New! Ask about specific contracts:**
+- "What are the termination clauses in the Microsoft MSA?"
+- "Analyze the Acme contract for risks"
+- "What are the payment terms in the IBM agreement?"
 
 How can I help you today?`;
 
@@ -278,7 +279,7 @@ How can I help you today?`;
         },
       ]);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [context, messages.length, contractId]);
 
   // Load chat sessions from localStorage
@@ -360,6 +361,7 @@ How can I help you today?`;
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    
   }, [isOpen, isMinimized, showSearch]);
 
   // Network status monitoring
@@ -499,11 +501,26 @@ How can I help you today?`;
   }, []);
 
   // Provide feedback on message
-  const handleFeedback = useCallback((messageId: string, feedback: 'positive' | 'negative') => {
+  const handleFeedback = useCallback(async (messageId: string, feedback: 'positive' | 'negative') => {
     setMessages(prev => prev.map(m => 
       m.id === messageId ? { ...m, feedback } : m
     ));
-    // TODO: Send feedback to server for improvement
+    
+    // Send feedback to server for AI improvement
+    try {
+      await fetch('/api/ai/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          suggestionId: messageId,
+          feedbackType: feedback === 'positive' ? 'helpful' : 'not_helpful',
+          timestamp: new Date().toISOString(),
+        }),
+      });
+    } catch {
+      // Silently fail - feedback is non-critical
+    }
+    
     toast.success(feedback === 'positive' ? 'Thanks for the feedback!' : 'We\'ll improve based on your feedback');
   }, []);
 
@@ -710,36 +727,57 @@ How can I help you today?`;
       let sources: string[] = [];
       let suggestedActions: Array<{ label: string; action: string }> = [];
       let contractPreviews: Message['contractPreviews'] = [];
+      let sseBuffer = ''; // Buffer for incomplete SSE lines across chunks
 
       if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            // Keep the last (potentially incomplete) line in the buffer
+            sseBuffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6));
-                if (data.content) {
-                  fullContent += data.content;
-                  setStreamingText(fullContent);
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'content' && data.content) {
+                    fullContent += data.content;
+                    setStreamingText(fullContent);
+                  } else if (data.type === 'tool_start') {
+                    setActiveTools(prev => [...prev, { name: data.tool || data.name || 'tool', status: 'running' }]);
+                  } else if (data.type === 'tool_done') {
+                    setActiveTools(prev =>
+                      prev.map(t => t.name === (data.tool || data.name) && t.status === 'running'
+                        ? { ...t, status: 'done' as const, summary: data.summary || data.result }
+                        : t
+                      )
+                    );
+                  } else if (data.content && !data.type) {
+                    // Legacy format compatibility
+                    fullContent += data.content;
+                    setStreamingText(fullContent);
+                  }
+                  if (data.sources) sources = data.sources;
+                  if (data.suggestedActions) suggestedActions = data.suggestedActions;
+                  if (data.contractPreviews) contractPreviews = data.contractPreviews;
+                  if (data.done || data.type === 'done') break;
+                } catch (_e) {
+                  // Ignore parse errors for malformed SSE lines
                 }
-                if (data.sources) sources = data.sources;
-                if (data.suggestedActions) suggestedActions = data.suggestedActions;
-                if (data.contractPreviews) contractPreviews = data.contractPreviews;
-                if (data.done) break;
-              } catch (e) {
-                // Ignore parse errors for incomplete chunks
               }
             }
           }
+        } finally {
+          reader.releaseLock();
         }
       }
 
       setIsStreaming(false);
+      setActiveTools([]);
       
       // Calculate response time
       const responseTimeMs = Date.now() - responseStartTimeRef.current;
@@ -847,7 +885,7 @@ How can I help you today?`;
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
+  const _handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -862,7 +900,7 @@ How can I help you today?`;
   const handleActionClick = async (action: string) => {
     // Handle workflow actions
     if (action.startsWith('start-renewal:')) {
-      const contractId = action.split(':')[1];
+      const _contractId = action.split(':')[1];
       setIsStartingWorkflow(true);
       
       try {
@@ -883,7 +921,7 @@ How can I help you today?`;
         });
 
         if (response.ok) {
-          const data = await response.json();
+          await response.json(); // consume response
           toast.success('Renewal workflow started!', {
             description: 'The approval process has been initiated.',
           });
@@ -943,7 +981,7 @@ Would you like me to notify the first approver or do anything else?`,
     }
 
     if (action.startsWith('schedule-meeting:')) {
-      const contractId = action.split(':')[1];
+      const _contractId = action.split(':')[1];
       toast.info('Opening calendar...', {
         description: 'Schedule a renewal discussion meeting',
       });
@@ -1059,7 +1097,7 @@ Would you like me to notify the first approver or do anything else?`,
             >
               <Button
                 onClick={() => setIsOpen(true)}
-                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 z-50 group"
+                className="fixed bottom-6 right-6 h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 z-50 group"
                 size="icon"
               >
                 <MessageSquare className="h-6 w-6 group-hover:scale-110 transition-transform" />
@@ -1096,7 +1134,7 @@ Would you like me to notify the first approver or do anything else?`,
         exit={{ opacity: 0, y: 20 }}
       >
         <Card className="fixed bottom-6 right-6 w-80 shadow-2xl z-50">
-          <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white">
+          <CardHeader className="pb-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="h-5 w-5" />
@@ -1139,7 +1177,7 @@ Would you like me to notify the first approver or do anything else?`,
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="AIChatbot-ap-1"
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -1152,12 +1190,12 @@ Would you like me to notify the first approver or do anything else?`,
           className={cn(
             "fixed bottom-6 right-6 shadow-2xl z-50 flex flex-col overflow-hidden transition-all duration-300",
             isExpanded ? "w-[700px] h-[85vh]" : "w-[520px] h-[750px]",
-            isPinned && "ring-2 ring-blue-400"
+            isPinned && "ring-2 ring-violet-400"
           )}
           aria-labelledby="chatbot-title"
         >
           {/* Header */}
-          <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white flex-shrink-0">
+          <CardHeader className="pb-3 bg-gradient-to-r from-violet-600 to-purple-600 text-white flex-shrink-0">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <div className="p-2 bg-white/20 rounded-lg">
@@ -1352,7 +1390,7 @@ Would you like me to notify the first approver or do anything else?`,
       {/* Offline Banner */}
       <AnimatePresence>
         {!isOnline && (
-          <motion.div
+          <motion.div key="AIChatbot-ap-2"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -1442,11 +1480,11 @@ Would you like me to notify the first approver or do anything else?`,
                   className={cn(
                     'flex gap-3 rounded-lg transition-all',
                     message.role === 'user' ? 'justify-end' : 'justify-start',
-                    highlightedMessageId === message.id && 'bg-blue-50 p-2 -mx-2'
+                    highlightedMessageId === message.id && 'bg-violet-50 p-2 -mx-2'
                   )}
                 >
                   {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                       <Bot className="h-5 w-5 text-white" />
                     </div>
                   )}
@@ -1455,11 +1493,15 @@ Would you like me to notify the first approver or do anything else?`,
                     className={cn(
                       'max-w-[85%] rounded-2xl px-4 py-3',
                       message.role === 'user'
-                        ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white'
+                        ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white'
                         : 'bg-gray-100 text-gray-900'
                     )}
                   >
-                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    {message.role === 'assistant' ? (
+                      <MarkdownContent content={message.content} className="text-sm leading-relaxed" />
+                    ) : (
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                    )}
 
                     {/* Sources */}
                     {message.sources && message.sources.length > 0 && (
@@ -1472,7 +1514,7 @@ Would you like me to notify the first approver or do anything else?`,
                           {message.sources.map((source, idx) => (
                             <button
                               key={idx}
-                              className="text-xs text-blue-600 hover:underline block"
+                              className="text-xs text-violet-600 hover:underline block"
                               onClick={() => {}}
                             >
                           • {source}
@@ -1552,7 +1594,7 @@ Would you like me to notify the first approver or do anything else?`,
                             onClick={() => addReaction(message.id, emoji)}
                             className={cn(
                               "p-0.5 hover:bg-gray-200 rounded transition-colors text-xs",
-                              message.reactions?.includes(emoji) && "bg-blue-100"
+                              message.reactions?.includes(emoji) && "bg-violet-100"
                             )}
                             title={`React with ${emoji}`}
                           >
@@ -1570,7 +1612,7 @@ Would you like me to notify the first approver or do anything else?`,
                     {message.reactions.map((emoji, idx) => (
                       <span
                         key={idx}
-                        className="inline-flex items-center px-1.5 py-0.5 bg-blue-50 rounded-full text-xs cursor-pointer hover:bg-blue-100"
+                        className="inline-flex items-center px-1.5 py-0.5 bg-violet-50 rounded-full text-xs cursor-pointer hover:bg-violet-100"
                         onClick={() => addReaction(message.id, emoji)}
                       >
                         {emoji}
@@ -1633,13 +1675,41 @@ Would you like me to notify the first approver or do anything else?`,
               </div>
 
               {message.role === 'user' && (
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-pink-600 flex items-center justify-center">
                   <User className="h-5 w-5 text-white" />
                 </div>
               )}
             </motion.div>
           ))}
           </AnimatePresence>
+
+          {/* Tool execution progress */}
+          {isStreaming && activeTools.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex gap-3 justify-start"
+            >
+              <div className="w-8" /> {/* Spacer to align with bot avatar */}
+              <div className="space-y-1 text-xs">
+                {activeTools.map((tool, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-gray-500">
+                    {tool.status === 'running' ? (
+                      <Loader2 className="h-3 w-3 animate-spin text-violet-500" />
+                    ) : (
+                      <Check className="h-3 w-3 text-green-500" />
+                    )}
+                    <span className={tool.status === 'done' ? 'text-gray-400' : 'text-gray-600'}>
+                      {tool.name.replace(/_/g, ' ')}
+                    </span>
+                    {tool.summary && (
+                      <span className="text-gray-400">— {tool.summary}</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* Streaming response */}
           {isStreaming && streamingText && (
@@ -1648,16 +1718,16 @@ Would you like me to notify the first approver or do anything else?`,
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-3 justify-start"
             >
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-gray-100 text-gray-900">
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}</p>
+                <MarkdownContent content={streamingText} className="text-sm leading-relaxed" />
                 <div className="flex items-center gap-2 mt-2">
                   <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                    <span className="w-1.5 h-1.5 bg-violet-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                   </div>
                   <button
                     onClick={cancelStreaming}
@@ -1678,12 +1748,12 @@ Would you like me to notify the first approver or do anything else?`,
               animate={{ opacity: 1, y: 0 }}
               className="flex gap-3 justify-start"
             >
-              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                 <Bot className="h-5 w-5 text-white" />
               </div>
               <div className="bg-gray-100 rounded-2xl px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+                  <Loader2 className="h-4 w-4 animate-spin text-violet-600" />
                   <span className="text-sm text-gray-600">{THINKING_STAGES[thinkingStage].text}</span>
                 </div>
                 <div className="mt-2">
@@ -1698,12 +1768,12 @@ Would you like me to notify the first approver or do anything else?`,
       {/* Scroll to bottom button */}
       <AnimatePresence>
         {showScrollButton && (
-          <motion.button
+          <motion.button key="scroll-button"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             onClick={scrollToBottom}
-            className="absolute bottom-24 right-8 p-2 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors z-10"
+            className="absolute bottom-24 right-8 p-2 bg-violet-600 text-white rounded-full shadow-lg hover:bg-violet-700 transition-colors z-10"
           >
             <ArrowDown className="h-4 w-4" />
           </motion.button>
@@ -1734,10 +1804,10 @@ Would you like me to notify the first approver or do anything else?`,
                 <Button
                   variant="outline"
                   size="sm"
-                  className="text-xs h-7 hover:bg-blue-50 hover:border-blue-300 transition-colors group"
+                  className="text-xs h-7 hover:bg-violet-50 hover:border-violet-300 transition-colors group"
                   onClick={() => handleSuggestionClick(suggestion)}
                 >
-                  <Sparkles className="h-3 w-3 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-blue-500" />
+                  <Sparkles className="h-3 w-3 mr-1 opacity-0 group-hover:opacity-100 transition-opacity text-violet-500" />
                   {suggestion}
                 </Button>
               </motion.div>
@@ -1748,9 +1818,9 @@ Would you like me to notify the first approver or do anything else?`,
 
       {/* Attached file indicator */}
       {attachedFile && (
-        <div className="px-4 py-2 bg-blue-50 border-t flex items-center justify-between">
+        <div className="px-4 py-2 bg-violet-50 border-t flex items-center justify-between">
           <div className="flex items-center gap-2 text-sm">
-            <Paperclip className="h-4 w-4 text-blue-600" />
+            <Paperclip className="h-4 w-4 text-violet-600" />
             <span className="truncate max-w-[300px]">{attachedFile.name}</span>
             <span className="text-xs text-gray-500">
               ({(attachedFile.size / 1024).toFixed(1)} KB)
@@ -1758,7 +1828,7 @@ Would you like me to notify the first approver or do anything else?`,
           </div>
           <button
             onClick={removeAttachment}
-            className="p-1 hover:bg-blue-100 rounded"
+            className="p-1 hover:bg-violet-100 rounded"
           >
             <X className="h-4 w-4 text-gray-500" />
           </button>
@@ -1867,7 +1937,7 @@ Would you like me to notify the first approver or do anything else?`,
                   disabled={!input.trim() || isLoading || !isOnline}
                   data-testid="chatbot-send"
                   className={cn(
-                    "h-10 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all",
+                    "h-10 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 transition-all",
                     !isOnline && "opacity-50 cursor-not-allowed"
                   )}
                 >
@@ -2041,9 +2111,9 @@ Would you like me to notify the first approver or do anything else?`,
                 >
                   <div className="flex items-center gap-2 mb-1">
                     {result.role === 'user' ? (
-                      <User className="h-4 w-4 text-purple-500" />
+                      <User className="h-4 w-4 text-violet-500" />
                     ) : (
-                      <Bot className="h-4 w-4 text-blue-500" />
+                      <Bot className="h-4 w-4 text-violet-500" />
                     )}
                     <span className="text-xs text-gray-500">
                       {result.timestamp.toLocaleTimeString([], {

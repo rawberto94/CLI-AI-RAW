@@ -15,7 +15,7 @@ export default function DraftingLoading() {
           <motion.div
             animate={{ scale: [1, 1.05, 1] }}
             transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-500 flex items-center justify-center shadow-2xl shadow-violet-500/30"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 via-purple-500 to-purple-500 flex items-center justify-center shadow-2xl shadow-violet-500/30"
           >
             <PenTool className="w-10 h-10 text-white" />
           </motion.div>
@@ -26,7 +26,7 @@ export default function DraftingLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <FileText className="h-4 w-4 text-blue-500" />
+              <FileText className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
           
@@ -36,7 +36,7 @@ export default function DraftingLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <Pencil className="h-4 w-4 text-emerald-500" />
+              <Pencil className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
         </div>

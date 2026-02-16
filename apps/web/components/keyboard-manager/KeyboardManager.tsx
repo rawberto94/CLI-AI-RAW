@@ -197,7 +197,7 @@ function ShortcutsHelpModal({ isOpen, onClose, shortcuts }: ShortcutsHelpModalPr
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -262,7 +262,7 @@ function ShortcutsHelpModal({ isOpen, onClose, shortcuts }: ShortcutsHelpModalPr
               </p>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -396,7 +396,7 @@ export function ShortcutHint({
       {children}
       <AnimatePresence>
         {showHint && (
-          <motion.div
+          <motion.div key="hint"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}

@@ -16,7 +16,7 @@ interface AIStatusProps {
 export function AIStatus({ status, label }: AIStatusProps) {
   const statusConfig = {
     online: { icon: CheckCircle, text: label || 'AI Online', color: 'text-green-600' },
-    processing: { icon: Zap, text: label || 'Processing', color: 'text-blue-600' },
+    processing: { icon: Zap, text: label || 'Processing', color: 'text-violet-600' },
     warning: { icon: AlertTriangle, text: label || 'Warning', color: 'text-yellow-600' },
     error: { icon: AlertTriangle, text: label || 'Error', color: 'text-red-600' },
   };
@@ -55,7 +55,7 @@ export function ExecutiveHeader({ title, subtitle, icon, children }: ExecutiveHe
             )}
             <div>
               <h1 className="text-3xl font-bold mb-2">{title}</h1>
-              <p className="text-blue-100 text-lg">{subtitle}</p>
+              <p className="text-violet-100 text-lg">{subtitle}</p>
             </div>
           </div>
           {children}
@@ -130,8 +130,8 @@ export function AIInsight({ title, description, confidence, category, impact = '
     <Card className={`${impactColors[impact]} border-2`}>
       <CardContent className="p-4">
         <div className="flex items-start gap-3">
-          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
-            <Brain className="w-4 h-4 text-purple-600" />
+          <div className="w-8 h-8 bg-violet-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Brain className="w-4 h-4 text-violet-600" />
           </div>
           <div className="flex-1">
             <div className="flex items-center justify-between mb-2">
@@ -171,7 +171,7 @@ export function ProcessingStages({ stages }: ProcessingStageProps) {
         <div key={index} className="flex items-center gap-3">
           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
             stage.status === 'completed' ? 'bg-green-100 text-green-600' :
-            stage.status === 'processing' ? 'bg-blue-100 text-blue-600' :
+            stage.status === 'processing' ? 'bg-violet-100 text-violet-600' :
             'bg-gray-100 text-gray-400'
           }`}>
             {stage.status === 'completed' ? (
@@ -186,7 +186,7 @@ export function ProcessingStages({ stages }: ProcessingStageProps) {
             <div className="flex items-center justify-between">
               <span className={`text-sm font-medium ${
                 stage.status === 'completed' ? 'text-green-700' :
-                stage.status === 'processing' ? 'text-blue-700' :
+                stage.status === 'processing' ? 'text-violet-700' :
                 'text-gray-500'
               }`}>
                 {stage.name}
@@ -200,7 +200,7 @@ export function ProcessingStages({ stages }: ProcessingStageProps) {
                 <div 
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     stage.status === 'completed' ? 'bg-green-500' :
-                    stage.status === 'processing' ? 'bg-blue-500' :
+                    stage.status === 'processing' ? 'bg-violet-500' :
                     'bg-gray-300'
                   }`}
                   style={{ width: `${stage.progress}%` }}
@@ -225,9 +225,9 @@ interface QuickActionProps {
 
 export function QuickAction({ title, description, icon, onClick, variant = 'primary' }: QuickActionProps) {
   const variantStyles = {
-    primary: 'bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-800 border-blue-200',
-    secondary: 'bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 text-purple-800 border-purple-200',
-    success: 'bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 text-green-800 border-green-200',
+    primary: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-violet-800 border-violet-200',
+    secondary: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-violet-800 border-violet-200',
+    success: 'bg-gradient-to-br from-violet-50 to-purple-100 hover:from-violet-100 hover:to-purple-200 text-green-800 border-green-200',
     warning: 'bg-gradient-to-br from-orange-50 to-orange-100 hover:from-orange-100 hover:to-orange-200 text-orange-800 border-orange-200',
   };
 
@@ -256,8 +256,8 @@ interface DemoNavBadgeProps {
 export function DemoNavBadge({ type, children }: DemoNavBadgeProps) {
   const badgeStyles = {
     live: 'bg-green-100 text-green-800 animate-pulse',
-    demo: 'bg-blue-100 text-blue-800',
-    beta: 'bg-purple-100 text-purple-800',
+    demo: 'bg-violet-100 text-violet-800',
+    beta: 'bg-violet-100 text-violet-800',
     new: 'bg-orange-100 text-orange-800',
   };
 

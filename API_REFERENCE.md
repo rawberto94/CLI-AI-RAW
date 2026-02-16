@@ -1,7 +1,13 @@
 # Backend API Reference
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §5 (API Reference) and [docs/CONTRACTS_API_REFERENCE.md](docs/CONTRACTS_API_REFERENCE.md) for current API documentation. Retained for historical reference only.
+
+---
+
 ## Overview
+
 All APIs return JSON with a consistent structure:
+
 ```json
 {
   "success": true | false,
@@ -13,9 +19,11 @@ All APIs return JSON with a consistent structure:
 ## Dashboard APIs
 
 ### GET /api/dashboard/stats
+
 Get aggregated contract statistics for the main dashboard.
 
 **Response:**
+
 ```json
 {
   "overview": {
@@ -39,6 +47,7 @@ Get aggregated contract statistics for the main dashboard.
 ```
 
 ### GET /api/dashboard/widgets
+
 Get all widget data in a single request for efficient dashboard loading.
 
 ---
@@ -46,15 +55,18 @@ Get all widget data in a single request for efficient dashboard loading.
 ## Approvals API
 
 ### GET /api/approvals
+
 Get pending approvals with filtering options.
 
 **Query Parameters:**
+
 - `status` - Filter by status (pending, approved, rejected, on-hold)
 - `priority` - Filter by priority (critical, high, medium, low)
 - `type` - Filter by type (contract, amendment, renewal, termination)
 - `assignedTo` - Filter by assignee ID
 
 **Response:**
+
 ```json
 {
   "approvals": [...],
@@ -70,9 +82,11 @@ Get pending approvals with filtering options.
 ```
 
 ### POST /api/approvals
+
 Perform approval actions.
 
 **Actions:**
+
 - `approve` - Approve an item
 - `reject` - Reject an item (requires `reason`)
 - `delegate` - Delegate to another user
@@ -84,15 +98,18 @@ Perform approval actions.
 ## Renewals API
 
 ### GET /api/renewals
+
 Get upcoming contract renewals.
 
 **Query Parameters:**
+
 - `status` - Filter by status
 - `priority` - Filter by priority
 - `daysUntilExpiry` - Filter by days until expiry (max)
 - `assignedTo` - Filter by assignee
 
 **Response:**
+
 ```json
 {
   "renewals": [...],
@@ -108,9 +125,11 @@ Get upcoming contract renewals.
 ```
 
 ### POST /api/renewals
+
 Perform renewal actions.
 
 **Actions:**
+
 - `initiate` - Start renewal process
 - `send-notice` - Send vendor notice
 - `update-terms` - Update renewal terms
@@ -123,12 +142,15 @@ Perform renewal actions.
 ## Governance API
 
 ### GET /api/governance
+
 Get governance policies and risk flags.
 
 **Query Parameters:**
+
 - `section` - Get specific section (policies, flags, or all)
 
 **Response:**
+
 ```json
 {
   "policies": [...],
@@ -143,9 +165,11 @@ Get governance policies and risk flags.
 ```
 
 ### POST /api/governance
+
 Perform governance actions.
 
 **Actions:**
+
 - `create-policy` - Create new policy
 - `update-policy` - Update policy
 - `toggle-policy` - Enable/disable policy
@@ -159,25 +183,32 @@ Perform governance actions.
 ## Intelligence API
 
 ### GET /api/intelligence
+
 Get intelligence hub summary.
 
 **Query Parameters:**
+
 - `section` - Get specific section (health, insights, activity)
 
 ### GET /api/intelligence/health
+
 Get contract health scores.
 
 **Query Parameters:**
+
 - `contractId` - Get health for specific contract
 - `status` - Filter by health status
 
 ### GET /api/intelligence/search
+
 Semantic search across contracts.
 
 ### GET /api/intelligence/graph
+
 Get knowledge graph data.
 
 ### GET /api/intelligence/negotiate
+
 Get negotiation analysis.
 
 ---
@@ -185,13 +216,16 @@ Get negotiation analysis.
 ## Forecast API
 
 ### GET /api/forecast
+
 Get predictive analytics and forecasts.
 
 **Query Parameters:**
+
 - `type` - Type of forecast (cost, renewal, risk, savings, insights)
 - `timeframe` - Forecast timeframe in months (default: 12)
 
 **Response:**
+
 ```json
 {
   "costForecast": {...},
@@ -209,9 +243,11 @@ Get predictive analytics and forecasts.
 ```
 
 ### POST /api/forecast
+
 Perform forecast actions.
 
 **Actions:**
+
 - `run-scenario` - Run what-if scenario
 - `generate-report` - Generate forecast report
 - `export` - Export forecast data
@@ -222,12 +258,15 @@ Perform forecast actions.
 ## Health & System APIs
 
 ### GET /api/health
+
 Basic health check for load balancers.
 
 ### GET /api/healthz
+
 Detailed health status with component checks.
 
 ### GET /api/monitoring
+
 System monitoring and performance metrics.
 
 ---
@@ -237,9 +276,11 @@ System monitoring and performance metrics.
 The application uses Server-Sent Events (SSE) for real-time updates:
 
 ### GET /api/events
+
 Subscribe to real-time events.
 
 **Event Types:**
+
 - `contract:created` - New contract uploaded
 - `contract:completed` - Contract processing complete
 - `job:progress` - Processing progress update

@@ -4,15 +4,16 @@ import React, { memo, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatDate } from '@/lib/design-tokens'
-import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX } from 'lucide-react'
+import { AlertCircle, Clock, AlertTriangle, PenLine, FileWarning, FileX as _FileX, Eye } from 'lucide-react'
 import type { SignatureStatus, DocumentClassification } from '@/lib/types/contract-metadata-schema'
 
-type BannerType = 'expired' | 'expiring' | 'high-risk' | 'review-needed' | 'unsigned' | 'not-a-contract' | null
+type BannerType = 'expired' | 'expiring' | 'high-risk' | 'review-needed' | 'unsigned' | 'not-a-contract' | 'pending-review' | null
 
 interface StatusBannerProps {
   endDate: string | null
   riskLevel: 'low' | 'medium' | 'high'
   complianceOk: boolean
+  contractStatus?: string
   signatureStatus?: SignatureStatus
   documentClassification?: DocumentClassification
   documentClassificationWarning?: string
@@ -20,6 +21,8 @@ interface StatusBannerProps {
   onInitiateRenewal?: () => void
   onSetReminder?: () => void
   onRequestSignature?: () => void
+  onStartReview?: () => void
+  onStartRedline?: () => void
 }
 
 /**
@@ -54,6 +57,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   endDate,
   riskLevel,
   complianceOk,
+  contractStatus,
   signatureStatus,
   documentClassification,
   documentClassificationWarning,
@@ -61,6 +65,8 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
   onInitiateRenewal,
   onSetReminder,
   onRequestSignature,
+  onStartReview,
+  onStartRedline,
 }: StatusBannerProps) {
   // Generate all applicable banners
   const banners = useMemo(() => {
@@ -89,17 +95,33 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
       })
     }
     
+    // Pending review / in-review banner
+    const isPendingReview = contractStatus && ['PENDING', 'pending', 'pending_review', 'IN_REVIEW'].includes(contractStatus)
+    if (isPendingReview) {
+      result.push({
+        type: 'pending-review',
+        icon: Eye,
+        bgClass: 'bg-blue-50 border-blue-200',
+        textClass: 'text-blue-700',
+        title: 'Pending Review',
+        subtitle: 'This document was uploaded for review. Start a legal review or redline session to proceed.',
+        buttonText: 'Start Review',
+        buttonClass: 'border-blue-300 text-blue-700 hover:bg-blue-100',
+        priority: 95,
+      })
+    }
+    
     // Signature status warning
     if (signatureStatus === 'unsigned') {
       result.push({
         type: 'unsigned',
         icon: PenLine,
-        bgClass: 'bg-purple-50 border-purple-200',
-        textClass: 'text-purple-700',
+        bgClass: 'bg-violet-50 border-violet-200',
+        textClass: 'text-violet-700',
         title: 'Contract Not Signed',
         subtitle: 'This contract has not been executed. It may not be legally binding.',
         buttonText: 'Request Signature',
-        buttonClass: 'border-purple-300 text-purple-700 hover:bg-purple-100',
+        buttonClass: 'border-violet-300 text-violet-700 hover:bg-violet-100',
         priority: 90,
       })
     } else if (signatureStatus === 'partially_signed') {
@@ -181,7 +203,9 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         const Icon = banner.icon
         
         const handleAction = () => {
-          if (banner.type === 'unsigned' && onRequestSignature) {
+          if (banner.type === 'pending-review' && onStartReview) {
+            onStartReview()
+          } else if (banner.type === 'unsigned' && onRequestSignature) {
             onRequestSignature()
           } else if (banner.type === 'expired' && onInitiateRenewal) {
             onInitiateRenewal()
@@ -194,6 +218,7 @@ export const ContractStatusBanner = memo(function ContractStatusBanner({
         
         const hasAction = banner.buttonText && (
           onAction || 
+          (banner.type === 'pending-review' && onStartReview) ||
           (banner.type === 'unsigned' && onRequestSignature) ||
           (banner.type === 'expired' && onInitiateRenewal) || 
           (banner.type === 'expiring' && onSetReminder)

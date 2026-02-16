@@ -335,14 +335,24 @@ export function getStorageService(config?: StorageConfig): StorageService {
 
 export function initializeStorage(): StorageService | null {
   try {
+    const isProduction = process.env.NODE_ENV === 'production';
+    const accessKey = process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY;
+    const secretKey = process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY;
+    
+    // In production, require explicit credentials
+    if (isProduction && (!accessKey || !secretKey)) {
+      logger.error('S3/MinIO credentials required in production');
+      return null;
+    }
+    
     const config: StorageConfig = {
       endPoint: process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'localhost',
       port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || '9000'),
-      useSSL: process.env.S3_USE_SSL === 'true',
-      accessKey: process.env.S3_ACCESS_KEY || process.env.MINIO_ACCESS_KEY || 'minioadmin',
-      secretKey: process.env.S3_SECRET_KEY || process.env.MINIO_SECRET_KEY || 'minioadmin',
+      useSSL: (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
+      accessKey: accessKey || (isProduction ? '' : 'minioadmin'),
+      secretKey: secretKey || (isProduction ? '' : 'minioadmin'),
       region: process.env.S3_REGION || 'us-east-1',
-      bucket: process.env.S3_BUCKET || 'contracts',
+      bucket: process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'contracts',
     };
 
     return getStorageService(config);

@@ -44,9 +44,9 @@ function getCategoryColor(category: StrategicRecommendation['category']): string
     case 'COST_REDUCTION':
       return 'text-green-600 bg-green-50';
     case 'SUPPLIER_OPTIMIZATION':
-      return 'text-blue-600 bg-blue-50';
+      return 'text-violet-600 bg-violet-50';
     case 'MARKET_POSITIONING':
-      return 'text-purple-600 bg-purple-50';
+      return 'text-violet-600 bg-violet-50';
     case 'RISK_MITIGATION':
       return 'text-red-600 bg-red-50';
     case 'PROCESS_IMPROVEMENT':
@@ -248,7 +248,7 @@ export function StrategicRecommendationsDashboard({
                     <ul className="space-y-2">
                       {rec.actionItems.map((item, index) => (
                         <li key={index} className="flex items-start gap-2 text-sm">
-                          <span className="text-blue-500 mt-0.5">→</span>
+                          <span className="text-violet-500 mt-0.5">→</span>
                           <span>{item}</span>
                         </li>
                       ))}

@@ -71,22 +71,27 @@ export class ClauseRepository extends AbstractRepository<
       limit?: number;
     }
   ): Promise<Clause[]> {
-    const whereClause = options?.contractId 
-      ? `AND "contractId" = '${options.contractId}'` 
-      : '';
-    const categoryClause = options?.category 
-      ? `AND "category" = '${options.category}'` 
-      : '';
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`to_tsvector('english', "text") @@ plainto_tsquery('english', ${query})`,
+    ];
 
-    const results = await this.prisma.$queryRawUnsafe<Clause[]>(`
+    if (options?.contractId) {
+      conditions.push(Prisma.sql`"contractId" = ${options.contractId}`);
+    }
+    if (options?.category) {
+      conditions.push(Prisma.sql`"category" = ${options.category}`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+    const limit = options?.limit || 10;
+
+    const results = await this.prisma.$queryRaw<Clause[]>`
       SELECT *
       FROM "Clause"
-      WHERE to_tsvector('english', "text") @@ plainto_tsquery('english', $1)
-      ${whereClause}
-      ${categoryClause}
-      ORDER BY ts_rank(to_tsvector('english', "text"), plainto_tsquery('english', $1)) DESC
-      LIMIT ${options?.limit || 10}
-    `, query);
+      WHERE ${whereClause}
+      ORDER BY ts_rank(to_tsvector('english', "text"), plainto_tsquery('english', ${query})) DESC
+      LIMIT ${limit}
+    `;
 
     return results;
   }
@@ -152,20 +157,27 @@ export class ClauseRepository extends AbstractRepository<
       minSimilarity?: number;
     }
   ): Promise<Array<Clause & { similarity: number }>> {
-    const categoryClause = options?.category 
-      ? `AND "category" = '${options.category}'` 
-      : '';
     const minSimilarity = options?.minSimilarity || 0.5;
 
-    const results = await this.prisma.$queryRawUnsafe<Array<Clause & { similarity: number }>>(`
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`similarity("text", ${text}) > ${minSimilarity}`,
+    ];
+
+    if (options?.category) {
+      conditions.push(Prisma.sql`"category" = ${options.category}`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+    const limit = options?.limit || 10;
+
+    const results = await this.prisma.$queryRaw<Array<Clause & { similarity: number }>>`
       SELECT *,
-             similarity("text", $1) as similarity
+             similarity("text", ${text}) as similarity
       FROM "Clause"
-      WHERE similarity("text", $1) > $2
-      ${categoryClause}
+      WHERE ${whereClause}
       ORDER BY similarity DESC
-      LIMIT ${options?.limit || 10}
-    `, text, minSimilarity);
+      LIMIT ${limit}
+    `;
 
     return results;
   }

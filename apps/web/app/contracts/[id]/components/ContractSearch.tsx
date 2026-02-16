@@ -101,7 +101,8 @@ export const ContractSearch = memo(function ContractSearch({
       
       if (!response.ok) throw new Error('Search failed')
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       setResults(data.results || [])
       setCurrentIndex(0)
     } catch {
@@ -162,7 +163,7 @@ export const ContractSearch = memo(function ContractSearch({
       {/* Search Overlay */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -224,11 +225,11 @@ export const ContractSearch = memo(function ContractSearch({
                       <div className="divide-y divide-slate-100">
                         {results.map((result, idx) => (
                           <button
-                            key={idx}
+                            key={result.id || `${result.page}-${result.section || ''}-${idx}`}
                             onClick={() => handleResultClick(result)}
                             className={cn(
                               "w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors",
-                              idx === currentIndex && "bg-blue-50"
+                              idx === currentIndex && "bg-violet-50"
                             )}
                           >
                             <div className="flex items-start gap-3">
@@ -288,7 +289,7 @@ export const ContractSearch = memo(function ContractSearch({
       {/* Backdrop */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

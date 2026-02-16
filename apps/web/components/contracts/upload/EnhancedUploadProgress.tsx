@@ -1,39 +1,28 @@
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   Upload,
   FileText,
   Brain,
-  Sparkles,
   CheckCircle2,
   AlertTriangle,
   Loader2,
   Clock,
-  Zap,
   RefreshCw,
   Eye,
   X,
   ChevronDown,
   ChevronUp,
   Copy,
-  ExternalLink,
-  Timer,
   Layers,
-  Shield,
-  DollarSign,
-  FileCheck,
-  TrendingUp,
-  AlertCircle,
-  Users,
-  Calendar,
-  FileEdit,
-  Phone
+  Check,
+  Sparkles,
+  Zap,
+  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -42,24 +31,50 @@ import { useRouter } from 'next/navigation';
 // Types
 // ============================================================================
 
+interface ContractStatusResponse {
+  contractId: string;
+  status: 'UPLOADED' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  currentStep: 'upload' | 'queued' | 'ocr' | 'artifacts' | 'storage' | 'complete';
+  currentStepName: string;
+  progress: number;
+  stageProgress: number;
+  timing: {
+    elapsedMs: number;
+    elapsedFormatted: string;
+    estimatedRemainingMs: number;
+    estimatedRemainingFormatted: string;
+    processingDurationMs: number;
+    processingDurationFormatted: string;
+  };
+  artifactsGenerated: number;
+  totalArtifacts: number;
+  artifactTypes: string[];
+  hasOverview: boolean;
+  hasFinancial: boolean;
+  hasRisk: boolean;
+  hasCompliance: boolean;
+  hasClauses: boolean;
+  processingJob: {
+    id: string;
+    status: string;
+    queueId: string | null;
+    priority: number;
+    retryCount: number;
+    maxRetries: number;
+    error: string | null;
+  } | null;
+  error: string | null;
+}
+
 export interface ProcessingStage {
   id: string;
   name: string;
-  description: string;
+  shortName: string;
   icon: React.ReactNode;
   status: 'pending' | 'in-progress' | 'completed' | 'error';
-  startTime?: number;
-  endTime?: number;
-  progress?: number;
-  error?: string;
-}
-
-export interface ArtifactProgress {
-  type: string;
-  status: 'pending' | 'generating' | 'completed' | 'error';
-  progress?: number;
-  startTime?: number;
-  endTime?: number;
 }
 
 export interface UploadProgressProps {
@@ -74,57 +89,30 @@ export interface UploadProgressProps {
   onRetry?: () => void;
   onRemove?: () => void;
   onViewContract?: (contractId: string) => void;
+  onContractNotFound?: () => void;  // Called when contract returns 404
+  onComplete?: (contractId: string) => void;  // Called when processing completes
   tenantId?: string;
+  autoNavigate?: boolean;  // Auto-navigate to contract on completion
 }
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const PROCESSING_STAGES: Omit<ProcessingStage, 'status' | 'startTime' | 'endTime'>[] = [
-  {
-    id: 'upload',
-    name: 'Upload',
-    description: 'Securely uploading file',
-    icon: <Upload className="h-4 w-4" />,
-  },
-  {
-    id: 'text-extraction',
-    name: 'Text Extraction',
-    description: 'OCR and text parsing',
-    icon: <FileText className="h-4 w-4" />,
-  },
-  {
-    id: 'ai-analysis',
-    name: 'AI Analysis',
-    description: 'Deep contract understanding',
-    icon: <Brain className="h-4 w-4" />,
-  },
-  {
-    id: 'artifact-generation',
-    name: 'Artifact Generation',
-    description: 'Creating insights & reports',
-    icon: <Sparkles className="h-4 w-4" />,
-  },
-  {
-    id: 'indexing',
-    name: 'Indexing',
-    description: 'Making contract searchable',
-    icon: <Layers className="h-4 w-4" />,
-  },
-];
+const API_STEP_TO_STAGE: Record<string, string> = {
+  'upload': 'upload',
+  'queued': 'extract',
+  'ocr': 'extract',
+  'artifacts': 'analyze',
+  'storage': 'index',
+  'complete': 'index',
+};
 
-const ARTIFACT_TYPES = [
-  { type: 'OVERVIEW', name: 'Overview', icon: <FileText className="h-3.5 w-3.5" /> },
-  { type: 'CLAUSES', name: 'Key Clauses', icon: <FileCheck className="h-3.5 w-3.5" /> },
-  { type: 'FINANCIAL', name: 'Financial', icon: <DollarSign className="h-3.5 w-3.5" /> },
-  { type: 'RISK', name: 'Risk Assessment', icon: <AlertTriangle className="h-3.5 w-3.5" /> },
-  { type: 'COMPLIANCE', name: 'Compliance', icon: <Shield className="h-3.5 w-3.5" /> },
-  { type: 'OBLIGATIONS', name: 'Obligations', icon: <FileEdit className="h-3.5 w-3.5" /> },
-  { type: 'RENEWAL', name: 'Renewal Terms', icon: <Calendar className="h-3.5 w-3.5" /> },
-  { type: 'NEGOTIATION_POINTS', name: 'Negotiation Points', icon: <TrendingUp className="h-3.5 w-3.5" /> },
-  { type: 'AMENDMENTS', name: 'Amendments', icon: <FileEdit className="h-3.5 w-3.5" /> },
-  { type: 'CONTACTS', name: 'Contacts', icon: <Phone className="h-3.5 w-3.5" /> },
+const STAGES = [
+  { id: 'upload', name: 'Upload', shortName: 'Upload', icon: <Upload className="h-3.5 w-3.5" /> },
+  { id: 'extract', name: 'Text Extraction', shortName: 'Extract', icon: <FileText className="h-3.5 w-3.5" /> },
+  { id: 'analyze', name: 'AI Analysis', shortName: 'Analyze', icon: <Brain className="h-3.5 w-3.5" /> },
+  { id: 'index', name: 'Indexing', shortName: 'Index', icon: <Layers className="h-3.5 w-3.5" /> },
 ];
 
 // ============================================================================
@@ -140,7 +128,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
+  if (ms < 1000) return '<1s';
   const seconds = Math.floor(ms / 1000);
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
@@ -148,111 +136,16 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function estimateProcessingTime(fileSize: number): number {
-  // Base time: 5 seconds
-  // Additional time based on file size: ~1s per 100KB
-  const baseTime = 5000;
-  const sizeTime = Math.ceil(fileSize / 102400) * 1000;
-  return baseTime + sizeTime;
-}
-
-// ============================================================================
-// Sub-Components
-// ============================================================================
-
-interface StageIndicatorProps {
-  stage: ProcessingStage;
-  isActive: boolean;
-  isLast: boolean;
-}
-
-function StageIndicator({ stage, isActive, isLast }: StageIndicatorProps) {
-  const getStatusColor = () => {
-    switch (stage.status) {
-      case 'completed':
-        return 'bg-green-500 text-white border-green-500';
-      case 'in-progress':
-        return 'bg-blue-500 text-white border-blue-500';
-      case 'error':
-        return 'bg-red-500 text-white border-red-500';
-      default:
-        return 'bg-gray-100 text-gray-400 border-gray-200';
-    }
-  };
-
-  const getLineColor = () => {
-    if (stage.status === 'completed') return 'bg-green-500';
-    if (stage.status === 'in-progress') return 'bg-blue-200';
-    return 'bg-gray-200';
-  };
-
-  return (
-    <div className="flex items-center">
-      <motion.div
-        className={cn(
-          'w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all',
-          getStatusColor()
-        )}
-        animate={isActive ? { scale: [1, 1.1, 1] } : {}}
-        transition={{ repeat: Infinity, duration: 1.5 }}
-      >
-        {stage.status === 'in-progress' ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : stage.status === 'completed' ? (
-          <CheckCircle2 className="h-4 w-4" />
-        ) : stage.status === 'error' ? (
-          <AlertTriangle className="h-4 w-4" />
-        ) : (
-          stage.icon
-        )}
-      </motion.div>
-      {!isLast && (
-        <div className={cn('w-8 h-0.5 mx-1', getLineColor())} />
-      )}
-    </div>
-  );
-}
-
-interface ArtifactChipProps {
-  artifact: ArtifactProgress;
-  artifactInfo: typeof ARTIFACT_TYPES[0];
-}
-
-function ArtifactChip({ artifact, artifactInfo }: ArtifactChipProps) {
-  const getStatusStyles = () => {
-    switch (artifact.status) {
-      case 'completed':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'generating':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'error':
-        return 'bg-red-50 text-red-700 border-red-200';
-      default:
-        return 'bg-gray-50 text-gray-500 border-gray-200';
-    }
-  };
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.8 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className={cn(
-        'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
-        getStatusStyles()
-      )}
-    >
-      {artifact.status === 'generating' ? (
-        <Loader2 className="h-3 w-3 animate-spin" />
-      ) : artifact.status === 'completed' ? (
-        <CheckCircle2 className="h-3 w-3" />
-      ) : artifact.status === 'error' ? (
-        <AlertCircle className="h-3 w-3" />
-      ) : (
-        artifactInfo.icon
-      )}
-      <span>{artifactInfo.name}</span>
-    </motion.div>
-  );
+function getProcessingMessage(stage: string, artifactCount: number): string {
+  switch (stage) {
+    case 'upload': return 'Uploading file...';
+    case 'extract': return 'Extracting text from document...';
+    case 'analyze': return artifactCount > 0 
+      ? `Analyzing with AI (${artifactCount} insights)...`
+      : 'Analyzing with AI...';
+    case 'index': return 'Saving and indexing...';
+    default: return 'Processing...';
+  }
 }
 
 // ============================================================================
@@ -260,7 +153,7 @@ function ArtifactChip({ artifact, artifactInfo }: ArtifactChipProps) {
 // ============================================================================
 
 export function EnhancedUploadProgress({
-  fileId,
+  fileId: _fileId,
   fileName,
   fileSize,
   contractId,
@@ -270,340 +163,426 @@ export function EnhancedUploadProgress({
   existingContractId,
   onRetry,
   onRemove,
-  onViewContract,
+  onViewContract: _onViewContract,
+  onContractNotFound,
+  onComplete,
   tenantId = 'demo',
+  autoNavigate = false,
 }: UploadProgressProps) {
   const router = useRouter();
-  const [stages, setStages] = useState<ProcessingStage[]>([]);
-  const [artifacts, setArtifacts] = useState<ArtifactProgress[]>([]);
-  const [showDetails, setShowDetails] = useState(false);
+  const [stages, setStages] = useState<ProcessingStage[]>(() => 
+    STAGES.map(s => ({ ...s, status: 'pending' as const }))
+  );
+  const [expanded, setExpanded] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [startTime] = useState(Date.now());
-
-  // Initialize stages
-  useEffect(() => {
-    setStages(PROCESSING_STAGES.map(s => ({ ...s, status: 'pending' as const })));
-    setArtifacts(ARTIFACT_TYPES.map(a => ({ type: a.type, status: 'pending' as const })));
-  }, []);
+  const [apiStatus, setApiStatus] = useState<ContractStatusResponse | null>(null);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);  // Track internal completion state
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+  const hasCompletedRef = useRef(false);
 
   // Update elapsed time
   useEffect(() => {
     if (status === 'uploading' || status === 'processing') {
-      const interval = setInterval(() => {
-        setElapsedTime(Date.now() - startTime);
-      }, 100);
+      const interval = setInterval(() => setElapsedTime(Date.now() - startTime), 1000);
       return () => clearInterval(interval);
     }
   }, [status, startTime]);
 
-  // Simulate stage progression based on status
+  // Auto-expand on error
   useEffect(() => {
-    if (status === 'uploading') {
-      setStages(prev => prev.map((s, i) => 
-        i === 0 ? { ...s, status: 'in-progress', startTime: Date.now() } : s
-      ));
-    } else if (status === 'processing') {
-      // Mark upload as complete, start text extraction
-      setStages(prev => prev.map((s, i) => {
-        if (i === 0) return { ...s, status: 'completed', endTime: Date.now() };
-        if (i === 1) return { ...s, status: 'in-progress', startTime: Date.now() };
-        return s;
-      }));
-      
-      // Simulate stage progression
-      const progressStages = async () => {
-        await new Promise(r => setTimeout(r, 1500));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 1) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 2) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
+    if (status === 'error') {
+      setExpanded(true);
+    }
+  }, [status]);
+
+  // Handle completion with animation and optional auto-navigation
+  const handleCompletion = useCallback((finalContractId: string) => {
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
+    
+    setShowSuccess(true);
+    setIsCompleted(true);  // Mark as completed internally
+    if (onComplete) onComplete(finalContractId);
+    
+    if (autoNavigate) {
+      setTimeout(() => router.push(`/contracts/${finalContractId}`), 1500);
+    }
+  }, [autoNavigate, onComplete, router]);
+
+  // Poll contract status
+  useEffect(() => {
+    if (!contractId || (status !== 'processing' && status !== 'uploading')) return;
+
+    let notFoundCount = 0;
+    let pollCount = 0;
+    const MAX_NOT_FOUND = 5;
+    const INITIAL_GRACE_POLLS = 5; // Increased grace period for DB commit delay
+
+    const poll = async () => {
+      pollCount++;
+      try {
+        const res = await fetch(`/api/contracts/${contractId}/status`, {
+          headers: { 'x-tenant-id': tenantId },
+        });
         
-        await new Promise(r => setTimeout(r, 2000));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 2) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 3) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
-        
-        // Start artifact generation simulation
-        for (let j = 0; j < ARTIFACT_TYPES.length; j++) {
-          setArtifacts(prev => prev.map((a, i) => 
-            i === j ? { ...a, status: 'generating', startTime: Date.now() } : a
-          ));
-          await new Promise(r => setTimeout(r, 800));
-          setArtifacts(prev => prev.map((a, i) => 
-            i === j ? { ...a, status: 'completed', endTime: Date.now() } : a
-          ));
+        // Handle 404 - contract doesn't exist anymore
+        if (res.status === 404) {
+          // During initial grace period, don't count 404s (database may not have committed yet)
+          if (pollCount <= INITIAL_GRACE_POLLS) {
+            console.log(`[EnhancedUploadProgress] 404 during grace period (poll ${pollCount}/${INITIAL_GRACE_POLLS})`);
+            return;
+          }
+          notFoundCount++;
+          console.log(`[EnhancedUploadProgress] 404 count: ${notFoundCount}/${MAX_NOT_FOUND}`);
+          // Don't trigger onContractNotFound - just log it
+          // The parent will handle this via RealtimeArtifactViewer if needed
+          return;
         }
         
-        setStages(prev => prev.map((s, i) => {
-          if (i === 3) return { ...s, status: 'completed', endTime: Date.now() };
-          if (i === 4) return { ...s, status: 'in-progress', startTime: Date.now() };
-          return s;
-        }));
+        if (!res.ok) return;
         
-        await new Promise(r => setTimeout(r, 1000));
-        setStages(prev => prev.map((s, i) => {
-          if (i === 4) return { ...s, status: 'completed', endTime: Date.now() };
-          return s;
-        }));
-      };
-      
-      progressStages();
-    } else if (status === 'completed') {
-      setStages(prev => prev.map(s => ({ ...s, status: 'completed' as const })));
-      setArtifacts(prev => prev.map(a => ({ ...a, status: 'completed' as const })));
+        // Reset not found counter on success
+        notFoundCount = 0;
+        
+        const data: ContractStatusResponse = await res.json();
+        setApiStatus(data);
+
+        // Update stages
+        const currentApiStep = data.currentStep;
+        const currentStageId = API_STEP_TO_STAGE[currentApiStep] || 'upload';
+        const stageIndex = STAGES.findIndex(s => s.id === currentStageId);
+
+        setStages(STAGES.map((s, i) => ({
+          ...s,
+          status: i < stageIndex ? 'completed' as const :
+                  i === stageIndex ? (data.status === 'FAILED' ? 'error' as const : 'in-progress' as const) :
+                  'pending' as const
+        })));
+
+        if (data.status === 'COMPLETED') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          handleCompletion(contractId);
+        } else if (data.status === 'FAILED') {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setExpanded(true);
+        }
+      } catch {
+        // Ignore errors
+      }
+    };
+
+    // Add small delay before first poll to allow database transaction to commit
+    const initialDelay = setTimeout(() => {
+      poll();
+      pollRef.current = setInterval(poll, 1500);  // Faster polling for better UX
+    }, 1000); // Wait 1 second before first poll
+    
+    return () => { 
+      clearTimeout(initialDelay);
+      if (pollRef.current) clearInterval(pollRef.current); 
+    };
+  }, [contractId, status, tenantId, onContractNotFound, handleCompletion]);
+
+  // Update stages for completed/error status
+  useEffect(() => {
+    if (status === 'completed') {
+      setStages(STAGES.map(s => ({ ...s, status: 'completed' as const })));
     } else if (status === 'error') {
       setStages(prev => {
-        const currentStage = prev.findIndex(s => s.status === 'in-progress');
-        return prev.map((s, i) => 
-          i === currentStage ? { ...s, status: 'error' as const, error } : s
-        );
+        const inProgress = prev.findIndex(s => s.status === 'in-progress');
+        return prev.map((s, i) => ({
+          ...s,
+          status: i === inProgress || (inProgress === -1 && i === 0) ? 'error' as const : s.status
+        }));
       });
+    } else if (status === 'uploading' && !contractId) {
+      setStages(STAGES.map((s, i) => ({
+        ...s,
+        status: i === 0 ? 'in-progress' as const : 'pending' as const
+      })));
     }
-  }, [status, error]);
+  }, [status, contractId]);
 
-  // Calculate overall progress
-  const overallProgress = useMemo(() => {
-    const stageWeight = 60; // 60% for stages
-    const artifactWeight = 40; // 40% for artifacts
-    
-    const completedStages = stages.filter(s => s.status === 'completed').length;
-    const stageProgress = (completedStages / stages.length) * stageWeight;
-    
-    const completedArtifacts = artifacts.filter(a => a.status === 'completed').length;
-    const artifactProgress = (completedArtifacts / artifacts.length) * artifactWeight;
-    
-    return Math.round(stageProgress + artifactProgress);
-  }, [stages, artifacts]);
-
-  const estimatedTime = useMemo(() => estimateProcessingTime(fileSize), [fileSize]);
+  const progress = apiStatus?.progress ?? (status === 'completed' ? 100 : status === 'uploading' ? 15 : 0);
+  const displayTime = apiStatus?.timing?.elapsedMs ?? elapsedTime;
+  const artifactCount = apiStatus?.artifactsGenerated ?? 0;
+  const estimatedRemaining = apiStatus?.timing?.estimatedRemainingMs;
   const currentStage = stages.find(s => s.status === 'in-progress');
-  const completedArtifacts = artifacts.filter(a => a.status === 'completed').length;
+  const processingMessage = getProcessingMessage(currentStage?.id || 'upload', artifactCount);
 
-  // Handle duplicate contract
+  // Handle duplicate
   if (isDuplicate && existingContractId) {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="rounded-xl border border-amber-200 bg-amber-50 p-4"
-      >
-        <div className="flex items-start gap-3">
-          <div className="p-2 bg-amber-100 rounded-lg">
-            <Copy className="h-5 w-5 text-amber-600" />
-          </div>
-          <div className="flex-1">
-            <h4 className="font-semibold text-amber-900">Duplicate Detected</h4>
-            <p className="text-sm text-amber-700 mt-1">
-              This file has already been processed. Would you like to view the existing contract?
-            </p>
-            <div className="flex gap-2 mt-3">
-              <Button
-                size="sm"
-                onClick={() => router.push(`/contracts/${existingContractId}`)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                View Existing
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onRetry}
-              >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Re-process
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={onRemove}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+      <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-200 bg-amber-50">
+        <div className="p-2 rounded-lg bg-amber-100">
+          <Copy className="h-4 w-4 text-amber-600" />
         </div>
-      </motion.div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-amber-900 truncate">{fileName}</p>
+          <p className="text-xs text-amber-600">Already uploaded recently</p>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => router.push(`/contracts/${existingContractId}`)}>
+            <Eye className="h-3.5 w-3.5 mr-1" />
+            View
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 text-xs" onClick={onRetry}>
+            <RefreshCw className="h-3.5 w-3.5 mr-1" />
+            Re-upload
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
+            <X className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
     );
   }
 
+  // Get current stage info - already declared above
+  const completedStages = stages.filter(s => s.status === 'completed').length;
+
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
+    <motion.div 
+      initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'rounded-xl border bg-white shadow-sm overflow-hidden',
+        'rounded-lg border bg-white overflow-hidden transition-all relative',
         status === 'error' && 'border-red-200 bg-red-50',
-        status === 'completed' && 'border-green-200'
+        (status === 'completed' || isCompleted) && 'border-green-200 bg-green-50',
+        showSuccess && 'ring-2 ring-green-400 ring-offset-2'
       )}
     >
-      {/* Header */}
-      <div className="p-4 border-b border-gray-100">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center gap-3">
-            <div className={cn(
-              'p-2.5 rounded-lg',
-              status === 'completed' ? 'bg-green-100' :
-              status === 'error' ? 'bg-red-100' :
-              'bg-blue-100'
-            )}>
-              {status === 'completed' ? (
-                <CheckCircle2 className="h-5 w-5 text-green-600" />
-              ) : status === 'error' ? (
-                <AlertTriangle className="h-5 w-5 text-red-600" />
-              ) : (
-                <FileText className="h-5 w-5 text-blue-600" />
-              )}
-            </div>
-            <div>
-              <h4 className="font-medium text-gray-900 truncate max-w-[200px]">
-                {fileName}
-              </h4>
-              <p className="text-xs text-gray-500">
-                {formatFileSize(fileSize)}
-              </p>
-            </div>
+      {/* Main Row */}
+      <div className="flex items-center gap-3 p-3">
+        {/* Icon with pulse animation */}
+        <div className={cn(
+          'p-2 rounded-lg shrink-0 relative',
+          (status === 'completed' || isCompleted) ? 'bg-green-100' :
+          status === 'error' ? 'bg-red-100' :
+          status === 'processing' || status === 'uploading' ? 'bg-violet-100' :
+          'bg-gray-100'
+        )}>
+          {(status === 'processing' || status === 'uploading') && !isCompleted && (
+            <motion.div
+              className="absolute inset-0 rounded-lg bg-violet-400"
+              animate={{ opacity: [0.15, 0.3, 0.15] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+          )}
+          {(status === 'completed' || isCompleted) ? (
+            <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            </motion.div>
+          ) : status === 'error' ? (
+            <AlertTriangle className="h-4 w-4 text-red-600" />
+          ) : status === 'processing' || status === 'uploading' ? (
+            <Loader2 className="h-4 w-4 text-violet-600 animate-spin relative z-10" />
+          ) : (
+            <FileText className="h-4 w-4 text-gray-500" />
+          )}
+        </div>
+
+        {/* File Info */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
+            <span className="text-xs text-gray-400 shrink-0">{formatFileSize(fileSize)}</span>
           </div>
           
-          <div className="flex items-center gap-2">
-            {(status === 'uploading' || status === 'processing') && (
-              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                <Timer className="h-3 w-3 mr-1" />
-                {formatDuration(elapsedTime)}
-              </Badge>
+          {/* Status Line */}
+          <div className="flex items-center gap-2 mt-0.5">
+            {status === 'pending' && !isCompleted && (
+              <span className="text-xs text-gray-500">Waiting to upload...</span>
             )}
-            
-            {status === 'completed' && contractId && (
-              <Button
-                size="sm"
-                onClick={() => router.push(`/contracts/${contractId}`)}
-              >
-                <Eye className="h-4 w-4 mr-1" />
-                View
-              </Button>
+            {(status === 'uploading' || status === 'processing') && !isCompleted && (
+              <>
+                <span className="text-xs text-violet-600 font-medium">
+                  {processingMessage}
+                </span>
+                <span className="text-xs text-gray-400">•</span>
+                <span className="text-xs text-gray-500">{formatDuration(displayTime)}</span>
+                {estimatedRemaining && estimatedRemaining > 0 && (
+                  <>
+                    <span className="text-xs text-gray-400">•</span>
+                    <span className="text-xs text-gray-400">~{formatDuration(estimatedRemaining)} left</span>
+                  </>
+                )}
+              </>
             )}
-            
-            {status === 'error' && (
-              <Button size="sm" variant="outline" onClick={onRetry}>
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Retry
-              </Button>
+            {(status === 'completed' || isCompleted) && (
+              <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-green-600 font-medium flex items-center gap-1">
+                <Zap className="h-3 w-3" />
+                Complete • {artifactCount} insights extracted
+              </motion.span>
             )}
-            
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setShowDetails(!showDetails)}
-            >
-              {showDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-            
-            {(status === 'pending' || status === 'error') && (
-              <Button size="sm" variant="ghost" onClick={onRemove}>
-                <X className="h-4 w-4" />
-              </Button>
+            {status === 'error' && !isCompleted && (
+              <span className="text-xs text-red-600 font-medium">
+                {error || 'Processing failed'}
+              </span>
             )}
           </div>
         </div>
-        
-        {/* Progress Bar */}
-        {status !== 'pending' && status !== 'completed' && (
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-gray-500 mb-1">
-              <span>{currentStage?.name || 'Processing...'}</span>
-              <span>{overallProgress}%</span>
-            </div>
-            <Progress value={overallProgress} className="h-2" />
-          </div>
-        )}
+
+        {/* Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {(status === 'completed' || isCompleted) && contractId && (
+            <motion.div initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ delay: 0.2 }}>
+              <Button 
+                size="sm" 
+                className="h-8 text-xs bg-green-600 hover:bg-green-700"
+                onClick={() => router.push(`/contracts/${contractId}`)}
+              >
+                <Eye className="h-3.5 w-3.5 mr-1" />
+                View Contract
+                <ExternalLink className="h-3 w-3 ml-1.5 opacity-70" />
+              </Button>
+            </motion.div>
+          )}
+          
+          {status === 'error' && (
+            <Button size="sm" variant="outline" className="h-8 text-xs border-red-200 hover:bg-red-50" onClick={onRetry}>
+              <RefreshCw className="h-3.5 w-3.5 mr-1" />
+              Retry
+            </Button>
+          )}
+
+          {(status === 'uploading' || status === 'processing') && (
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 p-0"
+              onClick={() => setExpanded(!expanded)}
+            >
+              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+          )}
+
+          {(status === 'pending' || status === 'error' || status === 'completed' || isCompleted) && (
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={onRemove}>
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
-      
-      {/* Stage Timeline */}
+
+      {/* Progress Bar */}
+      {(status === 'uploading' || status === 'processing') && !isCompleted && (
+        <div className="px-3 pb-3">
+          <Progress value={progress} className="h-1.5" />
+        </div>
+      )}
+
+      {/* Expanded Details */}
       <AnimatePresence>
-        {showDetails && (
-          <motion.div
+        {expanded && (status === 'uploading' || status === 'processing' || status === 'error') && (
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden"
+            className="overflow-hidden border-t border-gray-100"
           >
-            <div className="p-4 bg-gray-50 border-t border-gray-100">
-              {/* Processing Stages */}
-              <div className="mb-4">
-                <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                  Processing Stages
-                </h5>
-                <div className="flex items-center justify-center">
-                  {stages.map((stage, index) => (
-                    <StageIndicator
-                      key={stage.id}
-                      stage={stage}
-                      isActive={stage.status === 'in-progress'}
-                      isLast={index === stages.length - 1}
-                    />
-                  ))}
-                </div>
-                <div className="flex justify-between mt-2 px-2">
-                  {stages.map(stage => (
-                    <span key={stage.id} className="text-[10px] text-gray-500 text-center w-16">
-                      {stage.name}
-                    </span>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Artifact Generation */}
-              {status === 'processing' && (
-                <div>
-                  <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-                    AI Artifacts ({completedArtifacts}/{artifacts.length})
-                  </h5>
-                  <div className="flex flex-wrap gap-2">
-                    {artifacts.map(artifact => {
-                      const info = ARTIFACT_TYPES.find(a => a.type === artifact.type);
-                      if (!info) return null;
-                      return (
-                        <ArtifactChip
-                          key={artifact.type}
-                          artifact={artifact}
-                          artifactInfo={info}
-                        />
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-              
+            <div className={cn("p-4", status === 'error' ? 'bg-red-50' : 'bg-gray-50')}>
               {/* Error Details */}
               {status === 'error' && error && (
-                <div className="mt-4 p-3 bg-red-100 rounded-lg">
-                  <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
-                    <div>
-                      <p className="text-sm font-medium text-red-800">Processing Failed</p>
-                      <p className="text-xs text-red-600 mt-1">{error}</p>
-                    </div>
-                  </div>
+                <div className="mb-4 p-3 rounded-lg bg-red-100 border border-red-200">
+                  <p className="text-sm text-red-800">{error}</p>
+                  <p className="text-xs text-red-600 mt-1">Please try again or contact support if the issue persists.</p>
                 </div>
               )}
-              
-              {/* Completion Summary */}
-              {status === 'completed' && (
-                <div className="p-3 bg-green-100 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-600" />
-                    <div>
-                      <p className="text-sm font-medium text-green-800">Processing Complete</p>
-                      <p className="text-xs text-green-600 mt-0.5">
-                        10 AI artifacts generated in {formatDuration(elapsedTime)}
-                      </p>
+
+              {/* Stage Progress */}
+              <div className="flex items-center justify-between max-w-sm mx-auto">
+                {stages.map((stage, i) => (
+                  <div key={stage.id} className="flex items-center">
+                    {/* Stage Circle */}
+                    <div className="flex flex-col items-center">
+                      <motion.div 
+                        className={cn(
+                          'w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all',
+                          stage.status === 'completed' && 'bg-green-500 border-green-500 text-white',
+                          stage.status === 'in-progress' && 'bg-violet-500 border-violet-500 text-white',
+                          stage.status === 'error' && 'bg-red-500 border-red-500 text-white',
+                          stage.status === 'pending' && 'bg-white border-gray-200 text-gray-400'
+                        )}
+                        animate={stage.status === 'in-progress' ? { scale: [1, 1.05, 1] } : {}}
+                        transition={{ duration: 2, repeat: Infinity }}
+                      >
+                        {stage.status === 'completed' ? (
+                          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring' }}>
+                            <Check className="h-4 w-4" />
+                          </motion.div>
+                        ) : stage.status === 'in-progress' ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : stage.status === 'error' ? (
+                          <X className="h-4 w-4" />
+                        ) : (
+                          <span className="text-xs font-medium">{i + 1}</span>
+                        )}
+                      </motion.div>
+                      <span className={cn(
+                        'text-[10px] mt-1.5 font-medium',
+                        stage.status === 'completed' && 'text-green-600',
+                        stage.status === 'in-progress' && 'text-violet-600',
+                        stage.status === 'error' && 'text-red-600',
+                        stage.status === 'pending' && 'text-gray-400'
+                      )}>
+                        {stage.shortName}
+                      </span>
                     </div>
+                    
+                    {/* Connector Line */}
+                    {i < stages.length - 1 && (
+                      <div className={cn(
+                        'w-10 h-0.5 mx-2 -mt-4 transition-colors',
+                        stage.status === 'completed' ? 'bg-green-400' :
+                        stage.status === 'in-progress' ? 'bg-violet-200' :
+                        'bg-gray-200'
+                      )} />
+                    )}
                   </div>
+                ))}
+              </div>
+
+              {/* Stats Row */}
+              <div className="flex items-center justify-center gap-6 mt-4 text-xs text-gray-500">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span>{formatDuration(displayTime)}</span>
                 </div>
-              )}
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>{completedStages}/{stages.length} stages</span>
+                </div>
+                {artifactCount > 0 && (
+                  <div className="flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5" />
+                    <span>{artifactCount} insights</span>
+                  </div>
+                )}
+              </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Success Animation Overlay */}
+      <AnimatePresence>
+        {showSuccess && (
+          <motion.div key="success"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-green-50/90 flex items-center justify-center pointer-events-none rounded-lg"
+          >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: [0, 1.2, 1] }}
+              transition={{ duration: 0.5 }}
+            >
+              <CheckCircle2 className="h-12 w-12 text-green-500" />
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

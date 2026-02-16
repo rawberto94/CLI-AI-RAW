@@ -40,7 +40,7 @@ export function OpportunitiesList() {
 
   useEffect(() => {
     fetchOpportunities();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [statusFilter, categoryFilter, sortBy]);
 
   const fetchOpportunities = async () => {
@@ -113,10 +113,10 @@ export function OpportunitiesList() {
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      IDENTIFIED: 'bg-blue-100 text-blue-800',
+      IDENTIFIED: 'bg-violet-100 text-violet-800',
       UNDER_REVIEW: 'bg-yellow-100 text-yellow-800',
       APPROVED: 'bg-green-100 text-green-800',
-      IN_PROGRESS: 'bg-purple-100 text-purple-800',
+      IN_PROGRESS: 'bg-violet-100 text-violet-800',
       IMPLEMENTED: 'bg-gray-100 text-gray-800',
       REJECTED: 'bg-red-100 text-red-800',
     };
@@ -125,11 +125,11 @@ export function OpportunitiesList() {
 
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
-      RATE_REDUCTION: 'bg-indigo-100 text-indigo-800',
+      RATE_REDUCTION: 'bg-violet-100 text-indigo-800',
       SUPPLIER_SWITCH: 'bg-pink-100 text-pink-800',
-      VOLUME_DISCOUNT: 'bg-teal-100 text-teal-800',
+      VOLUME_DISCOUNT: 'bg-violet-100 text-violet-800',
       GEOGRAPHIC_ARBITRAGE: 'bg-orange-100 text-orange-800',
-      TERM_RENEGOTIATION: 'bg-cyan-100 text-cyan-800',
+      TERM_RENEGOTIATION: 'bg-violet-100 text-violet-800',
     };
     return colors[category] || 'bg-gray-100 text-gray-800';
   };

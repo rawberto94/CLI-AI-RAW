@@ -7,16 +7,19 @@ Fixed critical issues with contract metadata editing where changes were not bein
 ## 🐛 Issues Fixed
 
 ### 1. **Metadata Not Saving**
+
 - **Problem**: When editing contract metadata in the Details tab, changes were saved to the database but not reflected in the UI
 - **Root Cause**: Component was not fetching metadata from the API after save, only relying on props passed from parent
 - **Solution**: Added API fetch on component mount and after successful save operations
 
 ### 2. **Input Values Not Displaying**
+
 - **Problem**: After editing and saving, the form would show default/empty values instead of saved data
 - **Root Cause**: Missing data refresh after save operation
 - **Solution**: Implemented fresh metadata fetch from API endpoint after successful save
 
 ### 3. **No Per-Field Editing**
+
 - **Problem**: Users could only edit all fields at once via global "Edit Metadata" button
 - **Root Cause**: No inline editing implementation
 - **Solution**: Added click-to-edit functionality for individual fields with save/cancel buttons
@@ -222,6 +225,7 @@ const mergedInitial = useMemo(() => {
 ## 🎨 User Experience Improvements
 
 ### Before
+
 - ❌ Edit all fields at once only
 - ❌ Changes not visible after save
 - ❌ No indication which fields are editable
@@ -229,6 +233,7 @@ const mergedInitial = useMemo(() => {
 - ❌ No way to quickly edit one field
 
 ### After
+
 - ✅ **Click any field to edit** - Instant inline editing
 - ✅ **Per-field save/cancel** - Granular control
 - ✅ **Visual hover effects** - Clear editability indicators

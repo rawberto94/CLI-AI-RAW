@@ -1,39 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
-
-// Mock workflow for fallback
-const mockWorkflow = {
-  id: '1',
-  tenantId: 'demo',
-  name: 'Contract Approval Workflow',
-  description: 'Standard approval process for new contracts',
-  type: 'APPROVAL',
-  isActive: true,
-  steps: [
-    {
-      id: 's1',
-      name: 'Legal Review',
-      order: 0,
-      type: 'REVIEW',
-      assignedRole: 'Legal Team',
-      config: { dueDays: 3, requiresApproval: true, allowReject: true },
-    },
-    {
-      id: 's2',
-      name: 'Finance Approval',
-      order: 1,
-      type: 'APPROVAL',
-      assignedRole: 'Finance Manager',
-      config: { dueDays: 2, requiresApproval: true, allowReject: true, allowDelegate: true },
-    },
-  ],
-  executions: 45,
-  createdAt: new Date('2025-01-01'),
-  updatedAt: new Date('2025-01-15'),
-};
 
 /**
  * GET /api/workflows/:id - Get specific workflow
@@ -42,15 +13,16 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: workflowId } = await params;
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     // Try database first
@@ -68,7 +40,7 @@ export async function GET(
       });
       
       if (workflow) {
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           workflow: {
             ...workflow,
@@ -78,31 +50,13 @@ export async function GET(
         });
       }
     } catch {
-      // Database lookup failed, fall back to mock
+      // Database lookup failed
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to retrieve workflow from database', 500);
     }
     
-    // Fallback to mock only if id matches and tenantId is demo
-    if ((workflowId === '1' || workflowId === mockWorkflow.id) && tenantId === 'demo') {
-      return NextResponse.json({
-        success: true,
-        workflow: mockWorkflow,
-        source: 'mock',
-      });
-    }
-    
-    return NextResponse.json(
-      { success: false, error: 'Workflow not found' },
-      { status: 404 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch workflow',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -113,6 +67,10 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: workflowId } = await params;
     const body = await request.json();
@@ -120,10 +78,7 @@ export async function PUT(
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     // Try database first
@@ -135,10 +90,7 @@ export async function PUT(
       });
       
       if (!existingWorkflow) {
-        return NextResponse.json(
-          { success: false, error: 'Workflow not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
       }
       
       // First, delete existing steps
@@ -185,36 +137,17 @@ export async function PUT(
         },
       });
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         workflow,
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch {
-      // Database update failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return NextResponse.json({
-      success: true,
-      workflow: {
-        ...mockWorkflow,
-        ...body,
-        updatedAt: new Date(),
-      },
-      source: 'mock',
-      message: 'Workflow updated (mock)',
-    });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to update workflow',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -225,16 +158,17 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: workflowId } = await params;
     const body = await request.json();
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     // Try database first
@@ -246,10 +180,7 @@ export async function PATCH(
       });
       
       if (!existingWorkflow) {
-        return NextResponse.json(
-          { success: false, error: 'Workflow not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
       }
       
       const workflow = await prisma.workflow.update({
@@ -265,36 +196,17 @@ export async function PATCH(
         },
       });
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         workflow,
         source: 'database',
         message: 'Workflow updated successfully',
       });
-    } catch {
-      // Database update failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return NextResponse.json({
-      success: true,
-      workflow: {
-        ...mockWorkflow,
-        ...body,
-        updatedAt: new Date(),
-      },
-      source: 'mock',
-      message: 'Workflow updated (mock)',
-    });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to update workflow',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -305,15 +217,16 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: workflowId } = await params;
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     // Try database first
@@ -325,10 +238,7 @@ export async function DELETE(
       });
       
       if (!existingWorkflow) {
-        return NextResponse.json(
-          { success: false, error: 'Workflow not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Workflow not found', 404);
       }
       
       // Delete steps first (cascade should handle this, but be explicit)
@@ -340,29 +250,15 @@ export async function DELETE(
         where: { id: existingWorkflow.id },
       });
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         source: 'database',
         message: 'Workflow deleted successfully',
       });
-    } catch {
-      // Database delete failed, fall back to mock
+    } catch (error) {
+      throw error;
     }
-    
-    // Fallback mock response
-    return NextResponse.json({
-      success: true,
-      source: 'mock',
-      message: 'Workflow deleted (mock)',
-    });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to delete workflow',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

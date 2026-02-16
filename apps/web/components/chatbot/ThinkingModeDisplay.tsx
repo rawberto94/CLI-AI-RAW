@@ -80,18 +80,18 @@ export interface ThinkingModeDisplayProps {
 
 const StepIcon: React.FC<{ type: ThinkingStep['type']; status: ThinkingStep['status'] }> = ({ type, status }) => {
   if (status === 'in_progress') {
-    return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />;
+    return <Loader2 className="h-4 w-4 animate-spin text-violet-500" />;
   }
   
   const icons: Record<ThinkingStep['type'], React.ReactNode> = {
-    thought: <Brain className="h-4 w-4 text-purple-500" />,
+    thought: <Brain className="h-4 w-4 text-violet-500" />,
     action: <Zap className="h-4 w-4 text-yellow-500" />,
-    observation: <Eye className="h-4 w-4 text-blue-500" />,
+    observation: <Eye className="h-4 w-4 text-violet-500" />,
     critique: <Scale className="h-4 w-4 text-orange-500" />,
     revision: <RefreshCw className="h-4 w-4 text-green-500" />,
-    decision: <Target className="h-4 w-4 text-emerald-500" />,
+    decision: <Target className="h-4 w-4 text-violet-500" />,
     tool_call: <Wrench className="h-4 w-4 text-gray-500 dark:text-slate-400" />,
-    debate_turn: <Users className="h-4 w-4 text-indigo-500" />,
+    debate_turn: <Users className="h-4 w-4 text-violet-500" />,
   };
   
   return <>{icons[type]}</>;
@@ -142,7 +142,7 @@ const ToolCallDisplay: React.FC<{
       
       <AnimatePresence>
         {expanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -198,8 +198,8 @@ const DebateTurnDisplay: React.FC<{ turn: DebateTurn }> = ({ turn }) => {
   const roleColors: Record<string, string> = {
     'risk_analyst': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
     'opportunity_advocate': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-    'financial_expert': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-    'legal_counsel': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+    'financial_expert': 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
+    'legal_counsel': 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
     'moderator': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300',
   };
   
@@ -283,7 +283,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
       <div className={cn("flex items-center gap-2 text-sm", className)}>
         {isThinking && (
           <motion.div 
-            className="flex items-center gap-1 text-purple-500"
+            className="flex items-center gap-1 text-violet-500"
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.5, repeat: Infinity }}
           >
@@ -309,7 +309,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
           className="flex items-center gap-2 w-full text-sm text-gray-600 dark:text-slate-400 dark:text-gray-300 hover:text-gray-900 dark:text-slate-100 dark:hover:text-gray-100"
         >
           {isVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          <Brain className="h-4 w-4 text-purple-500" />
+          <Brain className="h-4 w-4 text-violet-500" />
           <span className="font-medium">AI Reasoning</span>
           {isThinking && <Loader2 className="h-3 w-3 animate-spin ml-auto" />}
           {!isThinking && steps.length > 0 && (
@@ -321,7 +321,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
         
         <AnimatePresence>
           {isVisible && (
-            <motion.div
+            <motion.div key="visible"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -350,18 +350,18 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
   // Expanded variant (default)
   return (
     <div className={cn(
-      "bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-gray-800",
-      "border border-purple-200 dark:border-purple-900",
+      "bg-gradient-to-br from-violet-50 to-purple-50 dark:from-gray-900 dark:to-gray-800",
+      "border border-violet-200 dark:border-violet-900",
       "rounded-xl shadow-sm overflow-hidden",
       className
     )}>
       {/* Header */}
       <button
         onClick={toggleVisibility}
-        className="flex items-center gap-3 w-full p-4 text-left hover:bg-purple-100/50 dark:hover:bg-purple-900/20 transition-colors"
+        className="flex items-center gap-3 w-full p-4 text-left hover:bg-violet-100/50 dark:hover:bg-violet-900/20 transition-colors"
       >
-        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/50">
-          <Brain className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-violet-100 dark:bg-violet-900/50">
+          <Brain className="h-5 w-5 text-violet-600 dark:text-violet-400" />
         </div>
         <div className="flex-1">
           <h3 className="font-semibold text-gray-900 dark:text-slate-100 dark:text-gray-100">
@@ -390,7 +390,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
       {/* Content */}
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -428,7 +428,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
                       className={cn(
                         "bg-white dark:bg-gray-800 rounded-lg p-3 shadow-sm cursor-pointer",
                         "hover:shadow-md transition-shadow",
-                        step.status === 'in_progress' && "ring-2 ring-blue-300 dark:ring-blue-700"
+                        step.status === 'in_progress' && "ring-2 ring-violet-300 dark:ring-violet-700"
                       )}
                       onClick={() => toggleStepExpansion(step.id)}
                     >
@@ -450,7 +450,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
                           </p>
                         </div>
                         {step.status === 'in_progress' && (
-                          <Loader2 className="h-4 w-4 animate-spin text-blue-500 flex-shrink-0" />
+                          <Loader2 className="h-4 w-4 animate-spin text-violet-500 flex-shrink-0" />
                         )}
                         {step.status === 'completed' && (
                           <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -505,7 +505,7 @@ export const ThinkingModeDisplay: React.FC<ThinkingModeDisplayProps> = ({
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-center gap-2 pl-8 text-sm text-purple-500"
+                    className="flex items-center gap-2 pl-8 text-sm text-violet-500"
                   >
                     <motion.div
                       animate={{ scale: [1, 1.2, 1] }}

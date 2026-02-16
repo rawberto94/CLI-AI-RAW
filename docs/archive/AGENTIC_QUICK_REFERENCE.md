@@ -3,11 +3,13 @@
 ## 🚀 Quick Start
 
 ### 1. Run Database Migration
+
 ```bash
 psql $DATABASE_URL -f scripts/migrations/agentic-enhancements.sql
 ```
 
 ### 2. Enable Features
+
 ```env
 ENABLE_INTENT_DETECTION=true
 ENABLE_MULTI_AGENT=true
@@ -17,7 +19,9 @@ ENABLE_AB_TESTING=true
 ```
 
 ### 3. Test
+
 Upload a contract and watch logs for:
+
 - 🎯 Intent detected
 - 🤝 Negotiation completed
 - 🚨 Risks detected
@@ -57,6 +61,7 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 ## 🎯 Goal Detection
 
 **7 User Goals:**
+
 1. `NEGOTIATE` - Prepare for negotiations
 2. `RISK_ASSESSMENT` - Identify risks
 3. `COST_OPTIMIZATION` - Find savings
@@ -66,6 +71,7 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 7. `DEEP_ANALYSIS` - Comprehensive analysis
 
 **Signals Used:**
+
 - User query keywords
 - User role (legal, procurement, executive)
 - Contract type
@@ -91,6 +97,7 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 **Negotiation:** Winner = highest `(priority × confidence)`
 
 **Execution Plan:**
+
 - Dependency graph (topological sort)
 - Parallel phases where possible
 - Cost + time estimation
@@ -116,6 +123,7 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 **Risk Score:** `CRITICAL×40 + HIGH×20 + MEDIUM×10 + LOW×5`
 
 **Triggers:**
+
 - Action required: `criticalCount > 0 OR highCount > 2`
 - Escalation: `criticalCount > 2 OR (criticalCount > 0 AND highCount > 3)`
 
@@ -124,6 +132,7 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 ## 📚 Learning System
 
 **Feedback Types:**
+
 1. `ARTIFACT_EDIT` - User edited artifact
 2. `ARTIFACT_REGENERATION` - User requested regeneration
 3. `QUALITY_RATING` - User rated 1-5
@@ -131,11 +140,13 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 5. `POSITIVE_FEEDBACK` - User praised
 
 **Pattern Analysis:**
+
 - Edit rate >50% → quality issue
 - Field edited >30% → improve extraction
 - Avg rating <3 → review generation
 
 **Threshold Adjustment:**
+
 - High edit rate → +0.05 accuracy
 - Low rating → +0.05 overall
 - Field issues → +0.03 completeness
@@ -148,16 +159,19 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 **Strategy:** Epsilon-greedy (20% explore, 80% exploit)
 
 **Tests:**
+
 - Different models: GPT-4o vs GPT-4o-mini vs GPT-3.5-turbo
 - Different prompts: detailed vs concise vs structured
 - Different temperatures: creative vs deterministic
 
 **Winner Determination:**
+
 - Min sample size: 20 per variant
 - Statistical test: T-test with 95% confidence
 - Selection criteria: `quality × (1 - cost/max_cost)`
 
 **Example Tests:**
+
 - `overview-model-test`: Compare GPT-4o vs GPT-4o-mini vs GPT-3.5-turbo
 - `risk-prompt-test`: Compare detailed vs concise vs structured prompts
 
@@ -166,41 +180,51 @@ User Goal → Intent Detection → Multi-Agent Negotiation → Artifact Generati
 ## 📊 Key Metrics
 
 ### Intent Detection
+
 ```sql
 SELECT * FROM intent_detection_accuracy;
 ```
+
 - Accuracy rate by goal
 - Average confidence
 - Total detections
 
 ### Agent Performance
+
 ```sql
 SELECT * FROM agent_performance_summary;
 ```
+
 - Win rate per agent
 - Average cost per agent
 - Average quality per agent
 
 ### Risk Detection
+
 ```sql
 SELECT * FROM risk_detection_summary;
 ```
+
 - Detections by severity
 - Acknowledgment rate
 - Resolution time
 
 ### A/B Testing
+
 ```sql
 SELECT * FROM ab_test_performance_summary;
 ```
+
 - Acceptance rate by variant
 - Average quality by variant
 - Average cost by variant
 
 ### Current Winners
+
 ```sql
 SELECT * FROM ab_test_winners;
 ```
+
 - Winning variant per test
 - T-statistic (significance)
 - Determined date
@@ -210,6 +234,7 @@ SELECT * FROM ab_test_winners;
 ## 🔧 API Usage
 
 ### Goal-Oriented Reasoner
+
 ```typescript
 import { getGoalOrientedReasoner } from './agents/goal-oriented-reasoner';
 
@@ -227,6 +252,7 @@ const plan = reasoner.generateGoalPlan(intent, allArtifactTypes);
 ```
 
 ### Multi-Agent Coordinator
+
 ```typescript
 import { getMultiAgentCoordinator } from './agents/multi-agent-coordinator';
 
@@ -243,6 +269,7 @@ const executionPlan = await coordinator.createExecutionPlan(negotiation);
 ```
 
 ### Proactive Risk Detector
+
 ```typescript
 import { getProactiveRiskDetector } from './agents/proactive-risk-detector';
 
@@ -258,6 +285,7 @@ const riskAnalysis = await detector.analyzeContract(
 ```
 
 ### User Feedback Learner
+
 ```typescript
 import { getUserFeedbackLearner, FeedbackType } from './agents/user-feedback-learner';
 
@@ -275,6 +303,7 @@ await learner.processFeedback({
 ```
 
 ### A/B Testing Engine
+
 ```typescript
 import { getABTestingEngine } from './agents/ab-testing-engine';
 
@@ -295,6 +324,7 @@ const winner = await abTesting.getCurrentWinner(testName);
 ## 🐛 Troubleshooting
 
 ### Intent Detection Not Working
+
 ```typescript
 // Check logs
 logger.info('🎯 User intent detected');
@@ -307,6 +337,7 @@ console.log("Signals:", intent.signals);
 ```
 
 ### Multi-Agent Conflicts
+
 ```typescript
 // Check negotiation results
 const negotiation = await coordinator.analyzeContract(...);
@@ -315,6 +346,7 @@ console.log("Consensus:", negotiation.consensusReached);
 ```
 
 ### Risk Detection False Positives
+
 ```typescript
 // Adjust thresholds in code
 // proactive-risk-detector.ts lines ~101-180
@@ -322,6 +354,7 @@ console.log("Consensus:", negotiation.consensusReached);
 ```
 
 ### Learning Not Adjusting
+
 ```typescript
 // Check sample size
 const feedback = await learner.getRecentFeedback(tenantId, artifactType, 30);
@@ -330,6 +363,7 @@ console.log("Sample size:", feedback.length);
 ```
 
 ### A/B Test Not Converging
+
 ```typescript
 // Check variant performance
 const performances = await abTesting.getVariantPerformances(testName);
@@ -342,6 +376,7 @@ console.log("Total tests per variant:", performances.map(p => p.totalTests));
 ## 📈 Performance Tuning
 
 ### Speed vs Quality Tradeoff
+
 ```env
 # Fast mode (lower quality thresholds)
 QUALITY_THRESHOLD_OVERALL=0.6
@@ -353,6 +388,7 @@ QUALITY_THRESHOLD_ACCURACY=0.8
 ```
 
 ### Cost Optimization
+
 ```env
 # Use cheaper models by default
 DEFAULT_MODEL=gpt-4o-mini
@@ -363,6 +399,7 @@ AB_EXPLORATION_RATE=0.3  # More exploration
 ```
 
 ### Risk Sensitivity
+
 ```env
 # Strict risk detection
 RISK_CRITICAL_THRESHOLD=30
@@ -378,24 +415,28 @@ RISK_HIGH_THRESHOLD=25
 ## 🎯 Common Scenarios
 
 ### Scenario 1: Quick Contract Review
+
 **Goal:** QUICK_REVIEW  
 **Artifacts:** Top 3 only (OVERVIEW, RISK, COMPLIANCE)  
 **Speed:** Fast (lower thresholds)  
 **Cost:** Low (GPT-3.5-turbo)
 
 ### Scenario 2: Pre-Negotiation Analysis
+
 **Goal:** NEGOTIATE  
 **Artifacts:** NEGOTIATION_POINTS, FINANCIAL, PRICING_ANALYSIS  
 **Speed:** Medium  
 **Cost:** Medium (GPT-4o-mini)
 
 ### Scenario 3: Compliance Audit
+
 **Goal:** COMPLIANCE_CHECK  
 **Artifacts:** COMPLIANCE, CLAUSES, OBLIGATIONS  
 **Speed:** Slow (high thresholds)  
 **Cost:** High (GPT-4o)
 
 ### Scenario 4: Renewal Preparation
+
 **Goal:** RENEWAL_PREP  
 **Artifacts:** RENEWAL, RISK, FINANCIAL  
 **Speed:** Medium  

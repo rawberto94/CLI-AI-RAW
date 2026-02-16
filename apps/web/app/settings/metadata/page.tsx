@@ -136,7 +136,7 @@ export default function MetadataSettingsPage() {
                     className={`
                       w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors
                       ${isActive 
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                        ? 'bg-violet-50 text-violet-700 border border-violet-200' 
                         : section.active
                           ? 'hover:bg-gray-100 text-gray-700'
                           : 'opacity-50 cursor-not-allowed text-gray-400'
@@ -172,7 +172,7 @@ export default function MetadataSettingsPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">AI-Enabled</span>
-                  <span className="font-medium text-purple-600">12</span>
+                  <span className="font-medium text-violet-600">12</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500">Required</span>

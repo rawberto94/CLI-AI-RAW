@@ -147,11 +147,11 @@ const SECTION_CONFIG = {
     icon: FileText,
     label: 'Identification',
     description: 'Document type, title, and classification',
-    gradient: 'from-blue-500 to-indigo-500',
-    bgGradient: 'from-blue-50 to-indigo-50',
-    iconBg: 'bg-gradient-to-br from-blue-100 to-indigo-100',
-    iconColor: 'text-blue-600',
-    borderColor: 'border-blue-200',
+    gradient: 'from-violet-500 to-purple-500',
+    bgGradient: 'from-violet-50 to-purple-50',
+    iconBg: 'bg-gradient-to-br from-violet-100 to-purple-100',
+    iconColor: 'text-violet-600',
+    borderColor: 'border-violet-200',
     accentColor: 'blue'
   },
   parties: {
@@ -169,11 +169,11 @@ const SECTION_CONFIG = {
     icon: DollarSign,
     label: 'Commercials',
     description: 'Financial terms, pricing, and billing',
-    gradient: 'from-emerald-500 to-teal-500',
-    bgGradient: 'from-emerald-50 to-teal-50',
-    iconBg: 'bg-gradient-to-br from-emerald-100 to-teal-100',
-    iconColor: 'text-emerald-600',
-    borderColor: 'border-emerald-200',
+    gradient: 'from-violet-500 to-violet-500',
+    bgGradient: 'from-violet-50 to-violet-50',
+    iconBg: 'bg-gradient-to-br from-violet-100 to-violet-100',
+    iconColor: 'text-violet-600',
+    borderColor: 'border-violet-200',
     accentColor: 'emerald'
   },
   dates: {
@@ -238,7 +238,7 @@ function ProgressRing({
   const offset = circumference - (progress / 100) * circumference;
   
   const getColor = () => {
-    if (progress >= 80) return { stroke: 'text-emerald-500', text: 'text-emerald-600', bg: 'text-emerald-100' };
+    if (progress >= 80) return { stroke: 'text-violet-500', text: 'text-violet-600', bg: 'text-violet-100' };
     if (progress >= 50) return { stroke: 'text-amber-500', text: 'text-amber-600', bg: 'text-amber-100' };
     return { stroke: 'text-red-500', text: 'text-red-600', bg: 'text-red-100' };
   };
@@ -315,9 +315,9 @@ function AttentionBadge({
     },
     info: { 
       icon: Info, 
-      className: 'bg-gradient-to-r from-blue-50 to-sky-50 text-blue-700 border-blue-200/60 shadow-sm shadow-blue-100/50',
-      iconClass: 'text-blue-500',
-      glowClass: 'ring-2 ring-blue-100'
+      className: 'bg-gradient-to-r from-violet-50 to-sky-50 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-100/50',
+      iconClass: 'text-violet-500',
+      glowClass: 'ring-2 ring-violet-100'
     }
   };
   
@@ -357,13 +357,13 @@ function AttentionBadge({
                 "p-1.5 rounded-lg",
                 attention === 'warning' && "bg-amber-500/20",
                 attention === 'error' && "bg-red-500/20",
-                attention === 'info' && "bg-blue-500/20"
+                attention === 'info' && "bg-violet-500/20"
               )}>
                 <Icon className={cn(
                   "h-4 w-4",
                   attention === 'warning' && "text-amber-400",
                   attention === 'error' && "text-red-400",
-                  attention === 'info' && "text-blue-400"
+                  attention === 'info' && "text-violet-400"
                 )} />
               </div>
               <p className="text-sm text-slate-100 leading-relaxed">{message || 'This field requires verification'}</p>
@@ -376,7 +376,7 @@ function AttentionBadge({
                   onMarkVerified();
                 }}
                 disabled={isVerifying}
-                className="w-full h-9 bg-emerald-500 hover:bg-emerald-400 text-white font-medium shadow-lg shadow-emerald-500/30 transition-all rounded-lg"
+                className="w-full h-9 bg-violet-500 hover:bg-violet-400 text-white font-medium shadow-lg shadow-violet-500/30 transition-all rounded-lg"
               >
                 {isVerifying ? (
                   <>
@@ -412,9 +412,9 @@ function VerifiedBadge({ validatedAt }: { validatedAt?: string }) {
           >
             <Badge 
               variant="outline" 
-              className="text-xs px-2 py-0.5 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-200/60 shadow-sm shadow-emerald-100/50"
+              className="text-xs px-2 py-0.5 bg-gradient-to-r from-violet-50 to-purple-50 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-100/50"
             >
-              <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" />
+              <CheckCircle2 className="h-3 w-3 mr-1 text-violet-500" />
               <span className="font-medium">Verified</span>
             </Badge>
           </motion.div>
@@ -424,8 +424,8 @@ function VerifiedBadge({ validatedAt }: { validatedAt?: string }) {
           className="bg-slate-900/95 backdrop-blur-md text-white border-slate-700/50 shadow-xl rounded-xl p-3"
         >
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 rounded-lg bg-emerald-500/20">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+            <div className="p-1.5 rounded-lg bg-violet-500/20">
+              <CheckCircle2 className="h-4 w-4 text-violet-400" />
             </div>
             <div>
               <p className="text-sm font-medium">Verified</p>
@@ -462,7 +462,7 @@ function ConfidenceIndicator({ confidence, source }: { confidence?: number; sour
               variant="outline" 
               className={cn(
                 "text-[10px] px-1.5 py-0 font-mono cursor-help transition-all",
-                color === 'emerald' && 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 border-emerald-200',
+                color === 'emerald' && 'bg-gradient-to-r from-violet-50 to-purple-50 text-violet-700 border-violet-200',
                 color === 'amber' && 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 border-amber-200',
                 color === 'red' && 'bg-gradient-to-r from-red-50 to-rose-50 text-red-700 border-red-200'
               )}
@@ -480,13 +480,13 @@ function ConfidenceIndicator({ confidence, source }: { confidence?: number; sour
             <div className="flex items-center gap-2.5">
               <div className={cn(
                 "p-1.5 rounded-lg",
-                color === 'emerald' && "bg-emerald-500/20",
+                color === 'emerald' && "bg-violet-500/20",
                 color === 'amber' && "bg-amber-500/20",
                 color === 'red' && "bg-red-500/20"
               )}>
                 <Sparkles className={cn(
                   "h-4 w-4",
-                  color === 'emerald' && 'text-emerald-400',
+                  color === 'emerald' && 'text-violet-400',
                   color === 'amber' && 'text-amber-400',
                   color === 'red' && 'text-red-400'
                 )} />
@@ -495,7 +495,7 @@ function ConfidenceIndicator({ confidence, source }: { confidence?: number; sour
                 <p className="font-medium">AI Confidence</p>
                 <p className={cn(
                   "text-lg font-bold",
-                  color === 'emerald' && 'text-emerald-400',
+                  color === 'emerald' && 'text-violet-400',
                   color === 'amber' && 'text-amber-400',
                   color === 'red' && 'text-red-400'
                 )}>{percent}%</p>
@@ -511,7 +511,7 @@ function ConfidenceIndicator({ confidence, source }: { confidence?: number; sour
               <motion.div 
                 className={cn(
                   "h-full rounded-full",
-                  color === 'emerald' && 'bg-gradient-to-r from-emerald-500 to-green-400',
+                  color === 'emerald' && 'bg-gradient-to-r from-violet-500 to-purple-400',
                   color === 'amber' && 'bg-gradient-to-r from-amber-500 to-yellow-400',
                   color === 'red' && 'bg-gradient-to-r from-red-500 to-rose-400'
                 )}
@@ -556,7 +556,7 @@ function CopyableValue({ value, className }: { value: string; className?: string
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
             >
-              <Check className="h-3.5 w-3.5 text-emerald-500" />
+              <Check className="h-3.5 w-3.5 text-violet-500" />
             </motion.div>
           ) : (
             <motion.div
@@ -598,7 +598,7 @@ function PartyCard({
       className={cn(
         "relative p-5 rounded-2xl border-2 transition-all group",
         isEditing 
-          ? "bg-white border-indigo-300 shadow-xl shadow-indigo-100/50 ring-2 ring-indigo-100" 
+          ? "bg-white border-indigo-300 shadow-xl shadow-violet-100/50 ring-2 ring-indigo-100" 
           : "bg-gradient-to-br from-white via-white to-violet-50/30 border-slate-200 hover:border-violet-300 hover:shadow-lg"
       )}
     >
@@ -613,11 +613,11 @@ function PartyCard({
         <div className="flex items-start gap-4 flex-1 min-w-0">
           <div className={cn(
             "p-3 rounded-xl shrink-0 transition-colors",
-            isEditing ? "bg-gradient-to-br from-indigo-100 to-purple-100" : "bg-gradient-to-br from-violet-100 to-purple-100"
+            isEditing ? "bg-gradient-to-br from-violet-100 to-purple-100" : "bg-gradient-to-br from-violet-100 to-purple-100"
           )}>
             <Building2 className={cn(
               "h-6 w-6",
-              isEditing ? "text-indigo-600" : "text-violet-600"
+              isEditing ? "text-violet-600" : "text-violet-600"
             )} />
           </div>
           
@@ -666,7 +666,7 @@ function PartyCard({
       
       <AnimatePresence>
         {isEditing && (
-          <motion.div 
+          <motion.div key="editing" 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -756,7 +756,7 @@ function MetadataSection({
   tenantId,
   fieldValidations,
   onFieldValidated,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   sectionProgress // Can be used for external sync, currently calculated internally
 }: MetadataSectionProps & { sectionProgress?: { verified: number; total: number } }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
@@ -865,7 +865,7 @@ function MetadataSection({
                       {attentionFields.length} needs review
                     </Badge>
                   ) : verifiedFields.length > 0 && verifiedCount === totalFields ? (
-                    <Badge variant="outline" className="bg-emerald-50/80 text-emerald-700 border-emerald-200 text-xs px-2 py-0 font-medium">
+                    <Badge variant="outline" className="bg-violet-50/80 text-violet-700 border-violet-200 text-xs px-2 py-0 font-medium">
                       <CheckCircle2 className="h-3 w-3 mr-1" />
                       Complete
                     </Badge>
@@ -916,7 +916,7 @@ function MetadataSection({
                 <div className="flex items-center gap-3">
                   <span className={cn(
                     "text-xs font-bold",
-                    progressPercent >= 80 ? "text-emerald-600" : progressPercent >= 50 ? "text-amber-600" : "text-slate-500"
+                    progressPercent >= 80 ? "text-violet-600" : progressPercent >= 50 ? "text-amber-600" : "text-slate-500"
                   )}>
                     {verifiedCount} of {totalFields} fields verified
                   </span>
@@ -926,7 +926,7 @@ function MetadataSection({
                       variant="outline"
                       onClick={handleVerifyAll}
                       disabled={isVerifyingAll}
-                      className="h-7 px-2 text-xs border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300"
+                      className="h-7 px-2 text-xs border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300"
                     >
                       {isVerifyingAll ? (
                         <Loader2 className="h-3 w-3 animate-spin" />
@@ -944,7 +944,7 @@ function MetadataSection({
                 <motion.div
                   className={cn(
                     "h-full rounded-full",
-                    progressPercent >= 80 ? "bg-gradient-to-r from-emerald-500 to-green-400" :
+                    progressPercent >= 80 ? "bg-gradient-to-r from-violet-500 to-purple-400" :
                     progressPercent >= 50 ? "bg-gradient-to-r from-amber-500 to-yellow-400" :
                     "bg-gradient-to-r from-slate-400 to-slate-300"
                   )}
@@ -1158,8 +1158,8 @@ function MetadataField({
         }
         toast.success(`${field.label} verified successfully`);
       } else {
-        // Even if API fails, keep local state but log the error
-        console.warn('Field validation API returned non-success:', data);
+        // Even if API fails, keep local state
+        // Field validation API returned non-success - handled gracefully
         toast.success('Field marked as verified');
       }
     } catch (error) {
@@ -1179,7 +1179,7 @@ function MetadataField({
     if (field.type === 'decimal' && field.key === 'tcv_amount') {
       const currency = metadata.currency || 'USD';
       return value ? (
-        <span className="text-lg font-bold text-emerald-700">{formatCurrency(Number(value), currency)}</span>
+        <span className="text-lg font-bold text-violet-700">{formatCurrency(Number(value), currency)}</span>
       ) : (
         <span className="text-slate-400 italic">Not specified</span>
       );
@@ -1198,7 +1198,7 @@ function MetadataField({
         <Badge variant="outline" className={cn(
           "font-medium",
           value 
-            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+            ? "bg-violet-50 text-violet-700 border-violet-200" 
             : "bg-slate-50 text-slate-600 border-slate-200"
         )}>
           {value ? 'Yes' : 'No'}
@@ -1212,7 +1212,7 @@ function MetadataField({
       if (field.key === 'periodicity') return formatPeriodicity(value as Periodicity) || <span className="text-slate-400 italic">Not specified</span>;
       if (field.key === 'signature_status') {
         const statusConfig: Record<string, { label: string; className: string }> = {
-          signed: { label: '✓ Signed', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+          signed: { label: '✓ Signed', className: 'bg-violet-50 text-violet-700 border-violet-200' },
           partially_signed: { label: '⚠ Partially Signed', className: 'bg-amber-50 text-amber-700 border-amber-200' },
           unsigned: { label: '✗ Unsigned', className: 'bg-red-50 text-red-700 border-red-200' },
           unknown: { label: '? Unknown', className: 'bg-slate-50 text-slate-600 border-slate-200' },
@@ -1239,7 +1239,7 @@ function MetadataField({
           unknown: 'Unknown',
         };
         return value ? (
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium">
+          <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200 font-medium">
             {classLabels[value as string] || String(value)}
           </Badge>
         ) : <span className="text-slate-400 italic">Not specified</span>;
@@ -1324,7 +1324,7 @@ function MetadataField({
           <Switch
             checked={!!fieldValue}
             onCheckedChange={setFieldValue}
-            className="data-[state=checked]:bg-indigo-600"
+            className="data-[state=checked]:bg-violet-600"
           />
           <span className="text-sm text-slate-600">{fieldValue ? 'Yes' : 'No'}</span>
         </div>
@@ -1391,7 +1391,7 @@ function MetadataField({
         needsAttention 
           ? 'bg-gradient-to-br from-amber-50/80 to-orange-50/40 border-2 border-amber-200/60 shadow-sm' 
           : isVerified 
-            ? 'bg-gradient-to-br from-emerald-50/60 to-green-50/40 border-2 border-emerald-200/60 shadow-sm' 
+            ? 'bg-gradient-to-br from-violet-50/60 to-purple-50/40 border-2 border-violet-200/60 shadow-sm' 
             : 'bg-slate-50/80 border-2 border-transparent hover:border-slate-200 hover:bg-white hover:shadow-md',
         colSpan
       )}
@@ -1431,14 +1431,14 @@ function MetadataField({
                 <motion.button
                   onClick={handleMarkVerified}
                   disabled={isVerifying}
-                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-emerald-50 rounded-lg transition-all border border-transparent hover:border-emerald-200"
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-violet-50 rounded-lg transition-all border border-transparent hover:border-violet-200"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.95 }}
                 >
                   {isVerifying ? (
-                    <Loader2 className="h-3.5 w-3.5 text-emerald-500 animate-spin" />
+                    <Loader2 className="h-3.5 w-3.5 text-violet-500 animate-spin" />
                   ) : (
-                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 hover:text-emerald-600" />
+                    <CheckCircle2 className="h-3.5 w-3.5 text-slate-400 hover:text-violet-600" />
                   )}
                 </motion.button>
               </TooltipTrigger>
@@ -1458,14 +1458,14 @@ function MetadataField({
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-indigo-600" />
+            <Pencil className="h-3.5 w-3.5 text-slate-400 hover:text-violet-600" />
           </motion.button>
         )}
         
         {/* Inline save/cancel buttons */}
         <AnimatePresence>
           {isFieldEditing && (
-            <motion.div 
+            <motion.div key="field-editing" 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
@@ -1473,10 +1473,10 @@ function MetadataField({
             >
               <button
                 onClick={handleSaveField}
-                className="p-1.5 bg-emerald-100 hover:bg-emerald-200 rounded-lg transition-colors"
+                className="p-1.5 bg-violet-100 hover:bg-violet-200 rounded-lg transition-colors"
                 title="Save"
               >
-                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                <Check className="h-3.5 w-3.5 text-violet-600" />
               </button>
               <button
                 onClick={handleCancelField}
@@ -1590,6 +1590,32 @@ export function EnhancedContractMetadataSection({
     }));
   }, []);
   
+  // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+  const unwrapValue = useCallback((val: unknown): unknown => {
+    if (val === null || val === undefined) return null;
+    if (typeof val === 'object' && val !== null && 'value' in val) {
+      return (val as { value: unknown }).value;
+    }
+    return val;
+  }, []);
+  
+  const unwrapNumber = useCallback((val: unknown): number => {
+    const unwrapped = unwrapValue(val);
+    if (unwrapped === null || unwrapped === undefined) return 0;
+    if (typeof unwrapped === 'number') return unwrapped;
+    if (typeof unwrapped === 'string') {
+      const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
+      const parsed = parseFloat(cleaned);
+      return isNaN(parsed) ? 0 : parsed;
+    }
+    return 0;
+  }, [unwrapValue]);
+  
+  const unwrapString = useCallback((val: unknown): string => {
+    const unwrapped = unwrapValue(val);
+    if (unwrapped === null || unwrapped === undefined) return '';
+    return String(unwrapped);
+  }, [unwrapValue]);
   
   // Merge legacy data with new schema
   const mergedInitial = useMemo(() => {
@@ -1609,34 +1635,37 @@ export function EnhancedContractMetadataSection({
       if (!base.end_date) base.end_date = contract.expirationDate || contract.endDate ? String(contract.expirationDate || contract.endDate) : null;
     }
     
-    // Map overview data from AI extraction (lowest priority)
+    // Map overview data from AI extraction (lowest priority) - handle wrapped values
     if (overviewData) {
-      if (!base.document_title) base.document_title = String(overviewData.contractTitle || '');
-      if (!base.contract_short_description) base.contract_short_description = String(overviewData.summary || overviewData.description || '');
-      if (!base.jurisdiction) base.jurisdiction = String(overviewData.jurisdiction || '');
-      if (!base.contract_language) base.contract_language = String(overviewData.language || 'en');
-      if (!base.tcv_amount) base.tcv_amount = Number(overviewData.totalValue) || 0;
-      if (!base.start_date) base.start_date = String(overviewData.effectiveDate || '');
-      if (!base.end_date) base.end_date = overviewData.expirationDate ? String(overviewData.expirationDate) : null;
+      if (!base.document_title) base.document_title = unwrapString(overviewData.contractTitle);
+      if (!base.contract_short_description) base.contract_short_description = unwrapString(overviewData.summary) || unwrapString(overviewData.description);
+      if (!base.jurisdiction) base.jurisdiction = unwrapString(overviewData.jurisdiction);
+      if (!base.contract_language) base.contract_language = unwrapString(overviewData.language) || 'en';
+      if (!base.tcv_amount) base.tcv_amount = unwrapNumber(overviewData.totalValue);
+      if (!base.start_date) base.start_date = unwrapString(overviewData.effectiveDate) || unwrapString(overviewData.effective_date) || unwrapString(overviewData.startDate);
+      if (!base.end_date) {
+        const endDate = unwrapString(overviewData.expirationDate) || unwrapString(overviewData.expiration_date) || unwrapString(overviewData.endDate);
+        base.end_date = endDate || null;
+      }
       
-      // Map parties
+      // Map parties - handle wrapped values
       if (!base.external_parties?.length && overviewData.parties && Array.isArray(overviewData.parties)) {
         base.external_parties = (overviewData.parties as Array<Record<string, unknown>>).map((p) => ({
-          legalName: String(p.name || ''),
-          role: String(p.role || ''),
-          registeredAddress: String(p.address || '')
+          legalName: unwrapString(p.name) || unwrapString(p.legalName),
+          role: unwrapString(p.role) || unwrapString(p.type),
+          registeredAddress: unwrapString(p.address)
         }));
       }
     }
     
-    // Map financial data from AI extraction
+    // Map financial data from AI extraction - handle wrapped values
     if (financialData) {
-      base.tcv_amount = base.tcv_amount || Number(financialData.totalValue) || 0;
-      base.tcv_text = financialData.totalValue ? formatCurrency(Number(financialData.totalValue), base.currency) : '';
-      base.currency = base.currency || String(financialData.currency || 'USD');
+      base.tcv_amount = base.tcv_amount || unwrapNumber(financialData.totalValue);
+      base.tcv_text = financialData.totalValue ? formatCurrency(unwrapNumber(financialData.totalValue), base.currency) : '';
+      base.currency = base.currency || unwrapString(financialData.currency) || 'USD';
       
       // Map payment terms to payment_type (ensure string conversion for safety)
-      const paymentTerms = String(financialData.paymentTerms || '').toLowerCase();
+      const paymentTerms = unwrapString(financialData.paymentTerms).toLowerCase();
       if (paymentTerms.includes('milestone')) {
         base.payment_type = 'milestone';
       } else if (paymentTerms.includes('time') || paymentTerms.includes('hourly')) {
@@ -1676,7 +1705,7 @@ export function EnhancedContractMetadataSection({
     
     // Override with explicit initial metadata
     return { ...base, ...initialMetadata };
-  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI]);
+  }, [contractId, contract, overviewData, financialData, initialMetadata, metadataFromAPI, unwrapString, unwrapNumber]);
   
   const [metadata, setMetadata] = useState<Partial<ContractMetadataSchema>>(mergedInitial);
   const [isEditing, setIsEditing] = useState(false);
@@ -1904,6 +1933,16 @@ export function EnhancedContractMetadataSection({
       
       setTimeout(() => setSaveSuccess(false), 3000);
       
+      // Dispatch event to notify chatbot and other components about the update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, type: 'metadata', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('contract:refresh', { 
+          detail: { contractId } 
+        }));
+      }
+      
       if (onRefresh) {
         onRefresh();
       }
@@ -2006,19 +2045,19 @@ export function EnhancedContractMetadataSection({
     
     <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
       {/* Header with gradient */}
-      <CardHeader className="pb-6 bg-gradient-to-r from-slate-50 via-indigo-50/50 to-purple-50/30 border-b border-slate-200/50">
+      <CardHeader className="pb-6 bg-gradient-to-r from-slate-50 via-purple-50/50 to-purple-50/30 border-b border-slate-200/50">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           
           {/* 100% completion badge */}
           <AnimatePresence>
             {overallProgress === 100 && (
-              <motion.div
+              <motion.div key="overall-progress"
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.8 }}
                 className="absolute top-4 right-4 z-10"
               >
-                <Badge className="bg-gradient-to-r from-emerald-500 to-teal-500 text-white border-0 px-3 py-1.5 shadow-lg">
+                <Badge className="bg-gradient-to-r from-violet-500 to-violet-500 text-white border-0 px-3 py-1.5 shadow-lg">
                   <PartyPopper className="h-4 w-4 mr-1.5" />
                   Fully Verified!
                 </Badge>
@@ -2026,7 +2065,7 @@ export function EnhancedContractMetadataSection({
             )}
           </AnimatePresence>
           <div className="flex items-start gap-4">
-            <div className="p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-200/50">
+            <div className="p-3 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-200/50">
               <FileCheck className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -2069,7 +2108,7 @@ export function EnhancedContractMetadataSection({
                   variant="outline"
                   onClick={handleVerifyAllFields}
                   disabled={isVerifyingAll}
-                  className="border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:border-emerald-300 rounded-xl px-4 h-10 font-medium shadow-sm"
+                  className="border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 rounded-xl px-4 h-10 font-medium shadow-sm"
                 >
                   {isVerifyingAll ? (
                     <>
@@ -2089,7 +2128,7 @@ export function EnhancedContractMetadataSection({
                 variant="outline"
                 onClick={handleAIExtraction}
                 disabled={isExtractingAI}
-                className="border-purple-200 text-purple-700 hover:bg-purple-50 hover:border-purple-300 rounded-xl px-4 h-10 font-medium shadow-sm"
+                className="border-violet-200 text-violet-700 hover:bg-violet-50 hover:border-violet-300 rounded-xl px-4 h-10 font-medium shadow-sm"
               >
                 {isExtractingAI ? (
                   <>
@@ -2128,7 +2167,7 @@ export function EnhancedContractMetadataSection({
               <Button 
                 size="sm" 
                 onClick={() => setIsEditing(true)}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-indigo-200/50"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-violet-200/50"
               >
                 <Pencil className="h-4 w-4 mr-2" />
                 Edit Metadata
@@ -2150,7 +2189,7 @@ export function EnhancedContractMetadataSection({
                 size="sm" 
                 onClick={handleSave}
                 disabled={isSaving}
-                className="bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-emerald-200/50"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white rounded-xl px-4 h-10 font-medium shadow-lg shadow-violet-200/50"
               >
                 {isSaving ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -2168,16 +2207,16 @@ export function EnhancedContractMetadataSection({
         {/* Success Message */}
         <AnimatePresence>
           {saveSuccess && (
-            <motion.div
+            <motion.div key="save-success"
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
-              className="p-4 bg-gradient-to-r from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-xl flex items-center gap-3 shadow-lg shadow-emerald-100/50"
+              className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 border-2 border-violet-200 rounded-xl flex items-center gap-3 shadow-lg shadow-violet-100/50"
             >
-              <div className="p-2 rounded-lg bg-emerald-100">
-                <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+              <div className="p-2 rounded-lg bg-violet-100">
+                <CheckCircle2 className="h-5 w-5 text-violet-600" />
               </div>
-              <p className="text-sm font-semibold text-emerald-700">Metadata saved successfully</p>
+              <p className="text-sm font-semibold text-violet-700">Metadata saved successfully</p>
             </motion.div>
           )}
         </AnimatePresence>

@@ -60,6 +60,7 @@ import {
   MetricCard,
   ScoreRing
 } from '@/components/artifacts/ArtifactCards'
+import { ArtifactFeedback } from '@/components/artifacts/ArtifactFeedback'
 import { SmartEditableArtifact, convertToEditableSections } from '@/components/artifacts/SmartEditableArtifact'
 
 // ============ CONTRACT TYPE HELPERS (Client-side) ============
@@ -126,6 +127,10 @@ interface ArtifactData {
 interface EnhancedArtifactViewerProps {
   artifacts: ArtifactData
   contractId: string
+  /** Map of artifact type (lowercase) → artifact database ID for feedback/export */
+  artifactIds?: Record<string, string>
+  /** When true, shows loading skeletons for tabs without data yet */
+  isProcessing?: boolean
   initialTab?: string
   className?: string
 }
@@ -138,30 +143,30 @@ const TABS = [
     label: 'Overview', 
     icon: FileText,
     color: 'blue',
-    gradient: 'from-blue-500 to-cyan-500',
-    bgColor: 'bg-blue-50',
-    textColor: 'text-blue-700',
-    borderColor: 'border-blue-200'
+    gradient: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200'
   },
   { 
     id: 'clauses', 
     label: 'Clauses', 
     icon: FileCheck,
     color: 'indigo',
-    gradient: 'from-indigo-500 to-purple-500',
-    bgColor: 'bg-indigo-50',
-    textColor: 'text-indigo-700',
+    gradient: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
     borderColor: 'border-indigo-200'
   },
   { 
     id: 'financial', 
     label: 'Financial', 
     icon: DollarSign,
-    color: 'emerald',
-    gradient: 'from-emerald-500 to-green-500',
-    bgColor: 'bg-emerald-50',
-    textColor: 'text-emerald-700',
-    borderColor: 'border-emerald-200'
+    color: 'violet',
+    gradient: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200'
   },
   { 
     id: 'risk', 
@@ -188,20 +193,20 @@ const TABS = [
     label: 'Obligations', 
     icon: Clock,
     color: 'purple',
-    gradient: 'from-purple-500 to-fuchsia-500',
-    bgColor: 'bg-purple-50',
-    textColor: 'text-purple-700',
-    borderColor: 'border-purple-200'
+    gradient: 'from-violet-500 to-fuchsia-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200'
   },
   { 
     id: 'renewal', 
     label: 'Renewal', 
     icon: Calendar,
     color: 'teal',
-    gradient: 'from-teal-500 to-cyan-500',
-    bgColor: 'bg-teal-50',
-    textColor: 'text-teal-700',
-    borderColor: 'border-teal-200'
+    gradient: 'from-violet-500 to-purple-500',
+    bgColor: 'bg-violet-50',
+    textColor: 'text-violet-700',
+    borderColor: 'border-violet-200'
   },
   { 
     id: 'negotiationPoints', 
@@ -228,7 +233,7 @@ const TABS = [
     label: 'Contacts', 
     icon: Users,
     color: 'sky',
-    gradient: 'from-sky-500 to-blue-500',
+    gradient: 'from-sky-500 to-purple-500',
     bgColor: 'bg-sky-50',
     textColor: 'text-sky-700',
     borderColor: 'border-sky-200'
@@ -242,6 +247,8 @@ type TabId = typeof TABS[number]['id'];
 export function EnhancedArtifactViewer({
   artifacts,
   contractId,
+  artifactIds = {},
+  isProcessing = false,
   initialTab = 'overview',
   className
 }: EnhancedArtifactViewerProps) {
@@ -1003,6 +1010,31 @@ export function EnhancedArtifactViewer({
     if (!data) {
       const tabInfo = TABS.find(t => t.id === activeTab);
       const TabIconComponent = tabInfo?.icon ?? TabIcon ?? FileText;
+
+      // Show animated skeleton while artifacts are still being generated
+      if (isProcessing) {
+        return (
+          <div className="space-y-4 animate-pulse">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-lg bg-violet-100" />
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-slate-200 rounded w-1/3" />
+                <div className="h-3 bg-slate-100 rounded w-1/2" />
+              </div>
+            </div>
+            <div className="space-y-3">
+              <div className="h-24 bg-gradient-to-r from-slate-100 to-violet-50 rounded-xl border border-slate-100" />
+              <div className="h-16 bg-gradient-to-r from-slate-100 to-slate-50 rounded-xl border border-slate-100" />
+              <div className="h-20 bg-gradient-to-r from-slate-50 to-violet-50 rounded-xl border border-slate-100" />
+            </div>
+            <div className="flex items-center justify-center gap-2 pt-4 text-sm text-violet-500">
+              <Sparkles className="h-4 w-4 animate-spin" />
+              <span>AI is extracting {tabInfo?.label || 'data'}...</span>
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-14 h-14 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center mb-4">
@@ -1020,7 +1052,7 @@ export function EnhancedArtifactViewer({
                 contractId: contractId
               } 
             }))}
-            className="mt-4 text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1.5"
+            className="mt-4 text-xs text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5" />
             Ask AI to analyze this section
@@ -1034,7 +1066,7 @@ export function EnhancedArtifactViewer({
       <div className="flex items-center gap-2 mb-4">
         <span className={cn(
           "inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium",
-          artifactConfidence >= 80 ? "bg-emerald-50 text-emerald-700" :
+          artifactConfidence >= 80 ? "bg-violet-50 text-violet-700" :
           artifactConfidence >= 60 ? "bg-amber-50 text-amber-700" : "bg-rose-50 text-rose-700"
         )}>
           <Sparkles className="h-3 w-3" />
@@ -1230,16 +1262,16 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Financial Context by Contract Type */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-emerald-500/10 to-green-500/10 rounded-lg border border-emerald-500/20">
+            <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-lg border border-violet-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <DollarSign className="w-4 h-4 text-emerald-500" />
-                <span className="text-sm font-medium text-emerald-400">
+                <DollarSign className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium text-violet-400">
                   Financial Focus for {detectedContractType.replace(/_/g, ' ')} Contracts
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div>
-                  <span className="text-emerald-400 font-medium">Key Fields:</span>
+                  <span className="text-violet-400 font-medium">Key Fields:</span>
                   <ul className="mt-1 space-y-0.5">
                     {financialContext.keyFields.map((field, i) => (
                       <li key={i}>• {field}</li>
@@ -1247,7 +1279,7 @@ export function EnhancedArtifactViewer({
                   </ul>
                 </div>
                 <div>
-                  <span className="text-blue-400 font-medium">Industry Benchmarks:</span>
+                  <span className="text-violet-400 font-medium">Industry Benchmarks:</span>
                   <ul className="mt-1 space-y-0.5">
                     {financialContext.benchmarks.map((b, i) => (
                       <li key={i}>• {b}</li>
@@ -1318,17 +1350,17 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Contract-type risk context */}
-            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
+            <div className="mb-4 p-3 rounded-lg bg-violet-50 border border-violet-200">
               <div className="flex items-start gap-2">
-                <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                <Info className="h-4 w-4 text-violet-600 mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-blue-800">
+                  <p className="text-sm font-medium text-violet-800">
                     {detectedContractType.replace(/_/g, ' ')} Risk Context
                   </p>
-                  <p className="text-xs text-blue-700 mt-1">
+                  <p className="text-xs text-violet-700 mt-1">
                     Common risks: {riskContext.commonRisks.join(', ')}
                   </p>
-                  <p className="text-xs text-blue-600 mt-1">
+                  <p className="text-xs text-violet-600 mt-1">
                     <span className="font-medium">Watch for:</span> {riskContext.watchFor}
                   </p>
                 </div>
@@ -1590,16 +1622,16 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Obligation Context by Contract Type */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 rounded-lg border border-purple-500/20">
+            <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-lg border border-violet-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <ListChecks className="w-4 h-4 text-purple-500" />
-                <span className="text-sm font-medium text-purple-400">
+                <ListChecks className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium text-violet-400">
                   Obligation Tracking for {detectedContractType.replace(/_/g, ' ')} Contracts
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div>
-                  <span className="text-purple-400 font-medium">Typical Obligations:</span>
+                  <span className="text-violet-400 font-medium">Typical Obligations:</span>
                   <ul className="mt-1 space-y-0.5">
                     {obligationContext.typicalObligations.map((o, i) => (
                       <li key={i}>• {o}</li>
@@ -1615,7 +1647,7 @@ export function EnhancedArtifactViewer({
                   </ul>
                 </div>
                 <div>
-                  <span className="text-blue-400 font-medium">Tracking Tips:</span>
+                  <span className="text-violet-400 font-medium">Tracking Tips:</span>
                   <p className="mt-1">{obligationContext.trackingTips}</p>
                 </div>
               </div>
@@ -1731,16 +1763,16 @@ export function EnhancedArtifactViewer({
           <>
             {ConfidenceHeader}
             {/* Renewal Context by Contract Type */}
-            <div className="mb-4 p-3 bg-gradient-to-r from-cyan-500/10 to-teal-500/10 rounded-lg border border-cyan-500/20">
+            <div className="mb-4 p-3 bg-gradient-to-r from-violet-500/10 to-violet-500/10 rounded-lg border border-violet-500/20">
               <div className="flex items-center gap-2 mb-2">
-                <History className="w-4 h-4 text-cyan-500" />
-                <span className="text-sm font-medium text-cyan-400">
+                <History className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium text-violet-400">
                   Renewal Management for {detectedContractType.replace(/_/g, ' ')} Contracts
                 </span>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-zinc-400">
                 <div>
-                  <span className="text-cyan-400 font-medium">Typical Terms:</span>
+                  <span className="text-violet-400 font-medium">Typical Terms:</span>
                   <ul className="mt-1 space-y-0.5">
                     {renewalContext.typicalTerms.map((t, i) => (
                       <li key={i}>• {t}</li>
@@ -1748,7 +1780,7 @@ export function EnhancedArtifactViewer({
                   </ul>
                 </div>
                 <div>
-                  <span className="text-teal-400 font-medium">Watch These Dates:</span>
+                  <span className="text-violet-400 font-medium">Watch These Dates:</span>
                   <ul className="mt-1 space-y-0.5">
                     {renewalContext.watchDates.map((d, i) => (
                       <li key={i}>• {d}</li>
@@ -1756,7 +1788,7 @@ export function EnhancedArtifactViewer({
                   </ul>
                 </div>
                 <div>
-                  <span className="text-emerald-400 font-medium">Renewal Tips:</span>
+                  <span className="text-violet-400 font-medium">Renewal Tips:</span>
                   <p className="mt-1">{renewalContext.renewalTips}</p>
                 </div>
               </div>
@@ -2031,7 +2063,7 @@ export function EnhancedArtifactViewer({
       {/* Keyboard Help Modal */}
       <AnimatePresence>
         {showKeyboardHelp && (
-          <motion.div
+          <motion.div key="keyboard-help"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2096,7 +2128,7 @@ export function EnhancedArtifactViewer({
       {/* Executive Summary Modal */}
       <AnimatePresence>
         {showSummary && (
-          <motion.div
+          <motion.div key="summary"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2112,7 +2144,7 @@ export function EnhancedArtifactViewer({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
-                  <LayoutList className="h-4 w-4 text-indigo-600" />
+                  <LayoutList className="h-4 w-4 text-violet-600" />
                   Executive Summary
                 </h3>
                 <button onClick={() => setShowSummary(false)} className="text-slate-400 hover:text-slate-600 p-1">
@@ -2121,7 +2153,7 @@ export function EnhancedArtifactViewer({
               </div>
               <div className="space-y-2 max-h-64 overflow-auto">
                 {executiveSummary.map((line, i) => (
-                  <p key={i} className="text-xs text-slate-600 leading-relaxed">
+                  <p key={line} className="text-xs text-slate-600 leading-relaxed">
                     {line}
                   </p>
                 ))}
@@ -2146,7 +2178,7 @@ export function EnhancedArtifactViewer({
       {/* Timeline Modal */}
       <AnimatePresence>
         {showTimeline && (
-          <motion.div
+          <motion.div key="timeline"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2162,7 +2194,7 @@ export function EnhancedArtifactViewer({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
-                  <CalendarDays className="h-4 w-4 text-teal-600" />
+                  <CalendarDays className="h-4 w-4 text-violet-600" />
                   Timeline
                 </h3>
                 <button onClick={() => setShowTimeline(false)} className="text-slate-400 hover:text-slate-600 p-1">
@@ -2173,13 +2205,13 @@ export function EnhancedArtifactViewer({
                 <div className="relative pl-5 space-y-3">
                   <div className="absolute left-1.5 top-1 bottom-1 w-px bg-slate-200" />
                   {allDates.map((item, i) => (
-                    <div key={i} className="relative">
+                    <div key={`${item.label}-${item.date}`} className="relative">
                       <div className={cn(
                         "absolute -left-3.5 w-3 h-3 rounded-full border-2 bg-white",
-                        item.type === 'start' ? "border-emerald-500" :
+                        item.type === 'start' ? "border-violet-500" :
                         item.type === 'end' ? "border-red-500" :
                         item.type === 'deadline' ? "border-amber-500" :
-                        "border-blue-500"
+                        "border-violet-500"
                       )} />
                       <div>
                         <div className="text-xs font-medium text-slate-700">{item.label}</div>
@@ -2203,7 +2235,7 @@ export function EnhancedArtifactViewer({
       {/* Action Items Modal */}
       <AnimatePresence>
         {showActionItems && (
-          <motion.div
+          <motion.div key="action-items"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -2219,7 +2251,7 @@ export function EnhancedArtifactViewer({
             >
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold flex items-center gap-1.5 text-slate-800">
-                  <Target className="h-4 w-4 text-indigo-600" />
+                  <Target className="h-4 w-4 text-violet-600" />
                   Action Items
                   <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-500 rounded">{actionItems.length}</span>
                 </h3>
@@ -2236,7 +2268,7 @@ export function EnhancedArtifactViewer({
                         "px-2.5 py-2 rounded border flex items-center gap-2",
                         item.priority === 'urgent' && "bg-rose-50/50 border-rose-100",
                         item.priority === 'high' && "bg-amber-50/50 border-amber-100",
-                        item.priority === 'medium' && "bg-blue-50/50 border-blue-100",
+                        item.priority === 'medium' && "bg-violet-50/50 border-violet-100",
                         item.priority === 'low' && "bg-slate-50 border-slate-100"
                       )}
                     >
@@ -2244,7 +2276,7 @@ export function EnhancedArtifactViewer({
                         "w-1.5 h-1.5 rounded-full shrink-0",
                         item.priority === 'urgent' && "bg-rose-500",
                         item.priority === 'high' && "bg-amber-500",
-                        item.priority === 'medium' && "bg-blue-500",
+                        item.priority === 'medium' && "bg-violet-500",
                         item.priority === 'low' && "bg-slate-400"
                       )} />
                       <div className="flex-1 min-w-0">
@@ -2252,7 +2284,7 @@ export function EnhancedArtifactViewer({
                         <p className="text-[10px] text-slate-400">{item.category}</p>
                       </div>
                       <button
-                        className="text-[10px] text-indigo-600 hover:text-indigo-700 font-medium shrink-0"
+                        className="text-[10px] text-violet-600 hover:text-violet-700 font-medium shrink-0"
                         onClick={() => {
                           setActiveTab(item.source as TabId);
                           setShowActionItems(false);
@@ -2265,7 +2297,7 @@ export function EnhancedArtifactViewer({
                 </div>
               ) : (
                 <div className="text-center py-6">
-                  <Check className="h-8 w-8 text-emerald-500 mx-auto mb-2" />
+                  <Check className="h-8 w-8 text-violet-500 mx-auto mb-2" />
                   <p className="text-sm font-medium text-slate-700">All clear!</p>
                   <p className="text-xs text-slate-400 mt-0.5">No action items found.</p>
                 </div>
@@ -2295,7 +2327,7 @@ export function EnhancedArtifactViewer({
       {/* Contract Type Badge */}
       {detectedContractType && detectedContractType !== 'OTHER' && (
         <div className="mb-3 flex items-center gap-1.5 flex-wrap">
-          <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-md text-xs font-medium">
+          <span className="inline-flex items-center gap-1 px-2 py-1 bg-violet-50 text-violet-700 border border-indigo-100 rounded-md text-xs font-medium">
             <FileText className="h-3 w-3" />
             {detectedContractType.replace(/_/g, ' ')}
           </span>
@@ -2319,20 +2351,20 @@ export function EnhancedArtifactViewer({
             <div className="mt-2 space-y-1">
               {smartSuggestions.map((suggestion, i) => (
                 <div
-                  key={i}
+                  key={`${suggestion.category}-${suggestion.suggestion}`}
                   className={cn(
                     "px-2.5 py-1.5 rounded border text-xs flex items-center gap-2",
                     suggestion.priority === 'high' 
                       ? "bg-red-50/50 border-red-100 text-red-700"
                       : suggestion.priority === 'medium'
                       ? "bg-amber-50/50 border-amber-100 text-amber-700"
-                      : "bg-blue-50/50 border-blue-100 text-blue-700"
+                      : "bg-violet-50/50 border-violet-100 text-violet-700"
                   )}
                 >
                   <span className={cn(
                     "w-1.5 h-1.5 rounded-full shrink-0",
                     suggestion.priority === 'high' ? "bg-red-500" : 
-                    suggestion.priority === 'medium' ? "bg-amber-500" : "bg-blue-500"
+                    suggestion.priority === 'medium' ? "bg-amber-500" : "bg-violet-500"
                   )} />
                   <span className="font-medium">{suggestion.category}:</span>
                   <span className="text-slate-600">{suggestion.suggestion}</span>
@@ -2346,31 +2378,31 @@ export function EnhancedArtifactViewer({
       {/* Quick Stats Bar - Compact horizontal layout */}
       <div className="flex flex-wrap gap-2 mb-3">
         {stats.totalValue && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 border border-emerald-100 rounded-md">
-            <DollarSign className="h-3.5 w-3.5 text-emerald-600" />
-            <span className="text-xs font-semibold text-emerald-700">${(stats.totalValue / 1000).toFixed(0)}K</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-50 border border-violet-100 rounded-md">
+            <DollarSign className="h-3.5 w-3.5 text-violet-600" />
+            <span className="text-xs font-semibold text-violet-700">${(stats.totalValue / 1000).toFixed(0)}K</span>
           </div>
         )}
         
         {stats.clauseCount > 0 && (
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 border border-blue-100 rounded-md">
-            <FileCheck className="h-3.5 w-3.5 text-blue-600" />
-            <span className="text-xs font-semibold text-blue-700">{stats.clauseCount} clauses</span>
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-violet-50 border border-violet-100 rounded-md">
+            <FileCheck className="h-3.5 w-3.5 text-violet-600" />
+            <span className="text-xs font-semibold text-violet-700">{stats.clauseCount} clauses</span>
           </div>
         )}
         
         {stats.riskScore !== null && (
           <div className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 border rounded-md",
-            stats.riskScore < 30 ? "bg-emerald-50 border-emerald-100" : stats.riskScore < 60 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
+            stats.riskScore < 30 ? "bg-violet-50 border-violet-100" : stats.riskScore < 60 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
           )}>
             <AlertTriangle className={cn(
               "h-3.5 w-3.5",
-              stats.riskScore < 30 ? "text-emerald-600" : stats.riskScore < 60 ? "text-amber-600" : "text-rose-600"
+              stats.riskScore < 30 ? "text-violet-600" : stats.riskScore < 60 ? "text-amber-600" : "text-rose-600"
             )} />
             <span className={cn(
               "text-xs font-semibold",
-              stats.riskScore < 30 ? "text-emerald-700" : stats.riskScore < 60 ? "text-amber-700" : "text-rose-700"
+              stats.riskScore < 30 ? "text-violet-700" : stats.riskScore < 60 ? "text-amber-700" : "text-rose-700"
             )}>Risk {stats.riskScore}</span>
           </div>
         )}
@@ -2378,15 +2410,15 @@ export function EnhancedArtifactViewer({
         {stats.complianceScore !== null && (
           <div className={cn(
             "flex items-center gap-1.5 px-2.5 py-1.5 border rounded-md",
-            stats.complianceScore >= 90 ? "bg-emerald-50 border-emerald-100" : stats.complianceScore >= 70 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
+            stats.complianceScore >= 90 ? "bg-violet-50 border-violet-100" : stats.complianceScore >= 70 ? "bg-amber-50 border-amber-100" : "bg-rose-50 border-rose-100"
           )}>
             <Shield className={cn(
               "h-3.5 w-3.5",
-              stats.complianceScore >= 90 ? "text-emerald-600" : stats.complianceScore >= 70 ? "text-amber-600" : "text-rose-600"
+              stats.complianceScore >= 90 ? "text-violet-600" : stats.complianceScore >= 70 ? "text-amber-600" : "text-rose-600"
             )} />
             <span className={cn(
               "text-xs font-semibold",
-              stats.complianceScore >= 90 ? "text-emerald-700" : stats.complianceScore >= 70 ? "text-amber-700" : "text-rose-700"
+              stats.complianceScore >= 90 ? "text-violet-700" : stats.complianceScore >= 70 ? "text-amber-700" : "text-rose-700"
             )}>{stats.complianceScore}%</span>
           </div>
         )}
@@ -2395,16 +2427,16 @@ export function EnhancedArtifactViewer({
       {/* Contract Health Score Panel */}
       <div className={cn(
         "mb-3 px-3 py-2.5 rounded-lg border flex items-center justify-between",
-        contractHealth.status === 'excellent' && "bg-emerald-50/50 border-emerald-100",
-        contractHealth.status === 'good' && "bg-blue-50/50 border-blue-100",
+        contractHealth.status === 'excellent' && "bg-violet-50/50 border-violet-100",
+        contractHealth.status === 'good' && "bg-violet-50/50 border-violet-100",
         contractHealth.status === 'fair' && "bg-amber-50/50 border-amber-100",
         contractHealth.status === 'poor' && "bg-rose-50/50 border-rose-100"
       )}>
         <div className="flex items-center gap-2.5">
           <div className={cn(
             "w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold",
-            contractHealth.status === 'excellent' && "bg-emerald-100 text-emerald-700",
-            contractHealth.status === 'good' && "bg-blue-100 text-blue-700",
+            contractHealth.status === 'excellent' && "bg-violet-100 text-violet-700",
+            contractHealth.status === 'good' && "bg-violet-100 text-violet-700",
             contractHealth.status === 'fair' && "bg-amber-100 text-amber-700",
             contractHealth.status === 'poor' && "bg-rose-100 text-rose-700"
           )}>
@@ -2418,10 +2450,10 @@ export function EnhancedArtifactViewer({
         <div className="flex flex-wrap gap-1">
           {contractHealth.factors.slice(0, 3).map((factor, i) => (
             <span 
-              key={i}
+              key={factor.label}
               className={cn(
                 "px-1.5 py-0.5 rounded text-[10px] font-medium",
-                factor.status === 'good' && "bg-emerald-100 text-emerald-600",
+                factor.status === 'good' && "bg-violet-100 text-violet-600",
                 factor.status === 'warning' && "bg-amber-100 text-amber-600",
                 factor.status === 'critical' && "bg-rose-100 text-rose-600"
               )}
@@ -2475,7 +2507,7 @@ export function EnhancedArtifactViewer({
             )}
           </button>
           {bookmarkedClauses.size > 0 && (
-            <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 rounded-md">
+            <span className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-violet-600 bg-violet-50 rounded-md">
               <BookmarkPlus className="h-3 w-3" />
               {bookmarkedClauses.size}
             </span>
@@ -2518,7 +2550,7 @@ export function EnhancedArtifactViewer({
                     className={cn(
                       "relative flex items-center gap-1.5 px-3 py-2 text-xs font-medium transition-all shrink-0 rounded-md",
                       isActive 
-                        ? "bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200"
+                        ? "bg-violet-50 text-violet-700 ring-1 ring-indigo-200"
                         : hasData
                         ? "text-slate-600 hover:text-slate-800 hover:bg-slate-50"
                         : "text-slate-400 hover:text-slate-500 hover:bg-slate-50"
@@ -2526,12 +2558,12 @@ export function EnhancedArtifactViewer({
                   >
                     <Icon className={cn(
                       "h-3.5 w-3.5",
-                      isActive ? "text-indigo-600" : hasData ? "text-slate-500" : "text-slate-400"
+                      isActive ? "text-violet-600" : hasData ? "text-slate-500" : "text-slate-400"
                     )} />
                     <span>{tab.label}</span>
                     {/* Data indicator dot */}
                     {hasData && !isActive && (
-                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                      <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-violet-400 rounded-full" />
                     )}
                     {notApplicable && !isActive && (
                       <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
@@ -2560,7 +2592,7 @@ export function EnhancedArtifactViewer({
                     className={cn(
                       "flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-all",
                       viewMode === 'edit' 
-                        ? "bg-white text-indigo-600 shadow-sm" 
+                        ? "bg-white text-violet-600 shadow-sm" 
                         : "text-slate-400 hover:text-slate-600"
                     )}
                   >
@@ -2572,7 +2604,7 @@ export function EnhancedArtifactViewer({
                 {/* Legend for indicator dots */}
                 <div className="hidden md:flex items-center gap-3 pl-3 border-l border-slate-200 text-[10px] text-slate-400">
                   <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    <span className="w-1.5 h-1.5 bg-violet-400 rounded-full" />
                     Has data
                   </span>
                   <span className="flex items-center gap-1">
@@ -2610,6 +2642,17 @@ export function EnhancedArtifactViewer({
                 transition={{ duration: 0.2 }}
               >
                 {renderTabContent()}
+                
+                {/* Feedback bar — shown when artifact has data and an ID */}
+                {normalizedData[activeTab as keyof typeof normalizedData] && (
+                  <div className="mt-4 pt-3 border-t border-slate-100">
+                    <ArtifactFeedback
+                      contractId={contractId}
+                      artifactId={artifactIds[activeTab] || artifactIds[activeTab.toUpperCase()] || ''}
+                      artifactType={activeTab.toUpperCase()}
+                    />
+                  </div>
+                )}
               </motion.div>
             </AnimatePresence>
           )}
@@ -2636,7 +2679,7 @@ export function EnhancedArtifactViewer({
                   className={cn(
                     "w-1.5 h-1.5 rounded-full transition-all",
                     activeTab === tab.id 
-                      ? "w-4 bg-indigo-500"
+                      ? "w-4 bg-violet-500"
                       : hasData
                       ? "bg-slate-300 hover:bg-slate-400"
                       : "bg-slate-200"

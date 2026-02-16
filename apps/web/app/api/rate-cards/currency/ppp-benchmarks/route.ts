@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { pppAdjustmentService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const tenantId = await getApiTenantId(request);
     const roleStandardized = searchParams.get('role');
@@ -11,14 +11,11 @@ export async function GET(request: NextRequest) {
     const targetCountry = searchParams.get('targetCountry') || 'USA';
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     if (!roleStandardized || !seniority) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: role, seniority' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required parameters: role, seniority', 400);
     }
 
     const benchmarks = await pppAdjustmentService.calculatePPPAdjustedBenchmarks(
@@ -28,15 +25,9 @@ export async function GET(request: NextRequest) {
       targetCountry
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       ...benchmarks,
       targetCountry,
       message: 'PPP-adjusted benchmarks calculated successfully',
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to calculate PPP-adjusted benchmarks' },
-      { status: 500 }
-    );
-  }
-}
+  });

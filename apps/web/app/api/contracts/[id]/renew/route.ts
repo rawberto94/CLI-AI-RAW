@@ -9,11 +9,11 @@
  * - Original contract marked with renewalStatus: 'COMPLETED'
  */
 
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerTenantId } from '@/lib/tenant-server';
 import { z } from 'zod';
 import { EmailService } from '@/lib/services/email.service';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Validation schema for renewal request
 const renewalRequestSchema = z.object({
@@ -36,15 +36,16 @@ export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: originalContractId } = await params;
     const tenantId = await getServerTenantId();
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
     }
 
     // Parse and validate request body
@@ -76,21 +77,12 @@ export async function POST(
     });
 
     if (!originalContract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Check if contract already has a renewal in progress
     if (originalContract.childContracts.length > 0) {
-      return NextResponse.json(
-        { 
-          error: 'Contract already has an existing renewal',
-          existingRenewal: originalContract.childContracts[0],
-        },
-        { status: 409 }
-      );
+      return createErrorResponse(ctx, 'CONFLICT', 'Contract already has an existing renewal', 409);
     }
 
     // Calculate renewal dates if not provided
@@ -293,7 +285,7 @@ export async function POST(
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Renewal contract created successfully',
       renewal: {
@@ -312,17 +304,7 @@ export async function POST(
       },
     });
   } catch (error: unknown) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      { error: 'Failed to create renewal contract' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -334,15 +316,16 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getServerTenantId();
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
     }
 
     // Fetch the contract
@@ -365,10 +348,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Find the root contract (oldest in the chain)
@@ -454,17 +434,14 @@ export async function GET(
     // Sort by order
     renewalChain.sort((a, b) => a.order - b.order);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       contractId,
       rootContractId,
       renewalChain,
       totalRenewals: renewalChain.length - 1,
       currentPosition: renewalChain.findIndex(c => c.isCurrent) + 1,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch renewal chain' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

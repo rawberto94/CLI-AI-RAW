@@ -124,7 +124,7 @@ const getStatusColor = (status: string) => {
     case 'draft':
       return 'bg-gray-500/10 text-gray-700 dark:text-gray-400'
     default:
-      return 'bg-blue-500/10 text-blue-700 dark:text-blue-400'
+      return 'bg-violet-500/10 text-violet-700 dark:text-violet-400'
   }
 }
 
@@ -168,8 +168,8 @@ function ContractLinkCard({ contract, direction, relationshipType }: ContractLin
         <div className={cn(
           "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center",
           direction === 'parent' 
-            ? "bg-purple-500/10 text-purple-600" 
-            : "bg-blue-500/10 text-blue-600"
+            ? "bg-violet-500/10 text-violet-600" 
+            : "bg-violet-500/10 text-violet-600"
         )}>
           {direction === 'parent' ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />}
         </div>

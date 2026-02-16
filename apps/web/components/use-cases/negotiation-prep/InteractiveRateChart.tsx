@@ -121,7 +121,7 @@ export function InteractiveRateChart({
             </Badge>
           )}
           {stats.belowMarket > 0 && (
-            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">
+            <Badge variant="outline" className="text-violet-600 border-violet-200 bg-violet-50">
               <TrendingDown className="h-3 w-3 mr-1" />
               {stats.belowMarket} below market
             </Badge>
@@ -141,7 +141,7 @@ export function InteractiveRateChart({
               <div
                 key={rate.id}
                 className={cn(
-                  'relative p-3 rounded-lg border transition-all cursor-pointer hover:border-blue-300 hover:shadow-sm',
+                  'relative p-3 rounded-lg border transition-all cursor-pointer hover:border-violet-300 hover:shadow-sm',
                   highlightAboveMarket && isAboveMarket
                     ? 'border-rose-200 bg-rose-50/50'
                     : 'border-slate-200 bg-slate-50/50'
@@ -174,7 +174,7 @@ export function InteractiveRateChart({
                   <div
                     className={cn(
                       'h-full rounded-full transition-all',
-                      isAboveMarket ? 'bg-rose-500' : 'bg-blue-500'
+                      isAboveMarket ? 'bg-rose-500' : 'bg-violet-500'
                     )}
                     style={{ width: `${barWidth}%` }}
                   />
@@ -185,7 +185,7 @@ export function InteractiveRateChart({
                   {variance !== null && (
                     <span className={cn(
                       'text-xs font-medium flex items-center gap-1',
-                      variance > 0 ? 'text-rose-600' : variance < 0 ? 'text-emerald-600' : 'text-slate-500'
+                      variance > 0 ? 'text-rose-600' : variance < 0 ? 'text-violet-600' : 'text-slate-500'
                     )}>
                       {variance > 0 ? <TrendingUp className="h-3 w-3" /> : 
                        variance < 0 ? <TrendingDown className="h-3 w-3" /> : 
@@ -196,7 +196,7 @@ export function InteractiveRateChart({
                   {trend !== null && (
                     <span className={cn(
                       'text-xs flex items-center gap-1',
-                      trend > 0 ? 'text-rose-500' : 'text-emerald-500'
+                      trend > 0 ? 'text-rose-500' : 'text-violet-500'
                     )}>
                       {trend > 0 ? '+' : ''}{trend.toFixed(1)}% YoY
                     </span>

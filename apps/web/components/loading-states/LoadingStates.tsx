@@ -14,7 +14,7 @@ interface SpinnerProps {
   className?: string;
 }
 
-export function Spinner({ size = 'md', color = 'text-blue-600', className = '' }: SpinnerProps) {
+export function Spinner({ size = 'md', color = 'text-violet-600', className = '' }: SpinnerProps) {
   const sizeClasses = {
     xs: 'w-3 h-3',
     sm: 'w-4 h-4',
@@ -28,7 +28,7 @@ export function Spinner({ size = 'md', color = 'text-blue-600', className = '' }
   );
 }
 
-export function DotsSpinner({ size = 'md', color = 'bg-blue-600', className = '' }: SpinnerProps) {
+export function DotsSpinner({ size = 'md', color = 'bg-violet-600', className = '' }: SpinnerProps) {
   const sizeClasses = {
     xs: 'w-1 h-1',
     sm: 'w-1.5 h-1.5',
@@ -58,7 +58,7 @@ export function DotsSpinner({ size = 'md', color = 'bg-blue-600', className = ''
   );
 }
 
-export function PulseSpinner({ size = 'md', color = 'bg-blue-600', className = '' }: SpinnerProps) {
+export function PulseSpinner({ size = 'md', color = 'bg-violet-600', className = '' }: SpinnerProps) {
   const sizeClasses = {
     xs: 'w-3 h-3',
     sm: 'w-4 h-4',
@@ -85,7 +85,7 @@ export function PulseSpinner({ size = 'md', color = 'bg-blue-600', className = '
   );
 }
 
-export function BarSpinner({ size = 'md', color = 'bg-blue-600', className = '' }: SpinnerProps) {
+export function BarSpinner({ size = 'md', color = 'bg-violet-600', className = '' }: SpinnerProps) {
   const heights = {
     xs: 'h-3',
     sm: 'h-4',
@@ -143,7 +143,7 @@ export function LoadingOverlay({
   return (
     <AnimatePresence>
       {isLoading && (
-        <motion.div
+        <motion.div key="loading"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -190,7 +190,7 @@ export function LoadingButton({
   ...props
 }: LoadingButtonProps) {
   const variantClasses = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-blue-400',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white disabled:bg-violet-400',
     secondary: 'bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-900 dark:text-white disabled:bg-gray-100',
     danger: 'bg-red-600 hover:bg-red-700 text-white disabled:bg-red-400',
     ghost: 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 disabled:text-gray-400',
@@ -375,7 +375,7 @@ export function ProgressLoading({
       )}
       <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-blue-600 rounded-full"
+          className="h-full bg-violet-600 rounded-full"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.3 }}
@@ -397,7 +397,7 @@ export function IndeterminateProgress({ className = '' }: IndeterminateProgressP
   return (
     <div className={`h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden ${className}`}>
       <motion.div
-        className="h-full w-1/3 bg-blue-600 rounded-full"
+        className="h-full w-1/3 bg-violet-600 rounded-full"
         animate={{
           x: ['-100%', '400%'],
         }}
@@ -483,7 +483,7 @@ export function RocketLoading({ message = 'Launching...' }: { message?: string }
           repeat: Infinity,
         }}
       >
-        <Rocket className="w-12 h-12 text-blue-600" />
+        <Rocket className="w-12 h-12 text-violet-600" />
       </motion.div>
       <p className="mt-4 text-gray-600 dark:text-gray-400">{message}</p>
     </div>

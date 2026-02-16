@@ -191,7 +191,7 @@ const frameworkConfig: Record<ComplianceFramework, {
 }> = {
   gdpr: { 
     label: 'GDPR', 
-    color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+    color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     icon: <Shield className="h-3 w-3" />
   },
   hipaa: { 
@@ -201,7 +201,7 @@ const frameworkConfig: Record<ComplianceFramework, {
   },
   soc2: { 
     label: 'SOC 2', 
-    color: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+    color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     icon: <Shield className="h-3 w-3" />
   },
   iso27001: { 
@@ -216,7 +216,7 @@ const frameworkConfig: Record<ComplianceFramework, {
   },
   ccpa: { 
     label: 'CCPA', 
-    color: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-300',
+    color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300',
     icon: <Shield className="h-3 w-3" />
   },
   internal: { 
@@ -233,7 +233,7 @@ const frameworkConfig: Record<ComplianceFramework, {
 
 const statusConfig: Record<ChecklistStatus, { label: string; color: string }> = {
   pending: { label: 'Pending', color: 'bg-slate-100 text-slate-700' },
-  'in-progress': { label: 'In Progress', color: 'bg-blue-100 text-blue-700' },
+  'in-progress': { label: 'In Progress', color: 'bg-violet-100 text-violet-700' },
   completed: { label: 'Completed', color: 'bg-green-100 text-green-700' },
   overdue: { label: 'Overdue', color: 'bg-red-100 text-red-700' },
 };

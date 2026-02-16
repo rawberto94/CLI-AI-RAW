@@ -2,6 +2,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import createNextIntlPlugin from "next-intl/plugin";
 
 function isNextBuildProcess() {
   const argv = process.argv ?? [];
@@ -17,8 +18,12 @@ function isNextBuildProcess() {
 
 // Keep production builds clean by silencing server-side logs that can fire during
 // Next's "Collecting page data" phase (child processes won't always match argv heuristics).
-if (isNextBuildProcess() && !process.env.LOG_LEVEL) {
-  process.env.LOG_LEVEL = 'silent';
+if (isNextBuildProcess()) {
+  if (!process.env.LOG_LEVEL) {
+    process.env.LOG_LEVEL = 'silent';
+  }
+  // Signal to @repo/workers to skip worker initialization during build
+  process.env.NEXT_BUILD = 'true';
 }
 
 const __filename = fileURLToPath(import.meta.url);
@@ -52,6 +57,16 @@ const nextConfig = {
     'ioredis',
     'perf_hooks',
     'crypto',
+    '@opentelemetry/sdk-node',
+    '@opentelemetry/auto-instrumentations-node',
+    '@opentelemetry/exporter-trace-otlp-http',
+    '@opentelemetry/exporter-metrics-otlp-http',
+    '@opentelemetry/exporter-logs-otlp-http',
+    '@opentelemetry/otlp-exporter-base',
+    '@opentelemetry/sdk-metrics',
+    '@opentelemetry/resources',
+    '@opentelemetry/semantic-conventions',
+    '@opentelemetry/api',
   ],
   
   // Optimized static generation
@@ -121,10 +136,12 @@ const nextConfig = {
     serverActions: {
       bodySizeLimit: '2mb',
       allowedOrigins: [
-        "localhost:3005",
-        "*.app.github.dev",
-        "zany-journey-69w67jw7vvwj347jg-3005.app.github.dev",
-      ],
+        process.env.NEXTAUTH_URL ? new URL(process.env.NEXTAUTH_URL).host : '',
+        ...(process.env.NODE_ENV === 'development' ? [
+          "localhost:3005",
+          "*.app.github.dev",
+        ] : []),
+      ].filter(Boolean),
     },
   },
 
@@ -136,7 +153,7 @@ const nextConfig = {
   },
 
   // Minimal webpack configuration
-  webpack: (config, { isServer, dev, webpack }) => {
+  webpack: (config, { isServer, dev, webpack, nextRuntime }) => {
     // Avoid noisy warnings for ESM packages that use top-level await (e.g. pdfjs-dist)
     // by declaring async/await support in the target environment.
     config.output.environment = {
@@ -194,7 +211,8 @@ const nextConfig = {
     }
 
     // Only apply optimizations in development mode to reduce memory usage
-    if (process.env.NODE_ENV !== 'production') {
+    // Skip for Edge Runtime — it needs its own ESM-compatible chunk format
+    if (process.env.NODE_ENV !== 'production' && nextRuntime !== 'edge') {
       config.optimization = {
         ...config.optimization,
         minimize: false,
@@ -235,7 +253,7 @@ const nextConfig = {
     // Mark problematic packages as external to prevent webpack from bundling them
     // These packages have symlinks to TypeScript sources which cause parse errors
     if (!isServer) {
-      const externals = ['clients-db', 'clients-storage', 'clients-openai', 'clients-queue', 'clients-rag'];
+      const externals = ['clients-db', 'clients-openai', 'clients-rag'];
       config.externals = config.externals || [];
       if (Array.isArray(config.externals)) {
         config.externals.push(({ request }, callback) => {
@@ -331,8 +349,9 @@ const nextConfig = {
         worker_threads: false,
         canvas: false,
       };
-    } else {
-      // Server-side: ensure 'self' is defined for webpack runtime
+    } else if (nextRuntime !== 'edge') {
+      // Server-side (Node.js only): ensure 'self' is defined for webpack runtime
+      // Edge Runtime already has 'self' defined natively
       config.resolve.fallback = {
         ...config.resolve.fallback,
       };
@@ -360,6 +379,21 @@ const nextConfig = {
       {
         source: "/(.*)",
         headers: [
+          {
+            key: "Content-Security-Policy",
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.sentry.io https://*.ingest.sentry.io wss: ws:",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+              "object-src 'none'",
+            ].join("; "),
+          },
           {
             key: "X-Frame-Options",
             value: "DENY",
@@ -400,4 +434,6 @@ const nextConfig = {
   },
 };
 
-export default withBundleAnalyzer(nextConfig);
+const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+export default withNextIntl(withBundleAnalyzer(nextConfig));

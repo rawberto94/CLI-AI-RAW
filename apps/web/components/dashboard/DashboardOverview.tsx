@@ -105,7 +105,8 @@ export const DashboardOverview = memo(function DashboardOverview({
     try {
       const response = await fetch('/api/dashboard/metrics');
       if (response.ok) {
-        const data = await response.json();
+        const raw = await response.json();
+        const data = raw.data ?? raw;
         setMetrics(data);
       } else {
         setMetrics(getEmptyMetrics());
@@ -120,7 +121,7 @@ export const DashboardOverview = memo(function DashboardOverview({
   if (loading || !metrics) {
     return (
       <div className={cn('flex items-center justify-center py-12', className)}>
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
       </div>
     );
   }
@@ -152,8 +153,8 @@ export const DashboardOverview = memo(function DashboardOverview({
                   <span className="text-xs text-slate-400">vs last month</span>
                 </div>
               </div>
-              <div className="p-3 rounded-lg bg-blue-100">
-                <FileText className="h-6 w-6 text-blue-600" />
+              <div className="p-3 rounded-lg bg-violet-100">
+                <FileText className="h-6 w-6 text-violet-600" />
               </div>
             </div>
           </CardContent>
@@ -232,7 +233,7 @@ export const DashboardOverview = memo(function DashboardOverview({
         <Card className="col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-violet-600" />
               Contracts by Type
             </CardTitle>
           </CardHeader>
@@ -258,17 +259,17 @@ export const DashboardOverview = memo(function DashboardOverview({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Processing Status
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 rounded-lg bg-blue-50 flex items-center justify-between">
+            <div className="p-4 rounded-lg bg-violet-50 flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-600">In Queue</p>
-                <p className="text-2xl font-bold text-blue-600">{metrics.processingQueue}</p>
+                <p className="text-2xl font-bold text-violet-600">{metrics.processingQueue}</p>
               </div>
-              <Clock className="h-8 w-8 text-blue-400" />
+              <Clock className="h-8 w-8 text-violet-400" />
             </div>
             <div className="p-4 rounded-lg bg-green-50 flex items-center justify-between">
               <div>
@@ -294,7 +295,7 @@ export const DashboardOverview = memo(function DashboardOverview({
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <PieChart className="h-5 w-5 text-blue-600" />
+              <PieChart className="h-5 w-5 text-violet-600" />
               Status Distribution
             </CardTitle>
           </CardHeader>
@@ -325,7 +326,7 @@ export const DashboardOverview = memo(function DashboardOverview({
         <Card className="col-span-2">
           <CardHeader className="flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Recent Activity
             </CardTitle>
             <Button variant="ghost" size="sm" asChild>
@@ -337,8 +338,8 @@ export const DashboardOverview = memo(function DashboardOverview({
               {metrics.recentActivity.map(activity => {
                 const actionColors: Record<string, string> = {
                   Created: 'bg-green-100 text-green-700',
-                  Processed: 'bg-blue-100 text-blue-700',
-                  Analyzed: 'bg-purple-100 text-purple-700',
+                  Processed: 'bg-violet-100 text-violet-700',
+                  Analyzed: 'bg-violet-100 text-violet-700',
                   Exported: 'bg-orange-100 text-orange-700',
                   Updated: 'bg-slate-100 text-slate-700',
                 };

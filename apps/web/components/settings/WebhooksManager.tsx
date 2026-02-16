@@ -211,7 +211,7 @@ export const WebhooksManager = memo(function WebhooksManager({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Webhook className="h-5 w-5 text-blue-600" />
+                <Webhook className="h-5 w-5 text-violet-600" />
                 Webhooks
               </CardTitle>
               <CardDescription className="mt-1">

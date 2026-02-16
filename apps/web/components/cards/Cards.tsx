@@ -48,10 +48,10 @@ interface CardFooterProps {
 // ============================================================================
 
 const variantClasses = {
-  default: 'bg-white border border-slate-200',
-  bordered: 'bg-white border-2 border-slate-300',
-  elevated: 'bg-white shadow-lg shadow-slate-200/50',
-  ghost: 'bg-slate-50',
+  default: 'bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700',
+  bordered: 'bg-white border-2 border-slate-200 dark:bg-slate-800 dark:border-slate-600',
+  elevated: 'bg-white shadow-xl shadow-slate-200/50 dark:bg-slate-800 dark:shadow-slate-900/50',
+  ghost: 'bg-slate-50 dark:bg-slate-800/50',
 };
 
 const paddingClasses = {
@@ -73,12 +73,12 @@ export function Card({
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      whileHover={hover ? { y: -2, shadow: '0 8px 30px rgba(0,0,0,0.1)' } : undefined}
+      whileHover={hover ? { y: -4, shadow: '0 20px 40px rgba(124, 58, 237, 0.1)' } : undefined}
       className={cn(
-        'rounded-2xl transition-all',
+        'rounded-2xl transition-all duration-300',
         variantClasses[variant],
         paddingClasses[padding],
-        hover && 'cursor-pointer hover:border-slate-300',
+        hover && 'cursor-pointer hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg hover:shadow-violet-500/5',
         className
       )}
       {...props}
@@ -96,7 +96,7 @@ export function CardHeader({
   title,
   subtitle,
   icon: Icon,
-  iconColor = 'text-indigo-600 bg-indigo-100',
+  iconColor = 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/50',
   action,
   className,
 }: CardHeaderProps) {
@@ -104,14 +104,14 @@ export function CardHeader({
     <div className={cn('flex items-start justify-between gap-4', className)}>
       <div className="flex items-start gap-3">
         {Icon && (
-          <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', iconColor)}>
+          <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shadow-sm', iconColor)}>
             <Icon className="w-5 h-5" />
           </div>
         )}
         <div>
-          <h3 className="font-semibold text-slate-900">{title}</h3>
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
           {subtitle && (
-            <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>
           )}
         </div>
       </div>
@@ -167,27 +167,27 @@ export function StatCard({
   value,
   change,
   icon: Icon,
-  iconColor = 'text-indigo-600 bg-indigo-100',
+  iconColor = 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/50',
   className,
 }: StatCardProps) {
   const trendColors = {
-    up: 'text-emerald-600 bg-emerald-100',
-    down: 'text-red-600 bg-red-100',
-    neutral: 'text-slate-600 bg-slate-100',
+    up: 'text-emerald-700 bg-emerald-100 dark:text-emerald-400 dark:bg-emerald-900/50',
+    down: 'text-rose-700 bg-rose-100 dark:text-rose-400 dark:bg-rose-900/50',
+    neutral: 'text-slate-700 bg-slate-100 dark:text-slate-400 dark:bg-slate-800',
   };
 
   return (
     <Card className={className} hover>
       <div className="flex items-start justify-between">
         {Icon && (
-          <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', iconColor)}>
+          <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shadow-sm', iconColor)}>
             <Icon className="w-5 h-5" />
           </div>
         )}
         {change && (
           <span
             className={cn(
-              'text-xs font-medium px-2 py-1 rounded-lg',
+              'text-xs font-semibold px-2.5 py-1 rounded-lg',
               trendColors[change.trend]
             )}
           >
@@ -197,8 +197,8 @@ export function StatCard({
         )}
       </div>
       <div className="mt-4">
-        <p className="text-sm text-slate-500">{label}</p>
-        <p className="text-2xl font-bold text-slate-900 mt-1">{value}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{label}</p>
+        <p className="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-1 tracking-tight">{value}</p>
       </div>
     </Card>
   );
@@ -223,7 +223,7 @@ export function LinkCard({
   description,
   href,
   icon: Icon,
-  iconColor = 'text-indigo-600 bg-indigo-100',
+  iconColor = 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/50',
   external = false,
   className,
 }: LinkCardProps) {
@@ -233,22 +233,22 @@ export function LinkCard({
   return (
     <Component href={href} {...props}>
       <motion.div
-        whileHover={{ y: -2 }}
+        whileHover={{ y: -4 }}
         className={cn(
-          'p-6 bg-white border border-slate-200 rounded-2xl group cursor-pointer transition-all hover:border-slate-300',
+          'p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl group cursor-pointer transition-all duration-300 hover:border-violet-200 dark:hover:border-violet-800 hover:shadow-lg hover:shadow-violet-500/5',
           className
         )}
       >
         <div className="flex items-start justify-between">
           {Icon && (
-            <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center', iconColor)}>
+            <div className={cn('w-11 h-11 rounded-xl flex items-center justify-center shadow-sm transition-all duration-300 group-hover:scale-110 group-hover:shadow-violet-500/20', iconColor)}>
               <Icon className="w-5 h-5" />
             </div>
           )}
           <motion.div
             initial={{ x: 0, opacity: 0.5 }}
             whileHover={{ x: 4, opacity: 1 }}
-            className="text-slate-400 group-hover:text-slate-600"
+            className="text-slate-400 group-hover:text-violet-500 transition-colors"
           >
             {external ? (
               <ExternalLink className="w-5 h-5" />
@@ -258,11 +258,11 @@ export function LinkCard({
           </motion.div>
         </div>
         <div className="mt-4">
-          <h3 className="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+          <h3 className="font-semibold text-slate-900 dark:text-slate-100 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
             {title}
           </h3>
           {description && (
-            <p className="text-sm text-slate-500 mt-1">{description}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{description}</p>
           )}
         </div>
       </motion.div>
@@ -287,22 +287,22 @@ export function FeatureCard({
   title,
   description,
   icon: Icon,
-  iconColor = 'text-indigo-600 bg-indigo-100',
+  iconColor = 'text-violet-600 bg-violet-100 dark:text-violet-400 dark:bg-violet-900/50',
   tag,
   className,
 }: FeatureCardProps) {
   return (
-    <Card className={cn('relative overflow-hidden', className)} hover>
+    <Card className={cn('relative overflow-hidden group', className)} hover>
       {tag && (
-        <span className="absolute top-4 right-4 text-xs font-medium px-2 py-1 bg-indigo-100 text-indigo-600 rounded-lg">
+        <span className="absolute top-4 right-4 text-xs font-semibold px-2.5 py-1 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 dark:from-violet-900/50 dark:to-purple-900/50 dark:text-violet-300 rounded-lg">
           {tag}
         </span>
       )}
-      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center', iconColor)}>
+      <div className={cn('w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm transition-transform duration-300 group-hover:scale-110', iconColor)}>
         <Icon className="w-6 h-6" />
       </div>
-      <h3 className="font-semibold text-slate-900 mt-4">{title}</h3>
-      <p className="text-sm text-slate-500 mt-2 leading-relaxed">{description}</p>
+      <h3 className="font-semibold text-slate-900 dark:text-slate-100 mt-4 group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">{title}</h3>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{description}</p>
     </Card>
   );
 }

@@ -1,93 +1,40 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getServerSession } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, parseQueryParams, createSuccessResponse, handleApiError, createErrorResponse, createValidationErrorResponse } from '@/lib/api-middleware';
+import { z } from 'zod';
+
+const deadlinesQuerySchema = z.object({
+  client: z.string().optional(),
+  type: z.enum(['all', 'expiration', 'renewal', 'milestone']).optional(),
+});
 
 export const dynamic = 'force-dynamic';
-
-// Mock data for demonstration
-const getMockDeadlines = () => {
-  const now = Date.now();
-  return [
-    {
-      id: '1',
-      contractId: 'demo-1',
-      contractName: 'Software License Agreement - Acme Corp',
-      type: 'renewal',
-      date: new Date(now + 15 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 15,
-      status: 'due-soon',
-      priority: 'high',
-      clientName: 'Acme Corp',
-      value: 250000,
-      currency: 'USD'
-    },
-    {
-      id: '2',
-      contractId: 'demo-2',
-      contractName: 'Master Services Agreement - TechStart',
-      type: 'expiration',
-      date: new Date(now - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: -5,
-      status: 'overdue',
-      priority: 'high',
-      clientName: 'TechStart',
-      value: 500000,
-      currency: 'USD'
-    },
-    {
-      id: '3',
-      contractId: 'demo-3',
-      contractName: 'Consulting Agreement - GlobalCo',
-      type: 'milestone',
-      date: new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 7,
-      status: 'due-soon',
-      priority: 'medium',
-      clientName: 'GlobalCo',
-      value: 75000,
-      currency: 'USD'
-    },
-    {
-      id: '4',
-      contractId: 'demo-4',
-      contractName: 'NDA - Innovation Labs',
-      type: 'expiration',
-      date: new Date(now + 60 * 24 * 60 * 60 * 1000).toISOString(),
-      daysUntil: 60,
-      status: 'upcoming',
-      priority: 'low',
-      clientName: 'Innovation Labs'
-    }
-  ];
-};
 
 /**
  * GET /api/deadlines
  * Get all contract deadlines and obligations
  */
 export async function GET(request: NextRequest) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const { searchParams } = new URL(request.url);
-    const tenantId = await getApiTenantId(request);
-    const client = searchParams.get('client');
-    const type = searchParams.get('type');
-    const useMock = searchParams.get('mock') === 'true';
-
-    // Return mock data if requested
-    if (useMock) {
-      return NextResponse.json({
-        success: true,
-        deadlines: getMockDeadlines(),
-        source: 'mock',
-        stats: {
-          total: 4,
-          overdue: 1,
-          dueSoon: 2,
-          upcoming: 1,
-          completed: 0
-        }
-      });
+    const session = await getServerSession();
+    if (!session?.user) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
+
+    const validated = parseQueryParams(request, deadlinesQuerySchema);
+    if (!validated.success) {
+      return createValidationErrorResponse(ctx, validated.error);
+    }
+    const queryParams = validated.data;
+    const tenantId = await getApiTenantId(request);
+    const client = queryParams.client || null;
+    const type = queryParams.type || null;
 
     try {
       const db = await getDb();
@@ -244,8 +191,7 @@ export async function GET(request: NextRequest) {
     // Sort by date (earliest first)
     filteredDeadlines.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         deadlines: filteredDeadlines,
         source: 'database',
         stats: {
@@ -258,28 +204,10 @@ export async function GET(request: NextRequest) {
       });
 
     } catch {
-      return NextResponse.json({
-        success: true,
-        deadlines: getMockDeadlines(),
-        source: 'mock-fallback',
-        stats: {
-          total: 4,
-          overdue: 1,
-          dueSoon: 2,
-          upcoming: 1,
-          completed: 0
-        }
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Database temporarily unavailable. Please retry.', 503);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to fetch deadlines',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

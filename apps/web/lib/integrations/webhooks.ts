@@ -170,23 +170,33 @@ async function logWebhookDelivery(
  * Get webhooks configured for a tenant
  */
 async function getTenantWebhooks(tenantId: string): Promise<WebhookConfig[]> {
+  const webhooks: WebhookConfig[] = [];
+  
   // Fetch webhook configurations from database (may not be available in all deployments)
-  const dbWebhooks = await (prisma as { webhookConfig?: { findMany: (args: unknown) => Promise<Array<{ id: string; url: string; secret: string | null; events: unknown; active: boolean }>> } }).webhookConfig?.findMany({
-    where: {
-      tenantId,
-      active: true,
-    },
-  }) || [];
+  try {
+    const prismaAny = prisma as any;
+    const dbWebhooks = await prismaAny.webhookConfig?.findMany({
+      where: {
+        tenantId,
+        isActive: true,
+      },
+    }) || [];
 
-  // Map database records to WebhookConfig interface
-  const webhooks: WebhookConfig[] = dbWebhooks.map(wh => ({
-    id: wh.id,
-    url: wh.url,
-    secret: wh.secret || '',
-    events: wh.events as SyncEventType[],
-    enabled: wh.active,
-    retryCount: 0,
-  }));
+    // Map database records to WebhookConfig interface
+    dbWebhooks.forEach((wh: any) => {
+      webhooks.push({
+        id: wh.id,
+        url: wh.url,
+        secret: wh.secret || '',
+        events: wh.events as SyncEventType[],
+        enabled: wh.isActive,
+        retryCount: 0,
+      });
+    });
+  } catch (error) {
+    // Database may not have webhookConfig table, that's okay
+    console.debug('Could not fetch webhooks from database:', error);
+  }
 
   // Also support environment variable for backward compatibility/demo
   const webhookUrl = process.env.SYNC_WEBHOOK_URL;

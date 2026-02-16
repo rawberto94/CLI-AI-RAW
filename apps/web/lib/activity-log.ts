@@ -25,7 +25,14 @@ export interface ActivityLogEntry {
  */
 export async function addActivityLogEntry(entry: ActivityLogEntry): Promise<void> {
   try {
-    const tenantId = entry.tenantId || 'demo';
+    const tenantId = entry.tenantId;
+    if (!tenantId) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error('Tenant ID required for activity logging');
+      }
+      console.warn('[ActivityLog] Missing tenantId - skipping in dev mode');
+      return;
+    }
     const userId = entry.userId || entry.performedBy || 'system';
     const entityId = entry.entityId || entry.contractId;
     const entityType = entry.entityType || (entry.contractId ? 'contract' : 'unknown');

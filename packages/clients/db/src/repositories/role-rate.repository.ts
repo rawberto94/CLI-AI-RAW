@@ -150,15 +150,15 @@ export class RoleRateRepository extends AbstractRepository<
 
     return {
       count,
-      min: dailyRates[0],
-      max: dailyRates[count - 1],
+      min: dailyRates[0]!,
+      max: dailyRates[count - 1]!,
       mean: dailyRates.reduce((sum, rate) => sum + rate, 0) / count,
       median: count % 2 === 0
-        ? (dailyRates[count / 2 - 1] + dailyRates[count / 2]) / 2
-        : dailyRates[Math.floor(count / 2)],
-      p25: dailyRates[Math.floor(count * 0.25)],
-      p75: dailyRates[Math.floor(count * 0.75)],
-      p90: dailyRates[Math.floor(count * 0.90)],
+        ? (dailyRates[count / 2 - 1]! + dailyRates[count / 2]!) / 2
+        : dailyRates[Math.floor(count / 2)]!,
+      p25: dailyRates[Math.floor(count * 0.25)]!,
+      p75: dailyRates[Math.floor(count * 0.75)]!,
+      p90: dailyRates[Math.floor(count * 0.90)]!,
     };
   }
 

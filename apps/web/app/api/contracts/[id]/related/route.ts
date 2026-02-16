@@ -3,9 +3,10 @@
  * GET /api/contracts/[id]/related - Get related contracts based on various criteria
  */
 
-import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 
@@ -13,15 +14,16 @@ export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const tenantId = await getServerTenantId();
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID required' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID required', 401);
     }
     
     // Parse query params
@@ -50,10 +52,7 @@ export async function GET(
     });
     
     if (!currentContract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
     
     const relatedContracts: Array<{
@@ -284,15 +283,12 @@ export async function GET(
       }
     }
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       contracts: relatedContracts.slice(0, limit),
       total: relatedContracts.length,
     });
     
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch related contracts' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

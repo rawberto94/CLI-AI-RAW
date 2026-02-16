@@ -58,7 +58,7 @@ const steps: QuickStartStep[] = [
       'Files are processed with enterprise-grade OCR'
     ],
     shortcut: '⌘⇧U',
-    color: 'from-blue-500 to-cyan-500'
+    color: 'from-violet-500 to-purple-500'
   },
   {
     id: 'browse',
@@ -72,7 +72,7 @@ const steps: QuickStartStep[] = [
       'Star important contracts for quick access'
     ],
     shortcut: '⌘⇧C',
-    color: 'from-indigo-500 to-purple-500'
+    color: 'from-violet-500 to-purple-500'
   },
   {
     id: 'ai',
@@ -86,7 +86,7 @@ const steps: QuickStartStep[] = [
       'Request risk analysis or compliance checks'
     ],
     shortcut: '⌘/',
-    color: 'from-purple-500 to-pink-500'
+    color: 'from-violet-500 to-pink-500'
   },
   {
     id: 'search',
@@ -114,7 +114,7 @@ const steps: QuickStartStep[] = [
       'Identify contracts needing attention'
     ],
     shortcut: '⌘⇧A',
-    color: 'from-emerald-500 to-teal-500'
+    color: 'from-violet-500 to-violet-500'
   }
 ];
 
@@ -162,7 +162,7 @@ export function QuickStartGuide({ isOpen, onClose, onComplete }: QuickStartGuide
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -214,7 +214,7 @@ export function QuickStartGuide({ isOpen, onClose, onComplete }: QuickStartGuide
                     i === currentStep
                       ? "bg-slate-900 text-white dark:bg-white dark:text-slate-900"
                       : completedSteps.has(s.id)
-                      ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300"
+                      ? "bg-violet-100 text-violet-700 dark:bg-violet-900/50 dark:text-violet-300"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-400"
                   )}
                 >
@@ -347,7 +347,7 @@ export function QuickStartGuide({ isOpen, onClose, onComplete }: QuickStartGuide
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

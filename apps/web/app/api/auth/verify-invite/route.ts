@@ -3,18 +3,22 @@
  * Validates invitation tokens and returns tenant info
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auditTrailService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const { searchParams } = new URL(request.url);
     const token = searchParams.get("token");
 
     if (!token) {
-      return NextResponse.json(
-        { valid: false, error: "Token is required" },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'BAD_REQUEST',
+        "Token is required",
+        400
       );
     }
 
@@ -35,13 +39,13 @@ export async function GET(request: NextRequest) {
     });
 
     if (!invitation) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         valid: false,
         error: "Invalid or expired invitation",
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       valid: true,
       email: invitation.email,
       tenantId: invitation.tenantId,
@@ -49,9 +53,10 @@ export async function GET(request: NextRequest) {
       role: invitation.role,
     });
   } catch {
-    return NextResponse.json(
-      { valid: false, error: "Failed to verify invitation" },
-      { status: 500 }
+    return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
+      "Failed to verify invitation",
+      500
     );
   }
 }

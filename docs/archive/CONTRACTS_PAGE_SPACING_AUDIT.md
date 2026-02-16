@@ -1,6 +1,7 @@
 # Contracts Page Spacing & Layout Audit
 
 ## Overview
+
 Comprehensive spacing, layout, and sizing consistency audit of the contracts page (`/apps/web/app/contracts/page.tsx`), ensuring pixel-perfect enterprise-grade polish.
 
 **Date**: Current Session  
@@ -12,6 +13,7 @@ Comprehensive spacing, layout, and sizing consistency audit of the contracts pag
 ## Design System Standards Applied
 
 ### Spacing Scale
+
 ```typescript
 // Gaps
 gap-1.5  // Micro elements (icons + text)
@@ -41,6 +43,7 @@ rounded-full   // Badges, indicators, circular buttons
 ```
 
 ### Typography Scale
+
 ```css
 text-[10px]   /* Micro badges (NEW indicator) */
 text-[11px]   /* Table headers */
@@ -54,7 +57,9 @@ text-base     /* Default size */
 ## Applied Fixes & Verification
 
 ### ✅ 1. Badge Standardization
+
 **Status Badges** (`getStatusBadge` function, lines ~1940-1950):
+
 - ✅ Padding: `px-3 py-1` (was `px-2.5 py-0.5`)
 - ✅ Icon size: `h-3.5 w-3.5` (was `h-3 w-3`)
 - ✅ Gap: `gap-1.5` consistent
@@ -62,89 +67,109 @@ text-base     /* Default size */
 - ✅ Font weight: `font-medium`
 
 **Risk Badges** (`getRiskBadge` function, lines ~1957-1977):
+
 - ✅ Low Risk: `px-3 py-1`, `h-3.5 w-3.5` Shield icon
 - ✅ Medium Risk: `px-3 py-1`, `h-3.5 w-3.5` Shield icon  
 - ✅ High Risk: `px-3 py-1`, `h-3.5 w-3.5` AlertTriangle icon
 - ✅ All use gradient backgrounds with shadow-sm
 
 **Exception - Micro Badges** (intentionally smaller):
+
 - "New" indicator compact rows: `px-1.5 py-0.5 text-[10px]` (line ~508)
 - "New" indicator card view: `px-1.5 py-0 h-4` with Sparkles icon `h-2.5 w-2.5` (line ~695)
 - Selection counter: `px-2.5 py-1` (line ~2133) - shows numeric count
 - These are **correctly sized** for their specific use cases
 
 ### ✅ 2. Table Structure
+
 **Table Header** (line ~2668):
+
 - ✅ Padding: `px-4 py-3.5` (updated from `py-3`)
 - ✅ Gap: `gap-3`
 - ✅ Font: `text-[11px] font-semibold uppercase tracking-wide`
 - ✅ Grid: `grid-cols-[40px_1fr_130px_130px_140px_100px_120px_100px_44px]`
 
 **Compact Rows** (line ~468):
+
 - ✅ Padding: `px-4 py-3`
 - ✅ Gap: `gap-3`
 - ✅ Border radius: `rounded-lg mx-1`
 - ✅ Grid matches header columns
 
 ### ✅ 3. Card Components
+
 **Processing Tracker Card** (line ~359):
+
 - ✅ Updated to: `py-4 px-5` (CardContent)
 - ✅ Icon: `h-5 w-5` with breathing animation
 - ✅ Progress bars with shimmer effect
 - ✅ Breathing pulse indicator `h-3 w-3`
 
 **Loading Skeleton Cards** (lines ~2013, 2026):
+
 - ✅ Padding: `p-5` (CardContent, standardized)
 - ✅ Shimmer animation applied
 - ✅ Consistent spacing throughout
 
 **Card View Mode** (line ~669):
+
 - ✅ Padding: `p-5` (CardContent)
 - ✅ File icon: `h-5 w-5` in gradient container
 - ✅ Gap: `gap-3` for sections
 
 ### ✅ 4. Controls & Buttons
+
 **Stats Counter Section** (line ~2380):
+
 - ✅ Gap updated: `gap-4` (between counter and text)
 - ✅ Margin: `ml-1.5` for filtered indicator
 
 **Control Buttons Group** (line ~2400):
+
 - ✅ Gap standardized: `gap-2.5`
 - ✅ Button padding: `px-3 py-1.5`
 - ✅ Icon size: `h-3.5 w-3.5` (sort arrows, download)
 - ✅ Micro-interactions: `whileHover={{ scale: 1.02 }}`, `whileTap={{ scale: 0.98 }}`
 
 **View Mode Toggle** (lines ~2460-2490):
+
 - ✅ Button size: `h-8 w-10`
 - ✅ Icon size: `h-4 w-4`
 - ✅ Shared layout animation with `layoutId="activeView"`
 - ✅ Spring physics: `{ type: "spring", bounce: 0.2, duration: 0.6 }`
 
 **Action Buttons** (Card view, lines ~779-817):
+
 - ✅ Size: `h-8 w-8 p-0`
 - ✅ Border radius: `rounded-lg`
 - ✅ Icon size: `h-4 w-4` consistent across all actions
 - ✅ Hover states with color transitions
 
 ### ✅ 5. File Icons
+
 **Compact Row** (line ~496):
+
 - ✅ Container: `w-8 h-8 rounded-lg`
 - ✅ Icon: `h-4 w-4`
 - ✅ Gradient background with hover state
 - ✅ Spring animation: `whileHover={{ rotate: 5, scale: 1.1 }}`
 
 **Card View** (line ~680):
+
 - ✅ Container: `p-2.5 rounded-xl` with gradient
 - ✅ Icon: `h-5 w-5` (larger for card context)
 - ✅ Breathing animation on "New" indicator
 
 ### ✅ 6. Search & Filter Components
+
 **Search Bar Skeleton** (line ~2026):
+
 - ✅ CardContent: `p-5`
 - ✅ Gap: `gap-4` in flex layout
 - ✅ Shimmer animation
 
 **Advanced Filter Button** (line ~2358):
+
 - ✅ Icon: `h-4 w-4 mr-2`
 - ✅ Border: `border-indigo-200`
 - ✅ Hover: `hover:bg-indigo-50 hover:border-indigo-300`
@@ -154,6 +179,7 @@ text-base     /* Default size */
 ## Consistency Patterns
 
 ### Icon Sizing by Context
+
 | Context | Size | Examples |
 |---------|------|----------|
 | Micro indicators | `h-2.5 w-2.5` | Sparkles in NEW badge |
@@ -163,6 +189,7 @@ text-base     /* Default size */
 | Feature highlights | `h-5 w-5` | Processing tracker, card view file icon |
 
 ### Gap Progression
+
 | Gap | Usage | Examples |
 |-----|-------|----------|
 | `gap-1.5` | Icon + text pairs | Badges, timestamp displays |
@@ -172,6 +199,7 @@ text-base     /* Default size */
 | `gap-4` | Major sections | Stats display, search bar skeleton |
 
 ### Padding Consistency
+
 | Element Type | Padding | Notes |
 |--------------|---------|-------|
 | Status/Risk Badges | `px-3 py-1` | Standardized across all badge types |
@@ -186,6 +214,7 @@ text-base     /* Default size */
 ## Animation Standards
 
 ### Micro-Interactions (Framer Motion)
+
 ```typescript
 // Buttons
 whileHover={{ scale: 1.02 }}
@@ -205,12 +234,14 @@ transition={{ duration: 0.3, ease: "easeInOut" }}
 ```
 
 ### Loading States
+
 - **Pulse**: `animate-pulse` for skeleton elements
 - **Shimmer**: `animate-[shimmer_2s_infinite]` for progress bars (defined in globals.css)
 - **Spin**: `animate-spin` for Loader2 icons
 - **Ping**: `animate-ping` for live indicators and "new" badges
 
 ### Breathing Animation
+
 ```typescript
 // Processing tracker and "new" indicators
 animate={{
@@ -229,12 +260,14 @@ transition={{
 ## Border Radius Strategy
 
 ### Hierarchy
+
 1. **Full Round** (`rounded-full`): Badges, indicators, circular buttons, ping effects
 2. **XL** (`rounded-xl`): Feature cards, emphasized containers, processing tracker
 3. **LG** (`rounded-lg`): Standard buttons, cards, table rows, action buttons
 4. **MD/SM**: Specific micro-elements (rare, mostly LG is default)
 
 ### Examples
+
 ```typescript
 // Badges - full round for pill shape
 className="rounded-full px-3 py-1"
@@ -251,6 +284,7 @@ className="rounded-lg hover:bg-slate-50"
 ## Verified Sections
 
 ### Core Components (All ✅)
+
 - ✅ **ContractRowSkeleton** (lines 283-323): Consistent padding and gaps
 - ✅ **ProcessingTracker** (lines 351-398): Enhanced padding `p-5`, icon sizes
 - ✅ **CompactContractRow** (lines 454-620): Gap-3, px-4 py-3, proper icon sizing
@@ -264,6 +298,7 @@ className="rounded-lg hover:bg-slate-50"
 - ✅ **Table Header** (lines 2666-2676): px-4 py-3.5, text-[11px]
 
 ### Interactive Elements (All ✅)
+
 - ✅ Sort button with rotating arrow animation
 - ✅ Export dropdown with h-3.5 w-3.5 icons
 - ✅ Keyboard shortcut button h-8 w-8
@@ -276,6 +311,7 @@ className="rounded-lg hover:bg-slate-50"
 ## Special Cases & Exceptions
 
 ### Intentionally Different Sizing
+
 1. **"New" Micro Badges**: `px-1.5 py-0.5 text-[10px]`
    - Purpose: Subtle inline indicators
    - Location: Compact rows (line 508), Card view (line 695)
@@ -297,6 +333,7 @@ className="rounded-lg hover:bg-slate-50"
    - Rationale: Subtle animation should not distract
 
 ### Contextual Icon Sizes
+
 - Compact row file icons: `h-4 w-4` (smaller for density)
 - Card view file icons: `h-5 w-5` (larger for emphasis)
 - Badge icons: `h-3.5 w-3.5` (balanced with text)
@@ -307,6 +344,7 @@ className="rounded-lg hover:bg-slate-50"
 ## Quality Metrics
 
 ### Before Audit
+
 - Mixed badge padding: px-2.5 py-0.5 vs px-3 py-1
 - Inconsistent icon sizes: h-3, h-3.5, h-4 mixed
 - Table header/body padding mismatch: py-3 vs py-3.5
@@ -314,6 +352,7 @@ className="rounded-lg hover:bg-slate-50"
 - CardContent padding: p-4 vs p-5 inconsistencies
 
 ### After Standardization ✅
+
 - **Badge padding**: 100% standardized to px-3 py-1 (except intentional micro badges)
 - **Icon sizes**: Clear hierarchy (2.5 → 3 → 3.5 → 4 → 5)
 - **Table alignment**: Header and body rows match with py-3.5
@@ -326,6 +365,7 @@ className="rounded-lg hover:bg-slate-50"
 ## Testing Recommendations
 
 ### Visual Testing
+
 1. ✅ Badge alignment across all status types
 2. ✅ Icon sizing consistency in same context (all action buttons h-4 w-4)
 3. ✅ Table header and body column alignment
@@ -333,12 +373,14 @@ className="rounded-lg hover:bg-slate-50"
 5. ✅ Gap spacing in button groups and controls
 
 ### Responsive Testing
+
 - ✅ Grid columns collapse properly on smaller screens
 - ✅ Icon sizes remain consistent across breakpoints
 - ✅ Padding scales correctly with container sizes
 - ✅ Badge text wrapping handled gracefully
 
 ### Animation Testing
+
 - ✅ Button hover scales (1.02x) feel natural
 - ✅ File icon rotation (5°) on hover smooth
 - ✅ Sort arrow rotation (180°) transitions cleanly
@@ -382,11 +424,13 @@ className="rounded-lg hover:bg-slate-50"
 ### Component-Specific Standards
 
 #### Table Rows
+
 ```typescript
 className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 ```
 
 #### Status Badge
+
 ```typescript
 <Badge className="px-3 py-1 rounded-full shadow-sm font-medium gap-1.5">
   <Icon className="h-3.5 w-3.5" />
@@ -395,6 +439,7 @@ className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 ```
 
 #### Action Button
+
 ```typescript
 <motion.button
   whileHover={{ scale: 1.02 }}
@@ -406,6 +451,7 @@ className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 ```
 
 #### Feature Card
+
 ```typescript
 <Card className="rounded-xl border-slate-200">
   <CardContent className="p-5">
@@ -422,6 +468,7 @@ className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 ## Summary
 
 ### Achievements ✅
+
 - **Standardized all badge sizing**: px-3 py-1 with h-3.5 w-3.5 icons
 - **Fixed table alignment**: Header py-3.5 matches body flow
 - **Unified card padding**: All CardContent use p-5 consistently
@@ -430,6 +477,7 @@ className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 - **Zero TypeScript errors**: All changes validated
 
 ### Design System Benefits
+
 1. **Predictability**: Developers know exact spacing for each context
 2. **Consistency**: All similar elements use identical spacing
 3. **Scalability**: Clear patterns for adding new components
@@ -437,6 +485,7 @@ className="grid grid-cols-[...] gap-3 px-4 py-3 rounded-lg"
 5. **Polish**: Pixel-perfect alignment creates premium feel
 
 ### Next-Level Polish Achieved
+
 - Micro-interactions on all buttons (hover/tap scales)
 - Shared layout animations for smooth transitions
 - Breathing animations for live indicators

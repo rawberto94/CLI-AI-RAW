@@ -52,7 +52,7 @@ export default function ImportHistoryPage() {
     switch (status) {
       case 'COMPLETED': return 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300';
       case 'FAILED': return 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300';
-      case 'PROCESSING': return 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300';
+      case 'PROCESSING': return 'bg-violet-100 dark:bg-violet-900/50 text-violet-800 dark:text-violet-300';
       case 'PENDING': return 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-300';
       case 'REQUIRES_REVIEW': return 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300';
       default: return 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-300';
@@ -75,7 +75,7 @@ export default function ImportHistoryPage() {
         );
       case 'PROCESSING':
         return (
-          <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 text-violet-600 dark:text-violet-400 animate-spin" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
@@ -98,7 +98,7 @@ export default function ImportHistoryPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
         </div>
       </div>
     );
@@ -133,7 +133,7 @@ export default function ImportHistoryPage() {
         </div>
         <Link
           href="/import/rate-cards"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
         >
           New Import
         </Link>
@@ -159,7 +159,7 @@ export default function ImportHistoryPage() {
         </div>
         <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
           <div className="text-sm text-gray-600 dark:text-slate-400">Processing</div>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+          <div className="text-2xl font-bold text-violet-600 dark:text-violet-400 mt-1">
             {jobs.filter(j => j.status === 'PROCESSING').length}
           </div>
         </div>
@@ -181,7 +181,7 @@ export default function ImportHistoryPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               <option value="all">All Statuses</option>
               <option value="COMPLETED">Completed</option>
@@ -198,7 +198,7 @@ export default function ImportHistoryPage() {
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-transparent"
             >
               <option value="all">All Sources</option>
               <option value="UPLOAD">Upload</option>
@@ -225,7 +225,7 @@ export default function ImportHistoryPage() {
           {statusFilter === 'all' && sourceFilter === 'all' && (
             <Link
               href="/import/rate-cards"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="inline-block px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
             >
               Import Rate Card
             </Link>
@@ -303,7 +303,7 @@ export default function ImportHistoryPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-center text-sm">
                       <Link
                         href={`/import/history/${job.id}`}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium"
+                        className="text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300 font-medium"
                       >
                         View Details
                       </Link>

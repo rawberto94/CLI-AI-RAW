@@ -52,8 +52,8 @@ const documentTypeConfig: Record<string, {
   contract: {
     label: 'Contracts',
     icon: FileCheck,
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: true,
   },
   purchase_order: {
@@ -66,22 +66,22 @@ const documentTypeConfig: Record<string, {
   invoice: {
     label: 'Invoices',
     icon: Receipt,
-    color: 'text-blue-600 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   quote: {
     label: 'Quotes',
     icon: FileQuestion,
-    color: 'text-purple-600 dark:text-purple-400',
-    bgColor: 'bg-purple-100 dark:bg-purple-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   proposal: {
     label: 'Proposals',
     icon: FileType2,
-    color: 'text-indigo-600 dark:text-indigo-400',
-    bgColor: 'bg-indigo-100 dark:bg-indigo-900/30',
+    color: 'text-violet-600 dark:text-indigo-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   work_order: {
@@ -94,8 +94,8 @@ const documentTypeConfig: Record<string, {
   letter_of_intent: {
     label: 'Letters of Intent',
     icon: ScrollText,
-    color: 'text-teal-600 dark:text-teal-400',
-    bgColor: 'bg-teal-100 dark:bg-teal-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: false,
   },
   memorandum: {
@@ -108,8 +108,8 @@ const documentTypeConfig: Record<string, {
   amendment: {
     label: 'Amendments',
     icon: Pen,
-    color: 'text-cyan-600 dark:text-cyan-400',
-    bgColor: 'bg-cyan-100 dark:bg-cyan-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     isContract: true,
   },
   addendum: {
@@ -135,8 +135,8 @@ const signatureConfig: Record<string, {
 }> = {
   signed: {
     label: 'Signed',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+    color: 'text-violet-600 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
   },
   partially_signed: {
     label: 'Partial',
@@ -310,7 +310,7 @@ export function DocumentTypeWidget({
               .filter(d => documentTypeConfig[d.type]?.isContract !== false)
               .reduce((sum, d) => sum + d.count, 0) > 0 && (
               <div 
-                className="bg-emerald-500 h-full"
+                className="bg-violet-500 h-full"
                 style={{ 
                   width: `${((totalDocuments - nonContractCount) / totalDocuments) * 100}%` 
                 }}
@@ -327,7 +327,7 @@ export function DocumentTypeWidget({
           </div>
           <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
             <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span className="w-2 h-2 rounded-full bg-violet-500" />
               Contracts
             </span>
             <span className="flex items-center gap-1">

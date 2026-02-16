@@ -8,7 +8,7 @@
  * - Re-extraction of low-confidence fields
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import type { Prisma } from '@prisma/client';
 import { 
@@ -20,6 +20,7 @@ import {
 import { MetadataSchemaService } from '@/lib/services/metadata-schema.service';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface ExtractRequest {
   documentText?: string;
@@ -47,6 +48,13 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body: ExtractRequest = await request.json();
     const tenantId = await getApiTenantId(request);
@@ -57,10 +65,7 @@ export async function POST(
     if (!documentText || body.useContractText) {
       const fetchedText = await getContractText(contractId);
       if (!fetchedText) {
-        return NextResponse.json(
-          { error: 'No document text available for extraction' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'No document text available for extraction', 400);
       }
       documentText = fetchedText;
     }
@@ -71,11 +76,7 @@ export async function POST(
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({
-        success: true,
-        data: generateMockExtraction(schema, documentText),
-        message: 'Extraction completed using mock data (OpenAI not configured)'
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI extraction service not configured. Please set OPENAI_API_KEY.', 503);
     }
 
     // Create extractor
@@ -116,19 +117,13 @@ export async function POST(
     // Save extraction results
     await saveExtractionResults(contractId, extractionResult);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: extractionResult
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to extract metadata',
-        details: (error as Error).message 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -140,28 +135,26 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
-  const tenantId = await getApiTenantId(request);
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const _tenantId = await getApiTenantId(request);
 
   try {
     const results = await getExtractionResults(contractId);
     
     if (!results) {
-      return NextResponse.json({
-        success: false,
-        message: 'No extraction results found for this contract'
-      }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'An error occurred', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: results
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to retrieve extraction results' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -173,6 +166,10 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id: contractId } = await params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const tenantId = await getApiTenantId(request);
 
   try {
@@ -185,10 +182,7 @@ export async function PUT(
     } = body;
 
     if (!fields || typeof fields !== 'object') {
-      return NextResponse.json(
-        { error: 'No fields provided to apply' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No fields provided to apply', 400);
     }
 
     // Filter by confidence if requested
@@ -216,7 +210,7 @@ export async function PUT(
       reason: 'metadata extraction applied',
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `Applied ${Object.keys(fieldsToApply).length} fields to contract`,
       data: {
@@ -226,11 +220,8 @@ export async function PUT(
       }
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to apply metadata' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -477,107 +468,6 @@ interface MetadataSchema {
   id: string;
   version: number;
   fields: SchemaField[];
-}
-
-function generateMockExtraction(
-  schema: MetadataSchema,
-  documentText: string
-): MetadataExtractionResult {
-  const results: ExtractionResult[] = schema.fields
-    .filter((f: SchemaField) => f.aiExtractionEnabled && !f.hidden)
-    .map((field: SchemaField) => {
-      // Generate mock value based on field type
-      const mockValue = generateMockValue(field, documentText);
-      const confidence = Math.random() * 0.4 + 0.5; // 50-90%
-
-      return {
-        fieldId: field.id,
-        fieldName: field.name,
-        fieldLabel: field.label,
-        fieldType: field.type as ExtractionResult['fieldType'],
-        category: field.category ?? 'general',
-        value: mockValue as ExtractionResult['value'],
-        rawValue: String(mockValue || ''),
-        confidence,
-        confidenceExplanation: 'Mock extraction (OpenAI not configured)',
-        source: { text: 'Mock source' },
-        alternatives: [],
-        validationStatus: confidence >= 0.7 ? 'valid' : 'needs_review',
-        validationMessages: [],
-        suggestions: [],
-        requiresHumanReview: confidence < 0.7,
-      };
-    });
-
-  const extracted = results.filter((r: ExtractionResult) => r.value !== null);
-
-  return {
-    schemaId: schema.id,
-    schemaVersion: schema.version,
-    extractedAt: new Date(),
-    results,
-    summary: {
-      totalFields: results.length,
-      extractedFields: extracted.length,
-      highConfidenceFields: results.filter((r: ExtractionResult) => r.confidence >= 0.8).length,
-      lowConfidenceFields: results.filter((r: ExtractionResult) => r.confidence < 0.6).length,
-      failedFields: results.filter((r: ExtractionResult) => r.value === null).length,
-      averageConfidence: extracted.length > 0
-        ? extracted.reduce((sum: number, r: ExtractionResult) => sum + r.confidence, 0) / extracted.length
-        : 0,
-      extractionTime: 100,
-      passesCompleted: 1,
-    },
-    rawExtractions: results.reduce((acc: Record<string, unknown>, r: ExtractionResult) => ({
-      ...acc,
-      [r.fieldName]: r.value
-    }), {}),
-    warnings: ['Mock extraction - OpenAI not configured'],
-    processingNotes: ['Using mock data for demonstration'],
-  };
-}
-
-function generateMockValue(field: SchemaField, documentText: string): unknown {
-  switch (field.type) {
-    case 'date':
-      return new Date().toISOString().split('T')[0];
-    case 'datetime':
-      return new Date().toISOString();
-    case 'number':
-      return Math.floor(Math.random() * 1000);
-    case 'currency':
-      return Math.floor(Math.random() * 100000);
-    case 'percentage':
-      return Math.floor(Math.random() * 100);
-    case 'boolean':
-      return Math.random() > 0.5;
-    case 'select':
-      if (field.options && field.options.length > 0) {
-        return field.options[Math.floor(Math.random() * field.options.length)].value;
-      }
-      return null;
-    case 'multiselect':
-      if (field.options && field.options.length > 0) {
-        const count = Math.floor(Math.random() * 3) + 1;
-        return field.options.slice(0, count).map((o: { value: string; label: string }) => o.value);
-      }
-      return [];
-    case 'email':
-      return 'contact@example.com';
-    case 'url':
-      return 'https://example.com';
-    case 'phone':
-      return '+1-555-123-4567';
-    case 'duration':
-      return 365; // days
-    default:
-      // Try to extract something from document text
-      if (field.name.includes('name') || field.name.includes('title')) {
-        const match = documentText.match(/(?:agreement|contract)\s+(?:for|between|with)?\s*([A-Z][A-Za-z\s]+)/);
-        return match && match[1] ? match[1].trim() : 'Sample Contract';
-      }
-      return `Sample ${field.label}`;
-  }
 }
 
 /**

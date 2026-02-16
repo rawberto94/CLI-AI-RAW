@@ -1,4 +1,5 @@
 # E2E Test Execution Summary
+
 **Date**: October 30, 2025  
 **Test Framework**: Playwright 1.56.1  
 **Browser**: Chromium  
@@ -24,9 +25,11 @@
 ## Test Suite Details
 
 ### ✅ 02-dashboard.e2e.spec.ts (100% Pass - 8/8)
+
 **Status**: Perfect! All tests passing.
 
 **Passing Tests**:
+
 - ✅ Display dashboard page title
 - ✅ Display key performance metrics
 - ✅ Display recent contracts or activities
@@ -37,6 +40,7 @@
 - ✅ Display data mode toggle (Real/Demo)
 
 **Key Success Factors**:
+
 - Simple page structure without complex navigation
 - Well-defined components with clear roles
 - Graceful handling of optional elements
@@ -44,9 +48,11 @@
 ---
 
 ### ✅ 05-analytics.e2e.spec.ts (75% Pass - 15/20)
+
 **Status**: Good! Most tests passing.
 
 **Passing Tests** (15):
+
 - ✅ Show analytics charts
 - ✅ Display key metrics
 - ✅ Allow date range filtering
@@ -64,11 +70,13 @@
 - ✅ Show upcoming renewals
 
 **Failing Tests** (3):
+
 - ❌ Display analytics dashboard (strict mode - multiple headings)
 - ❌ Show procurement metrics (element hidden)
 - ❌ Display artifacts analytics (page not found)
 
 **Recommendations**:
+
 - Use `.first()` on heading selectors to avoid strict mode violations
 - Check visibility states for metrics
 - Verify `/analytics/artifacts` route exists
@@ -76,9 +84,11 @@
 ---
 
 ### ⚠️ 04-rate-cards.e2e.spec.ts (27% Pass - 9/33)
+
 **Status**: Partial success with page crashes.
 
 **Passing Tests** (9):
+
 - ✅ Display rate cards dashboard
 - ✅ Display benchmarking page
 - ✅ Show benchmark statistics
@@ -90,6 +100,7 @@
 - ✅ Switch between dashboard and repository views
 
 **Failing Tests** (5):
+
 - ❌ Show key metrics and statistics (elements not found)
 - ❌ Display import buttons (elements not found)
 - ❌ Open manual entry dialog (page crash)
@@ -97,6 +108,7 @@
 - ❌ Open contract extraction dialog (timeout/crash)
 
 **Critical Issues**:
+
 - Page crashes when navigating back to `/rate-cards/benchmarking` after previous tests
 - Dialog/modal selectors may not match actual components
 - Import buttons not present on dashboard
@@ -104,17 +116,21 @@
 ---
 
 ### ⚠️ 01-navigation.e2e.spec.ts (10% Pass - 1/10)
+
 **Status**: Navigation issues with strict mode violations.
 
 **Passing Tests** (1):
+
 - ✅ Navigate to dashboard
 
 **Failing Tests** (3):
+
 - ❌ Display main navigation (strict mode - 2 "Contracts" buttons)
 - ❌ Navigate to contracts section (URL didn't change)
 - ❌ Navigate to rate cards section (URL didn't change)
 
 **Issues**:
+
 - Multiple elements match `/contracts/i` selector (sidebar + search button)
 - Submenu items don't navigate correctly
 - Need more specific selectors using data-testid
@@ -122,14 +138,17 @@
 ---
 
 ### ❌ 03-contracts.e2e.spec.ts (0% Pass - 0/16)
+
 **Status**: Critical - Page crashes immediately.
 
 **Issues**:
+
 - Page crashes on `/contracts` route
 - `ERR_CONNECTION_REFUSED` after crash
 - Server becomes unstable after first crash
 
 **Investigation Needed**:
+
 - Check for errors in `/contracts` page component
 - Review server logs for crash details
 - May have memory leak or infinite render loop
@@ -137,14 +156,17 @@
 ---
 
 ### ❌ 06-search.e2e.spec.ts (0% Pass - 0/19)
+
 **Status**: Critical - Page crashes immediately.
 
 **Issues**:
+
 - Page crashes on `/search` route
 - Similar pattern to contracts page crash
 - Causes server instability
 
 **Investigation Needed**:
+
 - Check for errors in `/search` page component
 - May be related to RAG/vector search initialization
 - Review dependencies and API calls
@@ -154,14 +176,17 @@
 ## Critical Issues Found
 
 ### 🔴 Priority 1: Page Crashes
+
 **Affected Pages**: `/contracts`, `/search`
 
 **Symptoms**:
+
 - Page crashes immediately on navigation
 - Server becomes unstable (connection refused)
 - Tests cannot proceed
 
 **Recommended Actions**:
+
 1. Review server logs during crash: `tail -f /tmp/server.log`
 2. Check browser console for errors
 3. Look for infinite loops or memory leaks in:
@@ -171,11 +196,13 @@
 5. Check for unhandled promises or errors
 
 ### 🟡 Priority 2: Strict Mode Violations
+
 **Affected Tests**: Navigation, Analytics
 
 **Issue**: Multiple elements match the same selector
 
 **Solution**:
+
 ```typescript
 // Bad (matches multiple elements)
 page.getByRole('button', { name: /contracts/i })
@@ -188,16 +215,19 @@ page.locator('[data-testid="contracts-nav-button"]')
 ```
 
 **Recommended Actions**:
+
 1. Add `data-testid` attributes to navigation components
 2. Use `.first()` where appropriate
 3. Make selectors more specific (exact names, nested selectors)
 
 ### 🟡 Priority 3: Missing Elements
+
 **Affected**: Rate cards dashboard, import buttons
 
 **Issue**: Expected buttons/metrics not found on pages
 
 **Recommended Actions**:
+
 1. Verify button text matches selectors
 2. Check if elements are conditionally rendered
 3. Add fallback selectors
@@ -216,18 +246,21 @@ page.locator('[data-testid="contracts-nav-button"]')
 ## Recommendations
 
 ### Immediate Actions (Today)
+
 1. **Fix page crashes**: Investigate `/contracts` and `/search` pages
 2. **Add data-testid attributes**: Improve selector reliability
 3. **Fix strict mode violations**: Update navigation tests
 4. **Review server logs**: Identify crash root causes
 
 ### Short-term (This Week)
+
 1. **Run remaining test suites**: import, monitoring, settings, compliance, integration
 2. **Add test data seeding**: Ensure consistent test data
 3. **Improve error handling**: Add try-catch in pages
 4. **Add loading states**: Prevent premature test execution
 
 ### Long-term (This Sprint)
+
 1. **Add CI/CD integration**: Automated test runs
 2. **Implement visual regression testing**: Screenshot comparison
 3. **Add test coverage reporting**: Track coverage metrics
@@ -237,6 +270,7 @@ page.locator('[data-testid="contracts-nav-button"]')
 ## Test Patterns to Follow
 
 ### ✅ Good Pattern (Dashboard Tests)
+
 ```typescript
 test('should display key metrics', async ({ page }) => {
   await page.goto('/dashboard');
@@ -250,6 +284,7 @@ test('should display key metrics', async ({ page }) => {
 ```
 
 ### ❌ Pattern Causing Issues
+
 ```typescript
 test('should navigate', async ({ page }) => {
   // Multiple elements match - strict mode violation
@@ -265,10 +300,12 @@ test('should navigate', async ({ page }) => {
 
 1. **Fix critical crashes** in contracts and search pages
 2. **Add `data-testid` attributes** to navigation components:
+
    ```tsx
    <button data-testid="nav-contracts-button">Contracts</button>
    <button data-testid="nav-rate-cards-button">Rate Cards</button>
    ```
+
 3. **Update failing tests** with better selectors
 4. **Run remaining test suites** (7-11) once stability improves
 5. **Create test fixtures** for consistent data
@@ -287,18 +324,21 @@ test('should navigate', async ({ page }) => {
 ## Summary
 
 ✅ **Wins**:
+
 - Dashboard tests: 100% pass rate
 - Analytics tests: 75% pass rate
 - Rate card benchmarking: Most tests passing
 - Infrastructure stable when pages don't crash
 
 ⚠️ **Challenges**:
+
 - Page crashes on contracts and search routes
 - Strict mode violations in navigation
 - Server becomes unstable after crashes
 - Some elements not found (may not exist yet)
 
 🎯 **Focus Areas**:
+
 1. Fix `/contracts` page crash (blocks 16 tests)
 2. Fix `/search` page crash (blocks 19 tests)
 3. Add data-testid attributes (improves reliability)

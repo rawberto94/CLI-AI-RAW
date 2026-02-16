@@ -4,10 +4,11 @@
  * Get, update, delete a specific playbook
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
 import { getSessionTenantId } from '@/lib/tenant-server';
-import { getLegalReviewService } from '@repo/data-orchestration';
+import { getLegalReviewService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -18,11 +19,12 @@ interface RouteParams {
 // ============================================================================
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
     const tenantId = getSessionTenantId(session);
@@ -31,22 +33,15 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const playbook = await legalReviewService.getPlaybook(id, tenantId);
 
     if (!playbook) {
-      return NextResponse.json(
-        { error: 'Playbook not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Playbook not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       playbook,
     });
   } catch (error) {
-    console.error('Failed to get playbook:', error);
-    return NextResponse.json(
-      { error: 'Failed to get playbook' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -55,11 +50,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 // ============================================================================
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const { id } = await params;
     const tenantId = getSessionTenantId(session);
@@ -68,16 +64,12 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     const legalReviewService = getLegalReviewService();
     const playbook = await legalReviewService.updatePlaybook(id, tenantId, body);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       playbook,
     });
   } catch (error) {
-    console.error('Failed to update playbook:', error);
-    return NextResponse.json(
-      { error: 'Failed to update playbook' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -86,26 +78,22 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 // ============================================================================
 
 export async function DELETE(request: NextRequest, { params }: RouteParams) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
-    const { id } = await params;
+    const { id: _id } = await params;
 
     // In a full implementation, delete from database
     // For now, return success
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Playbook deleted',
     });
   } catch (error) {
-    console.error('Failed to delete playbook:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete playbook' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

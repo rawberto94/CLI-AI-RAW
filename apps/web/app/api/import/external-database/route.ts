@@ -3,9 +3,10 @@
  * POST /api/import/external-database - Import contracts from external database
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import {
   testConnection,
   listTables,
@@ -28,83 +29,61 @@ interface ImportRequest {
   };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json() as ImportRequest;
-    const { action, config, tableName, mapping, options } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await getServerTenantId();
+  const body = await request.json() as ImportRequest;
+  const { action, config, tableName, mapping, options } = body;
 
-    // Validate config
-    if (!config || !config.type || !config.host || !config.database) {
-      return NextResponse.json(
-        { error: 'Invalid database configuration' },
-        { status: 400 }
-      );
-    }
-
-    switch (action) {
-      case 'test': {
-        const result = await testConnection(config);
-        return NextResponse.json(result);
-      }
-
-      case 'list-tables': {
-        const tables = await listTables(config);
-        return NextResponse.json({ tables });
-      }
-
-      case 'preview': {
-        if (!tableName) {
-          return NextResponse.json(
-            { error: 'Table name required for preview' },
-            { status: 400 }
-          );
-        }
-        const preview = await previewTable(config, tableName, 10);
-        return NextResponse.json(preview);
-      }
-
-      case 'import': {
-        if (!tableName || !mapping) {
-          return NextResponse.json(
-            { error: 'Table name and mapping required for import' },
-            { status: 400 }
-          );
-        }
-
-        const result = await importFromExternalDatabase(
-          config,
-          tableName,
-          mapping,
-          {
-            tenantId,
-            batchSize: options?.batchSize || 100,
-            triggerProcessing: options?.triggerProcessing ?? true,
-            limit: options?.limit,
-            offset: options?.offset,
-          }
-        );
-
-        return NextResponse.json(result);
-      }
-
-      default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: test, list-tables, preview, or import' },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Import failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+  // Validate config
+  if (!config || !config.type || !config.host || !config.database) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid database configuration', 400);
   }
-}
 
-export async function OPTIONS(request: NextRequest) {
+  switch (action) {
+    case 'test': {
+      const result = await testConnection(config);
+      return createSuccessResponse(ctx, result);
+    }
+
+    case 'list-tables': {
+      const tables = await listTables(config);
+      return createSuccessResponse(ctx, { tables });
+    }
+
+    case 'preview': {
+      if (!tableName) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Table name required for preview', 400);
+      }
+      const preview = await previewTable(config, tableName, 10);
+      return createSuccessResponse(ctx, preview);
+    }
+
+    case 'import': {
+      if (!tableName || !mapping) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Table name and mapping required for import', 400);
+      }
+
+      const result = await importFromExternalDatabase(
+        config,
+        tableName,
+        mapping,
+        {
+          tenantId,
+          batchSize: options?.batchSize || 100,
+          triggerProcessing: options?.triggerProcessing ?? true,
+          limit: options?.limit,
+          offset: options?.offset,
+        }
+      );
+
+      return createSuccessResponse(ctx, result);
+    }
+
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action. Use: test, list-tables, preview, or import', 400);
+  }
+});
+
+export const OPTIONS = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cors.optionsResponse(request, 'POST, OPTIONS');
-}
+});

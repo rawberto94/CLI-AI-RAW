@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DashboardLayout } from "@/components/layout/AppLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,11 +28,13 @@ import {
   FileUp,
   Bot,
   Target,
+  LayoutGrid,
 } from "lucide-react";
 import Link from "next/link";
 import { DashboardSkeleton } from "@/components/ui/skeletons";
 import { useRealTimeEvents } from "@/contexts/RealTimeContext";
-import { FloatingAIBubble } from "@/components/ai/FloatingAIBubble";
+import ContractLifecyclePipeline from "@/components/dashboard/ContractLifecyclePipeline";
+import CustomDashboardBuilder, { type DashboardWidget} from "@/components/dashboard/CustomDashboardBuilder";
 
 interface DashboardData {
   overview: {
@@ -54,19 +56,24 @@ interface DashboardData {
   complianceScore: number;
 }
 
-const fetchDashboardData = async (): Promise<{ stats: DashboardData | null }> => {
+const fetchDashboardData = async (): Promise<{ stats: DashboardData | null; recentContracts: Array<{ id: string; fileName: string; status: string; createdAt: string }> }> => {
   const dataMode = typeof window !== 'undefined' ? localStorage.getItem('dataMode') || 'real' : 'real';
   const headers = { 'x-data-mode': dataMode };
   
   try {
-    const statsRes = await fetch('/api/dashboard/stats', { headers });
+    const [statsRes, contractsRes] = await Promise.all([
+      fetch('/api/dashboard/stats', { headers }),
+      fetch('/api/contracts?limit=4&sortBy=createdAt&sortOrder=desc', { headers }),
+    ]);
     const statsData = statsRes.ok ? await statsRes.json() : { success: false };
+    const contractsData = contractsRes.ok ? await contractsRes.json() : { success: false, data: [] };
     
     return {
       stats: statsData.success ? statsData.data : null,
+      recentContracts: contractsData.success ? (contractsData.data?.contracts || contractsData.data || []).slice(0, 4) : [],
     };
   } catch {
-    return { stats: null };
+    return { stats: null, recentContracts: [] };
   }
 };
 
@@ -95,7 +102,7 @@ const quickActions = [
     label: "Upload Contract",
     description: "Add new contracts",
     href: "/upload",
-    gradient: "from-blue-500 to-cyan-500",
+    gradient: "from-violet-500 to-purple-500",
   },
   {
     icon: Zap,
@@ -116,26 +123,50 @@ const quickActions = [
     label: "Renewals",
     description: "Track renewals",
     href: "/renewals",
-    gradient: "from-green-500 to-emerald-500",
+    gradient: "from-violet-500 to-violet-500",
   },
   {
     icon: MessageSquare,
     label: "AI Assistant",
     description: "Ask about contracts",
     href: "/ai/chat",
-    gradient: "from-purple-500 to-pink-500",
+    gradient: "from-violet-500 to-pink-500",
   },
   {
     icon: Search,
     label: "Search",
     description: "Find contracts",
     href: "/search",
-    gradient: "from-emerald-500 to-teal-500",
+    gradient: "from-violet-500 to-violet-500",
   },
 ];
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
+  const [customizerOpen, setCustomizerOpen] = useState(false);
+  const [dashboardWidgets, setDashboardWidgets] = useState<DashboardWidget[]>(() => {
+    // Load persisted widget configuration from localStorage
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('contigo-dashboard-widgets');
+        if (saved) return JSON.parse(saved);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return [];
+  });
+
+  // Persist widget configuration to localStorage on change
+  useEffect(() => {
+    if (dashboardWidgets.length > 0) {
+      try {
+        localStorage.setItem('contigo-dashboard-widgets', JSON.stringify(dashboardWidgets));
+      } catch {
+        // Ignore storage errors
+      }
+    }
+  }, [dashboardWidgets]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['dashboard'],
@@ -146,6 +177,7 @@ export default function DashboardPage() {
   });
 
   const dashboardData = data?.stats || null;
+  const recentContracts = data?.recentContracts || [];
 
   // Real-time updates
   const eventHandlers = useMemo(() => ({
@@ -181,6 +213,16 @@ export default function DashboardPage() {
           <Button 
             size="sm" 
             variant="outline" 
+            onClick={() => setCustomizerOpen(true)}
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
+            aria-label="Customize dashboard layout"
+          >
+            <LayoutGrid className="h-4 w-4 mr-2" aria-hidden="true" />
+            Customize
+          </Button>
+          <Button 
+            size="sm" 
+            variant="outline" 
             onClick={() => queryClient.invalidateQueries({ queryKey: ['dashboard'] })}
             className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm"
             aria-label="Refresh dashboard data"
@@ -191,7 +233,7 @@ export default function DashboardPage() {
           <Button 
             size="sm" 
             asChild
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25"
           >
             <Link href="/upload">
               <Plus className="h-4 w-4 mr-2" />
@@ -280,13 +322,13 @@ export default function DashboardPage() {
           {/* Total Contracts */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                     <FileText className="h-5 w-5" />
                   </div>
-                  <Link href="/contracts" className="text-xs text-muted-foreground hover:text-blue-600 flex items-center gap-1">
+                  <Link href="/contracts" className="text-xs text-muted-foreground hover:text-violet-600 flex items-center gap-1">
                     View All <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
@@ -296,8 +338,8 @@ export default function DashboardPage() {
                     {dashboardData.overview.totalContracts.toLocaleString()}
                   </p>
                   <div className="flex items-center gap-2 pt-2">
-                    <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-400 dark:border-emerald-800">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mr-1.5 animate-pulse" />
+                    <Badge variant="outline" className="px-3 py-1 bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-400 dark:border-violet-800">
+                      <span className="w-1.5 h-1.5 rounded-full bg-violet-500 mr-1.5 animate-pulse" />
                       {dashboardData.overview.activeContracts} active
                     </Badge>
                   </div>
@@ -351,19 +393,19 @@ export default function DashboardPage() {
           {/* Portfolio Value */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg shadow-emerald-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                     <TrendingUp className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                  <Badge variant="outline" className="px-3 py-1 bg-violet-50 text-violet-700 border-violet-200 text-xs">
                     <TrendingUp className="h-3.5 w-3.5 mr-1" /> +12%
                   </Badge>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Portfolio Value</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-emerald-700 to-emerald-500 dark:from-emerald-400 dark:to-emerald-300 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-700 to-violet-500 dark:from-violet-400 dark:to-violet-300 bg-clip-text text-transparent">
                     {formatCurrency(dashboardData.overview.portfolioValue)}
                   </p>
                   <p className="text-xs text-muted-foreground pt-2">
@@ -377,19 +419,19 @@ export default function DashboardPage() {
           {/* Recently Added */}
           <motion.div variants={itemVariants} className="h-full">
             <Card className="group relative overflow-hidden bg-white dark:bg-slate-900 border-slate-200/60 dark:border-slate-700/60 shadow-lg hover:shadow-xl transition-all duration-300 h-full">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
               <CardContent className="p-6 h-full flex flex-col">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white shadow-lg shadow-purple-500/30 group-hover:scale-110 transition-transform duration-300">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30 group-hover:scale-110 transition-transform duration-300">
                     <Plus className="h-5 w-5" />
                   </div>
-                  <Link href="/upload" className="text-xs text-muted-foreground hover:text-purple-600 flex items-center gap-1">
+                  <Link href="/upload" className="text-xs text-muted-foreground hover:text-violet-600 flex items-center gap-1">
                     Upload <ArrowRight className="h-3 w-3" />
                   </Link>
                 </div>
                 <div className="space-y-1">
                   <p className="text-sm font-medium text-muted-foreground">Recently Added</p>
-                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-700 to-indigo-500 dark:from-purple-400 dark:to-indigo-300 bg-clip-text text-transparent">
+                  <p className="text-3xl font-bold tracking-tight bg-gradient-to-r from-violet-700 to-purple-500 dark:from-violet-400 dark:to-purple-300 bg-clip-text text-transparent">
                     +{dashboardData.overview.recentlyAdded}
                   </p>
                   <p className="text-xs text-muted-foreground pt-2">
@@ -409,7 +451,7 @@ export default function DashboardPage() {
                   <div className="p-3 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30 group-hover:scale-110 transition-transform duration-300">
                     <CheckCircle className="h-5 w-5" />
                   </div>
-                  <Badge variant="outline" className="px-3 py-1 bg-emerald-50 text-emerald-700 border-emerald-200 text-xs">
+                  <Badge variant="outline" className="px-3 py-1 bg-violet-50 text-violet-700 border-violet-200 text-xs">
                     Low Risk
                   </Badge>
                 </div>
@@ -430,13 +472,18 @@ export default function DashboardPage() {
           </motion.div>
         </div>
 
+        {/* Contract Lifecycle Pipeline */}
+        <motion.div variants={itemVariants}>
+          <ContractLifecyclePipeline />
+        </motion.div>
+
         {/* Quick Actions */}
         <motion.div variants={itemVariants}>
           <Card className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-slate-200/60 dark:border-slate-700/60 shadow-lg">
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-500/30">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30">
                     <Zap className="h-5 w-5" />
                   </div>
                   <div>
@@ -488,7 +535,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg shadow-blue-500/30">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/30">
                       <FolderOpen className="h-5 w-5" />
                     </div>
                     <div>
@@ -496,42 +543,48 @@ export default function DashboardPage() {
                       <p className="text-sm text-muted-foreground">Your latest additions</p>
                     </div>
                   </div>
-                  <Button variant="ghost" size="sm" asChild className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                  <Button variant="ghost" size="sm" asChild className="text-violet-600 hover:text-violet-700 hover:bg-violet-50">
                     <Link href="/contracts">View All</Link>
                   </Button>
                 </div>
               </CardHeader>
               <CardContent className="p-5">
                 <div className="space-y-3">
-                  {[1, 2, 3, 4].map((_, idx) => (
+                  {recentContracts.length > 0 ? recentContracts.map((contract: { id: string; fileName?: string; originalName?: string; status?: string; createdAt?: string }, idx: number) => (
                     <motion.div
-                      key={idx}
+                      key={contract.id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.1 * idx }}
                       className="group flex items-center gap-4 p-4 rounded-xl border border-slate-200/60 dark:border-slate-700/60 bg-slate-50/50 dark:bg-slate-800/50 hover:bg-white dark:hover:bg-slate-800 hover:shadow-md transition-all duration-200 cursor-pointer"
                     >
-                      <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                      <div className="p-2 rounded-lg bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400">
                         <FileText className="h-4 w-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="font-medium text-sm truncate text-slate-900 dark:text-white">
-                          Sample Contract {idx + 1}
+                          {contract.originalName || contract.fileName || `Contract ${contract.id.slice(0, 8)}`}
                         </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-2">
                           <Clock className="h-3 w-3" />
-                          Added recently
+                          {contract.createdAt ? new Date(contract.createdAt).toLocaleDateString() : 'Recently added'}
                         </p>
                       </div>
-                      <Badge variant="outline" className="px-3 py-1 text-xs bg-emerald-50 text-emerald-700 border-emerald-200">
-                        Active
+                      <Badge variant="outline" className="px-3 py-1 text-xs bg-violet-50 text-violet-700 border-violet-200">
+                        {contract.status || 'Active'}
                       </Badge>
                     </motion.div>
-                  ))}
+                  )) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">No contracts yet</p>
+                      <p className="text-xs mt-1">Upload your first contract to get started</p>
+                    </div>
+                  )}
                 </div>
                 <Button 
                   variant="outline" 
-                  className="w-full mt-4 border-dashed border-slate-300 dark:border-slate-600 hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-950/30"
+                  className="w-full mt-4 border-dashed border-slate-300 dark:border-slate-600 hover:border-violet-400 hover:bg-violet-50/50 dark:hover:bg-violet-950/30"
                   asChild
                 >
                   <Link href="/contracts">
@@ -549,7 +602,7 @@ export default function DashboardPage() {
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white">
                       <Bot className="h-5 w-5" />
                     </div>
                     <div>
@@ -610,10 +663,10 @@ export default function DashboardPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {dashboardData.breakdown.byStatus.slice(0, 4).map((item, idx) => {
                   const colors = [
-                    { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', bar: 'bg-blue-500' },
-                    { bg: 'bg-emerald-100 dark:bg-emerald-900/30', text: 'text-emerald-700 dark:text-emerald-300', bar: 'bg-emerald-500' },
+                    { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
+                    { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
                     { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', bar: 'bg-amber-500' },
-                    { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', bar: 'bg-purple-500' },
+                    { bg: 'bg-violet-100 dark:bg-violet-900/30', text: 'text-violet-700 dark:text-violet-300', bar: 'bg-violet-500' },
                   ];
                   const defaultColor = { bg: 'bg-gray-100', text: 'text-gray-700', bar: 'bg-gray-500' };
                   const color = colors[idx % colors.length] ?? defaultColor;
@@ -655,8 +708,13 @@ export default function DashboardPage() {
         </motion.div>
       </motion.div>
 
-      {/* Floating AI Assistant */}
-      <FloatingAIBubble />
+      {/* Dashboard Customizer Dialog */}
+      <CustomDashboardBuilder
+        open={customizerOpen}
+        onOpenChange={setCustomizerOpen}
+        onSave={setDashboardWidgets}
+        currentWidgets={dashboardWidgets.length > 0 ? dashboardWidgets : undefined}
+      />
     </DashboardLayout>
   );
 }

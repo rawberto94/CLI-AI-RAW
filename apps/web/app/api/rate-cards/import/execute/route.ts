@@ -4,29 +4,20 @@
  * Executes batch import of validated rate cards
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEvents, roleStandardizationService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
+export const POST = withAuthApiHandler(async (request, ctx) => {    const tenantId = ctx.tenantId;
+    const userId = ctx.userId;
     
     const body = await request.json();
 
     const { rows } = body;
 
     if (!rows || !Array.isArray(rows)) {
-      return NextResponse.json(
-        { error: 'Invalid request. Expected rows array.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid request. Expected rows array.', 400);
     }
 
     const results = {
@@ -207,7 +198,7 @@ export async function POST(request: NextRequest) {
       await rateCardEvents.imported(results.imported, tenantId, 'CSV_IMPORT');
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       imported: results.imported,
       failed: results.failed,
@@ -217,13 +208,4 @@ export async function POST(request: NextRequest) {
         results.failed > 0 ? ` (${results.failed} failed)` : ''
       }`,
     });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        error: 'Failed to execute import',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

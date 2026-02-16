@@ -1,24 +1,29 @@
 # Secrets Management Strategy
 
 ## Overview
+
 This guide covers secrets management for production deployment of the Contract Intelligence Platform.
 
 ## Secrets Categories
 
 ### 1. Database Credentials
+
 - `POSTGRES_PASSWORD` - PostgreSQL password
 - `DATABASE_URL` - Full PostgreSQL connection string
 
 ### 2. Authentication
+
 - `AUTH_SECRET` - NextAuth JWT signing secret (32+ characters)
 - `NEXTAUTH_URL` - Full application URL for NextAuth
 
 ### 3. External Services
+
 - `OPENAI_API_KEY` - OpenAI API key for AI features
 - `MINIO_ROOT_USER` - MinIO admin username (production)
 - `MINIO_ROOT_PASSWORD` - MinIO admin password (production)
 
 ### 4. Application Secrets
+
 - `JWT_SECRET` - Application JWT signing secret
 - `ENCRYPTION_KEY` - Data encryption key (if implemented)
 
@@ -38,6 +43,7 @@ secrets:
 ```
 
 Required GitHub Secrets:
+
 - `DATABASE_URL` - PostgreSQL connection string
 - `AUTH_SECRET` - NextAuth secret (generate with `openssl rand -base64 32`)
 - `OPENAI_API_KEY` - OpenAI API key
@@ -61,6 +67,7 @@ export async function getSecret(secretName: string): Promise<string> {
 ```
 
 Secrets structure in AWS:
+
 ```json
 {
   "contract-intelligence/production/database": {
@@ -114,6 +121,7 @@ secrets:
 ```
 
 Create secrets:
+
 ```bash
 echo "postgresql://..." | docker secret create database_url -
 echo "secret123" | docker secret create auth_secret -
@@ -123,16 +131,19 @@ echo "sk-..." | docker secret create openai_api_key -
 ## Secret Generation
 
 ### Generate AUTH_SECRET (NextAuth)
+
 ```bash
 openssl rand -base64 32
 ```
 
 ### Generate Database Password
+
 ```bash
 openssl rand -base64 24
 ```
 
 ### Generate MinIO Credentials
+
 ```bash
 # Username (20 characters)
 openssl rand -hex 10
@@ -144,6 +155,7 @@ openssl rand -base64 30
 ## Environment Variables
 
 ### Production .env Template
+
 ```bash
 # Database
 POSTGRES_DB=contract_intelligence
@@ -185,11 +197,13 @@ LOG_LEVEL=info
 ## Security Best Practices
 
 ### 1. Never Commit Secrets
+
 - Add `.env*` to `.gitignore`
 - Use `.env.example` for template
 - Scan commits with `git-secrets` or `truffleHog`
 
 ### 2. Rotate Secrets Regularly
+
 ```bash
 # Quarterly rotation schedule
 - Database passwords: Every 90 days
@@ -198,6 +212,7 @@ LOG_LEVEL=info
 ```
 
 ### 3. Use Different Secrets Per Environment
+
 ```
 development/.env
 staging/.env
@@ -205,11 +220,13 @@ production/.env
 ```
 
 ### 4. Restrict Access
+
 - Use IAM roles for service-to-service communication
 - Implement least privilege principle
 - Audit secret access logs
 
 ### 5. Encrypt at Rest
+
 - Use encrypted volumes for database
 - Enable S3/MinIO encryption
 - Store backups in encrypted form
@@ -217,6 +234,7 @@ production/.env
 ## CI/CD Integration
 
 ### GitHub Actions Example
+
 ```yaml
 - name: Deploy to production
   env:
@@ -228,6 +246,7 @@ production/.env
 ```
 
 ### AWS ECS Task Definition
+
 ```json
 {
   "containerDefinitions": [{
@@ -248,6 +267,7 @@ production/.env
 ## Secrets Verification
 
 Before deployment, verify all required secrets:
+
 ```bash
 #!/bin/bash
 # scripts/verify-secrets.sh
@@ -274,12 +294,14 @@ echo "All required secrets are set"
 ## Emergency Procedures
 
 ### Secret Compromise
+
 1. Immediately rotate compromised secret
 2. Update all instances using the secret
 3. Review access logs for unauthorized usage
 4. Document incident for audit trail
 
 ### Lost Secrets
+
 1. Use backup recovery procedure
 2. Generate new secrets if backup unavailable
 3. Update all dependent services

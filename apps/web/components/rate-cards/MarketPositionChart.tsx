@@ -9,7 +9,7 @@ interface MarketPositionChartProps {
 export function MarketPositionChart({ metrics }: MarketPositionChartProps) {
   const percentiles = [
     { label: 'P25', value: 25, color: 'bg-green-500' },
-    { label: 'P50', value: 50, color: 'bg-blue-500' },
+    { label: 'P50', value: 50, color: 'bg-violet-500' },
     { label: 'P75', value: 75, color: 'bg-yellow-500' },
     { label: 'P90', value: 90, color: 'bg-red-500' },
   ];
@@ -24,7 +24,7 @@ export function MarketPositionChart({ metrics }: MarketPositionChartProps) {
       <CardContent>
         <div className="space-y-6">
           {/* Visual representation */}
-          <div className="relative h-16 bg-gradient-to-r from-green-100 via-yellow-100 to-red-100 rounded-lg">
+          <div className="relative h-16 bg-gradient-to-r from-violet-100 via-yellow-100 to-red-100 rounded-lg">
             {/* Percentile markers */}
             {percentiles.map((p) => (
               <div
@@ -40,7 +40,7 @@ export function MarketPositionChart({ metrics }: MarketPositionChartProps) {
 
             {/* Your position marker */}
             <div
-              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-lg"
+              className="absolute top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-violet-600 border-2 border-white shadow-lg"
               style={{ left: `${yourPosition}%`, marginLeft: '-8px' }}
             >
               <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 whitespace-nowrap text-sm font-semibold">
@@ -56,7 +56,7 @@ export function MarketPositionChart({ metrics }: MarketPositionChartProps) {
               <span className="text-sm">Excellent (90-100)</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-blue-500" />
+              <div className="w-3 h-3 rounded-full bg-violet-500" />
               <span className="text-sm">Good (75-89)</span>
             </div>
             <div className="flex items-center gap-2">

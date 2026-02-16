@@ -31,6 +31,7 @@ exports.QUEUE_NAMES = {
     WEBHOOK_DELIVERY: 'webhook-delivery',
     RATE_CARD_IMPORT: 'rate-card-import',
     BENCHMARK_CALCULATION: 'benchmark-calculation',
+    EMBEDDING_REFRESH: 'embedding-refresh',
 };
 exports.JOB_NAMES = {
     PROCESS_CONTRACT: 'process-contract',
@@ -41,6 +42,7 @@ exports.JOB_NAMES = {
     SEND_WEBHOOK: 'send-webhook',
     IMPORT_RATE_CARDS: 'import-rate-cards',
     CALCULATE_BENCHMARKS: 'calculate-benchmarks',
+    REFRESH_EMBEDDINGS: 'refresh-embeddings',
 };
 /**
  * Contract Queue Manager

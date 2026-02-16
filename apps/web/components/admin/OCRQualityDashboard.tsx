@@ -168,8 +168,8 @@ export function OCRQualityDashboard() {
 
   const getComplianceBadgeColor = (compliance: string) => {
     if (compliance.includes('Swiss') || compliance.includes('FADP')) return 'bg-red-100 text-red-800';
-    if (compliance.includes('GDPR')) return 'bg-blue-100 text-blue-800';
-    if (compliance.includes('SecNum') || compliance.includes('FINMA')) return 'bg-purple-100 text-purple-800';
+    if (compliance.includes('GDPR')) return 'bg-violet-100 text-violet-800';
+    if (compliance.includes('SecNum') || compliance.includes('FINMA')) return 'bg-violet-100 text-violet-800';
     if (compliance.includes('ISO') || compliance.includes('SOC')) return 'bg-green-100 text-green-800';
     return 'bg-gray-100 text-gray-800';
   };
@@ -177,7 +177,7 @@ export function OCRQualityDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <RefreshCw className="h-8 w-8 animate-spin text-violet-600" />
         <span className="ml-3 text-lg">Loading OCR configuration...</span>
       </div>
     );
@@ -209,7 +209,7 @@ export function OCRQualityDashboard() {
                   <p className="text-sm text-muted-foreground">Configured Providers</p>
                   <p className="text-2xl font-bold">{stats.configuredProviders}/{stats.totalProviders}</p>
                 </div>
-                <Settings className="h-8 w-8 text-blue-500" />
+                <Settings className="h-8 w-8 text-violet-500" />
               </div>
             </CardContent>
           </Card>
@@ -242,7 +242,7 @@ export function OCRQualityDashboard() {
                   <p className="text-sm text-muted-foreground">Accuracy Range</p>
                   <p className="text-2xl font-bold">85-98%</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-purple-500" />
+                <TrendingUp className="h-8 w-8 text-violet-500" />
               </div>
             </CardContent>
           </Card>

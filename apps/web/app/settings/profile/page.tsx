@@ -43,6 +43,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+
+
 // User profile interface
 interface UserProfile {
   id: string;
@@ -260,28 +262,35 @@ export default function ProfileSettingsPage() {
 
       <main className="max-w-4xl mx-auto px-4 py-6">
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsList className="p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
+            <TabsTrigger value="profile" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Profile</TabsTrigger>
+            <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Security</TabsTrigger>
+            <TabsTrigger value="preferences" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Preferences</TabsTrigger>
           </TabsList>
 
           {/* Profile Tab */}
           <TabsContent value="profile" className="space-y-6">
             {/* Avatar Section */}
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Profile Photo</CardTitle>
-                <CardDescription>
-                  This will be displayed on your profile and in comments.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Profile Photo</CardTitle>
+                    <CardDescription>
+                      This will be displayed on your profile and in comments.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center gap-6">
                   <div className="relative">
                     <Avatar className="h-24 w-24">
                       <AvatarImage src={user.avatar || undefined} />
-                      <AvatarFallback className="text-2xl bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                      <AvatarFallback className="text-2xl bg-gradient-to-br from-violet-500 to-purple-500 text-white">
                         {user.initials || user.name.split(" ").map((n) => n[0]).join("")}
                       </AvatarFallback>
                     </Avatar>
@@ -306,12 +315,19 @@ export default function ProfileSettingsPage() {
             </Card>
 
             {/* Basic Info */}
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Basic Information</CardTitle>
-                <CardDescription>
-                  Update your personal information.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-violet-600 text-white shadow-lg shadow-violet-500/30">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Basic Information</CardTitle>
+                    <CardDescription>
+                      Update your personal information.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -409,15 +425,19 @@ export default function ProfileSettingsPage() {
 
           {/* Security Tab */}
           <TabsContent value="security" className="space-y-6">
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Lock className="h-5 w-5" />
-                  Password
-                </CardTitle>
-                <CardDescription>
-                  Change your password or enable additional security measures.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 text-white shadow-lg shadow-amber-500/30">
+                    <Lock className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Password</CardTitle>
+                    <CardDescription>
+                      Change your password or enable additional security measures.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -434,19 +454,23 @@ export default function ProfileSettingsPage() {
                     <Input id="confirm-password" type="password" />
                   </div>
                 </div>
-                <Button variant="outline">Update Password</Button>
+                <Button variant="outline" className="bg-gradient-to-r from-amber-500 to-orange-600 text-white border-none hover:from-amber-600 hover:to-orange-700 shadow-lg shadow-amber-500/30">Update Password</Button>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Two-Factor Authentication
-                </CardTitle>
-                <CardDescription>
-                  Add an extra layer of security to your account.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
+                    <Shield className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Two-Factor Authentication</CardTitle>
+                    <CardDescription>
+                      Add an extra layer of security to your account.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
@@ -481,9 +505,16 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Session Information</CardTitle>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-slate-400 to-slate-600 text-white shadow-lg shadow-slate-500/30">
+                    <Key className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Session Information</CardTitle>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3 text-sm">
@@ -502,12 +533,19 @@ export default function ProfileSettingsPage() {
 
           {/* Preferences Tab */}
           <TabsContent value="preferences" className="space-y-6">
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Regional Settings</CardTitle>
-                <CardDescription>
-                  Configure your timezone and language preferences.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-400 to-purple-600 text-white shadow-lg shadow-violet-500/30">
+                    <Globe className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Regional Settings</CardTitle>
+                    <CardDescription>
+                      Configure your timezone and language preferences.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -556,12 +594,19 @@ export default function ProfileSettingsPage() {
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 shadow-xl">
               <CardHeader>
-                <CardTitle>Email Preferences</CardTitle>
-                <CardDescription>
-                  Manage your email notification preferences.
-                </CardDescription>
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-rose-400 to-pink-600 text-white shadow-lg shadow-rose-500/30">
+                    <Mail className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <CardTitle>Email Preferences</CardTitle>
+                    <CardDescription>
+                      Manage your email notification preferences.
+                    </CardDescription>
+                  </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">

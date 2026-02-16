@@ -2,8 +2,9 @@
  * Webhook Deliveries API
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { WebhookConfig, webhookStore } from '../../route';
+import { NextRequest } from 'next/server';
+import { WebhookConfigType, webhookStore } from '../../route';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -19,15 +20,17 @@ async function getPrisma() {
 }
 
 export async function GET(request: NextRequest, { params }: RouteParams) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+
     const { id } = await params;
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const { searchParams } = new URL(request.url);
@@ -37,11 +40,11 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const status = searchParams.get('status');
     
     const prisma = await getPrisma();
-    let webhook: WebhookConfig | null = null;
+    let webhook: WebhookConfigType | null = null;
     
     if (prisma) {
       try {
-        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfig | null> } }).webhookConfig.findFirst({
+        webhook = await (prisma as unknown as { webhookConfig: { findFirst: (opts: unknown) => Promise<WebhookConfigType | null> } }).webhookConfig.findFirst({
           where: { id, tenantId },
         });
       } catch { /* ignore */ }
@@ -53,7 +56,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     }
     
     if (!webhook) {
-      return NextResponse.json({ success: false, error: 'Webhook not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Webhook not found', 404);
     }
     
     interface WebhookDelivery { id: string; webhookId: string; event: string; status: string; createdAt: Date; }
@@ -77,12 +80,12 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       } catch { deliveries = []; total = 0; }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: deliveries,
       meta: { page, limit, total, totalPages: Math.ceil(total / limit), webhookId: id },
     });
-  } catch {
-    return NextResponse.json({ success: false, error: 'Failed to fetch deliveries' }, { status: 500 });
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

@@ -6,7 +6,9 @@
 'use client';
 
 import { WorkflowAutomation } from '@/components/automation';
-import { Settings, Zap } from 'lucide-react';
+import { Settings as _Settings, Zap } from 'lucide-react';
+
+
 
 export default function AutomationPage() {
   return (
@@ -14,8 +16,8 @@ export default function AutomationPage() {
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 rounded-lg bg-purple-100">
-            <Zap className="h-6 w-6 text-purple-600" />
+          <div className="p-2 rounded-lg bg-violet-100">
+            <Zap className="h-6 w-6 text-violet-600" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">Automation</h1>

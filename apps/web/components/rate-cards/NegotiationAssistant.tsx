@@ -87,7 +87,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
 
   useEffect(() => {
     loadNegotiationBrief();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [rateCardId]);
 
   const loadNegotiationBrief = async () => {
@@ -344,7 +344,7 @@ export function NegotiationAssistant({ rateCardId }: NegotiationAssistantProps) 
                     <h4 className="font-semibold">Realistic Target</h4>
                     <Badge>Recommended</Badge>
                   </div>
-                  <p className="text-3xl font-bold text-blue-600">
+                  <p className="text-3xl font-bold text-violet-600">
                     ${brief.targetRates.realistic.toLocaleString()}/day
                   </p>
                   <p className="text-sm text-muted-foreground mt-2">

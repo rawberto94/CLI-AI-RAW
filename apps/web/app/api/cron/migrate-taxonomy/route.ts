@@ -9,12 +9,14 @@
  * - Tracks progress and errors
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware'
 import { prisma } from '@/lib/prisma'
 import { classifyContract } from '@/lib/ai/contract-classifier-taxonomy'
+import { taxonomyService } from 'data-orchestration/services';
 
 // Rate limiting: only run if last run was > 1 hour ago
-const RATE_LIMIT_HOURS = 1
+const _RATE_LIMIT_HOURS = 1
 const BATCH_SIZE = 50 // Process 50 contracts per run
 
 interface MigrationStats {
@@ -25,19 +27,7 @@ interface MigrationStats {
   errors: Array<{ contractId: string; error: string }>
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify cron secret to prevent unauthorized access
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      )
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     // Get contracts that need migration
     const contractsToMigrate = await prisma.contract.findMany({
       where: {
@@ -80,8 +70,7 @@ export async function POST(request: NextRequest) {
     })
 
     if (contractsToMigrate.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'No contracts need migration',
         stats: {
           processed: 0,
@@ -158,34 +147,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: `Processed ${stats.processed} contracts: ${stats.migrated} migrated, ${stats.skipped} skipped, ${stats.failed} failed`,
       stats,
       hasMore: contractsToMigrate.length === BATCH_SIZE,
-    })
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Migration failed',
-        details: (error as Error).message,
-      },
-      { status: 500 }
-    )
-  }
-}
+    });
+});
 
 // Allow manual triggering via GET for testing
-export async function GET(request: NextRequest) {
+export const GET = withCronHandler(async (request, ctx) => {
   // Check if in development mode
   if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json(
-      { error: 'Manual triggering only allowed in development' },
-      { status: 403 }
-    )
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Manual triggering only allowed in development', 403)
   }
 
   // Forward to POST handler
   return POST(request)
-}
+});

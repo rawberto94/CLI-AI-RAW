@@ -94,7 +94,7 @@ const priorityConfig = {
     label: 'Low',
   },
   medium: {
-    color: 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400',
+    color: 'bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400',
     icon: null,
     label: 'Medium',
   },
@@ -202,7 +202,7 @@ function KanbanColumnComponent<T extends KanbanItem>({
       onDrop={handleDrop}
       className={`flex-shrink-0 w-80 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border transition-all ${
         isDragOver
-          ? 'border-blue-400 dark:border-blue-500 ring-2 ring-blue-400/20'
+          ? 'border-violet-400 dark:border-violet-500 ring-2 ring-violet-400/20'
           : 'border-zinc-200 dark:border-zinc-800'
       }`}
     >
@@ -377,7 +377,7 @@ function KanbanCard<T extends KanbanItem>({
       draggable
       onDragStartCapture={handleDragStart}
       onClick={onClick}
-      className="group relative bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:shadow-lg hover:border-blue-300 dark:hover:border-blue-600 transition-all"
+      className="group relative bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 p-3 cursor-pointer hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-600 transition-all"
     >
       {/* Drag Handle */}
       <div className="absolute left-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
@@ -399,7 +399,7 @@ function KanbanCard<T extends KanbanItem>({
         {/* Dropdown Menu */}
         <AnimatePresence>
           {showMenu && (
-            <motion.div
+            <motion.div key="menu"
               initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: -10 }}
@@ -546,7 +546,7 @@ function KanbanCard<T extends KanbanItem>({
           </div>
           <div className="h-1.5 bg-zinc-100 dark:bg-zinc-700 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-violet-500 rounded-full transition-all"
+              className="h-full bg-gradient-to-r from-violet-500 to-violet-500 rounded-full transition-all"
               style={{ width: `${item.progress}%` }}
             />
           </div>
@@ -594,7 +594,7 @@ function KanbanCard<T extends KanbanItem>({
             {item.assignees.slice(0, 3).map((assignee) => (
               <div
                 key={assignee.id}
-                className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white text-xs font-medium ring-2 ring-white dark:ring-zinc-800"
+                className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-violet-500 flex items-center justify-center text-white text-xs font-medium ring-2 ring-white dark:ring-zinc-800"
                 title={assignee.name}
               >
                 {assignee.avatar ? (
@@ -694,7 +694,7 @@ export function KanbanBoard<T extends KanbanItem>({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search items..."
-                className="pl-10 pr-4 py-2 w-64 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="pl-10 pr-4 py-2 w-64 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
               />
               {searchQuery && (
                 <button
@@ -803,7 +803,7 @@ export const defaultContractColumns: KanbanColumn[] = [
     id: 'review',
     title: 'In Review',
     icon: Eye,
-    color: 'text-blue-500',
+    color: 'text-violet-500',
     limit: 5,
   },
   {
@@ -832,7 +832,7 @@ export const defaultWorkflowColumns: KanbanColumn[] = [
     id: 'todo',
     title: 'To Do',
     icon: Circle,
-    color: 'text-blue-500',
+    color: 'text-violet-500',
   },
   {
     id: 'in-progress',

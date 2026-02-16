@@ -623,7 +623,7 @@ export function useRefreshHealth() {
 
   return useMutation({
     mutationFn: () => 
-      fetchWithTenant('/api/intelligence/health/refresh', { method: 'POST' }),
+      fetchWithTenant('/api/intelligence/health', { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contract-health'] });
       queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });

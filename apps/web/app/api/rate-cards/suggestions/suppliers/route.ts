@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardEntryService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const rateCardService = new rateCardEntryService(prisma);
 
@@ -9,11 +9,10 @@ const rateCardService = new rateCardEntryService(prisma);
  * GET /api/rate-cards/suggestions/suppliers
  * Get supplier suggestions based on partial input
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -21,16 +20,10 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
 
     if (!query || query.length < 2) {
-      return NextResponse.json([]);
+      return createSuccessResponse(ctx, [])
     }
 
     const suggestions = await rateCardService.getSupplierSuggestions(query, tenantId, limit);
 
-    return NextResponse.json(suggestions);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to get supplier suggestions', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, suggestions);
+  });

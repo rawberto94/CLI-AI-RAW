@@ -20,7 +20,7 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
 
   useEffect(() => {
     fetchOpportunityDetails();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [opportunityId]);
 
   const fetchOpportunityDetails = async () => {
@@ -233,7 +233,7 @@ export function OpportunityDetails({ opportunityId }: OpportunityDetailsProps) {
           <CardContent>
             <div className="space-y-3">
               {opportunity.negotiationPoints.map((point: any, idx: number) => (
-                <div key={idx} className="p-3 border-l-4 border-blue-500 bg-blue-50">
+                <div key={idx} className="p-3 border-l-4 border-violet-500 bg-violet-50">
                   <div className="font-semibold">{point.point}</div>
                   <div className="text-sm text-gray-600 mt-1">{point.data}</div>
                 </div>

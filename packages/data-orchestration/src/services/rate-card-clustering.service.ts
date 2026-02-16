@@ -5,9 +5,8 @@
  * to identify similar rate cards for consolidation and optimization opportunities.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export interface ClusterFeatures {
   roleStandardized: string;

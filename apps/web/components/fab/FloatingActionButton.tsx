@@ -60,15 +60,15 @@ export interface FloatingActionButtonProps {
 // ============================================================================
 
 const variantStyles = {
-  primary: 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-500/30',
+  primary: 'bg-violet-600 hover:bg-violet-700 text-white shadow-lg shadow-violet-500/30',
   secondary: 'bg-slate-700 hover:bg-slate-800 text-white shadow-lg shadow-slate-500/30',
-  gradient: 'bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 hover:from-indigo-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-purple-500/30',
+  gradient: 'bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500 hover:from-violet-600 hover:via-purple-600 hover:to-pink-600 text-white shadow-lg shadow-violet-500/30',
 };
 
 const actionColors = {
-  primary: 'bg-indigo-500 hover:bg-indigo-600 text-white',
+  primary: 'bg-violet-500 hover:bg-violet-600 text-white',
   secondary: 'bg-slate-600 hover:bg-slate-700 text-white',
-  success: 'bg-emerald-500 hover:bg-emerald-600 text-white',
+  success: 'bg-violet-500 hover:bg-violet-600 text-white',
   warning: 'bg-amber-500 hover:bg-amber-600 text-white',
   danger: 'bg-red-500 hover:bg-red-600 text-white',
 };
@@ -169,7 +169,7 @@ export function FloatingActionButton({
       {/* Speed Dial Actions */}
       <AnimatePresence>
         {isOpen && hasActions && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -311,7 +311,7 @@ export function ScrollToTopButton({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.button
+        <motion.button key="visible"
           initial={{ opacity: 0, y: 20, scale: 0.8 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.8 }}

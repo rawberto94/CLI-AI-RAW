@@ -52,7 +52,7 @@ export function ArtifactHistory({
     if (open && contractId && artifactId) {
       loadHistory();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [open, contractId, artifactId]);
 
   const loadHistory = async () => {
@@ -124,7 +124,7 @@ export function ArtifactHistory({
               {history.map((edit, index) => (
                 <div
                   key={edit.id}
-                  className="border-2 rounded-lg p-4 hover:border-blue-300 transition-colors"
+                  className="border-2 rounded-lg p-4 hover:border-violet-300 transition-colors"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-3">
@@ -147,7 +147,7 @@ export function ArtifactHistory({
 
                   {/* Reason */}
                   {edit.reason && (
-                    <div className="mb-3 p-2 bg-blue-50 dark:bg-blue-950 rounded text-sm text-blue-900 dark:text-blue-100">
+                    <div className="mb-3 p-2 bg-violet-50 dark:bg-violet-950 rounded text-sm text-violet-900 dark:text-violet-100">
                       <strong>Reason:</strong> {edit.reason}
                     </div>
                   )}

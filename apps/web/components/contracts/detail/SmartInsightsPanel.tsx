@@ -119,24 +119,24 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
         };
       case 'opportunity':
         return {
-          bg: 'bg-emerald-50 dark:bg-emerald-950/30',
-          border: 'border-emerald-200 dark:border-emerald-800',
-          icon: 'text-emerald-500',
-          badge: 'bg-emerald-100 text-emerald-700',
+          bg: 'bg-violet-50 dark:bg-violet-950/30',
+          border: 'border-violet-200 dark:border-violet-800',
+          icon: 'text-violet-500',
+          badge: 'bg-violet-100 text-violet-700',
         };
       case 'compliance':
         return {
-          bg: 'bg-purple-50 dark:bg-purple-950/30',
-          border: 'border-purple-200 dark:border-purple-800',
-          icon: 'text-purple-500',
-          badge: 'bg-purple-100 text-purple-700',
+          bg: 'bg-violet-50 dark:bg-violet-950/30',
+          border: 'border-violet-200 dark:border-violet-800',
+          icon: 'text-violet-500',
+          badge: 'bg-violet-100 text-violet-700',
         };
       case 'action':
         return {
-          bg: 'bg-blue-50 dark:bg-blue-950/30',
-          border: 'border-blue-200 dark:border-blue-800',
-          icon: 'text-blue-500',
-          badge: 'bg-blue-100 text-blue-700',
+          bg: 'bg-violet-50 dark:bg-violet-950/30',
+          border: 'border-violet-200 dark:border-violet-800',
+          icon: 'text-violet-500',
+          badge: 'bg-violet-100 text-violet-700',
         };
       default:
         return {
@@ -206,13 +206,13 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
               {/* Risk Score */}
               <div className={cn(
                 "flex flex-col items-center p-2 rounded-lg",
-                riskLevel === 'low' ? 'bg-emerald-50 dark:bg-emerald-950/30' :
+                riskLevel === 'low' ? 'bg-violet-50 dark:bg-violet-950/30' :
                 riskLevel === 'medium' ? 'bg-amber-50 dark:bg-amber-950/30' :
                 'bg-red-50 dark:bg-red-950/30'
               )}>
                 <Shield className={cn(
                   "h-4 w-4 mb-1",
-                  riskLevel === 'low' ? 'text-emerald-500' :
+                  riskLevel === 'low' ? 'text-violet-500' :
                   riskLevel === 'medium' ? 'text-amber-500' :
                   'text-red-500'
                 )} />
@@ -225,10 +225,10 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
               {/* Compliance */}
               <div className={cn(
                 "flex flex-col items-center p-2 rounded-lg",
-                complianceStatus ? 'bg-emerald-50 dark:bg-emerald-950/30' : 'bg-amber-50 dark:bg-amber-950/30'
+                complianceStatus ? 'bg-violet-50 dark:bg-violet-950/30' : 'bg-amber-50 dark:bg-amber-950/30'
               )}>
                 {complianceStatus ? (
-                  <CheckCircle2 className="h-4 w-4 mb-1 text-emerald-500" />
+                  <CheckCircle2 className="h-4 w-4 mb-1 text-violet-500" />
                 ) : (
                   <XCircle className="h-4 w-4 mb-1 text-amber-500" />
                 )}
@@ -244,14 +244,14 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
                 daysToExpiry === null ? 'bg-slate-50 dark:bg-slate-800' :
                 daysToExpiry <= 30 ? 'bg-red-50 dark:bg-red-950/30' :
                 daysToExpiry <= 90 ? 'bg-amber-50 dark:bg-amber-950/30' :
-                'bg-emerald-50 dark:bg-emerald-950/30'
+                'bg-violet-50 dark:bg-violet-950/30'
               )}>
                 <Clock className={cn(
                   "h-4 w-4 mb-1",
                   daysToExpiry === null ? 'text-slate-400' :
                   daysToExpiry <= 30 ? 'text-red-500' :
                   daysToExpiry <= 90 ? 'text-amber-500' :
-                  'text-emerald-500'
+                  'text-violet-500'
                 )} />
                 <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
                   {daysToExpiry === null ? '∞' : daysToExpiry}
@@ -293,8 +293,8 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1",
                     activeFilter === 'opportunity'
-                      ? "bg-emerald-500 text-white"
-                      : "text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-950/30"
+                      ? "bg-violet-500 text-white"
+                      : "text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
                   )}
                 >
                   <TrendingUp className="h-3 w-3" />
@@ -307,8 +307,8 @@ export const SmartInsightsPanel = memo(function SmartInsightsPanel({
                   className={cn(
                     "px-2 py-1 text-xs font-medium rounded-md transition-colors flex items-center gap-1",
                     activeFilter === 'action'
-                      ? "bg-blue-500 text-white"
-                      : "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                      ? "bg-violet-500 text-white"
+                      : "text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950/30"
                   )}
                 >
                   <Target className="h-3 w-3" />

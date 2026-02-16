@@ -53,7 +53,7 @@ function getSeverityIcon(severity: 'LOW' | 'MEDIUM' | 'HIGH') {
     case 'MEDIUM':
       return <AlertCircle className="h-5 w-5 text-yellow-500" />;
     case 'LOW':
-      return <Info className="h-5 w-5 text-blue-500" />;
+      return <Info className="h-5 w-5 text-violet-500" />;
   }
 }
 
@@ -64,7 +64,7 @@ function getSeverityColor(severity: 'LOW' | 'MEDIUM' | 'HIGH'): string {
     case 'MEDIUM':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     case 'LOW':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
+      return 'bg-violet-100 text-violet-800 border-violet-200';
   }
 }
 
@@ -145,7 +145,7 @@ export function AnomalyAlert({ rateCardId, className = '' }: AnomalyAlertProps) 
     <Card className={`${className} border-l-4 ${
       anomalyData.overallSeverity === 'HIGH' ? 'border-l-red-500' :
       anomalyData.overallSeverity === 'MEDIUM' ? 'border-l-yellow-500' :
-      'border-l-blue-500'
+      'border-l-violet-500'
     }`}>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">

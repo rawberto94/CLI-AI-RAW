@@ -40,7 +40,7 @@ export function ProgressBar({
   };
 
   const variantClasses = {
-    default: 'bg-blue-600',
+    default: 'bg-violet-600',
     success: 'bg-green-600',
     warning: 'bg-orange-600',
     error: 'bg-red-600',
@@ -61,13 +61,13 @@ export function ProgressBar({
       {fileName && (
         <div className="flex items-center justify-between mb-2">
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">{fileName}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">{fileName}</p>
             {fileSize && (
-              <p className="text-xs text-gray-500">{fileSize}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{fileSize}</p>
             )}
           </div>
           {showPercentage && (
-            <span className="ml-2 text-sm font-semibold text-gray-700">
+            <span className="ml-2 text-sm font-semibold text-violet-700 dark:text-violet-400">
               {Math.round(clampedProgress)}%
             </span>
           )}
@@ -78,10 +78,10 @@ export function ProgressBar({
       {!fileName && (label || showPercentage) && (
         <div className="flex items-center justify-between mb-2">
           {label && (
-            <p className="text-sm font-medium text-gray-700">{label}</p>
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{label}</p>
           )}
           {showPercentage && (
-            <span className="text-sm font-semibold text-gray-700">
+            <span className="text-sm font-semibold text-violet-700 dark:text-violet-400">
               {Math.round(clampedProgress)}%
             </span>
           )}
@@ -90,7 +90,7 @@ export function ProgressBar({
 
       {/* Progress bar */}
       <div className={cn(
-        'bg-gray-200 rounded-full overflow-hidden',
+        'bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden',
         sizeClasses[size]
       )}>
         <motion.div

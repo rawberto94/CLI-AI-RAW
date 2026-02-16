@@ -301,9 +301,9 @@ function ChangesPanel({
             <div className="font-bold text-red-600">-{stats.deletions}</div>
             <div className="text-red-600">Deleted</div>
           </div>
-          <div className="text-center p-2 bg-blue-50 rounded">
-            <div className="font-bold text-blue-600">{stats.accepted}</div>
-            <div className="text-blue-600">Accepted</div>
+          <div className="text-center p-2 bg-violet-50 rounded">
+            <div className="font-bold text-violet-600">{stats.accepted}</div>
+            <div className="text-violet-600">Accepted</div>
           </div>
         </div>
       </div>
@@ -317,7 +317,7 @@ function ChangesPanel({
             className={cn(
               "px-2 py-1 text-xs rounded-full capitalize transition-colors",
               filter === f
-                ? "bg-blue-100 text-blue-700"
+                ? "bg-violet-100 text-violet-700"
                 : "bg-slate-100 text-slate-600 hover:bg-slate-200"
             )}
           >
@@ -354,7 +354,7 @@ function ChangesPanel({
                 key={change.id}
                 className={cn(
                   "cursor-pointer hover:bg-slate-50 transition-colors",
-                  selectedChangeId === change.id && "bg-blue-50 border-l-2 border-blue-500"
+                  selectedChangeId === change.id && "bg-violet-50 border-l-2 border-violet-500"
                 )}
               >
                 <div 
@@ -469,7 +469,7 @@ function ChangesPanel({
                     ) : (
                       <button
                         onClick={() => setCommentingOn(change.id)}
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                        className="flex items-center gap-1 text-xs text-violet-600 hover:text-violet-700"
                       >
                         <MessageSquare className="w-3 h-3" />
                         Add comment
@@ -563,8 +563,8 @@ function VersionHistoryPanel({
               onClick={() => handleVersionClick(version.id)}
               className={cn(
                 "p-4 cursor-pointer hover:bg-slate-50 transition-colors",
-                currentVersion === version.version && "bg-blue-50 border-l-2 border-blue-500",
-                compareMode && compareSelection.includes(version.id) && "bg-purple-50 border-l-2 border-purple-500"
+                currentVersion === version.version && "bg-violet-50 border-l-2 border-violet-500",
+                compareMode && compareSelection.includes(version.id) && "bg-violet-50 border-l-2 border-violet-500"
               )}
             >
               <div className="flex items-start justify-between">
@@ -573,7 +573,7 @@ function VersionHistoryPanel({
                     <div className={cn(
                       "w-5 h-5 rounded border-2 flex items-center justify-center mt-0.5",
                       compareSelection.includes(version.id)
-                        ? "border-purple-500 bg-purple-500"
+                        ? "border-violet-500 bg-violet-500"
                         : "border-slate-300"
                     )}>
                       {compareSelection.includes(version.id) && (
@@ -610,7 +610,7 @@ function VersionHistoryPanel({
                   </div>
                 </div>
                 {version.changeCount > 0 && (
-                  <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">
+                  <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full">
                     {version.changeCount} changes
                   </span>
                 )}
@@ -989,7 +989,7 @@ export function RedlineEditor({
               }
             }}
             className={cn(
-              "w-full p-3 text-slate-700 leading-relaxed bg-blue-50 border-2 border-blue-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500",
+              "w-full p-3 text-slate-700 leading-relaxed bg-violet-50 border-2 border-violet-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-violet-500",
               mode === 'suggest' && "bg-yellow-50 border-yellow-300"
             )}
             autoFocus
@@ -997,7 +997,7 @@ export function RedlineEditor({
           <div className="absolute -top-2 -right-2 flex items-center gap-1">
             <span className={cn(
               "px-2 py-0.5 text-xs rounded-full",
-              mode === 'edit' ? "bg-blue-500 text-white" : "bg-yellow-500 text-white"
+              mode === 'edit' ? "bg-violet-500 text-white" : "bg-yellow-500 text-white"
             )}>
               {mode === 'edit' ? 'Editing' : 'Suggesting'}
             </span>
@@ -1052,7 +1052,7 @@ export function RedlineEditor({
                         className={cn(
                           "p-2 rounded transition-colors",
                           mode === m
-                            ? "bg-blue-500 text-white"
+                            ? "bg-violet-500 text-white"
                             : "text-slate-600 hover:bg-slate-100",
                           readOnly && m !== 'view' && "opacity-50 cursor-not-allowed"
                         )}
@@ -1183,7 +1183,7 @@ export function RedlineEditor({
 
               {/* Current user */}
               <div className="flex items-center gap-2 px-3 py-1.5 bg-white rounded-lg border border-slate-200">
-                <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-medium">
+                <div className="w-6 h-6 rounded-full bg-violet-100 text-violet-700 flex items-center justify-center text-xs font-medium">
                   {currentUser.name.charAt(0)}
                 </div>
                 <span className="text-sm text-slate-700">{currentUser.name}</span>
@@ -1280,7 +1280,7 @@ export function RedlineEditor({
               {mode !== 'view' && (
                 <div className={cn(
                   "mb-6 p-3 rounded-lg flex items-center gap-2 text-sm",
-                  mode === 'edit' ? "bg-blue-50 text-blue-700" : "bg-yellow-50 text-yellow-700"
+                  mode === 'edit' ? "bg-violet-50 text-violet-700" : "bg-yellow-50 text-yellow-700"
                 )}>
                   {mode === 'edit' ? (
                     <>
@@ -1306,7 +1306,7 @@ export function RedlineEditor({
           {/* Side Panel */}
           <AnimatePresence mode="wait">
             {showChanges && (
-              <motion.div
+              <motion.div key="changes"
                 initial={{ width: 0, opacity: 0 }}
                 animate={{ width: 320, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}

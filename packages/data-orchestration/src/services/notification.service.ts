@@ -1,11 +1,13 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 // Dynamic import for email service (apps/web)
 // For use in workers package, we create a simple HTTP-based sender
 async function sendEmailViaAPI(to: string[], subject: string, body: string): Promise<boolean> {
-  const apiUrl = process.env.APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
+  const apiUrl = process.env.APP_URL || process.env.NEXTAUTH_URL;
+  if (!apiUrl) {
+    throw new Error('APP_URL or NEXTAUTH_URL environment variable must be configured');
+  }
   
   try {
     const response = await fetch(`${apiUrl}/api/internal/send-email`, {

@@ -6,17 +6,17 @@
  */
 
 import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { 
   requestAccountDeletion,
   cancelAccountDeletion,
 } from '@/lib/gdpr/data-rights';
-
 // Request account deletion
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return requestAccountDeletion(request);
-}
+});
 
 // Cancel deletion request
-export async function DELETE(request: NextRequest) {
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cancelAccountDeletion(request);
-}
+});

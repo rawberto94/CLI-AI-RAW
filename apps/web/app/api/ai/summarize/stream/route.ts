@@ -9,11 +9,11 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { aiContractSummarizationService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -45,10 +45,9 @@ const SUMMARY_PROMPTS: Record<string, string> = {
 - Intellectual property provisions
 - Confidentiality requirements
 - Dispute resolution mechanisms
-- Compliance obligations`,
-};
+- Compliance obligations` };
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
 
   try {
@@ -69,8 +68,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = await getServerTenantId();
-
     // Get contract text
     let text = contractText;
     let fileName = 'document';
@@ -78,8 +75,7 @@ export async function POST(request: NextRequest) {
     if (!text && contractId) {
       const contract = await prisma.contract.findUnique({
         where: { id: contractId },
-        select: { rawText: true, fileName: true, tenantId: true },
-      });
+        select: { rawText: true, fileName: true, tenantId: true } });
       
       if (!contract) {
         return new Response(
@@ -119,17 +115,14 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: 'system',
-          content: `You are an expert contract analyst. Provide clear, professional summaries that highlight critical business and legal points. Use markdown formatting for readability.`,
-        },
+          content: `You are an expert contract analyst. Provide clear, professional summaries that highlight critical business and legal points. Use markdown formatting for readability.` },
         {
           role: 'user',
-          content: `${summaryPrompt}\n\nContract text:\n${truncatedText}${wasTruncated ? '\n\n[Contract truncated for analysis]' : ''}`,
-        },
+          content: `${summaryPrompt}\n\nContract text:\n${truncatedText}${wasTruncated ? '\n\n[Contract truncated for analysis]' : ''}` },
       ],
       temperature: 0.3,
       max_tokens: level === 'quick' ? 500 : level === 'detailed' ? 2000 : 1000,
-      stream: true,
-    });
+      stream: true });
 
     // Create a ReadableStream for SSE
     const encoder = new TextEncoder();
@@ -145,8 +138,7 @@ export async function POST(request: NextRequest) {
                 fileName,
                 level,
                 startTime,
-                wasTruncated,
-              })}\n\n`
+                wasTruncated })}\n\n`
             )
           );
 
@@ -160,8 +152,7 @@ export async function POST(request: NextRequest) {
                 encoder.encode(
                   `data: ${JSON.stringify({
                     type: 'content',
-                    content,
-                  })}\n\n`
+                    content })}\n\n`
                 )
               );
             }
@@ -176,8 +167,7 @@ export async function POST(request: NextRequest) {
                 processingTime,
                 wordCount: truncatedText.split(/\s+/).length,
                 summaryLength: fullContent.length,
-                level,
-              })}\n\n`
+                level })}\n\n`
             )
           );
 
@@ -187,29 +177,24 @@ export async function POST(request: NextRequest) {
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'error',
-                error: error instanceof Error ? error.message : 'Unknown error',
-              })}\n\n`
+                error: error instanceof Error ? error.message : 'Unknown error' })}\n\n`
             )
           );
           controller.close();
         }
-      },
-    });
+      } });
 
     return new Response(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+        'X-Accel-Buffering': 'no' } });
   } catch (error) {
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Summarization failed',
-      }),
+        error: error instanceof Error ? error.message : 'Summarization failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
-}
+});

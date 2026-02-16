@@ -90,7 +90,7 @@ interface NetworkErrorFallbackProps {
   retrying?: boolean;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 function NetworkErrorFallback({ error: _error, reset, retrying }: NetworkErrorFallbackProps) {
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -312,12 +312,12 @@ export function QueryErrorBoundary({
   children, 
   fallback, 
   onError,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   queryKey: _queryKey 
 }: QueryErrorBoundaryProps) {
   const [error, setError] = useState<Error | null>(null);
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+   
   const _handleError = useCallback((err: Error) => {
     setError(err);
     onError?.(err, { componentStack: '' });

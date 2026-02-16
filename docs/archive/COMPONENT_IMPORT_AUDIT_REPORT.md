@@ -1,4 +1,5 @@
 # Component Import Audit Report
+
 ## apps/web Directory
 
 **Date:** November 16, 2025  
@@ -25,12 +26,15 @@ The application has very healthy import structure with only minor issues that ne
 ### 1. Missing UI Components
 
 #### Issue: `separator` component missing
+
 **Affected Files (3):**
+
 - `/components/collaboration/RealTimeCollaboration.tsx`
 - `/components/contracts/AdvancedSearch.tsx`
 - `/components/contracts/ContractContextSidebar.tsx`
 
 **Import Statement:**
+
 ```typescript
 import { Separator } from '@/components/ui/separator'
 ```
@@ -45,10 +49,13 @@ import { Separator } from '@/components/ui/separator'
 ---
 
 #### Issue: `accordion` component missing
+
 **Affected Files (1):**
+
 - `/components/contracts/ClauseLibrary.tsx`
 
 **Import Statement:**
+
 ```typescript
 import {
   Accordion,
@@ -72,10 +79,13 @@ import {
 ### 2. Export Mismatches
 
 #### Issue A: Missing Type Export - `FilterValue`
+
 **Affected Files (1):**
+
 - `/app/benchmarks/compare/page.tsx`
 
 **Import Statement:**
+
 ```typescript
 import { FilterBar, type FilterValue } from "@/components/ui/filter-bar"
 ```
@@ -85,6 +95,7 @@ import { FilterBar, type FilterValue } from "@/components/ui/filter-bar"
 **Status:** ⚠️ Type is defined but not exported properly
 
 **Current State:** The type `FilterValue` is defined in `filter-bar.tsx` at line 7:
+
 ```typescript
 export type FilterValue = {
   client?: string | string[];
@@ -104,10 +115,13 @@ export type FilterValue = {
 ---
 
 #### Issue B: Missing Type Export - `ButtonProps`
+
 **Affected Files (1):**
+
 - `/components/errors/RetryButton.tsx`
 
 **Import Statement:**
+
 ```typescript
 import { Button, type ButtonProps } from '@/components/ui/button'
 ```
@@ -117,6 +131,7 @@ import { Button, type ButtonProps } from '@/components/ui/button'
 **Status:** ⚠️ Interface is defined but not exported in the export statement
 
 **Current State:** `ButtonProps` is defined at line 42:
+
 ```typescript
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
@@ -126,6 +141,7 @@ export interface ButtonProps
 ```
 
 **Export Statement (line 58):**
+
 ```typescript
 export { Button, buttonVariants }
 ```
@@ -139,10 +155,13 @@ export { Button, buttonVariants }
 ---
 
 #### Issue C: Missing Named Export - `Skeleton`
+
 **Affected Files (1):**
+
 - `/components/ui/loading-skeletons.tsx`
 
 **Import Statement:**
+
 ```typescript
 import { Skeleton } from '@/components/ui/skeleton'
 ```
@@ -152,13 +171,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 **Status:** ❌ No `Skeleton` component exported
 
 **Current State:** The file `skeleton.tsx` exists but exports different components:
+
 - `SkeletonArtifactCard`
 - `SkeletonArtifactList`
 - `SkeletonContractOverview`
 
 **Impact:** HIGH - This import will fail
 
-**Solution Required:** 
+**Solution Required:**
+
 1. Check if `Skeleton` should be imported from `skeleton-loader.tsx` instead
 2. Or add a base `Skeleton` component export to `skeleton.tsx`
 3. Or update the import in `loading-skeletons.tsx`
@@ -170,6 +191,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 ## 📊 Import Statistics by Category
 
 ### UI Components (Most Used)
+
 - `@/components/ui/card` - 180+ imports ✅
 - `@/components/ui/button` - 150+ imports ✅
 - `@/components/ui/badge` - 120+ imports ✅
@@ -178,12 +200,14 @@ import { Skeleton } from '@/components/ui/skeleton'
 - `@/components/ui/progress` - 40+ imports ✅
 
 ### Feature Components
+
 - `@/components/rate-cards/*` - 200+ imports ✅
 - `@/components/contracts/*` - 180+ imports ✅
 - `@/components/analytics/*` - 60+ imports ✅
 - `@/components/layout/*` - 50+ imports ✅
 
 ### Specialized Components
+
 - `@/components/feedback/*` - 20+ imports ✅
 - `@/components/keyboard/*` - 15+ imports ✅
 - `@/components/accessibility/*` - 12+ imports ✅
@@ -194,9 +218,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 ## 🔍 Detailed Analysis
 
 ### Import Patterns
+
 1. **Named Imports (Most Common):** 95% of all imports
    - Example: `import { Card, CardContent } from '@/components/ui/card'`
-   
+
 2. **Default Imports:** 5% of imports
    - Example: `import MainNavigation from '@/components/layout/MainNavigation'`
 
@@ -204,11 +229,13 @@ import { Skeleton } from '@/components/ui/skeleton'
    - Example: `import { type FilterValue } from '@/components/ui/filter-bar'`
 
 ### Component Organization
+
 - **UI Components:** Well-structured in `/components/ui/`
 - **Feature Modules:** Organized by domain (rate-cards, contracts, analytics)
 - **Shared Components:** Properly placed in domain-specific folders
 
 ### Path Aliases
+
 All imports correctly use the `@/components/*` alias pattern. No direct relative imports found for component files.
 
 ---
@@ -216,7 +243,9 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
 ## 🎯 Recommended Actions
 
 ### Immediate (Fix Before Deployment)
+
 1. **Create missing `separator.tsx` component** in `apps/web/components/ui/`
+
    ```typescript
    // File: apps/web/components/ui/separator.tsx
    import * as React from "react"
@@ -250,6 +279,7 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
    ```
 
 2. **Create missing `accordion.tsx` component** in `apps/web/components/ui/`
+
    ```typescript
    // File: apps/web/components/ui/accordion.tsx
    import * as React from "react"
@@ -313,6 +343,7 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
    - To: `import { Skeleton } from '@/components/ui/skeleton-loader'`
 
 ### Short-term (Next Sprint)
+
 1. **Verify type exports** are working correctly for:
    - `FilterValue` in `filter-bar.tsx`
    - `ButtonProps` in `button.tsx`
@@ -322,6 +353,7 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
 3. **Set up pre-commit hook** to run import validation
 
 ### Long-term (Technical Debt)
+
 1. **Create component documentation** for all UI components
 2. **Implement component playground** (Storybook/similar)
 3. **Add automated import checking** to CI/CD pipeline
@@ -341,6 +373,7 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
 ## 📈 Import Health Score: 99.2% (A+)
 
 **Breakdown:**
+
 - Valid Imports: 870/877 (99.2%) ✅
 - Missing Files: 4/877 (0.46%) ⚠️
 - Export Issues: 3/877 (0.34%) ⚠️
@@ -352,6 +385,7 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
 ## 🔧 Technical Details
 
 ### Audit Methodology
+
 - Scanned all `.ts` and `.tsx` files recursively
 - Extracted imports using regex: `/import\s+(?:{[^}]+}|[\w\s,*]+)\s+from\s+['"]@\/components\/([^'"]+)['"]/g`
 - Verified file existence with `.tsx`, `.ts`, and `index.tsx` fallbacks
@@ -361,11 +395,13 @@ All imports correctly use the `@/components/*` alias pattern. No direct relative
   - `export default`
 
 ### Known Limitations
+
 - Type-only imports may be flagged as missing even if exported
 - Re-exports through barrel files may not be fully tracked
 - Dynamic imports are not analyzed
 
 ### Validation Command
+
 ```bash
 cd /workspaces/CLI-AI-RAW/apps/web
 node /tmp/check-imports-fixed.js
@@ -378,10 +414,12 @@ node /tmp/check-imports-fixed.js
 The component import structure in `apps/web` is exceptionally healthy with a 99.2% validity rate. Only 7 issues need attention:
 
 **Must Fix (4):**
+
 - Missing `separator.tsx` component (affects 3 files)
 - Missing `accordion.tsx` component (affects 1 file)
 
 **Should Verify (3):**
+
 - `FilterValue` type export
 - `ButtonProps` type export
 - `Skeleton` component import path

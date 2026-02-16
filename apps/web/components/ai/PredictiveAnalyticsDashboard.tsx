@@ -128,15 +128,15 @@ const PREDICTION_TYPE_CONFIG: Record<PredictionType, {
   },
   cost: { 
     icon: DollarSign, 
-    color: 'text-blue-600', 
-    bgColor: 'bg-blue-100', 
+    color: 'text-violet-600', 
+    bgColor: 'bg-violet-100', 
     label: 'Cost',
     description: 'Projected cost trajectory'
   },
   value: { 
     icon: TrendingUp, 
-    color: 'text-purple-600', 
-    bgColor: 'bg-purple-100', 
+    color: 'text-violet-600', 
+    bgColor: 'bg-violet-100', 
     label: 'Value',
     description: 'Value optimization potential'
   },
@@ -149,8 +149,8 @@ const PREDICTION_TYPE_CONFIG: Record<PredictionType, {
   },
   compliance: { 
     icon: Shield, 
-    color: 'text-indigo-600', 
-    bgColor: 'bg-indigo-100', 
+    color: 'text-violet-600', 
+    bgColor: 'bg-violet-100', 
     label: 'Compliance',
     description: 'Regulatory compliance forecast'
   },
@@ -282,11 +282,11 @@ function StatCard({
   format?: 'number' | 'percent' | 'currency';
 }) {
   const colorClasses = {
-    blue: 'text-blue-600 bg-blue-50',
+    blue: 'text-violet-600 bg-violet-50',
     green: 'text-green-600 bg-green-50',
     amber: 'text-amber-600 bg-amber-50',
     red: 'text-red-600 bg-red-50',
-    purple: 'text-purple-600 bg-purple-50',
+    purple: 'text-violet-600 bg-violet-50',
   };
 
   const formatValue = () => {
@@ -440,7 +440,7 @@ function ContractPredictionRow({
 
         {/* Value Opt */}
         <div className="text-center">
-          <div className="text-sm font-bold text-purple-600">
+          <div className="text-sm font-bold text-violet-600">
             +{(prediction.valueOptimization * 100).toFixed(0)}%
           </div>
           <p className="text-xs text-muted-foreground">Savings</p>
@@ -674,7 +674,7 @@ export function PredictiveAnalyticsDashboard({ tenantId, className }: Predictive
           value={`${highValueOpportunities.length} contracts`}
           description="Contracts with >15% optimization potential"
           icon={Lightbulb}
-          color="bg-purple-500"
+          color="bg-violet-500"
           action={{ label: 'Explore Savings', onClick: () => setActiveTab('opportunities') }}
         />
       </div>
@@ -851,7 +851,7 @@ export function PredictiveAnalyticsDashboard({ tenantId, className }: Predictive
         <TabsContent value="opportunities" className="space-y-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-base text-purple-600 flex items-center gap-2">
+              <CardTitle className="text-base text-violet-600 flex items-center gap-2">
                 <Lightbulb className="w-4 h-4" />
                 Value Optimization Opportunities ({highValueOpportunities.length})
               </CardTitle>

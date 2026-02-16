@@ -56,8 +56,16 @@ const CORE_ENV_VARS: EnvVarConfig[] = [
 // Optional but recommended environment variables
 const OPTIONAL_ENV_VARS: EnvVarConfig[] = [
   {
+    name: 'DIRECT_DATABASE_URL',
+    type: 'url',
+    sensitive: true,
+    description: 'Direct PostgreSQL connection (bypasses PgBouncer) for migrations & interactive transactions',
+    validator: (v) => v.startsWith('postgres://') || v.startsWith('postgresql://'),
+  },
+  {
     name: 'REDIS_URL',
     type: 'url',
+    required: true,
     description: 'Redis connection for caching and real-time features',
   },
   {

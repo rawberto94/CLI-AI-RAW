@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { editableArtifactService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/artifacts/[artifactId]/revert/[version]
@@ -10,23 +11,21 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string; version: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const body = await request.json();
     const { userId } = body;
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     const versionNumber = parseInt(params.version);
     if (isNaN(versionNumber)) {
-      return NextResponse.json(
-        { error: 'Invalid version number' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid version number', 400);
     }
 
     await editableArtifactService.revertToVersion(
@@ -35,13 +34,10 @@ export async function POST(
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: `Artifact reverted to version ${versionNumber}`,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to revert version' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

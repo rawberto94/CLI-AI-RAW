@@ -7,25 +7,13 @@
  * to trigger the renewal alert worker for all tenants.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { optionalImport } from '@/lib/server/optional-module';
 
 export const dynamic = 'force-dynamic';
 
-// Verify cron secret to prevent unauthorized access
-const CRON_SECRET = process.env.CRON_SECRET;
-
-export async function GET(request: NextRequest) {
-  try {
-    // Verify authorization
-    const authHeader = request.headers.get('authorization');
-    if (CRON_SECRET && authHeader !== `Bearer ${CRON_SECRET}`) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const GET = withCronHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const tenantId = searchParams.get('tenantId') || undefined;
     const daysAhead = parseInt(searchParams.get('daysAhead') || '90');
@@ -35,14 +23,7 @@ export async function GET(request: NextRequest) {
     );
 
     if (!workerModule?.triggerRenewalCheck) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: 'Background worker not available',
-          message: 'Renewal alert worker is not installed/configured in this environment.',
-        },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Renewal alert worker is not installed/configured in this environment.', 503);
     }
 
     const { triggerRenewalCheck } = workerModule;
@@ -56,19 +37,9 @@ export async function GET(request: NextRequest) {
       source: 'scheduled',
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: 'Renewal alerts scan triggered',
       jobId: job.id,
       timestamp: new Date().toISOString(),
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to trigger renewal alerts' 
-      },
-      { status: 500 }
-    );
-  }
-}
+});

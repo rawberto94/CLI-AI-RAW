@@ -201,11 +201,11 @@ export function ContractScoresCard({
   
   return (
     <Card className={cn("overflow-hidden", className)}>
-      <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-indigo-50/30 border-b">
+      <CardHeader className="pb-3 bg-gradient-to-r from-slate-50 to-purple-50/30 border-b">
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              <Activity className="h-5 w-5 text-indigo-600" />
+              <Activity className="h-5 w-5 text-violet-600" />
               Contract Scores & Assessment
             </CardTitle>
             <CardDescription className="mt-1">
@@ -331,7 +331,7 @@ export function ContractScoresCard({
                       "flex items-start gap-2 p-2 rounded text-xs",
                       issue.severity === 'high' && 'bg-red-50 text-red-700',
                       issue.severity === 'medium' && 'bg-amber-50 text-amber-700',
-                      issue.severity === 'low' && 'bg-blue-50 text-blue-700'
+                      issue.severity === 'low' && 'bg-violet-50 text-violet-700'
                     )}>
                       <AlertCircle className="h-3.5 w-3.5 flex-shrink-0 mt-0.5" />
                       <div>

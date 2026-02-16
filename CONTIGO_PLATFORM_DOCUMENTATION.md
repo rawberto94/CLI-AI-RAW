@@ -1,6 +1,11 @@
 # Contigo Platform - Comprehensive Documentation
 
+> **DEPRECATED:** This document is superseded by [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md). Retained for historical reference only.
+
+---
+
 ## Table of Contents
+
 1. [Executive Summary](#executive-summary)
 2. [Platform Overview](#platform-overview)
 3. [Architecture](#architecture)
@@ -21,6 +26,7 @@
 **Contigo** is an enterprise-grade Contract Lifecycle Management (CLM) platform powered by advanced AI capabilities. It transforms how organizations manage, analyze, and extract value from their contract portfolios.
 
 ### Key Value Propositions
+
 - **AI-Powered Extraction**: Automatically extracts metadata, clauses, financial terms, and risks from contracts
 - **Intelligent Search**: RAG-powered semantic search across entire contract portfolios
 - **Renewal Management**: Proactive alerts and automated tracking of contract renewals
@@ -33,6 +39,7 @@
 ## Platform Overview
 
 ### Target Users
+
 - **Legal Teams**: Contract review, risk assessment, clause library management
 - **Procurement**: Supplier contract management, rate card comparison, spend analysis
 - **Finance**: Financial terms extraction, value tracking, budget forecasting
@@ -129,17 +136,20 @@
 ### 1. Contract Management
 
 #### Upload & Processing Pipeline
+
 ```
 Upload → OCR → Text Extraction → AI Analysis → Artifact Generation → Indexing
 ```
 
 **Supported Formats:**
+
 - PDF (with OCR for scanned documents)
 - Microsoft Word (DOCX)
 - Plain Text (TXT)
 - Images (with Tesseract OCR)
 
 **Processing Stages:**
+
 1. **Ingestion**: File upload, validation, storage
 2. **OCR/Extraction**: Text extraction with table detection
 3. **AI Analysis**: Multi-pass extraction using GPT-4o-mini
@@ -148,6 +158,7 @@ Upload → OCR → Text Extraction → AI Analysis → Artifact Generation → I
 6. **Quality Validation**: Confidence scoring and human review flags
 
 #### Contract Statuses
+
 | Status | Description |
 |--------|-------------|
 | `UPLOADED` | File received, awaiting processing |
@@ -182,6 +193,7 @@ The platform generates 18+ artifact types from each contract:
 | `CONTACTS` | Contact information |
 
 #### Artifact Quality Metrics
+
 - **Confidence Score**: 0-100% AI extraction confidence
 - **Completeness Score**: Data completeness rating
 - **Accuracy Score**: Validated accuracy
@@ -243,6 +255,7 @@ Workflow Definition          Workflow Execution
 ```
 
 **Step Types:**
+
 - `APPROVAL`: Requires explicit approve/reject action
 - `REVIEW`: Review and proceed
 - `NOTIFICATION`: Inform stakeholder
@@ -261,19 +274,25 @@ Proactive contract renewal tracking:
 ### 7. AI Intelligence Hub
 
 #### RAG-Powered Search
+
 Vector-based semantic search across all contracts using:
+
 - OpenAI text-embedding-3-small (1536 dimensions)
 - pgvector for PostgreSQL-native vector storage
 - Hybrid search combining semantic + keyword matching
 
 #### AI Chatbot
+
 Natural language interface for:
+
 - "What are our obligations in the Acme contract?"
 - "Which contracts expire next quarter?"
 - "Show me all indemnification clauses over $1M"
 
 #### Forecasting
+
 Portfolio analytics including:
+
 - Renewal projections
 - Spend forecasting
 - Scenario modeling (baseline, aggressive, conservative)
@@ -318,7 +337,9 @@ Tenant (1) ───────────────────────
 ### Key Models
 
 #### Contract
+
 The central entity with 80+ fields covering:
+
 - Basic metadata (filename, dates, status)
 - Financial terms (total value, payment terms)
 - Taxonomy (category, type, pricing model)
@@ -327,7 +348,9 @@ The central entity with 80+ fields covering:
 - Processing state (job status, artifacts)
 
 #### Artifact
+
 AI-extracted structured data:
+
 - 18 distinct types (OVERVIEW, FINANCIAL, RISK, etc.)
 - Version tracking with regeneration support
 - Quality metrics (confidence, completeness)
@@ -335,7 +358,9 @@ AI-extracted structured data:
 - Edit history and propagation tracking
 
 #### ContractMetadata
+
 Extended metadata for lifecycle management:
+
 - Renewal tracking and checklists
 - Negotiation status
 - Performance metrics (SLA compliance)
@@ -389,12 +414,14 @@ async function processContract(contractId: string) {
 ### Confidence Scoring
 
 Artifacts receive confidence scores based on:
+
 - Source text clarity
 - Field completeness
 - Cross-reference validation
 - Pattern matching accuracy
 
 **Thresholds:**
+
 - `≥85%`: High confidence, auto-validated
 - `60-84%`: Medium confidence, recommended review
 - `<60%`: Low confidence, requires human review
@@ -558,6 +585,7 @@ interface AuditLog {
 ## Technology Stack
 
 ### Frontend
+
 | Technology | Purpose |
 |------------|---------|
 | Next.js 15 | React framework with App Router |
@@ -569,6 +597,7 @@ interface AuditLog {
 | Zustand | State management |
 
 ### Backend
+
 | Technology | Purpose |
 |------------|---------|
 | Next.js API Routes | REST API endpoints |
@@ -578,6 +607,7 @@ interface AuditLog {
 | OpenAI SDK | AI integration |
 
 ### Infrastructure
+
 | Technology | Purpose |
 |------------|---------|
 | PostgreSQL | Primary database |
@@ -587,6 +617,7 @@ interface AuditLog {
 | Docker | Containerization |
 
 ### DevOps
+
 | Technology | Purpose |
 |------------|---------|
 | pnpm | Package management |
@@ -655,6 +686,7 @@ GOOGLE_CLIENT_ID=...
 ### Core Endpoints
 
 #### Contracts
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/contracts` | List contracts |
@@ -666,6 +698,7 @@ GOOGLE_CLIENT_ID=...
 | `POST` | `/api/contracts/[id]/reprocess` | Reprocess contract |
 
 #### Workflows
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/workflows` | List workflows |
@@ -674,12 +707,14 @@ GOOGLE_CLIENT_ID=...
 | `POST` | `/api/workflows/executions/[id]/step` | Advance step |
 
 #### Approvals
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `GET` | `/api/approvals` | List pending approvals |
 | `POST` | `/api/approvals` | Submit action (approve/reject) |
 
 #### AI Services
+
 | Method | Endpoint | Description |
 |--------|----------|-------------|
 | `POST` | `/api/ai/chat` | Chat with AI |
@@ -726,6 +761,7 @@ GOOGLE_CLIENT_ID=...
 ## Support & Contact
 
 For technical support or inquiries:
+
 - **Documentation**: This file
 - **API Docs**: `/api-docs` (Swagger)
 - **Architecture**: See `ARCHITECTURE_*.md` files

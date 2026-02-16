@@ -55,10 +55,10 @@ interface ProgressBarProps {
   height?: number;
 }
 
-const ProgressBar = memo(({ isActive, progress, color = 'bg-indigo-600', height = 3 }: ProgressBarProps) => (
+const ProgressBar = memo(({ isActive, progress, color = 'bg-violet-600', height = 3 }: ProgressBarProps) => (
   <AnimatePresence>
     {isActive && (
-      <motion.div
+      <motion.div key="active"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -142,7 +142,7 @@ export function PageTransitionProvider({
   children,
   defaultTransition = 'fade',
   showProgress = true,
-  progressColor = 'bg-indigo-600',
+  progressColor = 'bg-violet-600',
 }: PageTransitionProviderProps) {
   const pathname = usePathname();
   const [isTransitioning, setIsTransitioning] = useState(false);

@@ -10,9 +10,10 @@
  * @version 2.0.0 - Database-persisted jobs
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Types
 interface BatchRegenerationRequest {
@@ -70,32 +71,20 @@ let isProcessing = false;
 /**
  * POST - Create a new batch regeneration job
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = session.user.id;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const userId = ctx.userId;
     const body = await request.json() as BatchRegenerationRequest;
 
     // Validate request
     if (!body.contractIds || body.contractIds.length === 0) {
-      return NextResponse.json(
-        { error: 'contractIds array is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractIds array is required', 400);
     }
 
     if (body.contractIds.length > 1000) {
-      return NextResponse.json(
-        { error: 'Maximum 1000 contracts per batch' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Maximum 1000 contracts per batch', 400);
     }
 
-    const artifactTypes = body.artifactTypes || ['overview', 'financial', 'parties', 'terms', 'risk'];
+    const artifactTypes = body.artifactTypes || ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES'];
     const totalItems = body.contractIds.length * artifactTypes.length;
 
     // Create job in database
@@ -109,9 +98,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         total: totalItems,
         completed: 0,
         failed: 0,
-        skipped: 0,
-      },
-    };
+        skipped: 0 } };
 
     const job = await prisma.backgroundJob.create({
       data: {
@@ -120,9 +107,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         title: `Batch Regeneration: ${body.contractIds.length} contracts`,
         status: 'pending',
         progress: 0,
-        metadata: JSON.parse(JSON.stringify(jobMetadata)),
-      },
-    });
+        metadata: JSON.parse(JSON.stringify(jobMetadata)) } });
 
     // Add to queue
     if (body.priority === 'high') {
@@ -136,35 +121,22 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       processJobQueue();
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       jobId: job.id,
       status: job.status,
       progress: jobMetadata.progressDetails,
       estimatedTime: estimateProcessingTime(totalItems),
       message: body.options?.dryRun 
         ? 'Dry run job created - no actual changes will be made'
-        : 'Batch regeneration job created successfully',
-    });
+        : 'Batch regeneration job created successfully' });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create batch job' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET - Get job status or list jobs
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = session.user.id;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const userId = ctx.userId;
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
     const status = searchParams.get('status');
@@ -176,21 +148,16 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         where: {
           id: jobId,
           userId: userId,
-          type: 'batch-regenerate',
-        },
-      });
+          type: 'batch-regenerate' } });
 
       if (!job) {
-        return NextResponse.json(
-          { error: 'Job not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
       }
 
       const metadata = job.metadata as unknown as BatchJobMetadata;
       const results = (job.result as unknown as BatchJobResult[] | null) || [];
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         job: {
           id: job.id,
           status: job.status,
@@ -201,16 +168,13 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           results: results.slice(-100), // Last 100 results
           startedAt: job.startedAt,
           completedAt: job.completedAt,
-          error: job.error,
-        },
-      });
+          error: job.error } });
     }
 
     // List jobs
     const where: Record<string, unknown> = {
       userId: userId,
-      type: 'batch-regenerate',
-    };
+      type: 'batch-regenerate' };
 
     if (status) {
       where.status = status;
@@ -220,12 +184,11 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       prisma.backgroundJob.findMany({
         where,
         orderBy: { startedAt: 'desc' },
-        take: limit,
-      }),
+        take: limit }),
       prisma.backgroundJob.count({ where }),
     ]);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       jobs: jobs.map(j => {
         const metadata = j.metadata as unknown as BatchJobMetadata;
         return {
@@ -234,60 +197,35 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
           progress: metadata.progressDetails,
           createdAt: j.startedAt,
           completedAt: j.completedAt,
-          contractCount: metadata.contractIds.length,
-        };
+          contractCount: metadata.contractIds.length };
       }),
-      total,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch batch jobs' },
-      { status: 500 }
-    );
-  }
-}
+      total });
+  });
 
 /**
  * DELETE - Cancel a job
  */
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = session.user.id;
-
+export const DELETE = withAuthApiHandler(async (request, ctx) => {
+  const userId = ctx.userId;
     const { searchParams } = new URL(request.url);
     const jobId = searchParams.get('jobId');
 
     if (!jobId) {
-      return NextResponse.json(
-        { error: 'jobId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'jobId is required', 400);
     }
 
     const job = await prisma.backgroundJob.findFirst({
       where: {
         id: jobId,
         userId: userId,
-        type: 'batch-regenerate',
-      },
-    });
+        type: 'batch-regenerate' } });
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
     }
 
     if (job.status === 'completed' || job.status === 'cancelled') {
-      return NextResponse.json(
-        { error: 'Job already finished' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Job already finished', 400);
     }
 
     // Update job status in database
@@ -295,9 +233,7 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
       where: { id: jobId },
       data: {
         status: 'cancelled',
-        completedAt: new Date(),
-      },
-    });
+        completedAt: new Date() } });
 
     // Remove from queue
     const queueIndex = jobQueue.indexOf(jobId);
@@ -306,21 +242,13 @@ export async function DELETE(request: NextRequest): Promise<NextResponse> {
     }
 
     const metadata = updatedJob.metadata as unknown as BatchJobMetadata;
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Job cancelled',
       job: {
         id: updatedJob.id,
         status: updatedJob.status,
-        progress: metadata.progressDetails,
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to cancel job' },
-      { status: 500 }
-    );
-  }
-}
+        progress: metadata.progressDetails } });
+  });
 
 // =============================================================================
 // PROCESSING LOGIC
@@ -338,8 +266,7 @@ async function processJobQueue(): Promise<void> {
     
     // Fetch job from database
     const job = await prisma.backgroundJob.findUnique({
-      where: { id: jobId },
-    });
+      where: { id: jobId } });
 
     if (!job || job.status === 'cancelled') {
       continue;
@@ -348,8 +275,7 @@ async function processJobQueue(): Promise<void> {
     // Update job to processing
     await prisma.backgroundJob.update({
       where: { id: jobId },
-      data: { status: 'processing' },
-    });
+      data: { status: 'processing' } });
 
     try {
       await processJob(jobId);
@@ -358,18 +284,14 @@ async function processJobQueue(): Promise<void> {
         data: {
           status: 'completed',
           progress: 100,
-          completedAt: new Date(),
-        },
-      });
+          completedAt: new Date() } });
     } catch (error) {
       await prisma.backgroundJob.update({
         where: { id: jobId },
         data: {
           status: 'failed',
           error: error instanceof Error ? error.message : 'Unknown error',
-          completedAt: new Date(),
-        },
-      });
+          completedAt: new Date() } });
     }
   }
 
@@ -378,8 +300,7 @@ async function processJobQueue(): Promise<void> {
 
 async function processJob(jobId: string): Promise<void> {
   const job = await prisma.backgroundJob.findUnique({
-    where: { id: jobId },
-  });
+    where: { id: jobId } });
 
   if (!job) return;
 
@@ -389,8 +310,7 @@ async function processJob(jobId: string): Promise<void> {
   for (const contractId of metadata.contractIds) {
     // Check if job was cancelled
     const currentJob = await prisma.backgroundJob.findUnique({
-      where: { id: jobId },
-    });
+      where: { id: jobId } });
     if (currentJob?.status === 'cancelled') {
       break;
     }
@@ -407,8 +327,7 @@ async function processJob(jobId: string): Promise<void> {
 
         results.push({
           ...result,
-          processingTime: Date.now() - startTime,
-        });
+          processingTime: Date.now() - startTime });
 
         if (result.status === 'success') {
           metadata.progressDetails.completed++;
@@ -424,8 +343,7 @@ async function processJob(jobId: string): Promise<void> {
           artifactType,
           status: 'failed',
           error: error instanceof Error ? error.message : 'Unknown error',
-          processingTime: Date.now() - startTime,
-        });
+          processingTime: Date.now() - startTime });
         metadata.progressDetails.failed++;
       }
 
@@ -440,9 +358,7 @@ async function processJob(jobId: string): Promise<void> {
         data: {
           progress: progressPercent,
           metadata: metadata as any,
-          result: results as any,
-        },
-      });
+          result: results as any } });
 
       // Small delay between items to avoid overload
       await new Promise(resolve => setTimeout(resolve, 100));
@@ -465,9 +381,7 @@ async function processArtifact(
         fieldName: 'example',
         oldValue: 'old',
         newValue: 'new',
-        reason: 'Dry run - no actual changes',
-      }],
-    };
+        reason: 'Dry run - no actual changes' }] };
   }
 
   // Check for user edits to preserve
@@ -476,10 +390,9 @@ async function processArtifact(
     const existingArtifact = await prisma.artifact.findFirst({
       where: {
         contractId,
-        type: artifactType.toUpperCase() as 'INGESTION' | 'OVERVIEW' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'BENCHMARK' | 'RISK' | 'REPORT' | 'TEMPLATE' | 'FINANCIAL' | 'TERMINATION_CLAUSE' | 'LIABILITY_CLAUSE' | 'SLA_TERMS' | 'OBLIGATIONS' | 'RENEWAL' | 'NEGOTIATION_POINTS' | 'AMENDMENTS' | 'CONTACTS',
+        type: artifactType.toUpperCase() as any,
       },
-      orderBy: { generationVersion: 'desc' },
-    });
+      orderBy: { generationVersion: 'desc' } });
 
     if (existingArtifact?.isEdited) {
       return {
@@ -490,9 +403,7 @@ async function processArtifact(
           fieldName: 'userModified',
           oldValue: true,
           newValue: true,
-          reason: 'Preserved user edits',
-        }],
-      };
+          reason: 'Preserved user edits' }] };
     }
   }
 
@@ -506,8 +417,7 @@ async function processArtifact(
     status: 'success',
     previousVersion: 1,
     newVersion: 2,
-    changes: [],
-  };
+    changes: [] };
 }
 
 function estimateProcessingTime(totalItems: number): string {
@@ -527,44 +437,27 @@ function estimateProcessingTime(totalItems: number): string {
 // ROLLBACK ENDPOINT
 // =============================================================================
 
-export async function PATCH(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const userId = session.user.id;
-
+export const PATCH = withAuthApiHandler(async (request, ctx) => {
+  const userId = ctx.userId;
     const body = await request.json();
     const { jobId, action } = body;
 
     if (action !== 'rollback') {
-      return NextResponse.json(
-        { error: 'Invalid action' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
     }
 
     const job = await prisma.backgroundJob.findFirst({
       where: {
         id: jobId,
         userId: userId,
-        type: 'batch-regenerate',
-      },
-    });
+        type: 'batch-regenerate' } });
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
     }
 
     if (job.status !== 'completed') {
-      return NextResponse.json(
-        { error: 'Can only rollback completed jobs' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Can only rollback completed jobs', 400);
     }
 
     // Perform rollback by restoring previous versions
@@ -576,9 +469,8 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
       const existingArtifact = await prisma.artifact.findFirst({
         where: {
           contractId: r.contractId,
-          type: r.artifactType.toUpperCase() as 'INGESTION' | 'OVERVIEW' | 'CLAUSES' | 'RATES' | 'COMPLIANCE' | 'BENCHMARK' | 'RISK' | 'REPORT' | 'TEMPLATE' | 'FINANCIAL' | 'TERMINATION_CLAUSE' | 'LIABILITY_CLAUSE' | 'SLA_TERMS' | 'OBLIGATIONS' | 'RENEWAL' | 'NEGOTIATION_POINTS' | 'AMENDMENTS' | 'CONTACTS',
-        },
-      });
+          type: r.artifactType.toUpperCase() as any,
+        } });
 
       if (existingArtifact) {
         // Update artifact to indicate rollback
@@ -587,28 +479,18 @@ export async function PATCH(request: NextRequest): Promise<NextResponse> {
           data: {
             regeneratedAt: new Date(),
             regeneratedBy: userId,
-            regenerationReason: `Rollback from job ${jobId}`,
-          },
-        });
+            regenerationReason: `Rollback from job ${jobId}` } });
 
         rollbackResults.push({
           contractId: r.contractId,
           artifactType: r.artifactType,
-          rolledBackTo: r.previousVersion,
-        });
+          rolledBackTo: r.previousVersion });
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Rollback completed',
       rollbackCount: rollbackResults.length,
-      results: rollbackResults,
-    });
+      results: rollbackResults });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to rollback' },
-      { status: 500 }
-    );
-  }
-}
+  });

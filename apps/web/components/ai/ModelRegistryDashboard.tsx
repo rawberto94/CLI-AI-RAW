@@ -107,26 +107,26 @@ interface ModelRegistryDashboardProps {
 const PROVIDER_CONFIG: Record<ModelProvider, { color: string; bgColor: string; label: string }> = {
   openai: { color: 'text-green-600', bgColor: 'bg-green-100', label: 'OpenAI' },
   anthropic: { color: 'text-orange-600', bgColor: 'bg-orange-100', label: 'Anthropic' },
-  google: { color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Google' },
+  google: { color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Google' },
   azure: { color: 'text-sky-600', bgColor: 'bg-sky-100', label: 'Azure' },
-  custom: { color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Custom' },
+  custom: { color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Custom' },
 };
 
 const STATUS_CONFIG: Record<ModelStatus, { icon: React.ElementType; color: string; bgColor: string; label: string }> = {
   active: { icon: CheckCircle2, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Active' },
   deprecated: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-100', label: 'Deprecated' },
-  testing: { icon: Activity, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Testing' },
+  testing: { icon: Activity, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Testing' },
   disabled: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100', label: 'Disabled' },
 };
 
 const CAPABILITY_COLORS: Record<ModelCapability, string> = {
-  extraction: 'bg-blue-100 text-blue-700',
-  summarization: 'bg-purple-100 text-purple-700',
+  extraction: 'bg-violet-100 text-violet-700',
+  summarization: 'bg-violet-100 text-violet-700',
   classification: 'bg-green-100 text-green-700',
   comparison: 'bg-amber-100 text-amber-700',
   generation: 'bg-pink-100 text-pink-700',
-  chat: 'bg-cyan-100 text-cyan-700',
-  embedding: 'bg-indigo-100 text-indigo-700',
+  chat: 'bg-violet-100 text-violet-700',
+  embedding: 'bg-violet-100 text-violet-700',
   analysis: 'bg-orange-100 text-orange-700',
 };
 
@@ -348,11 +348,11 @@ function StatCard({
   trend?: { value: number; positive: boolean };
 }) {
   const colorClasses = {
-    blue: 'text-blue-600 bg-blue-50',
+    blue: 'text-violet-600 bg-violet-50',
     green: 'text-green-600 bg-green-50',
     amber: 'text-amber-600 bg-amber-50',
     red: 'text-red-600 bg-red-50',
-    purple: 'text-purple-600 bg-purple-50',
+    purple: 'text-violet-600 bg-violet-50',
   };
 
   return (
@@ -488,7 +488,7 @@ function ABTestCard({ test }: { test: ABTest }) {
   const statusConfig = {
     running: { icon: Play, color: 'text-green-600 bg-green-100' },
     paused: { icon: Pause, color: 'text-amber-600 bg-amber-100' },
-    completed: { icon: CheckCircle2, color: 'text-blue-600 bg-blue-100' },
+    completed: { icon: CheckCircle2, color: 'text-violet-600 bg-violet-100' },
   };
 
   const config = statusConfig[test.status];

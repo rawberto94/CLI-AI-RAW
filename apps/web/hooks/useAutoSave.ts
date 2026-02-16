@@ -5,7 +5,7 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useDebounce } from './useDebounce';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface UseAutoSaveOptions<T> {
   /** Data to auto-save */

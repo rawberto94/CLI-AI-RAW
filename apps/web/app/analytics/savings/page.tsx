@@ -74,7 +74,7 @@ export default function SavingsPipelinePage() {
       link.download = `savings-pipeline-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Savings pipeline exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };
@@ -84,7 +84,7 @@ export default function SavingsPipelinePage() {
       case 'realized':
         return 'bg-green-500';
       case 'in_progress':
-        return 'bg-blue-500';
+        return 'bg-violet-500';
       case 'identified':
         return 'bg-yellow-500';
       case 'closed':
@@ -99,7 +99,7 @@ export default function SavingsPipelinePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/20">
       <div className="container mx-auto py-8 space-y-6">
         <Breadcrumbs />
         {/* Header */}
@@ -110,7 +110,7 @@ export default function SavingsPipelinePage() {
         >
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl shadow-lg shadow-emerald-500/25">
+              <div className="p-2.5 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-violet-500/25">
                 <DollarSign className="w-7 h-7 text-white" />
               </div>
               Savings Pipeline
@@ -226,7 +226,7 @@ export default function SavingsPipelinePage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <span>Error loading savings pipeline: {error}</span>
+              <span>Error loading savings pipeline: {error instanceof Error ? error.message : String(error)}</span>
             </div>
           </CardContent>
         </Card>
@@ -370,7 +370,7 @@ export default function SavingsPipelinePage() {
                       </div>
                       <div className="h-2 bg-muted rounded-full overflow-hidden">
                         <div 
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-600"
+                          className="h-full bg-gradient-to-r from-violet-500 to-violet-600"
                           style={{ width: `${percentage}%` }}
                         />
                       </div>

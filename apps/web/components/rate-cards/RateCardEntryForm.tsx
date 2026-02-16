@@ -14,7 +14,7 @@ import { Select } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
 import { Loader2, Save, X, AlertCircle, CheckCircle, Sparkles, RefreshCw, TrendingUp } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 import { useCurrencyConverter } from '@/lib/services/currency.service';
 
 interface RateCardFormData {
@@ -500,41 +500,41 @@ export function RateCardEntryForm({
           </div>
 
           {showConversion && convertedRates && (
-            <div className="col-span-2 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+            <div className="col-span-2 p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-200">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-blue-600" />
-                  <strong className="text-sm text-blue-900">Converted Rates</strong>
+                  <TrendingUp className="h-4 w-4 text-violet-600" />
+                  <strong className="text-sm text-violet-900">Converted Rates</strong>
                 </div>
-                {isConverting && <Loader2 className="h-4 w-4 animate-spin text-blue-600" />}
+                {isConverting && <Loader2 className="h-4 w-4 animate-spin text-violet-600" />}
               </div>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {watchedFields.currency !== 'USD' && (
                   <div className="flex justify-between">
-                    <span className="text-blue-700">USD:</span>
+                    <span className="text-violet-700">USD:</span>
                     <span className="font-medium">{format(convertedRates.usd, 'USD', 'en-US')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'EUR' && (
                   <div className="flex justify-between">
-                    <span className="text-blue-700">EUR:</span>
+                    <span className="text-violet-700">EUR:</span>
                     <span className="font-medium">{format(convertedRates.eur, 'EUR', 'en-US')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'GBP' && (
                   <div className="flex justify-between">
-                    <span className="text-blue-700">GBP:</span>
+                    <span className="text-violet-700">GBP:</span>
                     <span className="font-medium">{format(convertedRates.gbp, 'GBP', 'en-US')}</span>
                   </div>
                 )}
                 {watchedFields.currency !== 'CHF' && (
                   <div className="flex justify-between">
-                    <span className="text-blue-700">CHF:</span>
+                    <span className="text-violet-700">CHF:</span>
                     <span className="font-medium">{format(convertedRates.chf, 'CHF', 'en-US')}</span>
                   </div>
                 )}
               </div>
-              <p className="text-xs text-blue-600 mt-2">
+              <p className="text-xs text-violet-600 mt-2">
                 Real-time conversion for global benchmarking
               </p>
             </div>

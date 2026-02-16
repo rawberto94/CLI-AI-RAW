@@ -24,6 +24,6 @@ function isBuildPhase() {
         process.env.NEXT_BUILD === 'true');
 }
 function createLogger(name, options = {}) {
-    const level = isBuildPhase() ? 'silent' : options.level ?? process.env.LOG_LEVEL;
+    const level = isBuildPhase() ? 'silent' : options.level ?? process.env.LOG_LEVEL ?? 'info';
     return (0, pino_1.default)({ ...options, name, level });
 }

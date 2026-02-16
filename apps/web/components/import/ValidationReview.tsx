@@ -41,7 +41,7 @@ export function ValidationReview({
       case 'warning':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'info':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-violet-100 text-violet-800 border-violet-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -107,7 +107,7 @@ export function ValidationReview({
             className={`
               px-4 py-2 font-medium border-b-2 transition-colors
               ${filter === f
-                ? 'border-blue-500 text-blue-600'
+                ? 'border-violet-500 text-violet-600'
                 : 'border-transparent text-gray-600 hover:text-gray-900'
               }
             `}
@@ -156,7 +156,7 @@ export function ValidationReview({
                     <div className="flex gap-1">
                       {issues.map((issue, i) => (
                         <span
-                          key={i}
+                          key={`${issue.field}-${issue.severity}-${i}`}
                           className={`px-2 py-0.5 text-xs rounded ${getSeverityColor(issue.severity)}`}
                         >
                           {getSeverityIcon(issue.severity)}
@@ -174,7 +174,7 @@ export function ValidationReview({
                   <div className="px-4 py-3 bg-gray-50 border-t space-y-3">
                     {issues.map((issue, i) => (
                       <div
-                        key={i}
+                        key={`detail-${issue.field}-${issue.severity}-${i}`}
                         className={`p-3 border rounded ${getSeverityColor(issue.severity)}`}
                       >
                         <div className="flex items-start justify-between">
@@ -234,8 +234,8 @@ export function ValidationReview({
 
       {/* Help Text */}
       {validationResult.summary.errorCount > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <p className="text-sm text-blue-900">
+        <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+          <p className="text-sm text-violet-900">
             <strong>Note:</strong> You must fix all errors before importing. Warnings can be ignored if acceptable.
           </p>
         </div>

@@ -189,8 +189,8 @@ export const BatchOperationsPanel = memo(function BatchOperationsPanel({
       >
         {/* Selection Count */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-            <CheckSquare className="h-4 w-4 text-blue-600" />
+          <div className="w-8 h-8 rounded-lg bg-violet-100 flex items-center justify-center">
+            <CheckSquare className="h-4 w-4 text-violet-600" />
           </div>
           <div>
             <p className="font-semibold text-sm">{selectedIds.length} selected</p>
@@ -203,7 +203,7 @@ export const BatchOperationsPanel = memo(function BatchOperationsPanel({
         {/* Processing State */}
         {processing ? (
           <div className="flex items-center gap-3 min-w-[200px]">
-            <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+            <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
             <div className="flex-1">
               <p className="text-sm font-medium capitalize">{currentOperation}...</p>
               <Progress value={progress} className="h-1.5 mt-1" />

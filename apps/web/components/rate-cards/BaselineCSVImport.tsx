@@ -136,12 +136,12 @@ export function BaselineCSVImport() {
         </p>
 
         {/* Template Download */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-6">
           <div className="flex items-start gap-3">
-            <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+            <FileText className="h-5 w-5 text-violet-600 mt-0.5" />
             <div className="flex-1">
-              <h3 className="font-medium text-blue-900 mb-1">CSV Template</h3>
-              <p className="text-sm text-blue-700 mb-3">
+              <h3 className="font-medium text-violet-900 mb-1">CSV Template</h3>
+              <p className="text-sm text-violet-700 mb-3">
                 Download the template file to see the required format and example data.
               </p>
               <Button variant="outline" size="sm" onClick={downloadTemplate}>
@@ -232,9 +232,9 @@ export function BaselineCSVImport() {
               <p className="text-sm text-green-600 mb-1">Imported</p>
               <p className="text-3xl font-bold text-green-700">{result.imported}</p>
             </div>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-600 mb-1">Updated</p>
-              <p className="text-3xl font-bold text-blue-700">{result.updated}</p>
+            <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+              <p className="text-sm text-violet-600 mb-1">Updated</p>
+              <p className="text-3xl font-bold text-violet-700">{result.updated}</p>
             </div>
             <div className="bg-red-50 border border-red-200 rounded-lg p-4">
               <p className="text-sm text-red-600 mb-1">Failed</p>

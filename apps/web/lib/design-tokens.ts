@@ -273,8 +273,8 @@ export function getComplianceColor(score: number) {
 }
 
 // Utility to format currency
-export function formatCurrency(value: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatCurrency(value: number, currency = 'CHF'): string {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
     currency,
     minimumFractionDigits: 0,

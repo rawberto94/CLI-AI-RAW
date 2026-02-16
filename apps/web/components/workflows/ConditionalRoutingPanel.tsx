@@ -176,7 +176,7 @@ export function ConditionalRoutingPanel({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <GitBranch className="w-5 h-5 text-indigo-600" />
+            <GitBranch className="w-5 h-5 text-violet-600" />
             Conditional Routing
           </h3>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
@@ -196,12 +196,12 @@ export function ConditionalRoutingPanel({
             const targetStep = availableSteps.find((s) => s.id === route.targetStepId);
 
             return (
-              <Card key={route.id} className={cn('transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-900/50', isEditing && 'ring-2 ring-indigo-300 dark:ring-indigo-600 shadow-lg')}>
+              <Card key={route.id} className={cn('transition-all duration-200 hover:shadow-md dark:hover:shadow-slate-900/50', isEditing && 'ring-2 ring-indigo-300 dark:ring-violet-600 shadow-lg')}>
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:border-indigo-700">
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-indigo-200 dark:bg-violet-900/30 dark:text-indigo-300 dark:border-violet-700">
                           Priority {route.priority}
                         </Badge>
                         {isEditing ? (
@@ -355,7 +355,7 @@ export function ConditionalRoutingPanel({
                                       (o) => o.value === condition.operator
                                     )?.label || condition.operator}
                                   </span>
-                                  <span className="font-semibold text-indigo-600">{condition.value}</span>
+                                  <span className="font-semibold text-violet-600">{condition.value}</span>
                                 </div>
                               )}
 
@@ -441,10 +441,10 @@ export function ConditionalRoutingPanel({
       )}
 
       {routes.length > 0 && (
-        <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+        <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg text-sm">
           <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="text-blue-900">
+            <AlertTriangle className="w-4 h-4 text-violet-600 mt-0.5 flex-shrink-0" />
+            <div className="text-violet-900">
               <span className="font-medium">Routing Priority:</span> Routes are evaluated in order from top to
               bottom. The first matching route will be used.
             </div>

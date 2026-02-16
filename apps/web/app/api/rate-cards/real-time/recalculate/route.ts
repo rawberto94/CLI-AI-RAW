@@ -5,32 +5,23 @@
  * Triggers manual recalculation of benchmarks for a rate card
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { realTimeBenchmarkService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const body = await request.json();
     const { rateCardEntryId } = body;
 
     if (!rateCardEntryId) {
-      return NextResponse.json(
-        { error: 'rateCardEntryId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'rateCardEntryId is required', 400);
     }
 
     // Verify rate card exists with tenant isolation
@@ -39,10 +30,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!rateCard) {
-      return NextResponse.json(
-        { error: 'Rate card not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
     // Initialize service
@@ -52,7 +40,7 @@ export async function POST(request: NextRequest) {
     const result = await realTimeService.recalculateBenchmark(rateCardEntryId);
 
     if (result.success) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         message: 'Benchmark recalculated successfully',
         rateCardEntryId: result.rateCardEntryId,
@@ -61,19 +49,6 @@ export async function POST(request: NextRequest) {
         benchmark: result.benchmark,
       });
     } else {
-      return NextResponse.json(
-        {
-          success: false,
-          error: result.error || 'Recalculation failed',
-          rateCardEntryId: result.rateCardEntryId,
-        },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error || 'Recalculation failed', 500)
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to recalculate benchmark' },
-      { status: 500 }
-    );
-  }
-}
+  });

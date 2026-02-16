@@ -259,7 +259,7 @@ const OnboardingModal = memo(function OnboardingModal() {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="OnboardingFlow-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -276,7 +276,7 @@ const OnboardingModal = memo(function OnboardingModal() {
           {currentOnboarding.showProgressBar !== false && (
             <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-100 dark:bg-zinc-800">
               <motion.div
-                className="h-full bg-gradient-to-r from-blue-500 to-violet-500"
+                className="h-full bg-gradient-to-r from-violet-500 to-violet-500"
                 initial={{ width: 0 }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.3 }}
@@ -302,9 +302,9 @@ const OnboardingModal = memo(function OnboardingModal() {
                 key={index}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   index === currentStep
-                    ? 'w-8 bg-blue-500'
+                    ? 'w-8 bg-violet-500'
                     : index < currentStep
-                    ? 'w-2 bg-blue-500'
+                    ? 'w-2 bg-violet-500'
                     : 'w-2 bg-zinc-200 dark:bg-zinc-700'
                 }`}
               />
@@ -325,7 +325,7 @@ const OnboardingModal = memo(function OnboardingModal() {
                 {/* Icon */}
                 {step.icon && (
                   <div className="flex justify-center mb-6">
-                    <div className="p-4 bg-gradient-to-br from-blue-500 to-violet-500 rounded-2xl shadow-lg shadow-blue-500/25">
+                    <div className="p-4 bg-gradient-to-br from-violet-500 to-violet-500 rounded-2xl shadow-lg shadow-violet-500/25">
                       <step.icon className="w-8 h-8 text-white" />
                     </div>
                   </div>
@@ -386,7 +386,7 @@ const OnboardingModal = memo(function OnboardingModal() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={step.action?.onClick || nextStep}
-                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-violet-500 text-white font-medium rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all"
+                className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-violet-500 to-violet-500 text-white font-medium rounded-xl shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/30 transition-all"
               >
                 {step.action?.label || (isLastStep ? 'Get Started' : 'Continue')}
                 {isLastStep ? (
@@ -443,7 +443,7 @@ export const WelcomeScreen = memo(function WelcomeScreen({
           className="flex justify-center mb-8"
         >
           <div className="relative">
-            <div className="w-24 h-24 bg-gradient-to-br from-blue-500 via-violet-500 to-purple-500 rounded-3xl shadow-2xl shadow-violet-500/30 flex items-center justify-center">
+            <div className="w-24 h-24 bg-gradient-to-br from-violet-500 via-violet-500 to-purple-500 rounded-3xl shadow-2xl shadow-violet-500/30 flex items-center justify-center">
               <Sparkles className="w-12 h-12 text-white" />
             </div>
             <motion.div
@@ -494,8 +494,8 @@ export const WelcomeScreen = memo(function WelcomeScreen({
               transition={{ delay: 0.6 + index * 0.1 }}
               className="p-6 bg-white dark:bg-zinc-800/50 rounded-2xl shadow-lg border border-zinc-200 dark:border-zinc-700/50"
             >
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-500/10 to-violet-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
-                <feature.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="w-12 h-12 bg-gradient-to-br from-violet-500/10 to-violet-500/10 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                <feature.icon className="w-6 h-6 text-violet-600 dark:text-violet-400" />
               </div>
               <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2">
                 {feature.title}
@@ -518,7 +518,7 @@ export const WelcomeScreen = memo(function WelcomeScreen({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onGetStarted}
-            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-500 to-violet-500 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-blue-500/30 transition-all"
+            className="flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-violet-500 to-violet-500 text-white font-semibold rounded-xl shadow-lg shadow-violet-500/25 hover:shadow-xl hover:shadow-violet-500/30 transition-all"
           >
             <Play className="w-5 h-5" />
             Get Started
@@ -593,7 +593,7 @@ export const OnboardingChecklist = memo(function OnboardingChecklist({
       >
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-violet-500 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-violet-500 rounded-xl flex items-center justify-center">
               <Target className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -620,7 +620,7 @@ export const OnboardingChecklist = memo(function OnboardingChecklist({
         {/* Progress Bar */}
         <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-blue-500 to-violet-500"
+            className="h-full bg-gradient-to-r from-violet-500 to-violet-500"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.5, ease: 'easeOut' }}
@@ -631,7 +631,7 @@ export const OnboardingChecklist = memo(function OnboardingChecklist({
       {/* Items */}
       <AnimatePresence>
         {!collapsed && (
-          <motion.div
+          <motion.div key="OnboardingFlow-ap-2"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -724,16 +724,16 @@ export const ProgressBadge = memo(function ProgressBadge({
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
-      className={`inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-full ${className}`}
+      className={`inline-flex items-center gap-2 px-3 py-1.5 bg-violet-50 dark:bg-violet-900/30 rounded-full ${className}`}
     >
-      <div className="w-16 h-1.5 bg-blue-100 dark:bg-blue-800 rounded-full overflow-hidden">
+      <div className="w-16 h-1.5 bg-violet-100 dark:bg-violet-800 rounded-full overflow-hidden">
         <motion.div
-          className="h-full bg-blue-500"
+          className="h-full bg-violet-500"
           initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
         />
       </div>
-      <span className="text-xs font-medium text-blue-700 dark:text-blue-400">
+      <span className="text-xs font-medium text-violet-700 dark:text-violet-400">
         {label} {current}/{total}
       </span>
     </motion.div>

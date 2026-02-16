@@ -6,14 +6,18 @@
  * Uses the RenewalHistory table for complete renewal lifecycle tracking
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import type { Prisma } from '@prisma/client';
+import { contractService } from 'data-orchestration/services';
+// TODO: Migrate $queryRaw calls to contractService when raw query support is added
+import type { Prisma as _Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -41,6 +45,14 @@ export async function GET(request: NextRequest) {
       newValue: unknown;
       description?: string;
     }
+
+    // Build composable SQL fragments for optional filters
+    const contractFilter = contractId 
+      ? Prisma.sql`AND contract_id = ${contractId}` 
+      : Prisma.empty;
+    const typeFilter = renewalType 
+      ? Prisma.sql`AND renewal_type = ${renewalType}` 
+      : Prisma.empty;
 
     // Query renewal history
     const renewals = await prisma.$queryRaw<Array<{
@@ -82,8 +94,8 @@ export async function GET(request: NextRequest) {
         completed_by, completed_at, status, notes, created_at
       FROM renewal_history
       WHERE tenant_id = ${tenantId}
-        ${contractId ? prisma.$queryRaw`AND contract_id = ${contractId}` : prisma.$queryRaw``}
-        ${renewalType ? prisma.$queryRaw`AND renewal_type = ${renewalType}` : prisma.$queryRaw``}
+        ${contractFilter}
+        ${typeFilter}
       ORDER BY completed_at DESC
       LIMIT ${limit} OFFSET ${offset}
     `;
@@ -194,8 +206,7 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         renewals: data,
         stats: {
@@ -224,140 +235,123 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch renewal history', details: String(error) },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    const body = await request.json();
-    const { contractId, renewalData } = body;
-    const now = new Date();
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = await getServerTenantId();
+  const body = await request.json();
+  const { contractId, renewalData } = body;
+  const now = new Date();
 
-    if (!contractId || !renewalData) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID and renewal data are required' },
-        { status: 400 }
-      );
-    }
+  if (!contractId || !renewalData) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Contract ID and renewal data are required', 400);
+  }
 
-    // Get current contract data
-    const contract = await prisma.contract.findFirst({
-      where: { id: contractId, tenantId },
-      select: {
-        id: true,
-        startDate: true,
-        effectiveDate: true,
-        endDate: true,
-        expirationDate: true,
-        totalValue: true,
-      },
-    });
+  // Get current contract data
+  const contract = await prisma.contract.findFirst({
+    where: { id: contractId, tenantId },
+    select: {
+      id: true,
+      startDate: true,
+      effectiveDate: true,
+      endDate: true,
+      expirationDate: true,
+      totalValue: true,
+    },
+  });
 
-    if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
-    }
+  if (!contract) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+  }
 
-    // Get previous renewal count
-    const prevRenewals = await prisma.$queryRaw<Array<{ count: bigint }>>`
-      SELECT COUNT(*) as count FROM renewal_history 
-      WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-    `;
-    const renewalNumber = Number(prevRenewals[0]?.count || 0) + 1;
+  // Get previous renewal count
+  const prevRenewals = await prisma.$queryRaw<Array<{ count: bigint }>>`
+    SELECT COUNT(*) as count FROM renewal_history 
+    WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+  `;
+  const renewalNumber = Number(prevRenewals[0]?.count || 0) + 1;
 
-    // Calculate value change
-    const previousValue = contract.totalValue ? Number(contract.totalValue) : 0;
-    const newValue = renewalData.newValue || previousValue;
-    const valueChange = newValue - previousValue;
-    const valueChangePercent = previousValue > 0 ? ((valueChange / previousValue) * 100) : 0;
+  // Calculate value change
+  const previousValue = contract.totalValue ? Number(contract.totalValue) : 0;
+  const newValue = renewalData.newValue || previousValue;
+  const valueChange = newValue - previousValue;
+  const valueChangePercent = previousValue > 0 ? ((valueChange / previousValue) * 100) : 0;
 
-    // Calculate term extension
-    const previousEndDate = contract.endDate || contract.expirationDate;
-    const newEndDate = renewalData.newEndDate ? new Date(renewalData.newEndDate) : null;
-    const termExtension = previousEndDate && newEndDate 
-      ? Math.ceil((newEndDate.getTime() - previousEndDate.getTime()) / (1000 * 60 * 60 * 24))
-      : null;
+  // Calculate term extension
+  const previousEndDate = contract.endDate || contract.expirationDate;
+  const newEndDate = renewalData.newEndDate ? new Date(renewalData.newEndDate) : null;
+  const termExtension = previousEndDate && newEndDate 
+    ? Math.ceil((newEndDate.getTime() - previousEndDate.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
-    const id = `renewal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const id = `renewal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Insert renewal history record
-    await prisma.$executeRaw`
-      INSERT INTO renewal_history (
-        id, contract_id, tenant_id, renewal_number, renewal_type,
-        previous_start_date, previous_end_date, previous_value,
-        new_start_date, new_end_date, new_value,
-        value_change, value_change_percent, term_extension,
-        negotiation_days, negotiation_rounds, key_changes,
-        initiated_by, initiated_at, completed_by, completed_at,
-        status, notes, created_at
-      ) VALUES (
-        ${id}, ${contractId}, ${tenantId}, ${renewalNumber}, ${renewalData.renewalType || 'STANDARD'},
-        ${contract.startDate || contract.effectiveDate}, ${previousEndDate}, ${previousValue},
-        ${renewalData.newStartDate ? new Date(renewalData.newStartDate) : null}, 
-        ${newEndDate}, ${newValue},
-        ${valueChange}, ${valueChangePercent}, ${termExtension},
-        ${renewalData.negotiationDays || null}, ${renewalData.negotiationRounds || null},
-        ${JSON.stringify(renewalData.keyChanges || [])}::jsonb,
-        ${renewalData.initiatedBy || null}, ${renewalData.initiatedAt ? new Date(renewalData.initiatedAt) : null},
-        ${renewalData.completedBy || 'system'}, ${now},
-        'COMPLETED', ${renewalData.notes || null}, ${now}
-      )
-    `;
+  // Insert renewal history record
+  await prisma.$executeRaw`
+    INSERT INTO renewal_history (
+      id, contract_id, tenant_id, renewal_number, renewal_type,
+      previous_start_date, previous_end_date, previous_value,
+      new_start_date, new_end_date, new_value,
+      value_change, value_change_percent, term_extension,
+      negotiation_days, negotiation_rounds, key_changes,
+      initiated_by, initiated_at, completed_by, completed_at,
+      status, notes, created_at
+    ) VALUES (
+      ${id}, ${contractId}, ${tenantId}, ${renewalNumber}, ${renewalData.renewalType || 'STANDARD'},
+      ${contract.startDate || contract.effectiveDate}, ${previousEndDate}, ${previousValue},
+      ${renewalData.newStartDate ? new Date(renewalData.newStartDate) : null}, 
+      ${newEndDate}, ${newValue},
+      ${valueChange}, ${valueChangePercent}, ${termExtension},
+      ${renewalData.negotiationDays || null}, ${renewalData.negotiationRounds || null},
+      ${JSON.stringify(renewalData.keyChanges || [])}::jsonb,
+      ${renewalData.initiatedBy || null}, ${renewalData.initiatedAt ? new Date(renewalData.initiatedAt) : null},
+      ${renewalData.completedBy || 'system'}, ${now},
+      'COMPLETED', ${renewalData.notes || null}, ${now}
+    )
+  `;
 
-    // Update contract with new dates if provided
-    if (renewalData.newStartDate || renewalData.newEndDate || renewalData.newValue) {
-      await prisma.contract.update({
-        where: { id: contractId },
-        data: {
-          ...(renewalData.newStartDate && { 
-            startDate: new Date(renewalData.newStartDate),
-            effectiveDate: new Date(renewalData.newStartDate),
-          }),
-          ...(renewalData.newEndDate && { 
-            endDate: new Date(renewalData.newEndDate),
-            expirationDate: new Date(renewalData.newEndDate),
-          }),
-          ...(renewalData.newValue && { totalValue: renewalData.newValue }),
-          renewalStatus: 'COMPLETED',
-          renewalCompletedAt: now,
-          updatedAt: now,
-        },
-      });
-    }
-
-    // Update expiration record
-    await prisma.$executeRaw`
-      UPDATE contract_expirations 
-      SET renewal_status = 'COMPLETED', resolution = 'RENEWED', resolution_date = ${now},
-          updated_at = ${now}
-      WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
-    `.catch((err) => console.error('[RenewalHistory] Expiration record update error:', err));
-
-    return NextResponse.json({
-      success: true,
-      message: 'Renewal recorded successfully',
+  // Update contract with new dates if provided
+  if (renewalData.newStartDate || renewalData.newEndDate || renewalData.newValue) {
+    await prisma.contract.update({
+      where: { id: contractId },
       data: {
-        id,
-        contractId,
-        renewalNumber,
-        renewalType: renewalData.renewalType || 'STANDARD',
-        valueChange,
-        valueChangePercent: valueChangePercent.toFixed(1),
-        termExtension,
-        completedAt: now.toISOString(),
+        ...(renewalData.newStartDate && { 
+          startDate: new Date(renewalData.newStartDate),
+          effectiveDate: new Date(renewalData.newStartDate),
+        }),
+        ...(renewalData.newEndDate && { 
+          endDate: new Date(renewalData.newEndDate),
+          expirationDate: new Date(renewalData.newEndDate),
+        }),
+        ...(renewalData.newValue && { totalValue: renewalData.newValue }),
+        renewalStatus: 'COMPLETED',
+        renewalCompletedAt: now,
+        updatedAt: now,
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to record renewal', details: String(error) },
-      { status: 500 }
-    );
   }
-}
+
+  // Update expiration record
+  await prisma.$executeRaw`
+    UPDATE contract_expirations 
+    SET renewal_status = 'COMPLETED', resolution = 'RENEWED', resolution_date = ${now},
+        updated_at = ${now}
+    WHERE contract_id = ${contractId} AND tenant_id = ${tenantId}
+  `.catch((err) => console.error('[RenewalHistory] Expiration record update error:', err));
+
+  return createSuccessResponse(ctx, {
+    message: 'Renewal recorded successfully',
+    data: {
+      id,
+      contractId,
+      renewalNumber,
+      renewalType: renewalData.renewalType || 'STANDARD',
+      valueChange,
+      valueChangePercent: valueChangePercent.toFixed(1),
+      termExtension,
+      completedAt: now.toISOString(),
+    },
+  });
+});

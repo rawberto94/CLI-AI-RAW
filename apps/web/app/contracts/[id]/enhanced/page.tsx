@@ -20,24 +20,37 @@ import {
   Edit,
   RefreshCw,
   Users,
-  Calendar,
+  Calendar as _Calendar,
   TrendingUp,
   Target,
   Eye,
   BarChart3,
-  CheckCircle,
-  Clock,
+  CheckCircle as _CheckCircle,
+  Clock as _Clock,
   Loader2,
   Star,
   Brain,
-  Network,
+  Network as _Network,
   Activity,
-  PieChart,
-  Tag,
-  Settings
+  PieChart as _PieChart,
+  Tag as _Tag,
+  Settings as _Settings
 } from 'lucide-react'
-import { ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
+import { ContractMetadataEditor as _ContractMetadataEditor } from '@/components/contracts/ContractMetadataEditor'
 import Link from 'next/link'
+
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+function unwrapString(val: string | { value: string; source?: string } | undefined): string {
+  const unwrapped = unwrapValue(val);
+  return typeof unwrapped === 'string' ? unwrapped : '';
+}
 
 interface EnhancedContractData {
   id: string
@@ -102,7 +115,7 @@ interface EnhancedContractData {
 
 export default function EnhancedContractDetailPage() {
   const params = useParams()
-  const router = useRouter()
+  const _router = useRouter()
   const contractId = params.id as string
 
   const [contract, setContract] = useState<EnhancedContractData | null>(null)
@@ -114,7 +127,7 @@ export default function EnhancedContractDetailPage() {
     if (contractId) {
       loadContract()
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId])
 
   // Auto-refresh for processing contracts
@@ -123,7 +136,7 @@ export default function EnhancedContractDetailPage() {
       const interval = setInterval(loadContract, 3000)
       return () => clearInterval(interval)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contract?.status])
 
   const loadContract = async () => {
@@ -135,7 +148,8 @@ export default function EnhancedContractDetailPage() {
         throw new Error(`Failed to load contract: ${response.status}`)
       }
 
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       setContract(data)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to load contract')
@@ -163,7 +177,7 @@ export default function EnhancedContractDetailPage() {
     }
   }
 
-  const formatCurrency = (amount: number, currency = 'USD') => {
+  const _formatCurrency = (amount: number, currency = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency,
@@ -180,26 +194,26 @@ export default function EnhancedContractDetailPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'COMPLETED': return 'bg-green-100 text-green-800 border-green-200'
-      case 'PROCESSING': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'PROCESSING': return 'bg-violet-100 text-violet-800 border-violet-200'
       case 'FAILED': return 'bg-red-100 text-red-800 border-red-200'
       default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
   }
 
-  const getRiskColor = (score: number) => {
+  const _getRiskColor = (score: number) => {
     if (score >= 80) return 'text-red-600'
     if (score >= 60) return 'text-yellow-600'
-    if (score >= 40) return 'text-blue-600'
+    if (score >= 40) return 'text-violet-600'
     return 'text-green-600'
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="relative">
-            <div className="w-16 h-16 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-            <Brain className="w-6 h-6 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+            <div className="w-16 h-16 border-4 border-violet-200 border-t-violet-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <Brain className="w-6 h-6 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
           </div>
           <h3 className="text-xl font-semibold text-gray-900 mb-2">
             Loading Contract Analysis
@@ -212,7 +226,7 @@ export default function EnhancedContractDetailPage() {
 
   if (error || !contract) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50 flex items-center justify-center">
         <Card className="max-w-md shadow-xl">
           <CardContent className="p-8 text-center">
             <AlertTriangle className="w-12 h-12 text-red-600 mx-auto mb-4" />
@@ -239,7 +253,7 @@ export default function EnhancedContractDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         
         {/* Enhanced Header */}
@@ -255,7 +269,7 @@ export default function EnhancedContractDetailPage() {
             </nav>
             
             <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl shadow-lg">
+              <div className="p-3 bg-gradient-to-br from-violet-600 to-purple-600 rounded-2xl shadow-lg">
                 <FileText className="w-8 h-8 text-white" />
               </div>
               <div>
@@ -296,13 +310,13 @@ export default function EnhancedContractDetailPage() {
 
         {/* Processing Status */}
         {contract.status === 'PROCESSING' && contract.processing && (
-          <Card className="shadow-xl border-0 border-l-4 border-l-blue-500">
+          <Card className="shadow-xl border-0 border-l-4 border-l-violet-500">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
-                    <Activity className="w-4 h-4 text-blue-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+                    <Loader2 className="w-8 h-8 text-violet-600 animate-spin" />
+                    <Activity className="w-4 h-4 text-violet-600 absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900">
@@ -314,7 +328,7 @@ export default function EnhancedContractDetailPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-blue-600">
+                  <div className="text-3xl font-bold text-violet-600">
                     {contract.processing.progress}%
                   </div>
                   <div className="text-sm text-gray-600">Complete</div>
@@ -346,7 +360,7 @@ export default function EnhancedContractDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-green-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
                 <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-3" />
                 <div className="text-3xl font-bold text-green-900 mb-1">
@@ -359,27 +373,27 @@ export default function EnhancedContractDetailPage() {
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-blue-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
-                <Target className="w-8 h-8 text-blue-600 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-blue-900 mb-1">
+                <Target className="w-8 h-8 text-violet-600 mx-auto mb-3" />
+                <div className="text-3xl font-bold text-violet-900 mb-1">
                   {contract.intelligence.patterns}
                 </div>
-                <div className="text-sm text-blue-700">Patterns Detected</div>
-                <div className="text-xs text-blue-600 mt-1">
+                <div className="text-sm text-violet-700">Patterns Detected</div>
+                <div className="text-xs text-violet-600 mt-1">
                   AI-identified patterns
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-purple-100">
+            <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-100">
               <CardContent className="p-6 text-center">
-                <Zap className="w-8 h-8 text-purple-600 mx-auto mb-3" />
-                <div className="text-3xl font-bold text-purple-900 mb-1">
+                <Zap className="w-8 h-8 text-violet-600 mx-auto mb-3" />
+                <div className="text-3xl font-bold text-violet-900 mb-1">
                   {contract.intelligence.insights}
                 </div>
-                <div className="text-sm text-purple-700">Insights Generated</div>
-                <div className="text-xs text-purple-600 mt-1">
+                <div className="text-sm text-violet-700">Insights Generated</div>
+                <div className="text-xs text-violet-600 mt-1">
                   Actionable recommendations
                 </div>
               </CardContent>
@@ -403,11 +417,11 @@ export default function EnhancedContractDetailPage() {
                     <div className="flex items-start gap-3">
                       <div className={`p-2 rounded-lg ${
                         rec.priority === 'high' ? 'bg-red-100' :
-                        rec.priority === 'medium' ? 'bg-yellow-100' : 'bg-blue-100'
+                        rec.priority === 'medium' ? 'bg-yellow-100' : 'bg-violet-100'
                       }`}>
                         {rec.type === 'risk' ? <Shield className="w-5 h-5 text-red-600" /> :
                          rec.type === 'cost' ? <DollarSign className="w-5 h-5 text-green-600" /> :
-                         <Target className="w-5 h-5 text-blue-600" />}
+                         <Target className="w-5 h-5 text-violet-600" />}
                       </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 mb-1">{rec.title}</h4>
@@ -462,20 +476,20 @@ export default function EnhancedContractDetailPage() {
                   {/* Contract Summary Stats */}
                   {contract.summary && (
                     <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                      <div className="text-center p-4 bg-blue-50 rounded-lg">
-                        <FileText className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-                        <div className="text-2xl font-bold text-blue-900">{contract.summary.totalClauses}</div>
-                        <div className="text-sm text-blue-700">Clauses</div>
+                      <div className="text-center p-4 bg-violet-50 rounded-lg">
+                        <FileText className="w-6 h-6 text-violet-600 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-violet-900">{contract.summary.totalClauses}</div>
+                        <div className="text-sm text-violet-700">Clauses</div>
                       </div>
                       <div className="text-center p-4 bg-red-50 rounded-lg">
                         <Shield className="w-6 h-6 text-red-600 mx-auto mb-2" />
                         <div className="text-2xl font-bold text-red-900">{contract.summary.riskFactors}</div>
                         <div className="text-sm text-red-700">Risk Factors</div>
                       </div>
-                      <div className="text-center p-4 bg-purple-50 rounded-lg">
-                        <Award className="w-6 h-6 text-purple-600 mx-auto mb-2" />
-                        <div className="text-2xl font-bold text-purple-900">{contract.summary.complianceIssues}</div>
-                        <div className="text-sm text-purple-700">Compliance Issues</div>
+                      <div className="text-center p-4 bg-violet-50 rounded-lg">
+                        <Award className="w-6 h-6 text-violet-600 mx-auto mb-2" />
+                        <div className="text-2xl font-bold text-violet-900">{contract.summary.complianceIssues}</div>
+                        <div className="text-sm text-violet-700">Compliance Issues</div>
                       </div>
                       <div className="text-center p-4 bg-green-50 rounded-lg">
                         <DollarSign className="w-6 h-6 text-green-600 mx-auto mb-2" />
@@ -495,48 +509,51 @@ export default function EnhancedContractDetailPage() {
                     <div className="bg-white rounded-lg border border-gray-200 p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">Contract Details</h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {contract.metadata.summary && (
+                        {unwrapValue(contract.metadata.summary) && (
                           <div className="md:col-span-2">
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Summary</h4>
-                            <p className="text-gray-900">{contract.metadata.summary}</p>
+                            <p className="text-gray-900">{unwrapString(contract.metadata.summary)}</p>
                           </div>
                         )}
                         
-                        {contract.metadata.contractType && (
+                        {unwrapValue(contract.metadata.contractType) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Contract Type</h4>
-                            <p className="text-gray-900 font-medium">{contract.metadata.contractType}</p>
+                            <p className="text-gray-900 font-medium">{unwrapString(contract.metadata.contractType)}</p>
                           </div>
                         )}
 
-                        {contract.metadata.parties && contract.metadata.parties.length > 0 && (
+                        {unwrapValue(contract.metadata.parties) && (unwrapValue(contract.metadata.parties) as any[]).length > 0 && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Contracting Parties</h4>
                             <div className="space-y-1">
-                              {contract.metadata.parties.map((party: string, idx: number) => (
-                                <div key={idx} className="flex items-center gap-2">
-                                  <Users className="w-4 h-4 text-blue-500" />
-                                  <span className="text-gray-900">{party}</span>
-                                </div>
-                              ))}
+                              {(unwrapValue(contract.metadata.parties) as any[]).map((party: any, idx: number) => {
+                                const partyName = typeof party === 'string' ? party : unwrapString(party?.name) || party;
+                                return (
+                                  <div key={`party-${partyName}-${idx}`} className="flex items-center gap-2">
+                                    <Users className="w-4 h-4 text-violet-500" />
+                                    <span className="text-gray-900">{partyName}</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
 
-                        {contract.metadata.effectiveDate && (
+                        {unwrapValue(contract.metadata.effectiveDate) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Effective Date</h4>
                             <p className="text-gray-900">
-                              {new Date(contract.metadata.effectiveDate).toLocaleDateString()}
+                              {new Date(unwrapValue(contract.metadata.effectiveDate) as string).toLocaleDateString()}
                             </p>
                           </div>
                         )}
 
-                        {contract.metadata.expirationDate && (
+                        {unwrapValue(contract.metadata.expirationDate) && (
                           <div>
                             <h4 className="text-sm font-medium text-gray-600 mb-2">Expiration Date</h4>
                             <p className="text-gray-900">
-                              {new Date(contract.metadata.expirationDate).toLocaleDateString()}
+                              {new Date(unwrapValue(contract.metadata.expirationDate) as string).toLocaleDateString()}
                             </p>
                           </div>
                         )}

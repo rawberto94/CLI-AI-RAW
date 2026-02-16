@@ -1,14 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { AdvancedNotificationService, NotificationPayload } from '@/lib/notifications/notification.service';
+import { notificationService } from 'data-orchestration/services';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const notificationService = new AdvancedNotificationService();
-
-const CRON_SECRET = process.env.CRON_SECRET || 'development-cron-secret';
 
 /**
  * Send Expiration Alerts via Email/Notifications
@@ -25,19 +25,7 @@ interface NotificationResult {
   errors: string[];
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify cron secret
-    const authHeader = request.headers.get('authorization');
-    const providedSecret = authHeader?.replace('Bearer ', '') || request.nextUrl.searchParams.get('secret');
-    
-    if (providedSecret !== CRON_SECRET) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     const startTime = Date.now();
     const results: NotificationResult = {
       processed: 0,
@@ -138,42 +126,15 @@ export async function POST(request: NextRequest) {
 
     const duration = Date.now() - startTime;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         ...results,
         duration: `${duration}ms`,
         completedAt: new Date().toISOString(),
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Alert sending failed',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
-export async function GET(request: NextRequest) {
-  const secret = request.nextUrl.searchParams.get('secret');
-  
-  if (secret !== CRON_SECRET) {
-    // Return stats about pending alerts
-    const stats = await prisma.expirationAlert.groupBy({
-      by: ['status', 'severity'],
-      _count: { id: true },
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Alert notification cron endpoint is active',
-      schedule: 'Every hour recommended',
-      pendingAlerts: stats,
-    });
-  }
-
+export const GET = withCronHandler(async (request, ctx) => {
   return POST(request);
-}
+});

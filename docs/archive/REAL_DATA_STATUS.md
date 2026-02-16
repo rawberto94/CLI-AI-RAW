@@ -10,10 +10,12 @@
 ## ✅ What Was Fixed
 
 ### 1. **Removed Service Layer Dependency**
+
 - **Before**: APIs relied on `data-orchestration` package services (60+ TypeScript errors)
 - **After**: APIs use direct Prisma queries (zero errors, full functionality)
 
 ### 2. **Rate Cards API** (`/api/rate-cards`)
+
 - ✅ GET: Full filtering, pagination, sorting
 - ✅ POST: Create new rate card entries
 - ✅ Real-time database queries
@@ -21,6 +23,7 @@
 - ✅ Contract relation support
 
 ### 3. **Data Mode Toggle**
+
 ```bash
 # Real data (default)
 curl http://localhost:3005/api/rate-cards
@@ -34,6 +37,7 @@ curl -H "x-data-mode: mock" http://localhost:3005/api/rate-cards
 ## 🔧 Technical Implementation
 
 ### Direct Prisma Query Example
+
 \`\`\`typescript
 // Old (broken due to data-orchestration errors)
 const result = await rateCardService.listEntries(tenantId, filters, pagination);
@@ -46,6 +50,7 @@ const [rateCards, total] = await Promise.all([
 \`\`\`
 
 ### Filters Supported
+
 - ✅ contractId, supplierId, supplierName
 - ✅ roleStandardized, seniority, lineOfService
 - ✅ country, region, source, clientName
@@ -54,6 +59,7 @@ const [rateCards, total] = await Promise.all([
 - ✅ isBaseline, isNegotiated (boolean)
 
 ### Pagination & Sorting
+
 - ✅ page, pageSize
 - ✅ sortBy, sortOrder
 - ✅ Total count and pages calculation
@@ -66,11 +72,15 @@ const [rateCards, total] = await Promise.all([
 
 To populate with test data:
 \`\`\`bash
+
 # Option 1: Seed demo data
+
 pnpm run seed:demo
 
 # Option 2: Import contracts with rate cards
+
 # Upload a contract PDF through the UI
+
 \`\`\`
 
 ---
@@ -78,6 +88,7 @@ pnpm run seed:demo
 ## 🚀 Benefits of Prisma Bypass
 
 ### ✅ Advantages
+
 1. **Zero TypeScript Errors**: No dependency on broken data-orchestration package
 2. **Full Database Access**: All Prisma features available
 3. **Performance**: Direct queries, no middleware overhead
@@ -85,13 +96,16 @@ pnpm run seed:demo
 5. **Production Ready**: Stable, tested, no compilation issues
 
 ### ⚠️ Trade-offs
+
 1. **No Advanced Features**: Missing AI insights, benchmarking, savings analysis
 2. **No Events**: No real-time event bus integration
 3. **No Service Layer**: Business logic must be in routes
 4. **No Caching**: Service-layer caching not available
 
 ### 🔮 Future Enhancement
+
 When data-orchestration package is fixed, we can:
+
 1. Re-enable service imports
 2. Restore advanced filtering
 3. Add back event integration
@@ -120,17 +134,22 @@ When data-orchestration package is fixed, we can:
 ## 🎯 Verification
 
 \`\`\`bash
+
 # Test real data mode
-curl http://localhost:3005/api/rate-cards
+
+curl <http://localhost:3005/api/rate-cards>
 
 # Test with filters
-curl 'http://localhost:3005/api/rate-cards?country=USA&pageSize=10'
+
+curl '<http://localhost:3005/api/rate-cards?country=USA&pageSize=10>'
 
 # Test mock mode
-curl -H "x-data-mode: mock" http://localhost:3005/api/rate-cards
+
+curl -H "x-data-mode: mock" <http://localhost:3005/api/rate-cards>
 
 # Test POST (create entry)
-curl -X POST http://localhost:3005/api/rate-cards \\
+
+curl -X POST <http://localhost:3005/api/rate-cards> \\
   -H "Content-Type: application/json" \\
   -d '{"roleStandardized":"Software Engineer","dailyRate":1000,"currency":"USD","tenantId":"default-tenant"}'
 \`\`\`

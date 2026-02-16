@@ -254,7 +254,7 @@ export const InlineEditField = memo(function InlineEditField({
                   size="sm"
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="h-9 w-9 p-0 bg-emerald-500 hover:bg-emerald-600"
+                  className="h-9 w-9 p-0 bg-violet-500 hover:bg-violet-600"
                 >
                   {isSaving ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

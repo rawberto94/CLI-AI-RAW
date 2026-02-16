@@ -5,32 +5,33 @@
  * GET /api/contracts/[id]/categorize - Get categorization status
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getTenantIdFromRequest } from '@/lib/tenant-server';
 import { optionalImport } from '@/lib/server/optional-module';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = await params;
 
     // Auth check
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     let tenantId: string;
     try {
       tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
     // Verify contract exists
@@ -46,10 +47,7 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Parse options
@@ -67,7 +65,7 @@ export async function POST(
       const metadata = contract.searchMetadata as Record<string, unknown> | null;
       const categorization = metadata?._categorization as Record<string, unknown> | undefined;
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         alreadyCategorized: true,
         contractType: contract.contractType,
@@ -78,13 +76,7 @@ export async function POST(
 
     // Check for text
     if (!contract.rawText || contract.rawText.length < 100) {
-      return NextResponse.json(
-        {
-          error: 'Contract has insufficient text for categorization',
-          textLength: contract.rawText?.length || 0,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract has insufficient text for categorization', 400);
     }
 
     if (synchronous) {
@@ -128,7 +120,7 @@ export async function POST(
             });
           }
 
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             quick: true,
             result: {
@@ -153,7 +145,7 @@ export async function POST(
         const shouldApply = autoApply && (result.overallConfidence / 100) >= autoApplyThreshold;
 
         if (shouldApply) {
-          const riskScoreMap: Record<string, number> = {
+          const _riskScoreMap: Record<string, number> = {
             LOW: 20, MEDIUM: 50, HIGH: 75, CRITICAL: 95,
           };
 
@@ -188,20 +180,14 @@ export async function POST(
           });
         }
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           synchronous: true,
           result,
           autoApplied: shouldApply,
         });
       } catch (error: unknown) {
-        return NextResponse.json(
-          {
-            error: 'Categorization failed',
-            message: error instanceof Error ? error.message : 'Unknown error',
-          },
-          { status: 500 }
-        );
+        return handleApiError(ctx, error);
       }
     } else {
       // Queue for background processing
@@ -211,13 +197,7 @@ export async function POST(
         );
 
         if (!workerModule?.queueCategorizationJob) {
-          return NextResponse.json(
-            {
-              error: 'Background worker not available',
-              message: 'Categorization worker is not installed/configured in this environment.',
-            },
-            { status: 503 }
-          );
+          return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Background worker not available', 503);
         }
 
         const { queueCategorizationJob } = workerModule;
@@ -232,27 +212,18 @@ export async function POST(
           priority: 'high',
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           queued: true,
           jobId,
           message: 'Categorization queued for background processing',
         });
-      } catch {
-        return NextResponse.json(
-          { error: 'Failed to queue categorization' },
-          { status: 500 }
-        );
+      } catch (error) {
+        return handleApiError(ctx, error);
       }
     }
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Internal server error',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -263,19 +234,18 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = await params;
-
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     let tenantId: string;
     try {
       tenantId = await getTenantIdFromRequest(request);
-    } catch {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
     const contract = await prisma.contract.findFirst({
@@ -292,17 +262,14 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     const metadata = contract.searchMetadata as Record<string, unknown> | null;
     const categorization = metadata?._categorization as Record<string, unknown> | undefined;
     const pendingCategorization = metadata?._pendingCategorization as Record<string, unknown> | undefined;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       isCategorized: !!contract.contractType,
       contractType: contract.contractType,
       category: contract.category,
@@ -315,10 +282,7 @@ export async function GET(
       pendingCategorization: pendingCategorization || null,
       needsReview: pendingCategorization?.needsReview || false,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

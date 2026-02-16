@@ -33,9 +33,9 @@ interface ContractHoverPreviewProps {
 
 const formatCurrency = (value?: number) => {
   if (!value) return '—';
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CHF',
     maximumFractionDigits: 0,
   }).format(value);
 };
@@ -59,8 +59,8 @@ const getDaysUntilExpiry = (date?: string) => {
 
 const getStatusConfig = (status: string) => {
   const configs: Record<string, { label: string; color: string; icon: typeof CheckCircle }> = {
-    completed: { label: 'Active', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: CheckCircle },
-    processing: { label: 'Processing', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: Loader2 },
+    completed: { label: 'Active', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: CheckCircle },
+    processing: { label: 'Processing', color: 'bg-violet-100 text-violet-700 border-violet-200', icon: Loader2 },
     failed: { label: 'Failed', color: 'bg-red-100 text-red-700 border-red-200', icon: AlertTriangle },
     pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: Clock },
   };
@@ -71,7 +71,7 @@ const getRiskLevel = (score?: number) => {
   if (score === undefined || score === null) return null;
   if (score >= 70) return { level: 'High', color: 'text-red-600 bg-red-50', icon: AlertTriangle };
   if (score >= 40) return { level: 'Medium', color: 'text-amber-600 bg-amber-50', icon: Shield };
-  return { level: 'Low', color: 'text-emerald-600 bg-emerald-50', icon: Shield };
+  return { level: 'Low', color: 'text-violet-600 bg-violet-50', icon: Shield };
 };
 
 export const ContractHoverPreview = memo(function ContractHoverPreview({
@@ -144,7 +144,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
       
       <AnimatePresence>
         {showPreview && (
-          <motion.div
+          <motion.div key="preview"
             initial={{ opacity: 0, scale: 0.95, y: side === 'bottom' ? -5 : side === 'top' ? 5 : 0, x: side === 'right' ? -5 : side === 'left' ? 5 : 0 }}
             animate={{ opacity: 1, scale: 1, y: 0, x: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
@@ -159,7 +159,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
               <div className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800 dark:to-slate-850 p-4 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3 min-w-0">
-                    <div className="p-2 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg shadow-md flex-shrink-0">
+                    <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md flex-shrink-0">
                       <FileText className="h-4 w-4 text-white" />
                     </div>
                     <div className="min-w-0">
@@ -193,7 +193,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
                 {/* Value & Risk */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                    <DollarSign className="h-4 w-4 text-violet-500 flex-shrink-0" />
                     <span className={cn(
                       'font-semibold',
                       contract.value ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400'
@@ -273,7 +273,7 @@ export const ContractHoverPreview = memo(function ContractHoverPreview({
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1 h-8 text-xs text-purple-600 border-purple-200 hover:bg-purple-50 dark:text-purple-400 dark:border-purple-800 dark:hover:bg-purple-950"
+                  className="flex-1 h-8 text-xs text-violet-600 border-violet-200 hover:bg-violet-50 dark:text-violet-400 dark:border-violet-800 dark:hover:bg-violet-950"
                   onClick={(e) => {
                     e.stopPropagation();
                     onAnalyze?.();

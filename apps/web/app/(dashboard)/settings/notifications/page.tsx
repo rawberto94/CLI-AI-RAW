@@ -45,6 +45,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
+
+
 interface NotificationChannel {
   enabled: boolean;
   channels: ("in_app" | "email" | "push" | "slack" | "teams")[];
@@ -294,7 +296,7 @@ export default function NotificationPreferencesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-violet-600" />
       </div>
     );
   }
@@ -396,7 +398,7 @@ export default function NotificationPreferencesPage() {
                   id="quiet-start"
                   value={preferences.globalQuietHours.start}
                   onChange={(e) => handleQuietHoursChange("start", e.target.value)}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
                 />
               </div>
               <div>
@@ -406,7 +408,7 @@ export default function NotificationPreferencesPage() {
                   id="quiet-end"
                   value={preferences.globalQuietHours.end}
                   onChange={(e) => handleQuietHoursChange("end", e.target.value)}
-                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                  className="mt-1 block w-full rounded-md border-slate-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
                 />
               </div>
             </div>
@@ -501,9 +503,9 @@ export default function NotificationPreferencesPage() {
                             disabled={isDisabled}
                             className={`p-2 rounded-lg transition-colors ${
                               isActive && !isDisabled
-                                ? "bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-400"
+                                ? "bg-violet-100 text-violet-600 dark:bg-violet-900 dark:text-violet-400"
                                 : "bg-slate-100 text-slate-400 dark:bg-slate-800"
-                            } ${isDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-blue-50"}`}
+                            } ${isDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-violet-50"}`}
                             title={channel.label}
                           >
                             <ChannelIcon className="w-4 h-4" />

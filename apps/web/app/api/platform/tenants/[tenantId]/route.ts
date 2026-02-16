@@ -4,39 +4,61 @@
  * Allows platform owners to view, update, or switch context to a specific tenant
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
+
+/**
+ * Verify the caller is an admin and has access to the target tenant.
+ * - Regular admins can manage their own tenant.
+ * - Cross-tenant access requires a designated platform admin (PLATFORM_ADMIN_TENANT_ID).
+ */
+async function verifyPlatformAdminAccess(
+  ctx: ReturnType<typeof getApiContext>,
+  userId: string,
+  targetTenantId: string,
+): Promise<Response | null> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { role: true, tenantId: true },
+  });
+
+  const isAdmin = user?.role === 'owner' || user?.role === 'admin';
+  if (!isAdmin) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Forbidden', 403);
+  }
+
+  // Cross-tenant access requires platform admin privileges
+  const PLATFORM_TENANT_ID = process.env.PLATFORM_ADMIN_TENANT_ID;
+  const isCrossTenant = user?.tenantId !== targetTenantId;
+  if (isCrossTenant && (!PLATFORM_TENANT_ID || user?.tenantId !== PLATFORM_TENANT_ID)) {
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Cross-tenant access requires platform admin privileges', 403);
+  }
+
+  return null; // Access granted
+}
 
 // GET - Get tenant details
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
-    // Check admin access
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    const isAdmin = user?.role === 'owner' || user?.role === 'admin';
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    if (accessDenied) return accessDenied;
 
     // Get tenant with full details
     const tenant = await prisma.tenant.findUnique({
@@ -66,10 +88,7 @@ export async function GET(
     });
 
     if (!tenant) {
-      return NextResponse.json(
-        { error: 'Tenant not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     // Get contract count excluding DELETED
@@ -80,7 +99,7 @@ export async function GET(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       tenant: {
         id: tenant.id,
@@ -95,11 +114,8 @@ export async function GET(
         users: tenant.users,
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -108,30 +124,20 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
-    // Check admin access
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    const isAdmin = user?.role === 'owner' || user?.role === 'admin';
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    if (accessDenied) return accessDenied;
 
     const body = await request.json();
     const { name, status } = body;
@@ -144,15 +150,12 @@ export async function PATCH(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       tenant,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -161,30 +164,20 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ tenantId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await auth();
     const { tenantId } = await params;
     
     if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
-    // Check admin access
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    const isAdmin = user?.role === 'owner' || user?.role === 'admin';
-    if (!isAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden' },
-        { status: 403 }
-      );
-    }
+    const accessDenied = await verifyPlatformAdminAccess(ctx, session.user.id, tenantId);
+    if (accessDenied) return accessDenied;
 
     // Soft delete - set status to SUSPENDED
     const tenant = await prisma.tenant.update({
@@ -192,15 +185,12 @@ export async function DELETE(
       data: { status: 'SUSPENDED' },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Tenant suspended successfully',
       tenant,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to delete tenant' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

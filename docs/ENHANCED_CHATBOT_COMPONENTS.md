@@ -7,9 +7,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ## New Components Created
 
 ### 1. MessageBubble (`components/ai/chat/MessageBubble.tsx`)
+
 **Purpose**: Rich message rendering with full feature set
 
 **Features**:
+
 - **Markdown Parsing**: Bold, italic, inline code, links, bulleted/numbered lists
 - **Code Blocks**: Syntax-aware rendering with copy functionality
 - **Tables**: Structured data display with proper styling
@@ -20,6 +22,7 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 - **Actions**: Copy, bookmark, share, regenerate message capabilities
 
 **Types Exported**:
+
 - `ChatMessage` - Core message type
 - `MessageSource` - Source document reference
 - `MessageAttachment` - File attachment type
@@ -27,9 +30,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 2. EnhancedChatInput (`components/ai/chat/EnhancedChatInput.tsx`)
+
 **Purpose**: Feature-rich chat input with modern UX
 
 **Features**:
+
 - **File Attachments**: Support for PDF, DOC, DOCX, TXT, and images
 - **Voice Input**: Web Speech API integration for voice commands
 - **Slash Commands**: Quick actions via `/` prefix
@@ -47,14 +52,17 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 3. TypingIndicator (`components/ai/chat/TypingIndicator.tsx`)
+
 **Purpose**: Visual feedback during AI processing
 
 **Components**:
+
 - **TypingIndicator**: Animated dots with variants (dots/pulse/wave)
 - **StreamingIndicator**: Text display with animated cursor
 - **ThinkingStatus**: Multi-stage processing indicator with checkmarks
 
 **Stages**:
+
 1. "Understanding your query..."
 2. "Searching contracts..."
 3. "Analyzing results..."
@@ -63,9 +71,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 4. ChatContext (`components/ai/chat/ChatContext.tsx`)
+
 **Purpose**: Conversation history and memory management
 
 **Features**:
+
 - **Multi-Conversation Support**: Create, load, switch between conversations
 - **localStorage Persistence**: Conversations persist across sessions
 - **Message CRUD**: Add, update, delete messages
@@ -75,15 +85,18 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 - **Context Storage**: Key-value context for additional data
 
 **Limits**:
+
 - `MAX_CONVERSATIONS`: 50
 - `MAX_MESSAGES_PER_CONVERSATION`: 100
 
 ---
 
 ### 5. SmartSuggestions (`components/ai/chat/SmartSuggestions.tsx`)
+
 **Purpose**: Context-aware AI-powered suggestions
 
 **Features**:
+
 - **Context-Based**: Different suggestions based on current page
 - **Time-Aware**: Smart suggestions based on day/time (Monday reviews, month-end, Q4)
 - **Usage Tracking**: Learn from user's frequently used queries
@@ -91,6 +104,7 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 - **Priority System**: Suggestions ranked by relevance
 
 **Page Contexts**:
+
 - `contracts-list` - List-specific actions
 - `contract-detail` - Detail page actions
 - `analytics` - Analytics-focused queries
@@ -99,9 +113,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 6. ConversationSidebar (`components/ai/chat/ConversationSidebar.tsx`)
+
 **Purpose**: Conversation history navigation
 
 **Features**:
+
 - **Date Grouping**: Today, Yesterday, This Week, This Month, Older
 - **Search**: Filter conversations by title/content
 - **Star/Favorite**: Mark important conversations
@@ -113,9 +129,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 7. EnhancedChatbot (`components/ai/chat/EnhancedChatbot.tsx`)
+
 **Purpose**: Main chatbot orchestration component
 
 **Features**:
+
 - **Maximize/Minimize**: Full-screen or compact mode
 - **Settings Panel**: Sound, theme, suggestions, compact mode
 - **Welcome Screen**: First-time user onboarding
@@ -126,9 +144,11 @@ This document summarizes the comprehensive AI chatbot improvements implemented f
 ---
 
 ### 8. ChatBubbleTrigger (`components/ai/chat/ChatBubbleTrigger.tsx`)
+
 **Purpose**: Floating action button to open chatbot
 
 **Features**:
+
 - **Pulse Animation**: Attention-grabbing animation
 - **Proactive Messages**: Timed prompts to engage users
 - **Unread Badge**: Notification count display
@@ -213,6 +233,7 @@ function CustomChatContent() {
 The chatbot expects an endpoint at `/api/ai/chat` that:
 
 **Request**:
+
 ```json
 {
   "message": "User's question",
@@ -224,6 +245,7 @@ The chatbot expects an endpoint at `/api/ai/chat` that:
 ```
 
 **Response** (JSON or Streaming):
+
 ```json
 {
   "response": "AI generated response",
@@ -293,6 +315,7 @@ apps/web/components/ai/chat/
 - Edge 90+
 
 Web Speech API (voice input) requires:
+
 - Chrome/Edge (full support)
 - Safari (partial support)
 - Firefox (limited support)

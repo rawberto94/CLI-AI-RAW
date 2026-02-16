@@ -75,9 +75,9 @@ export const DataFreshnessIndicator = memo(function DataFreshnessIndicator({
     fetching: {
       icon: RefreshCw,
       label: 'Refreshing...',
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-200',
+      color: 'text-violet-500',
+      bgColor: 'bg-violet-50',
+      borderColor: 'border-violet-200',
     },
     stale: {
       icon: Clock,
@@ -108,7 +108,7 @@ export const DataFreshnessIndicator = memo(function DataFreshnessIndicator({
               className={cn(
                 'inline-block w-2 h-2 rounded-full',
                 state === 'error' && 'bg-red-500',
-                state === 'fetching' && 'bg-blue-500 animate-pulse',
+                state === 'fetching' && 'bg-violet-500 animate-pulse',
                 state === 'stale' && 'bg-amber-500 animate-pulse',
                 state === 'fresh' && 'bg-green-500',
                 className

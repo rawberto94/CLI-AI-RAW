@@ -150,10 +150,10 @@ function SavingsCard({
   const hasSavings = dailySavings > 0;
 
   return (
-    <div className={`p-4 rounded-lg border ${variant === 'best' ? 'bg-blue-50 border-blue-200' : 'bg-gray-50 border-gray-200'}`}>
+    <div className={`p-4 rounded-lg border ${variant === 'best' ? 'bg-violet-50 border-violet-200' : 'bg-gray-50 border-gray-200'}`}>
       <div className="flex items-start justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Icon className={`w-5 h-5 ${variant === 'best' ? 'text-blue-600' : 'text-gray-600'}`} />
+          <Icon className={`w-5 h-5 ${variant === 'best' ? 'text-violet-600' : 'text-gray-600'}`} />
           <div className="text-sm font-medium text-gray-700">{title}</div>
         </div>
         {hasSavings && (
@@ -259,21 +259,21 @@ export function SavingsAnalysisSection(props: SavingsAnalysisSectionProps = {}) 
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Current Rate Display */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-4 bg-violet-50 border border-violet-200 rounded-lg">
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-blue-700 mb-1">Current Rate</div>
-              <div className="text-3xl font-bold text-blue-900">
+              <div className="text-sm text-violet-700 mb-1">Current Rate</div>
+              <div className="text-3xl font-bold text-violet-900">
                 {formatCurrency(savingsAnalysis.currentRate)}
-                <span className="text-base font-normal text-blue-700">/day</span>
+                <span className="text-base font-normal text-violet-700">/day</span>
               </div>
               {volumeCommitted && (
-                <div className="text-xs text-blue-600 mt-1">
+                <div className="text-xs text-violet-600 mt-1">
                   {volumeCommitted} days/year committed
                 </div>
               )}
             </div>
-            <DollarSign className="w-12 h-12 text-blue-400" />
+            <DollarSign className="w-12 h-12 text-violet-400" />
           </div>
         </div>
 
@@ -324,7 +324,7 @@ export function SavingsAnalysisSection(props: SavingsAnalysisSectionProps = {}) 
 
         {/* Annual Savings Summary */}
         {savingsAnalysis.annualSavingsPotential && savingsAnalysis.annualSavingsPotential > 0 && (
-          <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+          <div className="p-4 bg-gradient-to-r from-violet-50 to-violet-50 border border-green-200 rounded-lg">
             <div className="flex items-start gap-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <DollarSign className="w-6 h-6 text-green-700" />

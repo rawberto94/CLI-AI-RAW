@@ -63,7 +63,7 @@ export function AdvancedFilters({ onFilterChange, onReset }: AdvancedFiltersProp
             <Filter className="h-5 w-5" />
             <CardTitle className="text-lg">Advanced Filters</CardTitle>
             {activeFilterCount > 0 && (
-              <span className="bg-blue-100 text-blue-800 text-xs font-semibold px-2 py-0.5 rounded">
+              <span className="bg-violet-100 text-violet-800 text-xs font-semibold px-2 py-0.5 rounded">
                 {activeFilterCount} active
               </span>
             )}

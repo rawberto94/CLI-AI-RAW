@@ -1,27 +1,14 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { marketIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const marketIntelService = new marketIntelligenceService(prisma);
 
     const trends = await marketIntelService.detectEmergingTrends(
-      getSessionTenantId(session)
+      ctx.tenantId
     );
 
-    return NextResponse.json(trends);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch emerging trends' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, trends);
+  });

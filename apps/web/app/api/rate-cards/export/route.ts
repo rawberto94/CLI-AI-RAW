@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 /**
  * Rate card filter types
@@ -84,11 +86,10 @@ interface FilterMetadata {
  * - includeFilterMetadata: boolean (default: true)
  * - tenantId: string
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const body = await request.json();
@@ -193,14 +194,8 @@ export async function POST(request: NextRequest) {
       return exportToPDF(rateCards, filterMetadata);
     }
 
-    return NextResponse.json({ error: 'Invalid format' }, { status: 400 });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to export rate cards' },
-      { status: 500 }
-    );
-  }
-}
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid format', 400);
+  });
 
 /**
  * Generate human-readable filter summary

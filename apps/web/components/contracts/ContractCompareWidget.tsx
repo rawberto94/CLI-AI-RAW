@@ -79,9 +79,9 @@ interface ComparisonSlotProps {
 // ============ HELPER FUNCTIONS ============
 
 const formatCurrency = (value: number): string => {
-  return new Intl.NumberFormat('en-US', {
+  return new Intl.NumberFormat('de-CH', {
     style: 'currency',
-    currency: 'USD',
+    currency: 'CHF',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   }).format(value)
@@ -116,7 +116,7 @@ function ComparisonSlot({ contract, position, onRemove, onSelect, isEmpty }: Com
                 variant="outline" 
                 className={cn(
                   "text-[10px] mb-1",
-                  position === 'A' ? "border-indigo-200 text-indigo-600" : "border-purple-200 text-purple-600"
+                  position === 'A' ? "border-indigo-200 text-violet-600" : "border-violet-200 text-violet-600"
                 )}
               >
                 Contract {position}
@@ -178,7 +178,7 @@ function ContractSelector({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FileText className="h-5 w-5 text-indigo-500" />
+            <FileText className="h-5 w-5 text-violet-500" />
             Select Contract {position}
           </DialogTitle>
           <DialogDescription>
@@ -211,7 +211,7 @@ function ContractSelector({
                     onSelect(contract)
                     onClose()
                   }}
-                  className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-all"
+                  className="w-full text-left p-3 rounded-lg border border-slate-200 hover:border-indigo-300 hover:bg-violet-50/50 transition-all"
                 >
                   <p className="text-sm font-medium text-slate-900">{contract.name}</p>
                   <div className="flex items-center gap-2 mt-1 text-xs text-slate-500">
@@ -316,7 +316,7 @@ export function ContractCompareWidget({
       {/* Floating trigger button */}
       <AnimatePresence>
         {!isExpanded && (
-          <motion.div
+          <motion.div key="ContractCompareWidget-ap-1"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
@@ -327,7 +327,7 @@ export function ContractCompareWidget({
                 <TooltipTrigger asChild>
                   <Button
                     onClick={() => setIsExpanded(true)}
-                    className="h-12 w-12 rounded-full shadow-lg bg-indigo-600 hover:bg-indigo-700"
+                    className="h-12 w-12 rounded-full shadow-lg bg-violet-600 hover:bg-violet-700"
                   >
                     <GitCompare className="h-5 w-5" />
                   </Button>
@@ -354,7 +354,7 @@ export function ContractCompareWidget({
       {/* Expanded compare panel */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0, y: 100, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.95 }}
@@ -362,7 +362,7 @@ export function ContractCompareWidget({
             className="fixed bottom-6 right-6 z-50 w-[400px] bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-violet-500 to-purple-600 text-white">
               <div className="flex items-center gap-2">
                 <GitCompare className="h-5 w-5" />
                 <span className="font-medium">Compare Contracts</span>
@@ -395,7 +395,7 @@ export function ContractCompareWidget({
                         <button
                           onClick={swapContracts}
                           disabled={!contractA && !contractB}
-                          className="p-2 text-slate-400 hover:text-indigo-500 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="p-2 text-slate-400 hover:text-violet-500 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           <ArrowRightLeft className="h-4 w-4" />
                         </button>
@@ -431,7 +431,7 @@ export function ContractCompareWidget({
                   size="sm"
                   onClick={handleCompare}
                   disabled={!canCompare || isComparing}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700"
+                  className="flex-1 bg-violet-600 hover:bg-violet-700"
                   asChild={canCompare && !isComparing}
                 >
                   {canCompare && !isComparing ? (

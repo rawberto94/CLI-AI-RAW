@@ -47,7 +47,7 @@ export function AdvancedSearchModal({
       <DialogContent className="sm:max-w-[640px] bg-white border-slate-200 shadow-lg rounded-lg">
         <DialogHeader className="pb-2">
           <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="p-2.5 bg-blue-600 rounded-lg text-white">
+            <div className="p-2.5 bg-violet-600 rounded-lg text-white">
               <Search className="h-5 w-5" />
             </div>
             <div>
@@ -69,13 +69,13 @@ export function AdvancedSearchModal({
               placeholder="Search contracts by title, content..."
               value={filters.query || ''}
               onChange={(e) => setFilters({ ...filters, query: e.target.value })}
-              className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+              className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="clientName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                <Building2 className="h-4 w-4 text-cyan-500" />
+                <Building2 className="h-4 w-4 text-violet-500" />
                 Client Name
               </Label>
               <Input
@@ -83,12 +83,12 @@ export function AdvancedSearchModal({
                 placeholder="Filter by client..."
                 value={filters.clientName || ''}
                 onChange={(e) => setFilters({ ...filters, clientName: e.target.value })}
-                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white"
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white"
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="supplierName" className="text-sm font-medium text-slate-700 flex items-center gap-2">
-                <Truck className="h-4 w-4 text-teal-500" />
+                <Truck className="h-4 w-4 text-violet-500" />
                 Supplier Name
               </Label>
               <Input
@@ -96,7 +96,7 @@ export function AdvancedSearchModal({
                 placeholder="Filter by supplier..."
                 value={filters.supplierName || ''}
                 onChange={(e) => setFilters({ ...filters, supplierName: e.target.value })}
-                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-teal-500 focus:border-teal-500 bg-white"
+                className="h-11 rounded-xl border-slate-200 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 bg-white"
               />
             </div>
           </div>
@@ -150,7 +150,7 @@ export function AdvancedSearchModal({
             </Button>
             <Button 
               onClick={handleSearch}
-              className="rounded-lg bg-blue-600 hover:bg-blue-700 text-white"
+              className="rounded-lg bg-violet-600 hover:bg-violet-700 text-white"
             >
               <Search className="mr-2 h-4 w-4" />
               Apply Filters

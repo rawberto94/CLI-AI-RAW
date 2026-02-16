@@ -1,16 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { complianceReportingService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { tenantId, startDate, endDate, reportType, userId, includeDetails } = body;
 
     if (!tenantId || !startDate || !endDate) {
-      return NextResponse.json(
-        { error: 'Missing required fields: tenantId, startDate, endDate' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields: tenantId, startDate, endDate', 400);
     }
 
     const report = await complianceReportingService.generateComplianceReport({
@@ -22,20 +19,13 @@ export async function POST(request: NextRequest) {
       includeDetails,
     });
 
-    return NextResponse.json(report);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to generate compliance report' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, report);
+  });
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -44,10 +34,7 @@ export async function GET(request: NextRequest) {
     const format = searchParams.get('format') || 'json';
 
     if (!startDate || !endDate) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: startDate, endDate' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required parameters: startDate, endDate', 400);
     }
 
     const report = await complianceReportingService.generateComplianceReport({
@@ -67,11 +54,5 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json(report);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to generate compliance report' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, report);
+  });

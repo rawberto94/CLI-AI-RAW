@@ -36,6 +36,62 @@ function getTokenFromCookie(): string | null {
   return null;
 }
 
+/**
+ * HTTP methods that require CSRF protection (state-changing requests)
+ */
+const CSRF_MUTATION_METHODS = new Set(['POST', 'PUT', 'DELETE', 'PATCH']);
+
+/**
+ * Install a global fetch interceptor that automatically injects the CSRF token
+ * header into all same-origin mutation requests. This ensures every component
+ * gets CSRF protection without needing to individually call useCSRF().
+ */
+function installFetchInterceptor(): () => void {
+  if (typeof window === 'undefined') return () => {};
+
+  const originalFetch = window.fetch;
+
+  window.fetch = async function patchedFetch(
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> {
+    const method = (init?.method ?? 'GET').toUpperCase();
+
+    // Only inject for mutation methods on same-origin API calls
+    if (CSRF_MUTATION_METHODS.has(method)) {
+      const url =
+        typeof input === 'string'
+          ? input
+          : input instanceof URL
+            ? input.href
+            : input.url;
+
+      const isSameOrigin =
+        url.startsWith('/') || url.startsWith(window.location.origin);
+
+      if (isSameOrigin) {
+        const csrfToken = getTokenFromCookie();
+
+        if (csrfToken) {
+          const existingHeaders = new Headers(init?.headers);
+          // Don't overwrite if the caller already set it
+          if (!existingHeaders.has(CSRF_CONSTANTS.HEADER_NAME)) {
+            existingHeaders.set(CSRF_CONSTANTS.HEADER_NAME, csrfToken);
+          }
+          init = { ...init, headers: existingHeaders, credentials: init?.credentials ?? 'include' };
+        }
+      }
+    }
+
+    return originalFetch.call(window, input, init!);
+  };
+
+  // Return cleanup function that restores original fetch
+  return () => {
+    window.fetch = originalFetch;
+  };
+}
+
 export function CSRFProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -72,6 +128,13 @@ export function CSRFProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  }, []);
+
+  // Install global fetch interceptor on mount → all same-origin mutation
+  // requests automatically include the x-csrf-token header.
+  useEffect(() => {
+    const cleanup = installFetchInterceptor();
+    return cleanup;
   }, []);
 
   useEffect(() => {

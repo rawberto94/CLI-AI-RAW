@@ -73,3 +73,6 @@ export {
   type Integration,
   type IntegrationStatus,
 } from './IntegrationStatusWidget';
+
+// Widget customization
+export { DashboardWidgetCustomizer, useDashboardWidgets } from './DashboardWidgetCustomizer';

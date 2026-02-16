@@ -3,6 +3,7 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useDataMode } from '@/contexts/DataModeContext';
 import {
   Share2,
   ZoomIn,
@@ -174,13 +175,13 @@ const getNodeColor = (type: GraphNode['type'], status?: GraphNode['status']) => 
   if (status === 'warning') return { bg: 'bg-amber-500', border: 'border-amber-600', text: 'text-white' };
   
   switch (type) {
-    case 'contract': return { bg: 'bg-blue-500', border: 'border-blue-600', text: 'text-white' };
-    case 'supplier': return { bg: 'bg-purple-500', border: 'border-purple-600', text: 'text-white' };
+    case 'contract': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
+    case 'supplier': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
     case 'clause': return { bg: 'bg-green-500', border: 'border-green-600', text: 'text-white' };
     case 'risk': return { bg: 'bg-red-500', border: 'border-red-600', text: 'text-white' };
     case 'obligation': return { bg: 'bg-orange-500', border: 'border-orange-600', text: 'text-white' };
     case 'category': return { bg: 'bg-slate-500', border: 'border-slate-600', text: 'text-white' };
-    case 'department': return { bg: 'bg-cyan-500', border: 'border-cyan-600', text: 'text-white' };
+    case 'department': return { bg: 'bg-violet-500', border: 'border-violet-600', text: 'text-white' };
     default: return { bg: 'bg-slate-400', border: 'border-slate-500', text: 'text-white' };
   }
 };
@@ -405,7 +406,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-900">Quick Actions</h4>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={onViewDetails} className="px-3 py-2 text-xs font-medium bg-blue-50 text-blue-700 rounded hover:bg-blue-100 transition-colors">
+            <button onClick={onViewDetails} className="px-3 py-2 text-xs font-medium bg-violet-50 text-violet-700 rounded hover:bg-violet-100 transition-colors">
               View Details
             </button>
             <button onClick={onExplorePath} className="px-3 py-2 text-xs font-medium bg-slate-100 text-slate-700 rounded hover:bg-slate-200 transition-colors">
@@ -423,6 +424,7 @@ const NodeDetailPanel: React.FC<NodeDetailPanelProps> = ({ node, onClose, relate
 // ============================================================================
 
 export const ContractKnowledgeGraph: React.FC = () => {
+  const { isMockData } = useDataMode();
   const containerRef = useRef<HTMLDivElement>(null);
   const [selectedNode, setSelectedNode] = useState<GraphNode | null>(null);
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
@@ -434,20 +436,76 @@ export const ContractKnowledgeGraph: React.FC = () => {
   );
   const [highlightCluster, setHighlightCluster] = useState<string | null>(null);
 
+  // Live data state
+  const [liveNodes, setLiveNodes] = useState<GraphNode[]>([]);
+  const [liveEdges, setLiveEdges] = useState<GraphEdge[]>([]);
+  const [liveLoading, setLiveLoading] = useState(false);
+
+  // Fetch live data from API when not in mock mode
+  useEffect(() => {
+    if (isMockData) return;
+    let cancelled = false;
+    setLiveLoading(true);
+    fetch('/api/intelligence/graph')
+      .then(r => r.json())
+      .then(json => {
+        if (cancelled) return;
+        if (json.success && json.data) {
+          // Map API response to component types
+          const apiNodes: GraphNode[] = (json.data.nodes || []).map((n: any) => ({
+            id: n.id,
+            type: n.type || 'contract',
+            label: n.label,
+            data: n.metadata || {},
+            connections: [],
+            size: n.weight > 3 ? 'large' : n.weight > 1 ? 'medium' : 'small',
+            status: n.metadata?.risk === 'CRITICAL' ? 'critical' : n.metadata?.risk === 'HIGH' ? 'warning' : 'active',
+          }));
+          // Build connections from edges
+          const apiEdges: GraphEdge[] = (json.data.edges || []).map((e: any, i: number) => ({
+            id: e.id || `e-${i}`,
+            source: e.source,
+            target: e.target,
+            type: e.type === 'party_to' ? 'supplies' : e.type === 'has_risk' ? 'relates' : e.type === 'parent_of' ? 'depends' : 'relates',
+            strength: e.weight ? Math.min(e.weight / 3, 1) : 0.5,
+            label: e.label,
+          }));
+          // Populate connections
+          const connectionMap = new Map<string, string[]>();
+          for (const e of apiEdges) {
+            connectionMap.set(e.source, [...(connectionMap.get(e.source) || []), e.target]);
+            connectionMap.set(e.target, [...(connectionMap.get(e.target) || []), e.source]);
+          }
+          for (const node of apiNodes) {
+            node.connections = connectionMap.get(node.id) || [];
+          }
+          setLiveNodes(apiNodes);
+          setLiveEdges(apiEdges);
+        }
+      })
+      .catch(() => { toast.error('Failed to load knowledge graph data'); })
+      .finally(() => { if (!cancelled) setLiveLoading(false); });
+    return () => { cancelled = true; };
+  }, [isMockData]);
+
+  // Choose data source
+  const activeNodes = isMockData ? mockNodes : (liveNodes.length > 0 ? liveNodes : mockNodes);
+  const activeEdges = isMockData ? mockEdges : (liveEdges.length > 0 ? liveEdges : mockEdges);
+
   // Filter nodes based on visibility and search
   const filteredNodes = useMemo(() => {
-    return mockNodes.filter(node => {
+    return activeNodes.filter(node => {
       if (!visibleTypes.has(node.type)) return false;
       if (searchQuery && !node.label.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [visibleTypes, searchQuery]);
+  }, [activeNodes, visibleTypes, searchQuery]);
 
   // Filter edges based on visible nodes
   const filteredEdges = useMemo(() => {
     const nodeIds = new Set(filteredNodes.map(n => n.id));
-    return mockEdges.filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
-  }, [filteredNodes]);
+    return activeEdges.filter(edge => nodeIds.has(edge.source) && nodeIds.has(edge.target));
+  }, [activeEdges, filteredNodes]);
 
   // Calculate positions
   const positions = useForceLayout(filteredNodes, filteredEdges, containerRef);
@@ -456,17 +514,17 @@ export const ContractKnowledgeGraph: React.FC = () => {
   const relatedNodes = useMemo(() => {
     if (!selectedNode) return [];
     const relatedIds = new Set<string>();
-    mockEdges.forEach(edge => {
+    activeEdges.forEach(edge => {
       if (edge.source === selectedNode.id) relatedIds.add(edge.target);
       if (edge.target === selectedNode.id) relatedIds.add(edge.source);
     });
-    return mockNodes.filter(n => relatedIds.has(n.id));
-  }, [selectedNode]);
+    return activeNodes.filter(n => relatedIds.has(n.id));
+  }, [selectedNode, activeNodes, activeEdges]);
 
   const relatedEdges = useMemo(() => {
     if (!selectedNode) return [];
-    return mockEdges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
-  }, [selectedNode]);
+    return activeEdges.filter(e => e.source === selectedNode.id || e.target === selectedNode.id);
+  }, [selectedNode, activeEdges]);
 
   // Toggle node type visibility
   const toggleType = (type: GraphNode['type']) => {
@@ -479,11 +537,34 @@ export const ContractKnowledgeGraph: React.FC = () => {
   };
 
   // Check if node is in highlighted cluster
+  // Build clusters dynamically from active data or fall back to mock
+  const activeClusters = useMemo(() => {
+    if (isMockData || liveNodes.length === 0) return mockClusters;
+    // Auto-generate clusters from supplier groups
+    const supplierClusters: GraphCluster[] = [];
+    const suppliers = activeNodes.filter(n => n.type === 'supplier');
+    const colors = ['#3B82F6', '#EF4444', '#F59E0B', '#10B981', '#8B5CF6', '#EC4899'];
+    suppliers.forEach((s, i) => {
+      const connected = activeEdges
+        .filter(e => e.source === s.id || e.target === s.id)
+        .map(e => e.source === s.id ? e.target : e.source);
+      if (connected.length > 0) {
+        supplierClusters.push({
+          id: `cluster-${s.id}`,
+          name: s.label,
+          nodes: [s.id, ...connected],
+          color: colors[i % colors.length],
+        });
+      }
+    });
+    return supplierClusters.length > 0 ? supplierClusters : mockClusters;
+  }, [isMockData, liveNodes, activeNodes, activeEdges]);
+
   const isInHighlightedCluster = useCallback((nodeId: string) => {
     if (!highlightCluster) return true;
-    const cluster = mockClusters.find(c => c.id === highlightCluster);
+    const cluster = activeClusters.find(c => c.id === highlightCluster);
     return cluster?.nodes.includes(nodeId) ?? false;
-  }, [highlightCluster]);
+  }, [highlightCluster, activeClusters]);
 
   // Stats
   const stats = useMemo(() => ({
@@ -547,7 +628,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         <div className="flex items-center justify-between">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <Share2 className="w-5 h-5 text-blue-500" />
+              <Share2 className="w-5 h-5 text-violet-500" />
               Contract Knowledge Graph
             </h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -558,7 +639,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
             <button
               onClick={() => setShowFilters(!showFilters)}
               className={`p-2 rounded-lg transition-colors ${
-                showFilters ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                showFilters ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
               <Filter className="w-4 h-4" />
@@ -587,11 +668,11 @@ export const ContractKnowledgeGraph: React.FC = () => {
         {/* Stats Bar */}
         <div className="flex items-center gap-6 mt-4">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full bg-violet-500" />
             <span className="text-sm text-slate-600">{stats.contracts} Contracts</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-purple-500" />
+            <div className="w-3 h-3 rounded-full bg-violet-500" />
             <span className="text-sm text-slate-600">{stats.suppliers} Suppliers</span>
           </div>
           <div className="flex items-center gap-2">
@@ -608,7 +689,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
       {/* Filter Panel */}
       <AnimatePresence>
         {showFilters && (
-          <motion.div
+          <motion.div key="filters"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -623,7 +704,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search nodes..."
-                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                 />
               </div>
 
@@ -666,7 +747,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                   >
                     All
                   </button>
-                  {mockClusters.map(cluster => (
+                  {activeClusters.map(cluster => (
                     <button
                       key={cluster.id}
                       onClick={() => setHighlightCluster(highlightCluster === cluster.id ? null : cluster.id)}
@@ -726,7 +807,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                       x={(sourcePos.x + targetPos.x) / 2}
                       y={(sourcePos.y + targetPos.y) / 2 - 8}
                       textAnchor="middle"
-                      className="fill-blue-600 text-xs font-medium"
+                      className="fill-violet-600 text-xs font-medium"
                     >
                       {edge.label}
                     </text>
@@ -771,8 +852,8 @@ export const ContractKnowledgeGraph: React.FC = () => {
               >
                 <div
                   className={`w-full h-full rounded-full ${colors.bg} ${colors.border} border-2 flex items-center justify-center shadow-lg transition-all ${
-                    isSelected ? 'ring-4 ring-blue-300 ring-opacity-50' : ''
-                  } ${isRelated ? 'ring-2 ring-blue-200' : ''}`}
+                    isSelected ? 'ring-4 ring-violet-300 ring-opacity-50' : ''
+                  } ${isRelated ? 'ring-2 ring-violet-200' : ''}`}
                 >
                   <Icon className={`${colors.text}`} style={{ width: sizes.icon, height: sizes.icon }} />
                 </div>
@@ -780,7 +861,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
                 {/* Node Label on Hover/Select */}
                 <AnimatePresence>
                   {(isHovered || isSelected) && (
-                    <motion.div
+                    <motion.div key="ContractKnowledgeGraph-ap-1"
                       initial={{ opacity: 0, y: 5 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 5 }}
@@ -824,7 +905,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
         </div>
 
         {/* Help Overlay */}
-        <div className="absolute top-4 left-4 bg-blue-50 text-blue-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
+        <div className="absolute top-4 left-4 bg-violet-50 text-violet-700 px-3 py-2 rounded-lg text-sm flex items-center gap-2">
           <Info className="w-4 h-4" />
           <span>Click nodes to explore • Hover to see connections</span>
         </div>
@@ -833,7 +914,7 @@ export const ContractKnowledgeGraph: React.FC = () => {
       {/* Node Detail Panel */}
       <AnimatePresence>
         {selectedNode && (
-          <NodeDetailPanel
+          <NodeDetailPanel key="selected-node"
             node={selectedNode}
             onClose={() => setSelectedNode(null)}
             relatedNodes={relatedNodes}

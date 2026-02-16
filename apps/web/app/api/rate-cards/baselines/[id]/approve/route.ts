@@ -1,22 +1,22 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 export async function POST(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
     }
-
+try {
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email: ctx.userId },
       select: { id: true, tenantId: true },
     });
 
     if (!user?.tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const { id } = params;
@@ -24,10 +24,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     const { approvalStatus, notes } = body;
 
     if (!['APPROVED', 'REJECTED'].includes(approvalStatus)) {
-      return NextResponse.json(
-        { error: 'Invalid approval status' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid approval status', 400);
     }
 
     // Verify baseline belongs to user's tenant
@@ -36,10 +33,7 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
     });
 
     if (!baseline || baseline.tenantId !== user.tenantId) {
-      return NextResponse.json(
-        { error: 'Baseline not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Baseline not found', 404);
     }
 
     // Update approval status
@@ -54,11 +48,8 @@ export async function POST(request: NextRequest, props: { params: Promise<{ id: 
       },
     });
 
-    return NextResponse.json(updated);
+    return createSuccessResponse(ctx, updated);
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to update baseline approval' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to update baseline approval', 500);
   }
 }

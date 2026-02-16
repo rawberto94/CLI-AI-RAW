@@ -228,11 +228,11 @@ and
       case 'risk':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
       case 'compliance':
-        return <CheckCircle2 className="h-4 w-4 text-blue-500" />;
+        return <CheckCircle2 className="h-4 w-4 text-violet-500" />;
       case 'clarity':
         return <Lightbulb className="h-4 w-4 text-yellow-500" />;
       case 'improvement':
-        return <Sparkles className="h-4 w-4 text-purple-500" />;
+        return <Sparkles className="h-4 w-4 text-violet-500" />;
     }
   };
 
@@ -258,7 +258,7 @@ and
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2">
-                <FileText className="h-6 w-6 text-blue-600" />
+                <FileText className="h-6 w-6 text-violet-600" />
                 <div>
                   <h1 className="font-semibold text-gray-900">Master Services Agreement</h1>
                   <p className="text-xs text-gray-500">Acme Corporation • Draft v3.2</p>
@@ -296,7 +296,7 @@ and
 
                 <AnimatePresence>
                   {showCollaborators && (
-                    <motion.div
+                    <motion.div key="collaborators"
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: 10 }}
@@ -327,7 +327,7 @@ and
                         </div>
                       ))}
                       <div className="mt-2 px-3 py-2 border-t border-gray-100">
-                        <button className="w-full flex items-center justify-center gap-2 text-sm text-blue-600 hover:text-blue-700">
+                        <button className="w-full flex items-center justify-center gap-2 text-sm text-violet-600 hover:text-violet-700">
                           <Share2 className="h-4 w-4" />
                           Invite collaborators
                         </button>
@@ -367,7 +367,7 @@ and
               <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-gray-600">
                 <Download className="h-5 w-5" />
               </button>
-              <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+              <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors">
                 <Save className="h-4 w-4" />
                 Save
               </button>
@@ -442,7 +442,7 @@ and
               <div className="flex-1" />
               <button
                 onClick={() => setShowAIPanel(!showAIPanel)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-lg hover:from-purple-600 hover:to-blue-600 transition-colors text-sm"
+                className="flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-violet-500 to-purple-500 text-white rounded-lg hover:from-violet-600 hover:to-purple-600 transition-colors text-sm"
               >
                 <Wand2 className="h-4 w-4" />
                 AI Assist
@@ -460,16 +460,16 @@ and
             {/* AI Panel */}
             <AnimatePresence>
               {showAIPanel && (
-                <motion.div
+                <motion.div key="a-i-panel"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
                   className="mb-6 overflow-hidden"
                 >
-                  <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 border border-purple-100">
+                  <div className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-4 border border-violet-100">
                     <div className="flex items-start gap-3">
                       <div className="p-2 bg-white rounded-lg shadow-sm">
-                        <Sparkles className="h-5 w-5 text-purple-500" />
+                        <Sparkles className="h-5 w-5 text-violet-500" />
                       </div>
                       <div className="flex-1">
                         <h3 className="font-medium text-gray-900 mb-2">AI Writing Assistant</h3>
@@ -479,11 +479,11 @@ and
                             value={aiPrompt}
                             onChange={(e) => setAiPrompt(e.target.value)}
                             placeholder="Ask AI to help... (e.g., 'Strengthen the liability clause', 'Add GDPR compliance language')"
-                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                            className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                           />
                           <button
                             onClick={handleAIAssist}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            className="px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors"
                           >
                             Generate
                           </button>
@@ -493,7 +493,7 @@ and
                             <button
                               key={suggestion}
                               onClick={() => setAiPrompt(suggestion)}
-                              className="px-3 py-1 text-sm bg-white text-purple-700 rounded-full hover:bg-purple-100 transition-colors border border-purple-200"
+                              className="px-3 py-1 text-sm bg-white text-violet-700 rounded-full hover:bg-violet-100 transition-colors border border-violet-200"
                             >
                               {suggestion}
                             </button>
@@ -516,7 +516,7 @@ and
             <div
               ref={editorRef}
               className={`bg-white rounded-xl shadow-sm border border-gray-200 p-8 min-h-[800px] ${
-                isEditing ? 'focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent' : ''
+                isEditing ? 'focus-within:ring-2 focus-within:ring-violet-500 focus-within:border-transparent' : ''
               }`}
             >
               {isEditing ? (
@@ -553,14 +553,14 @@ and
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors border-b-2 ${
                   activeTab === tab.id
-                    ? 'text-blue-600 border-blue-600'
+                    ? 'text-violet-600 border-violet-600'
                     : 'text-gray-500 border-transparent hover:text-gray-700'
                 }`}
               >
                 <tab.icon className="h-4 w-4" />
                 {tab.count !== null && (
                   <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                    activeTab === tab.id ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-600'
+                    activeTab === tab.id ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-600'
                   }`}>
                     {tab.count}
                   </span>
@@ -575,7 +575,7 @@ and
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-medium text-gray-900">AI Suggestions</h3>
-                  <button className="text-sm text-blue-600 hover:text-blue-700">
+                  <button className="text-sm text-violet-600 hover:text-violet-700">
                     Apply All Safe
                   </button>
                 </div>
@@ -586,7 +586,7 @@ and
                     animate={{ opacity: 1, x: 0 }}
                     className={`p-3 rounded-lg border transition-colors cursor-pointer ${
                       selectedSuggestion === suggestion.id
-                        ? 'border-blue-300 bg-blue-50'
+                        ? 'border-violet-300 bg-violet-50'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                     onClick={() => setSelectedSuggestion(selectedSuggestion === suggestion.id ? null : suggestion.id)}
@@ -599,7 +599,7 @@ and
                         
                         <AnimatePresence>
                           {selectedSuggestion === suggestion.id && (
-                            <motion.div
+                            <motion.div key="selected-suggestion"
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
                               exit={{ opacity: 0, height: 0 }}
@@ -617,7 +617,7 @@ and
                                     e.stopPropagation();
                                     handleApplySuggestion(suggestion);
                                   }}
-                                  className="flex-1 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700"
+                                  className="flex-1 px-3 py-1.5 bg-violet-600 text-white text-xs rounded-lg hover:bg-violet-700"
                                 >
                                   Apply
                                 </button>
@@ -653,9 +653,9 @@ and
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
                     placeholder="Add a comment..."
-                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="flex-1 px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                   />
-                  <button className="p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                  <button className="p-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700">
                     <Send className="h-4 w-4" />
                   </button>
                 </div>
@@ -669,7 +669,7 @@ and
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-sm font-medium">
+                      <div className="h-8 w-8 rounded-full bg-violet-500 flex items-center justify-center text-white text-sm font-medium">
                         {comment.author.split(' ').map(n => n[0]).join('')}
                       </div>
                       <div className="flex-1">
@@ -714,7 +714,7 @@ and
               <div className="space-y-3">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-medium text-gray-900">Version History</h3>
-                  <button className="flex items-center gap-1 text-sm text-blue-600 hover:text-blue-700">
+                  <button className="flex items-center gap-1 text-sm text-violet-600 hover:text-violet-700">
                     <GitBranch className="h-4 w-4" />
                     Compare
                   </button>
@@ -723,7 +723,7 @@ and
                   <div
                     key={version.id}
                     className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                      index === 0 ? 'border-blue-200 bg-blue-50' : 'border-gray-200 hover:border-gray-300 bg-white'
+                      index === 0 ? 'border-violet-200 bg-violet-50' : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
                     <div className="flex items-start justify-between">

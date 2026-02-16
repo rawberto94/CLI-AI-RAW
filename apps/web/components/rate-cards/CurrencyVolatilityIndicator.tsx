@@ -28,7 +28,7 @@ export function CurrencyVolatilityIndicator({
 
   useEffect(() => {
     fetchVolatility();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [currency, baseCurrency]);
 
   const fetchVolatility = async () => {
@@ -67,7 +67,7 @@ export function CurrencyVolatilityIndicator({
   const severityColors = {
     high: 'bg-red-100 text-red-800 border-red-300',
     medium: 'bg-yellow-100 text-yellow-800 border-yellow-300',
-    low: 'bg-blue-100 text-blue-800 border-blue-300',
+    low: 'bg-violet-100 text-violet-800 border-violet-300',
   };
 
   return (

@@ -390,12 +390,12 @@ const mockHealthData: ContractHealth[] = [
 
 const getScoreColor = (score: number) => {
   if (score >= 80) return { 
-    bg: 'bg-emerald-500', 
-    text: 'text-emerald-600', 
-    light: 'bg-emerald-50',
-    gradient: 'from-emerald-500 to-teal-500',
-    ring: 'ring-emerald-500/20',
-    border: 'border-emerald-200',
+    bg: 'bg-violet-500', 
+    text: 'text-violet-600', 
+    light: 'bg-violet-50',
+    gradient: 'from-violet-500 to-violet-500',
+    ring: 'ring-violet-500/20',
+    border: 'border-violet-200',
   };
   if (score >= 60) return { 
     bg: 'bg-amber-500', 
@@ -418,7 +418,7 @@ const getScoreColor = (score: number) => {
 const getStatusBadge = (status: ContractHealth['status']) => {
   switch (status) {
     case 'healthy':
-      return { icon: CheckCircle2, color: 'bg-emerald-100 text-emerald-700 border-emerald-200', label: 'Healthy', dotColor: 'bg-emerald-500' };
+      return { icon: CheckCircle2, color: 'bg-violet-100 text-violet-700 border-violet-200', label: 'Healthy', dotColor: 'bg-violet-500' };
     case 'at-risk':
       return { icon: AlertTriangle, color: 'bg-amber-100 text-amber-700 border-amber-200', label: 'At Risk', dotColor: 'bg-amber-500' };
     case 'critical':
@@ -429,7 +429,7 @@ const getStatusBadge = (status: ContractHealth['status']) => {
 const getTrendIcon = (trend: 'improving' | 'stable' | 'declining') => {
   switch (trend) {
     case 'improving':
-      return { icon: TrendingUp, color: 'text-emerald-500', bg: 'bg-emerald-50', label: 'Improving' };
+      return { icon: TrendingUp, color: 'text-violet-500', bg: 'bg-violet-50', label: 'Improving' };
     case 'stable':
       return { icon: Minus, color: 'text-slate-400', bg: 'bg-slate-50', label: 'Stable' };
     case 'declining':
@@ -451,8 +451,8 @@ const getCategoryColor = (category: HealthFactor['category']) => {
   switch (category) {
     case 'risk': return 'text-rose-500 bg-rose-50';
     case 'compliance': return 'text-violet-500 bg-violet-50';
-    case 'financial': return 'text-emerald-500 bg-emerald-50';
-    case 'operational': return 'text-blue-500 bg-blue-50';
+    case 'financial': return 'text-violet-500 bg-violet-50';
+    case 'operational': return 'text-violet-500 bg-violet-50';
     case 'relationship': return 'text-amber-500 bg-amber-50';
   }
 };
@@ -531,7 +531,7 @@ const ScoreRing: React.FC<ScoreRingProps> = ({ score, size = 'md', showLabel = t
           </motion.span>
           {previousScore !== undefined && change !== 0 && (
             <motion.span 
-              className={`${labelSize} font-semibold flex items-center gap-0.5 ${change > 0 ? 'text-emerald-500' : 'text-rose-500'}`}
+              className={`${labelSize} font-semibold flex items-center gap-0.5 ${change > 0 ? 'text-violet-500' : 'text-rose-500'}`}
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
@@ -597,7 +597,7 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
 
       <AnimatePresence>
         {expanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -615,9 +615,9 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
                   </h4>
                   <div className="space-y-2">
                     {factor.recommendations.map((rec, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200/60 hover:border-blue-200 transition-colors group">
-                        <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-blue-500 transition-colors">
-                          <ArrowRight className="w-3.5 h-3.5 text-blue-600 group-hover:text-white transition-colors" />
+                      <div key={idx} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200/60 hover:border-violet-200 transition-colors group">
+                        <div className="w-6 h-6 rounded-full bg-violet-100 flex items-center justify-center flex-shrink-0 mt-0.5 group-hover:bg-violet-500 transition-colors">
+                          <ArrowRight className="w-3.5 h-3.5 text-violet-600 group-hover:text-white transition-colors" />
                         </div>
                         <span className="text-sm text-slate-700">{rec}</span>
                       </div>
@@ -633,7 +633,7 @@ const HealthFactorCard: React.FC<HealthFactorCardProps> = ({ factor, expanded, o
                 </span>
                 <button 
                   onClick={(e) => { e.stopPropagation(); onRefresh?.(); }} 
-                  className="text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1.5 text-sm hover:bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                  className="text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1.5 text-sm hover:bg-violet-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Refresh Analysis
@@ -674,11 +674,11 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
       glow: 'shadow-amber-100',
     },
     optional: { 
-      bg: 'bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200/80', 
+      bg: 'bg-gradient-to-br from-violet-50 to-purple-50 border-violet-200/80', 
       icon: Info, 
-      iconColor: 'text-blue-500 bg-blue-100', 
-      badge: 'bg-blue-100 text-blue-700 border border-blue-200',
-      glow: 'shadow-blue-100',
+      iconColor: 'text-violet-500 bg-violet-100', 
+      badge: 'bg-violet-100 text-violet-700 border border-violet-200',
+      glow: 'shadow-violet-100',
     },
   };
 
@@ -752,14 +752,14 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
           {/* Cross-Module Actions */}
           <AnimatePresence>
             {showActions && (
-              <motion.div
+              <motion.div key="actions"
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 className="mt-4 pt-4 border-t border-slate-200/50 overflow-hidden"
               >
                 <p className="text-xs font-medium text-slate-500 mb-3 flex items-center gap-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+                  <Sparkles className="w-3.5 h-3.5 text-violet-500" />
                   Quick Actions
                 </p>
                 <div className="flex flex-wrap gap-2">
@@ -769,7 +769,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
                       <Link
                         key={`${link.label}-${linkIndex}`}
                         href={link.href}
-                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 transition-all shadow-sm"
+                        className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium bg-white border border-slate-200 text-slate-700 rounded-lg hover:bg-violet-50 hover:border-violet-300 hover:text-violet-700 transition-all shadow-sm"
                       >
                         <LinkIcon className="w-4 h-4" />
                         {link.label}
@@ -786,7 +786,7 @@ const ActionItemCard: React.FC<ActionItemCardProps> = ({ item }) => {
           onClick={() => setShowActions(!showActions)}
           className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all shadow-sm ${
             showActions 
-              ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200' 
+              ? 'bg-violet-600 text-white hover:bg-violet-700 shadow-violet-200' 
               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300'
           }`}
         >
@@ -822,7 +822,7 @@ const ContractHealthCard: React.FC<ContractHealthCardProps> = ({ health, onSelec
       onClick={onSelect}
       className={`p-4 rounded-xl border-2 cursor-pointer transition-all duration-200 ${
         isSelected
-          ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50/50 shadow-lg shadow-blue-100/50 ring-4 ring-blue-100'
+          ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50/50 shadow-lg shadow-violet-100/50 ring-4 ring-violet-100'
           : 'border-slate-200/80 bg-white hover:border-slate-300 hover:shadow-lg hover:shadow-slate-100/50'
       }`}
     >
@@ -884,6 +884,8 @@ export const ContractHealthScore: React.FC = () => {
   const [expandedFactors, setExpandedFactors] = useState<Set<string>>(new Set());
   const [view, setView] = useState<'overview' | 'factors' | 'actions'>('overview');
   const [loading, setLoading] = useState(true);
+  const [statusFilter, setStatusFilter] = useState<'all' | 'healthy' | 'at-risk' | 'critical'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Fetch health data from API or use mock data based on mode
   useEffect(() => {
@@ -901,13 +903,13 @@ export const ContractHealthScore: React.FC = () => {
         const json = await res.json();
         if (json.success && json.data?.contracts?.length > 0) {
           const mapped = json.data.contracts.map((item: any) => ({
-            contractId: item.id || item.contractId,
+            contractId: item.contractId || item.id,
             contractName: item.contractName || item.name || 'Unknown Contract',
-            supplierName: item.counterparty || item.vendor || 'Unknown',
-            overallScore: item.healthScore || item.overallScore || 75,
-            previousScore: item.previousScore || item.healthScore - 5 || 70,
+            supplierName: item.supplierName || item.counterparty || item.vendor || 'Unknown',
+            overallScore: item.overallScore || item.healthScore || 75,
+            previousScore: item.previousScore || (item.overallScore || item.healthScore || 75) - 5 || 70,
             trend: item.trend || 'stable',
-            status: item.healthScore >= 70 ? 'healthy' : item.healthScore >= 50 ? 'at-risk' : 'critical',
+            status: (item.overallScore || item.healthScore || 75) >= 70 ? 'healthy' : (item.overallScore || item.healthScore || 75) >= 50 ? 'at-risk' : 'critical',
             factors: Array.isArray(item.factors) ? item.factors : [],
             lastAssessed: item.lastAssessed || new Date().toISOString(),
             nextReview: item.nextReview || new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
@@ -920,6 +922,7 @@ export const ContractHealthScore: React.FC = () => {
           setSelectedContract(mockHealthData[0] ?? null);
         }
       } catch {
+        toast.error('Failed to load health scores — showing sample data');
         setHealthData(mockHealthData);
         setSelectedContract(mockHealthData[0] ?? null);
       } finally {
@@ -958,7 +961,7 @@ export const ContractHealthScore: React.FC = () => {
     setLoading(true);
     toast.info('Refreshing all health scores...');
     try {
-      const res = await fetch('/api/intelligence/health/refresh', { method: 'POST' });
+      const res = await fetch('/api/intelligence/health', { method: 'POST' });
       if (res.ok) {
         toast.success('All health scores refreshed');
         // Refetch data after refresh
@@ -1020,18 +1023,18 @@ export const ContractHealthScore: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40">
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/40">
         <motion.div 
           className="text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="relative">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-blue-200">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200">
               <Heart className="w-8 h-8 text-white animate-pulse" />
             </div>
             <motion.div 
-              className="absolute -inset-2 rounded-3xl border-2 border-blue-300 opacity-50"
+              className="absolute -inset-2 rounded-3xl border-2 border-violet-300 opacity-50"
               animate={{ scale: [1, 1.1, 1], opacity: [0.5, 0.2, 0.5] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
@@ -1044,18 +1047,18 @@ export const ContractHealthScore: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/20 to-indigo-50/30">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/30">
       {/* Header */}
       <div className="flex-none px-6 py-5 bg-white/80 backdrop-blur-sm border-b border-slate-200/60">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-200/50">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-200/50">
               <Heart className="w-6 h-6 text-white" />
             </div>
             <div>
               <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-2">
                 Contract Health Dashboard
-                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs font-semibold rounded-full">
                   AI-Powered
                 </span>
               </h2>
@@ -1070,6 +1073,8 @@ export const ContractHealthScore: React.FC = () => {
               <Input 
                 placeholder="Search contracts..." 
                 className="pl-10 w-64 bg-white/80"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
             <button 
@@ -1081,7 +1086,7 @@ export const ContractHealthScore: React.FC = () => {
             </button>
             <button 
               onClick={handleExportReport} 
-              className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200/50"
+              className="px-4 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200/50"
             >
               <Download className="w-4 h-4" />
               Export Report
@@ -1108,33 +1113,33 @@ export const ContractHealthScore: React.FC = () => {
           </motion.div>
           
           <motion.div 
-            className="p-4 bg-gradient-to-br from-blue-50 to-indigo-50/80 rounded-xl border border-blue-200/60 relative overflow-hidden"
+            className="p-4 bg-gradient-to-br from-violet-50 to-purple-50/80 rounded-xl border border-violet-200/60 relative overflow-hidden"
             whileHover={{ scale: 1.02 }}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-blue-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -mr-4 -mt-4" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                <FileText className="w-5 h-5 text-blue-600" />
+              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                <FileText className="w-5 h-5 text-violet-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-blue-700">{portfolioStats.total}</div>
-                <div className="text-xs text-blue-600 font-medium">Total Contracts</div>
+                <div className="text-2xl font-bold text-violet-700">{portfolioStats.total}</div>
+                <div className="text-xs text-violet-600 font-medium">Total Contracts</div>
               </div>
             </div>
           </motion.div>
           
           <motion.div 
-            className="p-4 bg-gradient-to-br from-emerald-50 to-teal-50/80 rounded-xl border border-emerald-200/60 relative overflow-hidden"
+            className="p-4 bg-gradient-to-br from-violet-50 to-violet-50/80 rounded-xl border border-violet-200/60 relative overflow-hidden"
             whileHover={{ scale: 1.02 }}
           >
-            <div className="absolute top-0 right-0 w-16 h-16 bg-emerald-200/30 rounded-full -mr-4 -mt-4" />
+            <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -mr-4 -mt-4" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+                <CheckCircle2 className="w-5 h-5 text-violet-600" />
               </div>
               <div>
-                <div className="text-2xl font-bold text-emerald-700">{portfolioStats.healthy}</div>
-                <div className="text-xs text-emerald-600 font-medium">Healthy</div>
+                <div className="text-2xl font-bold text-violet-700">{portfolioStats.healthy}</div>
+                <div className="text-xs text-violet-600 font-medium">Healthy</div>
               </div>
             </div>
           </motion.div>
@@ -1207,14 +1212,30 @@ export const ContractHealthScore: React.FC = () => {
             </div>
             {/* Filter Buttons */}
             <div className="flex items-center gap-2 flex-wrap">
-              <button className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 rounded-lg border border-blue-200">All</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Healthy</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">At Risk</button>
-              <button className="px-3 py-1.5 text-xs font-medium bg-white text-slate-600 rounded-lg border border-slate-200 hover:bg-slate-50">Critical</button>
+              <button onClick={() => setStatusFilter('all')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'all' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>All</button>
+              <button onClick={() => setStatusFilter('healthy')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'healthy' ? 'bg-violet-100 text-violet-700 border-violet-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Healthy</button>
+              <button onClick={() => setStatusFilter('at-risk')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'at-risk' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>At Risk</button>
+              <button onClick={() => setStatusFilter('critical')} className={`px-3 py-1.5 text-xs font-medium rounded-lg border ${statusFilter === 'critical' ? 'bg-rose-100 text-rose-700 border-rose-200' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}>Critical</button>
             </div>
           </div>
           <div className="p-4 space-y-3">
-            {healthData.map(health => (
+            {healthData
+              .filter(h => {
+                // Status filter
+                if (statusFilter !== 'all') {
+                  const score = h.overallScore;
+                  if (statusFilter === 'healthy' && score < 70) return false;
+                  if (statusFilter === 'at-risk' && (score >= 70 || score < 40)) return false;
+                  if (statusFilter === 'critical' && score >= 40) return false;
+                }
+                // Search filter
+                if (searchQuery.trim()) {
+                  const q = searchQuery.toLowerCase();
+                  return (h.contractName?.toLowerCase().includes(q) || h.supplierName?.toLowerCase().includes(q) || h.contractId?.toLowerCase().includes(q));
+                }
+                return true;
+              })
+              .map(health => (
               <ContractHealthCard
                 key={health.contractId}
                 health={health}
@@ -1290,7 +1311,7 @@ export const ContractHealthScore: React.FC = () => {
                 <div className="flex flex-col gap-2">
                   <button 
                     onClick={() => handleViewContract(selectedContract.contractId)} 
-                    className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 transition-all flex items-center gap-2 shadow-lg shadow-blue-200/50"
+                    className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 transition-all flex items-center gap-2 shadow-lg shadow-violet-200/50"
                   >
                     <Eye className="w-4 h-4" />
                     View Contract
@@ -1340,7 +1361,7 @@ export const ContractHealthScore: React.FC = () => {
                   <div className="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm">
                     <div className="flex items-center justify-between mb-5">
                       <h4 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                        <PieChart className="w-5 h-5 text-blue-500" />
+                        <PieChart className="w-5 h-5 text-violet-500" />
                         Health Factor Breakdown
                       </h4>
                       <span className="text-xs text-slate-400 bg-slate-100 px-3 py-1 rounded-full">
@@ -1452,8 +1473,8 @@ export const ContractHealthScore: React.FC = () => {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                     >
-                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-emerald-100 to-teal-100 flex items-center justify-center mx-auto mb-4">
-                        <CheckCircle2 className="w-8 h-8 text-emerald-600" />
+                      <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-100 to-violet-100 flex items-center justify-center mx-auto mb-4">
+                        <CheckCircle2 className="w-8 h-8 text-violet-600" />
                       </div>
                       <h4 className="text-xl font-bold text-slate-900 mb-2">All Clear!</h4>
                       <p className="text-slate-500">No action items for this contract. Great job maintaining it!</p>

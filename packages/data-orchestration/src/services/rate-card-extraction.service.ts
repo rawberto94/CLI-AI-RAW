@@ -564,8 +564,8 @@ export const rateCardExtractionService = {
   get instance(): RateCardExtractionService {
     return getRateCardExtractionService();
   },
-  extractRateCard: (text: string, tenantId: string, options?: Parameters<RateCardExtractionService['extractRateCard']>[2]) => 
-    getRateCardExtractionService().extractRateCard(text, tenantId, options),
-  validateExtraction: (extraction: Parameters<RateCardExtractionService['validateExtraction']>[0]) => 
+  extractFromContract: (contractId: string, contractText: string) =>
+    getRateCardExtractionService().extractFromContract(contractId, contractText),
+  validateExtraction: (extraction: ExtractionResult) => 
     getRateCardExtractionService().validateExtraction(extraction),
 };

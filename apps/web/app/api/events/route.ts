@@ -6,8 +6,9 @@
  * with data-orchestration package. Event bus implemented inline.
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { EventEmitter } from 'events';
+import { withAuthApiHandler } from '@/lib/api-middleware';
 
 // Inline event bus to avoid any data-orchestration imports
 enum Events {
@@ -60,7 +61,7 @@ const sseConnectionManager = {
     controller: ReadableStreamDefaultController,
     tenantId: string,
     userId?: string,
-    metadata?: Record<string, string | null | undefined>
+    _metadata?: Record<string, string | null | undefined>
   ): SSEConnection => {
     const id = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const connection: SSEConnection = {
@@ -101,7 +102,7 @@ const healthCheckService = {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, _ctx) => {
   const searchParams = request.nextUrl.searchParams;
   // EventSource cannot reliably set custom headers, so support tenantId via query param.
   // Priority: x-tenant-id header > tenantId query param > demo (dev only)
@@ -111,7 +112,7 @@ export async function GET(request: NextRequest) {
     (process.env.NODE_ENV === 'production' ? null : 'demo');
 
   if (!tenantId) {
-    return new Response('Tenant ID is required', { status: 400 });
+    return new NextResponse('Tenant ID is required', { status: 400 });
   }
 
   const userId = searchParams.get('userId') || undefined;
@@ -156,7 +157,7 @@ export async function GET(request: NextRequest) {
           try {
             controller.enqueue(encoder.encode(': keep-alive\n\n'));
             sseConnectionManager.updateActivity(connection!.id);
-          } catch (e) {
+          } catch (_e) {
             clearInterval(keepAliveInterval);
           }
         }, 30000);
@@ -178,7 +179,7 @@ export async function GET(request: NextRequest) {
           
           try {
             controller.close();
-          } catch (e) {
+          } catch (_e) {
             // Already closed
           }
         });
@@ -196,14 +197,14 @@ export async function GET(request: NextRequest) {
         // Close the connection
         try {
           controller.close();
-        } catch (e) {
+        } catch (_e) {
           // Already closed
         }
       }
     },
   });
 
-  return new Response(stream, {
+  return new NextResponse(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
@@ -211,7 +212,7 @@ export async function GET(request: NextRequest) {
       'X-Accel-Buffering': 'no', // Disable nginx buffering
     },
   });
-}
+});
 
 /**
  * SSE event payload types

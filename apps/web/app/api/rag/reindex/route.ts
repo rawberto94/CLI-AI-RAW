@@ -9,20 +9,21 @@
  * - Manual refresh is requested
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
 import { Prisma } from '@prisma/client';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
 
 /**
  * POST /api/rag/reindex
  * Trigger re-indexing for specific contracts or stale embeddings
  */
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const body = await request.json();
@@ -53,15 +54,11 @@ export async function POST(request: NextRequest) {
         contractEmbeddings: {
           select: {
             id: true,
-            createdAt: true,
-          },
+            createdAt: true },
           take: 1,
-          orderBy: { createdAt: 'desc' },
-        },
-      },
+          orderBy: { createdAt: 'desc' } } },
       take: limit,
-      orderBy: { updatedAt: 'desc' },
-    });
+      orderBy: { updatedAt: 'desc' } });
 
     // Filter contracts that need reindexing
     const now = new Date();
@@ -109,12 +106,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (contractsToProcess.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'No contracts need reindexing',
         processed: 0,
-        skipped: contracts.length,
-      });
+        skipped: contracts.length });
     }
 
     // Process contracts
@@ -125,8 +120,7 @@ export async function POST(request: NextRequest) {
       try {
         // Delete existing embeddings
         await prisma.contractEmbedding.deleteMany({
-          where: { contractId: contract.id },
-        });
+          where: { contractId: contract.id } });
 
         // Process with semantic chunking
         const result = await processContractWithSemanticChunking(
@@ -142,45 +136,34 @@ export async function POST(request: NextRequest) {
           results.push({
             contractId: contract.id,
             status: 'error',
-            message: 'No embeddings generated',
-          });
+            message: 'No embeddings generated' });
           failed++;
         }
       } catch (error) {
         results.push({
           contractId: contract.id,
           status: 'error',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        });
+          message: error instanceof Error ? error.message : 'Unknown error' });
         failed++;
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: `Reindexed ${processed} contracts`,
       processed,
       failed,
       skipped: contracts.length - contractsToProcess.length,
-      results,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Reindex failed', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+      results });
+  });
 
 /**
  * GET /api/rag/reindex
  * Check which contracts need reindexing
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const { searchParams } = new URL(request.url);
@@ -191,8 +174,7 @@ export async function GET(request: NextRequest) {
       where: {
         tenantId,
         isDeleted: false,
-        rawText: { not: null },
-      },
+        rawText: { not: null } },
       select: {
         id: true,
         fileName: true,
@@ -201,19 +183,15 @@ export async function GET(request: NextRequest) {
         embeddings: {
           select: { createdAt: true },
           take: 1,
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-      take: limit,
-    });
+          orderBy: { createdAt: 'desc' } } },
+      take: limit });
 
     // Categorize contracts
     const stats = {
       total: contracts.length,
       indexed: 0,
       needsIndexing: 0,
-      stale: 0,
-    };
+      stale: 0 };
 
     const needsReindexing: Array<{
       contractId: string;
@@ -227,8 +205,7 @@ export async function GET(request: NextRequest) {
         needsReindexing.push({
           contractId: contract.id,
           fileName: contract.fileName || 'Unknown',
-          reason: 'missing',
-        });
+          reason: 'missing' });
       } else if (contract.embeddings.length > 0) {
         const embeddingDate = new Date(contract.embeddings[0].createdAt);
         const contractDate = new Date(contract.updatedAt);
@@ -238,24 +215,15 @@ export async function GET(request: NextRequest) {
           needsReindexing.push({
             contractId: contract.id,
             fileName: contract.fileName || 'Unknown',
-            reason: 'updated',
-          });
+            reason: 'updated' });
         } else {
           stats.indexed++;
         }
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       stats,
       needsReindexing: needsReindexing.slice(0, 50),
-      hasMore: needsReindexing.length > 50,
-    });
-  } catch (error) {
-    return NextResponse.json(
-      { error: 'Failed to check reindex status', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
-  }
-}
+      hasMore: needsReindexing.length > 50 });
+  });

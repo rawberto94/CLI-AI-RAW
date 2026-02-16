@@ -9,8 +9,9 @@
  * 2. Client source (SharePoint, Google Drive, etc.) - on-demand fetch
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'fs/promises';
 import path from 'path';
@@ -19,17 +20,27 @@ import { sanitizePath, hasPathTraversal } from '@/lib/security/sanitize';
 import cors from '@/lib/security/cors';
 import { getStorageConfig, isDocumentAccessible } from '@/lib/storage/retention-config';
 import { createConnector } from '@/lib/integrations/connectors/factory';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
-// Initialize S3 client for MinIO
-const s3Client = new S3Client({
-  endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
-  region: 'us-east-1',
-  credentials: {
-    accessKeyId: process.env.MINIO_ACCESS_KEY || 'minioadmin',
-    secretAccessKey: process.env.MINIO_SECRET_KEY || 'minioadmin',
-  },
-  forcePathStyle: true,
-});
+// Initialize S3 client for MinIO - credentials required in production
+const getS3Client = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // In production, require explicit credentials
+  if (isProduction && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+    throw new Error('MINIO_ACCESS_KEY and MINIO_SECRET_KEY are required in production');
+  }
+  
+  return new S3Client({
+    endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
+    region: 'us-east-1',
+    credentials: {
+      accessKeyId: process.env.MINIO_ACCESS_KEY || (isProduction ? '' : 'minioadmin'),
+      secretAccessKey: process.env.MINIO_SECRET_KEY || (isProduction ? '' : 'minioadmin'),
+    },
+    forcePathStyle: true,
+  });
+};
 
 const BUCKET_NAME = process.env.MINIO_BUCKET || 'contracts';
 
@@ -41,23 +52,21 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const resolvedParams = await params;
     const contractId = resolvedParams.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json(
-        { success: false, error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     // Check query params for fetch strategy
@@ -96,10 +105,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Determine content type
@@ -152,24 +158,20 @@ export async function GET(
       if (!isDocumentAccessible(contract.uploadedAt, storageConfig)) {
         // Document expired but might have source
         if (syncedFile?.source && !shouldFetchFromSource) {
-          return NextResponse.json(
-            { 
+          return createSuccessResponse(ctx, { 
               success: false, 
               error: 'Document expired from local storage',
               canFetchFromSource: true,
               message: 'Try adding ?source=true to fetch from original location'
             },
-            { status: 410 } // Gone
-          );
+            { status: 410 }) // Gone
         }
-        return NextResponse.json(
-          { 
+        return createSuccessResponse(ctx, { 
             success: false, 
             error: 'Document has expired and is no longer available',
             retentionDays: storageConfig.retentionDays
           },
-          { status: 410 } // Gone
-        );
+          { status: 410 }) // Gone
       }
     }
 
@@ -187,6 +189,7 @@ export async function GET(
           Key: s3Key,
         });
         
+        const s3Client = getS3Client();
         const response = await s3Client.send(command);
         const bodyBytes = await response.Body?.transformToByteArray();
         
@@ -208,10 +211,7 @@ export async function GET(
       
       // Check for path traversal attempts
       if (hasPathTraversal(contract.fileName || '') || hasPathTraversal(contract.storagePath || '')) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid file path' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid file path', 400);
       }
       
       const localPath = safeStoragePath || path.join(process.cwd(), 'uploads', safeFileName);
@@ -221,44 +221,13 @@ export async function GET(
         await fs.access(localPath);
         fileBuffer = await fs.readFile(localPath);
       } catch (_localError) {
-        // Try alternate paths with sanitized filename
-        const alternatePaths = [
-          path.join(process.cwd(), 'uploads', contractId, safeFileName),
-          path.join(process.cwd(), 'data', 'contracts', safeFileName),
-          path.join('/tmp', 'uploads', safeFileName),
-        ];
-
-        let found = false;
-        for (const altPath of alternatePaths) {
-          try {
-            await fs.access(altPath);
-            fileBuffer = await fs.readFile(altPath);
-            found = true;
-            break;
-          } catch {
-            // Continue to next path
-          }
-        }
-
-        if (!found) {
-          return NextResponse.json(
-            { 
-              success: false, 
-              error: 'File not found on server',
-              details: 'The original file may have been moved or deleted'
-            },
-            { status: 404 }
-          );
-        }
+        return handleApiError(ctx, _localError);
       }
     }
 
     // Return file with appropriate headers
     if (!fileBuffer) {
-      return NextResponse.json(
-        { success: false, error: 'File not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'File not found', 404);
     }
     
     const headers = new Headers();
@@ -280,14 +249,7 @@ export async function GET(
       headers,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to retrieve file',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

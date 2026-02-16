@@ -307,7 +307,7 @@ function EditRateRow({
   return (
     <>
       <td className="px-4 py-3" colSpan={6}>
-        <div className="grid grid-cols-2 gap-4 p-4 bg-blue-50 rounded">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-violet-50 rounded">
           <div>
             <Label>Standardized Role</Label>
             <Input

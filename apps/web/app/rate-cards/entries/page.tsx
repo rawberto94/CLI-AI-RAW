@@ -123,7 +123,7 @@ export default function RateCardEntriesPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
         
@@ -133,7 +133,7 @@ export default function RateCardEntriesPage() {
           className="flex items-center justify-between"
         >
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-600 rounded-xl shadow-lg shadow-blue-500/25">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
               <Database className="w-7 h-7 text-white" />
             </div>
             <div>
@@ -154,7 +154,7 @@ export default function RateCardEntriesPage() {
             </Link>
             <Button 
               onClick={() => router.push('/rate-cards/new')}
-              className="bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700 shadow-lg shadow-blue-500/25"
+              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 shadow-lg shadow-violet-500/25"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Rate Card

@@ -684,7 +684,7 @@ export async function validateAndRefineResponse(
     requireApproval?: boolean;
   }
 ): Promise<{ response: string; wasRevised: boolean; score: number }> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   const { minScore = 0.7, maxRevisions = 2, requireApproval = false } = options || {};
   
   let currentResponse = response;

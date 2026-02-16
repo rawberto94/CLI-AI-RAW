@@ -11,7 +11,8 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 interface GenerationRequest {
   contractId: string;
@@ -55,36 +56,27 @@ interface BatchResultType {
 /**
  * POST - Generate artifact using next-gen AI
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const services = await import('@repo/data-orchestration/services');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+    const services = await import('data-orchestration/services');
     const nextGenArtifactGenerator = services.nextGenArtifactGenerator;
 
     const body = await request.json() as GenerationRequest;
 
     // Validate required fields
     if (!body.contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
     }
 
     if (!body.contractText) {
-      return NextResponse.json(
-        { error: 'contractText is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractText is required', 400);
     }
 
     if (!body.artifactType) {
-      return NextResponse.json(
-        { error: 'artifactType is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
     }
 
-    const tenantId = body.tenantId;
+    const bodyTenantId = body.tenantId;
 
     // Handle batch generation
     if (Array.isArray(body.artifactType)) {
@@ -95,8 +87,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         tenantId
       ) as BatchResultType;
 
-      return NextResponse.json({
-        success: results.successRate === 1,
+      return createSuccessResponse(ctx, {
         batchResults: Object.entries(results.artifacts).map(([type, r]) => ({
           artifactType: type,
           success: r.success,
@@ -106,15 +97,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             model: r.metadata.model,
             latencyMs: r.metadata.latencyMs,
             qualityScore: r.metadata.qualityScore,
-            confidence: r.metadata.confidence,
-          },
-        })),
+            confidence: r.metadata.confidence } })),
         consistencyResult: results.consistencyResult,
         totalCost: results.totalCost,
         totalLatencyMs: results.totalLatencyMs,
         successRate: results.successRate,
-        generatedAt: new Date().toISOString(),
-      });
+        generatedAt: new Date().toISOString() });
     }
 
     // Single artifact generation
@@ -126,18 +114,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ) as GenerationResultType;
 
     if (!result.success) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: result.validationIssues?.join(', ') || 'Generation failed',
-          validationIssues: result.validationIssues,
-        },
-        { status: 422 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', result.validationIssues?.join(', ') || 'Generation failed', 422);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       artifact: result.artifact,
       metadata: {
         model: result.metadata.model,
@@ -147,29 +127,18 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         qualityScore: result.metadata.qualityScore,
         confidence: result.metadata.confidence,
         contractType: result.metadata.contractClassification,
-        chunksProcessed: result.metadata.chunksProcessed,
-      },
+        chunksProcessed: result.metadata.chunksProcessed },
       validationIssues: result.validationIssues,
       suggestions: result.suggestions,
-      generatedAt: new Date().toISOString(),
-    });
+      generatedAt: new Date().toISOString() });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error instanceof Error ? error.message : 'Generation failed',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET - Get generation capabilities and stats
  */
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  return createSuccessResponse(ctx, {
     version: '2.0.0',
     capabilities: {
       contractClassification: true,
@@ -177,8 +146,7 @@ export async function GET(): Promise<NextResponse> {
       structuredOutput: true,
       multiModelOrchestration: true,
       crossArtifactValidation: true,
-      aiLearning: true,
-    },
+      aiLearning: true },
     supportedArtifacts: [
       'overview',
       'financial',
@@ -203,13 +171,11 @@ export async function GET(): Promise<NextResponse> {
     models: {
       complex: 'gpt-4o',
       standard: 'gpt-4o-mini',
-      fallback: 'gpt-3.5-turbo',
-    },
+      fallback: 'gpt-3.5-turbo' },
     features: {
       batchGeneration: 'Generate multiple artifacts in one request',
       consistencyValidation: 'Cross-validate data across artifacts',
-      promptLearning: 'Improve from user corrections',
-    },
+      promptLearning: 'Improve from user corrections' },
     usage: {
       singleArtifact: {
         method: 'POST',
@@ -222,19 +188,12 @@ export async function GET(): Promise<NextResponse> {
             model: 'string (optional)',
             useStructuredOutput: 'boolean (default: true)',
             validateConsistency: 'boolean (default: true)',
-            existingArtifacts: 'object (for consistency validation)',
-          },
-        },
-      },
+            existingArtifacts: 'object (for consistency validation)' } } },
       batchArtifacts: {
         method: 'POST',
         body: {
           contractId: 'string (required)',
           contractText: 'string (required)',
           artifactType: 'string[] (array of types)',
-          tenantId: 'string (optional)',
-        },
-      },
-    },
-  });
-}
+          tenantId: 'string (optional)' } } } });
+});

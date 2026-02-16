@@ -5,9 +5,8 @@
  * using weighted feature comparison.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export interface SimilarityWeights {
   role: number;

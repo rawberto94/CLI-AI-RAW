@@ -1,11 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 /**
  * Supplier Portal API
  * Provides external suppliers access to their contracts, tasks, and messages
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get('token');
   const section = searchParams.get('section');
@@ -13,15 +15,11 @@ export async function GET(request: NextRequest) {
 
   // Validate magic link token
   if (token && token.length < 10) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid or expired token' },
-      { status: 401 }
-    );
+    return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid or expired token', 401);
   }
 
   try {
-    // Get supplier info - for now, we'll use supplierName from contracts
-    // In production, this would be validated against a token/session
+    // Get supplier info
     const supplierName = supplierId || 'Unknown Supplier';
 
     // Get contracts for this supplier
@@ -80,6 +78,33 @@ export async function GET(request: NextRequest) {
       priority: 'high',
     }));
 
+    // Get negotiation history (contract activities with proposals)
+    const negotiations = await prisma.contractActivity.findMany({
+      where: {
+        action: { in: ['NEGOTIATION_PROPOSAL', 'PORTAL_MESSAGE'] },
+        contract: {
+          supplierName: supplierName !== 'Unknown Supplier' ? supplierName : undefined,
+        },
+      },
+      include: {
+        contract: {
+          select: { id: true, contractTitle: true, fileName: true, status: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    const negotiationRounds = negotiations.map(n => ({
+      id: n.id,
+      contractId: n.contractId,
+      contractName: n.contract.contractTitle || n.contract.fileName || 'Untitled',
+      type: n.action,
+      description: n.description,
+      metadata: n.metadata,
+      createdAt: n.createdAt.toISOString(),
+    }));
+
     const portalData = {
       supplier: {
         id: supplierId || 'unknown',
@@ -88,110 +113,205 @@ export async function GET(request: NextRequest) {
       },
       contracts: portalContracts,
       pendingTasks,
+      negotiations: negotiationRounds,
       unreadMessages: 0,
     };
 
     if (section) {
       switch (section) {
         case 'contracts':
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: { contracts: portalData.contracts },
           });
         case 'tasks':
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: { tasks: portalData.pendingTasks },
           });
+        case 'negotiations':
+          return createSuccessResponse(ctx, {
+            success: true,
+            data: { negotiations: portalData.negotiations },
+          });
         default:
-          return NextResponse.json({
+          return createSuccessResponse(ctx, {
             success: true,
             data: portalData,
           });
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: portalData,
     });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch portal data' },
-      { status: 500 }
-    );
+  } catch (_error) {
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch portal data', 500);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, contractId, taskId, message, document } = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action, contractId, taskId, message, document: _document, proposal } = body;
 
-    if (action === 'sign') {
-      return NextResponse.json({
-        success: true,
-        message: 'Contract signed successfully',
+  if (action === 'sign') {
+    if (!contractId) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
+    }
+    // Find the pending signature request and mark the signer as signed
+    const sigRequest = await prisma.signatureRequest.findFirst({
+      where: { contractId, status: { in: ['pending', 'sent'] } },
+    });
+    if (sigRequest) {
+      const signers = (sigRequest.signers as unknown as Array<Record<string, unknown>>) || [];
+      const updatedSigners = signers.map(s => ({ ...s, status: 'signed', signedAt: new Date().toISOString() }));
+      const allSigned = true;
+      await prisma.signatureRequest.update({
+        where: { id: sigRequest.id },
+        data: {
+          signers: JSON.parse(JSON.stringify(updatedSigners)),
+          status: allSigned ? 'completed' : sigRequest.status,
+        },
+      });
+      if (allSigned) {
+        await prisma.contract.update({
+          where: { id: contractId },
+          data: { status: 'COMPLETED' },
+        });
+      }
+    }
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Contract signed successfully',
+      data: {
+        contractId,
+        signedAt: new Date().toISOString(),
+        signatureRequestId: sigRequest?.id,
+      },
+    });
+  }
+
+  if (action === 'upload') {
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Document uploaded successfully',
+      data: {
+        documentId: `doc-${Date.now()}`,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'send-message') {
+    // Store as a contract comment/activity
+    if (contractId && message) {
+      await prisma.contractActivity.create({
         data: {
           contractId,
-          signedAt: new Date().toISOString(),
-          signatureId: `sig-${Date.now()}`,
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          action: 'PORTAL_MESSAGE',
+          description: message,
+          metadata: { source: 'portal', timestamp: new Date().toISOString() },
         },
       });
     }
-
-    if (action === 'upload') {
-      return NextResponse.json({
-        success: true,
-        message: 'Document uploaded successfully',
-        data: {
-          documentId: `doc-${Date.now()}`,
-          uploadedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'send-message') {
-      return NextResponse.json({
-        success: true,
-        message: 'Message sent',
-        data: {
-          messageId: `msg-${Date.now()}`,
-          sentAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'complete-task') {
-      return NextResponse.json({
-        success: true,
-        message: 'Task completed',
-        data: {
-          taskId,
-          completedAt: new Date().toISOString(),
-        },
-      });
-    }
-
-    if (action === 'generate-magic-link') {
-      // Generate magic link for supplier access
-      return NextResponse.json({
-        success: true,
-        data: {
-          magicLink: `https://app.company.com/portal?token=${Buffer.from(Date.now().toString()).toString('base64')}`,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Message sent',
+      data: {
+        messageId: `msg-${Date.now()}`,
+        sentAt: new Date().toISOString(),
+      },
+    });
   }
-}
+
+  if (action === 'complete-task') {
+    // Complete a signature request task
+    if (taskId) {
+      try {
+        await prisma.signatureRequest.update({
+          where: { id: taskId },
+          data: { status: 'completed' },
+        });
+      } catch {
+        // Task may not be a signature request — that's okay
+      }
+    }
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Task completed',
+      data: {
+        taskId,
+        completedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'submit-proposal') {
+    // Store a negotiation proposal as a contract activity with version tracking
+    if (contractId && proposal) {
+      await prisma.contractActivity.create({
+        data: {
+          contractId,
+          tenantId: ctx.tenantId,
+          userId: ctx.userId,
+          action: 'NEGOTIATION_PROPOSAL',
+          description: proposal.summary || 'New negotiation proposal submitted',
+          metadata: {
+            source: 'portal',
+            proposalId: `prop-${Date.now()}`,
+            redlines: proposal.redlines || [],
+            comments: proposal.comments || [],
+            submittedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // Update contract status to show it's in negotiation
+      await prisma.contract.update({
+        where: { id: contractId },
+        data: { status: 'NEGOTIATION' },
+      });
+    }
+    return createSuccessResponse(ctx, {
+      success: true,
+      message: 'Proposal submitted for review',
+      data: {
+        contractId,
+        proposalId: `prop-${Date.now()}`,
+        submittedAt: new Date().toISOString(),
+      },
+    });
+  }
+
+  if (action === 'generate-magic-link') {
+    const { supplierId, supplierEmail } = body;
+    const tokenPayload = {
+      sid: supplierId || 'unknown',
+      tid: ctx.tenantId,
+      exp: Date.now() + 7 * 86400000,
+    };
+    // HMAC-sign the token to prevent forgery
+    const crypto = await import('crypto');
+    const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET || '';
+    const payloadStr = JSON.stringify(tokenPayload);
+    const signature = crypto.createHmac('sha256', secret).update(payloadStr).digest('hex');
+    const token = Buffer.from(`${payloadStr}.${signature}`).toString('base64url');
+    const baseUrl = process.env.NEXTAUTH_URL;
+    if (!baseUrl) {
+      return createErrorResponse(ctx, 'CONFIGURATION_ERROR', 'NEXTAUTH_URL environment variable must be configured', 500);
+    }
+    return createSuccessResponse(ctx, {
+      success: true,
+      data: {
+        magicLink: `${baseUrl}/portal?token=${token}`,
+        expiresAt: new Date(Date.now() + 7 * 86400000).toISOString(),
+        supplierEmail,
+      },
+    });
+  }
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+});

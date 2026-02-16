@@ -205,14 +205,8 @@ export const LazyCostSavingsDashboardWidget = dynamic(
   }
 );
 
-// AI components - load on demand
-export const LazyChatAssistant = dynamic(
-  () => import('@/components/ai/ChatAssistant').then(mod => ({ default: mod.default || mod })) as any,
-  {
-    loading: () => <LoadingSkeleton height="h-screen" />,
-    ssr: false,
-  }
-);
+// AI components — FloatingAIBubble is the canonical chatbot (loaded in ConditionalLayout)
+// ChatAssistant, ProfessionalChatbot, UnifiedChatbot, EnhancedChatbot are deprecated duplicates
 
 // Search components - load on demand
 export const LazySmartSearch = dynamic(

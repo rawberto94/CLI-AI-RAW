@@ -5,13 +5,28 @@
 
 import { NextRequest } from 'next/server'
 import { progressTracker } from '@/lib/progress-tracker'
+import { auth } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const contractId = params.id
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const contractId = params.id;
+
+  // Authenticate — reject unauthenticated access
+  const session = await auth();
+  if (!session?.user?.id) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized' }),
+      { status: 401, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
 
   // Create SSE response
   const encoder = new TextEncoder()
@@ -47,7 +62,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       const heartbeat = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(`: heartbeat\n\n`))
-        } catch (error) {
+        } catch (_error) {
           clearInterval(heartbeat)
         }
       }, 15000)

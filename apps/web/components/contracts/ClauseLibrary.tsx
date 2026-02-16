@@ -123,7 +123,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
 
   useEffect(() => {
     filterClauses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [clauses, searchQuery, selectedCategory, selectedRisk, showFavoritesOnly]);
 
   const fetchClauses = async () => {
@@ -270,7 +270,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading clause library...</p>
         </div>
       </div>
@@ -297,7 +297,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
           )}
           <Button
             onClick={() => setShowCreateDialog(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
           >
             <Plus className="h-4 w-4 mr-2" />
             Add Clause
@@ -422,7 +422,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                               <div className="flex items-center gap-2 ml-4">
                                 {getRiskLevelBadge(clause.riskLevel)}
                                 {clause.isStandard && (
-                                  <Badge variant="outline" className="bg-blue-50">
+                                  <Badge variant="outline" className="bg-violet-50">
                                     <Check className="h-3 w-3 mr-1" />
                                     Standard
                                   </Badge>
@@ -436,8 +436,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                             {/* Tags */}
                             {clause.tags.length > 0 && (
                               <div className="flex flex-wrap gap-1 mb-3">
-                                {clause.tags.map((tag, idx) => (
-                                  <Badge key={idx} variant="secondary" className="text-xs">
+                                {clause.tags.map((tag) => (
+                                  <Badge key={tag} variant="secondary" className="text-xs">
                                     <Tag className="h-3 w-3 mr-1" />
                                     {tag}
                                   </Badge>
@@ -491,7 +491,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                                   <Button
                                     size="sm"
                                     onClick={() => onSelectClause(clause)}
-                                    className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                                    className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
                                   >
                                     Use Clause
                                   </Button>
@@ -627,7 +627,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
             <Button
               onClick={handleCreateClause}
               disabled={!newClause.title || !newClause.category || !newClause.content}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               Add Clause
             </Button>
@@ -647,7 +647,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
               <div className="flex items-center gap-2">
                 {selectedClause && getRiskLevelBadge(selectedClause.riskLevel)}
                 {selectedClause?.isStandard && (
-                  <Badge variant="outline" className="bg-blue-50">
+                  <Badge variant="outline" className="bg-violet-50">
                     <Check className="h-3 w-3 mr-1" />
                     Standard
                   </Badge>
@@ -664,8 +664,8 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                 <Badge variant="secondary">{selectedClause.category}</Badge>
                 {selectedClause.tags.length > 0 && (
                   <div className="flex flex-wrap gap-2 mt-2">
-                    {selectedClause.tags.map((tag, idx) => (
-                      <Badge key={idx} variant="outline">
+                    {selectedClause.tags.map((tag) => (
+                      <Badge key={tag} variant="outline">
                         <Tag className="h-3 w-3 mr-1" />
                         {tag}
                       </Badge>
@@ -755,7 +755,7 @@ export function ClauseLibrary({ onSelectClause, onAddClauses, multiSelect = fals
                   onSelectClause(selectedClause);
                   setShowDetailsDialog(false);
                 }}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >
                 Use This Clause
               </Button>

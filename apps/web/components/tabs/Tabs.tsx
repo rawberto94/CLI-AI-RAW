@@ -110,27 +110,27 @@ export function TabList({ tabs, className, fullWidth = false }: TabListProps) {
 
   const variantStyles = {
     underline: {
-      container: 'border-b border-slate-200',
-      tab: 'px-4 py-3 text-slate-600 hover:text-slate-900',
-      activeTab: 'text-indigo-600',
-      indicator: 'absolute bottom-0 h-0.5 bg-indigo-600 rounded-full',
+      container: 'border-b border-slate-200 dark:border-slate-700',
+      tab: 'px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100',
+      activeTab: 'text-violet-600 dark:text-violet-400',
+      indicator: 'absolute bottom-0 h-0.5 bg-gradient-to-r from-violet-600 to-purple-600 rounded-full',
     },
     pills: {
-      container: 'bg-slate-100 p-1 rounded-xl',
-      tab: 'px-4 py-2 text-slate-600 hover:text-slate-900 rounded-lg',
-      activeTab: 'text-slate-900',
-      indicator: 'absolute inset-0 bg-white rounded-lg shadow-sm',
+      container: 'bg-slate-100 dark:bg-slate-800 p-1 rounded-xl',
+      tab: 'px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 rounded-lg',
+      activeTab: 'text-slate-900 dark:text-slate-100',
+      indicator: 'absolute inset-0 bg-white dark:bg-slate-700 rounded-lg shadow-sm',
     },
     enclosed: {
-      container: 'border-b border-slate-200',
-      tab: 'px-4 py-3 text-slate-600 hover:text-slate-900 border border-transparent -mb-px rounded-t-lg',
-      activeTab: 'text-slate-900 border-slate-200 border-b-white bg-white',
+      container: 'border-b border-slate-200 dark:border-slate-700',
+      tab: 'px-4 py-3 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-transparent -mb-px rounded-t-lg',
+      activeTab: 'text-slate-900 dark:text-slate-100 border-slate-200 dark:border-slate-700 border-b-white dark:border-b-slate-900 bg-white dark:bg-slate-900',
       indicator: '', // No indicator for enclosed
     },
     soft: {
       container: 'gap-2',
-      tab: 'px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg',
-      activeTab: 'text-indigo-700 bg-indigo-100',
+      tab: 'px-4 py-2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg',
+      activeTab: 'text-violet-700 dark:text-violet-400 bg-violet-100 dark:bg-violet-950/50',
       indicator: '',
     },
   };
@@ -183,8 +183,8 @@ export function TabList({ tabs, className, fullWidth = false }: TabListProps) {
                 className={cn(
                   'px-1.5 py-0.5 text-xs font-semibold rounded-full',
                   isActive
-                    ? 'bg-indigo-600 text-white'
-                    : 'bg-slate-200 text-slate-600'
+                    ? 'bg-gradient-to-r from-violet-600 to-purple-600 text-white'
+                    : 'bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400'
                 )}
               >
                 {tab.badge}
@@ -264,7 +264,7 @@ export function VerticalTabs({
               'flex items-center gap-3 px-4 py-3 text-left text-sm font-medium rounded-xl',
               'transition-all duration-200',
               isActive
-                ? 'bg-indigo-100 text-indigo-700'
+                ? 'bg-violet-100 text-violet-700'
                 : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900',
               tab.disabled && 'opacity-50 cursor-not-allowed'
             )}
@@ -273,7 +273,7 @@ export function VerticalTabs({
               <Icon
                 className={cn(
                   'w-5 h-5',
-                  isActive ? 'text-indigo-600' : 'text-slate-400'
+                  isActive ? 'text-violet-600' : 'text-slate-400'
                 )}
               />
             )}
@@ -283,7 +283,7 @@ export function VerticalTabs({
                 className={cn(
                   'px-2 py-0.5 text-xs font-semibold rounded-full',
                   isActive
-                    ? 'bg-indigo-600 text-white'
+                    ? 'bg-violet-600 text-white'
                     : 'bg-slate-200 text-slate-600'
                 )}
               >

@@ -1,265 +1,196 @@
+/**
+ * Negotiation Co-Pilot API — AI-powered redline analysis & negotiation chat
+ *
+ * GET  /api/intelligence/negotiate — Analyze active redlines for a contract
+ * POST /api/intelligence/negotiate — Chat with AI negotiation assistant
+ *
+ * @version 1.0.0
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, type AuthenticatedApiContext } from '@/lib/api-middleware';
+import OpenAI from 'openai';
 
-// Mock playbook rules
-const playbookRules = [
-  {
-    id: 'rule1',
-    name: 'Liability Cap',
-    description: 'Liability should be capped at contract value or lower',
-    category: 'risk',
-    severity: 'critical',
-    acceptableTerms: ['cap at contract value', 'limited to fees paid', 'capped at annual fees'],
-    unacceptableTerms: ['unlimited liability', 'no cap', 'full liability'],
-  },
-  {
-    id: 'rule2',
-    name: 'Termination Rights',
-    description: 'Must include termination for convenience with 30-day notice',
-    category: 'flexibility',
-    severity: 'major',
-    acceptableTerms: ['30 days notice', 'termination for convenience', 'mutual termination rights'],
-    unacceptableTerms: ['no termination rights', 'termination only for cause', 'lock-in period'],
-  },
-  {
-    id: 'rule3',
-    name: 'Data Protection',
-    description: 'Must comply with GDPR and include DPA provisions',
-    category: 'compliance',
-    severity: 'critical',
-    acceptableTerms: ['GDPR compliant', 'data protection agreement', 'processor agreement'],
-    unacceptableTerms: ['no data protection', 'data shared freely'],
-  },
-  {
-    id: 'rule4',
-    name: 'Payment Terms',
-    description: 'Payment terms should be Net 45 or longer',
-    category: 'commercial',
-    severity: 'minor',
-    acceptableTerms: ['net 45', 'net 60', 'net 30 with discount'],
-    unacceptableTerms: ['net 15', 'immediate payment', 'prepayment required'],
-  },
-  {
-    id: 'rule5',
-    name: 'IP Ownership',
-    description: 'Customer retains IP for all custom deliverables',
-    category: 'legal',
-    severity: 'major',
-    acceptableTerms: ['customer owns deliverables', 'work for hire', 'IP assigned to customer'],
-    unacceptableTerms: ['vendor retains IP', 'shared ownership', 'licensed back'],
-  },
-];
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-// Mock analysis for a contract
-const mockAnalysis = {
-  summary: {
-    totalClauses: 24,
-    analyzed: 24,
-    deviations: 5,
-    critical: 1,
-    major: 2,
-    minor: 2,
-  },
-  deviations: [
-    {
-      id: 'dev1',
-      clauseNumber: '7.2',
-      clauseTitle: 'Limitation of Liability',
-      originalText: 'The liability of the Vendor shall be unlimited for any claims arising from this Agreement.',
-      issue: 'Unlimited liability violates company policy',
-      ruleId: 'rule1',
-      severity: 'critical',
-      recommendation: 'Cap liability at total contract value ($1,200,000)',
-      suggestedText: 'The liability of the Vendor shall be limited to the total fees paid under this Agreement.',
-      riskScore: 95,
-    },
-    {
-      id: 'dev2',
-      clauseNumber: '12.1',
-      clauseTitle: 'Termination',
-      originalText: 'This Agreement may only be terminated for material breach.',
-      issue: 'Missing termination for convenience clause',
-      ruleId: 'rule2',
-      severity: 'major',
-      recommendation: 'Add termination for convenience with 30-day notice',
-      suggestedText: 'Either party may terminate this Agreement for convenience upon thirty (30) days written notice.',
-      riskScore: 75,
-    },
-    {
-      id: 'dev3',
-      clauseNumber: '15.3',
-      clauseTitle: 'Intellectual Property',
-      originalText: 'All deliverables shall be jointly owned by both parties.',
-      issue: 'Joint IP ownership creates complications',
-      ruleId: 'rule5',
-      severity: 'major',
-      recommendation: 'Customer should own all custom deliverables',
-      suggestedText: 'All custom deliverables created under this Agreement shall be owned exclusively by Customer.',
-      riskScore: 70,
-    },
-    {
-      id: 'dev4',
-      clauseNumber: '8.1',
-      clauseTitle: 'Payment Terms',
-      originalText: 'Payment shall be due within 15 days of invoice date.',
-      issue: 'Payment terms shorter than policy minimum',
-      ruleId: 'rule4',
-      severity: 'minor',
-      recommendation: 'Negotiate to Net 45 payment terms',
-      suggestedText: 'Payment shall be due within 45 days of invoice date.',
-      riskScore: 40,
-    },
-    {
-      id: 'dev5',
-      clauseNumber: '9.2',
-      clauseTitle: 'Late Payment',
-      originalText: 'Late payments shall accrue interest at 2% per month.',
-      issue: 'Interest rate higher than market standard',
-      ruleId: 'rule4',
-      severity: 'minor',
-      recommendation: 'Negotiate lower interest rate (1% or prime + 2%)',
-      suggestedText: 'Late payments shall accrue interest at the prime rate plus 2% per annum.',
-      riskScore: 35,
-    },
-  ],
-  comparison: {
-    addedClauses: 2,
-    removedClauses: 0,
-    modifiedClauses: 8,
-    unchangedClauses: 14,
-  },
-  riskMatrix: {
-    legal: { score: 65, issues: 2 },
-    commercial: { score: 85, issues: 2 },
-    operational: { score: 90, issues: 0 },
-    compliance: { score: 95, issues: 1 },
-  },
-};
-
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action, contractId, clauseText, playbook } = body;
-
-    if (action === 'analyze') {
-      // Full contract analysis
-      return NextResponse.json({
-        success: true,
-        data: {
-          contractId: contractId || 'contract-1',
-          analysis: mockAnalysis,
-          playbook: playbookRules,
-          recommendations: [
-            {
-              priority: 1,
-              action: 'Address critical liability clause immediately',
-              impact: 'High financial risk if unchanged',
-            },
-            {
-              priority: 2,
-              action: 'Negotiate IP ownership terms',
-              impact: 'Potential IP disputes',
-            },
-            {
-              priority: 3,
-              action: 'Add termination for convenience',
-              impact: 'Limited exit flexibility',
-            },
-          ],
-          overallRisk: 'medium-high',
-          negotiationReadiness: 65,
-        },
-      });
-    }
-
-    if (action === 'check-clause') {
-      // Single clause check against playbook
-      if (!clauseText) {
-        return NextResponse.json(
-          { success: false, error: 'Clause text is required' },
-          { status: 400 }
-        );
-      }
-
-      // Mock analysis of specific clause
-      const violations = playbookRules.filter(rule =>
-        rule.unacceptableTerms.some(term =>
-          clauseText.toLowerCase().includes(term.toLowerCase())
-        )
-      );
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          clauseText,
-          violations: violations.map(v => ({
-            rule: v.name,
-            severity: v.severity,
-            description: v.description,
-            recommendation: v.acceptableTerms[0],
-          })),
-          isCompliant: violations.length === 0,
-        },
-      });
-    }
-
-    if (action === 'suggest-response') {
-      // Generate negotiation response
-      const { deviationId } = body;
-      const deviation = mockAnalysis.deviations.find(d => d.id === deviationId);
-
-      if (!deviation) {
-        return NextResponse.json(
-          { success: false, error: 'Deviation not found' },
-          { status: 404 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        data: {
-          deviation,
-          responseOptions: [
-            {
-              tone: 'firm',
-              text: `We require modification to Section ${deviation.clauseNumber}. Our standard terms require: "${deviation.suggestedText}"`,
-            },
-            {
-              tone: 'collaborative',
-              text: `Regarding Section ${deviation.clauseNumber}, we'd like to discuss adjusting the language to: "${deviation.suggestedText}". This aligns with industry standards and provides mutual protection.`,
-            },
-            {
-              tone: 'compromise',
-              text: `For Section ${deviation.clauseNumber}, we propose meeting in the middle. While we understand your position, our risk assessment requires some adjustment. Would you consider: "${deviation.suggestedText}"?`,
-            },
-          ],
-          precedents: [
-            { contractName: 'Acme Corp MSA', outcome: 'Accepted our terms' },
-            { contractName: 'TechVendor SLA', outcome: 'Negotiated 50% cap' },
-          ],
-        },
-      });
-    }
-
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
-  }
+interface RedlineChange {
+  id: string;
+  type: 'addition' | 'deletion' | 'modification' | 'replacement';
+  clause: string;
+  section: string;
+  originalText: string;
+  proposedText: string;
+  category: 'liability' | 'termination' | 'payment' | 'confidentiality' | 'ip' | 'compliance' | 'other';
+  riskLevel: 'critical' | 'high' | 'medium' | 'low';
+  status: 'pending' | 'accepted' | 'rejected' | 'negotiating';
+  aiAnalysis: {
+    summary: string;
+    marketPosition: 'favorable' | 'neutral' | 'unfavorable';
+    recommendation: 'accept' | 'negotiate' | 'reject';
+    rationale: string;
+    fallbackSuggestion?: string;
+  };
+  suggestedResponse: string;
+  impactAreas: string[];
 }
 
-export async function GET() {
-  // Return playbook rules
-  return NextResponse.json({
-    success: true,
-    data: {
-      playbook: playbookRules,
-      categories: ['risk', 'flexibility', 'compliance', 'commercial', 'legal'],
-      lastUpdated: '2024-03-15',
+/**
+ * GET — Analyse the latest contract revisions and produce redline insights
+ */
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { tenantId } = ctx;
+  const contractId = request.nextUrl.searchParams.get('contractId');
+
+  // Fetch contracts with amendment / version history
+  const contracts = await prisma.contract.findMany({
+    where: {
+      tenantId,
+      ...(contractId ? { id: contractId } : {}),
+      status: { in: ['NEGOTIATING', 'REVIEW', 'PENDING', 'IN_REVIEW'] },
+    },
+    orderBy: { updatedAt: 'desc' },
+    take: 20,
+    select: {
+      id: true,
+      contractTitle: true,
+      counterparty: true,
+      metadata: true,
+      contractType: true,
+      totalValue: true,
+      expirationRisk: true,
     },
   });
+
+  if (contracts.length === 0) {
+    return NextResponse.json({ success: true, data: { redlines: [] } });
+  }
+
+  // Build redline change objects from contract metadata
+  const redlines: RedlineChange[] = [];
+
+  for (const c of contracts) {
+    const meta = (c.metadata || {}) as Record<string, unknown>;
+    const clauseChanges = (meta.clauseChanges as any[]) || [];
+
+    // If we have recorded clause changes, map them
+    for (const change of clauseChanges) {
+      const analysisStr = change.analysis || `Clause change in ${c.contractTitle || 'contract'} with ${c.counterparty || 'counterparty'}`;
+      redlines.push({
+        id: `${c.id}-${change.id || redlines.length}`,
+        type: change.type || 'modification',
+        clause: change.clause || change.section || c.contractType || 'General',
+        section: change.section || c.contractType || 'General',
+        originalText: change.original || '',
+        proposedText: change.proposed || change.text || '',
+        category: inferCategory(change.section || change.clause || ''),
+        riskLevel: mapRiskLevel(change.risk),
+        status: change.status || 'pending',
+        aiAnalysis: {
+          summary: analysisStr,
+          marketPosition: change.marketPosition || 'neutral',
+          recommendation: change.recommendation || 'negotiate',
+          rationale: change.rationale || analysisStr,
+          fallbackSuggestion: change.suggestion || undefined,
+        },
+        suggestedResponse: change.suggestion || '',
+        impactAreas: change.impact || [c.contractType || 'general'],
+      });
+    }
+
+    // If no recorded changes, generate a summary redline for the contract
+    if (clauseChanges.length === 0) {
+      const riskLevel = c.expirationRisk === 'CRITICAL' ? 'critical' : c.expirationRisk === 'HIGH' ? 'high' : 'medium';
+      const summaryText = `Contract with ${c.counterparty || 'counterparty'} is in review. Value: $${c.totalValue || 0}`;
+      redlines.push({
+        id: c.id,
+        type: 'modification',
+        clause: c.contractTitle || 'Untitled',
+        section: c.contractType || 'General Terms',
+        originalText: '',
+        proposedText: `${c.contractTitle || 'Untitled'} — review needed`,
+        category: inferCategory(c.contractType || ''),
+        riskLevel: riskLevel as RedlineChange['riskLevel'],
+        status: 'pending',
+        aiAnalysis: {
+          summary: summaryText,
+          marketPosition: 'neutral',
+          recommendation: 'negotiate',
+          rationale: summaryText,
+        },
+        suggestedResponse: 'Request latest redline comparison from counterparty.',
+        impactAreas: [c.contractType || 'general'],
+      });
+    }
+  }
+
+  return NextResponse.json({ success: true, data: { redlines } });
+});
+
+/**
+ * POST — Chat with AI negotiation assistant
+ * Body: { message: string, contractId?: string, context?: object }
+ */
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { tenantId } = ctx;
+  const body = await request.json();
+  const { message, contractId, context: extraContext } = body;
+
+  if (!message) {
+    return NextResponse.json({ success: false, error: 'Message is required' }, { status: 400 });
+  }
+
+  // Optionally fetch contract context
+  let contractContext = '';
+  if (contractId) {
+    const contract = await prisma.contract.findFirst({
+      where: { id: contractId, tenantId },
+      select: { contractTitle: true, counterparty: true, contractType: true, totalValue: true, metadata: true },
+    });
+    if (contract) {
+      contractContext = `\n\nContract: "${contract.contractTitle}"\nCounterparty: ${contract.counterparty}\nType: ${contract.contractType}\nValue: $${contract.totalValue}`;
+    }
+  }
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      temperature: 0.4,
+      messages: [
+        {
+          role: 'system',
+          content: `You are a senior contract negotiation advisor. Provide strategic, actionable advice.
+Be concise but thorough. Reference specific clause types when relevant.
+If the user asks about a clause, analyze risk, suggest counter-positions, and note leverage points.${contractContext}`,
+        },
+        { role: 'user', content: message },
+      ],
+    });
+
+    const reply = response.choices[0]?.message?.content || 'I could not generate a response.';
+    return NextResponse.json({ success: true, data: { reply } });
+  } catch (error: any) {
+    console.error('Negotiation chat error:', error);
+    return NextResponse.json({ success: true, data: { reply: 'AI negotiation service is temporarily unavailable.' } });
+  }
+});
+
+function mapRiskLevel(risk: string | undefined): RedlineChange['riskLevel'] {
+  if (!risk) return 'medium';
+  const r = risk.toLowerCase();
+  if (r === 'critical') return 'critical';
+  if (r === 'high') return 'high';
+  if (r === 'low') return 'low';
+  return 'medium';
+}
+
+function inferCategory(text: string): RedlineChange['category'] {
+  const t = text.toLowerCase();
+  if (t.includes('liab') || t.includes('indemn')) return 'liability';
+  if (t.includes('terminat') || t.includes('cancel')) return 'termination';
+  if (t.includes('payment') || t.includes('invoice') || t.includes('fee')) return 'payment';
+  if (t.includes('confiden') || t.includes('nda') || t.includes('secret')) return 'confidentiality';
+  if (t.includes('ip') || t.includes('intellectual') || t.includes('patent')) return 'ip';
+  if (t.includes('complian') || t.includes('regulat')) return 'compliance';
+  return 'other';
 }

@@ -15,12 +15,12 @@ export const OverviewRenderer = memo(function OverviewRenderer({ data }: Overvie
   return (
     <div className="space-y-5">
       {data.summary && (
-        <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/50 dark:to-indigo-950/50 rounded-xl border-2 border-blue-100 dark:border-blue-900 shadow-sm">
-          <h4 className="font-bold text-base text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+        <div className="p-6 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 rounded-xl border-2 border-violet-100 dark:border-violet-900 shadow-sm">
+          <h4 className="font-bold text-base text-violet-900 dark:text-violet-100 mb-3 flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Executive Summary
           </h4>
-          <p className="text-base leading-relaxed text-blue-900/90 dark:text-blue-100/90">
+          <p className="text-base leading-relaxed text-violet-900/90 dark:text-violet-100/90">
             {data.summary}
           </p>
         </div>

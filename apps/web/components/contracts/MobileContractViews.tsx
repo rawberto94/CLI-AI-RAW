@@ -109,12 +109,12 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfigType 
   const configs: Record<string, StatusConfigType> = {
     draft: defaultConfig,
     pending: { color: "bg-amber-50 text-amber-700", dotColor: "bg-amber-400", label: "Pending" },
-    active: { color: "bg-emerald-50 text-emerald-700", dotColor: "bg-emerald-400", label: "Active" },
+    active: { color: "bg-violet-50 text-violet-700", dotColor: "bg-violet-400", label: "Active" },
     expired: { color: "bg-red-50 text-red-700", dotColor: "bg-red-400", label: "Expired" },
     terminated: { color: "bg-gray-100 text-gray-700", dotColor: "bg-gray-400", label: "Terminated" },
-    renewal: { color: "bg-blue-50 text-blue-700", dotColor: "bg-blue-400", label: "Renewal" },
-    processing: { color: "bg-blue-50 text-blue-700", dotColor: "bg-blue-400", label: "Processing" },
-    completed: { color: "bg-emerald-50 text-emerald-700", dotColor: "bg-emerald-400", label: "Completed" },
+    renewal: { color: "bg-violet-50 text-violet-700", dotColor: "bg-violet-400", label: "Renewal" },
+    processing: { color: "bg-violet-50 text-violet-700", dotColor: "bg-violet-400", label: "Processing" },
+    completed: { color: "bg-violet-50 text-violet-700", dotColor: "bg-violet-400", label: "Completed" },
     failed: { color: "bg-red-50 text-red-700", dotColor: "bg-red-400", label: "Failed" },
   };
   if (status && configs[status]) {
@@ -240,7 +240,7 @@ export const MobileContractCard = memo(function MobileContractCard({
                 {contract.parties.slice(0, 2).map((party: { id?: string; name: string }) => (
                   <div
                     key={party.id || party.name}
-                    className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center text-blue-700 text-[10px] font-medium ring-2 ring-white"
+                    className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-100 to-purple-200 flex items-center justify-center text-violet-700 text-[10px] font-medium ring-2 ring-white"
                   >
                     {party.name.charAt(0)}
                   </div>
@@ -262,7 +262,7 @@ export const MobileContractCard = memo(function MobileContractCard({
             <div className="flex items-center gap-3">
               {contract.value !== undefined && (
                 <span className="flex items-center gap-1 font-medium">
-                  <DollarSign className="w-4 h-4 text-emerald-500" />
+                  <DollarSign className="w-4 h-4 text-violet-500" />
                   {formatCurrency(contract.value, contract.currency)}
                 </span>
               )}
@@ -282,7 +282,7 @@ export const MobileContractCard = memo(function MobileContractCard({
                 <div
                   className={cn(
                     "h-full rounded-full transition-all",
-                    contract.health.score >= 80 && "bg-emerald-500",
+                    contract.health.score >= 80 && "bg-violet-500",
                     contract.health.score >= 50 && contract.health.score < 80 && "bg-amber-500",
                     contract.health.score < 50 && "bg-red-500"
                   )}
@@ -371,13 +371,13 @@ export const MobileFiltersSheet = memo(function MobileFiltersSheet({
   const statusOptions = [
     { value: "draft", label: "Draft", color: "bg-slate-400" },
     { value: "pending", label: "Pending", color: "bg-amber-400" },
-    { value: "active", label: "Active", color: "bg-emerald-400" },
+    { value: "active", label: "Active", color: "bg-violet-400" },
     { value: "expired", label: "Expired", color: "bg-red-400" },
-    { value: "renewal", label: "Renewal", color: "bg-blue-400" },
+    { value: "renewal", label: "Renewal", color: "bg-violet-400" },
   ];
 
   const riskOptions = [
-    { value: "low", label: "Low Risk", color: "text-emerald-600" },
+    { value: "low", label: "Low Risk", color: "text-violet-600" },
     { value: "medium", label: "Medium Risk", color: "text-amber-600" },
     { value: "high", label: "High Risk", color: "text-orange-600" },
     { value: "critical", label: "Critical", color: "text-red-600" },
@@ -781,7 +781,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
           </div>
           <Separator orientation="vertical" className="h-10 bg-gray-700" />
           <div>
-            <p className="text-lg font-semibold text-emerald-400">{stats.active}</p>
+            <p className="text-lg font-semibold text-violet-400">{stats.active}</p>
             <p className="text-xs text-gray-400">Active</p>
           </div>
           {stats.expiringSoon > 0 && (
@@ -804,7 +804,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
       {/* Expanded View */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -817,7 +817,7 @@ export const MobileStatsSummary = memo(function MobileStatsSummary({
             {stats.totalValue !== undefined && (
               <div className="bg-white/10 rounded-lg p-3">
                 <p className="text-xs text-gray-400">Total Value</p>
-                <p className="text-xl font-bold text-emerald-400">
+                <p className="text-xl font-bold text-violet-400">
                   {formatCurrency(stats.totalValue)}
                 </p>
               </div>

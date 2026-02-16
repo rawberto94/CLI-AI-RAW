@@ -63,7 +63,7 @@ export function ClientOverviewWidget({
         {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600">
+            <div className="text-3xl font-bold text-violet-600">
               {metrics.totalClients}
             </div>
             <div className="text-sm text-muted-foreground">Total Clients</div>

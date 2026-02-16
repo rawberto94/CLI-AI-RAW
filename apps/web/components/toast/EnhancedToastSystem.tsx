@@ -88,19 +88,19 @@ export function useToast() {
 // ============================================
 
 const TOAST_ICONS: Record<ToastType, React.ReactNode> = {
-  success: <CheckCircle2 className="w-5 h-5 text-emerald-500" />,
+  success: <CheckCircle2 className="w-5 h-5 text-violet-500" />,
   error: <XCircle className="w-5 h-5 text-red-500" />,
   warning: <AlertTriangle className="w-5 h-5 text-amber-500" />,
-  info: <Info className="w-5 h-5 text-blue-500" />,
-  loading: <Loader2 className="w-5 h-5 text-purple-500 animate-spin" />,
+  info: <Info className="w-5 h-5 text-violet-500" />,
+  loading: <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />,
 };
 
 const TOAST_STYLES: Record<ToastType, string> = {
-  success: 'border-emerald-200 dark:border-emerald-800',
+  success: 'border-violet-200 dark:border-violet-800',
   error: 'border-red-200 dark:border-red-800',
   warning: 'border-amber-200 dark:border-amber-800',
-  info: 'border-blue-200 dark:border-blue-800',
-  loading: 'border-purple-200 dark:border-purple-800',
+  info: 'border-violet-200 dark:border-violet-800',
+  loading: 'border-violet-200 dark:border-violet-800',
 };
 
 const DEFAULT_DURATIONS: Record<ToastType, number> = {
@@ -376,11 +376,11 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
           <motion.div
             className={cn(
               'h-full',
-              toast.type === 'success' && 'bg-emerald-500',
+              toast.type === 'success' && 'bg-violet-500',
               toast.type === 'error' && 'bg-red-500',
               toast.type === 'warning' && 'bg-amber-500',
-              toast.type === 'info' && 'bg-blue-500',
-              toast.type === 'loading' && 'bg-purple-500'
+              toast.type === 'info' && 'bg-violet-500',
+              toast.type === 'loading' && 'bg-violet-500'
             )}
             style={{ width: `${progress}%` }}
           />
@@ -423,7 +423,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
               {toast.undoAction && (
                 <button
                   onClick={handleUndo}
-                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors"
                 >
                   <Undo2 className="w-3 h-3" />
                   Undo
@@ -434,7 +434,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
                   href={toast.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-blue-600 hover:text-blue-700 dark:text-blue-400 transition-colors"
+                  className="flex items-center gap-1 px-3 py-1 text-xs font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400 transition-colors"
                 >
                   View
                   <ExternalLink className="w-3 h-3" />
@@ -461,7 +461,7 @@ function ToastItem({ toast, onDismiss }: ToastItemProps) {
         <div className="px-4 pb-3">
           <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
             <motion.div
-              className="h-full bg-purple-500"
+              className="h-full bg-violet-500"
               initial={{ width: 0 }}
               animate={{ width: `${toast.progress}%` }}
             />

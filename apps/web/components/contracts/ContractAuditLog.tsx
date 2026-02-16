@@ -92,11 +92,11 @@ const actionIcons: Record<string, React.ReactNode> = {
 };
 
 const categoryColors: Record<string, string> = {
-  access: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
+  access: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   modification: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
-  workflow: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
+  workflow: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   collaboration: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  analysis: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300',
+  analysis: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300',
   security: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300',
 };
 
@@ -123,7 +123,7 @@ export function ContractAuditLog({
   // Fetch logs
   useEffect(() => {
     fetchLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId, categoryFilter, actionFilter, timeRange]);
 
   const fetchLogs = async () => {
@@ -154,8 +154,8 @@ export function ContractAuditLog({
       const data = await response.json();
 
       if (data.success) {
-        setLogs(data.data.logs);
-        setSummary(data.data.summary);
+        setLogs(data.data?.logs || []);
+        setSummary(data.data?.summary || null);
       } else {
         setError(data.error || 'Failed to fetch audit logs');
       }
@@ -251,7 +251,7 @@ export function ContractAuditLog({
               variant="outline" 
               size="sm"
               onClick={exportLogs}
-              disabled={logs.length === 0}
+              disabled={!logs || logs.length === 0}
             >
               <Download className="h-4 w-4 mr-1" />
               Export
@@ -451,7 +451,7 @@ export function ContractAuditLog({
                       )}
                     </div>
                     
-                    {Object.keys(log.details).length > 0 && (
+                    {log.details && typeof log.details === 'object' && Object.keys(log.details).length > 0 && (
                       <div className="mt-3">
                         <span className="text-muted-foreground text-sm">Details:</span>
                         <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto">

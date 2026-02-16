@@ -389,7 +389,7 @@ export function BatchContractAnalysis() {
       {/* Progress Bar */}
       <AnimatePresence>
         {batchStatus && (
-          <motion.div
+          <motion.div key="batch-status"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -399,7 +399,7 @@ export function BatchContractAnalysis() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     {batchStatus.status === 'running' ? (
-                      <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
                     ) : batchStatus.status === 'completed' ? (
                       <CheckCircle className="w-4 h-4 text-green-500" />
                     ) : (
@@ -479,7 +479,7 @@ export function BatchContractAnalysis() {
       <div className="space-y-2">
         {isFetching ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            <Loader2 className="w-6 h-6 animate-spin text-violet-500" />
           </div>
         ) : filteredContracts.length === 0 ? (
           <div className="text-center py-12 text-slate-500">
@@ -497,7 +497,7 @@ export function BatchContractAnalysis() {
                 layout
                 className={`
                   border rounded-lg p-4 transition-colors cursor-pointer
-                  ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300'}
+                  ${isSelected ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}
                   ${result?.success === false ? 'border-red-200 bg-red-50' : ''}
                   ${result?.success === true ? 'border-green-200 bg-green-50' : ''}
                 `}
@@ -558,7 +558,7 @@ export function BatchContractAnalysis() {
                 {/* Expanded Result */}
                 <AnimatePresence>
                   {isExpanded && result && (
-                    <motion.div
+                    <motion.div key="expanded"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}

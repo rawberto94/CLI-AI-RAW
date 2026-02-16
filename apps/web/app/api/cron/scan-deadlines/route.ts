@@ -6,8 +6,10 @@
  * Should run daily via Vercel Cron
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withCronHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 
 interface ContractDeadline {
   contractId: string;
@@ -23,17 +25,7 @@ interface ContractDeadline {
   riskLevel: 'high' | 'medium' | 'low';
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    // Verify this is a cron job request
-    const authHeader = request.headers.get('authorization');
-    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
+export const POST = withCronHandler(async (request, ctx) => {
     const now = new Date();
     const nineDaysFromNow = new Date();
     nineDaysFromNow.setDate(now.getDate() + 90);
@@ -141,7 +133,7 @@ export async function POST(request: NextRequest) {
           expirationDate: deadline.expirationDate.toLocaleDateString(),
           daysUntilExpiration: deadline.daysUntilExpiry,
           contractId: deadline.contractId,
-          contractUrl: `${process.env.NEXT_PUBLIC_URL || 'http://localhost:3005'}/contracts/${deadline.contractId}`,
+          contractUrl: `${process.env.NEXT_PUBLIC_URL}/contracts/${deadline.contractId}`,
         });
         
         // Get owner email from contract uploadedBy or fallback to admin
@@ -198,8 +190,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       summary: {
         scannedContracts: contracts.length,
         deadlinesFound: deadlines.length,
@@ -214,27 +205,14 @@ export async function POST(request: NextRequest) {
       notifications: notifications.slice(0, 5),
       timestamp: new Date().toISOString(),
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Deadline scan failed',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // Allow GET for manual testing in development
-export async function GET(request: NextRequest) {
+export const GET = withCronHandler(async (request, ctx) => {
   if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json(
-      { error: 'Manual trigger only available in development' },
-      { status: 403 }
-    );
+    return createErrorResponse(ctx, 'FORBIDDEN', 'Manual trigger only available in development', 403);
   }
 
   // Forward to POST handler
   return POST(request);
-}
+});

@@ -8,9 +8,10 @@
  * - Default views and filters
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { auditTrailService } from 'data-orchestration/services';
 
 // ============ Types ============
 
@@ -129,289 +130,199 @@ const defaultPreferences: UserPreferences = {
 
 // ============ GET - Fetch preferences ============
 
-export async function GET() {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      // Return default preferences for unauthenticated users
-      return NextResponse.json({
-        preferences: defaultPreferences,
-        isDefault: true,
-      });
-    }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const user = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    select: {
+      id: true,
+      preferences: true,
+    },
+  });
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: {
-        id: true,
-        preferences: true,
-      },
-    });
-
-    if (!user) {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
-
-    // Merge saved preferences with defaults
-    const savedPreferences = (user.preferences as Record<string, unknown>) || {};
-    const mergedPreferences = deepMerge(defaultPreferences, savedPreferences);
-
-    return NextResponse.json({
-      preferences: mergedPreferences,
-      isDefault: !user.preferences,
-    });
-  } catch {
-    return NextResponse.json({
-      preferences: defaultPreferences,
-      isDefault: true,
-    });
+  if (!user) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'User not found', 404);
   }
-}
+
+  // Merge saved preferences with defaults
+  const savedPreferences = (user.preferences as Record<string, unknown>) || {};
+  const mergedPreferences = deepMerge(defaultPreferences, savedPreferences);
+
+  return createSuccessResponse(ctx, {
+    preferences: mergedPreferences,
+    isDefault: !user.preferences,
+  });
+});
 
 // ============ POST - Create/Update preferences (legacy) ============
 
-export async function POST(request: Request) {
-  try {
-    const session = await getServerSession();
-    const preferences = await request.json();
-    
-    if (!session?.user?.id) {
-      // For unauthenticated, just return success (client-side storage)
-      return NextResponse.json({
-        success: true,
-        preferences
-      });
-    }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const preferences = await request.json();
 
-    // Get current preferences and merge
+  // Get current preferences and merge
+  const user = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    select: { preferences: true },
+  });
+
+  const currentPreferences = (user?.preferences as Record<string, unknown>) || defaultPreferences;
+  const newPreferences = deepMerge(currentPreferences, preferences);
+
+  // Update user preferences
+  await prisma.user.update({
+    where: { id: ctx.userId },
+    data: { preferences: newPreferences },
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    preferences: newPreferences
+  });
+});
+
+// ============ PUT - Full update ============
+
+export const PUT = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { preferences, partial = false } = body;
+
+  if (!preferences) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Preferences data required', 400);
+  }
+
+  // Get current preferences if partial update
+  let newPreferences = preferences;
+
+  if (partial) {
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { id: ctx.userId },
       select: { preferences: true },
     });
 
     const currentPreferences = (user?.preferences as Record<string, unknown>) || defaultPreferences;
-    const newPreferences = deepMerge(currentPreferences, preferences);
-
-    // Update user preferences
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { preferences: newPreferences },
-    });
-
-    return NextResponse.json({
-      success: true,
-      preferences: newPreferences
-    });
-  } catch {
-    return NextResponse.json({
-      success: true,
-      preferences: await request.json()
-    });
+    newPreferences = deepMerge(currentPreferences, preferences);
   }
-}
 
-// ============ PUT - Full update ============
+  // Update user preferences
+  const updatedUser = await prisma.user.update({
+    where: { id: ctx.userId },
+    data: {
+      preferences: newPreferences,
+    },
+    select: {
+      id: true,
+      preferences: true,
+    },
+  });
 
-export async function PUT(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
-
-    const body = await request.json();
-    const { preferences, partial = false } = body;
-
-    if (!preferences) {
-      return NextResponse.json(
-        { error: 'Preferences data required' },
-        { status: 400 }
-      );
-    }
-
-    // Get current preferences if partial update
-    let newPreferences = preferences;
-    
-    if (partial) {
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { preferences: true },
-      });
-      
-      const currentPreferences = (user?.preferences as Record<string, unknown>) || defaultPreferences;
-      newPreferences = deepMerge(currentPreferences, preferences);
-    }
-
-    // Update user preferences
-    const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        preferences: newPreferences,
-      },
-      select: {
-        id: true,
-        preferences: true,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      preferences: updatedUser.preferences,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update preferences' },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, {
+    success: true,
+    preferences: updatedUser.preferences,
+  });
+});
 
 // ============ PATCH - Partial update ============
 
-export async function PATCH(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+export const PATCH = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { path, value } = body;
 
-    const body = await request.json();
-    const { path, value } = body;
-
-    if (!path) {
-      return NextResponse.json(
-        { error: 'Path required for partial update' },
-        { status: 400 }
-      );
-    }
-
-    // Get current preferences
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { preferences: true },
-    });
-
-    const currentPreferences = (user?.preferences as Record<string, unknown>) || { ...defaultPreferences };
-    
-    // Set nested value by path (e.g., "dashboard.layout" or "notifications.email")
-    setNestedValue(currentPreferences, path, value);
-
-    // Update user preferences
-    const updatedUser = await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        preferences: currentPreferences,
-      },
-      select: {
-        id: true,
-        preferences: true,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      preferences: updatedUser.preferences,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to patch preferences' },
-      { status: 500 }
-    );
+  if (!path) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Path required for partial update', 400);
   }
-}
+
+  // Get current preferences
+  const user = await prisma.user.findUnique({
+    where: { id: ctx.userId },
+    select: { preferences: true },
+  });
+
+  const currentPreferences = (user?.preferences as Record<string, unknown>) || { ...defaultPreferences };
+
+  // Set nested value by path (e.g., "dashboard.layout" or "notifications.email")
+  setNestedValue(currentPreferences, path, value);
+
+  // Update user preferences
+  const updatedUser = await prisma.user.update({
+    where: { id: ctx.userId },
+    data: {
+      preferences: currentPreferences,
+    },
+    select: {
+      id: true,
+      preferences: true,
+    },
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    preferences: updatedUser.preferences,
+  });
+});
 
 // ============ DELETE - Reset to defaults ============
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const section = searchParams.get('section');
+
+  if (section) {
+    // Reset only specific section
+    const user = await prisma.user.findUnique({
+      where: { id: ctx.userId },
+      select: { preferences: true },
+    });
+
+    const currentPreferences = (user?.preferences as Record<string, unknown>) || {};
+
+    // Reset specific section to default
+    if (section in defaultPreferences) {
+      (currentPreferences as Record<string, unknown>)[section] = 
+        (defaultPreferences as Record<string, unknown>)[section];
     }
 
-    const { searchParams } = new URL(request.url);
-    const section = searchParams.get('section');
-
-    if (section) {
-      // Reset only specific section
-      const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
-        select: { preferences: true },
-      });
-
-      const currentPreferences = (user?.preferences as Record<string, unknown>) || {};
-      
-      // Reset specific section to default
-      if (section in defaultPreferences) {
-        (currentPreferences as Record<string, unknown>)[section] = 
-          (defaultPreferences as Record<string, unknown>)[section];
-      }
-
-      // Reset specific section to default using upsert on UserPreferences
-      await prisma.userPreferences.upsert({
-        where: { userId: session.user.id },
-        create: {
-          userId: session.user.id,
-          customSettings: JSON.parse(JSON.stringify(currentPreferences)),
-        },
-        update: {
-          customSettings: JSON.parse(JSON.stringify(currentPreferences)),
-        },
-      });
-
-      return NextResponse.json({
-        success: true,
-        message: `${section} preferences reset to defaults`,
-        preferences: currentPreferences,
-      });
-    }
-
-    // Reset all preferences
-    // Note: preferences is a relation to UserPreferences model
-    // For now, upsert the preferences relation with default values
+    // Reset specific section to default using upsert on UserPreferences
     await prisma.userPreferences.upsert({
-      where: { userId: session.user.id },
+      where: { userId: ctx.userId },
       create: {
-        userId: session.user.id,
-        theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
-        notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
-        customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+        userId: ctx.userId,
+        customSettings: JSON.parse(JSON.stringify(currentPreferences)),
       },
       update: {
-        theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
-        notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
-        customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+        customSettings: JSON.parse(JSON.stringify(currentPreferences)),
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
-      message: 'All preferences reset to defaults',
-      preferences: defaultPreferences,
+      message: `${section} preferences reset to defaults`,
+      preferences: currentPreferences,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to reset preferences' },
-      { status: 500 }
-    );
   }
-}
+
+  // Reset all preferences
+  // Note: preferences is a relation to UserPreferences model
+  // For now, upsert the preferences relation with default values
+  await prisma.userPreferences.upsert({
+    where: { userId: ctx.userId },
+    create: {
+      userId: ctx.userId,
+      theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
+      notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
+      customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+    },
+    update: {
+      theme: defaultPreferences.theme === 'system' ? 'light' : defaultPreferences.theme,
+      notifications: JSON.parse(JSON.stringify(defaultPreferences.notifications)),
+      customSettings: JSON.parse(JSON.stringify(defaultPreferences)),
+    },
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: 'All preferences reset to defaults',
+    preferences: defaultPreferences,
+  });
+});
 
 // ============ Utility Functions ============
 

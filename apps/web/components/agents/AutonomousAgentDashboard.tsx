@@ -8,6 +8,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Bot,
@@ -27,7 +28,7 @@ import {
   RefreshCw,
   Eye,
   Calendar,
-  TrendingUp,
+  TrendingUp as _TrendingUp,
   Shield,
   DollarSign,
   FileText,
@@ -37,7 +38,7 @@ import {
   Brain
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription as _CardDescription, CardHeader as _CardHeader, CardTitle as _CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -54,9 +55,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
+  DialogTrigger as _DialogTrigger,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
+import { Input as _Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -155,9 +156,9 @@ interface AgentNotification {
 const StatusBadge: React.FC<{ status: AgentGoal['status'] }> = ({ status }) => {
   const config: Record<AgentGoal['status'], { color: string; label: string }> = {
     pending: { color: 'bg-gray-100 text-gray-800', label: 'Pending' },
-    planning: { color: 'bg-blue-100 text-blue-800', label: 'Planning' },
+    planning: { color: 'bg-violet-100 text-violet-800', label: 'Planning' },
     executing: { color: 'bg-yellow-100 text-yellow-800', label: 'Executing' },
-    awaiting_approval: { color: 'bg-purple-100 text-purple-800', label: 'Awaiting Approval' },
+    awaiting_approval: { color: 'bg-violet-100 text-violet-800', label: 'Awaiting Approval' },
     completed: { color: 'bg-green-100 text-green-800', label: 'Completed' },
     failed: { color: 'bg-red-100 text-red-800', label: 'Failed' },
     cancelled: { color: 'bg-gray-100 text-gray-600', label: 'Cancelled' },
@@ -177,7 +178,7 @@ const PriorityBadge: React.FC<{ priority: AgentGoal['priority'] }> = ({ priority
   const config: Record<AgentGoal['priority'], { color: string; icon: React.ReactNode }> = {
     critical: { color: 'bg-red-500 text-white', icon: <Zap className="h-3 w-3" /> },
     high: { color: 'bg-orange-500 text-white', icon: <AlertTriangle className="h-3 w-3" /> },
-    medium: { color: 'bg-blue-500 text-white', icon: <Target className="h-3 w-3" /> },
+    medium: { color: 'bg-violet-500 text-white', icon: <Target className="h-3 w-3" /> },
     low: { color: 'bg-gray-500 text-white', icon: <Clock className="h-3 w-3" /> },
     background: { color: 'bg-gray-300 text-gray-700 dark:text-slate-300', icon: <RefreshCw className="h-3 w-3" /> },
   };
@@ -197,7 +198,7 @@ const GoalTypeIcon: React.FC<{ type: string }> = ({ type }) => {
     contract_expiry_review: <Calendar className="h-5 w-5 text-orange-500" />,
     anomaly_investigation: <AlertTriangle className="h-5 w-5 text-red-500" />,
     savings_opportunity_scan: <DollarSign className="h-5 w-5 text-green-500" />,
-    compliance_audit: <Shield className="h-5 w-5 text-blue-500" />,
+    compliance_audit: <Shield className="h-5 w-5 text-violet-500" />,
   };
   
   return icons[type] || <FileText className="h-5 w-5 text-gray-500 dark:text-slate-400" />;
@@ -242,7 +243,7 @@ const GoalCard: React.FC<{
       exit={{ opacity: 0, y: -10 }}
       className={cn(
         "bg-white dark:bg-gray-800 rounded-lg border shadow-sm",
-        isActive && "ring-2 ring-blue-300 dark:ring-blue-700"
+        isActive && "ring-2 ring-violet-300 dark:ring-violet-700"
       )}
     >
       <div className="p-4">
@@ -320,7 +321,7 @@ const GoalCard: React.FC<{
         
         <AnimatePresence>
           {expanded && goal.plan && (
-            <motion.div
+            <motion.div key="expanded"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -328,13 +329,13 @@ const GoalCard: React.FC<{
             >
               <h5 className="text-sm font-medium mb-2">Execution Plan</h5>
               <div className="space-y-2">
-                {goal.plan.steps.map((step, index) => (
+                {goal.plan.steps.map((step, _index) => (
                   <div 
                     key={step.id}
                     className={cn(
                       "flex items-center gap-2 text-sm p-2 rounded",
                       step.status === 'completed' && "bg-green-50 dark:bg-green-900/20",
-                      step.status === 'in_progress' && "bg-blue-50 dark:bg-blue-900/20",
+                      step.status === 'in_progress' && "bg-violet-50 dark:bg-violet-900/20",
                       step.status === 'failed' && "bg-red-50 dark:bg-red-900/20"
                     )}
                   >
@@ -343,7 +344,7 @@ const GoalCard: React.FC<{
                     </span>
                     <span className="flex-1">{step.description}</span>
                     {step.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-green-500" />}
-                    {step.status === 'in_progress' && <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />}
+                    {step.status === 'in_progress' && <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />}
                     {step.status === 'failed' && <XCircle className="h-4 w-4 text-red-500" />}
                   </div>
                 ))}
@@ -529,7 +530,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
   const [selectedTab, setSelectedTab] = useState('active');
   const [loading, setLoading] = useState(true);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
+  const [_selectedGoal, setSelectedGoal] = useState<AgentGoal | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
   
   // Fetch data
   const fetchData = useCallback(async () => {
@@ -554,6 +556,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
       if (notificationsData.success) setNotifications(notificationsData.data);
     } catch (error) {
       console.error('Failed to fetch orchestrator data:', error);
+      toast.error('Failed to load agent dashboard data');
     } finally {
       setLoading(false);
     }
@@ -683,14 +686,34 @@ export const AutonomousAgentDashboard: React.FC = () => {
             )}
           </Button>
           
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            {unreadNotifications.length > 0 && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
-                {unreadNotifications.length}
-              </span>
+          <div className="relative">
+            <Button variant="ghost" size="icon" className="relative" onClick={() => setShowNotifications(!showNotifications)}>
+              <Bell className="h-5 w-5" />
+              {unreadNotifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                  {unreadNotifications.length}
+                </span>
+              )}
+            </Button>
+            {showNotifications && (
+              <div className="absolute right-0 top-full mt-2 w-80 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
+                <div className="p-3 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                  <span className="text-sm font-semibold">Notifications</span>
+                  <button onClick={() => setShowNotifications(false)} className="text-xs text-slate-400 hover:text-slate-600">&times;</button>
+                </div>
+                {notifications.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-slate-400">No notifications</div>
+                ) : (
+                  notifications.slice(0, 10).map((n) => (
+                    <div key={n.id} className={`p-3 border-b border-slate-100 dark:border-slate-700 text-sm ${n.read ? 'opacity-60' : ''}`}>
+                      <div className="font-medium text-slate-800 dark:text-white">{n.title}</div>
+                      <div className="text-xs text-slate-500 mt-0.5">{n.message}</div>
+                    </div>
+                  ))
+                )}
+              </div>
             )}
-          </Button>
+          </div>
         </div>
       </div>
       
@@ -699,8 +722,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Target className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <Target className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Active Goals</p>
@@ -741,8 +764,8 @@ export const AutonomousAgentDashboard: React.FC = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                <Zap className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <Zap className="h-5 w-5 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-slate-400">Active Triggers</p>
@@ -780,7 +803,7 @@ export const AutonomousAgentDashboard: React.FC = () => {
           <div className="space-y-3">
             <AnimatePresence>
               {activeGoals.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 dark:text-slate-400">
+                <div key="active-goals-length" className="text-center py-12 text-gray-500 dark:text-slate-400">
                   <Brain className="h-12 w-12 mx-auto mb-3 opacity-30" />
                   <p>No active goals</p>
                   <p className="text-sm">Create a new goal or enable triggers to get started</p>

@@ -14,11 +14,12 @@
  * - Provides detailed import report
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
 import { z } from "zod";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { taxonomyService } from 'data-orchestration/services';
 
 // ============================================================================
 // TYPES & SCHEMAS
@@ -379,116 +380,83 @@ async function importCategories(
 // POST - Upload and import taxonomy
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const contentType = request.headers.get('content-type') || '';
-    
-    let rows: CategoryRow[] = [];
-    let format = 'unknown';
-    let clearExisting = false;
-    let updateExisting = true;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
+  const contentType = request.headers.get('content-type') || '';
 
-    // Handle multipart form data (file upload)
-    if (contentType.includes('multipart/form-data')) {
-      const formData = await request.formData();
-      const file = formData.get('file') as File | null;
-      clearExisting = formData.get('clearExisting') === 'true';
-      updateExisting = formData.get('updateExisting') !== 'false';
-      
-      if (!file) {
-        return NextResponse.json(
-          { success: false, error: 'No file provided' },
-          { status: 400 }
-        );
-      }
+  let rows: CategoryRow[] = [];
+  let format = 'unknown';
+  let clearExisting = false;
+  let updateExisting = true;
 
-      const content = await file.text();
-      const fileName = file.name.toLowerCase();
+  // Handle multipart form data (file upload)
+  if (contentType.includes('multipart/form-data')) {
+    const formData = await request.formData();
+    const file = formData.get('file') as File | null;
+    clearExisting = formData.get('clearExisting') === 'true';
+    updateExisting = formData.get('updateExisting') !== 'false';
 
-      if (fileName.endsWith('.csv')) {
-        format = 'csv';
-        rows = parseCSV(content);
-      } else if (fileName.endsWith('.json')) {
-        format = 'json';
-        const parsed = parseJSON(content);
-        rows = parsed.rows;
-      } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Excel format not yet supported. Please convert to CSV or JSON.',
-            hint: 'Export your Excel file as CSV, or convert it to JSON format.'
-          },
-          { status: 400 }
-        );
-      } else {
-        return NextResponse.json(
-          { success: false, error: `Unsupported file format: ${fileName}. Use .csv or .json` },
-          { status: 400 }
-        );
-      }
-    } 
-    // Handle JSON body (direct API call)
-    else if (contentType.includes('application/json')) {
-      const body = await request.json();
-      format = 'json-body';
-      clearExisting = body.clearExisting === true;
-      updateExisting = body.updateExisting !== false;
-      
-      if (body.categories) {
-        const parsed = parseJSON(JSON.stringify(body.categories));
-        rows = parsed.rows;
-      } else if (Array.isArray(body)) {
-        const parsed = parseJSON(JSON.stringify(body));
-        rows = parsed.rows;
-      } else {
-        return NextResponse.json(
-          { success: false, error: 'JSON body must contain "categories" array or be an array of categories' },
-          { status: 400 }
-        );
-      }
+    if (!file) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No file provided', 400);
+    }
+
+    const content = await file.text();
+    const fileName = file.name.toLowerCase();
+
+    if (fileName.endsWith('.csv')) {
+      format = 'csv';
+      rows = parseCSV(content);
+    } else if (fileName.endsWith('.json')) {
+      format = 'json';
+      const parsed = parseJSON(content);
+      rows = parsed.rows;
+    } else if (fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Excel format not yet supported. Please convert to CSV or JSON.', 400);
     } else {
-      return NextResponse.json(
-        { success: false, error: 'Content-Type must be multipart/form-data (file upload) or application/json' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Unsupported file format: ${fileName}. Use .csv or .json`, 400);
     }
+  } 
+  // Handle JSON body (direct API call)
+  else if (contentType.includes('application/json')) {
+    const body = await request.json();
+    format = 'json-body';
+    clearExisting = body.clearExisting === true;
+    updateExisting = body.updateExisting !== false;
 
-    if (rows.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No valid categories found in uploaded data' },
-        { status: 400 }
-      );
+    if (body.categories) {
+      const parsed = parseJSON(JSON.stringify(body.categories));
+      rows = parsed.rows;
+    } else if (Array.isArray(body)) {
+      const parsed = parseJSON(JSON.stringify(body));
+      rows = parsed.rows;
+    } else {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'JSON body must contain "categories" array or be an array of categories', 400);
     }
-
-    // Import categories
-    const result = await importCategories(tenantId, rows, { clearExisting, updateExisting });
-
-    return NextResponse.json({
-      message: `Imported taxonomy with ${result.categoriesCreated} new categories`,
-      format,
-      ...result,
-    });
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to import taxonomy',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+  } else {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Content-Type must be multipart/form-data (file upload) or application/json', 400);
   }
-}
+
+  if (rows.length === 0) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'No valid categories found in uploaded data', 400);
+  }
+
+  // Import categories
+  const result = await importCategories(tenantId, rows, { clearExisting, updateExisting });
+
+  return createSuccessResponse(ctx, {
+    message: `Imported taxonomy with ${result.categoriesCreated} new categories`,
+    format,
+    ...result,
+  });
+
+});
 
 // ============================================================================
 // GET - Return expected format/template
 // ============================================================================
 
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  return createSuccessResponse(ctx, {
     success: true,
     message: 'Taxonomy upload endpoint - POST a file or JSON to import categories',
     supportedFormats: ['csv', 'json'],
@@ -542,12 +510,12 @@ Hardware,Hardware purchases,IT & Technology,computer;server;equipment,#10B981,cp
       updateExisting: 'Set to true (default) to update existing categories with matching names',
     },
   });
-}
+});
 
 // ============================================================================
 // OPTIONS - CORS
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+export const OPTIONS = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cors.optionsResponse(request, "GET, POST, OPTIONS");
-}
+});

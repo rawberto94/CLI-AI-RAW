@@ -5,10 +5,9 @@
  * and identifies opportunities for cost savings through geographic shifts.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { RateCardCluster } from './rate-card-clustering.service';
 
-const prisma = new PrismaClient();
 
 export interface GeographicArbitrageOpportunity {
   id: string;

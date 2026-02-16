@@ -3,6 +3,7 @@
 ## Metrics Collection
 
 ### Prometheus Metrics Endpoint
+
 **URL**: `GET /api/metrics`
 
 Returns Prometheus-compatible metrics in text format.
@@ -10,6 +11,7 @@ Returns Prometheus-compatible metrics in text format.
 ### Available Metrics
 
 #### Contract Processing
+
 - `contracts_processed_total` - Total contracts processed
 - `contract_processing_duration_seconds` - Processing time histogram
 - `artifact_generation_duration_seconds` - Artifact generation time
@@ -17,18 +19,21 @@ Returns Prometheus-compatible metrics in text format.
 - `contracts_errors_total` - Processing errors
 
 #### AI/ML Operations
+
 - `llm_requests_total` - Total LLM API calls
 - `llm_request_duration_seconds` - LLM latency
 - `llm_tokens_total` - Token usage (input/output)
 - `llm_errors_total` - LLM failures
 
 #### Database
+
 - `db_queries_total` - Total queries
 - `db_query_duration_seconds` - Query latency
 - `db_connection_pool_size` - Connection pool metrics
 - `db_slow_queries_total` - Slow queries (>1s)
 
 #### Queue System
+
 - `queue_jobs_added_total` - Jobs enqueued
 - `queue_jobs_completed_total` - Jobs completed
 - `queue_jobs_failed_total` - Job failures
@@ -36,11 +41,13 @@ Returns Prometheus-compatible metrics in text format.
 - `queue_size` - Current queue depth
 
 #### API Performance
+
 - `http_requests_total` - HTTP requests
 - `http_request_duration_seconds` - Request latency
 - `http_response_size_bytes` - Response sizes
 
 #### Business Metrics
+
 - `contracts_active_total` - Active contracts
 - `contracts_value_usd` - Total contract value
 - `contracts_expiring_30days` - Contracts expiring soon
@@ -49,6 +56,7 @@ Returns Prometheus-compatible metrics in text format.
 ## Prometheus Configuration
 
 ### prometheus.yml
+
 ```yaml
 global:
   scrape_interval: 15s
@@ -63,6 +71,7 @@ scrape_configs:
 ```
 
 ### Docker Compose
+
 ```yaml
 services:
   prometheus:
@@ -98,7 +107,9 @@ volumes:
 ## Grafana Dashboards
 
 ### Contract Processing Dashboard
+
 **Panels**:
+
 - Total contracts processed (counter)
 - Processing rate (contracts/min)
 - Average processing time
@@ -106,6 +117,7 @@ volumes:
 - Top tenants by volume
 
 **Queries**:
+
 ```promql
 # Processing rate
 rate(contracts_processed_total[5m])
@@ -121,7 +133,9 @@ histogram_quantile(0.95, rate(contract_processing_duration_seconds_bucket[5m]))
 ```
 
 ### AI/ML Dashboard
+
 **Panels**:
+
 - LLM requests per second
 - Token consumption (by model)
 - LLM latency (p50, p95, p99)
@@ -129,6 +143,7 @@ histogram_quantile(0.95, rate(contract_processing_duration_seconds_bucket[5m]))
 - Cost estimation
 
 **Queries**:
+
 ```promql
 # Requests per second by model
 rate(llm_requests_total[1m])
@@ -141,7 +156,9 @@ histogram_quantile(0.99, rate(llm_request_duration_seconds_bucket[5m]))
 ```
 
 ### Database Dashboard
+
 **Panels**:
+
 - Query rate
 - Slow query count
 - Connection pool utilization
@@ -149,6 +166,7 @@ histogram_quantile(0.99, rate(llm_request_duration_seconds_bucket[5m]))
 - Top slow queries
 
 **Queries**:
+
 ```promql
 # Query rate
 rate(db_queries_total[1m])
@@ -161,7 +179,9 @@ db_connection_pool_size{state="active"} / (db_connection_pool_size{state="active
 ```
 
 ### Queue Dashboard
+
 **Panels**:
+
 - Jobs processed per minute
 - Queue depth by queue
 - Job failure rate
@@ -169,6 +189,7 @@ db_connection_pool_size{state="active"} / (db_connection_pool_size{state="active
 - Backlog age
 
 **Queries**:
+
 ```promql
 # Processing rate
 rate(queue_jobs_completed_total[1m])
@@ -183,6 +204,7 @@ queue_size{state="waiting"}
 ## Alerting Rules
 
 ### alerts.yml
+
 ```yaml
 groups:
   - name: contract_processing
@@ -237,6 +259,7 @@ groups:
 ## Usage Example
 
 ### In Worker
+
 ```typescript
 import { contractMetrics, trackDuration } from '@/lib/metrics';
 
@@ -270,6 +293,7 @@ async function processContract(contractId: string, tenantId: string) {
 ```
 
 ### In AI Service
+
 ```typescript
 import { aiMetrics, trackDuration } from '@/lib/metrics';
 
@@ -307,6 +331,7 @@ async function callLLM(prompt: string, tenant: string) {
 ```
 
 ### In Queue Worker
+
 ```typescript
 import { queueMetrics } from '@/lib/metrics';
 
@@ -329,18 +354,20 @@ queueWorker.on('failed', (job, error) => {
 ## Setup Instructions
 
 1. **Install Dependencies**:
+
    ```bash
    pnpm add prom-client
    ```
 
 2. **Start Prometheus & Grafana**:
+
    ```bash
    docker-compose -f docker-compose.monitoring.yml up -d
    ```
 
 3. **Access Dashboards**:
-   - Prometheus: http://localhost:9090
-   - Grafana: http://localhost:3001 (admin/admin)
+   - Prometheus: <http://localhost:9090>
+   - Grafana: <http://localhost:3001> (admin/admin)
 
 4. **Import Dashboards**:
    - In Grafana, import dashboard JSONs from `/grafana/dashboards/`

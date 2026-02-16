@@ -5,11 +5,12 @@
  * DELETE /api/push/subscribe - Unsubscribe from push notifications
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
-import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { notificationService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,130 +36,93 @@ function readPushSubscriptionsMap(notifications: Record<string, unknown>): Recor
   return isRecord(pushSubscriptions) ? pushSubscriptions : {};
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const subscription = await request.json() as PushSubscription;
 
-    const subscription = await request.json() as PushSubscription;
-
-    // Validate subscription
-    if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
-      return NextResponse.json(
-        { error: 'Invalid subscription' },
-        { status: 400 }
-      );
-    }
-
-    const existing = await prisma.userPreferences.findUnique({
-      where: { userId: session.user.id },
-      select: { notifications: true },
-    });
-
-    const notifications = readNotificationsObject(existing?.notifications);
-    const pushSubscriptions = readPushSubscriptionsMap(notifications);
-
-    const nextPushSubscriptions: Record<string, unknown> = {
-      ...pushSubscriptions,
-      [subscription.endpoint]: subscription,
-    };
-
-    const nextNotifications: Record<string, unknown> = {
-      ...notifications,
-      pushSubscriptions: nextPushSubscriptions,
-    };
-
-    await prisma.userPreferences.upsert({
-      where: { userId: session.user.id },
-      update: {
-        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
-      },
-      create: {
-        userId: session.user.id,
-        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
-      },
-    });
-
-    logger.info('Push subscription created', {
-      userId: session.user.id,
-      endpoint: subscription.endpoint.substring(0, 50) + '...',
-    });
-
-    return NextResponse.json({
-      success: true,
-      message: 'Push subscription saved',
-    });
-  } catch (error) {
-    logger.error('Failed to save push subscription:', error);
-    return NextResponse.json(
-      { error: 'Failed to save push subscription' },
-      { status: 500 }
-    );
+  // Validate subscription
+  if (!subscription.endpoint || !subscription.keys?.p256dh || !subscription.keys?.auth) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid subscription', 400);
   }
-}
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const existing = await prisma.userPreferences.findUnique({
+    where: { userId: ctx.userId },
+    select: { notifications: true },
+  });
 
-    const body = (await request.json().catch(() => ({}))) as unknown;
-    const endpoint = isRecord(body) && typeof body.endpoint === 'string' ? body.endpoint : undefined;
+  const notifications = readNotificationsObject(existing?.notifications);
+  const pushSubscriptions = readPushSubscriptionsMap(notifications);
 
-    const existing = await prisma.userPreferences.findUnique({
-      where: { userId: session.user.id },
-      select: { notifications: true },
-    });
+  const nextPushSubscriptions: Record<string, unknown> = {
+    ...pushSubscriptions,
+    [subscription.endpoint]: subscription,
+  };
 
-    const notifications = readNotificationsObject(existing?.notifications);
-    const pushSubscriptions = readPushSubscriptionsMap(notifications);
+  const nextNotifications: Record<string, unknown> = {
+    ...notifications,
+    pushSubscriptions: nextPushSubscriptions,
+  };
 
-    const nextPushSubscriptions: Record<string, unknown> = endpoint
-      ? Object.fromEntries(Object.entries(pushSubscriptions).filter(([key]) => key !== endpoint))
-      : {};
+  await prisma.userPreferences.upsert({
+    where: { userId: ctx.userId },
+    update: {
+      notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+    },
+    create: {
+      userId: ctx.userId,
+      notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+    },
+  });
 
-    const nextNotifications: Record<string, unknown> = {
-      ...notifications,
-      pushSubscriptions: nextPushSubscriptions,
-    };
+  logger.info('Push subscription created', {
+    userId: ctx.userId,
+    endpoint: subscription.endpoint.substring(0, 50) + '...',
+  });
 
-    await prisma.userPreferences.upsert({
-      where: { userId: session.user.id },
-      update: {
-        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
-      },
-      create: {
-        userId: session.user.id,
-        notifications: nextNotifications as unknown as Prisma.InputJsonValue,
-      },
-    });
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: 'Push subscription saved',
+  });
+});
 
-    logger.info('Push subscription removed', {
-      userId: session.user.id,
-      endpoint: endpoint?.substring(0, 50) || 'all',
-    });
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = (await request.json().catch(() => ({}))) as unknown;
+  const endpoint = isRecord(body) && typeof body.endpoint === 'string' ? body.endpoint : undefined;
 
-    return NextResponse.json({
-      success: true,
-      message: 'Push subscription removed',
-    });
-  } catch (error) {
-    logger.error('Failed to remove push subscription:', error);
-    return NextResponse.json(
-      { error: 'Failed to remove push subscription' },
-      { status: 500 }
-    );
-  }
-}
+  const existing = await prisma.userPreferences.findUnique({
+    where: { userId: ctx.userId },
+    select: { notifications: true },
+  });
+
+  const notifications = readNotificationsObject(existing?.notifications);
+  const pushSubscriptions = readPushSubscriptionsMap(notifications);
+
+  const nextPushSubscriptions: Record<string, unknown> = endpoint
+    ? Object.fromEntries(Object.entries(pushSubscriptions).filter(([key]) => key !== endpoint))
+    : {};
+
+  const nextNotifications: Record<string, unknown> = {
+    ...notifications,
+    pushSubscriptions: nextPushSubscriptions,
+  };
+
+  await prisma.userPreferences.upsert({
+    where: { userId: ctx.userId },
+    update: {
+      notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+    },
+    create: {
+      userId: ctx.userId,
+      notifications: nextNotifications as unknown as Prisma.InputJsonValue,
+    },
+  });
+
+  logger.info('Push subscription removed', {
+    userId: ctx.userId,
+    endpoint: endpoint?.substring(0, 50) || 'all',
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    message: 'Push subscription removed',
+  });
+});

@@ -207,7 +207,7 @@ export function UndoManagerProvider({
       {/* Floating Undo Bar */}
       <AnimatePresence>
         {showUndoBar && latestAction && (
-          <UndoBar
+          <UndoBar key="undo-bar"
             action={latestAction}
             onUndo={undo}
             onDismiss={() => {
@@ -243,8 +243,8 @@ function UndoBar({ action, onUndo, onDismiss, timeout }: UndoBarProps) {
 
   const categoryColors = {
     delete: 'bg-red-500',
-    update: 'bg-blue-500',
-    create: 'bg-emerald-500',
+    update: 'bg-violet-500',
+    create: 'bg-violet-500',
     other: 'bg-slate-500',
   };
 
@@ -296,7 +296,7 @@ function UndoBar({ action, onUndo, onDismiss, timeout }: UndoBarProps) {
         initial={{ width: '100%' }}
         animate={{ width: '0%' }}
         transition={{ duration: timeout / 1000, ease: 'linear' }}
-        className="absolute bottom-0 left-4 right-4 h-0.5 bg-indigo-500 rounded-full"
+        className="absolute bottom-0 left-4 right-4 h-0.5 bg-violet-500 rounded-full"
       />
     </motion.div>
   );

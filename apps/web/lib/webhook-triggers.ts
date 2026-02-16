@@ -30,7 +30,10 @@ export async function triggerWebhook(options: TriggerOptions): Promise<{
   const { tenantId, event, data } = options;
   
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL;
+    if (!baseUrl) {
+      throw new Error('NEXTAUTH_URL or NEXT_PUBLIC_APP_URL environment variable must be configured');
+    }
     const internalSecret = process.env.INTERNAL_API_SECRET || (process.env.NODE_ENV !== 'production' ? 'dev-internal-secret' : '');
     
     if (process.env.NODE_ENV === 'production' && !process.env.INTERNAL_API_SECRET) {

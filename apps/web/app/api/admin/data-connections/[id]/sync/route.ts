@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 
 /**
  * POST /api/admin/data-connections/[id]/sync
@@ -17,29 +18,20 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await getServerSession();
-    
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const tenantId = (session.user as { tenantId?: string }).tenantId;
-    const userRole = (session.user as { role?: string }).role;
-    
-    if (!tenantId || !['admin', 'owner'].includes(userRole || '')) {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
-    }
-
     const { id } = await params;
 
     // Get existing settings
     const settings = await prisma.tenantSettings.findFirst({
-      where: { tenantId },
+      where: { tenantId: ctx.tenantId },
     });
 
     if (!settings?.customFields) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Connection not found', 404);
     }
 
     const customFields = typeof settings.customFields === 'string' 
@@ -50,7 +42,7 @@ export async function POST(
     const connection = connections.find((c: { id: string }) => c.id === id);
 
     if (!connection) {
-      return NextResponse.json({ error: 'Connection not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Connection not found', 404);
     }
 
     // Simulate sync process
@@ -94,9 +86,8 @@ export async function POST(
     // In production, you would also create audit log entries
     // and potentially trigger webhooks for sync completion
 
-    return NextResponse.json({
-      success: true,
-      message: `Sync completed successfully`,
+    return createSuccessResponse(ctx, {
+      message: 'Sync completed successfully',
       contractCount: simulatedContractCount,
       syncMode: connection.syncMode,
       details: {
@@ -105,11 +96,7 @@ export async function POST(
         unchangedContracts: Math.floor(simulatedContractCount * 0.7),
       },
     });
-
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Sync failed' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

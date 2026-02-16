@@ -88,7 +88,7 @@ interface FilterFormData {
 const ICON_OPTIONS = ['📁', '⭐', '🔥', '⚡', '🎯', '📊', '🔍', '⏰', '💰', '🏷️', '📋', '✅'];
 const COLOR_OPTIONS = [
   '#ef4444', '#f97316', '#f59e0b', '#84cc16', 
-  '#22c55e', '#14b8a6', '#06b6d4', '#3b82f6',
+  '#22c55e', '#8B5CF6', '#06b6d4', '#3b82f6',
   '#6366f1', '#8b5cf6', '#a855f7', '#ec4899',
 ];
 
@@ -385,7 +385,7 @@ export function SavedFiltersPanel({
         </button>
         <AnimatePresence>
           {expandedSections[sectionKey] && (
-            <motion.div
+            <motion.div key="SavedFiltersPanel-ap-1"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}

@@ -47,7 +47,7 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
 
   useEffect(() => {
     fetchAuditLogs();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [pagination.offset]);
 
   const fetchAuditLogs = async () => {
@@ -131,9 +131,9 @@ export function AuditLogViewer({ tenantId, entityType: initialEntityType, entity
 
   const getActionBadgeColor = (action: string) => {
     if (action.includes('create')) return 'bg-green-100 text-green-800';
-    if (action.includes('update')) return 'bg-blue-100 text-blue-800';
+    if (action.includes('update')) return 'bg-violet-100 text-violet-800';
     if (action.includes('delete')) return 'bg-red-100 text-red-800';
-    if (action.includes('export')) return 'bg-purple-100 text-purple-800';
+    if (action.includes('export')) return 'bg-violet-100 text-violet-800';
     return 'bg-gray-100 text-gray-800';
   };
 

@@ -147,7 +147,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Settings className="w-5 h-5 text-indigo-600" />
+            <Settings className="w-5 h-5 text-violet-600" />
             Configure Approval Step
           </DialogTitle>
           <DialogDescription>
@@ -359,9 +359,9 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                         onClick={() => toggleAssignee(user.id)}
                         className={cn(
                           'flex flex-col gap-1 p-3 rounded-lg text-left transition-all duration-200 border-2',
-                          'hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
+                          'hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2',
                           config.assignees.includes(user.id)
-                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-600 shadow-sm'
+                            ? 'bg-violet-50 dark:bg-violet-900/30 border-indigo-300 dark:border-violet-600 shadow-sm'
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-sm'
                         )}
                         aria-pressed={config.assignees.includes(user.id)}
@@ -386,9 +386,9 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                         onClick={() => toggleAssignee(role.id)}
                         className={cn(
                           'flex items-center justify-between p-3 rounded-lg text-left transition-all duration-200 border-2',
-                          'hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2',
+                          'hover:scale-[1.02] focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2',
                           config.assignees.includes(role.id)
-                            ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-300 dark:border-indigo-600 shadow-sm'
+                            ? 'bg-violet-50 dark:bg-violet-900/30 border-indigo-300 dark:border-violet-600 shadow-sm'
                             : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 hover:shadow-sm'
                         )}
                         aria-pressed={config.assignees.includes(role.id)}
@@ -399,7 +399,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                           <div className="text-xs text-slate-600 dark:text-slate-400">{role.members} members</div>
                         </div>
                         {config.assignees.includes(role.id) && (
-                          <CheckCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                          <CheckCircle className="w-5 h-5 text-violet-600 dark:text-indigo-400" />
                         )}
                       </button>
                     ))}
@@ -636,7 +636,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
                       className={cn(
                         'flex items-center gap-2 p-3 rounded-lg border-2 transition-all',
                         config.notifications.channels.includes(channel.value as any)
-                          ? 'bg-indigo-50 border-indigo-300'
+                          ? 'bg-violet-50 border-indigo-300'
                           : 'bg-white border-slate-200 hover:border-slate-300'
                       )}
                     >
@@ -672,7 +672,7 @@ export function StepConfigEditor({ step, open, onClose, onSave }: StepConfigEdit
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={handleSave} className="bg-gradient-to-r from-indigo-500 to-purple-600">
+          <Button onClick={handleSave} className="bg-gradient-to-r from-violet-500 to-purple-600">
             Save Configuration
           </Button>
         </DialogFooter>

@@ -29,8 +29,8 @@ interface ConfirmDialogProps {
 const variantConfig = {
   default: {
     icon: Info,
-    iconClass: 'text-blue-600 dark:text-blue-400 bg-blue-100 dark:bg-blue-900/50',
-    buttonClass: 'bg-blue-600 hover:bg-blue-700',
+    iconClass: 'text-violet-600 dark:text-violet-400 bg-violet-100 dark:bg-violet-900/50',
+    buttonClass: 'bg-violet-600 hover:bg-violet-700',
   },
   warning: {
     icon: AlertTriangle,

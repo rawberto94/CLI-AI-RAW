@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { baselineManagementService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     // Mock user for now - in production, get from session
     const mockTenantId = 'tenant-1';
 
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
       avgRate: type.avgRate,
     }));
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       summary: {
         totalBaselines: stats.totalBaselines,
         activeBaselines: stats.activeBaselines,
@@ -64,10 +64,4 @@ export async function GET(request: NextRequest) {
       topViolations,
       recentComparisons: [], // Will be populated when comparison records are tracked
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch baseline tracking data' },
-      { status: 500 }
-    );
-  }
-}
+  });

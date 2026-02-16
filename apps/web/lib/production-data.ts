@@ -237,6 +237,7 @@ export function logDataSourceUnavailable(source: string, error: unknown): void {
     // Try Sentry
     if (process.env.SENTRY_DSN) {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const Sentry = require('@sentry/nextjs');
         Sentry.captureException(error, {
           tags: { source, type: 'data_source_unavailable' },

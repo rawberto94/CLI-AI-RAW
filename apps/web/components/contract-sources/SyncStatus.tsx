@@ -136,8 +136,8 @@ export function SyncStatus({
   const statusConfig = {
     IN_PROGRESS: {
       icon: Loader2,
-      color: "text-blue-600",
-      bgColor: "bg-blue-100 dark:bg-blue-900",
+      color: "text-violet-600",
+      bgColor: "bg-violet-100 dark:bg-violet-900",
       label: "Syncing",
       animate: true,
     },
@@ -298,7 +298,7 @@ export function SyncStatus({
  */
 export function SyncIndicator({ status }: { status: string }) {
   const configs: Record<string, { icon: typeof Loader2; color: string; animate?: boolean }> = {
-    SYNCING: { icon: Loader2, color: "text-blue-500", animate: true },
+    SYNCING: { icon: Loader2, color: "text-violet-500", animate: true },
     CONNECTED: { icon: CheckCircle2, color: "text-green-500" },
     ERROR: { icon: XCircle, color: "text-red-500" },
     DISCONNECTED: { icon: AlertCircle, color: "text-gray-400" },

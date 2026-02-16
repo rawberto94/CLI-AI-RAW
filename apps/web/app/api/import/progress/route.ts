@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { artifactService } from 'data-orchestration/services';
 interface ProgressResponse {
   jobId: string;
   fileName: string;
@@ -81,170 +81,122 @@ function transformJob(job: any): ProgressResponse {
   };
 }
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get('jobId');
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get('jobId');
+  const tenantId = await ctx.tenantId;
 
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required' },
-        { status: 400 }
-      );
+  if (!jobId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Job ID is required', 400);
+  }
+
+  // Fetch from database
+  const job = await prisma.importJob.findUnique({
+    where: { id: jobId },
+  });
+
+  if (!job) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
+  }
+
+  // Verify tenant access
+  if (tenantId && job.tenantId !== tenantId) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Job not found', 404);
+  }
+
+  return createSuccessResponse(ctx, transformJob(job));
+});
+
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { jobId, status, progress: _progress, currentStep: _currentStep, error, ..._rest } = body;
+  const _tenantId = await ctx.tenantId || body.tenantId;
+
+  if (!jobId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Job ID is required', 400);
+  }
+
+  // Build update data
+  const updateData: any = {};
+
+  if (status) {
+    // Map API status to DB status
+    switch (status) {
+      case 'processing': updateData.status = 'PROCESSING'; break;
+      case 'completed': updateData.status = 'COMPLETED'; break;
+      case 'failed': updateData.status = 'FAILED'; break;
     }
 
-    // Fetch from database
+    if (status === 'processing' && !updateData.startedAt) {
+      updateData.startedAt = new Date();
+    }
+    if (status === 'completed' || status === 'failed') {
+      updateData.completedAt = new Date();
+    }
+  }
+
+  if (error) {
+    // Append error to errors array
+    updateData.errors = {
+      push: { message: error, timestamp: new Date().toISOString() },
+    };
+  }
+
+  // Update job in database
+  const job = await prisma.importJob.update({
+    where: { id: jobId },
+    data: updateData,
+  });
+
+  return createSuccessResponse(ctx, { success: true, progress: transformJob(job) });
+});
+
+// Cleanup old completed/failed jobs
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const jobId = searchParams.get('jobId');
+  const olderThan = searchParams.get('olderThan'); // timestamp in ms
+  const tenantId = await ctx.tenantId;
+
+  if (jobId) {
+    // Delete specific job
     const job = await prisma.importJob.findUnique({
       where: { id: jobId },
     });
 
     if (!job) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+      return createSuccessResponse(ctx, { success: true, deleted: 0 });
     }
 
     // Verify tenant access
     if (tenantId && job.tenantId !== tenantId) {
-      return NextResponse.json(
-        { error: 'Job not found' },
-        { status: 404 }
-      );
+      return createSuccessResponse(ctx, { success: true, deleted: 0 });
     }
 
-    return NextResponse.json(transformJob(job));
-  } catch (error: unknown) {
-    console.error('Failed to check progress:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to check progress',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const body = await request.json();
-    const { jobId, status, progress, currentStep, error, ...rest } = body;
-    const tenantId = await getApiTenantId(request) || body.tenantId;
-
-    if (!jobId) {
-      return NextResponse.json(
-        { error: 'Job ID is required' },
-        { status: 400 }
-      );
-    }
-
-    // Build update data
-    const updateData: any = {};
-    
-    if (status) {
-      // Map API status to DB status
-      switch (status) {
-        case 'processing': updateData.status = 'PROCESSING'; break;
-        case 'completed': updateData.status = 'COMPLETED'; break;
-        case 'failed': updateData.status = 'FAILED'; break;
-      }
-      
-      if (status === 'processing' && !updateData.startedAt) {
-        updateData.startedAt = new Date();
-      }
-      if (status === 'completed' || status === 'failed') {
-        updateData.completedAt = new Date();
-      }
-    }
-    
-    if (error) {
-      // Append error to errors array
-      updateData.errors = {
-        push: { message: error, timestamp: new Date().toISOString() },
-      };
-    }
-
-    // Update job in database
-    const job = await prisma.importJob.update({
+    await prisma.importJob.delete({
       where: { id: jobId },
-      data: updateData,
     });
 
-    return NextResponse.json({ success: true, progress: transformJob(job) });
-  } catch (error: unknown) {
-    console.error('Failed to update progress:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to update progress',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, { success: true, deleted: 1 });
   }
-}
 
-// Cleanup old completed/failed jobs
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  try {
-    const { searchParams } = new URL(request.url);
-    const jobId = searchParams.get('jobId');
-    const olderThan = searchParams.get('olderThan'); // timestamp in ms
-    const tenantId = await getApiTenantId(request);
+  if (olderThan) {
+    // Delete old completed/failed entries
+    const cutoff = new Date(parseInt(olderThan, 10));
 
-    if (jobId) {
-      // Delete specific job
-      const job = await prisma.importJob.findUnique({
-        where: { id: jobId },
-      });
-      
-      if (!job) {
-        return NextResponse.json({ success: true, deleted: 0 });
-      }
-      
-      // Verify tenant access
-      if (tenantId && job.tenantId !== tenantId) {
-        return NextResponse.json({ success: true, deleted: 0 });
-      }
-      
-      await prisma.importJob.delete({
-        where: { id: jobId },
-      });
-      
-      return NextResponse.json({ success: true, deleted: 1 });
+    const where: any = {
+      status: { in: ['COMPLETED', 'FAILED', 'CANCELLED', 'REJECTED'] },
+      completedAt: { lt: cutoff },
+    };
+
+    if (tenantId) {
+      where.tenantId = tenantId;
     }
 
-    if (olderThan) {
-      // Delete old completed/failed entries
-      const cutoff = new Date(parseInt(olderThan, 10));
-      
-      const where: any = {
-        status: { in: ['COMPLETED', 'FAILED', 'CANCELLED', 'REJECTED'] },
-        completedAt: { lt: cutoff },
-      };
-      
-      if (tenantId) {
-        where.tenantId = tenantId;
-      }
-      
-      const result = await prisma.importJob.deleteMany({ where });
+    const result = await prisma.importJob.deleteMany({ where });
 
-      return NextResponse.json({ success: true, deleted: result.count });
-    }
-
-    return NextResponse.json(
-      { error: 'Either jobId or olderThan parameter is required' },
-      { status: 400 }
-    );
-  } catch (error: unknown) {
-    console.error('Failed to cleanup progress:', error);
-    return NextResponse.json(
-      {
-        error: 'Failed to cleanup progress',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, { success: true, deleted: result.count });
   }
-}
+
+  return createErrorResponse(ctx, 'BAD_REQUEST', 'Either jobId or olderThan parameter is required', 400);
+});

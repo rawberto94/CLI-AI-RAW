@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 export interface ContractMetadata {
   id?: string;
@@ -257,77 +257,78 @@ export class ContractIndexationService {
    */
   async searchContracts(searchQuery: SearchQuery): Promise<SearchResult> {
     try {
-      let whereClause = 'WHERE 1=1';
-      const params: any[] = [];
-      let paramIndex = 1;
+      const conditions: Prisma.Sql[] = [];
 
-      // Build dynamic WHERE clause based on filters
+      // Build dynamic WHERE conditions based on filters
       if (searchQuery.filters) {
         const { filters } = searchQuery;
 
         if (filters.contractType && filters.contractType.length > 0) {
-          whereClause += ` AND cm.contract_type = ANY($${paramIndex})`;
-          params.push(filters.contractType);
-          paramIndex++;
+          conditions.push(Prisma.sql`cm.contract_type = ANY(${filters.contractType})`);
         }
 
         if (filters.status && filters.status.length > 0) {
-          whereClause += ` AND cm.status = ANY($${paramIndex})`;
-          params.push(filters.status);
-          paramIndex++;
+          conditions.push(Prisma.sql`cm.status = ANY(${filters.status})`);
         }
 
         if (filters.riskScoreRange) {
-          whereClause += ` AND cm.risk_score BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
-          params.push(filters.riskScoreRange[0], filters.riskScoreRange[1]);
-          paramIndex += 2;
+          conditions.push(
+            Prisma.sql`cm.risk_score BETWEEN ${filters.riskScoreRange[0]} AND ${filters.riskScoreRange[1]}`
+          );
         }
 
         if (filters.valueRange) {
-          whereClause += ` AND cm.total_value BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
-          params.push(filters.valueRange[0], filters.valueRange[1]);
-          paramIndex += 2;
+          conditions.push(
+            Prisma.sql`cm.total_value BETWEEN ${filters.valueRange[0]} AND ${filters.valueRange[1]}`
+          );
         }
 
         if (filters.expirationDateRange) {
-          whereClause += ` AND cm.expiration_date BETWEEN $${paramIndex} AND $${paramIndex + 1}`;
-          params.push(filters.expirationDateRange[0], filters.expirationDateRange[1]);
-          paramIndex += 2;
+          conditions.push(
+            Prisma.sql`cm.expiration_date BETWEEN ${filters.expirationDateRange[0]} AND ${filters.expirationDateRange[1]}`
+          );
         }
 
         if (filters.clientName) {
-          whereClause += ` AND cm.client_name ILIKE $${paramIndex}`;
-          params.push(`%${filters.clientName}%`);
-          paramIndex++;
+          conditions.push(Prisma.sql`cm.client_name ILIKE ${'%' + filters.clientName + '%'}`);
         }
 
         if (filters.vendorName) {
-          whereClause += ` AND cm.vendor_name ILIKE $${paramIndex}`;
-          params.push(`%${filters.vendorName}%`);
-          paramIndex++;
+          conditions.push(Prisma.sql`cm.vendor_name ILIKE ${'%' + filters.vendorName + '%'}`);
         }
       }
 
-      // Add full-text search if query provided
-      let searchClause = '';
+      // Add full-text search condition if query provided
       if (searchQuery.query) {
-        searchClause = ` AND cm.search_vector @@ plainto_tsquery('english', $${paramIndex})`;
-        params.push(searchQuery.query);
-        paramIndex++;
+        conditions.push(
+          Prisma.sql`cm.search_vector @@ plainto_tsquery('english', ${searchQuery.query})`
+        );
       }
 
-      // Build ORDER BY clause
-      let orderClause = 'ORDER BY ';
-      if (searchQuery.query) {
-        orderClause += `ts_rank(cm.search_vector, plainto_tsquery('english', $${params.length})) DESC, `;
-      }
-      orderClause += `cm.${searchQuery.sortBy || 'created_at'} ${searchQuery.sortOrder || 'DESC'}`;
+      const whereClause = conditions.length > 0
+        ? Prisma.sql`WHERE ${Prisma.join(conditions, ' AND ')}`
+        : Prisma.raw('WHERE 1=1');
+
+      // Build ORDER BY clause — whitelist column names to prevent SQL injection
+      const ALLOWED_SORT_COLUMNS = ['created_at', 'updated_at', 'contract_type', 'total_value', 'risk_score', 'expiration_date', 'start_date', 'end_date', 'title'];
+      const safeSortBy = ALLOWED_SORT_COLUMNS.includes(searchQuery.sortBy || '') ? searchQuery.sortBy! : 'created_at';
+      const safeSortOrder = searchQuery.sortOrder?.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+      const relevanceOrderFragment = searchQuery.query
+        ? Prisma.sql`ts_rank(cm.search_vector, plainto_tsquery('english', ${searchQuery.query})) DESC,`
+        : Prisma.empty;
+      const sortFragment = Prisma.raw(`cm.${safeSortBy} ${safeSortOrder}`);
+
+      // Build relevance score column
+      const relevanceScoreFragment = searchQuery.query
+        ? Prisma.sql`ts_rank(cm.search_vector, plainto_tsquery('english', ${searchQuery.query})) as relevance_score`
+        : Prisma.raw('0 as relevance_score');
 
       // Build LIMIT and OFFSET
       const limit = searchQuery.limit || 50;
       const offset = searchQuery.offset || 0;
 
-      const query = `
+      const contracts = await this.prisma.$queryRaw`
         SELECT 
           c.id,
           c.name,
@@ -337,29 +338,23 @@ export class ContractIndexationService {
             array_agg(DISTINCT ct.tag_name) FILTER (WHERE ct.tag_name IS NOT NULL),
             ARRAY[]::text[]
           ) as tags,
-          ${searchQuery.query ? `ts_rank(cm.search_vector, plainto_tsquery('english', $${params.length})) as relevance_score` : '0 as relevance_score'}
+          ${relevanceScoreFragment}
         FROM contracts c
         LEFT JOIN contract_metadata cm ON c.id = cm.contract_id
         LEFT JOIN contract_tags ct ON c.id = ct.contract_id
         ${whereClause}
-        ${searchClause}
         GROUP BY c.id, c.name, c.status, cm.id
-        ${orderClause}
+        ORDER BY ${relevanceOrderFragment} ${sortFragment}
         LIMIT ${limit} OFFSET ${offset}
       `;
 
-      const contracts = await this.prisma.$queryRawUnsafe(query, ...params);
-
       // Get total count
-      const countQuery = `
+      const countResult = await this.prisma.$queryRaw`
         SELECT COUNT(DISTINCT c.id) as total
         FROM contracts c
         LEFT JOIN contract_metadata cm ON c.id = cm.contract_id
         ${whereClause}
-        ${searchClause}
-      `;
-
-      const countResult = await this.prisma.$queryRawUnsafe(countQuery, ...params) as any[];
+      ` as any[];
       const total = parseInt(countResult[0]?.total || '0');
 
       // Get aggregations for faceted search

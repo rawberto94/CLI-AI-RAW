@@ -1,5 +1,7 @@
 # ConTigo - Technology Onboarding Guide
 
+> **DEPRECATED:** Superseded by [docs/USER_ONBOARDING.md](docs/USER_ONBOARDING.md) and [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md). Retained for historical reference only.
+
 > **For:** Roberto (Founder)  
 > **Goal:** Understand the tech and launch your pilot  
 > **Reading time:** 10 minutes

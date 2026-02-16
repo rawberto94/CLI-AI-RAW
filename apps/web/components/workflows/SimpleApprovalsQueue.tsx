@@ -94,7 +94,7 @@ function WorkflowStepIndicator({
               <div
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-                  isActive && "bg-blue-500 text-white shadow-lg shadow-blue-200",
+                  isActive && "bg-violet-500 text-white shadow-lg shadow-violet-200",
                   isComplete && "bg-green-500 text-white",
                   !isActive && !isComplete && "bg-slate-100 text-slate-400"
                 )}
@@ -107,7 +107,7 @@ function WorkflowStepIndicator({
               </div>
               <span className={cn(
                 "text-xs font-medium",
-                isActive && "text-blue-600",
+                isActive && "text-violet-600",
                 isComplete && "text-green-600",
                 !isActive && !isComplete && "text-slate-400"
               )}>
@@ -163,9 +163,9 @@ function ApprovalCard({ item, isSelected, onSelect, isMultiSelected, onMultiSele
       className={cn(
         "p-4 rounded-xl border-2 transition-all relative",
         isSelected
-          ? "border-blue-500 bg-blue-50/50 shadow-lg"
+          ? "border-violet-500 bg-violet-50/50 shadow-lg"
           : isMultiSelected
-          ? "border-blue-400 bg-blue-50/30 shadow-md"
+          ? "border-violet-400 bg-violet-50/30 shadow-md"
           : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
       )}
     >
@@ -181,8 +181,8 @@ function ApprovalCard({ item, isSelected, onSelect, isMultiSelected, onMultiSele
         {/* Icon */}
         <div className={cn(
           "w-12 h-12 rounded-xl flex items-center justify-center ml-8",
-          item.type === 'contract' && "bg-blue-100 text-blue-600",
-          item.type === 'amendment' && "bg-purple-100 text-purple-600",
+          item.type === 'contract' && "bg-violet-100 text-violet-600",
+          item.type === 'amendment' && "bg-violet-100 text-violet-600",
           item.type === 'renewal' && "bg-green-100 text-green-600"
         )}>
           <FileText className="w-6 h-6" />
@@ -269,8 +269,8 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
         <div className="flex items-start gap-4">
           <div className={cn(
             "w-14 h-14 rounded-xl flex items-center justify-center",
-            item.type === 'contract' && "bg-blue-100 text-blue-600",
-            item.type === 'amendment' && "bg-purple-100 text-purple-600",
+            item.type === 'contract' && "bg-violet-100 text-violet-600",
+            item.type === 'amendment' && "bg-violet-100 text-violet-600",
             item.type === 'renewal' && "bg-green-100 text-green-600"
           )}>
             <FileText className="w-7 h-7" />
@@ -354,14 +354,14 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
         </Card>
 
         {/* What happens next info */}
-        <Card className="bg-blue-50 border-blue-200">
+        <Card className="bg-violet-50 border-violet-200">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base text-blue-900 flex items-center gap-2">
+            <CardTitle className="text-base text-violet-900 flex items-center gap-2">
               <ArrowRight className="w-4 h-4" />
               What happens next?
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-blue-800">
+          <CardContent className="text-sm text-violet-800">
             <ol className="list-decimal list-inside space-y-1">
               <li><strong>Approve</strong> - You confirm the contract terms are acceptable</li>
               <li><strong>Signatures</strong> - The contract is sent for digital signatures</li>
@@ -418,7 +418,7 @@ function DetailPanel({ item, onApprove, onReject, onProceedToSign, isProcessing 
           </div>
           <Button
             onClick={onProceedToSign}
-            className="w-full bg-blue-600 hover:bg-blue-700 gap-2"
+            className="w-full bg-violet-600 hover:bg-violet-700 gap-2"
             size="lg"
           >
             <Pen className="w-5 h-5" />
@@ -545,7 +545,7 @@ export function SimpleApprovalsQueue() {
       }
     }
     fetchApprovals();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, []);
 
   const selectedItem = items.find(i => i.id === selectedId);
@@ -651,14 +651,14 @@ export function SimpleApprovalsQueue() {
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [selectedId, selectedItem, filteredItems]);
 
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-10 h-10 text-blue-500 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-10 h-10 text-violet-500 animate-spin mx-auto mb-4" />
           <p className="text-slate-600">Loading approvals...</p>
         </div>
       </div>

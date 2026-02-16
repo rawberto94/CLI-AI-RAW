@@ -4,18 +4,16 @@
  * Checks for similar existing rate card entries
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
-export async function POST(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     const body = await request.json();
@@ -23,10 +21,7 @@ export async function POST(request: NextRequest) {
     const { roleStandardized, supplierName, seniority, country } = body;
 
     if (!roleStandardized || !supplierName) {
-      return NextResponse.json(
-        { error: 'roleStandardized and supplierName are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'roleStandardized and supplierName are required', 400);
     }
 
     // Find similar entries
@@ -62,7 +57,7 @@ export async function POST(request: NextRequest) {
 
     const hasDuplicates = similarEntries.length > 0;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       hasDuplicates,
       count: similarEntries.length,
       similar: similarEntries,
@@ -70,13 +65,4 @@ export async function POST(request: NextRequest) {
         ? `Found ${similarEntries.length} similar rate card(s)`
         : 'No duplicates found',
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: 'Failed to check duplicates',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

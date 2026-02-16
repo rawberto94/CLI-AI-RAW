@@ -67,12 +67,12 @@ import type { ContractDraft, DraftStatus, DraftSourceType, TemplateCategory, Tem
 
 const statusConfig: Record<DraftStatus, { label: string; color: string; icon: React.ReactNode }> = {
   DRAFT: { label: 'Draft', color: 'bg-gray-100 text-gray-700', icon: <Edit3 className="h-3 w-3" /> },
-  IN_REVIEW: { label: 'In Review', color: 'bg-blue-100 text-blue-700', icon: <Eye className="h-3 w-3" /> },
+  IN_REVIEW: { label: 'In Review', color: 'bg-violet-100 text-violet-700', icon: <Eye className="h-3 w-3" /> },
   PENDING_APPROVAL: { label: 'Pending Approval', color: 'bg-amber-100 text-amber-700', icon: <Clock className="h-3 w-3" /> },
   APPROVED: { label: 'Approved', color: 'bg-green-100 text-green-700', icon: <CheckCircle2 className="h-3 w-3" /> },
   REJECTED: { label: 'Rejected', color: 'bg-red-100 text-red-700', icon: <AlertTriangle className="h-3 w-3" /> },
-  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-purple-100 text-purple-700', icon: <FileSignature className="h-3 w-3" /> },
-  EXECUTED: { label: 'Executed', color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle2 className="h-3 w-3" /> },
+  PENDING_SIGNATURE: { label: 'Pending Signature', color: 'bg-violet-100 text-violet-700', icon: <FileSignature className="h-3 w-3" /> },
+  EXECUTED: { label: 'Executed', color: 'bg-violet-100 text-violet-700', icon: <CheckCircle2 className="h-3 w-3" /> },
   CANCELLED: { label: 'Cancelled', color: 'bg-gray-100 text-gray-500', icon: <Trash2 className="h-3 w-3" /> },
   ARCHIVED: { label: 'Archived', color: 'bg-slate-100 text-slate-600', icon: <Clock className="h-3 w-3" /> },
 };
@@ -257,7 +257,7 @@ function QuickStats({ metrics, drafts }: { metrics: DraftsMetrics | null; drafts
       value: metrics?.draft || 0, 
       change: `${metrics?.total || 0} total`, 
       icon: FileText, 
-      color: 'text-blue-600' 
+      color: 'text-violet-600' 
     },
     { 
       label: 'Pending Approval', 
@@ -278,25 +278,33 @@ function QuickStats({ metrics, drafts }: { metrics: DraftsMetrics | null; drafts
       value: formattedValue, 
       change: `${drafts.length} contracts`, 
       icon: DollarSign, 
-      color: 'text-purple-600' 
+      color: 'text-violet-600' 
     },
   ];
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
       {stats.map((stat) => (
-        <Card key={stat.label} className="relative overflow-hidden">
+        <Card key={stat.label} className="group relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border-white/50 dark:border-slate-700/50 hover:shadow-xl hover:-translate-y-1 transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
               {stat.label}
             </CardTitle>
-            <stat.icon className={cn('h-4 w-4', stat.color)} />
+            <div className={cn(
+              'p-2 rounded-lg bg-gradient-to-br text-white shadow-lg group-hover:scale-110 transition-transform duration-300',
+              stat.color === 'text-violet-600' ? 'from-violet-400 to-purple-600 shadow-violet-500/30' :
+              stat.color === 'text-amber-600' ? 'from-amber-400 to-amber-600 shadow-amber-500/30' :
+              stat.color === 'text-green-600' ? 'from-violet-400 to-violet-600 shadow-green-500/30' :
+              'from-violet-400 to-purple-600 shadow-violet-500/30'
+            )}>
+              <stat.icon className="h-4 w-4" />
+            </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stat.value}</div>
             <p className="text-xs text-muted-foreground">{stat.change}</p>
           </CardContent>
-          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-20" 
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-current to-transparent opacity-30" 
                style={{ color: stat.color.replace('text-', '').replace('-600', '') }} />
         </Card>
       ))}
@@ -318,21 +326,21 @@ function CreateContractCard({ onSelect }: { onSelect: (type: 'new' | 'template' 
       title: 'From Template',
       description: 'Use a pre-approved template',
       icon: Copy,
-      gradient: 'from-blue-500 to-indigo-600',
+      gradient: 'from-violet-500 to-purple-600',
     },
     {
       id: 'renewal',
       title: 'Contract Renewal',
       description: 'Renew an existing contract',
       icon: RefreshCw,
-      gradient: 'from-green-500 to-emerald-600',
+      gradient: 'from-violet-500 to-violet-600',
     },
     {
       id: 'amendment',
       title: 'Amendment',
       description: 'Create an amendment to existing contract',
       icon: GitBranch,
-      gradient: 'from-purple-500 to-violet-600',
+      gradient: 'from-violet-500 to-purple-600',
     },
   ];
 
@@ -718,22 +726,22 @@ export default function ContractGenerationPage() {
       {/* Main Content Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <TabsList>
-            <TabsTrigger value="drafts" className="gap-2">
+          <TabsList className="p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
+            <TabsTrigger value="drafts" className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">
               <FileText className="h-4 w-4" />
               My Drafts
               {metrics && metrics.draft > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">{metrics.draft}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="pending" className="gap-2">
+            <TabsTrigger value="pending" className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 transition-all duration-300">
               <Clock className="h-4 w-4" />
               Pending Approval
               {metrics && (metrics.pendingApproval + metrics.inReview) > 0 && (
                 <Badge variant="secondary" className="ml-1 h-5 px-1.5">{metrics.pendingApproval + metrics.inReview}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="templates" className="gap-2">
+            <TabsTrigger value="templates" className="gap-2 rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">
               <Copy className="h-4 w-4" />
               Templates
               {templates.length > 0 && (

@@ -254,10 +254,10 @@ function StatCard({
   color?: 'blue' | 'green' | 'amber' | 'purple' | 'rose';
 }) {
   const colorClasses = {
-    blue: 'from-blue-500 to-indigo-500 text-blue-600 bg-blue-50',
-    green: 'from-green-500 to-emerald-500 text-green-600 bg-green-50',
+    blue: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
+    green: 'from-violet-500 to-violet-500 text-green-600 bg-green-50',
     amber: 'from-amber-500 to-orange-500 text-amber-600 bg-amber-50',
-    purple: 'from-purple-500 to-violet-500 text-purple-600 bg-purple-50',
+    purple: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
     rose: 'from-rose-500 to-pink-500 text-rose-600 bg-rose-50',
   };
 
@@ -291,7 +291,7 @@ function DecisionRow({ decision, onView }: { decision: AIDecision; onView: () =>
     accepted: { icon: CheckCircle2, color: 'text-green-600 bg-green-50', label: 'Accepted' },
     modified: { icon: FileText, color: 'text-amber-600 bg-amber-50', label: 'Modified' },
     rejected: { icon: XCircle, color: 'text-red-600 bg-red-50', label: 'Rejected' },
-    pending: { icon: Clock, color: 'text-blue-600 bg-blue-50', label: 'Pending' },
+    pending: { icon: Clock, color: 'text-violet-600 bg-violet-50', label: 'Pending' },
   };
 
   const config = outcomeConfig[decision.outcome];
@@ -379,7 +379,7 @@ function ComplianceScoreRing({ score, size = 120 }: { score: number; size?: numb
 
 function RiskFlagCard({ flag }: { flag: RiskFlag }) {
   const severityConfig = {
-    low: { color: 'text-blue-600 bg-blue-50 border-blue-200', icon: Info },
+    low: { color: 'text-violet-600 bg-violet-50 border-violet-200', icon: Info },
     medium: { color: 'text-amber-600 bg-amber-50 border-amber-200', icon: AlertTriangle },
     high: { color: 'text-orange-600 bg-orange-50 border-orange-200', icon: AlertTriangle },
     critical: { color: 'text-red-600 bg-red-50 border-red-200', icon: XCircle },
@@ -426,7 +426,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
   const [featureFilter, setFeatureFilter] = useState<string>('all');
   const [outcomeFilter, setOutcomeFilter] = useState<string>('all');
   // Used for future detail view modal
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
 
   useEffect(() => {
@@ -602,7 +602,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
                         const percentage = (count / usageStats.totalDecisions) * 100;
                         return (
                           <div key={model} className="flex items-center gap-3">
-                            <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-500">
+                            <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500">
                               <Sparkles className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1">
@@ -759,7 +759,7 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
                             issue.severity === 'critical' && 'border-red-500 text-red-600',
                             issue.severity === 'high' && 'border-orange-500 text-orange-600',
                             issue.severity === 'medium' && 'border-amber-500 text-amber-600',
-                            issue.severity === 'low' && 'border-blue-500 text-blue-600',
+                            issue.severity === 'low' && 'border-violet-500 text-violet-600',
                           )}
                         >
                           {issue.severity}

@@ -24,7 +24,7 @@ export default function TemplatesLoading() {
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
             transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-2xl"
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-2xl"
           >
             <FileStack className="w-10 h-10 text-white" />
           </motion.div>
@@ -54,7 +54,7 @@ export default function TemplatesLoading() {
                     transform: `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`,
                   }}
                 >
-                  <Icon className="w-4 h-4 text-purple-600" />
+                  <Icon className="w-4 h-4 text-violet-600" />
                 </motion.div>
               );
             })}
@@ -68,7 +68,7 @@ export default function TemplatesLoading() {
           transition={{ delay: 0.3 }}
           className="mt-12 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Templates
           </h2>
           <p className="mt-2 text-sm text-slate-500 flex items-center gap-1">

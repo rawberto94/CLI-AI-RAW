@@ -36,7 +36,7 @@ export interface ExtractionPreset {
 
 export interface PresetSettings {
   /** Model to use (faster vs more accurate) */
-  model: "gpt-4o-mini" | "gpt-4-turbo-preview" | "gpt-4o";
+  model: "gpt-4o-mini" | "gpt-4o";
   /** Temperature for extraction (lower = more consistent) */
   temperature: number;
   /** Number of extraction passes */
@@ -118,7 +118,7 @@ export const EXTRACTION_PRESETS: Record<PresetId, ExtractionPreset> = {
     description: "Complete extraction with high accuracy. Best for important contracts.",
     icon: "🔍",
     settings: {
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       temperature: 0.1,
       passes: 2,
       autoApplyThreshold: 0.85,
@@ -144,7 +144,7 @@ export const EXTRACTION_PRESETS: Record<PresetId, ExtractionPreset> = {
     description: "Focus on legal terms, obligations, and risk factors.",
     icon: "⚖️",
     settings: {
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       temperature: 0.1,
       passes: 2,
       autoApplyThreshold: 0.9, // Higher threshold for legal
@@ -184,7 +184,7 @@ export const EXTRACTION_PRESETS: Record<PresetId, ExtractionPreset> = {
     description: "Prioritize monetary values, payment terms, and financial obligations.",
     icon: "💰",
     settings: {
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       temperature: 0.1,
       passes: 2,
       autoApplyThreshold: 0.85,
@@ -224,7 +224,7 @@ export const EXTRACTION_PRESETS: Record<PresetId, ExtractionPreset> = {
     description: "Focus on dates, deadlines, obligations, and regulatory requirements.",
     icon: "📋",
     settings: {
-      model: "gpt-4-turbo-preview",
+      model: "gpt-4o",
       temperature: 0.1,
       passes: 2,
       autoApplyThreshold: 0.9,
@@ -390,7 +390,6 @@ export function estimateExtractionTime(
   // Base time varies by model
   const baseTime: Record<string, number> = {
     "gpt-4o-mini": 5,
-    "gpt-4-turbo-preview": 15,
     "gpt-4o": 10,
   };
 

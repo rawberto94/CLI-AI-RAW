@@ -8,6 +8,8 @@
 import { WifiOff, RefreshCw, Home } from 'lucide-react';
 import Link from 'next/link';
 
+
+
 export default function OfflinePage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
@@ -33,7 +35,7 @@ export default function OfflinePage() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={() => window.location.reload()}
-            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 transition-colors font-medium"
           >
             <RefreshCw className="w-5 h-5" />
             Try Again

@@ -1,5 +1,3 @@
-'use client';
-
 /**
  * Auth Layout - Separate layout for authentication pages
  * No sidebar, no navigation - just the auth form with branding

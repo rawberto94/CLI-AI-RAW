@@ -49,7 +49,7 @@ export function EmergingTrendsPanel({
       case 'RATE_DROP':
         return <TrendingDown className="h-5 w-5 text-green-500" />;
       case 'NEW_MARKET':
-        return <Globe className="h-5 w-5 text-blue-500" />;
+        return <Globe className="h-5 w-5 text-violet-500" />;
       case 'HOT_ROLE':
         return <Briefcase className="h-5 w-5 text-orange-500" />;
       case 'SUPPLIER_ENTRY':
@@ -124,7 +124,7 @@ export function EmergingTrendsPanel({
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-blue-500" />
+              <AlertTriangle className="h-4 w-4 text-violet-500" />
               Low Priority
             </CardTitle>
           </CardHeader>
@@ -190,7 +190,7 @@ export function EmergingTrendsPanel({
             <Card>
               <CardHeader>
                 <CardTitle className="text-lg flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5 text-blue-500" />
+                  <AlertTriangle className="h-5 w-5 text-violet-500" />
                   Low Priority Trends
                 </CardTitle>
                 <CardDescription>For awareness and future planning</CardDescription>

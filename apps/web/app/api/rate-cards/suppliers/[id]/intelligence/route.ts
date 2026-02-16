@@ -12,27 +12,25 @@
  * Requirements: 4.1
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { 
   supplierIntelligenceService,
   supplierRecommenderService,
   supplierTrendAnalyzerService
 } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Get trend analyzer instance (lazy-initialized with prisma)
 const getTrendAnalyzer = () => supplierTrendAnalyzerService.getInstance(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
     }
-
+try {
     const supplierId = params.id;
     const { searchParams } = new URL(request.url);
     const monthsBack = parseInt(searchParams.get('monthsBack') || '12');
@@ -42,7 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     // Calculate competitiveness score
     const competitivenessScore = await supplierIntelligenceService.calculateCompetitivenessScore(
       supplierId,
-      session.user.tenantId
+      ctx.tenantId
     );
 
     // Analyze historical trends
@@ -50,7 +48,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     try {
       trends = await getTrendAnalyzer().analyzeSupplierTrends(
         supplierId,
-        session.user.tenantId,
+        ctx.tenantId,
         monthsBack
       );
     } catch {
@@ -63,7 +61,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       try {
         alternatives = await supplierRecommenderService.recommendAlternatives({
           currentSupplierId: supplierId,
-          tenantId: session.user.tenantId,
+          tenantId: ctx.tenantId,
           maxRecommendations: 5,
           minCoveragePercent: 70
         });
@@ -78,7 +76,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       try {
         rateIncreaseAnalysis = await getTrendAnalyzer().detectAboveMarketIncreases(
           supplierId,
-          session.user.tenantId,
+          ctx.tenantId,
           10 // 10% threshold
         );
       } catch {
@@ -86,7 +84,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       supplierId,
       competitiveness: competitivenessScore,
       trends,
@@ -95,9 +93,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       generatedAt: new Date().toISOString()
     });
   } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch supplier intelligence' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch supplier intelligence', 500);
   }
 }

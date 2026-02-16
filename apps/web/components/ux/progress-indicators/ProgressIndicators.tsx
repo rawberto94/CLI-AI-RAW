@@ -47,21 +47,21 @@ interface LinearProgressProps {
 }
 
 const colorClasses = {
-  blue: 'bg-blue-500',
+  blue: 'bg-violet-500',
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
   violet: 'bg-violet-500',
-  cyan: 'bg-cyan-500',
+  cyan: 'bg-violet-500',
 };
 
 const gradientClasses = {
-  blue: 'bg-gradient-to-r from-blue-400 to-blue-600',
-  green: 'bg-gradient-to-r from-green-400 to-green-600',
+  blue: 'bg-gradient-to-r from-violet-400 to-purple-600',
+  green: 'bg-gradient-to-r from-violet-400 to-purple-600',
   amber: 'bg-gradient-to-r from-amber-400 to-amber-600',
   red: 'bg-gradient-to-r from-red-400 to-red-600',
   violet: 'bg-gradient-to-r from-violet-400 to-violet-600',
-  cyan: 'bg-gradient-to-r from-cyan-400 to-cyan-600',
+  cyan: 'bg-gradient-to-r from-violet-400 to-purple-600',
 };
 
 const sizeClasses = {
@@ -151,12 +151,12 @@ const circularSizes = {
 };
 
 const strokeColors = {
-  blue: 'stroke-blue-500',
+  blue: 'stroke-violet-500',
   green: 'stroke-green-500',
   amber: 'stroke-amber-500',
   red: 'stroke-red-500',
   violet: 'stroke-violet-500',
-  cyan: 'stroke-cyan-500',
+  cyan: 'stroke-violet-500',
 };
 
 export const CircularProgress = memo(function CircularProgress({
@@ -258,7 +258,7 @@ const statusIcons = {
 
 const statusColors = {
   pending: 'text-zinc-400 dark:text-zinc-500',
-  active: 'text-blue-500',
+  active: 'text-violet-500',
   completed: 'text-green-500',
   error: 'text-red-500',
   skipped: 'text-zinc-400 dark:text-zinc-500',
@@ -292,7 +292,7 @@ export const StepProgress = memo(function StepProgress({
 
         <AnimatePresence>
           {!isCollapsed && (
-            <motion.div
+            <motion.div key="ProgressIndicators-ap-1"
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
@@ -310,7 +310,7 @@ export const StepProgress = memo(function StepProgress({
                             step.status === 'completed'
                               ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                               : step.status === 'active'
-                              ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                              ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
                               : step.status === 'error'
                               ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
                               : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
@@ -327,7 +327,7 @@ export const StepProgress = memo(function StepProgress({
                             <p
                               className={`text-xs font-medium ${
                                 step.status === 'active'
-                                  ? 'text-blue-600 dark:text-blue-400'
+                                  ? 'text-violet-600 dark:text-violet-400'
                                   : step.status === 'completed'
                                   ? 'text-green-600 dark:text-green-400'
                                   : 'text-zinc-600 dark:text-zinc-400'
@@ -382,7 +382,7 @@ export const StepProgress = memo(function StepProgress({
                   step.status === 'completed'
                     ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                     : step.status === 'active'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                    ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
                     : step.status === 'error'
                     ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'border-zinc-300 dark:border-zinc-600 bg-white dark:bg-zinc-800'
@@ -413,7 +413,7 @@ export const StepProgress = memo(function StepProgress({
               <p
                 className={`font-medium ${
                   step.status === 'active'
-                    ? 'text-blue-600 dark:text-blue-400'
+                    ? 'text-violet-600 dark:text-violet-400'
                     : step.status === 'completed'
                     ? 'text-green-600 dark:text-green-400'
                     : step.status === 'error'
@@ -488,7 +488,7 @@ export const UploadProgress = memo(function UploadProgress({
               ? 'bg-green-100 dark:bg-green-900/30'
               : status === 'error'
               ? 'bg-red-100 dark:bg-red-900/30'
-              : 'bg-blue-100 dark:bg-blue-900/30'
+              : 'bg-violet-100 dark:bg-violet-900/30'
           }`}
         >
           {status === 'completed' ? (
@@ -496,9 +496,9 @@ export const UploadProgress = memo(function UploadProgress({
           ) : status === 'error' ? (
             <AlertCircle className="w-5 h-5 text-red-500" />
           ) : status === 'processing' ? (
-            <Zap className="w-5 h-5 text-blue-500 animate-pulse" />
+            <Zap className="w-5 h-5 text-violet-500 animate-pulse" />
           ) : (
-            <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+            <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
           )}
         </div>
 
@@ -546,7 +546,7 @@ export const UploadProgress = memo(function UploadProgress({
               {onRetry && (
                 <button
                   onClick={onRetry}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-violet-600 hover:underline"
                 >
                   Retry
                 </button>
@@ -602,7 +602,7 @@ export const ProcessingTimeline = memo(function ProcessingTimeline({
               <span
                 className={`flex-1 text-sm ${
                   stage.status === 'active'
-                    ? 'text-blue-600 dark:text-blue-400 font-medium'
+                    ? 'text-violet-600 dark:text-violet-400 font-medium'
                     : stage.status === 'completed'
                     ? 'text-zinc-600 dark:text-zinc-400'
                     : 'text-zinc-400 dark:text-zinc-500'

@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import getDb from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,18 +13,13 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { id: string; commentId: string } }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId, commentId } = params;
     const tenantId = await getApiTenantId(request);
-    const useMock = request.nextUrl.searchParams.get('mock') === 'true';
-
-    if (useMock) {
-      return NextResponse.json({
-        success: true,
-        message: 'Comment resolved successfully',
-        source: 'mock'
-      });
-    }
 
     try {
       const db = await getDb();
@@ -41,7 +37,7 @@ export async function POST(
         }
       });
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         message: 'Comment resolved successfully',
         source: 'database',
@@ -52,22 +48,11 @@ export async function POST(
         }
       });
 
-    } catch {
-      return NextResponse.json({
-        success: true,
-        message: 'Comment resolved successfully',
-        source: 'mock-fallback'
-      });
+    } catch (error) {
+      return handleApiError(ctx, error);
     }
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Failed to resolve comment',
-        details: error instanceof Error ? error.message : 'Unknown error'
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

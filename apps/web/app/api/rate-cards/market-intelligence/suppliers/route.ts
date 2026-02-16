@@ -1,16 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getSessionTenantId } from '@/lib/tenant-server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { marketIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const country = searchParams.get('country') || undefined;
     const lineOfService = searchParams.get('lineOfService') || undefined;
@@ -20,7 +13,7 @@ export async function GET(request: NextRequest) {
     const marketIntelService = new marketIntelligenceService(prisma);
 
     const rankings = await marketIntelService.getSupplierRanking(
-      getSessionTenantId(session),
+      ctx.tenantId,
       {
         country,
         lineOfService,
@@ -29,11 +22,5 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    return NextResponse.json(rankings);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch supplier rankings' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, rankings);
+  });

@@ -12,9 +12,11 @@
  * - valueRange
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from "@/lib/tenant-server";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -44,7 +46,7 @@ interface OrganizedGroup {
   }>;
 }
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   const { searchParams } = request.nextUrl;
 
@@ -52,10 +54,7 @@ export async function GET(request: NextRequest) {
     const tenantId = await getApiTenantId(request);
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     const groupBy = (searchParams.get("groupBy") || "status") as GroupBy;
@@ -332,9 +331,7 @@ export async function GET(request: NextRequest) {
 
     const responseTime = Date.now() - startTime;
 
-    return NextResponse.json(
-      {
-        success: true,
+    return createSuccessResponse(ctx, {
         data: {
           groupBy,
           groups,
@@ -349,22 +346,8 @@ export async function GET(request: NextRequest) {
           timestamp: new Date().toISOString(),
           tenantId,
         },
-      },
-      {
-        headers: {
-          "X-Response-Time": `${responseTime}ms`,
-          "Cache-Control": "private, max-age=60",
-        },
-      }
-    );
+      });
   } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to organize contracts",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});

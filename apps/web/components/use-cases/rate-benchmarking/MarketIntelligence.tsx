@@ -71,7 +71,7 @@ export function MarketIntelligence({
   const getTrendIcon = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {
       case 'up': return <TrendingUp className="h-4 w-4 text-rose-500" />;
-      case 'down': return <TrendingDown className="h-4 w-4 text-emerald-500" />;
+      case 'down': return <TrendingDown className="h-4 w-4 text-violet-500" />;
       default: return <Minus className="h-4 w-4 text-slate-400" />;
     }
   };
@@ -79,7 +79,7 @@ export function MarketIntelligence({
   const getTrendColor = (trend: 'up' | 'down' | 'stable') => {
     switch (trend) {
       case 'up': return 'text-rose-600';
-      case 'down': return 'text-emerald-600';
+      case 'down': return 'text-violet-600';
       default: return 'text-slate-600';
     }
   };
@@ -90,14 +90,14 @@ export function MarketIntelligence({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">
-            <Globe className="h-5 w-5 text-blue-500" />
+            <Globe className="h-5 w-5 text-violet-500" />
             Market Intelligence
           </h3>
           <p className="text-sm text-slate-500">
             {region} • Updated {lastUpdated}
           </p>
         </div>
-        <Badge variant="outline" className="bg-blue-50">
+        <Badge variant="outline" className="bg-violet-50">
           <Zap className="h-3 w-3 mr-1" />
           AI-Powered
         </Badge>
@@ -113,12 +113,12 @@ export function MarketIntelligence({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {trends.map((trend, index) => {
+            {trends.map((trend) => {
               const variance = ((trend.currentRate - trend.marketAverage) / trend.marketAverage) * 100;
               const isAboveMarket = variance > 0;
               
               return (
-                <div key={index} className="space-y-2">
+                <div key={trend.category} className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{trend.category}</span>
                     <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export function MarketIntelligence({
                         <div
                           className={cn(
                             'h-full rounded-full',
-                            isAboveMarket ? 'bg-rose-400' : 'bg-emerald-400'
+                            isAboveMarket ? 'bg-rose-400' : 'bg-violet-400'
                           )}
                           style={{ width: `${Math.min(100, (trend.currentRate / trend.marketAverage) * 50)}%` }}
                         />
@@ -148,7 +148,7 @@ export function MarketIntelligence({
                       variant="outline"
                       className={cn(
                         'text-[10px] px-1.5',
-                        isAboveMarket ? 'text-rose-600 border-rose-200' : 'text-emerald-600 border-emerald-200'
+                        isAboveMarket ? 'text-rose-600 border-rose-200' : 'text-violet-600 border-violet-200'
                       )}
                     >
                       {isAboveMarket ? '+' : ''}{variance.toFixed(1)}%
@@ -157,7 +157,7 @@ export function MarketIntelligence({
                   <div className="flex items-center gap-1 text-[10px] text-slate-400">
                     Confidence: {trend.confidence}%
                     {trend.confidence >= 85 ? (
-                      <CheckCircle className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle className="h-3 w-3 text-violet-500" />
                     ) : (
                       <AlertTriangle className="h-3 w-3 text-amber-500" />
                     )}
@@ -177,8 +177,8 @@ export function MarketIntelligence({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {competitors.map((competitor, index) => (
-              <div key={index} className="space-y-2">
+            {competitors.map((competitor) => (
+              <div key={competitor.name} className="space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium">{competitor.name}</span>

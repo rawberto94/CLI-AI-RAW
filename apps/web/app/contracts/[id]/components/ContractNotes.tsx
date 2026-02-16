@@ -1,6 +1,6 @@
 'use client'
 
-import React, { memo, useState, useCallback } from 'react'
+import React, { memo, useState, useCallback as _useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -195,7 +195,7 @@ const NoteItem = memo(function NoteItem({
 })
 
 export const ContractNotes = memo(function ContractNotes({
-  contractId,
+  contractId: _contractId,
   notes,
   currentUserId,
   onAddNote,
@@ -225,7 +225,9 @@ export const ContractNotes = memo(function ContractNotes({
   const sortedNotes = [...notes].sort((a, b) => {
     if (a.isPinned && !b.isPinned) return -1
     if (!a.isPinned && b.isPinned) return 1
-    return b.createdAt.getTime() - a.createdAt.getTime()
+    const timeA = a.createdAt?.getTime?.() ?? 0
+    const timeB = b.createdAt?.getTime?.() ?? 0
+    return (isNaN(timeB) ? 0 : timeB) - (isNaN(timeA) ? 0 : timeA)
   })
   
   return (
@@ -233,7 +235,7 @@ export const ContractNotes = memo(function ContractNotes({
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-blue-500" />
+            <MessageSquare className="h-4 w-4 text-violet-500" />
             Notes & Comments
             {notes.length > 0 && (
               <span className="ml-1 px-1.5 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full">
@@ -258,7 +260,7 @@ export const ContractNotes = memo(function ContractNotes({
         {/* Add Note Input */}
         <AnimatePresence>
           {showInput && (
-            <motion.div
+            <motion.div key="input"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}

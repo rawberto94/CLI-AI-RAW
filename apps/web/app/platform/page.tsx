@@ -86,8 +86,8 @@ const statusConfig = {
 
 const planConfig = {
   free: { label: "Free", color: "bg-slate-100 text-slate-800" },
-  starter: { label: "Starter", color: "bg-blue-100 text-blue-800" },
-  professional: { label: "Professional", color: "bg-purple-100 text-purple-800" },
+  starter: { label: "Starter", color: "bg-violet-100 text-violet-800" },
+  professional: { label: "Professional", color: "bg-violet-100 text-violet-800" },
   enterprise: { label: "Enterprise", color: "bg-amber-100 text-amber-800" },
 };
 
@@ -237,7 +237,7 @@ export default function PlatformAdminPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="flex flex-col items-center gap-4">
-          <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+          <RefreshCw className="h-8 w-8 animate-spin text-violet-600" />
           <p className="text-slate-600">Loading clients...</p>
         </div>
       </div>
@@ -268,8 +268,8 @@ export default function PlatformAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <Building2 className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Building2 className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.total}</p>
@@ -294,8 +294,8 @@ export default function PlatformAdminPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Users className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Users className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold">{stats.totalUsers}</p>
@@ -382,7 +382,7 @@ export default function PlatformAdminPage() {
                     <TableRow key={tenant.id} className="hover:bg-slate-50">
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white font-semibold">
+                          <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white font-semibold">
                             {tenant.name.charAt(0).toUpperCase()}
                           </div>
                           <div>

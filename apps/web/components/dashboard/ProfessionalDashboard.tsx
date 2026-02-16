@@ -244,7 +244,7 @@ function useDashboardData() {
         totalValue: d.overview?.portfolioValue ?? mockMetrics.totalValue,
         avgRiskScore: riskScore,
         pendingApprovals: approvalsJson?.data?.items?.length ?? mockMetrics.pendingApprovals,
-        expiringThisMonth: (d.expirations?.criticalRisk + d.expirations?.highRisk) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
+        expiringThisMonth: ((d.expirations?.criticalRisk ?? 0) + (d.expirations?.highRisk ?? 0)) || (d.renewals?.expiringIn30Days ?? mockMetrics.expiringThisMonth),
         contractsThisWeek: d.overview?.recentlyAdded ?? mockMetrics.contractsThisWeek,
         aiProcessingQueue: d.breakdown?.byStatus?.find((s: any) => s.status === 'PROCESSING')?.count ?? 3,
         trends: {
@@ -315,12 +315,12 @@ interface StatCardProps {
 
 function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 }: StatCardProps) {
   const colorClasses = {
-    blue: { bg: 'bg-blue-50', iconBg: 'from-blue-500 to-cyan-500', text: 'text-blue-600' },
-    green: { bg: 'bg-emerald-50', iconBg: 'from-emerald-500 to-green-500', text: 'text-emerald-600' },
+    blue: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
+    green: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
     amber: { bg: 'bg-amber-50', iconBg: 'from-amber-500 to-orange-500', text: 'text-amber-600' },
     rose: { bg: 'bg-rose-50', iconBg: 'from-rose-500 to-red-500', text: 'text-rose-600' },
-    purple: { bg: 'bg-purple-50', iconBg: 'from-purple-500 to-pink-500', text: 'text-purple-600' },
-    indigo: { bg: 'bg-indigo-50', iconBg: 'from-indigo-500 to-violet-500', text: 'text-indigo-600' },
+    purple: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-pink-500', text: 'text-violet-600' },
+    indigo: { bg: 'bg-violet-50', iconBg: 'from-violet-500 to-purple-500', text: 'text-violet-600' },
   }[color];
 
   return (
@@ -341,7 +341,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
               {trend && (
                 <div className="flex items-center gap-1 mt-2">
                   {trend.value > 0 ? (
-                    <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+                    <ArrowUpRight className="h-3.5 w-3.5 text-violet-500" />
                   ) : trend.value < 0 ? (
                     <ArrowDownRight className="h-3.5 w-3.5 text-rose-500" />
                   ) : (
@@ -349,7 +349,7 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
                   )}
                   <span className={cn(
                     "text-xs font-medium",
-                    trend.value > 0 ? "text-emerald-600" : trend.value < 0 ? "text-rose-600" : "text-slate-500"
+                    trend.value > 0 ? "text-violet-600" : trend.value < 0 ? "text-rose-600" : "text-slate-500"
                   )}>
                     {trend.value > 0 ? '+' : ''}{trend.value}%
                   </span>
@@ -374,14 +374,14 @@ function StatCard({ title, value, subtitle, icon: Icon, trend, color, delay = 0 
 
 function ContractRow({ contract, index }: { contract: RecentContract; index: number }) {
   const statusConfig = {
-    completed: { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle2 },
-    processing: { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: Zap },
+    completed: { bg: 'bg-violet-100', text: 'text-violet-700', icon: CheckCircle2 },
+    processing: { bg: 'bg-violet-100', text: 'text-violet-700', icon: Zap },
     review: { bg: 'bg-amber-100', text: 'text-amber-700', icon: AlertCircle },
     pending: { bg: 'bg-slate-100', text: 'text-slate-600', icon: Clock },
   }[contract.status];
 
   const riskConfig = {
-    low: 'bg-emerald-500',
+    low: 'bg-violet-500',
     medium: 'bg-amber-500',
     high: 'bg-rose-500',
   }[contract.riskLevel];
@@ -706,7 +706,7 @@ function PortfolioHealthWidget() {
   };
 
   const getScoreBg = (score: number) => {
-    if (score >= 75) return 'from-green-500 to-emerald-500';
+    if (score >= 75) return 'from-violet-500 to-violet-500';
     if (score >= 50) return 'from-amber-500 to-orange-500';
     return 'from-red-500 to-rose-500';
   };
@@ -963,8 +963,8 @@ export function ProfessionalDashboard() {
       >
           <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <Zap className="h-5 w-5 text-indigo-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Zap className="h-5 w-5 text-violet-600" />
             </div>
             <div>
                 <p className="text-2xl font-bold text-foreground">{metrics.contractsThisWeek}</p>
@@ -1002,8 +1002,8 @@ export function ProfessionalDashboard() {
         
           <Card className="border-border/60">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-emerald-100">
-              <Target className="h-5 w-5 text-emerald-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Target className="h-5 w-5 text-violet-600" />
             </div>
             <div>
                 <p className="text-2xl font-bold text-foreground">{Math.round(metrics.trends.compliance)}%</p>

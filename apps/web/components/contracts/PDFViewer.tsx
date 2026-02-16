@@ -359,7 +359,7 @@ export function PDFViewer({
         {/* Loading state */}
         {loading && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-50 z-10">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-500 mb-3" />
+            <Loader2 className="h-8 w-8 animate-spin text-violet-500 mb-3" />
             <p className="text-sm text-slate-600">Loading document...</p>
           </div>
         )}
@@ -541,8 +541,8 @@ export function SplitViewContainer({
           {/* Resize handle */}
           <div
             className={cn(
-              'w-1.5 bg-slate-200 hover:bg-blue-400 cursor-col-resize transition-colors flex-shrink-0',
-              isDragging && 'bg-blue-500'
+              'w-1.5 bg-slate-200 hover:bg-violet-400 cursor-col-resize transition-colors flex-shrink-0',
+              isDragging && 'bg-violet-500'
             )}
             onMouseDown={handleMouseDown}
           >

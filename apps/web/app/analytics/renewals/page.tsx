@@ -74,7 +74,7 @@ export default function RenewalRadarPage() {
       link.download = `renewal-radar-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Renewal data exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };
@@ -241,7 +241,7 @@ export default function RenewalRadarPage() {
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 text-destructive">
               <AlertCircle className="h-5 w-5" />
-              <span>Error loading renewal radar: {error}</span>
+              <span>Error loading renewal radar: {error instanceof Error ? error.message : String(error)}</span>
             </div>
           </CardContent>
         </Card>

@@ -37,9 +37,9 @@ import {
   Pencil,
   Trash2,
   UserPlus,
-  Settings,
-  Shield,
-  FileText,
+  Settings as _Settings,
+  Shield as _Shield,
+  FileText as _FileText,
   RefreshCcw,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -120,7 +120,7 @@ export function UserGroupsManagement() {
         const data = await response.json();
         setGroups(data.groups);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to fetch groups');
     } finally {
       setLoading(false);
@@ -139,8 +139,8 @@ export function UserGroupsManagement() {
           avatar: u.avatar,
         })));
       }
-    } catch (error) {
-      console.error('Failed to fetch users');
+    } catch (_error) {
+      console.warn('Failed to fetch users');
     }
   };
 
@@ -198,7 +198,7 @@ export function UserGroupsManagement() {
       setShowEditDialog(false);
       resetForm();
       fetchGroups();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to update group');
     } finally {
       setIsSubmitting(false);
@@ -221,7 +221,7 @@ export function UserGroupsManagement() {
 
       toast.success('Group deleted');
       fetchGroups();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to delete group');
     }
   };
@@ -248,7 +248,7 @@ export function UserGroupsManagement() {
       setShowMembersDialog(false);
       setSelectedUserIds([]);
       fetchGroups();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to add members');
     } finally {
       setIsSubmitting(false);
@@ -269,7 +269,7 @@ export function UserGroupsManagement() {
 
       toast.success('Member removed');
       fetchGroups();
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to remove member');
     }
   };

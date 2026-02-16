@@ -205,7 +205,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   disabled={isTogglingReminder}
                   className={cn(
                     "h-9 w-9 rounded-full transition-colors",
-                    hasReminder && "text-blue-500 hover:text-blue-600"
+                    hasReminder && "text-violet-500 hover:text-violet-600"
                   )}
                 >
                   {isTogglingReminder ? (
@@ -314,7 +314,7 @@ export const ContractFloatingActions = memo(function ContractFloatingActions({
                   Export as PDF
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport('docx')} className="cursor-pointer">
-                  <FileText className="h-4 w-4 mr-2 text-blue-500" />
+                  <FileText className="h-4 w-4 mr-2 text-violet-500" />
                   Export as Word
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => handleExport('xlsx')} className="cursor-pointer">

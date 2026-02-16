@@ -1,5 +1,9 @@
 # Docker Container Architecture
 
+> **DEPRECATED:** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) §7 (Infrastructure & Deployment) and [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) §14 (Deployment) for current Docker documentation. Retained for historical reference only.
+
+---
+
 This document explains the Docker container setup for the CLI-AI Contract Intelligence Platform, including the multi-container architecture, multi-tenancy strategy, and deployment configurations.
 
 ---
@@ -146,11 +150,13 @@ services:
 ```
 
 **Usage:**
+
 ```bash
 docker-compose -f docker-compose.dev.yml up -d
 ```
 
 **Resource Limits:**
+
 - PostgreSQL: 1GB memory
 - Redis: 512MB memory
 - MinIO: 512MB memory
@@ -168,6 +174,7 @@ services:
 ```
 
 **Usage:**
+
 ```bash
 docker-compose -f docker-compose.staging.yml up -d
 ```
@@ -188,6 +195,7 @@ services:
 ```
 
 **Usage:**
+
 ```bash
 docker-compose -f docker-compose.prod.yml up -d
 
@@ -220,6 +228,7 @@ services:
 ```
 
 **Usage:**
+
 ```bash
 docker-compose -f docker-compose.dev.yml -f docker-compose.rag.yml up -d
 ```
@@ -248,6 +257,7 @@ FROM node:22-alpine AS runner
 ```
 
 **Key Features:**
+
 - Multi-stage build reduces image size
 - Non-root user for security
 - Standalone Next.js output mode
@@ -419,6 +429,7 @@ targetCPU: 80%
 ### Database Scaling (Future)
 
 For higher scale, consider:
+
 - **Read replicas**: PostgreSQL streaming replication
 - **Connection pooling**: PgBouncer
 - **Redis cluster**: Multiple Redis nodes

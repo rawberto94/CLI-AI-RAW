@@ -20,6 +20,7 @@ export const DLQ_QUEUE_NAMES = {
   RAG_INDEXING_DLQ: `${QUEUE_NAMES.RAG_INDEXING}-dlq`,
   METADATA_EXTRACTION_DLQ: `${QUEUE_NAMES.METADATA_EXTRACTION}-dlq`,
   CATEGORIZATION_DLQ: `${QUEUE_NAMES.CATEGORIZATION}-dlq`,
+  EMBEDDING_REFRESH_DLQ: `${QUEUE_NAMES.EMBEDDING_REFRESH}-dlq`,
 } as const;
 
 export interface DLQJobData {
@@ -64,7 +65,7 @@ class DLQConsumer {
    */
   public async initialize(connectionConfig?: ConnectionOptions): Promise<void> {
     const redisUrl = process.env.REDIS_URL || 
-      `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+      `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
 
     this.connection = connectionConfig || { url: redisUrl } as ConnectionOptions;
     

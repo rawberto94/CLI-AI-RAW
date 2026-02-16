@@ -80,7 +80,7 @@ export function ContractFilters({
         <Filter className="w-4 h-4 text-gray-500" />
         <span className="text-sm font-medium text-gray-700">Filters</span>
         {totalActiveFilters > 0 && (
-          <span className="px-2 py-0.5 text-xs font-medium text-blue-600 bg-blue-50 rounded-full">
+          <span className="px-2 py-0.5 text-xs font-medium text-violet-600 bg-violet-50 rounded-full">
             {totalActiveFilters}
           </span>
         )}
@@ -204,13 +204,13 @@ function FilterDropdown({
         className={cn(
           "flex items-center gap-2 px-3 py-1.5 rounded-md border transition-colors",
           isOpen || selectedCount > 0
-            ? "border-blue-500 bg-blue-50 text-blue-700"
+            ? "border-violet-500 bg-violet-50 text-violet-700"
             : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
         )}
       >
         <span className="text-sm font-medium">{label}</span>
         {selectedCount > 0 && (
-          <span className="px-1.5 py-0.5 text-xs font-medium bg-blue-600 text-white rounded">
+          <span className="px-1.5 py-0.5 text-xs font-medium bg-violet-600 text-white rounded">
             {selectedCount}
           </span>
         )}
@@ -221,7 +221,7 @@ function FilterDropdown({
 
       <AnimatePresence>
         {isOpen && (
-          <MotionDiv
+          <MotionDiv key="open"
             variants={fadeIn}
             initial="initial"
             animate="animate"
@@ -245,7 +245,7 @@ function FilterDropdown({
                     type="checkbox"
                     checked={selectedValues.includes(option.value)}
                     onChange={() => onToggle(option.value)}
-                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    className="w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                   />
                   <span className="flex-1 text-sm text-gray-700">
                     {option.label}
@@ -274,7 +274,7 @@ interface FilterChipProps {
 
 function FilterChip({ label, color, onRemove }: FilterChipProps) {
   const colorClasses = {
-    blue: "bg-blue-100 text-blue-700 hover:bg-blue-200",
+    blue: "bg-violet-100 text-violet-700 hover:bg-violet-200",
     green: "bg-green-100 text-green-700 hover:bg-green-200",
     yellow: "bg-yellow-100 text-yellow-700 hover:bg-yellow-200",
     red: "bg-red-100 text-red-700 hover:bg-red-200",

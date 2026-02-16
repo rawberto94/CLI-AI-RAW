@@ -98,6 +98,9 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
   const [filteredCommands, setFilteredCommands] = useState<QuickCommand[]>([]);
   const [selectedCommandIndex, setSelectedCommandIndex] = useState(0);
   const [isFocused, setIsFocused] = useState(false);
+  const [showMentions, setShowMentions] = useState(false);
+  const [filteredMentions, setFilteredMentions] = useState<{ handle: string; displayName: string; avatar: string; tagline: string }[]>([]);
+  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
   
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -163,6 +166,36 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
     }
   }, [value, showQuickCommands]);
 
+  // Handle @mention detection for agent personas
+  useEffect(() => {
+    const mentionMatch = value.match(/@(\w*)$/);
+    if (mentionMatch) {
+      const query = mentionMatch[1].toLowerCase();
+      const allPersonas = [
+        { handle: 'validator', displayName: 'Validation Agent', avatar: '🛡️', tagline: 'Data quality guardian' },
+        { handle: 'gapfiller', displayName: 'Gap Filler', avatar: '🧩', tagline: 'Infers missing data' },
+        { handle: 'retry', displayName: 'Retry Strategist', avatar: '🔄', tagline: 'Failure analysis expert' },
+        { handle: 'workflow', displayName: 'Workflow Advisor', avatar: '📋', tagline: 'Approval optimization' },
+        { handle: 'deadlines', displayName: 'Deadline Manager', avatar: '⏰', tagline: 'Deadline monitoring' },
+        { handle: 'health', displayName: 'Health Monitor', avatar: '💊', tagline: 'Contract health scoring' },
+        { handle: 'learner', displayName: 'Learning Agent', avatar: '🧠', tagline: 'Accuracy improvement' },
+        { handle: 'opportunities', displayName: 'Opportunity Scout', avatar: '💡', tagline: 'Savings discovery' },
+        { handle: 'search', displayName: 'Search Expert', avatar: '🔍', tagline: 'Semantic search' },
+        { handle: 'compliance', displayName: 'Compliance Monitor', avatar: '⚖️', tagline: 'Regulation & policy tracking' },
+        { handle: 'obligations', displayName: 'Obligation Tracker', avatar: '📌', tagline: 'Deadline & deliverable tracking' },
+        { handle: 'summarize', displayName: 'Contract Summarizer', avatar: '📝', tagline: 'Quick contract summaries' },
+      ];
+      const filtered = query
+        ? allPersonas.filter(p => p.handle.includes(query) || p.displayName.toLowerCase().includes(query))
+        : allPersonas;
+      setFilteredMentions(filtered);
+      setShowMentions(filtered.length > 0);
+      setSelectedMentionIndex(0);
+    } else {
+      setShowMentions(false);
+    }
+  }, [value]);
+
   // Handle send
   const handleSend = useCallback(() => {
     if (!value.trim() && attachments.length === 0) return;
@@ -197,6 +230,34 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       }
       if (e.key === 'Escape') {
         setShowCommands(false);
+        return;
+      }
+    }
+
+    // @mention navigation
+    if (showMentions) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) => Math.min(prev + 1, filteredMentions.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedMentionIndex((prev) => Math.max(prev - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const selected = filteredMentions[selectedMentionIndex];
+        if (selected) {
+          const newValue = value.replace(/@\w*$/, `@${selected.handle} `);
+          onChange(newValue);
+          setShowMentions(false);
+        }
+        return;
+      }
+      if (e.key === 'Escape') {
+        setShowMentions(false);
         return;
       }
     }
@@ -256,7 +317,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       {/* Quick commands dropdown */}
       <AnimatePresence>
         {showCommands && (
-          <motion.div
+          <motion.div key="commands"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -271,11 +332,11 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
                     index === selectedCommandIndex
-                      ? "bg-indigo-50 dark:bg-indigo-900/30"
+                      ? "bg-violet-50 dark:bg-violet-900/30"
                       : "hover:bg-slate-50 dark:hover:bg-slate-800"
                   )}
                 >
-                  <command.icon className="h-4 w-4 text-indigo-500" />
+                  <command.icon className="h-4 w-4 text-violet-500" />
                   <div className="flex-1">
                     <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
                       {command.label}
@@ -284,6 +345,52 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                   </div>
                   <span className="text-xs text-slate-400 font-mono">
                     {command.trigger}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* @mention agent personas dropdown */}
+      <AnimatePresence>
+        {showMentions && (
+          <motion.div key="mentions"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className="absolute bottom-full left-0 right-0 mb-2 bg-white dark:bg-slate-900 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden z-10"
+          >
+            <div className="p-2">
+              <p className="text-xs text-slate-500 px-2 mb-2 flex items-center gap-1">
+                <AtSign className="h-3 w-3" /> Agent Personas
+              </p>
+              {filteredMentions.map((persona, index) => (
+                <button
+                  key={persona.handle}
+                  onClick={() => {
+                    const newValue = value.replace(/@\w*$/, `@${persona.handle} `);
+                    onChange(newValue);
+                    setShowMentions(false);
+                    textareaRef.current?.focus();
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-colors",
+                    index === selectedMentionIndex
+                      ? "bg-violet-50 dark:bg-violet-900/30"
+                      : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                  )}
+                >
+                  <span className="text-lg">{persona.avatar}</span>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      {persona.displayName}
+                    </p>
+                    <p className="text-xs text-slate-500">{persona.tagline}</p>
+                  </div>
+                  <span className="text-xs text-slate-400 font-mono">
+                    @{persona.handle}
                   </span>
                 </button>
               ))}
@@ -316,7 +423,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       {/* Contract context indicator */}
       {contractContext && (
         <div className="mb-2 flex items-center gap-2 text-sm text-slate-500">
-          <FileText className="h-4 w-4 text-indigo-500" />
+          <FileText className="h-4 w-4 text-violet-500" />
           <span>Context: <span className="font-medium text-slate-700 dark:text-slate-300">{contractContext.name}</span></span>
         </div>
       )}
@@ -348,7 +455,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
                 <X className="h-3 w-3 text-slate-500" />
               </button>
               {attachment.uploading && (
-                <Loader2 className="h-4 w-4 animate-spin text-indigo-500" />
+                <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
               )}
             </div>
           ))}
@@ -359,7 +466,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
       <div className={cn(
         "flex items-end gap-2 p-3 rounded-xl border transition-all",
         isFocused
-          ? "border-indigo-300 dark:border-indigo-700 bg-white dark:bg-slate-900 shadow-lg shadow-indigo-500/10"
+          ? "border-indigo-300 dark:border-violet-700 bg-white dark:bg-slate-900 shadow-lg shadow-violet-500/10"
           : "border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50",
         isRecording && "border-red-300 dark:border-red-700 shadow-red-500/10"
       )}>
@@ -459,7 +566,7 @@ export const EnhancedChatInput = forwardRef<HTMLTextAreaElement, EnhancedChatInp
           className={cn(
             "h-8 gap-1.5 flex-shrink-0 transition-all",
             (value.trim() || attachments.length > 0) && !isLoading
-              ? "bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700"
+              ? "bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
               : ""
           )}
           onClick={handleSend}

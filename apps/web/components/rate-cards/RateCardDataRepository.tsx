@@ -239,7 +239,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [useRealData, filters]);
 
   useEffect(() => {
@@ -317,7 +317,7 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
       },
       BELOW_AVERAGE: { 
         label: 'Below Market', 
-        className: 'bg-blue-100 text-blue-800',
+        className: 'bg-violet-100 text-violet-800',
         icon: TrendingDown 
       },
     };
@@ -338,8 +338,8 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
 
   const getTierBadge = (tier: string) => {
     const colors = {
-      TIER_1: 'bg-purple-100 text-purple-800',
-      TIER_2: 'bg-blue-100 text-blue-800',
+      TIER_1: 'bg-violet-100 text-violet-800',
+      TIER_2: 'bg-violet-100 text-violet-800',
       TIER_3: 'bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-300',
       TIER_4: 'bg-slate-100 text-slate-800',
     };

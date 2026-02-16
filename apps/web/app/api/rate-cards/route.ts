@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardManagementService } from 'data-orchestration/services';
 
 // NOTE: Using direct Prisma queries instead of data-orchestration services
 // The data-orchestration package has 60+ TypeScript errors that need extensive refactoring
@@ -9,283 +10,21 @@ import { getServerSession } from '@/lib/auth';
 // OPTIMIZATION: Cache GET requests for 5 minutes (rate cards change infrequently)
 export const revalidate = 300;
 
-// Mock rate cards data for testing
-/**
- * Mock rate card entry structure
- */
-interface MockRateCard {
-  id: string;
-  rateCardId: string;
-  originalRoleName: string;
-  standardizedRole: string;
-  roleCategory: string;
-  seniorityLevel: string;
-  serviceLine: string;
-  lineOfService: string;
-  country: string;
-  dailyRate: number;
-  currency: string;
-  supplierId: string;
-  supplierName: string;
-  effectiveDate: string;
-  expiryDate: string;
-  isBaseline: boolean;
-  isNegotiated: boolean;
-}
-
-/**
- * Return mock rate card data for testing
- */
-function returnMockRateCards(searchParams: URLSearchParams) {
-  // Get pagination params
-  const page = parseInt(searchParams.get('page') || '1');
-  const pageSize = parseInt(searchParams.get('pageSize') || '50');
-  
-  const mockRateCards: MockRateCard[] = [
-    {
-      id: "rate-acc-se1",
-      rateCardId: "card-acc-001",
-      originalRoleName: "Senior Software Engineer",
-      standardizedRole: "Software Engineer",
-      roleCategory: "Technology",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1200,
-      currency: "USD",
-      supplierId: "sup-acc",
-      supplierName: "Accenture",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: true,
-      isNegotiated: true,
-    },
-    {
-      id: "rate-acc-arch1",
-      rateCardId: "card-acc-001",
-      originalRoleName: "Principal Architect",
-      standardizedRole: "Solution Architect",
-      roleCategory: "Technology",
-      seniorityLevel: "PRINCIPAL",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1800,
-      currency: "USD",
-      supplierId: "sup-acc",
-      supplierName: "Accenture",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: true,
-      isNegotiated: false,
-    },
-    {
-      id: "rate-acc-ds1",
-      rateCardId: "card-acc-001",
-      originalRoleName: "Data Scientist",
-      standardizedRole: "Data Scientist",
-      roleCategory: "Data",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Data & Analytics",
-      lineOfService: "Data & Analytics",
-      country: "United States",
-      dailyRate: 1400,
-      currency: "USD",
-      supplierId: "sup-acc",
-      supplierName: "Accenture",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: false,
-      isNegotiated: true,
-    },
-    {
-      id: "rate-acc-devops1",
-      rateCardId: "card-acc-001",
-      originalRoleName: "DevOps Engineer",
-      standardizedRole: "DevOps Engineer",
-      roleCategory: "Technology",
-      seniorityLevel: "MID",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1000,
-      currency: "USD",
-      supplierId: "sup-acc",
-      supplierName: "Accenture",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: false,
-      isNegotiated: false,
-    },
-    {
-      id: "rate-tw-fs1",
-      rateCardId: "card-tw-001",
-      originalRoleName: "Full Stack Developer",
-      standardizedRole: "Software Engineer",
-      roleCategory: "Technology",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 950,
-      currency: "USD",
-      supplierId: "sup-tw",
-      supplierName: "Thoughtworks",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: true,
-      isNegotiated: true,
-    },
-    {
-      id: "rate-tw-tl1",
-      rateCardId: "card-tw-001",
-      originalRoleName: "Tech Lead",
-      standardizedRole: "Technical Lead",
-      roleCategory: "Technology",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1300,
-      currency: "USD",
-      supplierId: "sup-tw",
-      supplierName: "Thoughtworks",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: false,
-      isNegotiated: true,
-    },
-    {
-      id: "rate-inf-dev1",
-      rateCardId: "card-inf-001",
-      originalRoleName: "Senior Developer",
-      standardizedRole: "Software Engineer",
-      roleCategory: "Technology",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "India",
-      dailyRate: 650,
-      currency: "USD",
-      supplierId: "sup-inf",
-      supplierName: "Infosys",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: false,
-      isNegotiated: false,
-    },
-    {
-      id: "rate-inf-arch1",
-      rateCardId: "card-inf-001",
-      originalRoleName: "Solution Architect",
-      standardizedRole: "Solution Architect",
-      roleCategory: "Technology",
-      seniorityLevel: "PRINCIPAL",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "India",
-      dailyRate: 850,
-      currency: "USD",
-      supplierId: "sup-inf",
-      supplierName: "Infosys",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: true,
-      isNegotiated: false,
-    },
-    {
-      id: "rate-del-dev1",
-      rateCardId: "card-del-001",
-      originalRoleName: "Senior Developer",
-      standardizedRole: "Software Engineer",
-      roleCategory: "Technology",
-      seniorityLevel: "SENIOR",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1150,
-      currency: "USD",
-      supplierId: "sup-del",
-      supplierName: "Deloitte",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: false,
-      isNegotiated: true,
-    },
-    {
-      id: "rate-del-arch1",
-      rateCardId: "card-del-001",
-      originalRoleName: "Lead Architect",
-      standardizedRole: "Solution Architect",
-      roleCategory: "Technology",
-      seniorityLevel: "PRINCIPAL",
-      serviceLine: "Technology",
-      lineOfService: "Technology",
-      country: "United States",
-      dailyRate: 1650,
-      currency: "USD",
-      supplierId: "sup-del",
-      supplierName: "Deloitte",
-      effectiveDate: "2024-01-01",
-      expiryDate: "2025-12-31",
-      isBaseline: true,
-      isNegotiated: true,
-    },
-  ];
-  
-  const total = mockRateCards.length;
-  const totalPages = Math.ceil(total / pageSize);
-  const start = (page - 1) * pageSize;
-  const end = start + pageSize;
-  const paginatedData = mockRateCards.slice(start, end);
-  
-  // Explicitly serialize to plain object to avoid ReadableStream issues
-  const responseData = {
-    data: JSON.parse(JSON.stringify(paginatedData)),
-    total: Number(total),
-    page: Number(page),
-    pageSize: Number(pageSize),
-    totalPages: Number(totalPages),
-  };
-  
-  return new Response(JSON.stringify(responseData), {
-    status: 200,
-    headers: {
-      'Content-Type': 'application/json',
-    },
-  });
-}
-
 /**
  * GET /api/rate-cards
  * List rate card entries with filtering and pagination
  * Supports both simple filters and advanced filter objects
- * Supports mock data mode via x-data-mode header
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   try {
     const searchParams = request.nextUrl.searchParams;
     
-    // Check data mode from header
-    const dataMode = request.headers.get('x-data-mode') || 'real';
-    
-    // Use mock data if requested
-    if (dataMode === 'mock') {
-      return returnMockRateCards(searchParams);
-    }
-    
-    // ===== REAL DATA MODE: Direct Prisma Queries =====
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required. Please authenticate or provide x-tenant-id header.', 400);
     }
     
     // Build where clause from filters - using any to avoid complex Prisma typing
@@ -365,7 +104,7 @@ export async function GET(request: NextRequest) {
       return acc;
     }, []);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       data: deduplicatedData,
       total: deduplicatedData.length,
       originalTotal: total,
@@ -374,34 +113,26 @@ export async function GET(request: NextRequest) {
       totalPages: Math.ceil(total / pageSize),
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to list rate cards', details: error instanceof Error ? error.message : String(error) },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 /**
  * POST /api/rate-cards
  * Create a new rate card entry
  */
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required. Please authenticate or provide x-tenant-id header.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required. Please authenticate or provide x-tenant-id header.', 400);
     }
     
-    const userId = session?.user?.id || body.userId || 'system';
+    const userId = ctx.userId || body.userId || 'system';
 
     // Convert date strings to Date objects
     if (body.effectiveDate) {
@@ -421,11 +152,5 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    return NextResponse.json(entry, { status: 201 });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to create rate card', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, entry, { status: 201 });
+  });

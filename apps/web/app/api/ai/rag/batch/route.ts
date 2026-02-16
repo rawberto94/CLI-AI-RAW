@@ -10,10 +10,11 @@
  * - Resource optimization with batch limits
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service';
+import { aiArtifactGeneratorService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 interface BatchRequest {
   contractIds?: string[];
@@ -33,7 +34,8 @@ interface ContractProcessResult {
   error?: string;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
   const startTime = Date.now();
 
   try {
@@ -42,17 +44,11 @@ export async function POST(request: NextRequest) {
       contractIds, 
       processAll = false, 
       reprocessExisting = false,
-      priority = 'normal',
-      maxConcurrent = 3,
-    } = body;
-
-    const tenantId = await getServerTenantId();
+      priority: _priority = 'normal',
+      maxConcurrent = 3 } = body;
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
 
     // Build query to find contracts to process
@@ -64,14 +60,12 @@ export async function POST(request: NextRequest) {
         where: { 
           tenantId,
           rawText: { not: null },
-          status: 'COMPLETED',
-        },
+          status: 'COMPLETED' },
         select: {
           id: true,
           fileName: true,
           rawText: true,
-          contractEmbeddings: { select: { id: true }, take: 1 },
-        },
+          contractEmbeddings: { select: { id: true }, take: 1 } },
         orderBy: { createdAt: 'desc' },
         take: 100, // Limit to prevent overwhelming
       });
@@ -80,8 +74,7 @@ export async function POST(request: NextRequest) {
         id: c.id,
         fileName: c.fileName,
         rawText: c.rawText,
-        hasEmbeddings: c.contractEmbeddings.length > 0,
-      }));
+        hasEmbeddings: c.contractEmbeddings.length > 0 }));
 
       // Filter based on reprocessExisting flag
       if (!reprocessExisting) {
@@ -92,40 +85,31 @@ export async function POST(request: NextRequest) {
       const specificContracts = await prisma.contract.findMany({
         where: { 
           id: { in: contractIds },
-          tenantId,
-        },
+          tenantId },
         select: {
           id: true,
           fileName: true,
           rawText: true,
-          contractEmbeddings: { select: { id: true }, take: 1 },
-        },
-      });
+          contractEmbeddings: { select: { id: true }, take: 1 } } });
 
       contracts = specificContracts.map(c => ({
         id: c.id,
         fileName: c.fileName,
         rawText: c.rawText,
-        hasEmbeddings: c.contractEmbeddings.length > 0,
-      }));
+        hasEmbeddings: c.contractEmbeddings.length > 0 }));
     } else {
-      return NextResponse.json(
-        { error: 'Either contractIds array or processAll flag required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Either contractIds array or processAll flag required', 400);
     }
 
     // Filter out contracts without text
     const processableContracts = contracts.filter(c => c.rawText && c.rawText.length > 100);
 
     if (processableContracts.length === 0) {
-      return NextResponse.json({
-        success: true,
+      return createSuccessResponse(ctx, {
         message: 'No contracts to process',
         processed: 0,
         skipped: contracts.length,
-        totalTime: Date.now() - startTime,
-      });
+        totalTime: Date.now() - startTime });
     }
 
     // Process contracts in batches to control concurrency
@@ -150,8 +134,7 @@ export async function POST(request: NextRequest) {
                 contractId: contract.id,
                 fileName: contract.fileName,
                 status: 'skipped' as const,
-                processingTime: Date.now() - contractStartTime,
-              };
+                processingTime: Date.now() - contractStartTime };
             }
 
             const result = await processContractWithSemanticChunking(
@@ -159,8 +142,7 @@ export async function POST(request: NextRequest) {
               contract.rawText!,
               {
                 apiKey: process.env.OPENAI_API_KEY,
-                model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small',
-              }
+                model: process.env.RAG_EMBED_MODEL || 'text-embedding-3-small' }
             );
 
             successCount++;
@@ -170,8 +152,7 @@ export async function POST(request: NextRequest) {
               status: 'success' as const,
               chunksCreated: result.chunksCreated,
               embeddingsGenerated: result.embeddingsGenerated,
-              processingTime: Date.now() - contractStartTime,
-            };
+              processingTime: Date.now() - contractStartTime };
           } catch (error) {
             failedCount++;
             return {
@@ -179,8 +160,7 @@ export async function POST(request: NextRequest) {
               fileName: contract.fileName,
               status: 'failed' as const,
               error: error instanceof Error ? error.message : 'Unknown error',
-              processingTime: Date.now() - contractStartTime,
-            };
+              processingTime: Date.now() - contractStartTime };
           }
         })
       );
@@ -194,8 +174,7 @@ export async function POST(request: NextRequest) {
             contractId: 'unknown',
             fileName: 'unknown',
             status: 'failed',
-            error: result.reason?.message || 'Unknown error',
-          });
+            error: result.reason?.message || 'Unknown error' });
           failedCount++;
         }
       }
@@ -203,62 +182,44 @@ export async function POST(request: NextRequest) {
 
     const totalTime = Date.now() - startTime;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       summary: {
         total: processableContracts.length,
         successful: successCount,
         failed: failedCount,
         skipped: skippedCount,
         totalTime,
-        averageTimePerContract: Math.round(totalTime / processableContracts.length),
-      },
-      results,
-    });
+        averageTimePerContract: Math.round(totalTime / processableContracts.length) },
+      results });
 
   } catch (error) {
-    return NextResponse.json(
-      { 
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        processingTime: Date.now() - startTime,
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 /**
  * GET /api/ai/rag/batch - Get batch processing status and stats
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const tenantId = ctx.tenantId;
     // Get embedding statistics
     const [totalContracts, contractsWithEmbeddings, embeddingStats] = await Promise.all([
       prisma.contract.count({
         where: { 
           tenantId,
           status: 'COMPLETED',
-          rawText: { not: null },
-        },
-      }),
+          rawText: { not: null } } }),
       prisma.contract.count({
         where: { 
           tenantId,
           status: 'COMPLETED',
           rawText: { not: null },
-          contractEmbeddings: { some: {} },
-        },
-      }),
+          contractEmbeddings: { some: {} } } }),
       prisma.contractEmbedding.aggregate({
         where: {
-          contract: { tenantId },
-        },
+          contract: { tenantId } },
         _count: true,
-        _avg: { chunkIndex: true },
-      }),
+        _avg: { chunkIndex: true } }),
     ]);
 
     const pendingContracts = totalContracts - contractsWithEmbeddings;
@@ -266,15 +227,14 @@ export async function GET(request: NextRequest) {
       ? Math.round((contractsWithEmbeddings / totalContracts) * 100) 
       : 0;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       statistics: {
         totalContracts,
         contractsWithEmbeddings,
         pendingContracts,
         coveragePercentage: coverage,
         totalEmbeddings: embeddingStats._count,
-        averageChunksPerContract: Math.round(embeddingStats._count / (contractsWithEmbeddings || 1)),
-      },
+        averageChunksPerContract: Math.round(embeddingStats._count / (contractsWithEmbeddings || 1)) },
       recommendation: pendingContracts > 0 
         ? `${pendingContracts} contracts need RAG processing for optimal search performance`
         : 'All contracts are fully indexed for semantic search',
@@ -285,15 +245,6 @@ export async function GET(request: NextRequest) {
           contractIds: 'Array of contract IDs to process',
           processAll: 'Process all unindexed contracts (boolean)',
           reprocessExisting: 'Re-process already indexed contracts (boolean)',
-          maxConcurrent: 'Max concurrent processing (default: 3)',
-        },
-      },
-    });
+          maxConcurrent: 'Max concurrent processing (default: 3)' } } });
 
-  } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get batch status' },
-      { status: 500 }
-    );
-  }
-}
+  });

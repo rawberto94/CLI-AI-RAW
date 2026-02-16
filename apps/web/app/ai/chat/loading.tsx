@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { MessageCircle, Sparkles, Brain, Bot } from 'lucide-react';
+import { MessageCircle, Sparkles, Brain, Bot as _Bot } from 'lucide-react';
 
 export default function AIChatLoading() {
   return (
@@ -36,7 +36,7 @@ export default function AIChatLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <Brain className="h-4 w-4 text-purple-500" />
+              <Brain className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
         </div>

@@ -223,7 +223,7 @@ export function SubmitForApprovalModal({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="SubmitForApprovalModal-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}

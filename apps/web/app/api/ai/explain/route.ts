@@ -11,6 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 interface ExplainabilityRequest {
   contractText: string;
@@ -24,9 +25,8 @@ interface ExplainabilityRequest {
 /**
  * POST - Generate explanation for extraction
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const services = await import('@repo/data-orchestration/services');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    const services = await import('data-orchestration/services');
     const aiExplainabilityService = services.aiExplainabilityService;
 
     const body = await request.json();
@@ -36,15 +36,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       artifactType, 
       extractedData,
       fieldName,
-      format = 'json',
-    } = body;
+      format = 'json' } = body;
 
     // Validate required fields
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'contractText is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractText is required', 400);
     }
 
     // Single field explanation
@@ -55,18 +51,14 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         extractedData[fieldName]
       );
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         fieldName,
-        explanation,
-      });
+        explanation });
     }
 
     // Full artifact explanation
     if (!extractedData || typeof extractedData !== 'object') {
-      return NextResponse.json(
-        { error: 'extractedData object is required for full explanation' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'extractedData object is required for full explanation', 400);
     }
 
     const requestData: ExplainabilityRequest = {
@@ -75,8 +67,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       extractedData,
       maxExplanationsPerField: body.maxExplanationsPerField || 3,
       includeAlternatives: body.includeAlternatives !== false,
-      includeSourceHighlighting: body.includeSourceHighlighting !== false,
-    };
+      includeSourceHighlighting: body.includeSourceHighlighting !== false };
 
     const result = await aiExplainabilityService.explainExtraction(requestData);
     
@@ -90,43 +81,32 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const report = aiExplainabilityService.generateAuditReport(result);
       return new NextResponse(report, {
         headers: {
-          'Content-Type': 'text/markdown',
-        },
-      });
+          'Content-Type': 'text/markdown' } });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       explanation: result,
       summary: {
         totalFields: Object.keys(result.fieldExplanations).length,
         averageConfidence: result.totalConfidence,
         fieldsWithWarnings: Object.values(result.fieldExplanations)
           .filter((e: { warnings?: unknown[] }) => e.warnings?.length).length,
-        modelUsed: result.modelUsed,
-      },
-    });
+        modelUsed: result.modelUsed } });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to generate explanation' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET - Get explanation capabilities and documentation
  */
-export async function GET(): Promise<NextResponse> {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return createSuccessResponse(ctx, {
     capabilities: {
       singleFieldExplanation: true,
       fullArtifactExplanation: true,
       sourceEvidence: true,
       alternativeInterpretations: true,
       confidenceBreakdown: true,
-      auditReportGeneration: true,
-    },
+      auditReportGeneration: true },
     supportedFormats: ['json', 'markdown'],
     warningTypes: [
       'ambiguous',
@@ -146,9 +126,7 @@ export async function GET(): Promise<NextResponse> {
         body: {
           contractText: 'string (required)',
           fieldName: 'string (required for single field)',
-          extractedData: '{ [fieldName]: value }',
-        },
-      },
+          extractedData: '{ [fieldName]: value }' } },
       fullExplanation: {
         method: 'POST',
         body: {
@@ -157,9 +135,5 @@ export async function GET(): Promise<NextResponse> {
           extractedData: 'object with all extracted fields',
           maxExplanationsPerField: 'number (default: 3)',
           includeAlternatives: 'boolean (default: true)',
-          format: '"json" | "markdown" (default: json)',
-        },
-      },
-    },
-  });
-}
+          format: '"json" | "markdown" (default: json)' } } } });
+});

@@ -53,6 +53,7 @@ Copy the JSON output and add it as GitHub secret `AZURE_CREDENTIALS`.
 ### 2. Configure DNS
 
 Point your domain to the Load Balancer IP:
+
 ```bash
 kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 ```
@@ -62,6 +63,7 @@ Create A record: `your-domain.com` → Load Balancer IP
 ### 3. Update Helm Values
 
 Edit `helm/contigo/values-azure.yaml`:
+
 ```yaml
 ingress:
   host: your-domain.com  # Your actual domain
@@ -91,6 +93,7 @@ kubectl exec -it deployment/contigo-web -n contigo -- npx prisma migrate deploy
 ## Monitoring
 
 ### View Logs
+
 ```bash
 # Web app logs
 kubectl logs -f deployment/contigo-web -n contigo
@@ -103,6 +106,7 @@ kubectl get pods -n contigo
 ```
 
 ### Check Health
+
 ```bash
 # Application health
 kubectl exec deployment/contigo-web -n contigo -- curl -s localhost:3000/api/health
@@ -114,6 +118,7 @@ kubectl describe pod -l app.kubernetes.io/name=contigo -n contigo
 ## Scaling
 
 ### Manual Scaling
+
 ```bash
 # Scale web pods
 kubectl scale deployment contigo-web -n contigo --replicas=3
@@ -123,7 +128,9 @@ kubectl scale deployment contigo-workers -n contigo --replicas=2
 ```
 
 ### Adjust Auto-scaling
+
 Edit `helm/contigo/values-azure.yaml`:
+
 ```yaml
 autoscaling:
   enabled: true
@@ -141,12 +148,14 @@ autoscaling:
 ## Troubleshooting
 
 ### Pod not starting
+
 ```bash
 kubectl describe pod <pod-name> -n contigo
 kubectl logs <pod-name> -n contigo --previous
 ```
 
 ### Database connection issues
+
 ```bash
 # Check secrets are mounted
 kubectl exec deployment/contigo-web -n contigo -- ls /mnt/secrets-store
@@ -156,6 +165,7 @@ kubectl exec deployment/contigo-web -n contigo -- printenv DATABASE_URL
 ```
 
 ### Ingress not working
+
 ```bash
 # Check ingress controller
 kubectl get pods -n ingress-nginx

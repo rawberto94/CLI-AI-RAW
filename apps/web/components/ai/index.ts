@@ -19,3 +19,7 @@ export { ModelRegistryDashboard } from './ModelRegistryDashboard';
 
 // Chat submodule
 export * from './chat';
+
+// New AI components
+export { AIActivityFeed } from './AIActivityFeed';
+export { AISuggestionFeedback, useSuggestionFeedback } from './AISuggestionFeedback';

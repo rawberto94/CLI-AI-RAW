@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { segmentManagementService } from 'data-orchestration/services';
-import { getServerSession } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const segmentService = new segmentManagementService(prisma);
 
@@ -11,26 +11,23 @@ const segmentService = new segmentManagementService(prisma);
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
 
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     const segment = await segmentService.getSegment(params.id, tenantId);
 
-    return NextResponse.json(segment);
+    return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to get segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 404 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Failed to get segment. Please try again.', 404);
   }
 }
 
@@ -40,21 +37,21 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
  */
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     const body = await request.json();
     
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
 
     const segment = await segmentService.updateSegment(
       params.id,
@@ -68,12 +65,9 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       }
     );
 
-    return NextResponse.json(segment);
+    return createSuccessResponse(ctx, segment);
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to update segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to update segment. Please try again.', 400);
   }
 }
 
@@ -83,27 +77,24 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
  */
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     // Get authenticated user from session
-    const session = await getServerSession();
-    const tenantId = session?.user?.tenantId || request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId || ctx.tenantId;
     
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
-    const userId = session?.user?.id || 'system';
+    const userId = ctx.userId || 'system';
 
     await segmentService.deleteSegment(params.id, tenantId, userId);
 
-    return NextResponse.json({ success: true });
+    return createSuccessResponse(ctx, { success: true });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to delete segment', details: error instanceof Error ? error.message : String(error) },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Failed to delete segment. Please try again.', 400);
   }
 }

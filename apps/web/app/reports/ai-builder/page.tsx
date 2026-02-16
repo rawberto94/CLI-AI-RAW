@@ -19,7 +19,7 @@ const formatAIContent = (content: string): string => {
     .replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900">$1</strong>')
     .replace(/\n/g, '<br />')
     .replace(/\[([^\]]+)\]\(\/contracts\/([^)]+)\)/g, 
-      '<a href="/contracts/$2" class="text-blue-600 hover:text-blue-800 hover:underline font-medium">$1</a>');
+      '<a href="/contracts/$2" class="text-violet-600 hover:text-violet-800 hover:underline font-medium">$1</a>');
 };
 import { 
   FileText, 
@@ -212,9 +212,9 @@ interface ReportResult {
 
 // Status color mapping
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  ACTIVE: 'bg-violet-100 text-violet-700 border-violet-200',
   PENDING: 'bg-amber-100 text-amber-700 border-amber-200',
-  DRAFT: 'bg-blue-100 text-blue-700 border-blue-200',
+  DRAFT: 'bg-violet-100 text-violet-700 border-violet-200',
   EXPIRED: 'bg-red-100 text-red-700 border-red-200',
   ARCHIVED: 'bg-slate-100 text-slate-700 border-slate-200',
 };
@@ -254,8 +254,8 @@ function _ScoreGauge({
   size?: 'sm' | 'md' | 'lg';
 }) {
   const colorMap = {
-    blue: { bg: 'from-blue-500 to-indigo-600', text: 'text-blue-600', track: 'bg-blue-100' },
-    green: { bg: 'from-green-500 to-emerald-600', text: 'text-green-600', track: 'bg-green-100' },
+    blue: { bg: 'from-violet-500 to-purple-600', text: 'text-violet-600', track: 'bg-violet-100' },
+    green: { bg: 'from-violet-500 to-violet-600', text: 'text-green-600', track: 'bg-green-100' },
     red: { bg: 'from-red-500 to-rose-600', text: 'text-red-600', track: 'bg-red-100' },
     yellow: { bg: 'from-yellow-500 to-amber-600', text: 'text-yellow-600', track: 'bg-yellow-100' },
   };
@@ -716,9 +716,9 @@ export default function AIReportBuilderPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       {/* Hero Header */}
-      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white">
+      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 text-white">
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -727,7 +727,7 @@ export default function AIReportBuilderPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">AI Report Builder</h1>
-                <p className="text-blue-100 mt-0.5">
+                <p className="text-violet-100 mt-0.5">
                   Generate intelligent insights across your contract portfolio
                 </p>
               </div>
@@ -790,7 +790,7 @@ export default function AIReportBuilderPage() {
               <Button
                 onClick={generateReport}
                 disabled={isGenerating}
-                className="bg-white text-indigo-600 hover:bg-blue-50 shadow-lg font-semibold"
+                className="bg-white text-violet-600 hover:bg-violet-50 shadow-lg font-semibold"
               >
                 {isGenerating ? (
                   <>
@@ -819,7 +819,7 @@ export default function AIReportBuilderPage() {
             exit={{ x: '100%' }}
             className="ml-auto w-full max-w-md bg-white shadow-2xl relative flex flex-col h-full"
           >
-            <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+            <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <FolderOpen className="h-5 w-5" />
@@ -829,7 +829,7 @@ export default function AIReportBuilderPage() {
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-blue-100 text-sm mt-1">Save and reuse filter configurations</p>
+              <p className="text-violet-100 text-sm mt-1">Save and reuse filter configurations</p>
             </div>
             
             {/* Save New Preset */}
@@ -841,7 +841,7 @@ export default function AIReportBuilderPage() {
                   placeholder="Preset name..."
                   value={newPresetName}
                   onChange={(e) => setNewPresetName(e.target.value)}
-                  className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                   onKeyDown={(e) => e.key === 'Enter' && saveCurrentPreset()}
                 />
                 <Button onClick={saveCurrentPreset} disabled={!newPresetName.trim()} size="sm">
@@ -903,7 +903,7 @@ export default function AIReportBuilderPage() {
                     <>
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mt-4">All Presets</p>
                       {savedPresets.filter(p => !p.isFavorite).map(preset => (
-                        <div key={preset.id} className="p-3 bg-white border rounded-lg hover:border-blue-300 transition-colors">
+                        <div key={preset.id} className="p-3 bg-white border rounded-lg hover:border-violet-300 transition-colors">
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-gray-900">{preset.name}</span>
                             <div className="flex items-center gap-1">
@@ -950,7 +950,7 @@ export default function AIReportBuilderPage() {
             exit={{ x: '100%' }}
             className="ml-auto w-full max-w-md bg-white shadow-2xl relative flex flex-col h-full"
           >
-            <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+            <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-pink-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <History className="h-5 w-5" />
@@ -960,7 +960,7 @@ export default function AIReportBuilderPage() {
                   <X className="h-5 w-5" />
                 </Button>
               </div>
-              <p className="text-purple-100 text-sm mt-1">View and restore previous reports</p>
+              <p className="text-violet-100 text-sm mt-1">View and restore previous reports</p>
             </div>
             
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
@@ -972,15 +972,15 @@ export default function AIReportBuilderPage() {
                 </div>
               ) : (
                 reportHistory.map((item, idx) => (
-                  <div key={item.id} className="p-3 bg-white border rounded-lg hover:border-purple-300 transition-colors">
+                  <div key={item.id} className="p-3 bg-white border rounded-lg hover:border-violet-300 transition-colors">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-gray-500">{new Date(item.generatedAt).toLocaleString()}</span>
-                      {idx === 0 && <Badge className="bg-purple-100 text-purple-700 text-xs">Latest</Badge>}
+                      {idx === 0 && <Badge className="bg-violet-100 text-violet-700 text-xs">Latest</Badge>}
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                      <div className="p-2 bg-blue-50 rounded">
+                      <div className="p-2 bg-violet-50 rounded">
                         <p className="text-xs text-gray-500">Contracts</p>
-                        <p className="font-bold text-blue-700">{item.summary.totalContracts}</p>
+                        <p className="font-bold text-violet-700">{item.summary.totalContracts}</p>
                       </div>
                       <div className="p-2 bg-green-50 rounded">
                         <p className="text-xs text-gray-500">Value</p>
@@ -1012,7 +1012,7 @@ export default function AIReportBuilderPage() {
             animate={{ scale: 1, opacity: 1 }}
             className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
           >
-            <div className="p-6 border-b bg-gradient-to-r from-green-500 to-teal-600 text-white">
+            <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-violet-600 text-white">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Bell className="h-5 w-5" />
@@ -1059,7 +1059,7 @@ export default function AIReportBuilderPage() {
                           className={cn(
                             "flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize",
                             scheduleConfig.frequency === freq
-                              ? "bg-blue-500 text-white"
+                              ? "bg-violet-500 text-white"
                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                           )}
                         >
@@ -1081,7 +1081,7 @@ export default function AIReportBuilderPage() {
                             className={cn(
                               "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
                               scheduleConfig.dayOfWeek === idx
-                                ? "bg-blue-500 text-white"
+                                ? "bg-violet-500 text-white"
                                 : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                             )}
                           >
@@ -1098,7 +1098,7 @@ export default function AIReportBuilderPage() {
                       <select
                         value={scheduleConfig.dayOfMonth || 1}
                         onChange={(e) => setScheduleConfig(prev => ({ ...prev, dayOfMonth: parseInt(e.target.value) }))}
-                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                       >
                         {Array.from({ length: 28 }, (_, i) => i + 1).map(d => (
                           <option key={d} value={d}>{d}{d === 1 ? 'st' : d === 2 ? 'nd' : d === 3 ? 'rd' : 'th'}</option>
@@ -1114,7 +1114,7 @@ export default function AIReportBuilderPage() {
                       type="time"
                       value={scheduleConfig.time}
                       onChange={(e) => setScheduleConfig(prev => ({ ...prev, time: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
                   
@@ -1128,7 +1128,7 @@ export default function AIReportBuilderPage() {
                         value={newEmail}
                         onChange={(e) => setNewEmail(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && addEmailToSchedule()}
-                        className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                       />
                       <Button onClick={addEmailToSchedule} disabled={!newEmail.includes('@')} size="sm">
                         <Plus className="h-4 w-4" />
@@ -1136,7 +1136,7 @@ export default function AIReportBuilderPage() {
                     </div>
                     <div className="flex gap-2 flex-wrap">
                       {scheduleConfig.emails.map(email => (
-                        <Badge key={email} className="bg-blue-100 text-blue-700 gap-1 pr-1">
+                        <Badge key={email} className="bg-violet-100 text-violet-700 gap-1 pr-1">
                           <Mail className="h-3 w-3" />
                           {email}
                           <button onClick={() => removeEmailFromSchedule(email)} className="hover:text-red-600 ml-1">
@@ -1156,7 +1156,7 @@ export default function AIReportBuilderPage() {
                           type="checkbox"
                           checked={scheduleConfig.includePdf}
                           onChange={(e) => setScheduleConfig(prev => ({ ...prev, includePdf: e.target.checked }))}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                         />
                         <span className="text-sm text-gray-700">PDF Report</span>
                       </label>
@@ -1165,7 +1165,7 @@ export default function AIReportBuilderPage() {
                           type="checkbox"
                           checked={scheduleConfig.includeExcel}
                           onChange={(e) => setScheduleConfig(prev => ({ ...prev, includeExcel: e.target.checked }))}
-                          className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          className="w-4 h-4 rounded border-gray-300 text-violet-600 focus:ring-violet-500"
                         />
                         <span className="text-sm text-gray-700">Excel Data</span>
                       </label>
@@ -1241,7 +1241,7 @@ export default function AIReportBuilderPage() {
               Filters:
             </span>
             {filters.suppliers.map(s => (
-              <Badge key={s} className="bg-blue-100 text-blue-700 hover:bg-blue-200 gap-1.5 pl-2 pr-1 py-1">
+              <Badge key={s} className="bg-violet-100 text-violet-700 hover:bg-violet-200 gap-1.5 pl-2 pr-1 py-1">
                 <Building2 className="h-3 w-3" />
                 {s}
                 <button onClick={() => removeFilter('suppliers', s)} className="ml-0.5 hover:text-red-600 rounded-full p-0.5 hover:bg-red-100">
@@ -1250,7 +1250,7 @@ export default function AIReportBuilderPage() {
               </Badge>
             ))}
             {filters.categories.map(c => (
-              <Badge key={c} className="bg-emerald-100 text-emerald-700 hover:bg-emerald-200 gap-1.5 pl-2 pr-1 py-1">
+              <Badge key={c} className="bg-violet-100 text-violet-700 hover:bg-violet-200 gap-1.5 pl-2 pr-1 py-1">
                 <FolderTree className="h-3 w-3" />
                 {c}
                 <button onClick={() => removeFilter('categories', c)} className="ml-0.5 hover:text-red-600 rounded-full p-0.5 hover:bg-red-100">
@@ -1259,7 +1259,7 @@ export default function AIReportBuilderPage() {
               </Badge>
             ))}
             {filters.years.map(y => (
-              <Badge key={y} className="bg-purple-100 text-purple-700 hover:bg-purple-200 gap-1.5 pl-2 pr-1 py-1">
+              <Badge key={y} className="bg-violet-100 text-violet-700 hover:bg-violet-200 gap-1.5 pl-2 pr-1 py-1">
                 <Calendar className="h-3 w-3" />
                 {y}
                 <button onClick={() => removeFilter('years', y)} className="ml-0.5 hover:text-red-600 rounded-full p-0.5 hover:bg-red-100">
@@ -1297,8 +1297,8 @@ export default function AIReportBuilderPage() {
         {!report && !isGenerating && (
           <Card className="border-2 border-dashed border-gray-200 bg-white/50">
             <CardContent className="py-20 text-center">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-2xl flex items-center justify-center">
-                <Sparkles className="h-10 w-10 text-blue-500" />
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-violet-100 to-purple-100 rounded-2xl flex items-center justify-center">
+                <Sparkles className="h-10 w-10 text-violet-500" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
                 Build Your AI Report
@@ -1309,7 +1309,7 @@ export default function AIReportBuilderPage() {
               <Button
                 onClick={generateReport}
                 disabled={isGenerating}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-lg"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 Generate Full Portfolio Report
@@ -1322,7 +1322,7 @@ export default function AIReportBuilderPage() {
         {isGenerating && (
           <Card className="border-0 shadow-xl bg-white">
             <CardContent className="py-20 text-center">
-              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center animate-pulse">
+              <div className="w-20 h-20 mx-auto mb-6 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center animate-pulse">
                 <Loader2 className="h-10 w-10 text-white animate-spin" />
               </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">
@@ -1332,9 +1332,9 @@ export default function AIReportBuilderPage() {
                 Analyzing contracts, calculating metrics, and generating insights. This may take a moment.
               </p>
               <div className="mt-6 flex justify-center gap-2">
-                <div className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <div className="w-2 h-2 bg-indigo-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <div className="w-2 h-2 bg-violet-600 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </CardContent>
           </Card>
@@ -1353,7 +1353,7 @@ export default function AIReportBuilderPage() {
                   </p>
                 )}
                 {isComparisonMode && comparisonReport && (
-                  <Badge className="mt-1 bg-purple-100 text-purple-700">
+                  <Badge className="mt-1 bg-violet-100 text-violet-700">
                     <GitCompare className="h-3 w-3 mr-1" />
                     Comparison Mode Active
                   </Badge>
@@ -1377,7 +1377,7 @@ export default function AIReportBuilderPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={clearComparison}
-                    className="gap-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                    className="gap-2 bg-violet-50 border-violet-200 text-violet-700 hover:bg-violet-100"
                   >
                     <X className="h-4 w-4" />
                     Clear Comparison
@@ -1424,9 +1424,9 @@ export default function AIReportBuilderPage() {
             
             {/* ============= COMPARISON SUMMARY (if in comparison mode) ============= */}
             {isComparisonMode && comparisonReport && (
-              <Card className="border-2 border-purple-200 bg-purple-50/50">
+              <Card className="border-2 border-violet-200 bg-violet-50/50">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-purple-800">
+                  <CardTitle className="text-sm font-semibold flex items-center gap-2 text-violet-800">
                     <GitCompare className="h-4 w-4" />
                     Comparison vs Previous Report
                   </CardTitle>
@@ -1509,7 +1509,7 @@ export default function AIReportBuilderPage() {
               </CardHeader>
               <CardContent className="pt-6">
                 <div className="grid grid-cols-3 gap-8">
-                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl border border-blue-100">
+                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-2xl border border-violet-100">
                     <div className="relative w-28 h-28 mb-4">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" fill="none" stroke="#e0e7ff" strokeWidth="8" />
@@ -1527,14 +1527,14 @@ export default function AIReportBuilderPage() {
                         </defs>
                       </svg>
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <span className="text-3xl font-bold text-blue-600">{report.summary.healthScore || 0}</span>
+                        <span className="text-3xl font-bold text-violet-600">{report.summary.healthScore || 0}</span>
                       </div>
                     </div>
                     <h4 className="text-lg font-semibold text-gray-900">Health Score</h4>
                     <p className="text-sm text-gray-500 text-center mt-1">Overall portfolio health based on renewal rates, value distribution, and risk factors</p>
                   </div>
                   
-                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-100">
+                  <div className="flex flex-col items-center p-6 bg-gradient-to-br from-violet-50 to-violet-50 rounded-2xl border border-green-100">
                     <div className="relative w-28 h-28 mb-4">
                       <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                         <circle cx="50" cy="50" r="40" fill="none" stroke="#d1fae5" strokeWidth="8" />
@@ -1589,13 +1589,13 @@ export default function AIReportBuilderPage() {
             
             {/* KPI Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card className="border-0 shadow-md bg-gradient-to-br from-blue-500 to-blue-600 text-white overflow-hidden relative">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-purple-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
                 <CardContent className="pt-6 relative">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-3xl font-bold">{report.summary.totalContracts}</p>
-                      <p className="text-blue-100 text-sm mt-1">Total Contracts</p>
+                      <p className="text-violet-100 text-sm mt-1">Total Contracts</p>
                     </div>
                     <div className="p-2 bg-white/20 rounded-lg">
                       <FileText className="h-5 w-5" />
@@ -1604,13 +1604,13 @@ export default function AIReportBuilderPage() {
                 </CardContent>
               </Card>
               
-              <Card className="border-0 shadow-md bg-gradient-to-br from-emerald-500 to-emerald-600 text-white overflow-hidden relative">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-violet-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
                 <CardContent className="pt-6 relative">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-3xl font-bold">{formatCurrency(report.summary.totalValue)}</p>
-                      <p className="text-emerald-100 text-sm mt-1">Total Value</p>
+                      <p className="text-violet-100 text-sm mt-1">Total Value</p>
                     </div>
                     <div className="p-2 bg-white/20 rounded-lg">
                       <DollarSign className="h-5 w-5" />
@@ -1619,13 +1619,13 @@ export default function AIReportBuilderPage() {
                 </CardContent>
               </Card>
               
-              <Card className="border-0 shadow-md bg-gradient-to-br from-purple-500 to-purple-600 text-white overflow-hidden relative">
+              <Card className="border-0 shadow-md bg-gradient-to-br from-violet-500 to-purple-600 text-white overflow-hidden relative">
                 <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-8 -mt-8" />
                 <CardContent className="pt-6 relative">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="text-3xl font-bold">{report.summary.averageDurationMonths}<span className="text-lg">mo</span></p>
-                      <p className="text-purple-100 text-sm mt-1">Avg Duration</p>
+                      <p className="text-violet-100 text-sm mt-1">Avg Duration</p>
                     </div>
                     <div className="p-2 bg-white/20 rounded-lg">
                       <Clock className="h-5 w-5" />
@@ -1653,9 +1653,9 @@ export default function AIReportBuilderPage() {
             {/* AI Summary */}
             {report.aiSummary && (
               <Card className="border-0 shadow-lg overflow-hidden">
-                <CardHeader className="bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-b">
+                <CardHeader className="bg-gradient-to-r from-violet-50 via-purple-50 to-purple-50 border-b">
                   <CardTitle className="flex items-center gap-2 text-gray-800">
-                    <div className="p-1.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg">
+                    <div className="p-1.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                       <Sparkles className="h-4 w-4 text-white" />
                     </div>
                     AI Executive Summary
@@ -1701,18 +1701,18 @@ export default function AIReportBuilderPage() {
                           <div className="flex items-start gap-4 p-4 rounded-xl bg-white border border-gray-100 hover:border-gray-200 hover:shadow-md transition-all">
                             <div className={cn(
                               "p-2.5 rounded-xl shrink-0",
-                              rec.type === 'cost' && "bg-emerald-100",
+                              rec.type === 'cost' && "bg-violet-100",
                               rec.type === 'risk' && "bg-red-100",
-                              rec.type === 'compliance' && "bg-blue-100",
-                              rec.type === 'efficiency' && "bg-purple-100",
+                              rec.type === 'compliance' && "bg-violet-100",
+                              rec.type === 'efficiency' && "bg-violet-100",
                               rec.type === 'strategic' && "bg-amber-100"
                             )}>
                               <TypeIcon className={cn(
                                 "h-5 w-5",
-                                rec.type === 'cost' && "text-emerald-600",
+                                rec.type === 'cost' && "text-violet-600",
                                 rec.type === 'risk' && "text-red-600",
-                                rec.type === 'compliance' && "text-blue-600",
-                                rec.type === 'efficiency' && "text-purple-600",
+                                rec.type === 'compliance' && "text-violet-600",
+                                rec.type === 'efficiency' && "text-violet-600",
                                 rec.type === 'strategic' && "text-amber-600"
                               )} />
                             </div>
@@ -1734,7 +1734,7 @@ export default function AIReportBuilderPage() {
                               </div>
                               <p className="text-sm text-gray-600 mb-2">{rec.description}</p>
                               <div className="flex items-center gap-4 text-xs">
-                                <span className="flex items-center gap-1 text-emerald-600 font-medium">
+                                <span className="flex items-center gap-1 text-violet-600 font-medium">
                                   <TrendingUp className="h-3 w-3" />
                                   Impact: {rec.potentialImpact}
                                 </span>
@@ -1760,7 +1760,7 @@ export default function AIReportBuilderPage() {
               <Card className="border-0 shadow-lg overflow-hidden">
                 <CardHeader className="border-b">
                   <CardTitle className="flex items-center gap-2 text-gray-800">
-                    <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+                    <div className="p-1.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
                       <Users className="h-4 w-4 text-white" />
                     </div>
                     Supplier Analysis
@@ -1792,7 +1792,7 @@ export default function AIReportBuilderPage() {
                                   idx === 0 ? "bg-amber-100 text-amber-700" :
                                   idx === 1 ? "bg-gray-200 text-gray-700" :
                                   idx === 2 ? "bg-orange-100 text-orange-700" :
-                                  "bg-blue-50 text-blue-600"
+                                  "bg-violet-50 text-violet-600"
                                 )}>
                                   {idx < 3 ? <Award className="h-4 w-4" /> : idx + 1}
                                 </div>
@@ -1805,7 +1805,7 @@ export default function AIReportBuilderPage() {
                             </td>
                             <td className="py-3 px-3 text-right text-gray-600">{formatCurrency(supplier.avgValue)}</td>
                             <td className="py-3 px-3 text-center">
-                              <span className="text-emerald-600 font-medium">{supplier.activeCount}</span>
+                              <span className="text-violet-600 font-medium">{supplier.activeCount}</span>
                             </td>
                             <td className="py-3 px-3 text-center">
                               {supplier.expiringCount > 0 ? (
@@ -1833,7 +1833,7 @@ export default function AIReportBuilderPage() {
                             </td>
                             <td className="py-3 px-3 text-center">
                               {supplier.trend === 'increasing' && (
-                                <span className="flex items-center justify-center text-emerald-600">
+                                <span className="flex items-center justify-center text-violet-600">
                                   <ArrowUpRight className="h-4 w-4" />
                                 </span>
                               )}
@@ -1864,7 +1864,7 @@ export default function AIReportBuilderPage() {
                 <Card className="border-0 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <LineChart className="h-4 w-4 text-blue-500" />
+                      <LineChart className="h-4 w-4 text-violet-500" />
                       Portfolio Trends
                     </CardTitle>
                     <CardDescription>Quarterly value and contract volume trends</CardDescription>
@@ -1883,7 +1883,7 @@ export default function AIReportBuilderPage() {
                                   <TooltipTrigger asChild>
                                     <div className="flex-1 flex flex-col items-center gap-1">
                                       <div 
-                                        className="w-full bg-gradient-to-t from-blue-500 to-indigo-500 rounded-t-md transition-all hover:from-blue-600 hover:to-indigo-600"
+                                        className="w-full bg-gradient-to-t from-violet-500 to-purple-500 rounded-t-md transition-all hover:from-violet-600 hover:to-purple-600"
                                         style={{ height: `${height}%`, minHeight: '4px' }}
                                       />
                                       <span className="text-[10px] text-gray-500">{trend.period}</span>
@@ -1904,7 +1904,7 @@ export default function AIReportBuilderPage() {
                         <div className="pt-4 border-t">
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-gray-600">Renewal Rate</span>
-                            <span className="text-lg font-bold text-emerald-600">{report.trends.renewalRate}%</span>
+                            <span className="text-lg font-bold text-violet-600">{report.trends.renewalRate}%</span>
                           </div>
                           <Progress value={report.trends.renewalRate} className="mt-2 h-2" />
                         </div>
@@ -1919,7 +1919,7 @@ export default function AIReportBuilderPage() {
                 <Card className="border-0 shadow-md">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                      <Target className="h-4 w-4 text-purple-500" />
+                      <Target className="h-4 w-4 text-violet-500" />
                       Industry Benchmarks
                     </CardTitle>
                     <CardDescription>Your portfolio vs industry standards</CardDescription>
@@ -1934,7 +1934,7 @@ export default function AIReportBuilderPage() {
                               <div className="flex items-center gap-2">
                                 <Badge className={cn(
                                   "text-[10px]",
-                                  benchmark.status === 'excellent' && "bg-emerald-100 text-emerald-700",
+                                  benchmark.status === 'excellent' && "bg-violet-100 text-violet-700",
                                   benchmark.status === 'above' && "bg-green-100 text-green-700",
                                   benchmark.status === 'at' && "bg-yellow-100 text-yellow-700",
                                   benchmark.status === 'below' && "bg-red-100 text-red-700"
@@ -1949,7 +1949,7 @@ export default function AIReportBuilderPage() {
                               <div 
                                 className={cn(
                                   "absolute h-full rounded-full transition-all",
-                                  benchmark.percentile >= 75 ? "bg-emerald-500" :
+                                  benchmark.percentile >= 75 ? "bg-violet-500" :
                                   benchmark.percentile >= 50 ? "bg-green-500" :
                                   benchmark.percentile >= 25 ? "bg-yellow-500" :
                                   "bg-red-500"
@@ -1983,7 +1983,7 @@ export default function AIReportBuilderPage() {
               <Card className="border-0 shadow-md">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <PieChart className="h-4 w-4 text-emerald-500" />
+                    <PieChart className="h-4 w-4 text-violet-500" />
                     Breakdown by Category
                   </CardTitle>
                 </CardHeader>
@@ -2000,7 +2000,7 @@ export default function AIReportBuilderPage() {
                         </div>
                         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 rounded-full transition-all duration-500"
+                            className="h-full bg-gradient-to-r from-violet-400 to-violet-600 rounded-full transition-all duration-500"
                             style={{ width: `${getCategoryPercentage(data.value)}%` }}
                           />
                         </div>
@@ -2017,23 +2017,23 @@ export default function AIReportBuilderPage() {
               <Card className="border-0 shadow-md">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-purple-500" />
+                    <Clock className="h-4 w-4 text-violet-500" />
                     Duration Analysis
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-700">{report.summary.shortestDurationMonths}</p>
-                      <p className="text-xs text-purple-600 mt-1">Shortest (mo)</p>
+                    <div className="text-center p-4 bg-violet-50 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-700">{report.summary.shortestDurationMonths}</p>
+                      <p className="text-xs text-violet-600 mt-1">Shortest (mo)</p>
                     </div>
-                    <div className="text-center p-4 bg-purple-100 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-800">{report.summary.averageDurationMonths}</p>
-                      <p className="text-xs text-purple-700 mt-1">Average (mo)</p>
+                    <div className="text-center p-4 bg-violet-100 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-800">{report.summary.averageDurationMonths}</p>
+                      <p className="text-xs text-violet-700 mt-1">Average (mo)</p>
                     </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <p className="text-2xl font-bold text-purple-700">{report.summary.longestDurationMonths}</p>
-                      <p className="text-xs text-purple-600 mt-1">Longest (mo)</p>
+                    <div className="text-center p-4 bg-violet-50 rounded-xl">
+                      <p className="text-2xl font-bold text-violet-700">{report.summary.longestDurationMonths}</p>
+                      <p className="text-xs text-violet-600 mt-1">Longest (mo)</p>
                     </div>
                   </div>
                   
@@ -2091,12 +2091,12 @@ export default function AIReportBuilderPage() {
                     <p className="text-2xl font-bold text-yellow-600">{report.riskAnalysis.autoRenewalCount}</p>
                     <p className="text-[10px] text-yellow-600 mt-1 font-medium">Auto-Renewal</p>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-                    <div className="w-10 h-10 mx-auto mb-2 bg-purple-500 rounded-full flex items-center justify-center">
+                  <div className="text-center p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl border border-violet-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-violet-500 rounded-full flex items-center justify-center">
                       <DollarSign className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-2xl font-bold text-purple-600">{report.riskAnalysis.highValueAtRisk}</p>
-                    <p className="text-[10px] text-purple-500 mt-1 font-medium">High-Value Risk</p>
+                    <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.highValueAtRisk}</p>
+                    <p className="text-[10px] text-violet-500 mt-1 font-medium">High-Value Risk</p>
                   </div>
                   <div className="text-center p-4 bg-gradient-to-br from-rose-50 to-rose-100 rounded-xl border border-rose-200">
                     <div className="w-10 h-10 mx-auto mb-2 bg-rose-500 rounded-full flex items-center justify-center">
@@ -2105,19 +2105,19 @@ export default function AIReportBuilderPage() {
                     <p className="text-2xl font-bold text-rose-600">{report.riskAnalysis.overdueContracts || 0}</p>
                     <p className="text-[10px] text-rose-500 mt-1 font-medium">Overdue</p>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                    <div className="w-10 h-10 mx-auto mb-2 bg-blue-500 rounded-full flex items-center justify-center">
+                  <div className="text-center p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl border border-violet-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-violet-500 rounded-full flex items-center justify-center">
                       <FileText className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-2xl font-bold text-blue-600">{report.riskAnalysis.missingCriticalData || 0}</p>
-                    <p className="text-[10px] text-blue-500 mt-1 font-medium">Missing Data</p>
+                    <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.missingCriticalData || 0}</p>
+                    <p className="text-[10px] text-violet-500 mt-1 font-medium">Missing Data</p>
                   </div>
-                  <div className="text-center p-4 bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl border border-indigo-200">
-                    <div className="w-10 h-10 mx-auto mb-2 bg-indigo-500 rounded-full flex items-center justify-center">
+                  <div className="text-center p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl border border-indigo-200">
+                    <div className="w-10 h-10 mx-auto mb-2 bg-violet-500 rounded-full flex items-center justify-center">
                       <Layers className="h-5 w-5 text-white" />
                     </div>
-                    <p className="text-2xl font-bold text-indigo-600">{report.riskAnalysis.concentrationRisk || 0}%</p>
-                    <p className="text-[10px] text-indigo-500 mt-1 font-medium">Concentration</p>
+                    <p className="text-2xl font-bold text-violet-600">{report.riskAnalysis.concentrationRisk || 0}%</p>
+                    <p className="text-[10px] text-violet-500 mt-1 font-medium">Concentration</p>
                   </div>
                 </div>
               </CardContent>
@@ -2131,7 +2131,7 @@ export default function AIReportBuilderPage() {
               >
                 <CardTitle className="text-sm font-semibold flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-blue-500" />
+                    <FileText className="h-4 w-4 text-violet-500" />
                     Contract Details ({report.contracts.length})
                   </div>
                   <ChevronDown className={cn(
@@ -2169,7 +2169,7 @@ export default function AIReportBuilderPage() {
                                   <TooltipProvider>
                                     <Tooltip>
                                       <TooltipTrigger>
-                                        <RefreshCw className="h-3.5 w-3.5 text-blue-500" />
+                                        <RefreshCw className="h-3.5 w-3.5 text-violet-500" />
                                       </TooltipTrigger>
                                       <TooltipContent>Auto-renewal enabled</TooltipContent>
                                     </Tooltip>
@@ -2211,7 +2211,7 @@ export default function AIReportBuilderPage() {
                             </td>
                             <td className="py-3 px-2 text-right">
                               <Link href={`/contracts/${contract.id}`}>
-                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 hover:bg-blue-50 hover:text-blue-600">
+                                <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 hover:bg-violet-50 hover:text-violet-600">
                                   <Eye className="h-3 w-3" />
                                   View
                                 </Button>

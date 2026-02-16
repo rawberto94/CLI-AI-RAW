@@ -171,9 +171,9 @@ export function CalendarPicker({
                 className={`
                   w-full h-full flex items-center justify-center text-sm rounded-lg transition-colors
                   ${isSameDay(date, value || null)
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-violet-600 text-white'
                     : isSameDay(date, new Date())
-                    ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-400'
+                    ? 'bg-violet-100 dark:bg-violet-900 text-violet-600 dark:text-violet-400'
                     : isHighlighted(date)
                     ? 'bg-yellow-100 dark:bg-yellow-900 text-yellow-700 dark:text-yellow-300'
                     : isDisabled(date)
@@ -196,7 +196,7 @@ export function CalendarPicker({
           setViewDate(today);
           onChange?.(today);
         }}
-        className="w-full mt-4 py-2 text-sm text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950 rounded-lg transition-colors"
+        className="w-full mt-4 py-2 text-sm text-violet-600 hover:bg-violet-50 dark:hover:bg-violet-950 rounded-lg transition-colors"
       >
         Today
       </button>
@@ -290,9 +290,9 @@ export function DateRangePicker({
                     className={`
                       w-full h-full flex items-center justify-center text-sm transition-colors
                       ${isStart || isEnd
-                        ? 'bg-blue-600 text-white rounded-lg'
+                        ? 'bg-violet-600 text-white rounded-lg'
                         : inRange
-                        ? 'bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300'
+                        ? 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300'
                         : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg'
                       }
                       ${isStart ? 'rounded-r-none' : ''}
@@ -340,7 +340,7 @@ export function DateRangePicker({
         </div>
         <button
           onClick={() => onChange?.({ start: null, end: null })}
-          className="text-sm text-blue-600 hover:underline"
+          className="text-sm text-violet-600 hover:underline"
         >
           Clear
         </button>
@@ -511,7 +511,7 @@ export function DateInput({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -588,7 +588,7 @@ export function TimeInput({
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}

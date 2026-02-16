@@ -74,7 +74,7 @@ export function FinancialMetricsCards() {
       value: formatCurrency(metrics.totalAnnualSpend),
       icon: DollarSign,
       description: 'On tracked rates',
-      color: 'text-blue-600',
+      color: 'text-violet-600',
     },
     {
       title: 'Savings Identified',
@@ -88,7 +88,7 @@ export function FinancialMetricsCards() {
       value: formatCurrency(metrics.totalSavingsRealized),
       icon: Target,
       description: `${metrics.savingsRealizationRate.toFixed(0)}% of identified`,
-      color: 'text-emerald-600',
+      color: 'text-violet-600',
     },
     {
       title: 'Avg Rate vs Market',

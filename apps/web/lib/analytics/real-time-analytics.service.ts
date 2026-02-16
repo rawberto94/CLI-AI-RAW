@@ -169,7 +169,7 @@ export class RealTimeAnalyticsService {
   // --------------------------------------------------------------------------
 
   private async initializeRedis(): Promise<void> {
-    const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}`;
+    const redisUrl = process.env.REDIS_URL || `redis://${process.env.REDIS_HOST}:${process.env.REDIS_PORT || 6379}`;
     
     try {
       this.redis = new Redis(redisUrl, {

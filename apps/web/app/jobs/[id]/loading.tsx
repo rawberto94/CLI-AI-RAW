@@ -31,10 +31,10 @@ function OrbitingIcon({ icon: Icon, delay, radius }: OrbitingIconProps) {
       }}
     >
       <div
-        className="absolute w-10 h-10 rounded-xl bg-white shadow-lg border border-teal-100 flex items-center justify-center"
+        className="absolute w-10 h-10 rounded-xl bg-white shadow-lg border border-violet-100 flex items-center justify-center"
         style={{ top: 0, left: '50%', transform: 'translateX(-50%)' }}
       >
-        <Icon className="w-5 h-5 text-teal-600" />
+        <Icon className="w-5 h-5 text-violet-600" />
       </div>
     </motion.div>
   );
@@ -58,14 +58,14 @@ export default function JobDetailsLoading() {
         {/* Orbiting container */}
         <div className="relative w-48 h-48">
           {/* Orbit path */}
-          <div className="absolute inset-4 rounded-full border-2 border-dashed border-teal-200 opacity-50" />
+          <div className="absolute inset-4 rounded-full border-2 border-dashed border-violet-200 opacity-50" />
 
           {/* Main icon */}
           <div className="absolute inset-0 flex items-center justify-center">
             <motion.div
               animate={{ scale: [1, 1.05, 1] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-600 shadow-2xl flex items-center justify-center"
+              className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-2xl flex items-center justify-center"
             >
               <FileText className="w-10 h-10 text-white" />
             </motion.div>
@@ -84,7 +84,7 @@ export default function JobDetailsLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-2xl font-bold bg-gradient-to-r from-teal-600 to-cyan-600 bg-clip-text text-transparent">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Loading Job Details
           </h2>
           <p className="mt-2 text-gray-500 flex items-center gap-1">

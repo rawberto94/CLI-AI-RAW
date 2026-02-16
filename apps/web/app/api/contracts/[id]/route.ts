@@ -8,7 +8,6 @@
  * - Consistent error handling
  */
 
-import { NextResponse } from "next/server";
 import { unlink } from "fs/promises";
 import { prisma } from "@/lib/prisma";
 import { existsSync } from "fs";
@@ -19,6 +18,7 @@ import { safeDeleteContract } from "@/lib/services/contract-deletion.service";
 import { contractUpdateSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -34,7 +34,7 @@ interface ExtractedDataArtifact {
   [key: string]: unknown;
 }
 
-interface ContractChild {
+interface _ContractChild {
   id: string;
   contractTitle?: string | null;
   contractType?: string | null;
@@ -136,6 +136,10 @@ export async function GET(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   const startTime = Date.now();
 
@@ -143,13 +147,13 @@ export async function GET(
     const contractId = params.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     const tenantId = await getServerTenantId();
+    
+    // Debug log
+    console.log(`[GET /api/contracts/${contractId}] Resolved tenant: ${tenantId}`);
 
     // Get contract with parent and child relationships
     const contract = await prisma.contract.findFirst({
@@ -158,6 +162,29 @@ export async function GET(
         tenantId: tenantId,
       },
       include: {
+        contractMetadata: {
+          select: {
+            dataQualityScore: true,
+            riskScore: true,
+            complexityScore: true,
+            complianceStatus: true,
+            artifactSummary: true,
+            aiSummary: true,
+            aiKeyInsights: true,
+            aiRiskFactors: true,
+            aiRecommendations: true,
+            lastAiAnalysis: true,
+            aiAnalysisVersion: true,
+            priority: true,
+            importance: true,
+            department: true,
+            negotiationStatus: true,
+            performanceScore: true,
+            renewalPriority: true,
+            renewalDeadline: true,
+            searchKeywords: true,
+          },
+        },
         parentContract: {
           select: {
             id: true,
@@ -228,10 +255,7 @@ export async function GET(
     }
 
     if (!contract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Get artifacts directly from database
@@ -276,12 +300,131 @@ export async function GET(
     };
 
     // Check if we have real processing results
-    const hasRealResults =
+    const _hasRealResults =
       contractData.extractedData && contractData.status === "completed";
 
     // Add some computed fields for the UI
     const enrichedData = {
       ...contractData,
+
+      // Contract metadata from DB (needed by useContractMetadata hook)
+      totalValue: contract.totalValue ? Number(contract.totalValue) : null,
+      currency: contract.currency || null,
+      clientName: contract.clientName || null,
+      supplierName: contract.supplierName || null,
+      contractTitle: contract.contractTitle || null,
+      document_title: contract.contractTitle || null,
+      description: contract.description || null,
+      effectiveDate: contract.effectiveDate?.toISOString() || null,
+      expirationDate: contract.expirationDate?.toISOString() || null,
+
+      // Pass through start/end dates in BOTH camelCase and snake_case so frontend can find them
+      startDate: contract.startDate?.toISOString?.() ?? contract.effectiveDate?.toISOString() ?? null,
+      endDate: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
+      start_date: contract.startDate?.toISOString?.() ?? contract.effectiveDate?.toISOString() ?? null,
+      end_date: contract.endDate?.toISOString?.() ?? contract.expirationDate?.toISOString() ?? null,
+      termination_date: (contract as any).terminationDate?.toISOString?.() ?? null,
+
+      // Enterprise metadata from AI processing (includes external_parties, signature info, etc.)
+      aiMetadata: (contract as any).aiMetadata || null,
+
+      // Contract type from DB (frontend checks this for type display)
+      contractType: contract.contractType || null,
+
+      // Build contract_short_description server-side for reliability
+      contract_short_description: (() => {
+        const overviewArt = artifactsByType['overview'] || artifactsByType['metadata'];
+        const execArt = artifactsByType['executive_summary'];
+        // Prefer executive summary (should be prose)
+        const execText = execArt?.executiveSummary || execArt?.summary;
+        if (execText && typeof execText === 'string' && execText.length > 80 && !execText.startsWith('STATEMENT OF WORK.')) {
+          return execText;
+        }
+        // Overview summary
+        const overviewText = overviewArt?.summary;
+        if (overviewText && typeof overviewText === 'string' && overviewText.length > 80 && !overviewText.startsWith('STATEMENT OF WORK.')) {
+          return overviewText;
+        }
+        // DB description
+        if (contract.description) return contract.description;
+        return null;
+      })(),
+
+      // Build external_parties array directly so the hook finds it immediately
+      external_parties: (() => {
+        const parties: Array<{ legalName: string; role: string }> = [];
+        const unwrapPartyVal = (v: any) => (v && typeof v === 'object' && 'value' in v) ? v.value : v;
+        const addParty = (name: any, role: string) => {
+          const n = typeof name === 'string' ? name.trim() : '';
+          if (n && n.length > 1 && !parties.some(p => p.legalName === n)) parties.push({ legalName: n, role });
+        };
+        // 1. Try OVERVIEW artifact parties
+        const overviewArtifact = artifactsByType['overview'] || artifactsByType['metadata'];
+        if (overviewArtifact?.parties && Array.isArray(overviewArtifact.parties)) {
+          overviewArtifact.parties.forEach((p: any) => {
+            const name = unwrapPartyVal(p.legalName) || unwrapPartyVal(p.name);
+            if (name) addParty(name, unwrapPartyVal(p.role) || '');
+          });
+        }
+        // 2. Try PARTIES artifact
+        if (parties.length === 0) {
+          const partiesArtifact = artifactsByType['parties'];
+          if (partiesArtifact?.parties && Array.isArray(partiesArtifact.parties)) {
+            partiesArtifact.parties.forEach((p: any) => {
+              const name = unwrapPartyVal(p.legalName) || unwrapPartyVal(p.name);
+              if (name) addParty(name, unwrapPartyVal(p.role) || '');
+            });
+          }
+        }
+        // 3. Try enterprise metadata (aiMetadata.external_parties from worker)
+        if (parties.length === 0) {
+          const aiMeta = (contract as any).aiMetadata;
+          if (aiMeta?.external_parties && Array.isArray(aiMeta.external_parties)) {
+            aiMeta.external_parties.forEach((p: any) => {
+              const name = p.legalName || p.name;
+              if (name) addParty(name, p.role || '');
+            });
+          }
+        }
+        // 4. Fallback to DB fields
+        if (parties.length === 0) {
+          if (contract.clientName) addParty(contract.clientName, 'Client');
+          if (contract.supplierName) addParty(contract.supplierName, 'Service Provider');
+        }
+        // 5. Parse from any available text (artifact preview, summary, or ingestion text)
+        if (parties.length === 0) {
+          const textSources = [
+            overviewArtifact?.documentInfo?.preview,
+            overviewArtifact?.rawText,
+            overviewArtifact?.summary,
+            artifactsByType['ingestion']?.text,
+            artifactsByType['ingestion']?.rawText,
+          ].filter(Boolean).join('\n');
+          if (textSources.length > 10) {
+            // "between X and Y" pattern (most common in contracts)
+            const betweenMatch = textSources.match(/(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()-]{2,80}?)\s*(?:\(|,|\n)/i);
+            if (betweenMatch) {
+              addParty(betweenMatch[1].replace(/\s+$/, ''), 'Party');
+              addParty(betweenMatch[2].replace(/\s+$/, ''), 'Party');
+            }
+            // "Client: X" / "Provider: X" patterns
+            if (parties.length === 0) {
+              const labelPatterns = [
+                { re: /(?:Client|Buyer|Customer|Auftraggeber|Mandant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Client' },
+                { re: /(?:Service Provider|Vendor|Supplier|Provider|Contractor|Auftragnehmer|Lieferant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Service Provider' },
+                { re: /(?:Party\s*A|First Party|Licensor|Landlord)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Party A' },
+                { re: /(?:Party\s*B|Second Party|Licensee|Tenant)\s*[:.]\s*(.+?)(?:\n|$)/i, role: 'Party B' },
+              ];
+              for (const { re, role } of labelPatterns) {
+                const m = textSources.match(re);
+                if (m) addParty(m[1].replace(/[,;]+$/, '').trim(), role);
+              }
+            }
+          }
+        }
+        return parties.length > 0 ? parties : undefined;
+      })(),
+
       processingDuration: contractData.processing.completedAt
         ? new Date(contractData.processing.completedAt).getTime() -
           new Date(contractData.processing.startTime).getTime()
@@ -372,7 +515,7 @@ export async function GET(
         ? contractData.extractedData.find(
             (a: ExtractedDataArtifact) => a.type === "OVERVIEW" || a.type === "metadata"
           )?.data
-        : contractData.extractedData?.metadata,
+        : contractData.extractedData?.overview || contractData.extractedData?.metadata,
       risk: Array.isArray(contractData.extractedData)
         ? contractData.extractedData.find(
             (a: ExtractedDataArtifact) => a.type === "RISK" || a.type === "risk"
@@ -445,6 +588,24 @@ export async function GET(
       relationshipNote: contract.relationshipNote,
       linkedAt: contract.linkedAt?.toISOString(),
       
+      // Contract Type & AI Classification
+      contractType: contract.contractType || null,
+      contractSubtype: contract.contractSubtype || null,
+      classificationConf: contract.classificationConf || null,
+      classificationMeta: contract.classificationMeta || null,
+      
+      // Signature & Document Classification (from DB columns)
+      signature_date: contract.signatureDate?.toISOString() || null,
+      signature_status: contract.signatureStatus || 'unknown',
+      signature_required_flag: contract.signatureRequiredFlag ?? false,
+      document_classification: contract.documentClassification || 'contract',
+      document_classification_warning: (contract as any).documentClassificationWarning || null,
+      
+      // Identification & Ownership fields from DB
+      jurisdiction: contract.jurisdiction || null,
+      notice_period: contract.noticePeriodDays ? `${contract.noticePeriodDays} days` : null,
+      notice_period_days: contract.noticePeriodDays || null,
+      
       // Taxonomy Category Classification
       category: categoryInfo,
       categoryL1: contract.categoryL1,
@@ -454,11 +615,36 @@ export async function GET(
       
       // Raw text for intelligent analysis
       rawText: contract.rawText || null,
+      
+      // AI-powered metadata & quality scores (from ContractMetadata)
+      qualityMetrics: contract.contractMetadata ? {
+        dataQualityScore: contract.contractMetadata.dataQualityScore,
+        riskScore: contract.contractMetadata.riskScore,
+        complexityScore: contract.contractMetadata.complexityScore,
+        complianceStatus: contract.contractMetadata.complianceStatus,
+        performanceScore: contract.contractMetadata.performanceScore,
+        priority: contract.contractMetadata.priority,
+        importance: contract.contractMetadata.importance,
+        department: contract.contractMetadata.department,
+        negotiationStatus: contract.contractMetadata.negotiationStatus,
+        renewalPriority: contract.contractMetadata.renewalPriority,
+        renewalDeadline: contract.contractMetadata.renewalDeadline,
+        lastAiAnalysis: contract.contractMetadata.lastAiAnalysis,
+        aiAnalysisVersion: contract.contractMetadata.aiAnalysisVersion,
+      } : null,
+      aiInsights: contract.contractMetadata ? {
+        summary: contract.contractMetadata.aiSummary,
+        keyInsights: contract.contractMetadata.aiKeyInsights,
+        riskFactors: contract.contractMetadata.aiRiskFactors,
+        recommendations: contract.contractMetadata.aiRecommendations,
+        artifactSummary: contract.contractMetadata.artifactSummary,
+        searchKeywords: contract.contractMetadata.searchKeywords,
+      } : null,
     };
 
     const responseTime = Date.now() - startTime;
 
-    return NextResponse.json(enrichedData, {
+    return createSuccessResponse(ctx, enrichedData, {
       headers: {
         "X-Response-Time": `${responseTime}ms`,
         "X-Data-Source": "data-orchestration",
@@ -466,13 +652,7 @@ export async function GET(
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to fetch contract details",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -497,6 +677,10 @@ export async function PUT(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   try {
     const contractId = params.id;
@@ -506,31 +690,16 @@ export async function PUT(
     try {
       updates = contractUpdateSchema.parse(body);
     } catch (error) {
-      if (error instanceof ZodError) {
-        return NextResponse.json(
-          {
-            error: "Validation failed",
-            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
-          },
-          { status: 400 }
-        );
-      }
-      throw error;
+      return handleApiError(ctx, error);
     }
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get tenant ID for isolation
     const tenantId = await getServerTenantId();
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
     // Verify contract exists and belongs to tenant
@@ -539,10 +708,7 @@ export async function PUT(
     });
 
     if (!existingContract) {
-      return NextResponse.json(
-        { error: "Contract not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Map allowed fields to Prisma schema fields
@@ -592,18 +758,12 @@ export async function PUT(
       console.error('[ContractUpdate] Semantic cache invalidation error:', err);
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: updatedContract,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to update contract",
-        details: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -612,34 +772,29 @@ export async function DELETE(
   req: Request,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const params = await context.params;
   try {
     const contractId = params.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get tenant ID for isolation
     const tenantId = await getServerTenantId();
     if (!tenantId) {
-      return NextResponse.json(
-        { error: "Tenant ID is required" },
-        { status: 401 }
-      );
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Tenant ID is required', 401);
     }
 
     // Use safe deletion service with cascade cleanup
     const result = await safeDeleteContract(contractId, tenantId);
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || "Failed to delete contract" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', result.error, 400);
     }
 
     // Invalidate semantic cache for this contract (chatbot won't reference deleted contract)
@@ -662,18 +817,12 @@ export async function DELETE(
       // Legacy file cleanup is optional
     }
 
-    return NextResponse.json({ 
+    return createSuccessResponse(ctx, { 
       message: "Contract deleted successfully",
       deletedRecords: result.deletedRecords
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to delete contract",
-        details: getErrorMessage(error)
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 

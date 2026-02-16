@@ -54,15 +54,15 @@ interface AICategorizationCardProps {
 // ============================================================================
 
 const CONTRACT_TYPE_LABELS: Record<ContractTypeCategory, { label: string; color: string }> = {
-  MSA: { label: 'Master Service Agreement', color: 'bg-blue-100 text-blue-700' },
-  SOW: { label: 'Statement of Work', color: 'bg-indigo-100 text-indigo-700' },
-  NDA: { label: 'Non-Disclosure Agreement', color: 'bg-purple-100 text-purple-700' },
-  SLA: { label: 'Service Level Agreement', color: 'bg-cyan-100 text-cyan-700' },
+  MSA: { label: 'Master Service Agreement', color: 'bg-violet-100 text-violet-700' },
+  SOW: { label: 'Statement of Work', color: 'bg-violet-100 text-violet-700' },
+  NDA: { label: 'Non-Disclosure Agreement', color: 'bg-violet-100 text-violet-700' },
+  SLA: { label: 'Service Level Agreement', color: 'bg-violet-100 text-violet-700' },
   DPA: { label: 'Data Processing Agreement', color: 'bg-pink-100 text-pink-700' },
-  LICENSE: { label: 'License Agreement', color: 'bg-emerald-100 text-emerald-700' },
+  LICENSE: { label: 'License Agreement', color: 'bg-violet-100 text-violet-700' },
   EMPLOYMENT: { label: 'Employment Contract', color: 'bg-amber-100 text-amber-700' },
   CONSULTING: { label: 'Consulting Agreement', color: 'bg-violet-100 text-violet-700' },
-  VENDOR: { label: 'Vendor Agreement', color: 'bg-teal-100 text-teal-700' },
+  VENDOR: { label: 'Vendor Agreement', color: 'bg-violet-100 text-violet-700' },
   PURCHASE: { label: 'Purchase Agreement', color: 'bg-orange-100 text-orange-700' },
   LEASE: { label: 'Lease Agreement', color: 'bg-lime-100 text-lime-700' },
   PARTNERSHIP: { label: 'Partnership Agreement', color: 'bg-rose-100 text-rose-700' },
@@ -74,7 +74,7 @@ const CONTRACT_TYPE_LABELS: Record<ContractTypeCategory, { label: string; color:
 };
 
 const RISK_LEVEL_CONFIG: Record<RiskLevel, { label: string; color: string; icon: typeof Shield }> = {
-  LOW: { label: 'Low Risk', color: 'text-emerald-600 bg-emerald-50', icon: Shield },
+  LOW: { label: 'Low Risk', color: 'text-violet-600 bg-violet-50', icon: Shield },
   MEDIUM: { label: 'Medium Risk', color: 'text-amber-600 bg-amber-50', icon: AlertTriangle },
   HIGH: { label: 'High Risk', color: 'text-orange-600 bg-orange-50', icon: AlertTriangle },
   CRITICAL: { label: 'Critical Risk', color: 'text-rose-600 bg-rose-50', icon: XCircle },
@@ -187,7 +187,7 @@ export function AICategorizationCard({
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Tag className="h-4 w-4 text-blue-500" />
+            <Tag className="h-4 w-4 text-violet-500" />
             AI Contract Categorization
           </CardTitle>
           {displayConfidence && (
@@ -225,7 +225,7 @@ export function AICategorizationCard({
         {(isLoading || isQuickLoading) && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm">
-              <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+              <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
               <span>Analyzing contract with AI...</span>
             </div>
             <Progress value={isQuickLoading ? 70 : 50} className="h-1" />
@@ -350,7 +350,7 @@ export function AICategorizationCard({
 
                   <AnimatePresence>
                     {expanded && (
-                      <motion.div
+                      <motion.div key="expanded"
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
@@ -422,7 +422,7 @@ export function AICategorizationCard({
                                 .map(([key]) => (
                                   <div
                                     key={key}
-                                    className="flex items-center gap-1 text-xs text-emerald-600"
+                                    className="flex items-center gap-1 text-xs text-violet-600"
                                   >
                                     <CheckCircle2 className="h-3 w-3" />
                                     {key.replace(/^has/, '').replace(/([A-Z])/g, ' $1').trim()}

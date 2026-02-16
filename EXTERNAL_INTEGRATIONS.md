@@ -1,5 +1,9 @@
 # External Contract Source Integrations
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for current integration documentation. Retained for historical reference only.
+
+---
+
 This document provides comprehensive guidance for configuring and using the Contract Source Integration system, which enables automatic synchronization of contracts from external storage systems.
 
 ## Table of Contents
@@ -109,11 +113,13 @@ The Contract Source Integration system implements a **Pull Model** architecture 
 Connect to SharePoint Online sites and document libraries.
 
 **Requirements:**
+
 - Azure AD App Registration with SharePoint permissions
 - Application (client) ID and secret
 - SharePoint site URL
 
 **Permissions Required:**
+
 - `Sites.Read.All` - Read all site collections
 - `Files.Read.All` - Read files in all site collections
 
@@ -122,10 +128,12 @@ Connect to SharePoint Online sites and document libraries.
 Connect to OneDrive for Business or personal accounts.
 
 **Requirements:**
+
 - Azure AD App Registration with OneDrive permissions
 - OAuth 2.0 authorization flow
 
 **Permissions Required:**
+
 - `Files.Read.All` - Read user files
 - `offline_access` - Refresh token support
 
@@ -134,11 +142,13 @@ Connect to OneDrive for Business or personal accounts.
 Connect to Azure Storage accounts and containers.
 
 **Requirements:**
+
 - Storage account name
 - Container name
 - Authentication (Account Key, SAS Token, or Connection String)
 
 **Supported Authentication:**
+
 - Account Key (full access)
 - SAS Token (scoped access, recommended)
 - Connection String
@@ -148,11 +158,13 @@ Connect to Azure Storage accounts and containers.
 Connect to Amazon S3 buckets or S3-compatible services.
 
 **Requirements:**
+
 - Bucket name
 - AWS region
 - Access Key ID and Secret Access Key
 
 **IAM Permissions Required:**
+
 ```json
 {
   "Version": "2012-10-17",
@@ -177,11 +189,13 @@ Connect to Amazon S3 buckets or S3-compatible services.
 Connect to SFTP servers for file synchronization.
 
 **Requirements:**
+
 - Host and port
 - Username and password, OR
 - Username and SSH private key
 
 **Supported Authentication:**
+
 - Password authentication
 - SSH key authentication (RSA, ED25519)
 - SSH key with passphrase
@@ -191,6 +205,7 @@ Connect to SFTP servers for file synchronization.
 Connect to Google Drive folders.
 
 **Requirements:**
+
 - Google Cloud Service Account
 - Service account JSON key file
 - Folder ID to sync
@@ -249,10 +264,12 @@ Connect to Google Drive folders.
 #### Get Access Credentials
 
 **Option A: Account Key (Full Access)**
+
 1. Go to Storage account → Access keys
 2. Copy Key1 or Key2
 
 **Option B: SAS Token (Recommended)**
+
 1. Go to Storage account → Shared access signature
 2. Configure:
    - Allowed services: Blob
@@ -302,14 +319,18 @@ Connect to Google Drive folders.
 #### Prepare Credentials
 
 **Password Authentication:**
+
 - Host, port (usually 22)
 - Username and password
 
 **SSH Key Authentication:**
+
 1. Generate SSH key pair if needed:
+
    ```bash
    ssh-keygen -t ed25519 -f contigo_sync_key
    ```
+
 2. Add public key to server's `~/.ssh/authorized_keys`
 3. Keep private key secure
 
@@ -334,11 +355,13 @@ Connect to Google Drive folders.
 ### Endpoints
 
 #### List Sources
+
 ```http
 GET /api/contract-sources
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -362,6 +385,7 @@ GET /api/contract-sources
 ```
 
 #### Create Source
+
 ```http
 POST /api/contract-sources
 Content-Type: application/json
@@ -383,6 +407,7 @@ Content-Type: application/json
 ```
 
 #### Update Source
+
 ```http
 PUT /api/contract-sources
 Content-Type: application/json
@@ -396,11 +421,13 @@ Content-Type: application/json
 ```
 
 #### Delete Source
+
 ```http
 DELETE /api/contract-sources?id=source_123
 ```
 
 #### Test Connection
+
 ```http
 POST /api/contract-sources/test
 Content-Type: application/json
@@ -411,6 +438,7 @@ Content-Type: application/json
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -429,6 +457,7 @@ Content-Type: application/json
 ```
 
 #### Trigger Sync
+
 ```http
 POST /api/contract-sources/sync
 Content-Type: application/json
@@ -440,16 +469,19 @@ Content-Type: application/json
 ```
 
 **Sync Modes:**
+
 - `FULL` - Sync all files regardless of previous state
 - `INCREMENTAL` - Only sync new/modified files (based on hash/date)
 - `DELTA` - Use provider's delta API (SharePoint/OneDrive only)
 
 #### Get Sync History
+
 ```http
 GET /api/contract-sources/sync?sourceId=source_123&limit=10
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -473,6 +505,7 @@ GET /api/contract-sources/sync?sourceId=source_123&limit=10
 ```
 
 #### Browse Remote Files
+
 ```http
 GET /api/contract-sources/browse?sourceId=source_123&path=/contracts
 ```
@@ -715,21 +748,25 @@ import { SyncActivityFeed } from '@/components/contract-sources';
 #### "Connection Failed" Error
 
 **SharePoint/OneDrive:**
+
 - Verify tenant ID, client ID, and client secret are correct
 - Check that admin consent has been granted for API permissions
 - Ensure the site URL is correct and accessible
 
 **Azure Blob:**
+
 - Verify storage account name and container name
 - Check that the account key or SAS token is valid
 - Ensure the SAS token has read and list permissions
 
 **AWS S3:**
+
 - Verify bucket name and region
 - Check IAM user has correct permissions
 - Ensure the bucket exists and is accessible
 
 **SFTP:**
+
 - Verify host and port are correct
 - Check username and password/key
 - Ensure firewall allows connection from your server
@@ -737,6 +774,7 @@ import { SyncActivityFeed } from '@/components/contract-sources';
 #### "Auth Expired" Status
 
 For OAuth providers (SharePoint, OneDrive, Google Drive):
+
 1. Go to source settings
 2. Click "Reconnect" to re-authorize
 3. Complete the OAuth flow

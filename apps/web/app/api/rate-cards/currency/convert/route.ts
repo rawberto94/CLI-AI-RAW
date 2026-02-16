@@ -4,7 +4,8 @@
  * Converts currency amounts for rate card preview
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Simple conversion rates (in production, use a real-time FX API)
 const EXCHANGE_RATES: Record<string, { usd: number; chf: number }> = {
@@ -17,16 +18,12 @@ const EXCHANGE_RATES: Record<string, { usd: number; chf: number }> = {
   INR: { usd: 0.012, chf: 0.011 },
 };
 
-export async function POST(request: NextRequest) {
-  try {
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { amount, from } = body;
 
     if (!amount || !from) {
-      return NextResponse.json(
-        { error: 'amount and from currency are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'amount and from currency are required', 400);
     }
 
     const rate = EXCHANGE_RATES[from.toUpperCase()] ?? EXCHANGE_RATES['USD']!;
@@ -38,11 +35,5 @@ export async function POST(request: NextRequest) {
       originalCurrency: from,
     };
 
-    return NextResponse.json(converted);
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to convert currency' },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, converted);
+  });

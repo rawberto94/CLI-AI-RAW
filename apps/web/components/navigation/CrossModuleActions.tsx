@@ -45,11 +45,11 @@ interface CrossModuleActionsProps {
 
 const variantStyles = {
   primary: {
-    container: 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-100 hover:border-blue-200',
-    icon: 'bg-blue-100 text-blue-600',
-    text: 'text-blue-900',
-    description: 'text-blue-600',
-    arrow: 'text-blue-400 group-hover:text-blue-600',
+    container: 'bg-gradient-to-r from-violet-50 to-purple-50 border-violet-100 hover:border-violet-200',
+    icon: 'bg-violet-100 text-violet-600',
+    text: 'text-violet-900',
+    description: 'text-violet-600',
+    arrow: 'text-violet-400 group-hover:text-violet-600',
   },
   secondary: {
     container: 'bg-slate-50 border-slate-200 hover:border-slate-300',
@@ -73,7 +73,7 @@ const variantStyles = {
     arrow: 'text-red-400 group-hover:text-red-600',
   },
   success: {
-    container: 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-100 hover:border-green-200',
+    container: 'bg-gradient-to-r from-violet-50 to-violet-50 border-green-100 hover:border-green-200',
     icon: 'bg-green-100 text-green-600',
     text: 'text-green-900',
     description: 'text-green-600',
@@ -179,7 +179,7 @@ interface ModuleSummaryProps {
 export function ModuleSummary({ cards }: ModuleSummaryProps) {
   const cardVariants = {
     default: 'bg-white',
-    success: 'bg-gradient-to-br from-green-50 to-emerald-50',
+    success: 'bg-gradient-to-br from-violet-50 to-violet-50',
     warning: 'bg-gradient-to-br from-amber-50 to-orange-50',
     danger: 'bg-gradient-to-br from-red-50 to-rose-50',
   };

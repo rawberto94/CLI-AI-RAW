@@ -207,7 +207,7 @@ export const emailTemplates = {
             <strong>${data.requesterName}</strong> has requested your approval for:
           </p>
           
-          <div style="background: white; border-left: 4px solid #3b82f6; padding: 20px; margin: 20px 0;">
+          <div style="background: white; border-left: 4px solid #8b5cf6; padding: 20px; margin: 20px 0;">
             <h2 style="margin: 0 0 10px 0; color: #1f2937;">${data.contractTitle}</h2>
           </div>
           

@@ -1,27 +1,10 @@
-/**
- * Redirect: /suppliers → /analytics/suppliers
- * This page has been consolidated into Analytics → Supplier Performance
- */
+import SuppliersClient from './SuppliersClient';
 
-'use client';
+export const metadata = {
+  title: 'Vendor Management | ConTigo',
+  description: 'Manage supplier profiles, risk assessments, and contracts',
+};
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-
-export default function SuppliersRedirect() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace('/analytics/suppliers');
-  }, [router]);
-
-  return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-orange-50/30 to-amber-50/20">
-      <div className="text-center">
-        <div className="w-12 h-12 mx-auto mb-4 rounded-full border-4 border-orange-500 border-t-transparent animate-spin" />
-        <h2 className="text-xl font-semibold mb-2 bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">Redirecting...</h2>
-        <p className="text-muted-foreground">This page has moved to Analytics → Supplier Performance</p>
-      </div>
-    </div>
-  );
+export default function SuppliersPage() {
+  return <SuppliersClient />;
 }

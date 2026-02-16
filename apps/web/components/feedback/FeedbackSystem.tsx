@@ -260,19 +260,19 @@ function FeedbackItem({ feedback, onDismiss }: FeedbackItemProps) {
         };
       case 'info':
         return {
-          bg: 'bg-blue-50',
-          border: 'border-blue-200',
-          icon: 'text-blue-600',
-          title: 'text-blue-900',
-          message: 'text-blue-700',
+          bg: 'bg-violet-50',
+          border: 'border-violet-200',
+          icon: 'text-violet-600',
+          title: 'text-violet-900',
+          message: 'text-violet-700',
         };
       case 'progress':
         return {
-          bg: 'bg-purple-50',
-          border: 'border-purple-200',
-          icon: 'text-purple-600',
-          title: 'text-purple-900',
-          message: 'text-purple-700',
+          bg: 'bg-violet-50',
+          border: 'border-violet-200',
+          icon: 'text-violet-600',
+          title: 'text-violet-900',
+          message: 'text-violet-700',
         };
     }
   };
@@ -316,7 +316,7 @@ function FeedbackItem({ feedback, onDismiss }: FeedbackItemProps) {
             </div>
             <div className="h-2 bg-white/50 rounded-full overflow-hidden">
               <motion.div
-                className="h-full bg-purple-600"
+                className="h-full bg-violet-600"
                 initial={{ width: 0 }}
                 animate={{ width: `${feedback.progress}%` }}
                 transition={{ duration: 0.3 }}

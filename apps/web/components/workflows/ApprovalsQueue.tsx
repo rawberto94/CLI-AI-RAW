@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   CheckCircle2,
@@ -8,25 +8,18 @@ import {
   Clock,
   AlertTriangle,
   FileText,
-  User,
   Calendar,
-  ChevronRight,
-  Filter,
   Search,
-  MoreHorizontal,
-  MessageSquare,
   Eye,
   History,
   ArrowRight,
   Zap,
-  Users,
   Building2,
   DollarSign,
   Send,
   ThumbsUp,
   ThumbsDown,
   RotateCcw,
-  Bell,
   CheckCheck,
   Loader2,
   UserPlus,
@@ -41,7 +34,7 @@ import {
 import Link from 'next/link';
 import { getTenantId } from '@/lib/tenant';
 import { useDataMode } from '@/contexts/DataModeContext';
-import { useApprovalFlow } from '@/hooks/use-collaboration';
+// import { useApprovalFlow } from '@/hooks/use-collaboration';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -51,6 +44,13 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { ApprovalNotificationBell } from './ApprovalNotificationBell';
 import { DeadlineIndicator } from './DeadlineAlerts';
 import { CommentsThread } from './CommentsThread';
@@ -126,7 +126,7 @@ interface Comment {
 // Mock Data
 // ============================================================================
 
-const mockApprovals: ApprovalRequest[] = [
+const _mockApprovals: ApprovalRequest[] = [
   {
     id: 'a1',
     contractId: 'contract-005', // Link to actual contract
@@ -249,7 +249,7 @@ const getPriorityConfig = (priority: ApprovalRequest['priority']) => {
       glow: 'shadow-amber-100'
     };
     case 'low': return { 
-      color: 'bg-gradient-to-r from-green-100 to-green-50 text-green-700 border-green-200/50', 
+      color: 'bg-gradient-to-r from-violet-100 to-purple-50 text-green-700 border-green-200/50', 
       icon: Clock,
       glow: 'shadow-green-100'
     };
@@ -264,19 +264,19 @@ const getPriorityConfig = (priority: ApprovalRequest['priority']) => {
 const getTypeConfig = (type: ApprovalRequest['type']) => {
   switch (type) {
     case 'contract': return { 
-      color: 'bg-gradient-to-br from-blue-500 to-indigo-600', 
-      badgeColor: 'bg-blue-100/80 text-blue-700',
+      color: 'bg-gradient-to-br from-violet-500 to-purple-600', 
+      badgeColor: 'bg-violet-100/80 text-violet-700',
       label: 'New Contract', 
       icon: FileText 
     };
     case 'amendment': return { 
-      color: 'bg-gradient-to-br from-purple-500 to-fuchsia-600', 
-      badgeColor: 'bg-purple-100/80 text-purple-700',
+      color: 'bg-gradient-to-br from-violet-500 to-fuchsia-600', 
+      badgeColor: 'bg-violet-100/80 text-violet-700',
       label: 'Amendment', 
       icon: FileText 
     };
     case 'renewal': return { 
-      color: 'bg-gradient-to-br from-emerald-500 to-teal-600', 
+      color: 'bg-gradient-to-br from-violet-500 to-violet-600', 
       badgeColor: 'bg-green-100/80 text-green-700',
       label: 'Renewal', 
       icon: RotateCcw 
@@ -314,7 +314,7 @@ const getStatusConfig = (status: ApprovalRequest['status']) => {
       label: 'Rejected' 
     };
     case 'escalated': return { 
-      color: 'bg-purple-100/80 text-purple-700 border border-purple-200/50', 
+      color: 'bg-violet-100/80 text-violet-700 border border-violet-200/50', 
       icon: ArrowRight, 
       label: 'Escalated' 
     };
@@ -345,13 +345,13 @@ interface ApprovalCardProps {
   onToggleCheck: (e: React.MouseEvent) => void;
 }
 
-const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChecked, onSelect, onToggleCheck }) => {
+const ApprovalCard = memo<ApprovalCardProps>(function ApprovalCard({ approval, isSelected, isChecked, onSelect, onToggleCheck }) {
   const priority = getPriorityConfig(approval.priority);
   const type = getTypeConfig(approval.type);
   const status = getStatusConfig(approval.status);
   const TypeIcon = type.icon;
   const StatusIcon = status.icon;
-  const daysUntilDue = getDaysUntilDue(approval.dueDate);
+  const _daysUntilDue = getDaysUntilDue(approval.dueDate);
 
   return (
     <motion.div
@@ -360,10 +360,10 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
       onClick={onSelect}
       className={`p-4 rounded-xl border cursor-pointer transition-all duration-300 backdrop-blur-sm ${
         isSelected
-          ? 'border-indigo-400 bg-gradient-to-r from-indigo-50/80 to-purple-50/80 shadow-lg shadow-indigo-100/50 ring-2 ring-indigo-200/50'
+          ? 'border-indigo-400 bg-gradient-to-r from-violet-50/80 to-purple-50/80 shadow-lg shadow-violet-100/50 ring-2 ring-indigo-200/50'
           : approval.priority === 'urgent'
           ? 'border-red-200/50 bg-gradient-to-r from-red-50/50 to-rose-50/30 hover:border-red-300/70 hover:shadow-md hover:shadow-red-100/50'
-          : 'border-slate-200/50 bg-white/80 hover:border-indigo-200 hover:shadow-md hover:shadow-indigo-100/30'
+          : 'border-slate-200/50 bg-white/80 hover:border-indigo-200 hover:shadow-md hover:shadow-violet-100/30'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -373,8 +373,8 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
             onClick={onToggleCheck}
             className={`w-5 h-5 rounded-md border-2 flex-shrink-0 flex items-center justify-center transition-all mt-2.5 ${
               isChecked
-                ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-transparent text-white shadow-sm'
-                : 'border-slate-300 hover:border-indigo-400 hover:bg-indigo-50'
+                ? 'bg-gradient-to-br from-violet-500 to-purple-600 border-transparent text-white shadow-sm'
+                : 'border-slate-300 hover:border-indigo-400 hover:bg-violet-50'
             }`}
           >
             {isChecked && <CheckCircle2 className="w-3 h-3" />}
@@ -410,7 +410,7 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
               {approval.supplierName}
             </span>
             {approval.value && (
-              <span className="flex items-center gap-1 bg-emerald-50/80 text-emerald-700 px-2 py-0.5 rounded-md">
+              <span className="flex items-center gap-1 bg-violet-50/80 text-violet-700 px-2 py-0.5 rounded-md">
                 <DollarSign className="w-3 h-3" />
                 {approval.value.toLocaleString()}
               </span>
@@ -450,13 +450,13 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
           
           {/* Approver Avatars */}
           <div className="flex items-center justify-end mt-1 -space-x-2">
-            {approval.approvers.slice(0, 3).map((approver, idx) => (
+            {approval.approvers.slice(0, 3).map((approver, _idx) => (
               <div
                 key={approver.id}
                 className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center text-xs font-medium shadow-sm transition-transform hover:scale-110 hover:z-10 ${
-                  approver.status === 'approved' ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' :
+                  approver.status === 'approved' ? 'bg-gradient-to-br from-violet-400 to-violet-500 text-white' :
                   approver.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-rose-500 text-white' :
-                  approver.isCurrent ? 'bg-gradient-to-br from-indigo-400 to-purple-500 text-white ring-2 ring-indigo-200' :
+                  approver.isCurrent ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white ring-2 ring-indigo-200' :
                   'bg-slate-200 text-slate-600'
                 }`}
                 title={`${approver.name} - ${approver.status}`}
@@ -481,7 +481,7 @@ const ApprovalCard: React.FC<ApprovalCardProps> = ({ approval, isSelected, isChe
       )}
     </motion.div>
   );
-};
+});
 
 // ============================================================================
 // Detail Panel Component
@@ -503,7 +503,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
   const currentApprover = approval.approvers.find(a => a.isCurrent);
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-indigo-50/20">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-white to-purple-50/20">
       {/* Header */}
       <div className="p-6 bg-white/80 backdrop-blur-sm border-b border-slate-200/50">
         <div className="flex items-start gap-4">
@@ -525,12 +525,12 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
             </div>
             <div className="font-semibold text-slate-900">{approval.supplierName}</div>
           </div>
-          <div className="p-4 bg-gradient-to-br from-emerald-50 to-green-50/50 rounded-xl border border-emerald-200/50">
+          <div className="p-4 bg-gradient-to-br from-violet-50 to-purple-50/50 rounded-xl border border-violet-200/50">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="w-4 h-4 text-emerald-500" />
-              <span className="text-xs text-emerald-600 uppercase font-medium">Value</span>
+              <DollarSign className="w-4 h-4 text-violet-500" />
+              <span className="text-xs text-violet-600 uppercase font-medium">Value</span>
             </div>
-            <div className="font-semibold text-emerald-700">${approval.value?.toLocaleString() || 'N/A'}</div>
+            <div className="font-semibold text-violet-700">${approval.value?.toLocaleString() || 'N/A'}</div>
           </div>
           <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-xl border border-amber-200/50">
             <div className="flex items-center gap-2 mb-1">
@@ -544,13 +544,13 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
         {/* Contract Actions */}
         <div className="flex items-center gap-2 mt-5 flex-wrap">
           <Link href={`/contracts/${approval.contractId || approval.id}`}>
-            <button className="px-4 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg hover:shadow-blue-200 transition-all font-medium flex items-center gap-2 text-sm">
+            <button className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-200 transition-all font-medium flex items-center gap-2 text-sm">
               <Eye className="w-4 h-4" />
               View Contract
             </button>
           </Link>
           <Link href={`/contracts/${approval.contractId || approval.id}/redline`}>
-            <button className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-fuchsia-600 text-white rounded-xl hover:shadow-lg hover:shadow-purple-200 transition-all font-medium flex items-center gap-2 text-sm">
+            <button className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-fuchsia-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-200 transition-all font-medium flex items-center gap-2 text-sm">
               <Edit3 className="w-4 h-4" />
               Redline / Edit
             </button>
@@ -572,7 +572,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
       {/* Approval Timeline */}
       <div className="p-6 border-b border-slate-200/50 bg-white/50">
         <h3 className="text-sm font-semibold text-slate-700 uppercase mb-4 flex items-center gap-2">
-          <GitBranch className="w-4 h-4 text-indigo-500" />
+          <GitBranch className="w-4 h-4 text-violet-500" />
           Approval Workflow
         </h3>
         <div className="space-y-4">
@@ -585,9 +585,9 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
               className="flex items-center gap-3"
             >
               <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-sm font-semibold shadow-md transition-all ${
-                approver.status === 'approved' ? 'bg-gradient-to-br from-green-400 to-emerald-500 text-white' :
+                approver.status === 'approved' ? 'bg-gradient-to-br from-violet-400 to-violet-500 text-white' :
                 approver.status === 'rejected' ? 'bg-gradient-to-br from-red-400 to-rose-500 text-white' :
-                approver.isCurrent ? 'bg-gradient-to-br from-indigo-400 to-purple-500 text-white ring-4 ring-indigo-200/50' :
+                approver.isCurrent ? 'bg-gradient-to-br from-violet-400 to-purple-500 text-white ring-4 ring-indigo-200/50' :
                 'bg-slate-100 text-slate-400'
               }`}>
                 {approver.status === 'approved' ? <CheckCircle2 className="w-5 h-5" /> :
@@ -598,7 +598,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-slate-900">{approver.name}</span>
                   {approver.isCurrent && (
-                    <span className="px-2 py-0.5 bg-gradient-to-r from-indigo-100 to-purple-100 text-indigo-700 text-xs rounded-full font-medium">
+                    <span className="px-2 py-0.5 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 text-xs rounded-full font-medium">
                       Current Approver
                     </span>
                   )}
@@ -629,21 +629,21 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
 
       {/* Actions */}
       {approval.status === 'pending' && currentApprover && (
-        <div className="p-6 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-indigo-50/30">
+        <div className="p-6 border-t border-slate-200/50 bg-gradient-to-r from-slate-50 to-purple-50/30">
           <div className="mb-4">
             <label className="text-sm font-medium text-slate-600 mb-2 block">Add a comment (optional)</label>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               placeholder="Write your comment here..."
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-300 transition-all bg-white/80 backdrop-blur-sm"
+              className="w-full px-4 py-3 border border-slate-200 rounded-xl text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-indigo-300 transition-all bg-white/80 backdrop-blur-sm"
               rows={2}
             />
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <button
               onClick={onApprove}
-              className="flex-1 min-w-[140px] px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200 transition-all font-semibold flex items-center justify-center gap-2 text-sm"
+              className="flex-1 min-w-[140px] px-5 py-3 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-xl hover:shadow-lg hover:shadow-green-200 transition-all font-semibold flex items-center justify-center gap-2 text-sm"
             >
               <ThumbsUp className="w-4 h-4" />
               Approve
@@ -657,7 +657,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
             </button>
             <button
               onClick={onDelegate}
-              className="px-5 py-3 bg-gradient-to-r from-blue-100 to-indigo-100 text-indigo-700 rounded-xl hover:shadow-md transition-all font-semibold flex items-center gap-2 text-sm border border-indigo-200/50"
+              className="px-5 py-3 bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 rounded-xl hover:shadow-md transition-all font-semibold flex items-center gap-2 text-sm border border-indigo-200/50"
             >
               <UserPlus className="w-4 h-4" />
               Delegate
@@ -681,7 +681,7 @@ const DetailPanel: React.FC<DetailPanelProps> = ({ approval, onApprove, onReject
 // ============================================================================
 
 export const ApprovalsQueue: React.FC = () => {
-  const { isMockData } = useDataMode();
+  const { isMockData: _isMockData } = useDataMode();
   const crossModule = useCrossModuleInvalidation();
   const [approvals, setApprovals] = useState<ApprovalRequest[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -697,6 +697,11 @@ export const ApprovalsQueue: React.FC = () => {
   const [delegateNote, setDelegateNote] = useState('');
   const [bulkProcessing, setBulkProcessing] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  
+  // ENHANCED: Sorting state
+  const [sortBy, setSortBy] = useState<'urgency' | 'value' | 'age' | 'risk' | 'dueDate'>('urgency');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
   // Rejection dialog state
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
@@ -841,15 +846,62 @@ export const ApprovalsQueue: React.FC = () => {
   // Derive these before the keyboard effect uses them
   const selectedApproval = approvals.find(a => a.id === selectedId);
 
+  // ENHANCED: Filter and sort approvals
   const filteredApprovals = useMemo(() => {
-    return approvals.filter(a => {
+    // First filter
+    let result = approvals.filter(a => {
       if (filter === 'pending' && a.status !== 'pending') return false;
       if (filter === 'completed' && a.status === 'pending') return false;
       if (searchQuery && !a.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
           !a.supplierName.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [approvals, filter, searchQuery]);
+
+    // Then sort
+    result = [...result].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'urgency': {
+          // Urgency: priority first, then days until due
+          const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+          const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
+          if (priorityDiff !== 0) {
+            comparison = priorityDiff;
+          } else {
+            // Same priority, sort by due date
+            const dueDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+            comparison = dueDiff;
+          }
+          break;
+        }
+        case 'value': {
+          comparison = (b.value || 0) - (a.value || 0);
+          break;
+        }
+        case 'age': {
+          // Age: oldest first (most overdue)
+          comparison = new Date(a.requestedAt).getTime() - new Date(b.requestedAt).getTime();
+          break;
+        }
+        case 'risk': {
+          // Risk: highest risk score first
+          const aRisk = a.riskScore || (a.riskLevel === 'critical' ? 100 : a.riskLevel === 'high' ? 75 : a.riskLevel === 'medium' ? 50 : 25);
+          const bRisk = b.riskScore || (b.riskLevel === 'critical' ? 100 : b.riskLevel === 'high' ? 75 : b.riskLevel === 'medium' ? 50 : 25);
+          comparison = bRisk - aRisk;
+          break;
+        }
+        case 'dueDate': {
+          comparison = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+          break;
+        }
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+
+    return result;
+  }, [approvals, filter, searchQuery, sortBy, sortDirection]);
 
   // Keyboard shortcuts handler
   useEffect(() => {
@@ -943,7 +995,7 @@ export const ApprovalsQueue: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [selectedId, selectedApproval, filteredApprovals, showShortcuts, delegateModalOpen, rejectModalOpen, approveConfirmOpen]);
 
   const stats = useMemo(() => ({
@@ -1342,13 +1394,13 @@ export const ApprovalsQueue: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20">
         <motion.div 
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
-          <div className="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200/50">
+          <div className="w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-violet-200/50">
             <Loader2 className="w-8 h-8 text-white animate-spin" />
           </div>
           <p className="text-slate-600 font-medium">Loading workflow queue...</p>
@@ -1359,18 +1411,18 @@ export const ApprovalsQueue: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/10">
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/10">
       {/* Header */}
       <div className="flex-none p-6 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
         <div className="flex items-center justify-between mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl shadow-lg shadow-indigo-200/50">
+            <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-200/50">
               <CheckCheck className="w-5 h-5 text-white" />
             </div>
             <div>
               <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent flex items-center gap-2">
                 Workflow Queue
-                <span className="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-xs rounded-full font-medium">
+                <span className="px-2 py-0.5 bg-violet-100 text-violet-700 text-xs rounded-full font-medium">
                   <Sparkles className="w-3 h-3 inline mr-1" />
                   AI-Powered
                 </span>
@@ -1396,7 +1448,7 @@ export const ApprovalsQueue: React.FC = () => {
               <UserPlus className="w-4 h-4" />
               Delegation
             </button>
-            <button className="px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-indigo-200 transition-all font-medium flex items-center gap-2">
+            <button className="px-4 py-2.5 bg-gradient-to-r from-violet-500 to-purple-600 text-white rounded-xl hover:shadow-lg hover:shadow-violet-200 transition-all font-medium flex items-center gap-2">
               <History className="w-4 h-4" />
               History
             </button>
@@ -1447,7 +1499,7 @@ export const ApprovalsQueue: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="p-4 bg-gradient-to-br from-green-50 to-emerald-50/80 rounded-xl text-center border border-green-200/50 hover:shadow-md hover:shadow-green-100 transition-all"
+            className="p-4 bg-gradient-to-br from-violet-50 to-violet-50/80 rounded-xl text-center border border-green-200/50 hover:shadow-md hover:shadow-green-100 transition-all"
           >
             <div className="text-2xl font-bold text-green-600">{stats.approved}</div>
             <div className="text-xs text-green-600 font-medium mt-1">Approved</div>
@@ -1478,7 +1530,7 @@ export const ApprovalsQueue: React.FC = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search approvals... (press /)"
-                className="w-full pl-10 pr-4 py-2.5 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-300 bg-white/80 backdrop-blur-sm transition-all placeholder:text-slate-400"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200/60 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-indigo-300 bg-white/80 backdrop-blur-sm transition-all placeholder:text-slate-400"
               />
             </div>
             <div className="flex items-center justify-between mb-2">
@@ -1489,7 +1541,7 @@ export const ApprovalsQueue: React.FC = () => {
                     onClick={() => setFilter(f)}
                     className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all capitalize ${
                     filter === f
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-md shadow-indigo-200/50'
+                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-200/50'
                       : 'bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-800'
                   }`}
                 >
@@ -1497,14 +1549,57 @@ export const ApprovalsQueue: React.FC = () => {
                 </button>
               ))}
               </div>
-              <button
-                onClick={() => setShowShortcuts(true)}
-                className="text-xs text-slate-400 hover:text-indigo-600 flex items-center gap-1.5 transition-colors"
-                title="Keyboard shortcuts"
-              >
-                <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono border border-slate-200">?</kbd>
-                <span className="hidden sm:inline">Shortcuts</span>
-              </button>
+              <div className="flex items-center gap-2">
+                {/* ENHANCED: Sort dropdown */}
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium bg-slate-100/80 text-slate-600 hover:bg-slate-200/80 hover:text-slate-800 transition-all">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                      Sort: {sortBy === 'urgency' ? 'Urgency' : sortBy === 'value' ? 'Value' : sortBy === 'age' ? 'Age' : sortBy === 'risk' ? 'Risk' : 'Due Date'}
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[160px]">
+                    <DropdownMenuItem onClick={() => setSortBy('urgency')} className={sortBy === 'urgency' ? 'bg-violet-50' : ''}>
+                      <AlertTriangle className="w-4 h-4 mr-2 text-red-500" />
+                      By Urgency
+                      {sortBy === 'urgency' && <CheckCircle2 className="w-4 h-4 ml-auto text-violet-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('value')} className={sortBy === 'value' ? 'bg-violet-50' : ''}>
+                      <DollarSign className="w-4 h-4 mr-2 text-green-500" />
+                      By Value
+                      {sortBy === 'value' && <CheckCircle2 className="w-4 h-4 ml-auto text-violet-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('dueDate')} className={sortBy === 'dueDate' ? 'bg-violet-50' : ''}>
+                      <Calendar className="w-4 h-4 mr-2 text-amber-500" />
+                      By Due Date
+                      {sortBy === 'dueDate' && <CheckCircle2 className="w-4 h-4 ml-auto text-violet-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('risk')} className={sortBy === 'risk' ? 'bg-violet-50' : ''}>
+                      <Shield className="w-4 h-4 mr-2 text-violet-500" />
+                      By Risk Score
+                      {sortBy === 'risk' && <CheckCircle2 className="w-4 h-4 ml-auto text-violet-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSortBy('age')} className={sortBy === 'age' ? 'bg-violet-50' : ''}>
+                      <Clock className="w-4 h-4 mr-2 text-violet-500" />
+                      By Age (Oldest)
+                      {sortBy === 'age' && <CheckCircle2 className="w-4 h-4 ml-auto text-violet-600" />}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setSortDirection(d => d === 'asc' ? 'desc' : 'asc')}>
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      {sortDirection === 'desc' ? 'Ascending' : 'Descending'}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <button
+                  onClick={() => setShowShortcuts(true)}
+                  className="text-xs text-slate-400 hover:text-violet-600 flex items-center gap-1.5 transition-colors"
+                  title="Keyboard shortcuts"
+                >
+                  <kbd className="px-1.5 py-0.5 bg-slate-100 rounded text-[10px] font-mono border border-slate-200">?</kbd>
+                  <span className="hidden sm:inline">Shortcuts</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1513,7 +1608,7 @@ export const ApprovalsQueue: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-3 border-b border-indigo-200/50 bg-gradient-to-r from-indigo-50 to-purple-50"
+              className="p-3 border-b border-indigo-200/50 bg-gradient-to-r from-violet-50 to-purple-50"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -1522,13 +1617,13 @@ export const ApprovalsQueue: React.FC = () => {
                   </span>
                   <button
                     onClick={selectAllPending}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium"
+                    className="text-xs text-violet-600 hover:text-indigo-800 underline font-medium"
                   >
                     Select all
                   </button>
                   <button
                     onClick={clearSelection}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 underline font-medium"
+                    className="text-xs text-violet-600 hover:text-indigo-800 underline font-medium"
                   >
                     Clear
                   </button>
@@ -1537,7 +1632,7 @@ export const ApprovalsQueue: React.FC = () => {
                   <button
                     onClick={handleBulkApprove}
                     disabled={bulkProcessing}
-                    className="px-3 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-sm rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all font-medium flex items-center gap-1.5 disabled:opacity-50"
+                    className="px-3 py-1.5 bg-gradient-to-r from-violet-500 to-violet-600 text-white text-sm rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all font-medium flex items-center gap-1.5 disabled:opacity-50"
                   >
                     {bulkProcessing ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -1572,7 +1667,7 @@ export const ApprovalsQueue: React.FC = () => {
                   animate={{ opacity: 1, scale: 1 }}
                   className="text-center py-12"
                 >
-                  <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-100/50">
+                  <div className="w-20 h-20 bg-gradient-to-br from-violet-100 to-violet-100 rounded-2xl flex items-center justify-center mx-auto mb-5 shadow-lg shadow-green-100/50">
                     <CheckCircle2 className="w-10 h-10 text-green-600" />
                   </div>
                   <h3 className="text-lg font-bold text-slate-900 mb-2">
@@ -1588,7 +1683,7 @@ export const ApprovalsQueue: React.FC = () => {
                   {filter !== 'all' && (
                     <button
                       onClick={() => { setFilter('all'); setSearchQuery(''); }}
-                      className="mt-5 text-sm text-indigo-600 hover:text-indigo-700 font-semibold flex items-center gap-1.5 mx-auto"
+                      className="mt-5 text-sm text-violet-600 hover:text-violet-700 font-semibold flex items-center gap-1.5 mx-auto"
                     >
                       View all approvals
                       <ArrowRight className="w-4 h-4" />
@@ -1631,13 +1726,13 @@ export const ApprovalsQueue: React.FC = () => {
               onDelegate={openDelegateModal}
             />
           ) : (
-            <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-indigo-50/20 to-purple-50/20">
+            <div className="h-full flex items-center justify-center bg-gradient-to-br from-slate-50 via-purple-50/20 to-purple-50/20">
               <motion.div 
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="text-center p-8"
               >
-                <div className="w-24 h-24 bg-white rounded-2xl shadow-xl shadow-indigo-100/50 flex items-center justify-center mx-auto mb-6 border border-slate-100">
+                <div className="w-24 h-24 bg-white rounded-2xl shadow-xl shadow-violet-100/50 flex items-center justify-center mx-auto mb-6 border border-slate-100">
                   <FileText className="w-12 h-12 text-slate-300" />
                 </div>
                 <h3 className="text-lg font-bold text-slate-700 mb-2">No Approval Selected</h3>
@@ -1680,7 +1775,7 @@ export const ApprovalsQueue: React.FC = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-blue-600" />
+              <UserPlus className="w-5 h-5 text-violet-600" />
               Delegate Approval
             </DialogTitle>
             <DialogDescription>
@@ -1699,11 +1794,11 @@ export const ApprovalsQueue: React.FC = () => {
                     onClick={() => setDelegateTarget(member.id)}
                     className={`w-full flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                       delegateTarget === member.id
-                        ? 'border-blue-500 bg-blue-50'
+                        ? 'border-violet-500 bg-violet-50'
                         : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}
                   >
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-medium">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium">
                       {member.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="flex-1 text-left">
@@ -1711,7 +1806,7 @@ export const ApprovalsQueue: React.FC = () => {
                       <p className="text-sm text-slate-500">{member.role}</p>
                     </div>
                     {delegateTarget === member.id && (
-                      <CheckCircle2 className="w-5 h-5 text-blue-500" />
+                      <CheckCircle2 className="w-5 h-5 text-violet-500" />
                     )}
                   </button>
                 ))}
@@ -1724,7 +1819,7 @@ export const ApprovalsQueue: React.FC = () => {
                 value={delegateNote}
                 onChange={(e) => setDelegateNote(e.target.value)}
                 placeholder="Add a note for the delegate..."
-                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-violet-500"
                 rows={2}
               />
             </div>
@@ -1742,7 +1837,7 @@ export const ApprovalsQueue: React.FC = () => {
               type="button"
               onClick={handleDelegate}
               disabled={!delegateTarget}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               <Send className="w-4 h-4" />
               Delegate
@@ -1754,7 +1849,7 @@ export const ApprovalsQueue: React.FC = () => {
       {/* Keyboard Shortcuts Help Modal */}
       <AnimatePresence>
         {showShortcuts && (
-          <motion.div
+          <motion.div key="shortcuts"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1805,11 +1900,11 @@ export const ApprovalsQueue: React.FC = () => {
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-600">Escalate</span>
-                      <kbd className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-mono">e</kbd>
+                      <kbd className="px-2 py-1 bg-violet-100 text-violet-700 rounded text-xs font-mono">e</kbd>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-slate-600">Delegate</span>
-                      <kbd className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-mono">d</kbd>
+                      <kbd className="px-2 py-1 bg-violet-100 text-violet-700 rounded text-xs font-mono">d</kbd>
                     </div>
                   </div>
                 </div>
@@ -1985,7 +2080,7 @@ export const ApprovalsQueue: React.FC = () => {
               type="button"
               onClick={handleApprove}
               disabled={isApproving}
-              className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white rounded-lg hover:shadow-lg hover:shadow-green-200 transition-all disabled:opacity-50 flex items-center gap-2"
             >
               {isApproving ? (
                 <>

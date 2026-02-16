@@ -11,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { getTenantId } from '@/lib/tenant';
 import { FileText, Loader2 } from 'lucide-react';
 import { RateCardExtractionModal } from './RateCardExtractionModal';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface ExtractRatesButtonProps {
   contractId: string;

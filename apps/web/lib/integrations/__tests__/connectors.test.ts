@@ -4,6 +4,7 @@
  * Comprehensive tests for all contract source connectors.
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { describe, it, expect, beforeEach, vi, Mock } from "vitest";
 import { Readable } from "stream";
 

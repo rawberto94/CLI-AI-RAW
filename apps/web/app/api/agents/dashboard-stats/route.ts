@@ -3,18 +3,13 @@
  * Returns aggregated statistics for the AI Insights dashboard
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(_request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const tenantId = ctx.tenantId;
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     // Run all queries in parallel
@@ -29,27 +24,21 @@ export async function GET(_request: NextRequest) {
       prisma.agentEvent.count({
         where: {
           tenantId,
-          timestamp: { gte: thirtyDaysAgo },
-        },
-      }),
+          timestamp: { gte: thirtyDaysAgo } } }),
 
       // Active recommendations
       prisma.agentRecommendation.count({
         where: {
           tenantId,
-          status: { in: ['pending', 'in_progress'] },
-        },
-      }),
+          status: { in: ['pending', 'in_progress'] } } }),
 
       // Opportunities summary
       prisma.opportunityDiscovery.aggregate({
         where: {
           tenantId,
-          status: { in: ['new', 'reviewing', 'in_progress'] },
-        },
+          status: { in: ['new', 'reviewing', 'in_progress'] } },
         _sum: { potentialValue: true },
-        _count: true,
-      }),
+        _count: true }),
 
       // Contract health data (requires contractMetadata or health events)
       prisma.contract.findMany({
@@ -62,9 +51,7 @@ export async function GET(_request: NextRequest) {
       prisma.learningRecord.count({
         where: {
           tenantId,
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
+          createdAt: { gte: thirtyDaysAgo } } }),
     ]);
 
     // Get health assessments from recent events
@@ -73,15 +60,12 @@ export async function GET(_request: NextRequest) {
         tenantId,
         agentName: 'contract-health-monitor',
         eventType: 'health_assessment',
-        timestamp: { gte: thirtyDaysAgo },
-      },
+        timestamp: { gte: thirtyDaysAgo } },
       select: {
         contractId: true,
-        metadata: true,
-      },
+        metadata: true },
       orderBy: { timestamp: 'desc' },
-      distinct: ['contractId'],
-    });
+      distinct: ['contractId'] });
 
     // Calculate health stats
     let totalHealthScore = 0;
@@ -104,7 +88,7 @@ export async function GET(_request: NextRequest) {
       ? Math.round(totalHealthScore / healthEvents.length) 
       : 0;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       totalEvents,
       activeRecommendations,
       totalOpportunityValue: Number(opportunities._sum.potentialValue || 0),
@@ -113,12 +97,5 @@ export async function GET(_request: NextRequest) {
       atRiskContracts,
       avgHealthScore,
       learningRecords,
-      totalContracts: contracts.length,
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-}
+      totalContracts: contracts.length });
+  });

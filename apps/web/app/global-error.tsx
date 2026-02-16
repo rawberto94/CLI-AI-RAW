@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
+import * as Sentry from '@sentry/nextjs';
 import { 
   AlertTriangle, 
   RefreshCw, 
@@ -24,7 +25,11 @@ export default function GlobalError({
   const [isRetrying, setIsRetrying] = useState(false);
 
   useEffect(() => {
-    // Error captured - could be sent to monitoring service
+    // Report error to Sentry in production
+    Sentry.captureException(error, {
+      tags: { boundary: 'global-error' },
+      extra: { digest: error.digest },
+    });
   }, [error]);
 
   const handleRetry = () => {

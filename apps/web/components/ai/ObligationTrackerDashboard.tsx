@@ -113,13 +113,13 @@ const OBLIGATION_TYPE_CONFIG: Record<ObligationType, {
   label: string;
 }> = {
   payment: { icon: DollarSign, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Payment' },
-  delivery: { icon: Target, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'Delivery' },
-  reporting: { icon: FileText, color: 'text-purple-600', bgColor: 'bg-purple-100', label: 'Reporting' },
-  compliance: { icon: Shield, color: 'text-indigo-600', bgColor: 'bg-indigo-100', label: 'Compliance' },
+  delivery: { icon: Target, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Delivery' },
+  reporting: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Reporting' },
+  compliance: { icon: Shield, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Compliance' },
   confidentiality: { icon: Shield, color: 'text-slate-600', bgColor: 'bg-slate-100', label: 'Confidentiality' },
   indemnification: { icon: Scale, color: 'text-amber-600', bgColor: 'bg-amber-100', label: 'Indemnification' },
-  insurance: { icon: Shield, color: 'text-cyan-600', bgColor: 'bg-cyan-100', label: 'Insurance' },
-  warranty: { icon: CheckCircle2, color: 'text-emerald-600', bgColor: 'bg-emerald-100', label: 'Warranty' },
+  insurance: { icon: Shield, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Insurance' },
+  warranty: { icon: CheckCircle2, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Warranty' },
   termination_notice: { icon: AlertTriangle, color: 'text-red-600', bgColor: 'bg-red-100', label: 'Termination Notice' },
   renewal_notice: { icon: RefreshCw, color: 'text-orange-600', bgColor: 'bg-orange-100', label: 'Renewal Notice' },
   audit_rights: { icon: Eye, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'Audit Rights' },
@@ -134,7 +134,7 @@ const STATUS_CONFIG: Record<ObligationStatus, {
   label: string;
 }> = {
   pending: { icon: Clock, color: 'text-slate-600', bgColor: 'bg-slate-100', label: 'Pending' },
-  in_progress: { icon: Timer, color: 'text-blue-600', bgColor: 'bg-blue-100', label: 'In Progress' },
+  in_progress: { icon: Timer, color: 'text-violet-600', bgColor: 'bg-violet-100', label: 'In Progress' },
   completed: { icon: CheckCircle2, color: 'text-green-600', bgColor: 'bg-green-100', label: 'Completed' },
   overdue: { icon: XCircle, color: 'text-red-600', bgColor: 'bg-red-100', label: 'Overdue' },
   at_risk: { icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-100', label: 'At Risk' },
@@ -148,7 +148,7 @@ const PRIORITY_CONFIG: Record<ObligationPriority, {
   critical: { color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
   high: { color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
   medium: { color: 'text-amber-700', bgColor: 'bg-amber-100 border-amber-300' },
-  low: { color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+  low: { color: 'text-violet-700', bgColor: 'bg-violet-100 border-violet-300' },
 };
 
 // ============================================================================
@@ -312,11 +312,11 @@ function StatCard({
   trend?: { value: number; label: string };
 }) {
   const colorClasses = {
-    blue: 'from-blue-500 to-indigo-500 text-blue-600 bg-blue-50',
-    green: 'from-green-500 to-emerald-500 text-green-600 bg-green-50',
+    blue: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
+    green: 'from-violet-500 to-violet-500 text-green-600 bg-green-50',
     amber: 'from-amber-500 to-orange-500 text-amber-600 bg-amber-50',
     red: 'from-red-500 to-rose-500 text-red-600 bg-red-50',
-    purple: 'from-purple-500 to-violet-500 text-purple-600 bg-purple-50',
+    purple: 'from-violet-500 to-purple-500 text-violet-600 bg-violet-50',
   };
 
   return (
@@ -447,7 +447,7 @@ function ObligationCard({
 
 function AlertItem({ alert, onAcknowledge }: { alert: ObligationAlert; onAcknowledge: () => void }) {
   const severityConfig = {
-    info: { icon: Bell, color: 'text-blue-600 bg-blue-50 border-blue-200' },
+    info: { icon: Bell, color: 'text-violet-600 bg-violet-50 border-violet-200' },
     warning: { icon: AlertTriangle, color: 'text-amber-600 bg-amber-50 border-amber-200' },
     critical: { icon: BellRing, color: 'text-red-600 bg-red-50 border-red-200' },
   };

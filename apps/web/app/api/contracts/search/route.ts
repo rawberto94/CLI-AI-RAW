@@ -3,10 +3,11 @@
  * POST /api/contracts/search - Search contracts using hybrid search
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { z } from "zod";
 import { contractService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 type SearchMode = "balanced" | "semantic" | "keyword";
 
@@ -235,151 +236,109 @@ async function performRealSearch(
   };
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const validatedData = searchRequestSchema.parse(body);
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const body = await request.json();
+  const validatedData = searchRequestSchema.parse(body);
 
-    const filters = validatedData.filters
-      ? {
-          ...validatedData.filters,
-          startDate: validatedData.filters.startDate
-            ? new Date(validatedData.filters.startDate)
-            : undefined,
-          endDate: validatedData.filters.endDate
-            ? new Date(validatedData.filters.endDate)
-            : undefined,
-        }
-      : undefined;
-
-    const searchResults = await performRealSearch(
-      validatedData.query,
-      validatedData.mode,
-      filters,
-      validatedData.pagination
-    );
-
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          results: searchResults.results.map((result) => ({
-            ...result,
-            explanation: buildExplanation(result),
-          })),
-          pagination: {
-            total: searchResults.total,
-            limit: validatedData.pagination?.limit ?? 20,
-            offset: validatedData.pagination?.offset ?? 0,
-            hasMore:
-              (validatedData.pagination?.offset ?? 0) +
-                (validatedData.pagination?.limit ?? 20) <
-              searchResults.total,
-          },
-          query: searchResults.query,
-          executionTime: searchResults.executionTime,
-          searchStrategy: searchResults.searchStrategy,
-          recommendations: {
-            suggestedMode: validatedData.mode,
-            reason:
-              validatedData.mode === "semantic"
-                ? "Semantic search is recommended for natural language queries."
-                : "Keyword search is recommended for structured queries.",
-            alternativeQueries: [
-              `${validatedData.query} supplier risk`,
-              `${validatedData.query} compliance`,
-              `${validatedData.query} pricing`,
-            ],
-          },
-        },
-      },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid request data",
-          details: error.issues,
-        },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Search failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
-
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get("q") || searchParams.get("query");
-
-    if (!query) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Query parameter is required",
-        },
-        { status: 400 }
-      );
-    }
-
-    const mode = (searchParams.get("mode") as SearchMode) || "balanced";
-    const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const offset = parseInt(searchParams.get("offset") || "0", 10);
-    const contractType = searchParams.get("contractType") || undefined;
-    const status = searchParams.get("status") || undefined;
-
-    const searchResults = await performRealSearch(
-      query,
-      mode,
-      {
-        contractType: contractType ?? undefined,
-        status: status ?? undefined,
-      },
-      {
-        limit,
-        offset,
+  const filters = validatedData.filters
+    ? {
+        ...validatedData.filters,
+        startDate: validatedData.filters.startDate
+          ? new Date(validatedData.filters.startDate)
+          : undefined,
+        endDate: validatedData.filters.endDate
+          ? new Date(validatedData.filters.endDate)
+          : undefined,
       }
-    );
+    : undefined;
 
-    return NextResponse.json(
-      {
-        success: true,
-        data: {
-          results: searchResults.results.map((result) => ({
-            ...result,
-            explanation: buildExplanation(result),
-          })),
-          pagination: {
-            total: searchResults.total,
-            limit,
-            offset,
-            hasMore: offset + limit < searchResults.total,
-          },
-          query: searchResults.query,
-          executionTime: searchResults.executionTime,
+  const searchResults = await performRealSearch(
+    validatedData.query,
+    validatedData.mode,
+    filters,
+    validatedData.pagination
+  );
+
+  return createSuccessResponse(ctx,
+    {
+      data: {
+        results: searchResults.results.map((result) => ({
+          ...result,
+          explanation: buildExplanation(result),
+        })),
+        pagination: {
+          total: searchResults.total,
+          limit: validatedData.pagination?.limit ?? 20,
+          offset: validatedData.pagination?.offset ?? 0,
+          hasMore:
+            (validatedData.pagination?.offset ?? 0) +
+              (validatedData.pagination?.limit ?? 20) <
+            searchResults.total,
+        },
+        query: searchResults.query,
+        executionTime: searchResults.executionTime,
+        searchStrategy: searchResults.searchStrategy,
+        recommendations: {
+          suggestedMode: validatedData.mode,
+          reason:
+            validatedData.mode === "semantic"
+              ? "Semantic search is recommended for natural language queries."
+              : "Keyword search is recommended for structured queries.",
+          alternativeQueries: [
+            `${validatedData.query} supplier risk`,
+            `${validatedData.query} compliance`,
+            `${validatedData.query} pricing`,
+          ],
         },
       },
-      { status: 200 }
-    );
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Search failed",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    },
+    { status: 200 }
+  );
+});
+
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const searchParams = request.nextUrl.searchParams;
+  const query = searchParams.get("q") || searchParams.get("query");
+
+  if (!query) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Query parameter is required', 400);
   }
-}
+
+  const mode = (searchParams.get("mode") as SearchMode) || "balanced";
+  const limit = parseInt(searchParams.get("limit") || "20", 10);
+  const offset = parseInt(searchParams.get("offset") || "0", 10);
+  const contractType = searchParams.get("contractType") || undefined;
+  const status = searchParams.get("status") || undefined;
+
+  const searchResults = await performRealSearch(
+    query,
+    mode,
+    {
+      contractType: contractType ?? undefined,
+      status: status ?? undefined,
+    },
+    {
+      limit,
+      offset,
+    }
+  );
+
+  return createSuccessResponse(ctx,
+    {
+      data: {
+        results: searchResults.results.map((result) => ({
+          ...result,
+          explanation: buildExplanation(result),
+        })),
+        pagination: {
+          total: searchResults.total,
+          limit,
+          offset,
+          hasMore: offset + limit < searchResults.total,
+        },
+        query: searchResults.query,
+        executionTime: searchResults.executionTime,
+      },
+    }
+  );
+});

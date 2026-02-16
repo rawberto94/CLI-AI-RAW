@@ -1,10 +1,26 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id } = params;
+
+    // Verify contract belongs to caller's tenant before returning rate cards
+    const tenantId = ctx.tenantId;
+    const contract = await prisma.contract.findFirst({
+      where: { id, tenantId },
+      select: { id: true },
+    });
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+    }
 
     // Get all rate cards for this contract
     const rateCards = await prisma.rateCardEntry.findMany({
@@ -41,7 +57,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       suppliers: [...new Set(rateCards.map(r => r.supplierName))].length,
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         rateCards,
@@ -49,12 +65,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch rate cards',
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

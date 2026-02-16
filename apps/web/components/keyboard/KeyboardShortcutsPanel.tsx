@@ -171,7 +171,7 @@ function ShortcutRow({ shortcut, highlighted }: ShortcutRowProps) {
       animate={{ opacity: 1, x: 0 }}
       className={cn(
         'flex items-center justify-between py-2 px-3 rounded-lg transition-colors',
-        highlighted ? 'bg-purple-50 dark:bg-purple-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+        highlighted ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
       )}
     >
       <span className="text-sm text-slate-700 dark:text-slate-300">
@@ -277,7 +277,7 @@ export function KeyboardShortcutsPanel({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -298,8 +298,8 @@ export function KeyboardShortcutsPanel({
             {/* Header */}
             <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-                  <Keyboard className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                <div className="p-2 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                  <Keyboard className="w-5 h-5 text-violet-600 dark:text-violet-400" />
                 </div>
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
@@ -328,7 +328,7 @@ export function KeyboardShortcutsPanel({
                   placeholder="Search shortcuts..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="w-full pl-10 pr-4 py-2 bg-slate-100 dark:bg-slate-800 border-0 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   autoFocus
                 />
               </div>
@@ -341,7 +341,7 @@ export function KeyboardShortcutsPanel({
                 className={cn(
                   'px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors',
                   activeCategory === 'all'
-                    ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                    ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                 )}
               >
@@ -356,7 +356,7 @@ export function KeyboardShortcutsPanel({
                     className={cn(
                       'flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors',
                       activeCategory === category
-                        ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                        ? 'bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300'
                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
                     )}
                   >
@@ -428,7 +428,7 @@ export function KeyboardShortcutsPanel({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

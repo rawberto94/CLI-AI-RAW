@@ -11,12 +11,13 @@ import {
   storeGoogleDriveConnection,
 } from '@/lib/integrations/google-drive';
 import { getTenantContext } from '@/lib/tenant-server';
+import { withApiHandler } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (request: NextRequest) => {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
   const error = searchParams.get('error');
-  const state = searchParams.get('state');
+  const _state = searchParams.get('state');
 
   // Handle error from Google
   if (error) {
@@ -61,4 +62,4 @@ export async function GET(request: NextRequest) {
       new URL(`/integrations?error=${encodeURIComponent(message)}`, request.url)
     );
   }
-}
+});

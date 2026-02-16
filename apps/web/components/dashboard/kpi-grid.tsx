@@ -31,7 +31,7 @@ const kpiCards = [
     change: "+3",
     trend: "up",
     icon: Building2,
-    color: "text-blue-600",
+    color: "text-violet-600",
   },
   {
     title: "Compliance Rate",
@@ -63,18 +63,18 @@ const kpiCards = [
     change: "Active",
     trend: "neutral",
     icon: Hourglass,
-    color: "text-blue-600",
+    color: "text-violet-600",
   },
 ]
 
 export function KpiGrid() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {kpiCards.map((kpi, index) => {
+      {kpiCards.map((kpi) => {
         const Icon = kpi.icon
         return (
           <Card
-            key={index}
+            key={kpi.title}
             className="hover:shadow-lg transition-all duration-200 hover:-translate-y-1 group cursor-pointer"
           >
             <CardHeader className="flex flex-row items-center justify-between pb-2">

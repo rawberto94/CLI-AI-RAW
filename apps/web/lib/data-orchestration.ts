@@ -1,8 +1,12 @@
-// Re-export data-orchestration services from compiled package
-export { rateCardManagementService } from '../../../packages/data-orchestration/dist/services/rate-card-management.service';
-export { analyticalIntelligenceService } from '../../../packages/data-orchestration/dist/services/analytical-intelligence.service';
+/**
+ * Re-export data-orchestration services for route handlers
+ * 
+ * Prefer importing directly from 'data-orchestration/services' in new code.
+ * This file exists for backward compatibility.
+ */
 
-// Export commonly used services
-export { contractService } from '../../../packages/data-orchestration/dist/services/contract.service';
-export { artifactService } from '../../../packages/data-orchestration/dist/services/artifact.service';
-export { taxonomyService } from '../../../packages/data-orchestration/dist/services/taxonomy.service';
+export { contractService } from 'data-orchestration/services';
+export { artifactService } from 'data-orchestration/services';
+export { taxonomyService } from 'data-orchestration/services';
+export { rateCardManagementService } from 'data-orchestration/services';
+export { analyticalIntelligenceService } from 'data-orchestration/services';

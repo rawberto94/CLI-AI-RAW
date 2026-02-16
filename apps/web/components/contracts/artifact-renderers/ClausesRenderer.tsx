@@ -21,7 +21,7 @@ export const ClausesRenderer = memo(function ClausesRenderer({ data }: ClausesRe
   return (
     <div className="space-y-4">
       {data.clauses.map((clause, i) => (
-        <div key={i} className="p-6 bg-white dark:bg-gray-800 rounded-xl border-2 hover:border-purple-300 dark:hover:border-purple-700 transition-all shadow-sm hover:shadow-md">
+        <div key={i} className="p-6 bg-white dark:bg-gray-800 rounded-xl border-2 hover:border-violet-300 dark:hover:border-violet-700 transition-all shadow-sm hover:shadow-md">
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex-1">
               <h4 className="font-bold text-lg mb-2 text-gray-900 dark:text-gray-100">
@@ -29,7 +29,7 @@ export const ClausesRenderer = memo(function ClausesRenderer({ data }: ClausesRe
               </h4>
             </div>
             {clause.relevance && (
-              <Badge variant="outline" className="text-xs font-semibold px-3 py-1 bg-purple-50 dark:bg-purple-950">
+              <Badge variant="outline" className="text-xs font-semibold px-3 py-1 bg-violet-50 dark:bg-violet-950">
                 {Math.round(clause.relevance * 100)}% relevant
               </Badge>
             )}

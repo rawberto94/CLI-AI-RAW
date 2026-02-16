@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Upload, Download, AlertCircle, CheckCircle, X, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface CSVImportModalProps {
   isOpen: boolean;
@@ -106,7 +106,7 @@ export function CSVImportModal({ isOpen, onClose, onSuccess }: CSVImportModalPro
 
         {!parseResult ? (
           <div className="space-y-4">
-            <div className="flex justify-between items-center p-4 bg-blue-50 rounded-lg">
+            <div className="flex justify-between items-center p-4 bg-violet-50 rounded-lg">
               <div>
                 <p className="font-semibold">Need a template?</p>
                 <p className="text-sm text-gray-600">Download our CSV template with examples</p>

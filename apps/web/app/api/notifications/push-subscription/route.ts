@@ -4,10 +4,11 @@
  * Handles Web Push subscription management.
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/auth";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { notificationService } from 'data-orchestration/services';
 
 // Validation schema
 const subscriptionSchema = z.object({
@@ -23,59 +24,41 @@ const subscriptionSchema = z.object({
  * GET /api/notifications/push-subscription
  * Get VAPID public key for push subscription
  */
-export async function GET() {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
 
-    const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
-
-    if (!vapidPublicKey) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          enabled: false,
-          message: "Push notifications are not configured",
-        },
-      });
-    }
-
-    // Check if user has existing subscription
-    const subscription = await prisma.pushSubscription.findFirst({
-      where: { userId: session.user.id },
-      select: { endpoint: true },
-    });
-
-    return NextResponse.json({
+  if (!vapidPublicKey) {
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
-        enabled: true,
-        vapidPublicKey,
-        hasSubscription: !!subscription,
+        enabled: false,
+        message: "Push notifications are not configured",
       },
     });
-  } catch (error) {
-    console.error("[Push Subscription GET Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch push config" },
-      { status: 500 }
-    );
   }
-}
+
+  // Check if user has existing subscription
+  const subscription = await prisma.pushSubscription.findFirst({
+    where: { userId: ctx.userId },
+    select: { endpoint: true },
+  });
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: {
+      enabled: true,
+      vapidPublicKey,
+      hasSubscription: !!subscription,
+    },
+  });
+});
 
 /**
  * POST /api/notifications/push-subscription
  * Register a new push subscription
  */
-export async function POST(req: NextRequest) {
+export const POST = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json();
     const validated = subscriptionSchema.parse(body);
 
@@ -83,15 +66,15 @@ export async function POST(req: NextRequest) {
     await prisma.pushSubscription.upsert({
       where: { endpoint: validated.endpoint },
       update: {
-        userId: session.user.id,
+        userId: ctx.userId,
         p256dh: validated.keys.p256dh,
         auth: validated.keys.auth,
         expirationTime: validated.expirationTime ? BigInt(validated.expirationTime) : null,
         updatedAt: new Date(),
       },
       create: {
-        userId: session.user.id,
-        tenantId: session.user.id,
+        userId: ctx.userId,
+        tenantId: ctx.tenantId,
         endpoint: validated.endpoint,
         p256dh: validated.keys.p256dh,
         auth: validated.keys.auth,
@@ -99,36 +82,26 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: "Push subscription registered",
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Invalid subscription data", details: error.errors },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid subscription data', 400, {
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; '),
+      });
     }
     console.error("[Push Subscription POST Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to register subscription" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to register subscription', 500);
   }
-}
+});
 
 /**
  * DELETE /api/notifications/push-subscription
  * Remove push subscription
  */
-export async function DELETE(req: NextRequest) {
+export const DELETE = withAuthApiHandler(async (req: NextRequest, ctx) => {
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
-
     const { searchParams } = new URL(req.url);
     const endpoint = searchParams.get("endpoint");
 
@@ -136,26 +109,22 @@ export async function DELETE(req: NextRequest) {
       // Delete specific subscription
       await prisma.pushSubscription.deleteMany({
         where: {
-          userId: session.user.id,
+          userId: ctx.userId,
           endpoint,
         },
       });
     } else {
       // Delete all subscriptions for user
       await prisma.pushSubscription.deleteMany({
-        where: { userId: session.user.id },
+        where: { userId: ctx.userId },
       });
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: "Push subscription removed",
     });
   } catch (error) {
     console.error("[Push Subscription DELETE Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to remove subscription" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to remove subscription', 500);
   }
-}
+});

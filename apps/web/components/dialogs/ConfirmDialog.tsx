@@ -138,16 +138,16 @@ const VARIANT_STYLES: Record<ConfirmVariant, {
     buttonHover: 'hover:bg-amber-50',
   },
   info: {
-    iconBg: 'bg-blue-100',
-    iconColor: 'text-blue-600',
-    buttonBg: 'bg-blue-600 hover:bg-blue-700',
-    buttonHover: 'hover:bg-blue-50',
+    iconBg: 'bg-violet-100',
+    iconColor: 'text-violet-600',
+    buttonBg: 'bg-violet-600 hover:bg-violet-700',
+    buttonHover: 'hover:bg-violet-50',
   },
   success: {
-    iconBg: 'bg-emerald-100',
-    iconColor: 'text-emerald-600',
-    buttonBg: 'bg-emerald-600 hover:bg-emerald-700',
-    buttonHover: 'hover:bg-emerald-50',
+    iconBg: 'bg-violet-100',
+    iconColor: 'text-violet-600',
+    buttonBg: 'bg-violet-600 hover:bg-violet-700',
+    buttonHover: 'hover:bg-violet-50',
   },
 };
 
@@ -190,7 +190,7 @@ function ConfirmDialog({ isOpen, options, onConfirm, onCancel }: ConfirmDialogPr
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -240,7 +240,7 @@ function ConfirmDialog({ isOpen, options, onConfirm, onCancel }: ConfirmDialogPr
                             'w-full px-3 py-2 text-sm border rounded-lg',
                             'focus:outline-none focus:ring-2 focus:ring-offset-1',
                             confirmInput === options.requireConfirmation
-                              ? 'border-emerald-300 focus:ring-emerald-500'
+                              ? 'border-violet-300 focus:ring-violet-500'
                               : 'border-slate-200 focus:ring-slate-400'
                           )}
                         />
@@ -277,7 +277,7 @@ function ConfirmDialog({ isOpen, options, onConfirm, onCancel }: ConfirmDialogPr
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

@@ -8,6 +8,20 @@
 import type { MetadataExtractionJobData, MetadataExtractionResult } from "./metadata-extraction-worker";
 
 // ============================================================================
+// HELPERS
+// ============================================================================
+
+/**
+ * Unwrap potentially wrapped AI values
+ */
+function unwrap<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -144,47 +158,63 @@ export async function extractMetadataFromArtifacts(
     if (overviewArtifact?.data) {
       const data = overviewArtifact.data as Record<string, any>;
 
-      // Map artifact data to metadata fields
-      if (data.contractType) {
-        metadata.contract_type = data.contractType;
+      // Map artifact data to metadata fields - unwrap potentially wrapped AI values
+      const contractType = unwrap(data.contractType);
+      if (contractType) {
+        metadata.contract_type = contractType;
       }
-      if (data.effectiveDate) {
-        metadata.effective_date = data.effectiveDate;
+      const effectiveDate = unwrap(data.effectiveDate);
+      if (effectiveDate) {
+        metadata.effective_date = effectiveDate;
       }
-      if (data.expirationDate) {
-        metadata.expiration_date = data.expirationDate;
+      const expirationDate = unwrap(data.expirationDate);
+      if (expirationDate) {
+        metadata.expiration_date = expirationDate;
       }
-      if (data.totalValue) {
-        metadata.total_value = data.totalValue;
+      const totalValue = unwrap(data.totalValue);
+      if (totalValue) {
+        metadata.total_value = totalValue;
       }
-      if (data.currency) {
-        metadata.currency = data.currency;
+      const currency = unwrap(data.currency);
+      if (currency) {
+        metadata.currency = currency;
       }
-      if (data.jurisdiction) {
-        metadata.jurisdiction = data.jurisdiction;
-        metadata.governing_law = data.jurisdiction;
+      const jurisdiction = unwrap(data.jurisdiction);
+      if (jurisdiction) {
+        metadata.jurisdiction = jurisdiction;
+        metadata.governing_law = jurisdiction;
       }
-      if (data.parties && Array.isArray(data.parties)) {
-        const client = data.parties.find((p: any) => 
-          p.role?.toLowerCase().includes("client") || 
-          p.role?.toLowerCase().includes("buyer")
-        );
-        const supplier = data.parties.find((p: any) => 
-          p.role?.toLowerCase().includes("vendor") || 
-          p.role?.toLowerCase().includes("supplier") ||
-          p.role?.toLowerCase().includes("provider")
-        );
-        if (client?.name) {
-          metadata.client_name = client.name;
-          metadata.party_a_name = client.name;
+      const parties = unwrap(data.parties);
+      if (parties && Array.isArray(parties)) {
+        const client = parties.find((p: any) => {
+          const role = unwrap(p.role);
+          return typeof role === 'string' && (
+            role.toLowerCase().includes("client") || 
+            role.toLowerCase().includes("buyer")
+          );
+        });
+        const supplier = parties.find((p: any) => {
+          const role = unwrap(p.role);
+          return typeof role === 'string' && (
+            role.toLowerCase().includes("vendor") || 
+            role.toLowerCase().includes("supplier") ||
+            role.toLowerCase().includes("provider")
+          );
+        });
+        const clientName = unwrap(client?.name);
+        if (clientName) {
+          metadata.client_name = clientName;
+          metadata.party_a_name = clientName;
         }
-        if (supplier?.name) {
-          metadata.supplier_name = supplier.name;
-          metadata.party_b_name = supplier.name;
+        const supplierName = unwrap(supplier?.name);
+        if (supplierName) {
+          metadata.supplier_name = supplierName;
+          metadata.party_b_name = supplierName;
         }
       }
-      if (data.summary) {
-        metadata.description = data.summary;
+      const summary = unwrap(data.summary);
+      if (summary) {
+        metadata.description = summary;
       }
     }
 

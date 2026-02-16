@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const maxDuration = 120;
@@ -8,14 +8,8 @@ export const maxDuration = 120;
  * GET /api/ai/obligations
  * Get obligations, alerts, or compliance status
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action') || 'list';
     const contractId = searchParams.get('contractId');
@@ -25,14 +19,11 @@ export async function GET(request: NextRequest) {
     const dueWithin = searchParams.get('dueWithin'); // days
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const obligationService = (services as any).aiObligationTrackerService;
 
     if (!obligationService) {
-      return NextResponse.json(
-        { error: 'AI Obligation Tracker service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Obligation Tracker service not available', 503);
     }
 
     let result;
@@ -44,56 +35,40 @@ export async function GET(request: NextRequest) {
           contractId,
           status,
           priority,
-          dueWithin: dueWithin ? parseInt(dueWithin) : undefined,
-        });
+          dueWithin: dueWithin ? parseInt(dueWithin) : undefined });
         break;
 
       case 'detail':
         if (!obligationId) {
-          return NextResponse.json(
-            { error: 'obligationId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'obligationId is required', 400);
         }
         result = await obligationService.getObligation(obligationId);
         break;
 
       case 'alerts':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for alerts' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for alerts', 400);
         }
         result = await obligationService.getAlerts(tenantId);
         break;
 
       case 'summary':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for summary' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for summary', 400);
         }
         result = await obligationService.getObligationSummary(tenantId, contractId);
         break;
 
       case 'compliance':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required for compliance snapshot' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required for compliance snapshot', 400);
         }
         result = await obligationService.getComplianceSnapshot(tenantId);
         break;
 
       case 'upcoming':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
         }
         const days = parseInt(dueWithin || '30');
         result = await obligationService.getUpcomingDeadlines(tenantId, days);
@@ -101,58 +76,35 @@ export async function GET(request: NextRequest) {
 
       case 'overdue':
         if (!tenantId) {
-          return NextResponse.json(
-            { error: 'tenantId is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'tenantId is required', 400);
         }
         result = await obligationService.getOverdueObligations(tenantId);
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to retrieve obligations', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });
 
 /**
  * POST /api/ai/obligations
  * Extract or create obligations
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const body = await request.json();
     const { action = 'extract', ...data } = body;
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const obligationService = (services as any).aiObligationTrackerService;
 
     if (!obligationService) {
-      return NextResponse.json(
-        { error: 'AI Obligation Tracker service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Obligation Tracker service not available', 503);
     }
 
     let result;
@@ -162,10 +114,7 @@ export async function POST(request: NextRequest) {
         const { contractId, contractText, existingArtifacts } = data;
 
         if (!contractId || !contractText) {
-          return NextResponse.json(
-            { error: 'contractId and contractText are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and contractText are required', 400);
         }
 
         result = await obligationService.extractObligations(
@@ -180,10 +129,7 @@ export async function POST(request: NextRequest) {
         const { obligation } = data;
 
         if (!obligation || !obligation.type || !obligation.description) {
-          return NextResponse.json(
-            { error: 'Complete obligation object with type and description is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Complete obligation object with type and description is required', 400);
         }
 
         result = await obligationService.createObligation(obligation);
@@ -193,10 +139,7 @@ export async function POST(request: NextRequest) {
         const { alertId, userId } = data;
 
         if (!alertId || !userId) {
-          return NextResponse.json(
-            { error: 'alertId and userId are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'alertId and userId are required', 400);
         }
 
         result = await obligationService.acknowledgeAlert(alertId, userId);
@@ -206,10 +149,7 @@ export async function POST(request: NextRequest) {
         const { contracts } = data;
 
         if (!contracts || !Array.isArray(contracts) || contracts.length === 0) {
-          return NextResponse.json(
-            { error: 'contracts array is required with at least one contract' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contracts array is required with at least one contract', 400);
         }
 
         const results = [];
@@ -230,103 +170,62 @@ export async function POST(request: NextRequest) {
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       action,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to process obligations', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+      data: result });
+  });
 
 /**
  * PATCH /api/ai/obligations
  * Update obligation status or details
  */
-export async function PATCH(request: NextRequest) {
-  try {
+export const PATCH = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { obligationId, updates } = body;
 
     if (!obligationId || !updates) {
-      return NextResponse.json(
-        { error: 'obligationId and updates are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'obligationId and updates are required', 400);
     }
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const obligationService = (services as any).aiObligationTrackerService;
 
     if (!obligationService) {
-      return NextResponse.json(
-        { error: 'AI Obligation Tracker service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Obligation Tracker service not available', 503);
     }
 
     const result = await obligationService.updateObligation(obligationId, updates);
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to update obligation', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, {
+      data: result });
+  });
 
 /**
  * DELETE /api/ai/obligations
  * Remove an obligation
  */
-export async function DELETE(request: NextRequest) {
-  try {
+export const DELETE = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const obligationId = searchParams.get('obligationId');
 
     if (!obligationId) {
-      return NextResponse.json(
-        { error: 'obligationId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'obligationId is required', 400);
     }
 
     // Dynamic import to avoid build issues
-    const services = await import('@repo/data-orchestration/services');
+    const services = await import('data-orchestration/services');
     const obligationService = (services as any).aiObligationTrackerService;
 
     if (!obligationService) {
-      return NextResponse.json(
-        { error: 'AI Obligation Tracker service not available' },
-        { status: 503 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'AI Obligation Tracker service not available', 503);
     }
 
     await obligationService.deleteObligation(obligationId);
 
-    return NextResponse.json({
-      success: true,
-      message: `Obligation ${obligationId} deleted`,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to delete obligation', details: String(error) },
-      { status: 500 }
-    );
-  }
-}
+    return createSuccessResponse(ctx, {
+      message: `Obligation ${obligationId} deleted` });
+  });

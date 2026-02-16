@@ -25,7 +25,7 @@ export default function RateCardDetailPage() {
     if (params.id) {
       fetchRateCard();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [params.id, dataMode]);
 
   const fetchRateCard = async () => {
@@ -71,14 +71,14 @@ export default function RateCardDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
         <div className="container mx-auto p-6">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center py-24"
           >
-            <div className="p-4 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-lg shadow-blue-500/25 mb-6">
+            <div className="p-4 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl shadow-lg shadow-violet-500/25 mb-6">
               <Loader2 className="w-8 h-8 text-white animate-spin" />
             </div>
             <p className="text-slate-600 font-medium">Loading rate card...</p>
@@ -104,7 +104,7 @@ export default function RateCardDetailPage() {
             <p className="text-slate-600 mb-6">The requested rate card could not be located.</p>
             <Button 
               onClick={() => router.push('/rate-cards')}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Rate Cards
@@ -116,7 +116,7 @@ export default function RateCardDetailPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
       <div className="container mx-auto p-6 space-y-6">
         <RateCardBreadcrumbs />
 
@@ -136,7 +136,7 @@ export default function RateCardDetailPage() {
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back
           </Button>
-          <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25">
+          <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/25">
             <CreditCard className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -151,7 +151,7 @@ export default function RateCardDetailPage() {
         {!editMode && (
           <Button 
             onClick={() => setEditMode(true)}
-            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-blue-500/25"
+            className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-lg shadow-violet-500/25"
           >
             Edit Rate Card
           </Button>
@@ -168,7 +168,7 @@ export default function RateCardDetailPage() {
           <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <span className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-500" />
+                <span className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" />
                 Client & Status Information
               </CardTitle>
             </CardHeader>
@@ -178,7 +178,7 @@ export default function RateCardDetailPage() {
                 <div className="text-sm text-muted-foreground">Client</div>
                 <div className="font-medium">
                   {rateCard.clientName ? (
-                    <span className="text-blue-600">{rateCard.clientName}</span>
+                    <span className="text-violet-600">{rateCard.clientName}</span>
                   ) : (
                     <span className="text-muted-foreground">Not assigned</span>
                   )}
@@ -188,7 +188,7 @@ export default function RateCardDetailPage() {
                 <div className="text-sm text-muted-foreground">Status</div>
                 <div className="flex gap-1 flex-wrap">
                   {rateCard.isBaseline && (
-                    <Badge variant="secondary" className="bg-indigo-100 text-indigo-700">
+                    <Badge variant="secondary" className="bg-violet-100 text-violet-700">
                       ⭐ Baseline
                     </Badge>
                   )}
@@ -271,7 +271,7 @@ export default function RateCardDetailPage() {
             <Card className="bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <span className="w-1 h-5 rounded-full bg-gradient-to-b from-blue-500 to-indigo-500" />
+                  <span className="w-1 h-5 rounded-full bg-gradient-to-b from-violet-500 to-purple-500" />
                   Rate Card Information
                 </CardTitle>
               </CardHeader>
@@ -295,7 +295,7 @@ export default function RateCardDetailPage() {
                 </div>
                 <div>
                   <div className="text-sm text-slate-500">Daily Rate</div>
-                  <div className="font-semibold text-lg bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                  <div className="font-semibold text-lg bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
                     {new Intl.NumberFormat('en-US', {
                       style: 'currency',
                       currency: rateCard.currency || 'USD',

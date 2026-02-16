@@ -10,12 +10,13 @@
  * Useful for scheduled jobs or manual refresh
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
@@ -84,62 +85,40 @@ export async function POST(request: NextRequest) {
                        results.healthScores.success && 
                        results.alerts.success;
 
-    return NextResponse.json({
-      success: allSuccess,
+    return createSuccessResponse(ctx, {
+      allSuccess,
       message: allSuccess 
         ? 'All contract data synced successfully' 
         : 'Some sync operations failed',
-      data: {
-        expirations: results.expirations,
-        healthScores: results.healthScores,
-        alerts: results.alerts,
-        summary: {
-          contractsWithExpirations: results.expirations.data?.synced || 0,
-          contractsWithHealthScores: results.healthScores.data?.synced || 0,
-          alertsGenerated: results.alerts.data?.created || 0,
-        },
+      expirations: results.expirations,
+      healthScores: results.healthScores,
+      alerts: results.alerts,
+      summary: {
+        contractsWithExpirations: results.expirations.data?.synced || 0,
+        contractsWithHealthScores: results.healthScores.data?.synced || 0,
+        alertsGenerated: results.alerts.data?.created || 0,
       },
-      meta: {
-        tenantId,
-        timestamp: new Date().toISOString(),
-        duration: `${Date.now() - startTime}ms`,
-      },
+      tenantId,
+      duration: `${Date.now() - startTime}ms`,
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to sync contract data' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to sync contract data', 500);
   }
-}
+});
 
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
-    
-    // Return sync status and last sync times
-    // This could be enhanced to track actual last sync times in a separate table
-    
-    return NextResponse.json({
-      success: true,
-      data: {
-        endpoints: {
-          expirations: '/api/contracts/sync-expirations',
-          healthScores: '/api/contracts/sync-health-scores',
-          alerts: '/api/contracts/alerts (action: generate-pending)',
-          fullSync: '/api/contracts/sync (POST)',
-        },
-        description: 'POST to /api/contracts/sync to trigger a full sync of all tracking data',
-      },
-      meta: {
-        tenantId,
-        timestamp: new Date().toISOString(),
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get sync status' },
-      { status: 500 }
-    );
-  }
-}
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const tenantId = await getServerTenantId();
+  
+  // Return sync status and last sync times
+  // This could be enhanced to track actual last sync times in a separate table
+  
+  return createSuccessResponse(ctx, {
+    endpoints: {
+      expirations: '/api/contracts/sync-expirations',
+      healthScores: '/api/contracts/sync-health-scores',
+      alerts: '/api/contracts/alerts (action: generate-pending)',
+      fullSync: '/api/contracts/sync (POST)',
+    },
+    description: 'POST to /api/contracts/sync to trigger a full sync of all tracking data',
+  });
+});

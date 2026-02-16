@@ -4,14 +4,23 @@
  * GET /api/auth/sessions - List active sessions
  * DELETE /api/auth/sessions/[id] - Revoke a specific session
  * DELETE /api/auth/sessions - Revoke all sessions except current
+ * 
+ * NOTE (L19): This uses the `UserSession` Prisma model for manual device/session
+ * tracking. This is SEPARATE from NextAuth's JWT-based session strategy.
+ * NextAuth does NOT populate UserSession — it is written to manually during
+ * login (via signIn callback) and cleaned up here.
+ * The NextAuth `Session` model (added for PrismaAdapter SSO support) is also
+ * separate; it would only be used if the session strategy were changed to "database".
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getServerSession } from '@/lib/auth';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 import { prisma } from '@/lib/prisma';
-import { auditLog, AuditAction } from '@/lib/security/audit';
+import { auditLog, AuditAction, getAuditContext } from '@/lib/security/audit';
 import { UAParser } from 'ua-parser-js';
+import { auditTrailService } from 'data-orchestration/services';
 
 interface SessionInfo {
   id: string;
@@ -31,11 +40,12 @@ interface SessionInfo {
  * GET /api/auth/sessions - List all active sessions
  */
 export async function GET(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     // Get current session token from cookie
@@ -47,9 +57,8 @@ export async function GET(request: NextRequest) {
       where: {
         userId: session.user.id,
         expiresAt: { gt: new Date() },
-        revokedAt: null,
       },
-      orderBy: { lastActive: 'desc' },
+      orderBy: { updatedAt: 'desc' },
     });
     
     const sessionInfos: SessionInfo[] = sessions.map(sess => {
@@ -67,19 +76,19 @@ export async function GET(request: NextRequest) {
         },
         ipAddress: maskIpAddress(sess.ipAddress || 'Unknown'),
         location: sess.location || undefined,
-        lastActive: sess.lastActive,
+        lastActive: sess.lastActive || sess.updatedAt,
         createdAt: sess.createdAt,
-        isCurrent: sess.sessionToken === currentSessionToken,
+        isCurrent: sess.token === currentSessionToken || sess.sessionToken === currentSessionToken,
       };
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       sessions: sessionInfos,
       totalSessions: sessionInfos.length,
     });
   } catch (error) {
     console.error('[Sessions List Error]:', error);
-    return NextResponse.json({ error: 'Failed to list sessions' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to list sessions', 500);
   }
 }
 
@@ -87,11 +96,12 @@ export async function GET(request: NextRequest) {
  * DELETE /api/auth/sessions - Revoke sessions
  */
 export async function DELETE(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const session = await getServerSession();
     
     if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
     
     const body = await request.json().catch(() => ({}));
@@ -102,28 +112,26 @@ export async function DELETE(request: NextRequest) {
                                 request.cookies.get('__Secure-next-auth.session-token')?.value;
     
     if (revokeAll) {
-      // Revoke all sessions except current
-      const result = await prisma.userSession.updateMany({
+      // Revoke all sessions except current - delete them since revokedAt doesn't exist
+      const result = await prisma.userSession.deleteMany({
         where: {
           userId: session.user.id,
-          revokedAt: null,
-          NOT: { sessionToken: currentSessionToken },
-        },
-        data: {
-          revokedAt: new Date(),
-          revokedReason: 'User revoked all sessions',
+          NOT: [
+            { token: currentSessionToken },
+            { sessionToken: currentSessionToken },
+          ],
         },
       });
       
       await auditLog({
-        action: AuditAction.SESSION_REVOKED_ALL,
+        action: AuditAction.SESSION_REVOKED,
         userId: session.user.id,
         tenantId: session.user.tenantId,
-        metadata: { count: result.count },
-        request,
+        metadata: { count: result.count, revokeAll: true },
+        ...getAuditContext(request),
       });
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         revokedCount: result.count,
       });
@@ -133,25 +141,20 @@ export async function DELETE(request: NextRequest) {
         where: {
           id: sessionId,
           userId: session.user.id,
-          revokedAt: null,
         },
       });
       
       if (!targetSession) {
-        return NextResponse.json({ error: 'Session not found' }, { status: 404 });
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Session not found', 404);
       }
       
       // Prevent revoking current session
-      if (targetSession.sessionToken === currentSessionToken) {
-        return NextResponse.json({ error: 'Cannot revoke current session' }, { status: 400 });
+      if (targetSession.token === currentSessionToken || targetSession.sessionToken === currentSessionToken) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Cannot revoke current session', 400);
       }
       
-      await prisma.userSession.update({
+      await prisma.userSession.delete({
         where: { id: sessionId },
-        data: {
-          revokedAt: new Date(),
-          revokedReason: 'User revoked session',
-        },
       });
       
       await auditLog({
@@ -159,16 +162,16 @@ export async function DELETE(request: NextRequest) {
         userId: session.user.id,
         tenantId: session.user.tenantId,
         metadata: { sessionId },
-        request,
+        ...getAuditContext(request),
       });
       
-      return NextResponse.json({ success: true });
+      return createSuccessResponse(ctx, { success: true });
     } else {
-      return NextResponse.json({ error: 'sessionId or revokeAll required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'sessionId or revokeAll required', 400);
     }
   } catch (error) {
     console.error('[Session Revoke Error]:', error);
-    return NextResponse.json({ error: 'Failed to revoke session' }, { status: 500 });
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to revoke session', 500);
   }
 }
 

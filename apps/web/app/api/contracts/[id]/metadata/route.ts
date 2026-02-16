@@ -6,12 +6,14 @@
  * Now includes automatic RAG re-indexing when critical fields are updated
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { getContractQueue } from "@repo/utils/queue/contract-queue";
 import { semanticCache } from "@/lib/ai/semantic-cache.service";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Fields that should trigger RAG re-indexing when updated
 const RAG_TRIGGER_FIELDS = [
@@ -90,24 +92,22 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json({
-        success: false,
-        error: "Tenant ID is required"
-      }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     if (!contractId) {
-      return NextResponse.json({
-        success: false,
-        error: "Contract ID is required"
-      }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get contract with full metadata fields
@@ -148,10 +148,7 @@ export async function GET(
     });
 
     if (!contract) {
-      return NextResponse.json({
-        success: false,
-        error: "Contract not found"
-      }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Fetch field validations from ContractMetadata
@@ -196,6 +193,46 @@ export async function GET(
       }
     }
     
+    // If still no parties, try extracting from AI artifacts (overview/parties)
+    // Also capture overview data for other missing fields
+    let artifactOverview: Record<string, any> | null = null;
+    if (normalizedParties.length === 0 || !aiMetadata.contract_short_description || !aiMetadata.jurisdiction) {
+      try {
+        const artifacts = await prisma.artifact.findMany({
+          where: { contractId, tenantId },
+          select: { type: true, data: true },
+        });
+        for (const artifact of artifacts) {
+          const artType = artifact.type.toLowerCase();
+          const artData = artifact.data as Record<string, any> | null;
+          if (!artData) continue;
+          
+          // Capture overview artifact for field enrichment
+          if ((artType === 'overview' || artType === 'metadata') && !artifactOverview) {
+            artifactOverview = artData;
+          }
+          
+          // Extract parties from overview, metadata, or parties artifact
+          if (normalizedParties.length === 0 && (artType === 'overview' || artType === 'metadata' || artType === 'parties') && artData.parties && Array.isArray(artData.parties)) {
+            for (const p of artData.parties) {
+              const name = p.legalName || p.name;
+              if (name) {
+                normalizedParties.push({
+                  legalName: name,
+                  role: p.role || p.type || 'Party',
+                  legalForm: p.legalForm || p.entityType || '',
+                  registeredAddress: p.address || p.registeredAddress || '',
+                  registeredSeat: p.registeredSeat || '',
+                });
+              }
+            }
+          }
+        }
+      } catch {
+        // Silent fail — artifact lookup is a best-effort fallback
+      }
+    }
+    
     // Build enterprise metadata response
     const enterpriseMetadata: EnterpriseMetadata = {
       // Identification
@@ -204,18 +241,18 @@ export async function GET(
       document_classification: aiMetadata.document_classification || 'contract',
       document_classification_confidence: aiMetadata.document_classification_confidence,
       document_classification_warning: aiMetadata.document_classification_warning,
-      contract_short_description: aiMetadata.contract_short_description || contract.description || '',
+      contract_short_description: aiMetadata.contract_short_description || contract.description || artifactOverview?.summary || '',
       
       // Parties - use normalized parties
       external_parties: normalizedParties,
       
       // Commercials
-      tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0),
+      tcv_amount: aiMetadata.tcv_amount || (contract.totalValue ? Number(contract.totalValue) : 0) || (artifactOverview?.totalValue ? Number(artifactOverview.totalValue) : 0),
       tcv_text: aiMetadata.tcv_text || '',
       payment_type: aiMetadata.payment_type || '',
       billing_frequency_type: aiMetadata.billing_frequency_type || contract.paymentFrequency || '',
       periodicity: aiMetadata.periodicity || contract.billingCycle || '',
-      currency: aiMetadata.currency || contract.currency || 'USD',
+      currency: aiMetadata.currency || contract.currency || artifactOverview?.currency || 'USD',
       
       // Dates
       signature_date: aiMetadata.signature_date || null,
@@ -226,8 +263,8 @@ export async function GET(
         aiMetadata.signature_status === 'partially_signed' ||
         (!aiMetadata.signature_date && aiMetadata.signature_status !== 'signed')
       ),
-      start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || '',
-      end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || null,
+      start_date: aiMetadata.start_date || contract.effectiveDate?.toISOString().split('T')[0] || contract.startDate?.toISOString().split('T')[0] || artifactOverview?.effectiveDate || artifactOverview?.effective_date || artifactOverview?.startDate || artifactOverview?.start_date || '',
+      end_date: aiMetadata.end_date || contract.expirationDate?.toISOString().split('T')[0] || contract.endDate?.toISOString().split('T')[0] || artifactOverview?.expirationDate || artifactOverview?.expiration_date || artifactOverview?.endDate || artifactOverview?.end_date || null,
       termination_date: aiMetadata.termination_date || null,
       
       // Reminders
@@ -237,8 +274,8 @@ export async function GET(
       notice_period_days: aiMetadata.notice_period_days || contract.noticePeriodDays || undefined,
       
       // Ownership
-      jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || '',
-      contract_language: aiMetadata.contract_language || 'en',
+      jurisdiction: aiMetadata.jurisdiction || contract.jurisdiction || artifactOverview?.jurisdiction || '',
+      contract_language: aiMetadata.contract_language || artifactOverview?.language || 'en',
       created_by_user_id: aiMetadata.created_by_user_id || contract.uploadedBy || '',
       contract_owner_user_ids: aiMetadata.contract_owner_user_ids || [],
       access_group_ids: aiMetadata.access_group_ids || [],
@@ -332,7 +369,7 @@ export async function GET(
       };
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       metadata: {
         ...enterpriseMetadata,
@@ -353,11 +390,7 @@ export async function GET(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json({
-      success: false,
-      error: "Failed to get contract metadata",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 
@@ -368,27 +401,25 @@ export async function PUT(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params.id;
-    const tenantId = request.headers.get("x-tenant-id");
+    const tenantId = ctx.tenantId;
     
     // Require tenant ID for data isolation
     if (!tenantId) {
-      return NextResponse.json({
-        success: false,
-        error: "Tenant ID is required"
-      }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
     
     const body = await request.json();
     const metadata = body.metadata || body;
 
     if (!contractId) {
-      return NextResponse.json({
-        success: false,
-        error: "Contract ID is required"
-      }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Get existing contract
@@ -398,10 +429,7 @@ export async function PUT(
     });
 
     if (!existingContract) {
-      return NextResponse.json({
-        success: false,
-        error: "Contract not found"
-      }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Validate category ownership if categoryId is being updated
@@ -410,10 +438,7 @@ export async function PUT(
         where: { id: metadata.contractCategoryId, tenantId },
       });
       if (!category) {
-        return NextResponse.json({
-          success: false,
-          error: "Invalid category: belongs to different tenant or does not exist"
-        }, { status: 403 });
+        return createErrorResponse(ctx, 'FORBIDDEN', 'Invalid category: belongs to different tenant or does not exist', 403);
       }
     }
 
@@ -533,7 +558,7 @@ export async function PUT(
       }
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         id: updatedContract.id,
@@ -546,11 +571,7 @@ export async function PUT(
     });
 
   } catch (error: unknown) {
-    return NextResponse.json({
-      success: false,
-      error: "Failed to update contract metadata",
-      details: error instanceof Error ? error.message : "Unknown error"
-    }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 

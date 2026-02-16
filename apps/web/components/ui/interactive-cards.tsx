@@ -104,7 +104,7 @@ export function SelectableCard({
       className={cn(
         'relative rounded-2xl p-4 border-2 transition-all duration-200 cursor-pointer',
         selected
-          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-lg shadow-blue-500/10'
+          ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20 shadow-lg shadow-violet-500/10'
           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-600',
         disabled && 'opacity-50 cursor-not-allowed',
         className
@@ -117,13 +117,13 @@ export function SelectableCard({
           className={cn(
             'absolute top-4 right-4 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all',
             selected
-              ? 'bg-blue-500 border-blue-500 text-white'
+              ? 'bg-violet-500 border-violet-500 text-white'
               : 'border-slate-300 dark:border-slate-600'
           )}
         >
           <AnimatePresence>
             {selected && (
-              <motion.div
+              <motion.div key="selected"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
@@ -140,17 +140,17 @@ export function SelectableCard({
           className={cn(
             'absolute top-4 right-4 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all',
             selected
-              ? 'border-blue-500'
+              ? 'border-violet-500'
               : 'border-slate-300 dark:border-slate-600'
           )}
         >
           <AnimatePresence>
             {selected && (
-              <motion.div
+              <motion.div key="selected"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="w-2.5 h-2.5 rounded-full bg-blue-500"
+                className="w-2.5 h-2.5 rounded-full bg-violet-500"
               />
             )}
           </AnimatePresence>
@@ -160,7 +160,7 @@ export function SelectableCard({
       {variant === 'highlight' && selected && (
         <motion.div
           layoutId="selection-highlight"
-          className="absolute inset-0 rounded-2xl bg-blue-500/5 border-2 border-blue-500"
+          className="absolute inset-0 rounded-2xl bg-violet-500/5 border-2 border-violet-500"
           initial={false}
           transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         />
@@ -317,7 +317,7 @@ export function ExpandableCard({
 
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -393,7 +393,7 @@ export function StatsCard({
             <div
               className={cn(
                 'mt-2 inline-flex items-center gap-1 text-sm font-medium',
-                isPositive ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400'
+                isPositive ? 'text-violet-600 dark:text-violet-400' : 'text-red-600 dark:text-red-400'
               )}
             >
               <span>{isPositive ? '↑' : '↓'}</span>
@@ -427,9 +427,9 @@ interface FeatureCardProps extends Omit<HTMLMotionProps<'div'>, 'ref' | 'childre
 }
 
 const gradients = {
-  blue: 'from-blue-500 to-indigo-600',
-  purple: 'from-purple-500 to-pink-600',
-  green: 'from-emerald-500 to-teal-600',
+  blue: 'from-violet-500 to-purple-600',
+  purple: 'from-violet-500 to-pink-600',
+  green: 'from-violet-500 to-violet-600',
   orange: 'from-orange-500 to-amber-600',
   pink: 'from-pink-500 to-rose-600',
 };
@@ -527,7 +527,7 @@ export function PricingCard({
       className={cn(
         'relative p-6 rounded-2xl border bg-white dark:bg-slate-900 transition-all duration-300',
         popular
-          ? 'border-blue-500 shadow-xl shadow-blue-500/10'
+          ? 'border-violet-500 shadow-xl shadow-violet-500/10'
           : 'border-slate-200 dark:border-slate-800 hover:shadow-lg',
         className
       )}
@@ -535,7 +535,7 @@ export function PricingCard({
     >
       {/* Popular badge */}
       {popular && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white text-xs font-bold rounded-full">
+        <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-violet-500 to-purple-600 text-white text-xs font-bold rounded-full">
           Most Popular
         </div>
       )}
@@ -559,7 +559,7 @@ export function PricingCard({
       <ul className="mt-6 space-y-3">
         {features.map((feature, index) => (
           <li key={index} className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
-            <Check className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            <Check className="w-4 h-4 text-violet-500 flex-shrink-0" />
             {feature}
           </li>
         ))}
@@ -574,7 +574,7 @@ export function PricingCard({
           className={cn(
             'mt-6 w-full py-3 rounded-xl font-semibold transition-colors',
             popular
-              ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white hover:from-blue-600 hover:to-indigo-700'
+              ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700'
               : 'bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700',
             disabled && 'opacity-50 cursor-not-allowed'
           )}
@@ -650,7 +650,7 @@ export function CardWithActions({
               className={cn(
                 'w-4 h-4',
                 bookmarked
-                  ? 'fill-blue-500 text-blue-500'
+                  ? 'fill-violet-500 text-violet-500'
                   : 'text-slate-400'
               )}
             />
@@ -670,7 +670,7 @@ export function CardWithActions({
 
             <AnimatePresence>
               {showMenu && (
-                <>
+                <div key="menu" className="contents">
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -703,7 +703,7 @@ export function CardWithActions({
                       </button>
                     ))}
                   </motion.div>
-                </>
+                </div>
               )}
             </AnimatePresence>
           </div>

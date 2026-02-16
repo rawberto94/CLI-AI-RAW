@@ -1,3 +1,4 @@
+import { NextRequest } from 'next/server';
 /**
  * OpenAPI Specification for Contract Intelligence Platform
  * Auto-generated documentation for API endpoints
@@ -5,7 +6,7 @@
  * @endpoint GET /api/docs/openapi
  */
 
-import { NextResponse } from 'next/server';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 const openApiSpec = {
   openapi: '3.0.3',
@@ -61,10 +62,21 @@ All errors follow the format:
   tags: [
     { name: 'Health', description: 'System health and monitoring' },
     { name: 'Contracts', description: 'Contract management operations' },
+    { name: 'Signatures', description: 'E-signature workflows (DocuSign, Adobe Sign, internal)' },
+    { name: 'Workflows', description: 'Approval and business process workflows' },
+    { name: 'Portal', description: 'Supplier/external party self-service portal' },
     { name: 'Rate Cards', description: 'Rate card management' },
     { name: 'AI', description: 'AI-powered analysis endpoints' },
-    { name: 'Authentication', description: 'User authentication' },
     { name: 'Analytics', description: 'Analytics and reporting' },
+    { name: 'Export', description: 'Data export (CSV, XLSX, JSON, PDF)' },
+    { name: 'Webhooks', description: 'Webhook configuration and delivery' },
+    { name: 'Admin', description: 'Administration endpoints' },
+    { name: 'Authentication', description: 'User authentication and MFA' },
+    { name: 'Search', description: 'Full-text and semantic search' },
+    { name: 'Templates', description: 'Contract template management' },
+    { name: 'Obligations', description: 'Obligation tracking and alerts' },
+    { name: 'Audit', description: 'Audit logging and compliance' },
+    { name: 'GDPR', description: 'GDPR data rights management' },
   ],
   paths: {
     '/api/health': {
@@ -333,6 +345,308 @@ All errors follow the format:
         },
       },
     },
+    '/api/ai/chat/stream': {
+      post: {
+        tags: ['AI'],
+        summary: 'AI Chat (Streaming)',
+        description: 'Streaming AI chat with agentic function calling. Supports 18 tools (search, analytics, workflows, CRUD). Returns SSE events: content, tool_start, tool_done, done.',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  message: { type: 'string' },
+                  conversationId: { type: 'string' },
+                  contractId: { type: 'string', format: 'uuid' },
+                  provider: { type: 'string', enum: ['openai', 'anthropic'] },
+                },
+                required: ['message'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': {
+            description: 'Server-sent events stream',
+            content: { 'text/event-stream': { schema: { type: 'string' } } },
+          },
+        },
+      },
+    },
+    '/api/signatures': {
+      get: {
+        tags: ['Signatures'],
+        summary: 'List signature requests',
+        description: 'Retrieve signature requests with optional filtering by contract or status',
+        security: [{ session: [] }],
+        parameters: [
+          { name: 'contractId', in: 'query', schema: { type: 'string', format: 'uuid' } },
+          { name: 'status', in: 'query', schema: { type: 'string', enum: ['draft', 'pending', 'sent', 'completed', 'declined', 'voided'] } },
+          { name: 'page', in: 'query', schema: { type: 'integer', default: 1 } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 10 } },
+        ],
+        responses: {
+          '200': { description: 'Paginated signature requests', content: { 'application/json': { schema: { $ref: '#/components/schemas/SignatureRequestList' } } } },
+        },
+      },
+      post: {
+        tags: ['Signatures'],
+        summary: 'Create signature request',
+        description: 'Create an e-signature request via DocuSign, Adobe Sign, or internal signing. Sends signing emails to all signatories.',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  contractId: { type: 'string', format: 'uuid' },
+                  provider: { type: 'string', enum: ['docusign', 'adobe_sign', 'manual'], default: 'manual' },
+                  signers: { type: 'array', items: { $ref: '#/components/schemas/Signer' } },
+                  message: { type: 'string' },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                },
+                required: ['contractId', 'signers'],
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Signature request created' },
+          '400': { $ref: '#/components/responses/BadRequest' },
+        },
+      },
+    },
+    '/api/workflows': {
+      get: {
+        tags: ['Workflows'],
+        summary: 'List workflows',
+        description: 'Retrieve all workflow definitions for the tenant',
+        security: [{ session: [] }],
+        responses: {
+          '200': { description: 'List of workflows' },
+        },
+      },
+      post: {
+        tags: ['Workflows'],
+        summary: 'Create workflow',
+        description: 'Create a new approval or business process workflow',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  description: { type: 'string' },
+                  triggerType: { type: 'string', enum: ['manual', 'auto', 'scheduled'] },
+                  steps: { type: 'array', items: { $ref: '#/components/schemas/WorkflowStep' } },
+                },
+                required: ['name', 'steps'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Workflow created' } },
+      },
+    },
+    '/api/portal': {
+      get: {
+        tags: ['Portal'],
+        summary: 'Get portal data',
+        description: 'Retrieve supplier portal data including contracts, pending tasks, and negotiation rounds. Supports magic-link token auth.',
+        security: [{ session: [] }],
+        parameters: [
+          { name: 'token', in: 'query', schema: { type: 'string' }, description: 'Magic link token for external access' },
+          { name: 'section', in: 'query', schema: { type: 'string', enum: ['contracts', 'tasks', 'negotiations'] } },
+          { name: 'supplierId', in: 'query', schema: { type: 'string' } },
+        ],
+        responses: { '200': { description: 'Portal data' } },
+      },
+      post: {
+        tags: ['Portal'],
+        summary: 'Portal actions',
+        description: 'Execute portal actions: sign contracts, upload documents, send messages, submit negotiation proposals',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  action: { type: 'string', enum: ['sign', 'upload', 'send-message', 'complete-task', 'submit-proposal', 'generate-magic-link'] },
+                  contractId: { type: 'string', format: 'uuid' },
+                  taskId: { type: 'string' },
+                  message: { type: 'string' },
+                  proposal: { type: 'object', description: 'Negotiation proposal with redlines' },
+                },
+                required: ['action'],
+              },
+            },
+          },
+        },
+        responses: { '200': { description: 'Action completed' } },
+      },
+    },
+    '/api/contracts/export': {
+      post: {
+        tags: ['Export'],
+        summary: 'Export contracts',
+        description: 'Export contracts in CSV, XLSX, JSON, or PDF format with configurable fields and filters',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  format: { type: 'string', enum: ['csv', 'xlsx', 'json', 'pdf'] },
+                  includeFields: { type: 'array', items: { type: 'string' } },
+                  contractIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+                  filters: {
+                    type: 'object',
+                    properties: {
+                      status: { type: 'array', items: { type: 'string' } },
+                      dateRange: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } } },
+                    },
+                  },
+                },
+                required: ['format', 'includeFields'],
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Export data or XLSX binary response' },
+        },
+      },
+    },
+    '/api/webhooks': {
+      get: {
+        tags: ['Webhooks'],
+        summary: 'List webhooks',
+        security: [{ session: [] }],
+        responses: { '200': { description: 'List of webhook configurations' } },
+      },
+      post: {
+        tags: ['Webhooks'],
+        summary: 'Create webhook',
+        description: 'Register a webhook endpoint for event notifications (contract.created, signature.completed, workflow.approved, etc.)',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  url: { type: 'string', format: 'uri' },
+                  events: { type: 'array', items: { type: 'string' } },
+                  secret: { type: 'string' },
+                },
+                required: ['url', 'events'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'Webhook created' } },
+      },
+    },
+    '/api/search': {
+      get: {
+        tags: ['Search'],
+        summary: 'Search contracts',
+        description: 'Full-text and semantic search across contracts, clauses, and metadata using pgvector embeddings',
+        security: [{ session: [] }],
+        parameters: [
+          { name: 'q', in: 'query', required: true, schema: { type: 'string' } },
+          { name: 'type', in: 'query', schema: { type: 'string', enum: ['text', 'semantic', 'hybrid'] } },
+          { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 } },
+        ],
+        responses: { '200': { description: 'Search results with relevance scores' } },
+      },
+    },
+    '/api/templates': {
+      get: {
+        tags: ['Templates'],
+        summary: 'List contract templates',
+        security: [{ session: [] }],
+        responses: { '200': { description: 'List of templates' } },
+      },
+    },
+    '/api/obligations': {
+      get: {
+        tags: ['Obligations'],
+        summary: 'List obligations',
+        description: 'Retrieve tracked obligations with deadline and compliance status',
+        security: [{ session: [] }],
+        responses: { '200': { description: 'List of obligations' } },
+      },
+    },
+    '/api/audit-logs': {
+      get: {
+        tags: ['Audit'],
+        summary: 'List audit logs',
+        description: 'Retrieve immutable audit trail entries (7-year retention)',
+        security: [{ session: [] }],
+        parameters: [
+          { name: 'action', in: 'query', schema: { type: 'string' } },
+          { name: 'userId', in: 'query', schema: { type: 'string' } },
+          { name: 'from', in: 'query', schema: { type: 'string', format: 'date-time' } },
+          { name: 'to', in: 'query', schema: { type: 'string', format: 'date-time' } },
+        ],
+        responses: { '200': { description: 'Paginated audit log entries' } },
+      },
+    },
+    '/api/gdpr/export': {
+      post: {
+        tags: ['GDPR'],
+        summary: 'Request data export',
+        description: 'GDPR Article 20 - Request a portable data export for a user',
+        security: [{ session: [] }],
+        responses: { '202': { description: 'Export request accepted' } },
+      },
+    },
+    '/api/gdpr/delete': {
+      post: {
+        tags: ['GDPR'],
+        summary: 'Request data deletion',
+        description: 'GDPR Article 17 - Request erasure of personal data',
+        security: [{ session: [] }],
+        responses: { '202': { description: 'Deletion request accepted' } },
+      },
+    },
+    '/api/admin/api-keys': {
+      get: {
+        tags: ['Admin'],
+        summary: 'List API keys',
+        security: [{ session: [] }],
+        responses: { '200': { description: 'List of API keys' } },
+      },
+      post: {
+        tags: ['Admin'],
+        summary: 'Create API key',
+        security: [{ session: [] }],
+        requestBody: {
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string' },
+                  permissions: { type: 'array', items: { type: 'string' } },
+                  expiresAt: { type: 'string', format: 'date-time' },
+                },
+                required: ['name'],
+              },
+            },
+          },
+        },
+        responses: { '201': { description: 'API key created (key shown once)' } },
+      },
+    },
   },
   components: {
     schemas: {
@@ -409,6 +723,63 @@ All errors follow the format:
           details: { type: 'object' },
         },
       },
+      Signer: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          email: { type: 'string', format: 'email' },
+          role: { type: 'string', enum: ['signer', 'approver', 'viewer', 'cc', 'witness'] },
+          order: { type: 'integer' },
+          status: { type: 'string', enum: ['pending', 'sent', 'viewed', 'signed', 'declined'] },
+          signedAt: { type: 'string', format: 'date-time' },
+        },
+        required: ['name', 'email'],
+      },
+      SignatureRequestList: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              items: { type: 'array', items: { $ref: '#/components/schemas/SignatureRequest' } },
+              pagination: {
+                type: 'object',
+                properties: {
+                  page: { type: 'integer' },
+                  limit: { type: 'integer' },
+                  total: { type: 'integer' },
+                  totalPages: { type: 'integer' },
+                },
+              },
+            },
+          },
+        },
+      },
+      SignatureRequest: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', format: 'uuid' },
+          contractId: { type: 'string', format: 'uuid' },
+          provider: { type: 'string', enum: ['docusign', 'adobe_sign', 'manual'] },
+          status: { type: 'string', enum: ['draft', 'pending', 'sent', 'completed', 'declined', 'voided'] },
+          externalEnvelopeId: { type: 'string', description: 'DocuSign/Adobe envelope ID' },
+          signers: { type: 'array', items: { $ref: '#/components/schemas/Signer' } },
+          message: { type: 'string' },
+          expiresAt: { type: 'string', format: 'date-time' },
+          createdAt: { type: 'string', format: 'date-time' },
+        },
+      },
+      WorkflowStep: {
+        type: 'object',
+        properties: {
+          name: { type: 'string' },
+          type: { type: 'string', enum: ['approval', 'review', 'signature', 'notification'] },
+          assigneeId: { type: 'string' },
+          order: { type: 'integer' },
+          conditions: { type: 'object' },
+        },
+      },
     },
     responses: {
       Unauthorized: {
@@ -456,11 +827,11 @@ All errors follow the format:
   },
 };
 
-export async function GET() {
-  return NextResponse.json(openApiSpec, {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
+  return createSuccessResponse(ctx, openApiSpec, {
     headers: {
       'Content-Type': 'application/json',
       'Cache-Control': 'public, max-age=3600',
     },
   });
-}
+});

@@ -154,7 +154,7 @@ export const mockSavingsPipelineData = {
 
 export const savingsCategories = [
   { value: 'rate-negotiation', label: 'Rate Negotiation', color: '#10B981' },
-  { value: 'volume-bundling', label: 'Volume Bundling', color: '#3B82F6' },
+  { value: 'volume-bundling', label: 'Volume Bundling', color: '#8B5CF6' },
   { value: 'supplier-consolidation', label: 'Supplier Consolidation', color: '#8B5CF6' },
   { value: 'license-optimization', label: 'License Optimization', color: '#F59E0B' },
   { value: 'terms-optimization', label: 'Terms Optimization', color: '#EC4899' },

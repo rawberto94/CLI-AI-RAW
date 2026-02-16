@@ -1,9 +1,11 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import type { Prisma } from '@prisma/client';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { rateCardEntryService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request, ctx) => {
   const tenantId = await getApiTenantId(request);
   const { searchParams } = new URL(request.url);
   
@@ -98,7 +100,7 @@ export async function GET(request: NextRequest) {
       updatedAt: e.updatedAt.toISOString(),
     }));
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       entries: mapped,
       total: totalCount,
@@ -109,9 +111,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch rate card entries' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch rate card entries', 500)
   }
-}
+});

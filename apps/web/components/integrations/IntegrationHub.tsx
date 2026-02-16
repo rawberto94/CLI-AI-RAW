@@ -287,7 +287,7 @@ const getStatusIcon = (status: Integration['status']) => {
     case 'error':
       return <AlertCircle className="h-5 w-5 text-red-500" />;
     case 'syncing':
-      return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
+      return <Loader2 className="h-5 w-5 text-violet-500 animate-spin" />;
     case 'pending':
       return <Clock className="h-5 w-5 text-yellow-500" />;
     default:
@@ -609,8 +609,8 @@ export function IntegrationHub() {
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <RefreshCw className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <RefreshCw className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{totalRecords.toLocaleString()}</p>
@@ -643,8 +643,8 @@ export function IntegrationHub() {
             className="bg-white rounded-xl p-6 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Zap className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Zap className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">99.4%</p>
@@ -671,7 +671,7 @@ export function IntegrationHub() {
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={`flex items-center gap-2 py-4 border-b-2 text-sm font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'border-blue-600 text-blue-600'
+                        ? 'border-violet-600 text-violet-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -682,7 +682,7 @@ export function IntegrationHub() {
               </nav>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
               >
                 <Plus className="h-4 w-4" />
                 Add Integration
@@ -716,7 +716,7 @@ export function IntegrationHub() {
                       placeholder="Search integrations..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
                   <button onClick={() => toast({ title: 'Filters', description: 'Opening filter options...' })} className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50">
@@ -734,7 +734,7 @@ export function IntegrationHub() {
                       animate={{ opacity: 1 }}
                       className={`bg-white rounded-xl border p-5 cursor-pointer transition-all ${
                         selectedIntegration === integration.id
-                          ? 'border-blue-300 ring-2 ring-blue-100'
+                          ? 'border-violet-300 ring-2 ring-violet-100'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                       onClick={() => setSelectedIntegration(selectedIntegration === integration.id ? null : integration.id)}
@@ -744,7 +744,7 @@ export function IntegrationHub() {
                           <div className={`p-3 rounded-lg ${
                             integration.status === 'connected' ? 'bg-green-50' :
                             integration.status === 'error' ? 'bg-red-50' :
-                            integration.status === 'syncing' ? 'bg-blue-50' :
+                            integration.status === 'syncing' ? 'bg-violet-50' :
                             'bg-gray-50'
                           }`}>
                             {getTypeIcon(integration.type)}
@@ -774,7 +774,7 @@ export function IntegrationHub() {
 
                       <AnimatePresence>
                         {selectedIntegration === integration.id && (
-                          <motion.div
+                          <motion.div key="selected-integration"
                             initial={{ opacity: 0, height: 0 }}
                             animate={{ opacity: 1, height: 'auto' }}
                             exit={{ opacity: 0, height: 0 }}
@@ -819,7 +819,7 @@ export function IntegrationHub() {
                                   Reconnect
                                 </button>
                               ) : integration.config.syncEnabled ? (
-                                <button onClick={() => handleSync(integration.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 text-sm">
+                                <button onClick={() => handleSync(integration.id)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 text-sm">
                                   <RefreshCw className="h-4 w-4" />
                                   Sync Now
                                 </button>
@@ -847,7 +847,7 @@ export function IntegrationHub() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">Recent Sync Activity</h3>
-                  <button onClick={handleExportLogs} className="text-sm text-blue-600 hover:text-blue-700">Export Logs</button>
+                  <button onClick={handleExportLogs} className="text-sm text-violet-600 hover:text-violet-700">Export Logs</button>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full">
@@ -870,7 +870,7 @@ export function IntegrationHub() {
                           <td className="px-4 py-3 text-sm text-gray-600">{log.entity}</td>
                           <td className="px-4 py-3">
                             <span className={`flex items-center gap-1 text-xs ${
-                              log.direction === 'inbound' ? 'text-blue-600' : 'text-green-600'
+                              log.direction === 'inbound' ? 'text-violet-600' : 'text-green-600'
                             }`}>
                               {log.direction === 'inbound' ? <ArrowRight className="h-3 w-3" /> : <ArrowRight className="h-3 w-3 rotate-180" />}
                               {log.direction}
@@ -902,7 +902,7 @@ export function IntegrationHub() {
               <div className="space-y-6">
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-gray-900">Outbound Webhooks</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     <Plus className="h-4 w-4" />
                     Add Webhook
                   </button>
@@ -949,7 +949,7 @@ export function IntegrationHub() {
                     <h3 className="font-semibold text-gray-900">API Keys</h3>
                     <p className="text-sm text-gray-500">Manage API keys for external integrations</p>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     <Plus className="h-4 w-4" />
                     Generate New Key
                   </button>
@@ -1008,15 +1008,15 @@ export function IntegrationHub() {
                 </div>
 
                 {/* API Documentation Link */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+                <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Code className="h-6 w-6 text-blue-600" />
+                    <Code className="h-6 w-6 text-violet-600" />
                     <div>
-                      <p className="font-medium text-blue-900">API Documentation</p>
-                      <p className="text-sm text-blue-700">Learn how to integrate with our API</p>
+                      <p className="font-medium text-violet-900">API Documentation</p>
+                      <p className="text-sm text-violet-700">Learn how to integrate with our API</p>
                     </div>
                   </div>
-                  <a href="/docs/api" className="flex items-center gap-2 text-blue-600 hover:text-blue-700">
+                  <a href="/docs/api" className="flex items-center gap-2 text-violet-600 hover:text-violet-700">
                     View Docs
                     <ExternalLink className="h-4 w-4" />
                   </a>

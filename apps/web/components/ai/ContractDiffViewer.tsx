@@ -248,7 +248,7 @@ export function ContractDiffViewer({
     return (
       <div className={`flex items-center justify-center h-96 ${className}`}>
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500 mx-auto mb-2" />
+          <Loader2 className="w-8 h-8 animate-spin text-violet-500 mx-auto mb-2" />
           <p className="text-slate-500">Computing differences...</p>
         </div>
       </div>
@@ -287,7 +287,7 @@ export function ContractDiffViewer({
           </div>
           
           {showAIAnnotations && isLoadingAnnotations && (
-            <div className="flex items-center gap-1 text-sm text-purple-600">
+            <div className="flex items-center gap-1 text-sm text-violet-600">
               <Sparkles className="w-4 h-4 animate-pulse" />
               <span>Analyzing...</span>
             </div>
@@ -437,7 +437,7 @@ function DiffSectionComponent({
               ? 'bg-red-100 text-red-700'
               : section.aiAnnotation.significance === 'medium'
               ? 'bg-amber-100 text-amber-700'
-              : 'bg-blue-100 text-blue-700'
+              : 'bg-violet-100 text-violet-700'
           }`}>
             <Sparkles className="w-3 h-3" />
             {section.aiAnnotation.significance}
@@ -448,7 +448,7 @@ function DiffSectionComponent({
       {/* Section Content */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -456,13 +456,13 @@ function DiffSectionComponent({
           >
             {/* AI Annotation */}
             {section.aiAnnotation && (
-              <div className="p-3 bg-purple-50 border-b border-purple-100">
+              <div className="p-3 bg-violet-50 border-b border-violet-100">
                 <div className="flex items-start gap-2">
-                  <Sparkles className="w-4 h-4 text-purple-500 mt-0.5" />
+                  <Sparkles className="w-4 h-4 text-violet-500 mt-0.5" />
                   <div>
-                    <p className="text-sm text-purple-800">{section.aiAnnotation.explanation}</p>
+                    <p className="text-sm text-violet-800">{section.aiAnnotation.explanation}</p>
                     {section.aiAnnotation.recommendation && (
-                      <p className="text-xs text-purple-600 mt-1">
+                      <p className="text-xs text-violet-600 mt-1">
                         💡 {section.aiAnnotation.recommendation}
                       </p>
                     )}

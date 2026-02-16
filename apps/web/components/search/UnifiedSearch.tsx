@@ -308,9 +308,9 @@ function SearchResultsList({
           className="block p-3 rounded-md hover:bg-accent transition-colors"
         >
           <div className="flex items-start gap-3">
-            {result.type === 'contract' && <FileText className="h-5 w-5 text-blue-500 mt-0.5" />}
+            {result.type === 'contract' && <FileText className="h-5 w-5 text-violet-500 mt-0.5" />}
             {result.type === 'rate-card' && <DollarSign className="h-5 w-5 text-green-500 mt-0.5" />}
-            {result.type === 'semantic' && <Sparkles className="h-5 w-5 text-purple-500 mt-0.5" />}
+            {result.type === 'semantic' && <Sparkles className="h-5 w-5 text-violet-500 mt-0.5" />}
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">

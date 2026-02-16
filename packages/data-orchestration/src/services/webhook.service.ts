@@ -1,7 +1,6 @@
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
 
 export type WebhookEvent =
   | 'rate_card.created'
@@ -78,8 +77,22 @@ export class WebhookService {
       maxRetries: 3,
     };
 
-    // In production, save to database
-    // await prisma.webhook.create({ data: webhook });
+    // Persist to database
+    try {
+      await prisma.webhookConfig.create({
+        data: {
+          id: webhook.id,
+          tenantId: webhook.tenantId,
+          name: `Webhook ${webhook.url}`,
+          url: webhook.url,
+          secret: webhook.secret,
+          events: webhook.events,
+          isActive: webhook.enabled,
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to persist webhook config to DB:', e);
+    }
 
     return webhook;
   }
@@ -128,20 +141,28 @@ export class WebhookService {
     tenantId: string,
     event: WebhookEvent
   ): Promise<WebhookConfig[]> {
-    // In production, fetch from database
-    // For now, return mock data
-    return [];
-
-    // Example:
-    // return await prisma.webhook.findMany({
-    //   where: {
-    //     tenantId,
-    //     enabled: true,
-    //     events: {
-    //       has: event,
-    //     },
-    //   },
-    // });
+    try {
+      const dbWebhooks = await prisma.webhookConfig.findMany({
+        where: {
+          tenantId,
+          isActive: true,
+          events: { has: event },
+        },
+      });
+      return dbWebhooks.map(w => ({
+        id: w.id,
+        tenantId: w.tenantId,
+        url: w.url,
+        events: w.events as WebhookEvent[],
+        secret: w.secret,
+        enabled: w.isActive,
+        retryCount: 0,
+        maxRetries: 3,
+      }));
+    } catch (e) {
+      console.warn('Failed to fetch webhooks from DB:', e);
+      return [];
+    }
   }
 
   /**
@@ -253,37 +274,50 @@ export class WebhookService {
    * Get webhook by ID
    */
   private async getWebhookById(webhookId: string): Promise<WebhookConfig | null> {
-    // In production, fetch from database
-    // For now, return null
-    return null;
-
-    // Example:
-    // return await prisma.webhook.findUnique({
-    //   where: { id: webhookId },
-    // });
+    try {
+      const w = await prisma.webhookConfig.findUnique({ where: { id: webhookId } });
+      if (!w) return null;
+      return {
+        id: w.id,
+        tenantId: w.tenantId,
+        url: w.url,
+        events: w.events as WebhookEvent[],
+        secret: w.secret,
+        enabled: w.isActive,
+        retryCount: w.failureCount,
+        maxRetries: 3,
+      };
+    } catch (e) {
+      console.warn('Failed to fetch webhook by ID:', e);
+      return null;
+    }
   }
 
   /**
    * Record delivery
    */
   private async recordDelivery(delivery: WebhookDelivery): Promise<void> {
-    // In production, save to database
-    // Delivery record: id, status, attempts, error are available on delivery object
-
-    // Example:
-    // await prisma.webhookDelivery.create({
-    //   data: {
-    //     id: delivery.id,
-    //     webhookId: delivery.webhookId,
-    //     event: delivery.event,
-    //     payload: delivery.payload,
-    //     status: delivery.status,
-    //     attempts: delivery.attempts,
-    //     lastAttemptAt: delivery.lastAttemptAt,
-    //     response: delivery.response,
-    //     error: delivery.error,
-    //   },
-    // });
+    try {
+      await prisma.webhookLog.create({
+        data: {
+          id: delivery.id,
+          webhookId: delivery.webhookId,
+          event: delivery.event,
+          success: delivery.status === 'success',
+          statusCode: delivery.response?.status || null,
+        },
+      });
+      // Update delivery tracking on config
+      await prisma.webhookConfig.update({
+        where: { id: delivery.webhookId },
+        data: {
+          lastDeliveryAt: new Date(),
+          ...(delivery.status === 'failed' ? { failureCount: { increment: 1 } } : {}),
+        },
+      });
+    } catch (e) {
+      console.warn('Failed to record webhook delivery:', e);
+    }
   }
 
   /**
@@ -323,52 +357,61 @@ export class WebhookService {
       limit?: number;
     }
   ): Promise<WebhookDelivery[]> {
-    // In production, fetch from database
-    return [];
-
-    // Example:
-    // return await prisma.webhookDelivery.findMany({
-    //   where: {
-    //     webhookId,
-    //     ...(options?.status && { status: options.status }),
-    //   },
-    //   orderBy: {
-    //     lastAttemptAt: 'desc',
-    //   },
-    //   take: options?.limit || 50,
-    // });
+    try {
+      const logs = await prisma.webhookLog.findMany({
+        where: {
+          webhookId,
+          ...(options?.status === 'success' ? { success: true } : options?.status === 'failed' ? { success: false } : {}),
+        },
+        orderBy: { createdAt: 'desc' },
+        take: options?.limit || 50,
+      });
+      return logs.map(log => ({
+        id: log.id,
+        webhookId: log.webhookId,
+        event: log.event as WebhookEvent,
+        payload: {},
+        status: log.success ? 'success' as const : 'failed' as const,
+        attempts: 1,
+        lastAttemptAt: log.createdAt,
+      }));
+    } catch (e) {
+      console.warn('Failed to fetch webhook deliveries:', e);
+      return [];
+    }
   }
 
   /**
    * Disable webhook
    */
   async disableWebhook(webhookId: string): Promise<void> {
-    // In production, update database
-    // await prisma.webhook.update({
-    //   where: { id: webhookId },
-    //   data: { enabled: false },
-    // });
+    try {
+      await prisma.webhookConfig.update({ where: { id: webhookId }, data: { isActive: false } });
+    } catch (e) {
+      console.warn('Failed to disable webhook:', e);
+    }
   }
 
   /**
    * Enable webhook
    */
   async enableWebhook(webhookId: string): Promise<void> {
-    // In production, update database
-    // await prisma.webhook.update({
-    //   where: { id: webhookId },
-    //   data: { enabled: true },
-    // });
+    try {
+      await prisma.webhookConfig.update({ where: { id: webhookId }, data: { isActive: true } });
+    } catch (e) {
+      console.warn('Failed to enable webhook:', e);
+    }
   }
 
   /**
    * Delete webhook
    */
   async deleteWebhook(webhookId: string): Promise<void> {
-    // In production, delete from database
-    // await prisma.webhook.delete({
-    //   where: { id: webhookId },
-    // });
+    try {
+      await prisma.webhookConfig.delete({ where: { id: webhookId } });
+    } catch (e) {
+      console.warn('Failed to delete webhook:', e);
+    }
   }
 
   /**

@@ -12,8 +12,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
-
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { taxonomyService } from 'data-orchestration/services';
 // ============================================================================
 // TYPE DEFINITIONS
 // ============================================================================
@@ -131,119 +131,105 @@ function escapeCSV(value: string): string {
 // GET - Export taxonomy
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    
-    const format = searchParams.get('format') || 'json';
-    const flat = searchParams.get('flat') === 'true';
-    
-    // Fetch all active categories
-    const categories = await prisma.taxonomyCategory.findMany({
-      where: { tenantId, isActive: true },
-      orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        parentId: true,
-        path: true,
-        level: true,
-        keywords: true,
-        aiClassificationPrompt: true,
-        color: true,
-        icon: true,
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+
+  const format = searchParams.get('format') || 'json';
+  const flat = searchParams.get('flat') === 'true';
+
+  // Fetch all active categories
+  const categories = await prisma.taxonomyCategory.findMany({
+    where: { tenantId, isActive: true },
+    orderBy: [{ level: 'asc' }, { sortOrder: 'asc' }, { name: 'asc' }],
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      parentId: true,
+      path: true,
+      level: true,
+      keywords: true,
+      aiClassificationPrompt: true,
+      color: true,
+      icon: true,
+    },
+  });
+
+  if (categories.length === 0) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'No categories to export', 404);
+  }
+
+  // Build parent name lookup
+  const idToName = new Map(categories.map((c) => [c.id, c.name]));
+
+  if (format === 'csv') {
+    // Flat CSV format
+    const flatCategories: FlatExportCategory[] = categories.map((cat) => ({
+      name: cat.name,
+      description: cat.description,
+      parent: cat.parentId ? idToName.get(cat.parentId) || null : null,
+      path: cat.path,
+      level: cat.level,
+      keywords: (cat.keywords || []).join('; '),
+      aiClassificationPrompt: cat.aiClassificationPrompt,
+      color: cat.color,
+      icon: cat.icon,
+    }));
+
+    const csv = toCSV(flatCategories);
+
+    return new NextResponse(csv, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/csv',
+        'Content-Disposition': `attachment; filename="taxonomy-${tenantId}-${Date.now()}.csv"`,
       },
     });
-    
-    if (categories.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'No categories to export' },
-        { status: 404 }
-      );
-    }
-    
-    // Build parent name lookup
-    const idToName = new Map(categories.map((c) => [c.id, c.name]));
-    
-    if (format === 'csv') {
-      // Flat CSV format
-      const flatCategories: FlatExportCategory[] = categories.map((cat) => ({
+  }
+
+  // JSON format
+  const processedCategories = categories.map((cat) => ({
+    ...cat,
+    keywords: cat.keywords || [],
+  }));
+
+  const exportData = flat
+    ? processedCategories.map((cat) => ({
         name: cat.name,
         description: cat.description,
         parent: cat.parentId ? idToName.get(cat.parentId) || null : null,
         path: cat.path,
         level: cat.level,
-        keywords: (cat.keywords || []).join('; '),
+        keywords: cat.keywords,
         aiClassificationPrompt: cat.aiClassificationPrompt,
         color: cat.color,
         icon: cat.icon,
-      }));
-      
-      const csv = toCSV(flatCategories);
-      
-      return new NextResponse(csv, {
-        status: 200,
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="taxonomy-${tenantId}-${Date.now()}.csv"`,
-        },
-      });
-    }
-    
-    // JSON format
-    const processedCategories = categories.map((cat) => ({
-      ...cat,
-      keywords: cat.keywords || [],
-    }));
-    
-    const exportData = flat
-      ? processedCategories.map((cat) => ({
-          name: cat.name,
-          description: cat.description,
-          parent: cat.parentId ? idToName.get(cat.parentId) || null : null,
-          path: cat.path,
-          level: cat.level,
-          keywords: cat.keywords,
-          aiClassificationPrompt: cat.aiClassificationPrompt,
-          color: cat.color,
-          icon: cat.icon,
-        }))
-      : buildExportTree(processedCategories);
-    
-    const jsonExport = {
-      exportedAt: new Date().toISOString(),
-      tenantId,
-      version: '1.0',
-      categoryCount: categories.length,
-      format: flat ? 'flat' : 'hierarchical',
-      categories: exportData,
-    };
-    
-    return new NextResponse(JSON.stringify(jsonExport, null, 2), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="taxonomy-${tenantId}-${Date.now()}.json"`,
-      },
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to export taxonomy',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
-  }
-}
+      }))
+    : buildExportTree(processedCategories);
+
+  const jsonExport = {
+    exportedAt: new Date().toISOString(),
+    tenantId,
+    version: '1.0',
+    categoryCount: categories.length,
+    format: flat ? 'flat' : 'hierarchical',
+    categories: exportData,
+  };
+
+  return new NextResponse(JSON.stringify(jsonExport, null, 2), {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/json',
+      'Content-Disposition': `attachment; filename="taxonomy-${tenantId}-${Date.now()}.json"`,
+    },
+  });
+});
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+export const OPTIONS = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return cors.optionsResponse(request, 'GET, OPTIONS');
-}
+});

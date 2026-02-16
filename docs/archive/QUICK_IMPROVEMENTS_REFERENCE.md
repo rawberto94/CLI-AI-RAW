@@ -5,21 +5,25 @@
 ### 1. **Performance Optimizations** ⚡
 
 #### Contracts Page (`/app/contracts/page.tsx`)
+
 - ✅ Added `useMemo` for filtered contracts (only recalculates when needed)
 - ✅ Added `useCallback` for fetchContracts (stable reference)
 - ✅ Reduced re-renders by 30-40%
 
 #### Rate Cards (`/app/rate-cards/benchmarking/page.tsx`)
+
 - ✅ Added `useCallback` for all filter handlers
 - ✅ Prevents unnecessary re-renders of heavy chart components
 - ✅ Expected 30% speed improvement (9.9s → 6.5s)
 
 #### Main Navigation (`/components/layout/MainNavigation.tsx`)
+
 - ✅ Wrapped with `React.memo`
 - ✅ Only re-renders on route changes
 - ✅ Smoother navigation experience
 
 #### Home Page (`/app/page.tsx`)
+
 - ✅ Added `useCallback` import
 - ✅ Prepared for future memoization
 
@@ -28,6 +32,7 @@
 ### 2. **E2E Testing Improvements** 🧪
 
 #### Test IDs Added to Contracts Page:
+
 ```typescript
 data-testid="contracts-stats"      // Stats container
 data-testid="stat-total"           // Total contracts
@@ -44,6 +49,7 @@ data-testid="contract-card"        // Contract cards
 ```
 
 #### Updated Tests (`tests/03-contracts.e2e.spec.ts`):
+
 - ✅ 8 tests updated for card-based UI
 - ✅ Removed tests for deprecated features (bulk ops, table view)
 - ✅ Expected pass rate: 50-60% (up from 0%)
@@ -53,11 +59,13 @@ data-testid="contract-card"        // Contract cards
 ### 3. **Configuration Fixes** 🔧
 
 #### Next.js Config (`next.config.mjs`)
+
 - ✅ Fixed deprecation warning
 - ✅ Moved `experimental.turbo` → `turbopack`
 - ✅ Future-proof for Next.js 16
 
 #### Dependencies
+
 - ✅ Removed deprecated `@types/uuid`
 - ✅ Cleaner dependency tree
 
@@ -66,6 +74,7 @@ data-testid="contract-card"        // Contract cards
 ## 📊 Performance Impact
 
 ### Before → After:
+
 - **Contracts Page:** Many re-renders → Minimal re-renders (↓ 35%)
 - **Rate Cards:** 9.9s → ~6.5s (↓ 34%)
 - **Navigation:** Re-renders on every click → Only on route change (↓ 95%)
@@ -77,26 +86,32 @@ data-testid="contract-card"        // Contract cards
 ## 🎯 React Patterns Used
 
 ### useMemo - Memoize Expensive Calculations
+
 ```typescript
 const filteredContracts = useMemo(() => 
   contracts.filter(contract => /* logic */),
   [contracts, searchQuery, statusFilter]
 );
 ```
+
 **When to use:** Expensive calculations that shouldn't run on every render
 
 ### useCallback - Stable Function References
+
 ```typescript
 const handleClick = useCallback(() => {
   // handler logic
 }, [dependencies]);
 ```
+
 **When to use:** Functions passed as props or used in dependencies
 
 ### React.memo - Component Memoization
+
 ```typescript
 export default memo(MyComponent);
 ```
+
 **When to use:** Components that re-render often with same props
 
 ---

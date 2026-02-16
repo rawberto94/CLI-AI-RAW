@@ -24,6 +24,7 @@ The Contract Intelligence Platform has been enhanced with critical production re
 | Webhook-based alerting | ✅ Complete | `lib/alerting.ts` |
 
 **Usage:**
+
 ```bash
 # Scrape metrics
 curl http://localhost:3005/api/monitoring/prometheus
@@ -45,6 +46,7 @@ curl http://localhost:3005/api/monitoring/health?probe=liveness
 | Migration rollback script | ✅ Complete | `scripts/db-rollback.sh` |
 
 **Configuration:**
+
 - Max connections: 1000 (client-side)
 - Pool size: 50 per database
 - Pool mode: Transaction
@@ -59,6 +61,7 @@ curl http://localhost:3005/api/monitoring/health?probe=liveness
 | Unit tests | ✅ Existing | Various `*.test.ts` files |
 
 **Coverage Thresholds:**
+
 - Statements: 40%
 - Branches: 30%
 - Functions: 35%
@@ -202,6 +205,7 @@ These items require paid services or additional infrastructure:
 ### Grafana Dashboard (`kubernetes/grafana-dashboard.json`)
 
 Panels included:
+
 - System Overview (health, DB, Redis status)
 - Contract Processing (status chart, counts)
 - Memory & Performance (heap, response times)
@@ -264,6 +268,7 @@ SENTRY_DSN="https://..."
 ## Conclusion
 
 The Contract Intelligence Platform is now **90% production ready** with:
+
 - ✅ Comprehensive monitoring and alerting
 - ✅ Database connection pooling
 - ✅ Test coverage enforcement

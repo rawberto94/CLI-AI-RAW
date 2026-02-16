@@ -5,9 +5,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     // Define CSV headers with descriptions
     const headers = [
       'supplierName',
@@ -119,10 +119,4 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': 'attachment; filename="rate-cards-template.csv"',
       },
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to generate template' },
-      { status: 500 }
-    );
-  }
-}
+  });

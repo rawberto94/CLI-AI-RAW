@@ -4,14 +4,14 @@
  * POST /api/ai/compare - Compare two or more contracts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { aiContractComparisonService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 interface ComparisonResult {
   summary: string;
@@ -39,7 +39,8 @@ interface Difference {
   recommendation?: string;
 }
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
   const startTime = Date.now();
 
   try {
@@ -47,63 +48,42 @@ export async function POST(request: NextRequest) {
     const { contractIds, comparisonFocus = 'all' } = body;
 
     if (!contractIds || !Array.isArray(contractIds) || contractIds.length < 2) {
-      return NextResponse.json(
-        { error: 'At least 2 contractIds are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'At least 2 contractIds are required', 400);
     }
 
     if (contractIds.length > 5) {
-      return NextResponse.json(
-        { error: 'Maximum 5 contracts can be compared at once' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Maximum 5 contracts can be compared at once', 400);
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'OpenAI API key not configured', 500);
     }
-
-    const tenantId = await getServerTenantId();
 
     // Fetch all contracts
     const contracts = await prisma.contract.findMany({
       where: {
         id: { in: contractIds },
-        tenantId,
-      },
+        tenantId },
       select: {
         id: true,
         fileName: true,
-        rawText: true,
-      },
-    });
+        rawText: true } });
 
     if (contracts.length < 2) {
-      return NextResponse.json(
-        { error: 'Could not find enough contracts to compare' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Could not find enough contracts to compare', 404);
     }
 
     const contractsWithText = contracts.filter(c => c.rawText && c.rawText.length > 100);
     
     if (contractsWithText.length < 2) {
-      return NextResponse.json(
-        { error: 'Not enough contracts have extractable text for comparison' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Not enough contracts have extractable text for comparison', 400);
     }
 
     // Prepare contract summaries for comparison (truncated)
     const contractSummaries = contractsWithText.map(c => ({
       id: c.id,
       name: c.fileName,
-      text: c.rawText!.slice(0, 5000),
-    }));
+      text: c.rawText!.slice(0, 5000) }));
 
     const comparisonPrompt = `Compare these ${contractSummaries.length} contracts and provide analysis in JSON format:
 
@@ -144,17 +124,14 @@ Focus on: ${comparisonFocus === 'all' ? 'all aspects' : comparisonFocus}`;
       messages: [
         {
           role: 'system',
-          content: 'You are an expert legal contract analyst specializing in contract comparison. Provide detailed, actionable comparisons in JSON format.',
-        },
+          content: 'You are an expert legal contract analyst specializing in contract comparison. Provide detailed, actionable comparisons in JSON format.' },
         {
           role: 'user',
-          content: comparisonPrompt,
-        },
+          content: comparisonPrompt },
       ],
       temperature: 0.3,
       max_tokens: 2500,
-      response_format: { type: 'json_object' },
-    });
+      response_format: { type: 'json_object' } });
 
     const responseContent = completion.choices[0]?.message?.content || '{}';
     
@@ -167,31 +144,21 @@ Focus on: ${comparisonFocus === 'all' ? 'all aspects' : comparisonFocus}`;
 
     const processingTime = Date.now() - startTime;
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       contractsCompared: contractsWithText.map(c => ({ id: c.id, name: c.fileName })),
       comparisonFocus,
       ...comparison,
       metadata: {
         analyzedAt: new Date().toISOString(),
-        processingTime,
-      },
-    });
+        processingTime } });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: error instanceof Error ? error.message : 'Comparison failed',
-        processingTime: Date.now() - startTime,
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return createSuccessResponse(ctx, {
     endpoint: '/api/ai/compare',
     method: 'POST',
     description: 'AI-powered contract comparison',
@@ -205,15 +172,11 @@ export async function GET() {
         type: 'string', 
         required: false, 
         default: 'all',
-        options: ['all', 'pricing', 'liability', 'terms', 'duration'],
-      },
-    },
+        options: ['all', 'pricing', 'liability', 'terms', 'duration'] } },
     returns: {
       summary: 'Overall comparison summary',
       similarities: 'Common elements across contracts',
       differences: 'Key differences with importance ratings',
       recommendations: 'AI recommendations',
-      winner: 'Best contract recommendation',
-    },
-  });
-}
+      winner: 'Best contract recommendation' } });
+});

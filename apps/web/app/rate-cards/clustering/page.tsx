@@ -24,7 +24,7 @@ const fetchClusters = async () => {
 
 const runClusteringAnalysis = async () => {
   const tenantId = 'default-tenant';
-  const response = await fetch('/api/rate-cards/cluster', {
+  const response = await fetch('/api/rate-cards/clusters', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ tenantId }),
@@ -80,8 +80,8 @@ export default function ClusteringPage() {
           className="flex flex-col items-center gap-4"
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-2xl rounded-full" />
-            <div className="relative p-4 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl shadow-lg">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-pink-500/20 blur-2xl rounded-full" />
+            <div className="relative p-4 bg-gradient-to-br from-violet-500 to-pink-600 rounded-2xl shadow-lg">
               <Loader2 className="h-8 w-8 animate-spin text-white" />
             </div>
           </div>
@@ -102,7 +102,7 @@ export default function ClusteringPage() {
               animate={{ opacity: 1, y: 0 }}
               className="flex items-center gap-4"
             >
-              <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/25">
+              <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg shadow-violet-500/25">
                 <Boxes className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -133,7 +133,7 @@ export default function ClusteringPage() {
               <Button
                 onClick={() => clusterMutation.mutate()}
                 disabled={clusterMutation.isPending}
-                className="bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg shadow-purple-500/25"
+                className="bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 shadow-lg shadow-violet-500/25"
               >
                 {clusterMutation.isPending ? (
                   <>
@@ -174,7 +174,7 @@ export default function ClusteringPage() {
           >
             <Card className="mb-6 bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
-                <CardTitle className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <CardTitle className="bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                   Clustering Summary
                 </CardTitle>
                 <CardDescription>
@@ -188,25 +188,25 @@ export default function ClusteringPage() {
                     className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 rounded-xl"
                   >
                     <div className="text-sm text-slate-500 font-medium">Total Clusters</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                       {summary.totalClusters}
                     </div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="p-4 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl"
+                    className="p-4 bg-gradient-to-br from-violet-50 to-purple-100 rounded-xl"
                   >
                     <div className="text-sm text-slate-500 font-medium">Total Opportunities</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
                       {summary.totalOpportunities}
                     </div>
                   </motion.div>
                   <motion.div 
                     whileHover={{ scale: 1.05 }}
-                    className="p-4 bg-gradient-to-br from-emerald-50 to-teal-100 rounded-xl"
+                    className="p-4 bg-gradient-to-br from-violet-50 to-violet-100 rounded-xl"
                   >
                     <div className="text-sm text-slate-500 font-medium">Consolidation Savings</div>
-                    <div className="text-2xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                    <div className="text-2xl font-bold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
                       ${Math.round(summary.totalConsolidationSavings).toLocaleString()}
                     </div>
                   </motion.div>
@@ -248,7 +248,7 @@ export default function ClusteringPage() {
           >
             <Card className="mt-6 bg-white/90 backdrop-blur-sm border-white/50 shadow-lg">
               <CardHeader>
-                <CardTitle className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <CardTitle className="bg-gradient-to-r from-violet-600 to-pink-600 bg-clip-text text-transparent">
                   Get Started with Clustering
                 </CardTitle>
                 <CardDescription>
@@ -269,7 +269,7 @@ export default function ClusteringPage() {
                   </ul>
                   <Button 
                     onClick={() => clusterMutation.mutate()} 
-                    className="mt-4 bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700 shadow-lg shadow-purple-500/25"
+                    className="mt-4 bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700 shadow-lg shadow-violet-500/25"
                   >
                     <Play className="w-4 h-4 mr-2" />
                     Run Your First Clustering Analysis

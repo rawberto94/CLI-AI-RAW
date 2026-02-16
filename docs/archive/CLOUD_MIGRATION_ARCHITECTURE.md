@@ -165,6 +165,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 ## 4. Technology Stack
 
 ### Frontend
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Next.js | 15 | React framework (App Router) |
@@ -174,6 +175,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 | Radix UI | Latest | Accessible components |
 
 ### Backend
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Node.js | 22+ | Runtime (--max-old-space-size=4096) |
@@ -182,6 +184,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 | BullMQ | Latest | Job queue processing |
 
 ### Databases & Storage
+
 | Technology | Purpose | Cloud Equivalent |
 |------------|---------|------------------|
 | PostgreSQL 16 + pgvector | Primary DB + vectors | AWS RDS, GCP Cloud SQL, Azure DB |
@@ -190,6 +193,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 | ChromaDB | Vector embeddings | Pinecone, Weaviate, or self-hosted |
 
 ### AI Services
+
 | Service | Purpose | Alternative |
 |---------|---------|-------------|
 | OpenAI GPT-4 | Analysis, extraction | Azure OpenAI |
@@ -203,6 +207,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 ### ✅ What's Already Cloud-Ready
 
 #### Containerization (95%)
+
 ```yaml
 # Production Dockerfiles available:
 - Dockerfile              # Multi-stage Next.js build
@@ -212,6 +217,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 ```
 
 #### Kubernetes Deployment (90%)
+
 ```yaml
 # kubernetes/deployment.yaml includes:
 - Namespace configuration
@@ -224,6 +230,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 ```
 
 #### Security Policies (90%)
+
 ```yaml
 # kubernetes/security-policies.yaml includes:
 - Pod Security Standards (Restricted)
@@ -233,6 +240,7 @@ The platform uses **database-level multi-tenancy** with row-level isolation:
 ```
 
 #### Docker Compose Variants
+
 | File | Purpose |
 |------|---------|
 | `docker-compose.dev.yml` | Local development |
@@ -334,6 +342,7 @@ graph LR
 ```
 
 **Tasks:**
+
 - [ ] Create VPC with public/private subnets
 - [ ] Deploy Kubernetes cluster (EKS/GKE/AKS)
 - [ ] Provision managed PostgreSQL with pgvector
@@ -354,6 +363,7 @@ graph LR
 ```
 
 **Tasks:**
+
 - [ ] Build and push Docker images to ECR/GCR/ACR
 - [ ] Apply ConfigMaps and Secrets
 - [ ] Deploy application pods
@@ -372,6 +382,7 @@ graph LR
 ```
 
 **Tasks:**
+
 - [ ] Export PostgreSQL data with pg_dump
 - [ ] Restore to managed database
 - [ ] Sync MinIO → S3 with rclone/aws-cli
@@ -381,6 +392,7 @@ graph LR
 ### Phase 4: Testing & Cutover (Week 4-5)
 
 **Tasks:**
+
 - [ ] Run E2E test suite against cloud environment
 - [ ] Performance testing under load
 - [ ] Security scan and penetration testing
@@ -581,6 +593,7 @@ reserve_pool_size = 25
 ## Quick Start Commands
 
 ### Local Development
+
 ```bash
 # Start infrastructure
 docker compose -f docker-compose.dev.yml up -d
@@ -593,6 +606,7 @@ pnpm workers
 ```
 
 ### Build for Production
+
 ```bash
 # Build Docker images
 docker build -t contract-intel-app:latest -f Dockerfile .
@@ -605,6 +619,7 @@ docker push ghcr.io/yourorg/contract-intel-app:latest
 ```
 
 ### Deploy to Kubernetes
+
 ```bash
 # Apply manifests
 kubectl apply -f kubernetes/deployment.yaml
@@ -630,6 +645,7 @@ The Contract Intelligence Platform is **well-architected for cloud migration** w
 - ✅ **Multi-Tenant** - Database-level isolation
 
 **Recommended Next Steps:**
+
 1. Choose cloud provider (AWS recommended)
 2. Set up staging environment
 3. Run migration rehearsal

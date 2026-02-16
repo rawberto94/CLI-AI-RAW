@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  Home,
   Settings,
   User,
   LogOut,
@@ -130,7 +129,7 @@ export function SidebarContainer({ children, className = '' }: SidebarContainerP
       {/* Mobile Overlay */}
       <AnimatePresence>
         {isMobile && isOpen && (
-          <motion.div
+          <motion.div key="mobile"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -192,7 +191,7 @@ export function SidebarHeader({ logo, title, className = '' }: SidebarHeaderProp
         {logo && <div className="flex-shrink-0">{logo}</div>}
         <AnimatePresence>
           {(!isCollapsed || isMobile) && title && (
-            <motion.span
+            <motion.span key="Sidebar-ap-1"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -267,7 +266,7 @@ export function NavGroup({ label, children, className = '' }: NavGroupProps) {
     <div className={`px-3 mb-4 ${className}`}>
       <AnimatePresence>
         {label && (!isCollapsed || isMobile) && (
-          <motion.h3
+          <motion.h3 key="label"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -277,7 +276,7 @@ export function NavGroup({ label, children, className = '' }: NavGroupProps) {
           </motion.h3>
         )}
       </AnimatePresence>
-      <nav className="space-y-1">{children}</nav>
+      <nav className="space-y-1" aria-label="Main navigation">{children}</nav>
     </div>
   );
 }
@@ -316,7 +315,7 @@ export function NavItem({
 
   const badgeColors = {
     gray: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
-    blue: 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300',
+    blue: 'bg-violet-100 text-violet-600 dark:bg-violet-900 dark:text-violet-300',
     green: 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-300',
     red: 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-300',
     yellow: 'bg-yellow-100 text-yellow-600 dark:bg-yellow-900 dark:text-yellow-300',
@@ -349,7 +348,7 @@ export function NavItem({
             : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800'
           }
           ${isActive 
-            ? 'bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400' 
+            ? 'bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400' 
             : 'text-gray-700 dark:text-gray-300'
           }
         `}
@@ -360,7 +359,7 @@ export function NavItem({
 
         <AnimatePresence>
           {showLabel && (
-            <motion.span
+            <motion.span key="label"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -399,7 +398,7 @@ export function NavItem({
       {/* Children */}
       <AnimatePresence>
         {hasChildren && isExpanded && showLabel && (
-          <motion.div
+          <motion.div key="has-children"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -495,11 +494,11 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
         className="w-full flex items-center gap-3 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
       >
         {user.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
+          
           <img src={user.avatar} alt={`${user.name}'s profile photo`} className="w-8 h-8 rounded-full" />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-            <span className="text-sm font-medium text-blue-600 dark:text-blue-400">
+          <div className="w-8 h-8 rounded-full bg-violet-100 dark:bg-violet-900 flex items-center justify-center">
+            <span className="text-sm font-medium text-violet-600 dark:text-violet-400">
               {user.name.charAt(0)}
             </span>
           </div>
@@ -507,7 +506,7 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
 
         <AnimatePresence>
           {showFull && (
-            <motion.div
+            <motion.div key="full"
               initial={{ opacity: 0, width: 0 }}
               animate={{ opacity: 1, width: 'auto' }}
               exit={{ opacity: 0, width: 0 }}
@@ -524,7 +523,7 @@ export function UserMenu({ user, onProfile, onSettings, onLogout }: UserMenuProp
 
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -615,7 +614,7 @@ export function SidebarSearch({
           value={query}
           onChange={handleChange}
           placeholder={placeholder}
-          className="w-full pl-9 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 border-0 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full pl-9 pr-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 border-0 rounded-lg focus:ring-2 focus:ring-violet-500 outline-none"
         />
       </div>
     </div>

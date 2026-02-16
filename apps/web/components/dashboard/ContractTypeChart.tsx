@@ -20,13 +20,13 @@ interface ContractTypeChartProps {
 }
 
 const COLORS = [
-  { fill: '#3b82f6', gradient: 'from-blue-500 to-blue-600' },
+  { fill: '#3b82f6', gradient: 'from-violet-500 to-purple-600' },
   { fill: '#8b5cf6', gradient: 'from-violet-500 to-purple-600' },
   { fill: '#ec4899', gradient: 'from-pink-500 to-rose-600' },
   { fill: '#f59e0b', gradient: 'from-amber-500 to-orange-600' },
-  { fill: '#10b981', gradient: 'from-emerald-500 to-green-600' },
-  { fill: '#6366f1', gradient: 'from-indigo-500 to-indigo-600' },
-  { fill: '#14b8a6', gradient: 'from-teal-500 to-cyan-600' }
+  { fill: '#10b981', gradient: 'from-violet-500 to-purple-600' },
+  { fill: '#6366f1', gradient: 'from-violet-500 to-purple-600' },
+  { fill: '#8B5CF6', gradient: 'from-violet-500 to-purple-600' }
 ];
 
 const listVariants = {
@@ -63,10 +63,10 @@ export function ContractTypeChart({ data }: ContractTypeChartProps) {
       transition={{ duration: 0.5, delay: 0.35 }}
     >
       <Card className="relative overflow-hidden bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border-white/50 dark:border-slate-700/50 shadow-xl">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/10 via-pink-500/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 via-pink-500/5 to-transparent rounded-full -translate-y-1/2 translate-x-1/2" />
         <CardHeader className="pb-3 relative">
           <CardTitle className="flex items-center gap-2 text-base mb-1">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 text-white shadow-lg shadow-violet-500/30">
               <PieChartIcon className="h-4 w-4" />
             </div>
             Contract Distribution

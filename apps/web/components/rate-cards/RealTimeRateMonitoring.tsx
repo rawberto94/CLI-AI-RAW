@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TrendingUp, TrendingDown, Activity, RefreshCw, Bell, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
 
 interface RateChange {
   id: string;
@@ -140,7 +140,7 @@ export function RealTimeRateMonitoring() {
   const getChangeColor = (changePercent: number) => {
     if (changePercent > 5) return 'text-red-600 bg-red-100';
     if (changePercent > 0) return 'text-green-600 bg-green-100';
-    if (changePercent < -5) return 'text-blue-600 bg-blue-100';
+    if (changePercent < -5) return 'text-violet-600 bg-violet-100';
     return 'text-gray-600 bg-gray-100';
   };
 
@@ -151,7 +151,7 @@ export function RealTimeRateMonitoring() {
       case 'medium':
         return 'bg-amber-100 text-amber-800 border-amber-200';
       case 'low':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-violet-100 text-violet-800 border-violet-200';
     }
   };
 
@@ -232,7 +232,7 @@ export function RealTimeRateMonitoring() {
             <CardTitle className="text-sm font-medium">Decreased Today</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-blue-600">
+            <div className="text-2xl font-bold text-violet-600">
               {data?.summary.decreasedToday || 0}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Rate decreases</p>

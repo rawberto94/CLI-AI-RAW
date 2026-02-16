@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
 // Types for approval notifications
 interface ApprovalNotification {
@@ -22,7 +23,7 @@ const emailTemplates = {
     subject: `Action Required: Approval request for "${data.contractTitle}"`,
     html: `
       <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 24px; border-radius: 12px 12px 0 0;">
+        <div style="background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); padding: 24px; border-radius: 12px 12px 0 0;">
           <h1 style="color: white; margin: 0; font-size: 24px;">Approval Request</h1>
         </div>
         <div style="background: white; padding: 24px; border: 1px solid #E2E8F0; border-top: none; border-radius: 0 0 12px 12px;">
@@ -38,7 +39,7 @@ const emailTemplates = {
           </div>
           ${data.message ? `<p style="color: #475569; margin-bottom: 24px; font-style: italic;">"${data.message}"</p>` : ''}
           <div style="text-align: center;">
-            <a href="${data.actionUrl || '#'}" style="display: inline-block; background: #3B82F6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+            <a href="${data.actionUrl || '#'}" style="display: inline-block; background: #8B5CF6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
               Review & Approve
             </a>
           </div>
@@ -159,67 +160,54 @@ const emailTemplates = {
   }),
 };
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const notification: ApprovalNotification = body;
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const notification: ApprovalNotification = body;
 
-    // Validate required fields
-    if (!notification.type || !notification.recipientEmail || !notification.contractTitle) {
-      return NextResponse.json(
-        { success: false, error: 'Missing required fields: type, recipientEmail, contractTitle' },
-        { status: 400 }
-      );
-    }
-
-    // Get the email template
-    const templateFn = emailTemplates[notification.type];
-    if (!templateFn) {
-      return NextResponse.json(
-        { success: false, error: `Unknown notification type: ${notification.type}` },
-        { status: 400 }
-      );
-    }
-
-    const emailContent = templateFn(notification);
-
-    // Send email via SendGrid
-    const { sendEmail } = await import('@/lib/email/email-service');
-    const emailSent = await sendEmail({
-      to: notification.recipientEmail,
-      subject: emailContent.subject,
-      html: emailContent.html,
-      from: 'notifications@contigo.ch',
-    });
-    
-    // Also create a notification record in database for in-app notifications
-    // This would be stored in a notifications table
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        notificationId: `notif_${Date.now()}`,
-        type: notification.type,
-        recipient: notification.recipientEmail,
-        emailSent,
-        inAppCreated: true,
-      },
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to send notification' },
-      { status: 500 }
-    );
+  // Validate required fields
+  if (!notification.type || !notification.recipientEmail || !notification.contractTitle) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Missing required fields: type, recipientEmail, contractTitle', 400);
   }
-}
+
+  // Get the email template
+  const templateFn = emailTemplates[notification.type];
+  if (!templateFn) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown notification type: ${notification.type}`, 400);
+  }
+
+  const emailContent = templateFn(notification);
+
+  // Send email via SendGrid
+  const { sendEmail } = await import('@/lib/email/email-service');
+  const emailSent = await sendEmail({
+    to: notification.recipientEmail,
+    subject: emailContent.subject,
+    html: emailContent.html,
+    from: 'notifications@contigo.ch',
+  });
+
+  // Also create a notification record in database for in-app notifications
+  // This would be stored in a notifications table
+
+  return createSuccessResponse(ctx, {
+    success: true,
+    data: {
+      notificationId: `notif_${Date.now()}`,
+      type: notification.type,
+      recipient: notification.recipientEmail,
+      emailSent,
+      inAppCreated: true,
+    },
+  });
+});
 
 // GET endpoint to retrieve notification templates (for preview)
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') as ApprovalNotification['type'];
 
   if (!type) {
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         availableTypes: Object.keys(emailTemplates),
@@ -229,10 +217,7 @@ export async function GET(request: NextRequest) {
 
   const templateFn = emailTemplates[type];
   if (!templateFn) {
-    return NextResponse.json(
-      { success: false, error: `Unknown notification type: ${type}` },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown notification type: ${type}`, 400);
   }
 
   // Return a preview with sample data
@@ -252,7 +237,7 @@ export async function GET(request: NextRequest) {
 
   const preview = templateFn(sampleData);
 
-  return NextResponse.json({
+  return createSuccessResponse(ctx, {
     success: true,
     data: {
       type,
@@ -260,4 +245,4 @@ export async function GET(request: NextRequest) {
       htmlPreview: preview.html,
     },
   });
-}
+});

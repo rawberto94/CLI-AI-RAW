@@ -244,7 +244,7 @@ export default function CompareRatesPage() {
             <div>
               <div className="mb-2"><BackButton hrefFallback="/benchmarks" /></div>
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center">
-                <Percent className="w-7 h-7 mr-3 text-indigo-600" />
+                <Percent className="w-7 h-7 mr-3 text-violet-600" />
                 Compare Rate Cards
               </h1>
               <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">Select contracts (e.g., Deloitte across clients) and compare roles vs market percentiles to identify savings.</p>
@@ -255,7 +255,7 @@ export default function CompareRatesPage() {
   <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <div className="flex items-center justify-between mb-3">
             <h3 className="text-md font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-600" /> 1) Pick contracts to compare
+              <Users className="w-4 h-4 text-violet-600" /> 1) Pick contracts to compare
             </h3>
             <div className="text-xs text-gray-600 dark:text-gray-300">Selected: <span className="font-semibold">{selected.length}</span></div>
           </div>
@@ -309,7 +309,7 @@ export default function CompareRatesPage() {
                       <button onClick={() => setSelected(searchFilteredContracts.map((c)=>c.id))} className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600">Select all</button>
                       <button onClick={() => setSelected([])} className="px-2 py-1 rounded border border-gray-300 dark:border-gray-600">Clear</button>
                     </div>
-                    <button onClick={() => setShowContractPicker(false)} className="px-2 py-1 rounded bg-indigo-600 text-white">Done</button>
+                    <button onClick={() => setShowContractPicker(false)} className="px-2 py-1 rounded bg-violet-600 text-white">Done</button>
                   </div>
                 </div>
               )}
@@ -355,20 +355,20 @@ export default function CompareRatesPage() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
           <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Filter className="w-4 h-4 text-indigo-600" /> 2) Filter visible contracts (optional)
+            <Filter className="w-4 h-4 text-violet-600" /> 2) Filter visible contracts (optional)
           </h3>
           <FilterBar options={options} value={filters} onChange={setFilters} />
         </div>
 
         {/* Reference selection */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4 mb-6">
-          <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-indigo-600" /> 3) Choose comparison base</h3>
+          <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><SlidersHorizontal className="w-4 h-4 text-violet-600" /> 3) Choose comparison base</h3>
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <div className="inline-flex items-center rounded-lg border border-gray-300 dark:border-gray-700 overflow-hidden">
-              <button onClick={() => setCompareMode('market')} className={`px-3 py-2 text-sm inline-flex items-center gap-2 ${compareMode==='market' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-900'}`}>
+              <button onClick={() => setCompareMode('market')} className={`px-3 py-2 text-sm inline-flex items-center gap-2 ${compareMode==='market' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-900'}`}>
                 <Percent className="w-4 h-4" /> Market
               </button>
-              <button onClick={() => setCompareMode('custom')} className={`px-3 py-2 text-sm inline-flex items-center gap-2 ${compareMode==='custom' ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-gray-900'}`}>
+              <button onClick={() => setCompareMode('custom')} className={`px-3 py-2 text-sm inline-flex items-center gap-2 ${compareMode==='custom' ? 'bg-violet-600 text-white' : 'bg-white dark:bg-gray-900'}`}>
                 <ListChecks className="w-4 h-4" /> Custom rates
               </button>
             </div>
@@ -423,11 +423,11 @@ export default function CompareRatesPage() {
                       const key = rateKey(it, idx);
                       const checked = refSelected.includes(key);
                       return (
-                        <tr key={key} className={checked ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : ''}>
+                        <tr key={key} className={checked ? 'bg-violet-50/50 dark:bg-violet-900/10' : ''}>
                           <td className="px-3 py-2 text-sm"><input type="checkbox" checked={checked} aria-label={`Select ${it.role || 'rate'} from ${it.docId}`} onChange={(e)=>{
                             setRefSelected((prev)=> e.target.checked ? [...prev, key] : prev.filter(x=>x!==key));
                           }} /></td>
-                          <td className="px-3 py-2 text-xs">{it.docId === 'manual' ? <span className="text-gray-500 inline-flex items-center gap-1"><FileText className="w-3 h-3" /> manual</span> : <a className="text-indigo-600 hover:underline inline-flex items-center gap-1" href={`/contracts/${it.docId}`}><FileText className="w-3 h-3" /> {it.docId}</a>}</td>
+                          <td className="px-3 py-2 text-xs">{it.docId === 'manual' ? <span className="text-gray-500 inline-flex items-center gap-1"><FileText className="w-3 h-3" /> manual</span> : <a className="text-violet-600 hover:underline inline-flex items-center gap-1" href={`/contracts/${it.docId}`}><FileText className="w-3 h-3" /> {it.docId}</a>}</td>
                           <td className="px-3 py-2 text-sm">{it.role || '-'}</td>
                           <td className="px-3 py-2 text-sm">{it.dailyUsd ?? '-'}</td>
                           <td className="px-3 py-2 text-sm">{it.country || 'Unknown'}</td>
@@ -450,7 +450,7 @@ export default function CompareRatesPage() {
 
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
           <h3 className="text-md font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
-            <Percent className="w-4 h-4 text-indigo-600" /> 4) Role comparison and savings opportunities
+            <Percent className="w-4 h-4 text-violet-600" /> 4) Role comparison and savings opportunities
           </h3>
           <div className="mb-3 flex items-center justify-between">
             <div className="text-xs text-gray-600 dark:text-gray-300">
@@ -538,7 +538,7 @@ export default function CompareRatesPage() {
         </div>
 
         <div className="mt-6 text-sm">
-          <Link href="/benchmarks" className="text-indigo-600 hover:underline inline-flex items-center">
+          <Link href="/benchmarks" className="text-violet-600 hover:underline inline-flex items-center">
             <CheckCircle2 className="w-4 h-4 mr-1" /> Back to Benchmarks
           </Link>
         </div>

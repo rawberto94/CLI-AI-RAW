@@ -426,7 +426,7 @@ function EditableFieldComponent({
     <div className={cn(
       "group relative p-4 rounded-lg border transition-all",
       isEditing 
-        ? "border-indigo-300 bg-indigo-50/30 ring-2 ring-indigo-100" 
+        ? "border-indigo-300 bg-violet-50/30 ring-2 ring-indigo-100" 
         : "border-slate-200 hover:border-slate-300 bg-white",
       field.locked && "opacity-60"
     )}>
@@ -442,7 +442,7 @@ function EditableFieldComponent({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 border-purple-200 bg-purple-50 text-purple-700">
+                  <Badge variant="outline" className="text-[10px] gap-1 px-1.5 py-0 border-violet-200 bg-violet-50 text-violet-700">
                     <Sparkles className="h-2.5 w-2.5" />
                     AI
                   </Badge>
@@ -479,7 +479,7 @@ function EditableFieldComponent({
                   variant="default"
                   size="sm"
                   onClick={handleSave}
-                  className="h-7 px-2 bg-emerald-600 hover:bg-emerald-700"
+                  className="h-7 px-2 bg-violet-600 hover:bg-violet-700"
                 >
                   <Check className="h-3.5 w-3.5" />
                 </Button>
@@ -498,9 +498,9 @@ function EditableFieldComponent({
                           className="h-7 px-2"
                         >
                           {isEnhancing ? (
-                            <RefreshCw className="h-3.5 w-3.5 animate-spin text-purple-600" />
+                            <RefreshCw className="h-3.5 w-3.5 animate-spin text-violet-600" />
                           ) : (
-                            <Wand2 className="h-3.5 w-3.5 text-purple-600" />
+                            <Wand2 className="h-3.5 w-3.5 text-violet-600" />
                           )}
                         </Button>
                       </TooltipTrigger>
@@ -564,7 +564,7 @@ function EditableFieldComponent({
             <div
               className={cn(
                 "h-full rounded-full transition-all",
-                field.confidence >= 90 ? "bg-emerald-500" :
+                field.confidence >= 90 ? "bg-violet-500" :
                 field.confidence >= 70 ? "bg-amber-500" :
                 "bg-rose-500"
               )}
@@ -589,8 +589,8 @@ function EditableFieldComponent({
             
             {/* AI Suggestions */}
             {field.suggestions && field.suggestions.length > 0 && (
-              <div className="mt-2 p-2 bg-purple-50 rounded-md">
-                <p className="text-xs font-medium text-purple-700 mb-1 flex items-center gap-1">
+              <div className="mt-2 p-2 bg-violet-50 rounded-md">
+                <p className="text-xs font-medium text-violet-700 mb-1 flex items-center gap-1">
                   <Lightbulb className="h-3 w-3" />
                   AI Suggestions
                 </p>
@@ -599,7 +599,7 @@ function EditableFieldComponent({
                     <button
                       key={i}
                       onClick={() => setLocalValue(suggestion)}
-                      className="text-xs px-2 py-1 bg-white rounded border border-purple-200 hover:border-purple-400 text-purple-700 transition-colors"
+                      className="text-xs px-2 py-1 bg-white rounded border border-violet-200 hover:border-violet-400 text-violet-700 transition-colors"
                     >
                       {suggestion}
                     </button>
@@ -722,7 +722,7 @@ function ArtifactSectionComponent({
 
       <AnimatePresence>
         {!isCollapsed && (
-          <motion.div
+          <motion.div key="SmartEditableArtifact-ap-1"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -912,12 +912,12 @@ export function SmartEditableArtifact({
               {stats.total} fields
             </span>
             <span className="flex items-center gap-1">
-              <Sparkles className="h-3.5 w-3.5 text-purple-500" />
+              <Sparkles className="h-3.5 w-3.5 text-violet-500" />
               {stats.aiGenerated} AI-generated
             </span>
             {stats.avgConfidence > 0 && (
               <span className="flex items-center gap-1">
-                <Brain className="h-3.5 w-3.5 text-indigo-500" />
+                <Brain className="h-3.5 w-3.5 text-violet-500" />
                 {stats.avgConfidence}% avg confidence
               </span>
             )}
@@ -944,7 +944,7 @@ export function SmartEditableArtifact({
             onClick={() => setBookmarked(!bookmarked)}
           >
             {bookmarked ? (
-              <BookmarkCheck className="h-4 w-4 text-indigo-600" />
+              <BookmarkCheck className="h-4 w-4 text-violet-600" />
             ) : (
               <Bookmark className="h-4 w-4 text-slate-400" />
             )}
@@ -961,7 +961,7 @@ export function SmartEditableArtifact({
               {isRegenerating ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
               ) : (
-                <Zap className="h-4 w-4 mr-2 text-purple-600" />
+                <Zap className="h-4 w-4 mr-2 text-violet-600" />
               )}
               Regenerate
             </Button>
@@ -995,7 +995,7 @@ export function SmartEditableArtifact({
             <Button
               onClick={() => setShowSaveDialog(true)}
               disabled={!hasChanges || isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isSaving ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1012,8 +1012,8 @@ export function SmartEditableArtifact({
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-blue-100">
-              <Target className="h-4 w-4 text-blue-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Target className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Total Fields</p>
@@ -1023,8 +1023,8 @@ export function SmartEditableArtifact({
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-purple-100">
-              <Sparkles className="h-4 w-4 text-purple-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Sparkles className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">AI Generated</p>
@@ -1034,8 +1034,8 @@ export function SmartEditableArtifact({
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-emerald-100">
-              <Edit3 className="h-4 w-4 text-emerald-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Edit3 className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Editable</p>
@@ -1045,8 +1045,8 @@ export function SmartEditableArtifact({
         </Card>
         <Card className="p-3">
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-indigo-100">
-              <Brain className="h-4 w-4 text-indigo-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Brain className="h-4 w-4 text-violet-600" />
             </div>
             <div>
               <p className="text-xs text-slate-500">Confidence</p>
@@ -1109,7 +1109,7 @@ export function SmartEditableArtifact({
             <Button 
               onClick={handleSaveAll} 
               disabled={isSaving}
-              className="bg-emerald-600 hover:bg-emerald-700"
+              className="bg-violet-600 hover:bg-violet-700"
             >
               {isSaving ? (
                 <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
@@ -1216,7 +1216,7 @@ export function convertToEditableSections(
       description: 'Payment and pricing information',
       fields: financialFields,
       icon: TrendingUp,
-      color: 'emerald'
+      color: 'violet'
     })
   }
 

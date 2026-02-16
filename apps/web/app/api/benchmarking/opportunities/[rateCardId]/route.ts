@@ -3,12 +3,13 @@
  * Endpoints for detecting and managing savings opportunities
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { getErrorMessage } from '@/lib/types/common';
 import { OpportunityStatus, type Prisma } from '@prisma/client';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
@@ -18,23 +19,22 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+
     const { rateCardId } = params;
 
     const opportunities = await benchmarkingEngine.detectSavingsOpportunities(rateCardId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: opportunities,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -44,14 +44,19 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
  * Query params: tenantId, status, minSavings
  */
 export async function GET(request: NextRequest) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+
     const searchParams = request.nextUrl.searchParams;
     const tenantId = await getApiTenantId(request);
     const status = searchParams.get('status');
     const minSavings = searchParams.get('minSavings');
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
     const where: Prisma.RateSavingsOpportunityWhereInput = { tenantId };
@@ -71,7 +76,7 @@ export async function GET(request: NextRequest) {
       0
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         opportunities,
@@ -86,12 +91,6 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

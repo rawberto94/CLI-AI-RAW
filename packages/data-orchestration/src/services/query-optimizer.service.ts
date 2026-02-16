@@ -282,7 +282,7 @@ export class QueryOptimizerService {
    */
   async analyzeQuery(query: string): Promise<QueryPlan> {
     try {
-      // Use EXPLAIN to analyze query
+      // $queryRawUnsafe intentional — EXPLAIN of pre-built query from trusted code
       const plan = await this.prisma.$queryRawUnsafe<any[]>(`EXPLAIN (FORMAT JSON) ${query}`);
       
       const planData = plan[0]['QUERY PLAN'][0];

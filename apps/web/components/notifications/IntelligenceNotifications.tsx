@@ -44,14 +44,14 @@ const notificationTypeConfig: Record<string, {
   color: string; 
   bgColor: string 
 }> = {
-  CONTRACT_UPLOADED: { icon: FileText, color: 'text-blue-600', bgColor: 'bg-blue-100' },
-  CONTRACT_ANALYZED: { icon: Sparkles, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  CONTRACT_UPLOADED: { icon: FileText, color: 'text-violet-600', bgColor: 'bg-violet-100' },
+  CONTRACT_ANALYZED: { icon: Sparkles, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   APPROVAL_REQUEST: { icon: Clock, color: 'text-amber-600', bgColor: 'bg-amber-100' },
   APPROVAL_COMPLETED: { icon: Check, color: 'text-green-600', bgColor: 'bg-green-100' },
   RENEWAL_REMINDER: { icon: Calendar, color: 'text-orange-600', bgColor: 'bg-orange-100' },
-  COMMENT_MENTION: { icon: MessageSquare, color: 'text-indigo-600', bgColor: 'bg-indigo-100' },
+  COMMENT_MENTION: { icon: MessageSquare, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   BUDGET_ALERT: { icon: DollarSign, color: 'text-rose-600', bgColor: 'bg-rose-100' },
-  TEAM_INVITE: { icon: Users, color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
+  TEAM_INVITE: { icon: Users, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   SYSTEM: { icon: AlertCircle, color: 'text-slate-600', bgColor: 'bg-slate-100' },
 };
 
@@ -173,7 +173,7 @@ export function IntelligenceNotifications() {
         {/* Unread Badge */}
         <AnimatePresence>
           {unreadCount > 0 && (
-            <motion.span
+            <motion.span key="unread-count"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
@@ -188,7 +188,7 @@ export function IntelligenceNotifications() {
       {/* Dropdown */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -200,7 +200,7 @@ export function IntelligenceNotifications() {
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold text-slate-900 dark:text-white">Notifications</h3>
                 {unreadCount > 0 && (
-                  <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full">
+                  <span className="px-2 py-0.5 text-xs font-medium bg-violet-100 dark:bg-violet-900/30 text-violet-700 dark:text-violet-400 rounded-full">
                     {unreadCount} new
                   </span>
                 )}
@@ -253,7 +253,7 @@ export function IntelligenceNotifications() {
                           "w-full flex items-start gap-3 px-4 py-3 text-left transition-colors",
                           notification.isRead
                             ? "bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800/50"
-                            : "bg-blue-50/50 dark:bg-blue-900/10 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                            : "bg-violet-50/50 dark:bg-violet-900/10 hover:bg-violet-50 dark:hover:bg-violet-900/20"
                         )}
                       >
                         <div className={cn(
@@ -273,7 +273,7 @@ export function IntelligenceNotifications() {
                               {notification.title}
                             </p>
                             {!notification.isRead && (
-                              <span className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5" />
+                              <span className="w-2 h-2 rounded-full bg-violet-500 flex-shrink-0 mt-1.5" />
                             )}
                           </div>
                           <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">
@@ -298,7 +298,7 @@ export function IntelligenceNotifications() {
               <div className="border-t border-slate-100 dark:border-slate-800">
                 <Link
                   href="/notifications"
-                  className="flex items-center justify-center gap-1 px-4 py-3 text-sm text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                  className="flex items-center justify-center gap-1 px-4 py-3 text-sm text-violet-600 dark:text-violet-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
                   View all notifications

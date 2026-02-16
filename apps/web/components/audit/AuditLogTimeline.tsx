@@ -36,11 +36,11 @@ interface AuditLogTimelineProps {
 }
 
 const categoryConfig: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
-  user: { icon: User, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  user: { icon: User, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   contract: { icon: FileText, color: 'text-green-600', bgColor: 'bg-green-100' },
   system: { icon: Settings, color: 'text-slate-600', bgColor: 'bg-slate-100' },
   security: { icon: Shield, color: 'text-red-600', bgColor: 'bg-red-100' },
-  data: { icon: Database, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  data: { icon: Database, color: 'text-violet-600', bgColor: 'bg-violet-100' },
   integration: { icon: Zap, color: 'text-orange-600', bgColor: 'bg-orange-100' },
 };
 
@@ -150,7 +150,7 @@ export const AuditLogTimeline = memo(function AuditLogTimeline({
                   {/* Timeline dot */}
                   <div className={cn(
                     'absolute left-0 w-9 h-9 rounded-full flex items-center justify-center ring-4 ring-white z-10',
-                    log.success ? 'bg-emerald-50 ring-emerald-100' : 'bg-red-50 ring-red-100'
+                    log.success ? 'bg-violet-50 ring-violet-100' : 'bg-red-50 ring-red-100'
                   )}>
                     <CategoryIcon className={cn(
                       'h-4 w-4',
@@ -175,7 +175,7 @@ export const AuditLogTimeline = memo(function AuditLogTimeline({
                               {formatActionName(log.action)}
                             </h4>
                             {log.success ? (
-                              <CheckCircle className="h-3.5 w-3.5 text-emerald-600 flex-shrink-0" />
+                              <CheckCircle className="h-3.5 w-3.5 text-violet-600 flex-shrink-0" />
                             ) : (
                               <XCircle className="h-3.5 w-3.5 text-red-600 flex-shrink-0" />
                             )}

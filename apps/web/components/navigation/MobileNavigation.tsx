@@ -23,6 +23,8 @@ import {
   LogOut,
   HelpCircle,
   Sparkles,
+  Calendar,
+  RefreshCcw,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -52,6 +54,8 @@ const NAV_SECTIONS: NavSection[] = [
     items: [
       { label: 'Dashboard', href: '/dashboard', icon: Home },
       { label: 'Contracts', href: '/contracts', icon: FileText },
+      { label: 'Renewals', href: '/renewals', icon: RefreshCcw },
+      { label: 'Obligations', href: '/obligations', icon: Calendar },
       { label: 'Upload', href: '/upload', icon: Upload },
     ],
   },
@@ -138,7 +142,7 @@ function NavItemComponent({ item, isActive, onClick }: NavItemProps) {
         'flex items-center gap-3 px-4 py-3 rounded-xl',
         'transition-all duration-200',
         isActive
-          ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white shadow-lg shadow-indigo-500/25'
+          ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-lg shadow-violet-500/25'
           : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
       )}
     >
@@ -187,7 +191,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -208,7 +212,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
             <div className="flex flex-col h-full">
               {/* Header */}
               <div className="flex items-center gap-3 px-6 py-5 border-b border-slate-100">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-white" />
                 </div>
                 <div>
@@ -262,7 +266,7 @@ export function MobileNavDrawer({ isOpen, onClose }: MobileNavDrawerProps) {
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -312,18 +316,18 @@ export function BottomNavigation() {
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full',
                 'transition-all duration-200',
-                isActive ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'
+                isActive ? 'text-violet-600' : 'text-slate-400 hover:text-slate-600'
               )}
             >
               <div className={cn(
                 'p-1.5 rounded-lg transition-colors',
-                isActive && 'bg-indigo-100'
+                isActive && 'bg-violet-100'
               )}>
                 <Icon className="w-5 h-5" />
               </div>
               <span className={cn(
                 'text-[10px] font-medium mt-0.5',
-                isActive && 'text-indigo-600'
+                isActive && 'text-violet-600'
               )}>
                 {item.label}
               </span>

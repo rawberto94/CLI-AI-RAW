@@ -564,7 +564,7 @@ export function ApprovalAnalyticsDashboard({ className }: ApprovalAnalyticsDashb
           value={metrics.totalApprovals.toLocaleString()}
           subtitle={`${metrics.pendingCount} pending`}
           icon={Layers}
-          iconColor="text-blue-600 dark:text-blue-400"
+          iconColor="text-violet-600 dark:text-violet-400"
         />
         <StatCard
           title="Avg Processing Time"
@@ -572,7 +572,7 @@ export function ApprovalAnalyticsDashboard({ className }: ApprovalAnalyticsDashb
           trend={metrics.averageProcessingTimeTrend}
           trendLabel="vs last period"
           icon={Clock}
-          iconColor="text-purple-600 dark:text-purple-400"
+          iconColor="text-violet-600 dark:text-violet-400"
         />
         <StatCard
           title="Approval Rate"

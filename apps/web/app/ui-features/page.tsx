@@ -28,7 +28,9 @@ import {
   Save,
   History,
 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
+
+
 
 export default function UIFeaturesShowcase() {
   // Demo states
@@ -127,11 +129,11 @@ export default function UIFeaturesShowcase() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="text-center space-y-2 py-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             UI/UX Features Showcase
           </h1>
           <p className="text-slate-600 text-lg">
@@ -143,7 +145,7 @@ export default function UIFeaturesShowcase() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Keyboard className="h-5 w-5 text-blue-600" />
+              <Keyboard className="h-5 w-5 text-violet-600" />
               <CardTitle>Keyboard Shortcuts</CardTitle>
             </div>
             <CardDescription>
@@ -224,8 +226,8 @@ export default function UIFeaturesShowcase() {
                 <div className="flex items-center gap-2">
                   {isSaving ? (
                     <>
-                      <Clock className="h-4 w-4 animate-spin text-blue-600" />
-                      <span className="text-blue-600">Saving...</span>
+                      <Clock className="h-4 w-4 animate-spin text-violet-600" />
+                      <span className="text-violet-600">Saving...</span>
                     </>
                   ) : hasUnsavedChanges ? (
                     <>
@@ -252,7 +254,7 @@ export default function UIFeaturesShowcase() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Filter className="h-5 w-5 text-purple-600" />
+                <Filter className="h-5 w-5 text-violet-600" />
                 <CardTitle>Filter Chips</CardTitle>
               </div>
               <CardDescription>
@@ -333,7 +335,7 @@ export default function UIFeaturesShowcase() {
           <Card>
             <CardHeader>
               <div className="flex items-center gap-2">
-                <History className="h-5 w-5 text-indigo-600" />
+                <History className="h-5 w-5 text-violet-600" />
                 <CardTitle>Recently Viewed</CardTitle>
               </div>
               <CardDescription>
@@ -378,12 +380,12 @@ export default function UIFeaturesShowcase() {
         </div>
 
         {/* Info Panel */}
-        <Card className="border-blue-200 bg-blue-50/50">
+        <Card className="border-violet-200 bg-violet-50/50">
           <CardHeader>
-            <CardTitle className="text-blue-900">✨ What&apos;s New</CardTitle>
+            <CardTitle className="text-violet-900">✨ What&apos;s New</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="space-y-2 text-sm text-blue-800">
+            <ul className="space-y-2 text-sm text-violet-800">
               <li className="flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 flex-shrink-0" />
                 <span><strong>Keyboard Shortcuts:</strong> Navigate faster with Cmd+K, Cmd+N, and more</span>

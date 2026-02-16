@@ -11,176 +11,27 @@
  * MULTI-TENANT: Uses getTenantIdFromRequest for proper tenant isolation
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { ContractStatus, type Prisma } from '@prisma/client';
+import { contractService } from 'data-orchestration/services';
 import { withCache, CacheKeys } from "@/lib/cache";
 import { getTenantIdFromRequest } from "@/lib/tenant-server";
-import {
+import { getAuthenticatedApiContext,
   getApiContext,
-  parseQueryParams,
   createSuccessResponse,
   createErrorResponse,
-  createValidationErrorResponse,
-  handleApiError,
-  contractQuerySchema,
-  mapContractStatus,
-  VALID_CONTRACT_STATUSES,
-  type ContractQueryParams,
-  type ApiContext,
 } from "@/lib/api-middleware";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 30;
 
-// Constants for pagination limits
-const MAX_PAGE_SIZE = 100;
-const DEFAULT_PAGE_SIZE = 20;
-const MIN_PAGE = 1;
-
-// Safe pagination parameter parsing
-function parsePaginationParams(searchParams: URLSearchParams) {
-  const rawPage = Number(searchParams.get("page"));
-  const rawLimit = Number(searchParams.get("limit"));
-  
-  // Validate and constrain pagination values
-  const page = Math.max(MIN_PAGE, isNaN(rawPage) ? MIN_PAGE : Math.floor(rawPage));
-  const limit = Math.min(MAX_PAGE_SIZE, Math.max(1, isNaN(rawLimit) ? DEFAULT_PAGE_SIZE : Math.floor(rawLimit)));
-  
-  return { page, limit };
-}
-
-// Mock contracts data (wrapped with caching)
-function returnMockContracts(searchParams: URLSearchParams) {
-  const { page, limit } = parsePaginationParams(searchParams);
-  
-  const mockContracts = [
-    {
-      id: "mock-1",
-      filename: "accenture-it-services-2024.pdf",
-      originalName: "IT Services Agreement - Accenture",
-      status: "COMPLETED",
-      fileSize: "125000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2024-01-15").toISOString(),
-      contractType: "IT Services",
-    },
-    {
-      id: "mock-2",
-      filename: "thoughtworks-msa-2024.pdf",
-      originalName: "Software Development MSA - Thoughtworks",
-      status: "COMPLETED",
-      fileSize: "98000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2024-03-01").toISOString(),
-      contractType: "Software Development",
-    },
-    {
-      id: "mock-3",
-      filename: "aws-enterprise-agreement.pdf",
-      originalName: "Cloud Infrastructure - AWS",
-      status: "COMPLETED",
-      fileSize: "215000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2023-06-01").toISOString(),
-      contractType: "Cloud Services",
-    },
-    {
-      id: "mock-4",
-      filename: "infosys-data-analytics-sow.pdf",
-      originalName: "Data Analytics Platform - Infosys",
-      status: "PROCESSING",
-      fileSize: "87000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2023-09-15").toISOString(),
-      contractType: "Data & Analytics",
-    },
-    {
-      id: "mock-5",
-      filename: "deloitte-security-assessment.pdf",
-      originalName: "Cybersecurity Assessment - Deloitte",
-      status: "UPLOADED",
-      fileSize: "76000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2024-10-01").toISOString(),
-      contractType: "Security",
-    },
-    {
-      id: "mock-6",
-      filename: "sap-erp-implementation.pdf",
-      originalName: "ERP Implementation - SAP",
-      status: "COMPLETED",
-      fileSize: "342000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2024-02-01").toISOString(),
-      contractType: "Enterprise Software",
-    },
-    {
-      id: "mock-7",
-      filename: "capgemini-mobile-dev.pdf",
-      originalName: "Mobile App Development - Capgemini",
-      status: "COMPLETED",
-      fileSize: "112000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2024-04-15").toISOString(),
-      contractType: "Mobile Development",
-    },
-    {
-      id: "mock-8",
-      filename: "cisco-network-services.pdf",
-      originalName: "Network Infrastructure - Cisco Services",
-      status: "COMPLETED",
-      fileSize: "156000",
-      mimeType: "application/pdf",
-      uploadedAt: new Date("2023-08-01").toISOString(),
-      contractType: "Networking",
-    },
-  ];
-  
-  const total = mockContracts.length;
-  const totalPages = Math.ceil(total / limit);
-  const start = (page - 1) * limit;
-  const end = start + limit;
-  const paginatedContracts = mockContracts.slice(start, end);
-  
-  return NextResponse.json({
-    success: true,
-    data: {
-      contracts: paginatedContracts,
-      pagination: {
-        total,
-        limit,
-        page,
-        totalPages,
-        hasMore: page < totalPages,
-        hasPrevious: page > 1,
-      },
-      meta: {
-        responseTime: "5ms",
-        cached: false,
-        source: "mock-data",
-      },
-    },
-  });
-}
-
 async function handler(request: NextRequest) {
   const startTime = Date.now();
   const { searchParams } = new URL(request.url);
-
-  // Mock mode is disabled in production for data integrity
-  // To enable mock mode for testing, set ENABLE_MOCK_MODE=true in environment
-  const dataMode = request.headers.get('x-data-mode') || 'real';
-  const mockModeEnabled = process.env.ENABLE_MOCK_MODE === 'true' && process.env.NODE_ENV !== 'production';
-  
-  if (dataMode === 'mock' && mockModeEnabled) {
-    return returnMockContracts(searchParams);
-  }
-  
-  // In production, always use real data regardless of header
-  // Log if someone tries to use mock mode in production
-  if (dataMode === 'mock' && !mockModeEnabled) {
-    console.warn('[API] Mock mode requested but disabled in this environment');
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
   }
 
   // Use proper tenant resolution (session > header > query > demo in dev only)
@@ -214,16 +65,10 @@ async function handler(request: NextRequest) {
 
   // Validate pagination parameters
   if (page < 1) {
-    return NextResponse.json(
-      { success: false, error: "Page must be greater than 0" },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Page must be greater than 0', 400);
   }
   if (limit < 1 || limit > 100) {
-    return NextResponse.json(
-      { success: false, error: "Limit must be between 1 and 100" },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Limit must be between 1 and 100', 400);
   }
 
   // Valid ContractStatus values from Prisma schema
@@ -521,16 +366,13 @@ async function handler(request: NextRequest) {
   const responseTime = Date.now() - startTime;
 
   // Return cached or fresh result
-  return NextResponse.json(
+  return createSuccessResponse(ctx, 
     {
-      ...cachedResult,
-      data: {
-        ...cachedResult.data,
-        meta: {
-          ...cachedResult.data.meta,
-          responseTime: `${responseTime}ms`,
-          cached: responseTime < 100, // If very fast, likely from cache
-        },
+      ...cachedResult.data,
+      meta: {
+        ...cachedResult.data.meta,
+        responseTime: `${responseTime}ms`,
+        cached: responseTime < 100,
       },
     },
     {
@@ -546,9 +388,13 @@ async function handler(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     return await handler(request);
-  } catch {
-    // Fallback to mock data on any error
-    const { searchParams } = new URL(request.url);
-    return returnMockContracts(searchParams);
+  } catch (error) {
+    // Return proper error instead of silently serving mock data
+    console.error('Contracts GET error:', error);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch contracts. Please try again.', 500);
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { negotiationAssistantService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 type NegotiationBrief = Awaited<ReturnType<negotiationAssistantService['generateNegotiationBrief']>>;
 
@@ -37,7 +38,11 @@ const negotiationService = new negotiationAssistantService(prisma);
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     const rateCardId = params.id;
 
     // Generate comprehensive negotiation brief
@@ -57,13 +62,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Failed to export negotiation brief';
 
-    return NextResponse.json(
-      {
-        success: false,
-        error: errorMessage,
-      },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', errorMessage, 500)
   }
 }
 
@@ -110,7 +109,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     }
 
     .header {
-      border-bottom: 3px solid #2563eb;
+      border-bottom: 3px solid #7c3aed;
       padding-bottom: 20px;
       margin-bottom: 30px;
     }
@@ -153,7 +152,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     .info-item {
       padding: 12px;
       background: #f8fafc;
-      border-left: 3px solid #2563eb;
+      border-left: 3px solid #7c3aed;
     }
 
     .info-label {
@@ -187,7 +186,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     }
 
     .target-rate.recommended {
-      border-color: #2563eb;
+      border-color: #7c3aed;
       background: #eff6ff;
     }
 
@@ -212,7 +211,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     }
 
     .badge-primary {
-      background: #2563eb;
+      background: #7c3aed;
       color: white;
     }
 
@@ -234,7 +233,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     .rate-amount {
       font-size: 32px;
       font-weight: 700;
-      color: #2563eb;
+      color: #7c3aed;
       margin: 10px 0;
     }
 
@@ -365,7 +364,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
       top: 20px;
       right: 20px;
       padding: 12px 24px;
-      background: #2563eb;
+      background: #7c3aed;
       color: white;
       border: none;
       border-radius: 8px;
@@ -375,7 +374,7 @@ function generateNegotiationBriefHTML(brief: NegotiationBrief): string {
     }
 
     .print-button:hover {
-      background: #1d4ed8;
+      background: #6d28d9;
     }
 
     table {

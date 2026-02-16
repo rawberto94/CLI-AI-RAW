@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { metadataEditorService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * DELETE /api/contracts/[id]/metadata/tags/[tagName]
@@ -11,20 +12,21 @@ export async function DELETE(
   props: { params: Promise<{ id: string; tagName: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const tenantId = await getApiTenantId(request);
     const userId = searchParams.get('userId');
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
     if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'userId is required', 400);
     }
 
     await metadataEditorService.removeTag(
@@ -34,13 +36,10 @@ export async function DELETE(
       userId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Tag removed successfully',
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to remove tag' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   Calendar,
   Clock,
-  ArrowRight,
+  ArrowRight as _ArrowRight,
 } from 'lucide-react'
 
 interface TimelineEvent {
@@ -66,7 +66,7 @@ export const ContractTimeline = memo(function ContractTimeline({
         label: 'Effective Date',
         date,
         icon: <PlayCircle className="h-4 w-4" />,
-        color: 'emerald',
+        color: 'violet',
         status: isPast(date) ? 'completed' : isToday(date) ? 'current' : 'upcoming',
       })
     }
@@ -122,7 +122,7 @@ export const ContractTimeline = memo(function ContractTimeline({
     <Card className={cn("border-slate-200", className)}>
       <CardHeader className="pb-2">
         <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-          <Clock className="h-4 w-4 text-indigo-500" />
+          <Clock className="h-4 w-4 text-violet-500" />
           Contract Lifecycle
         </CardTitle>
       </CardHeader>
@@ -131,7 +131,7 @@ export const ContractTimeline = memo(function ContractTimeline({
           {/* Progress Line */}
           <div className="absolute left-4 top-4 bottom-4 w-0.5 bg-slate-200">
             <motion.div
-              className="w-full bg-gradient-to-b from-emerald-500 to-blue-500 rounded-full"
+              className="w-full bg-gradient-to-b from-violet-500 to-purple-500 rounded-full"
               initial={{ height: 0 }}
               animate={{ height: `${progressPercent}%` }}
               transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -142,16 +142,16 @@ export const ContractTimeline = memo(function ContractTimeline({
           <div className="space-y-4">
             {events.map((event, idx) => {
               const colorMap: Record<string, string> = {
-                blue: 'bg-blue-100 text-blue-600 border-blue-200',
-                emerald: 'bg-emerald-100 text-emerald-600 border-emerald-200',
+                blue: 'bg-violet-100 text-violet-600 border-violet-200',
+                emerald: 'bg-violet-100 text-violet-600 border-violet-200',
                 amber: 'bg-amber-100 text-amber-600 border-amber-200',
                 red: 'bg-red-100 text-red-600 border-red-200',
                 slate: 'bg-slate-100 text-slate-600 border-slate-200',
               }
               
               const statusIcon = {
-                completed: <CheckCircle2 className="h-3 w-3 text-emerald-500" />,
-                current: <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse" />,
+                completed: <CheckCircle2 className="h-3 w-3 text-violet-500" />,
+                current: <div className="w-2 h-2 bg-violet-500 rounded-full animate-pulse" />,
                 upcoming: <div className="w-2 h-2 bg-slate-300 rounded-full" />,
                 warning: <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />,
                 missed: <AlertTriangle className="h-3 w-3 text-red-500" />,
@@ -197,7 +197,7 @@ export const ContractTimeline = memo(function ContractTimeline({
                           event.status === 'warning' || event.status === 'missed'
                             ? 'bg-amber-100 text-amber-700'
                             : event.status === 'completed'
-                              ? 'bg-emerald-50 text-emerald-600'
+                              ? 'bg-violet-50 text-violet-600'
                               : 'bg-slate-100 text-slate-500'
                         )}>
                           {daysInfo}

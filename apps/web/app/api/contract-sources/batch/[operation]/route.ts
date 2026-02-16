@@ -14,6 +14,7 @@ import {
   BatchDownloadRequest,
 } from "@/lib/integrations/services/batch-operations.service";
 import { withRateLimit } from "@/lib/integrations/middleware/rate-limit";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 // Validation schemas
 const batchDownloadSchema = z.object({
@@ -38,10 +39,14 @@ const batchDeleteSchema = z.object({
  * Batch download files from a contract source
  */
 async function handleDownload(req: NextRequest): Promise<NextResponse> {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
@@ -52,29 +57,20 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
       session.user.tenantId
     );
 
-    return NextResponse.json({
-      success: result.success,
-      data: {
-        totalFiles: result.totalFiles,
-        processedFiles: result.processedFiles,
-        failedFiles: result.failedFiles,
-        errors: result.errors,
-        outputPath: result.outputPath,
-        duration: result.duration,
-      },
+    return createSuccessResponse(ctx, {
+      totalFiles: result.totalFiles,
+      processedFiles: result.processedFiles,
+      failedFiles: result.failedFiles,
+      errors: result.errors,
+      outputPath: result.outputPath,
+      duration: result.duration,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.errors },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
     console.error("[Batch Download Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to download files" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to download files', 500);
   }
 }
 
@@ -83,10 +79,14 @@ async function handleDownload(req: NextRequest): Promise<NextResponse> {
  * Batch import files to create contracts
  */
 async function handleImport(req: NextRequest): Promise<NextResponse> {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId || !session.user.id) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
@@ -99,28 +99,19 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
       session.user.id
     );
 
-    return NextResponse.json({
-      success: result.success,
-      data: {
-        totalFiles: result.totalFiles,
-        processedFiles: result.processedFiles,
-        failedFiles: result.failedFiles,
-        errors: result.errors,
-        duration: result.duration,
-      },
+    return createSuccessResponse(ctx, {
+      totalFiles: result.totalFiles,
+      processedFiles: result.processedFiles,
+      failedFiles: result.failedFiles,
+      errors: result.errors,
+      duration: result.duration,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.errors },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
     console.error("[Batch Import Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to import files" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to import files', 500);
   }
 }
 
@@ -129,10 +120,14 @@ async function handleImport(req: NextRequest): Promise<NextResponse> {
  * Batch delete files from a contract source
  */
 async function handleDelete(req: NextRequest): Promise<NextResponse> {
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
     if (!session?.user?.tenantId) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await req.json();
@@ -144,28 +139,19 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
       session.user.tenantId
     );
 
-    return NextResponse.json({
-      success: result.success,
-      data: {
-        totalFiles: result.totalFiles,
-        processedFiles: result.processedFiles,
-        failedFiles: result.failedFiles,
-        errors: result.errors,
-        duration: result.duration,
-      },
+    return createSuccessResponse(ctx, {
+      totalFiles: result.totalFiles,
+      processedFiles: result.processedFiles,
+      failedFiles: result.failedFiles,
+      errors: result.errors,
+      duration: result.duration,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json(
-        { success: false, error: "Validation failed", details: error.errors },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, { details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join('; ') });
     }
     console.error("[Batch Delete Error]", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to delete files" },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to delete files', 500);
   }
 }
 
@@ -173,6 +159,10 @@ async function handleDelete(req: NextRequest): Promise<NextResponse> {
 export const POST = withRateLimit(async (req: NextRequest) => {
   const url = new URL(req.url);
   const operation = url.pathname.split("/").pop();
+  const ctx = getAuthenticatedApiContext(req);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(req), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
 
   switch (operation) {
     case "download":
@@ -182,9 +172,6 @@ export const POST = withRateLimit(async (req: NextRequest) => {
     case "delete":
       return handleDelete(req);
     default:
-      return NextResponse.json(
-        { success: false, error: "Unknown operation" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Unknown operation', 400);
   }
 }, "sync");

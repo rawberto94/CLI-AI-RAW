@@ -1,8 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { getContractQueue } from '@/lib/queue/contract-queue';
 import { v4 as uuidv4 } from 'uuid';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/[id]/orchestrator/generate-artifact
@@ -14,6 +16,10 @@ export async function POST(
   props: { params: Promise<{ id: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const contractId = params.id;
   const tenantId = await getApiTenantId(request);
 
@@ -22,10 +28,7 @@ export async function POST(
     const { artifactType } = body;
 
     if (!artifactType) {
-      return NextResponse.json(
-        { error: 'artifactType is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'artifactType is required', 400);
     }
 
     // Get contract text
@@ -35,17 +38,11 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (!contract.rawText || contract.rawText.length < 100) {
-      return NextResponse.json(
-        { error: 'Contract text too short for artifact generation' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract text too short for artifact generation', 400);
     }
 
     const queueManager = getContractQueue();
@@ -67,16 +64,13 @@ export async function POST(
       }
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `${artifactType} generation triggered`,
       jobId,
       artifactType,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to trigger artifact generation' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

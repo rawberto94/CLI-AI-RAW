@@ -36,11 +36,11 @@ interface FilterChipsProps {
 
 const colorVariants = {
   default: 'bg-slate-100 text-slate-700 hover:bg-slate-200 border-slate-200',
-  blue: 'bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-200',
+  blue: 'bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200',
   green: 'bg-green-100 text-green-700 hover:bg-green-200 border-green-200',
   yellow: 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200 border-yellow-200',
   red: 'bg-red-100 text-red-700 hover:bg-red-200 border-red-200',
-  purple: 'bg-purple-100 text-purple-700 hover:bg-purple-200 border-purple-200',
+  purple: 'bg-violet-100 text-violet-700 hover:bg-violet-200 border-violet-200',
 };
 
 export function FilterChips({

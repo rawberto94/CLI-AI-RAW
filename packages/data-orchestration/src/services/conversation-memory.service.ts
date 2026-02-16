@@ -3,10 +3,9 @@
  * Provides multi-turn conversation support with context retention
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { Redis } from '@upstash/redis';
 
-const prisma = new PrismaClient();
 
 // Redis client for fast conversation access (optional fallback to DB)
 let redis: Redis | null = null;
@@ -329,12 +328,59 @@ class ConversationMemoryService {
   // PROACTIVE SUGGESTIONS
   // ============================================
 
-  async generateSuggestions(conversationId: string, tenantId: string): Promise<string[]> {
+  async generateSuggestions(conversationId: string, tenantId: string, intentEntities?: Record<string, any>): Promise<string[]> {
     const conversation = await this.getConversation(conversationId);
     if (!conversation) return [];
 
     const suggestions: string[] = [];
     const state = conversation.state;
+
+    // ENHANCED: Generate clarification prompts for ambiguous queries
+    if (intentEntities?.isClarificationRequest) {
+      // User seems to be following up on something unclear
+      if (state.referenceContext?.lastContractName) {
+        suggestions.push(`Are you asking about ${state.referenceContext.lastContractName}?`);
+      }
+      if (state.referenceContext?.lastSupplierName) {
+        suggestions.push(`Did you mean contracts with ${state.referenceContext.lastSupplierName}?`);
+      }
+    }
+
+    // ENHANCED: Smart suggestions based on question type
+    if (intentEntities?.questionType) {
+      switch (intentEntities.questionType) {
+        case 'time':
+          suggestions.push('Show expiring contracts');
+          suggestions.push('View renewal timeline');
+          break;
+        case 'reason':
+          suggestions.push('Explain contract risks');
+          suggestions.push('Why is this flagged?');
+          break;
+        case 'quantity':
+          suggestions.push('Show contract counts by supplier');
+          suggestions.push('Total spend overview');
+          break;
+        case 'entity':
+          suggestions.push('List all suppliers');
+          suggestions.push('Show contract parties');
+          break;
+      }
+    }
+
+    // ENHANCED: Suggestions for recommendation requests
+    if (intentEntities?.isAskingRecommendation) {
+      suggestions.push('Compare top suppliers');
+      suggestions.push('Show best-performing contracts');
+      suggestions.push('Recommend renewal strategies');
+    }
+
+    // ENHANCED: Urgent query follow-ups
+    if (intentEntities?.hasUrgency) {
+      suggestions.push('Show all urgent items');
+      suggestions.push('View critical deadlines');
+      suggestions.push('Contracts needing immediate action');
+    }
 
     // Based on last topic
     if (state.lastTopic === 'list_expiring') {
@@ -352,7 +398,50 @@ class ConversationMemoryService {
       suggestions.push('What are our top suppliers by spend?');
     }
 
-    return suggestions;
+    // Deduplicate and limit suggestions
+    const uniqueSuggestions = [...new Set(suggestions)];
+    return uniqueSuggestions.slice(0, 4);
+  }
+
+  // ============================================
+  // CLARIFICATION PROMPTS FOR UNCLEAR QUERIES
+  // ============================================
+
+  async generateClarificationPrompts(query: string, intentConfidence: number, intentEntities?: Record<string, any>): Promise<{
+    needsClarification: boolean;
+    prompts: string[];
+    clarificationType: string;
+  }> {
+    const lowerQuery = query.toLowerCase();
+    
+    // Determine if clarification is needed based on confidence and query characteristics
+    const needsClarification = 
+      intentConfidence < 0.6 || 
+      (intentEntities?.isClarificationRequest && !intentEntities?.hasImplicitContractContext);
+    
+    if (!needsClarification) {
+      return { needsClarification: false, prompts: [], clarificationType: 'none' };
+    }
+
+    const prompts: string[] = [];
+    let clarificationType = 'general';
+
+    // Detect what type of clarification is needed
+    if (lowerQuery.includes('this') || lowerQuery.includes('that') || lowerQuery.includes('it')) {
+      clarificationType = 'reference';
+      prompts.push('Could you specify which contract you\'re referring to?');
+      prompts.push('Would you like me to show your recent contracts?');
+    } else if (intentEntities?.hasImplicitContractContext) {
+      clarificationType = 'scope';
+      prompts.push('Are you looking for a specific contract or all related ones?');
+      prompts.push('Should I search across all suppliers?');
+    } else if (!intentEntities?.questionType) {
+      clarificationType = 'intent';
+      prompts.push('What would you like to know about your contracts?');
+      prompts.push('I can help with contract search, analysis, or comparisons');
+    }
+
+    return { needsClarification, prompts, clarificationType };
   }
 
   // ============================================

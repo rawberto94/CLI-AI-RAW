@@ -12,7 +12,7 @@ interface FinancialsTabProps {
   roles: any;
 }
 
-export function FinancialsTab({ summary, roles }: FinancialsTabProps) {
+export function FinancialsTab({ summary, roles: _roles }: FinancialsTabProps) {
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold mb-4">Financial Analysis</h3>

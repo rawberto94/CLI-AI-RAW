@@ -1,22 +1,21 @@
 /**
  * useToast Hook
- * Wrapper around react-hot-toast with consistent styling and behavior
+ * Wrapper around sonner with consistent styling and behavior
  */
 
 'use client';
 
-import toast, { type ToastOptions } from 'react-hot-toast';
+import { toast, type ExternalToast } from 'sonner';
 
-export interface ToastConfig extends ToastOptions {
+export interface ToastConfig extends ExternalToast {
   action?: {
     label: string;
     onClick: () => void;
   };
 }
 
-const defaultOptions: ToastOptions = {
+const defaultOptions: ExternalToast = {
   duration: 4000,
-  position: 'top-right',
 };
 
 export function useToast() {
@@ -26,33 +25,26 @@ export function useToast() {
     return toast.success(message, {
       ...defaultOptions,
       ...toastOptions,
+      ...(action ? { action: { label: action.label, onClick: action.onClick } } : {}),
     });
   };
 
   const error = (message: string, options?: ToastConfig) => {
     const { action, ...toastOptions } = options || {};
     
-    const toastId = toast.error(message, {
+    return toast.error(message, {
       ...defaultOptions,
       duration: 6000, // Longer duration for errors
       ...toastOptions,
+      ...(action ? { action: { label: action.label, onClick: action.onClick } } : {}),
     });
-
-    // Add action button if provided
-    if (action) {
-      // Note: react-hot-toast doesn't natively support action buttons
-      // This is a placeholder for future enhancement with custom toast component
-    }
-
-    return toastId;
   };
 
   const warning = (message: string, options?: ToastConfig) => {
     const { action, ...toastOptions } = options || {};
     
-    return toast(message, {
+    return toast.warning(message, {
       ...defaultOptions,
-      icon: '⚠️',
       ...toastOptions,
     });
   };
@@ -60,14 +52,13 @@ export function useToast() {
   const info = (message: string, options?: ToastConfig) => {
     const { action, ...toastOptions } = options || {};
     
-    return toast(message, {
+    return toast.info(message, {
       ...defaultOptions,
-      icon: 'ℹ️',
       ...toastOptions,
     });
   };
 
-  const loading = (message: string, options?: ToastOptions) => {
+  const loading = (message: string, options?: ExternalToast) => {
     return toast.loading(message, {
       ...defaultOptions,
       ...options,
@@ -75,25 +66,22 @@ export function useToast() {
   };
 
   const promise = <T,>(
-    promise: Promise<T>,
+    promiseOrFn: Promise<T>,
     messages: {
       loading: string;
       success: string | ((data: T) => string);
       error: string | ((error: any) => string);
     },
-    options?: ToastOptions
+    options?: ExternalToast
   ) => {
     return toast.promise(
-      promise,
+      promiseOrFn,
       messages,
-      {
-        ...defaultOptions,
-        ...options,
-      }
+      options,
     );
   };
 
-  const dismiss = (toastId?: string) => {
+  const dismiss = (toastId?: string | number) => {
     if (toastId) {
       toast.dismiss(toastId);
     } else {
@@ -102,13 +90,16 @@ export function useToast() {
   };
 
   const custom = (
-    component: (t: any) => React.ReactElement,
-    options?: ToastOptions
+    component: (id: string | number) => React.ReactElement,
+    options?: ExternalToast
   ) => {
-    return toast.custom(component, {
-      ...defaultOptions,
-      ...options,
-    });
+    return toast.custom(
+      (id) => component(id),
+      {
+        ...defaultOptions,
+        ...options,
+      }
+    );
   };
 
   return {

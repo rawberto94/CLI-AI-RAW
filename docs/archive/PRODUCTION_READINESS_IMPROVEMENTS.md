@@ -17,6 +17,7 @@
 **Three Deletion Methods Available:**
 
 #### A. Hard Delete (Individual)
+
 **Endpoint**: `DELETE /api/contracts/[id]`
 **Location**: [apps/web/app/api/contracts/[id]/route.ts](apps/web/app/api/contracts/[id]/route.ts#L529)
 
@@ -26,6 +27,7 @@ await prisma.contract.delete({ where: { id } });
 ```
 
 #### B. Soft Delete Support
+
 **Schema Field**: `isDeleted`, `deletedAt`, `deletedBy`
 
 ```prisma
@@ -37,6 +39,7 @@ model Contract {
 ```
 
 **Queries exclude deleted contracts:**
+
 ```typescript
 // Dashboard stats
 prisma.contract.count({ 
@@ -48,6 +51,7 @@ where: { tenantId, isDeleted: false }
 ```
 
 #### C. Bulk Delete
+
 **Endpoint**: `POST /api/contracts/bulk`
 **Location**: [apps/web/app/api/contracts/bulk/route.ts](apps/web/app/api/contracts/bulk/route.ts#L113)
 
@@ -62,6 +66,7 @@ const deleted = await prisma.contract.deleteMany({
 ```
 
 **Publishes realtime events:**
+
 ```typescript
 publishRealtimeEvent({
   event: 'contract:deleted',
@@ -74,11 +79,13 @@ publishRealtimeEvent({
 **Current Risk**: Contract deletion may leave orphaned data
 
 **What Gets Deleted Automatically** (via `onDelete: Cascade`):
+
 - User data → cascades to tenant
 - Role assignments → cascade
 - Permissions → cascade
 
 **⚠️ What DOESN'T Cascade** (orphan risk):
+
 - Artifacts (no cascade defined)
 - Embeddings (no cascade defined)
 - Processing jobs (no cascade defined)
@@ -205,6 +212,7 @@ export async function safeDeleteContract(contractId: string, tenantId: string) {
 ```
 
 **Usage**:
+
 ```typescript
 // In DELETE /api/contracts/[id]/route.ts
 import { safeDeleteContract } from '@/lib/services/contract-deletion.service';
@@ -301,6 +309,7 @@ export const dateRangeSchema = z.object({
 ```
 
 **Apply in Endpoints**:
+
 ```typescript
 // In upload route
 import { contractUploadSchema } from '@/lib/validation/contract.validation';
@@ -541,6 +550,7 @@ export async function GET(req: NextRequest) {
 ```
 
 **Add to vercel.json**:
+
 ```json
 {
   "crons": [
@@ -819,6 +829,7 @@ ALTER TABLE "Clause" ADD CONSTRAINT "Clause_contractId_fkey"
 ```
 
 **Update Prisma Schema**:
+
 ```prisma
 model Contract {
   artifacts  Artifact[] @relation(onDelete: Cascade)
@@ -834,6 +845,7 @@ model Contract {
 ## 4. Implementation Checklist
 
 ### Phase 1: Critical (Do First)
+
 - [ ] Create safe contract deletion service
 - [ ] Update DELETE endpoints to use safe deletion
 - [ ] Add cascade delete constraints to schema
@@ -841,6 +853,7 @@ model Contract {
 - [ ] Create contract integrity validation
 
 ### Phase 2: High Priority (This Week)
+
 - [ ] Implement automated taxonomy migration cron
 - [ ] Add expiration monitoring cron
 - [ ] Create hierarchy suggestion automation
@@ -848,12 +861,14 @@ model Contract {
 - [ ] Create taxonomy metrics endpoint
 
 ### Phase 3: Medium Priority (Next Sprint)
+
 - [ ] Enhanced monitoring dashboard
 - [ ] Automated data integrity checks
 - [ ] Performance optimization for large datasets
 - [ ] Add bulk operation APIs
 
 ### Phase 4: Nice to Have (Backlog)
+
 - [ ] Bulk operations UI
 - [ ] Advanced taxonomy search
 - [ ] Analytics dashboard
@@ -864,6 +879,7 @@ model Contract {
 ## 5. Immediate Action Items
 
 ### 1. Fix Contract Deletion (Today)
+
 ```bash
 # Create the safe deletion service
 touch apps/web/lib/services/contract-deletion.service.ts
@@ -877,6 +893,7 @@ npx prisma migrate dev --name add_cascade_deletes
 ```
 
 ### 2. Add Input Validation (Today)
+
 ```bash
 # Install zod if not present
 pnpm add zod
@@ -887,6 +904,7 @@ touch apps/web/lib/validation/contract-integrity.ts
 ```
 
 ### 3. Setup Cron Jobs (Tomorrow)
+
 ```bash
 # Create cron endpoints
 mkdir -p apps/web/app/api/cron
@@ -901,18 +919,21 @@ touch apps/web/app/api/cron/check-expirations/route.ts
 ## Summary
 
 ### ✅ What Works Well
+
 1. Contract deletion is available (3 methods)
 2. Soft delete support exists
 3. Taxonomy validation is comprehensive
 4. Hierarchy validation works
 
 ### ⚠️ Critical Gaps
+
 1. **No cascade deletion protection** → orphaned data risk
 2. **Missing input validation** → data integrity risk
 3. **Manual migration only** → slow taxonomy adoption
 4. **No automated monitoring** → issues go undetected
 
 ### 🎯 Priority Actions
+
 1. **TODAY**: Implement safe contract deletion
 2. **TODAY**: Add Zod input validation
 3. **THIS WEEK**: Setup automated taxonomy migration

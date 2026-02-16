@@ -179,13 +179,13 @@ export function PageBreadcrumb({ items, showHome = true, className = '' }: PageB
               
               {isLast ? (
                 <span className="flex items-center gap-1.5 px-2.5 py-1 text-slate-800 font-semibold bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg shadow-sm">
-                  {Icon && <Icon className="h-3.5 w-3.5 text-blue-600" />}
+                  {Icon && <Icon className="h-3.5 w-3.5 text-violet-600" />}
                   {crumb.label}
                 </span>
               ) : (
                 <Link
                   href={crumb.href}
-                  className="flex items-center gap-1.5 px-2 py-1 text-slate-500 hover:text-blue-600 hover:bg-blue-50/50 rounded-lg transition-all duration-200"
+                  className="flex items-center gap-1.5 px-2 py-1 text-slate-500 hover:text-violet-600 hover:bg-violet-50/50 rounded-lg transition-all duration-200"
                 >
                   {Icon && <Icon className="h-3.5 w-3.5" />}
                   {crumb.label}
@@ -231,10 +231,10 @@ export function RelatedModules({ modules, title = 'Related Modules' }: RelatedMo
               href={module.href}
               className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors group"
             >
-              <Icon className="h-4 w-4 text-slate-500 group-hover:text-blue-500" />
+              <Icon className="h-4 w-4 text-slate-500 group-hover:text-violet-500" />
               <span className="text-sm text-slate-700 group-hover:text-slate-900">{module.label}</span>
               {module.badge !== undefined && (
-                <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${module.badgeColor || 'bg-blue-100 text-blue-700'}`}>
+                <span className={`px-1.5 py-0.5 text-xs font-medium rounded-full ${module.badgeColor || 'bg-violet-100 text-violet-700'}`}>
                   {module.badge}
                 </span>
               )}
@@ -266,7 +266,7 @@ export function CrossModuleAction({
   variant = 'primary',
 }: CrossModuleActionProps) {
   const variants = {
-    primary: 'bg-blue-500 hover:bg-blue-600 text-white',
+    primary: 'bg-violet-500 hover:bg-violet-600 text-white',
     secondary: 'bg-slate-100 hover:bg-slate-200 text-slate-700',
     warning: 'bg-amber-500 hover:bg-amber-600 text-white',
     danger: 'bg-red-500 hover:bg-red-600 text-white',
@@ -307,15 +307,15 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, icon: Icon, actions, badge }: PageHeaderProps) {
   const badgeStyles = {
     new: 'bg-green-100 text-green-700 border-green-200',
-    beta: 'bg-purple-100 text-purple-700 border-purple-200',
-    updated: 'bg-blue-100 text-blue-700 border-blue-200',
+    beta: 'bg-violet-100 text-violet-700 border-violet-200',
+    updated: 'bg-violet-100 text-violet-700 border-violet-200',
   };
 
   return (
     <div className="flex items-center justify-between pb-4 border-b border-slate-100">
       <div className="flex items-center gap-3">
         {Icon && (
-          <div className="p-2.5 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20">
+          <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/20">
             <Icon className="h-6 w-6 text-white" />
           </div>
         )}

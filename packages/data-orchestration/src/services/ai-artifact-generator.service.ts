@@ -674,19 +674,39 @@ export class AIArtifactGeneratorService {
 
   private extractParties(text: string): Array<{ name: string; role: string }> {
     const parties: Array<{ name: string; role: string }> = [];
+    const addParty = (name: string, role: string) => {
+      const n = name.trim().replace(/[,;.]+$/, '').trim();
+      if (n && n.length > 1 && !parties.some(p => p.name === n)) {
+        parties.push({ name: n, role });
+      }
+    };
     
-    // Look for common party patterns
-    const clientPattern = /(?:client|buyer|customer)[\s:]+([A-Z][A-Za-z\s&,\.]+?)(?:\(|,|;|\n)/gi;
-    const supplierPattern = /(?:supplier|vendor|seller|provider)[\s:]+([A-Z][A-Za-z\s&,\.]+?)(?:\(|,|;|\n)/gi;
-
-    const clientMatch = clientPattern.exec(text);
-    if (clientMatch) {
-      parties.push({ name: clientMatch[1].trim(), role: 'client' });
+    // 1. "between X and Y" pattern — most common in contracts
+    const betweenMatch = text.match(
+      /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
+    );
+    if (betweenMatch) {
+      addParty(betweenMatch[1], 'Party A');
+      addParty(betweenMatch[2], 'Party B');
     }
-
-    const supplierMatch = supplierPattern.exec(text);
-    if (supplierMatch) {
-      parties.push({ name: supplierMatch[1].trim(), role: 'supplier' });
+    
+    // 2. Labeled patterns: "Client: X", "Vendor: X"
+    const labelPatterns: Array<{ re: RegExp; role: string }> = [
+      { re: /(?:Client|Buyer|Customer|Auftraggeber|Mandant)[\s:]+([A-Z][A-Za-z\s&,.]+?)(?:\(|,|;|\n)/gi, role: 'Client' },
+      { re: /(?:Supplier|Vendor|Seller|Provider|Contractor|Auftragnehmer|Lieferant)[\s:]+([A-Z][A-Za-z\s&,.]+?)(?:\(|,|;|\n)/gi, role: 'Service Provider' },
+      { re: /(?:Party\s*A|First Party|Licensor|Landlord)[\s:]+([A-Z][A-Za-z\s&,.]+?)(?:\(|,|;|\n)/gi, role: 'Party A' },
+      { re: /(?:Party\s*B|Second Party|Licensee|Tenant)[\s:]+([A-Z][A-Za-z\s&,.]+?)(?:\(|,|;|\n)/gi, role: 'Party B' },
+    ];
+    for (const { re, role } of labelPatterns) {
+      const m = re.exec(text);
+      if (m) addParty(m[1], role);
+    }
+    
+    // 3. "hereinafter referred to as" pattern
+    const hereinafterPattern = /([A-Z][A-Za-z0-9\s&,.]+?)\s*(?:\(|,)\s*hereinafter\s+(?:referred\s+to\s+as\s+)?["\'\u201C]?([A-Za-z\s]+?)["\'\u201D]?\s*(?:\)|,)/gi;
+    let hMatch;
+    while ((hMatch = hereinafterPattern.exec(text)) !== null) {
+      addParty(hMatch[1], hMatch[2].trim() || 'Party');
     }
 
     return parties;

@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { useNetworkStatus } from "@/hooks/use-network-status";
 
 export function NetworkStatusIndicator() {
-  const { status, isOnline, isSlow, reconnect, reconnectAttempts } = useNetworkStatus();
+  const { status, isOnline: _isOnline, isSlow: _isSlow, reconnect, reconnectAttempts } = useNetworkStatus();
 
   const showBanner = status === 'offline' || status === 'slow' || status === 'reconnecting';
 
@@ -39,7 +39,7 @@ export function NetworkStatusIndicator() {
         return {
           icon: RefreshCw,
           message: `Reconnecting... (attempt ${reconnectAttempts})`,
-          color: "bg-blue-500",
+          color: "bg-violet-500",
           textColor: "text-white",
         };
       default:
@@ -57,7 +57,7 @@ export function NetworkStatusIndicator() {
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="NetworkStatusIndicator-ap-1"
         initial={{ height: 0, opacity: 0 }}
         animate={{ height: "auto", opacity: 1 }}
         exit={{ height: 0, opacity: 0 }}

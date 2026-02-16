@@ -20,14 +20,20 @@ export function getTenantId(): string {
       return viewAsTenantId;
     }
     // Client-side: check localStorage or use default
-    return (
-      localStorage.getItem("tenantId") ||
-      process.env.NEXT_PUBLIC_TENANT_ID ||
-      "demo"
-    );
+    const tenantId = localStorage.getItem("tenantId") || process.env.NEXT_PUBLIC_TENANT_ID;
+    if (!tenantId) {
+      // In production, this indicates a session issue - user should re-login
+      console.warn('[Tenant] No tenant ID found - user may need to re-authenticate');
+      return 'unknown'; // Forces API to reject with proper error
+    }
+    return tenantId;
   }
-  // Server-side: use environment variable
-  return process.env.NEXT_PUBLIC_TENANT_ID || "demo";
+  // Server-side: use environment variable (no fallback in production)
+  const tenantId = process.env.NEXT_PUBLIC_TENANT_ID;
+  if (!tenantId && process.env.NODE_ENV === 'production') {
+    throw new Error('NEXT_PUBLIC_TENANT_ID required in production');
+  }
+  return tenantId || 'demo';
 }
 
 // Check if currently viewing as a different tenant (admin mode)

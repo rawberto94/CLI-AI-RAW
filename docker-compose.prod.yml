@@ -185,6 +185,14 @@ services:
       # OpenAI
       OPENAI_API_KEY: ${OPENAI_API_KEY}
 
+      # Azure Document Intelligence v4.0
+      AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: ${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT:-}
+      AZURE_DOCUMENT_INTELLIGENCE_KEY: ${AZURE_DOCUMENT_INTELLIGENCE_KEY:-}
+      AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU: ${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU:-}
+      AZURE_DOCUMENT_INTELLIGENCE_KEY_EU: ${AZURE_DOCUMENT_INTELLIGENCE_KEY_EU:-}
+      AZURE_DI_DEFAULT_MODEL: ${AZURE_DI_DEFAULT_MODEL:-layout}
+      AZURE_DI_FEATURES: ${AZURE_DI_FEATURES:-keyValuePairs}
+
       # Features
       RAG_INTEGRATION_ENABLED: ${RAG_ENABLED:-false}
 
@@ -213,10 +221,13 @@ services:
 
       # Database - Use pgbouncer for connection pooling
       DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@pgbouncer:5432/contract_intelligence
+      # Direct connection (bypasses PgBouncer) for migrations & interactive transactions
+      DIRECT_DATABASE_URL: postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/contract_intelligence
 
       # Redis
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_URL: redis://redis:6379
 
       # MinIO
       MINIO_ENDPOINT: minio
@@ -232,6 +243,14 @@ services:
 
       # OpenAI
       OPENAI_API_KEY: ${OPENAI_API_KEY}
+
+      # Azure Document Intelligence v4.0
+      AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT: ${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT:-}
+      AZURE_DOCUMENT_INTELLIGENCE_KEY: ${AZURE_DOCUMENT_INTELLIGENCE_KEY:-}
+      AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU: ${AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU:-}
+      AZURE_DOCUMENT_INTELLIGENCE_KEY_EU: ${AZURE_DOCUMENT_INTELLIGENCE_KEY_EU:-}
+      AZURE_DI_DEFAULT_MODEL: ${AZURE_DI_DEFAULT_MODEL:-layout}
+      AZURE_DI_FEATURES: ${AZURE_DI_FEATURES:-keyValuePairs}
 
       # Features
       RAG_INTEGRATION_ENABLED: ${RAG_ENABLED:-false}

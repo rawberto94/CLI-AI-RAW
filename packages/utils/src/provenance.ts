@@ -173,6 +173,7 @@ export const validateProvenanceChain = (record: ProvenanceRecord): {
   // Check source integrity
   for (let i = 0; i < record.sources.length; i++) {
     const source = record.sources[i];
+    if (!source) continue;
     if (!source.chunkIds || source.chunkIds.length === 0) {
       errors.push(`Source ${i}: No chunk IDs defined`);
     }
@@ -184,6 +185,7 @@ export const validateProvenanceChain = (record: ProvenanceRecord): {
   // Check transformation chain
   for (let i = 0; i < record.transformations.length; i++) {
     const transform = record.transformations[i];
+    if (!transform) continue;
     if (!transform.operation) {
       errors.push(`Transformation ${i}: Missing operation name`);
     }
@@ -193,7 +195,7 @@ export const validateProvenanceChain = (record: ProvenanceRecord): {
     // Check chronological order
     if (i > 0) {
       const prev = record.transformations[i - 1];
-      if (transform.timestamp < prev.timestamp) {
+      if (prev && transform.timestamp < prev.timestamp) {
         errors.push(`Transformation ${i}: Timestamp is earlier than previous transformation`);
       }
     }

@@ -1,0 +1,162 @@
+{
+  "common": {
+    "loading": "Chargement...",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "edit": "Modifier",
+    "create": "Créer",
+    "search": "Rechercher",
+    "filter": "Filtrer",
+    "export": "Exporter",
+    "import": "Importer",
+    "refresh": "Actualiser",
+    "back": "Retour",
+    "next": "Suivant",
+    "previous": "Précédent",
+    "close": "Fermer",
+    "confirm": "Confirmer",
+    "submit": "Soumettre",
+    "reset": "Réinitialiser",
+    "yes": "Oui",
+    "no": "Non",
+    "all": "Tous",
+    "none": "Aucun",
+    "actions": "Actions",
+    "status": "Statut",
+    "date": "Date",
+    "name": "Nom",
+    "type": "Type",
+    "description": "Description",
+    "noResults": "Aucun résultat trouvé",
+    "error": "Une erreur est survenue",
+    "success": "Opération réussie"
+  },
+  "navigation": {
+    "dashboard": "Tableau de bord",
+    "contracts": "Contrats",
+    "upload": "Télécharger",
+    "aiStudio": "Studio IA",
+    "generate": "Générer",
+    "obligations": "Obligations",
+    "analytics": "Analyses",
+    "rateCards": "Grilles tarifaires",
+    "search": "Recherche",
+    "templates": "Modèles",
+    "approvals": "Approbations",
+    "workflows": "Flux de travail",
+    "admin": "Administration",
+    "settings": "Paramètres",
+    "sso": "SSO / SAML",
+    "governance": "Gouvernance"
+  },
+  "dashboard": {
+    "title": "Tableau de bord",
+    "description": "Votre centre de commande pour la gestion des contrats",
+    "customize": "Personnaliser",
+    "refresh": "Actualiser",
+    "addContract": "Ajouter un contrat",
+    "kpi": {
+      "totalContracts": "Total des contrats",
+      "activeContracts": "Contrats actifs",
+      "portfolioValue": "Valeur du portefeuille",
+      "recentlyAdded": "Récemment ajoutés",
+      "renewalsDue": "Renouvellements à échéance"
+    },
+    "quickActions": {
+      "upload": "Télécharger un contrat",
+      "generate": "Générer un contrat",
+      "obligations": "Obligations",
+      "renewals": "Renouvellements",
+      "aiAssistant": "Assistant IA",
+      "search": "Recherche"
+    },
+    "empty": {
+      "title": "Démarrez en 2 minutes",
+      "uploadFirst": "Téléchargez votre premier contrat",
+      "uploadDescription": "PDF ou texte — nous extrairons les métadonnées automatiquement."
+    }
+  },
+  "contracts": {
+    "title": "Contrats",
+    "description": "Gérez votre portefeuille de contrats",
+    "create": "Créer un contrat",
+    "upload": "Télécharger un contrat",
+    "esign": "Signature électronique",
+    "status": {
+      "draft": "Brouillon",
+      "active": "Actif",
+      "pending": "En attente",
+      "expired": "Expiré",
+      "terminated": "Résilié",
+      "negotiation": "Négociation"
+    },
+    "fields": {
+      "title": "Titre",
+      "vendor": "Fournisseur",
+      "value": "Valeur",
+      "startDate": "Date de début",
+      "endDate": "Date de fin",
+      "type": "Type"
+    }
+  },
+  "esignature": {
+    "title": "Signature électronique",
+    "description": "Recueillir les signatures numériques pour les contrats",
+    "setup": "Configuration",
+    "signers": "Signataires",
+    "tracking": "Suivi",
+    "sendForSignature": "Envoyer pour signature",
+    "addSignatory": "Ajouter un signataire",
+    "provider": {
+      "docusign": "DocuSign",
+      "adobeSign": "Adobe Sign",
+      "internal": "Interne"
+    },
+    "status": {
+      "draft": "Brouillon",
+      "sent": "Envoyé",
+      "inProgress": "En cours",
+      "completed": "Terminé",
+      "declined": "Refusé",
+      "voided": "Annulé"
+    },
+    "roles": {
+      "signer": "Signataire",
+      "approver": "Approbateur",
+      "cc": "Copie (CC)",
+      "witness": "Témoin"
+    }
+  },
+  "sso": {
+    "title": "Configuration SSO",
+    "description": "Configurez les fournisseurs Single Sign-On pour votre organisation",
+    "addProvider": "Ajouter un fournisseur",
+    "editProvider": "Modifier le fournisseur",
+    "testConnection": "Tester la connexion",
+    "spInfo": "Info fournisseur de services",
+    "noProviders": "Aucun fournisseur SSO configuré",
+    "noProvidersDescription": "Configurez des fournisseurs SAML 2.0 ou OpenID Connect pour le Single Sign-On d'entreprise",
+    "protocols": {
+      "saml": "SAML 2.0",
+      "oidc": "OpenID Connect"
+    }
+  },
+  "settings": {
+    "title": "Paramètres",
+    "metadataSchema": "Schéma de métadonnées",
+    "fieldDependencies": "Dépendances des champs",
+    "conditionalLogic": "Logique conditionnelle",
+    "validationRules": "Règles de validation"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "signOut": "Se déconnecter",
+    "signUp": "S'inscrire",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "rememberMe": "Se souvenir de moi",
+    "mfa": "Authentification multi-facteurs"
+  }
+}

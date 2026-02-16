@@ -1,18 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
+// TODO: Migrate $executeRaw/$queryRaw calls to contractService when raw query support is added
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * POST /api/contracts/sync-expirations
  * Syncs contract expiration data to the ContractExpiration table
  * Uses raw SQL for new tables until Prisma client is regenerated
  */
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
   
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
     
     // Get all contracts with expiration dates
@@ -145,72 +148,53 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       message: 'Expiration sync completed',
-      data: {
-        totalContracts: contracts.length,
-        ...results,
-        duration: `${Date.now() - startTime}ms`
-      },
-      meta: { timestamp: now.toISOString(), source: 'database' }
+      totalContracts: contracts.length,
+      ...results,
+      duration: `${Date.now() - startTime}ms`
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: { code: 'SYNC_ERROR', message: error instanceof Error ? error.message : 'Failed to sync expirations' } },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
-}
+});
 
 /**
  * GET /api/contracts/sync-expirations - Returns expiration statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
-    if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
-    }
-
-    const stats = await prisma.$queryRaw<Array<{
-      total: bigint; expired: bigint; critical: bigint; high: bigint;
-      medium: bigint; low: bigint; upcoming_renewals: bigint; value_at_risk: number | null;
-    }>>`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE is_expired = true) as expired,
-        COUNT(*) FILTER (WHERE expiration_risk = 'CRITICAL') as critical,
-        COUNT(*) FILTER (WHERE expiration_risk = 'HIGH') as high,
-        COUNT(*) FILTER (WHERE expiration_risk = 'MEDIUM') as medium,
-        COUNT(*) FILTER (WHERE expiration_risk = 'LOW') as low,
-        COUNT(*) FILTER (WHERE renewal_status IN ('UPCOMING', 'INITIATED', 'IN_PROGRESS')) as upcoming_renewals,
-        COALESCE(SUM(value_at_risk), 0) as value_at_risk
-      FROM contract_expirations WHERE tenant_id = ${tenantId}
-    `;
-
-    const s = stats[0] || { total: 0n, expired: 0n, critical: 0n, high: 0n, medium: 0n, low: 0n, upcoming_renewals: 0n, value_at_risk: 0 };
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        summary: {
-          total: Number(s.total), expired: Number(s.expired), critical: Number(s.critical),
-          high: Number(s.high), upcomingRenewals: Number(s.upcoming_renewals), valueAtRisk: s.value_at_risk || 0
-        },
-        byRiskLevel: {
-          EXPIRED: Number(s.expired), CRITICAL: Number(s.critical), HIGH: Number(s.high),
-          MEDIUM: Number(s.medium), LOW: Number(s.low)
-        }
-      },
-      meta: { timestamp: new Date().toISOString(), source: 'database' }
-    });
-
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: { code: 'FETCH_ERROR', message: error instanceof Error ? error.message : 'Failed to get expiration stats' } },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
   }
-}
+
+  const stats = await prisma.$queryRaw<Array<{
+    total: bigint; expired: bigint; critical: bigint; high: bigint;
+    medium: bigint; low: bigint; upcoming_renewals: bigint; value_at_risk: number | null;
+  }>>`
+    SELECT 
+      COUNT(*) as total,
+      COUNT(*) FILTER (WHERE is_expired = true) as expired,
+      COUNT(*) FILTER (WHERE expiration_risk = 'CRITICAL') as critical,
+      COUNT(*) FILTER (WHERE expiration_risk = 'HIGH') as high,
+      COUNT(*) FILTER (WHERE expiration_risk = 'MEDIUM') as medium,
+      COUNT(*) FILTER (WHERE expiration_risk = 'LOW') as low,
+      COUNT(*) FILTER (WHERE renewal_status IN ('UPCOMING', 'INITIATED', 'IN_PROGRESS')) as upcoming_renewals,
+      COALESCE(SUM(value_at_risk), 0) as value_at_risk
+    FROM contract_expirations WHERE tenant_id = ${tenantId}
+  `;
+
+  const s = stats[0] || { total: 0n, expired: 0n, critical: 0n, high: 0n, medium: 0n, low: 0n, upcoming_renewals: 0n, value_at_risk: 0 };
+
+  return createSuccessResponse(ctx, {
+    summary: {
+      total: Number(s.total), expired: Number(s.expired), critical: Number(s.critical),
+      high: Number(s.high), upcomingRenewals: Number(s.upcoming_renewals), valueAtRisk: s.value_at_risk || 0
+    },
+    byRiskLevel: {
+      EXPIRED: Number(s.expired), CRITICAL: Number(s.critical), HIGH: Number(s.high),
+      MEDIUM: Number(s.medium), LOW: Number(s.low)
+    }
+  });
+});

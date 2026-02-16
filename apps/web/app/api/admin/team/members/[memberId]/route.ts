@@ -3,70 +3,45 @@
  * Update and delete team members
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { NextRequest } from 'next/server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { auditTrailService } from 'data-orchestration/services';
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ memberId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await auth();
     const { memberId } = await params;
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin or owner
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (!currentUser || !["owner", "admin"].includes(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
 
     // Get target member
     const member = await prisma.user.findFirst({
       where: { 
         id: memberId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
     });
 
     if (!member) {
-      return NextResponse.json(
-        { error: "Member not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Member not found', 404);
     }
 
     // Cannot modify owner unless you are owner
-    if (member.role === "owner" && currentUser.role !== "owner") {
-      return NextResponse.json(
-        { error: "Cannot modify organization owner" },
-        { status: 403 }
-      );
+    if (member.role === 'owner' && ctx.userRole !== 'owner') {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Cannot modify organization owner', 403);
     }
 
     const body = await request.json();
     const { role, status } = body;
 
     // Only owner can assign owner role
-    if (role === "owner" && currentUser.role !== "owner") {
-      return NextResponse.json(
-        { error: "Only owners can assign owner role" },
-        { status: 403 }
-      );
+    if (role === 'owner' && ctx.userRole !== 'owner') {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Only owners can assign owner role', 403);
     }
 
     const updatedMember = await prisma.user.update({
@@ -88,21 +63,18 @@ export async function PATCH(
     // Audit log
     await prisma.auditLog.create({
       data: {
-        tenantId: session.user.tenantId,
-        userId: session.user.id,
-        action: "MEMBER_UPDATED",
-        entityType: "USER",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: 'MEMBER_UPDATED',
+        entityType: 'USER',
         entityId: memberId,
         metadata: { role, status },
       },
     });
 
-    return NextResponse.json({ member: updatedMember });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to update member" },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, { member: updatedMember });
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -110,59 +82,33 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ memberId: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await auth();
     const { memberId } = await params;
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
-
-    // Check if user is admin or owner
-    const currentUser = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (!currentUser || !["owner", "admin"].includes(currentUser.role)) {
-      return NextResponse.json(
-        { error: "Insufficient permissions" },
-        { status: 403 }
-      );
-    }
 
     // Get target member
     const member = await prisma.user.findFirst({
       where: { 
         id: memberId,
-        tenantId: session.user.tenantId,
+        tenantId: ctx.tenantId,
       },
     });
 
     if (!member) {
-      return NextResponse.json(
-        { error: "Member not found" },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Member not found', 404);
     }
 
     // Cannot delete owner
-    if (member.role === "owner") {
-      return NextResponse.json(
-        { error: "Cannot delete organization owner" },
-        { status: 403 }
-      );
+    if (member.role === 'owner') {
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Cannot delete organization owner', 403);
     }
 
     // Cannot delete yourself
-    if (member.id === session.user.id) {
-      return NextResponse.json(
-        { error: "Cannot delete your own account" },
-        { status: 400 }
-      );
+    if (member.id === ctx.userId) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Cannot delete your own account', 400);
     }
 
     await prisma.user.delete({
@@ -172,20 +118,17 @@ export async function DELETE(
     // Audit log
     await prisma.auditLog.create({
       data: {
-        tenantId: session.user.tenantId,
-        userId: session.user.id,
-        action: "MEMBER_REMOVED",
-        entityType: "USER",
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        action: 'MEMBER_REMOVED',
+        entityType: 'USER',
         entityId: memberId,
         metadata: { email: member.email },
       },
     });
 
-    return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to delete member" },
-      { status: 500 }
-    );
+    return createSuccessResponse(ctx, {});
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

@@ -141,6 +141,9 @@ class ScheduledAnalysisService {
     userId: string,
     tenantId?: string
   ): Promise<ScheduledJob> {
+    if (!tenantId) {
+      throw new Error('Tenant ID required for scheduled job creation');
+    }
     const job: ScheduledJob = {
       id: `job_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
       name,
@@ -150,7 +153,7 @@ class ScheduledAnalysisService {
       status: 'active',
       nextRun: this.calculateNextRun(schedule),
       createdBy: userId,
-      tenantId: tenantId || 'default',
+      tenantId,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

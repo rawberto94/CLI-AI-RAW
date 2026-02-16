@@ -9,6 +9,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ## 📊 Current State Assessment
 
 ### Strengths ✅
+
 - Clean component structure using shadcn/ui
 - Responsive navigation with mobile support
 - Real-time updates integrated
@@ -16,6 +17,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 - Modern tech stack (Next.js 15, Framer Motion, React)
 
 ### Areas for Improvement 🔧
+
 1. **Visual Hierarchy** - Dashboard cards look similar, lacking visual differentiation
 2. **Empty States** - Basic empty states need more guidance
 3. **Loading States** - Inconsistent loading patterns across pages
@@ -30,6 +32,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ## 🚀 Priority 1: High Impact, Quick Wins (1-2 days)
 
 ### 1.1 Enhanced Dashboard KPI Cards
+
 **Current:** Plain cards with icons
 **Improved:** Add micro-animations, sparklines, trend indicators
 
@@ -42,20 +45,26 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ```
 
 ### 1.2 Improved Navigation Sidebar
+
 **Enhancements:**
+
 - Add notification badges for pending items
 - Collapsible sections with memory
 - Quick search in navigation
 - Recent items section
 
 ### 1.3 Better Loading States
+
 **Implement:**
+
 - Skeleton loaders matching actual content shape
 - Progress indicators for long operations
 - Optimistic UI updates
 
 ### 1.4 Enhanced Status Badges
+
 **Add:**
+
 - Animated pulse for "Processing"
 - Tooltip with detailed status info
 - Color consistency across app
@@ -67,11 +76,13 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 2.1 Contract List Page Redesign
 
 **Current Issues:**
+
 - Basic table view
 - Limited filtering options
 - No bulk selection feedback
 
 **Improvements:**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ 📄 Contracts                          [Search...] [+New]│
@@ -89,6 +100,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ```
 
 **Features:**
+
 - Toggle between grid/list views
 - Advanced filter panel (slide-out)
 - Bulk action toolbar
@@ -98,6 +110,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 2.2 Contract Detail Page Enhancement
 
 **Tab-based layout:**
+
 ```
 ┌─────────────────────────────────────────────────────────┐
 │ ← Back   Enterprise License Agreement      [Actions ▼] │
@@ -121,6 +134,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 2.3 Upload Experience Redesign
 
 **Improvements:**
+
 - Drag & drop zone with preview
 - Batch upload with queue management
 - Real-time processing visualization
@@ -134,6 +148,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 3.1 Interactive Data Visualizations
 
 **Dashboard Charts:**
+
 - Contract value over time (area chart)
 - Risk distribution (donut chart)
 - Supplier breakdown (horizontal bar)
@@ -159,6 +174,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 3.3 Notification Center
 
 **Features:**
+
 - Bell icon with count badge
 - Slide-out notification panel
 - Categorized notifications (urgent, info, success)
@@ -168,6 +184,7 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ### 3.4 Dark Mode Support
 
 **Implementation:**
+
 - System preference detection
 - Manual toggle in settings
 - Smooth transition animation
@@ -178,12 +195,14 @@ Based on the current codebase analysis, this plan outlines **prioritized UI impr
 ## 💎 Priority 4: Delight Features (2 weeks)
 
 ### 4.1 Guided Onboarding Tour
+
 - Step-by-step feature introduction
 - Interactive tooltips
 - Skip/resume functionality
 - Context-aware tips
 
 ### 4.2 Keyboard Shortcuts
+
 ```
 Global:
   ⌘K - Command palette
@@ -202,12 +221,14 @@ Actions:
 ```
 
 ### 4.3 Command Palette (⌘K)
+
 - Quick navigation
 - Recent actions
 - Search everything
 - Keyboard-first experience
 
 ### 4.4 Customizable Dashboard
+
 - Drag-and-drop widget arrangement
 - Show/hide widgets
 - Widget sizing options
@@ -218,16 +239,19 @@ Actions:
 ## 📱 Mobile-Specific Improvements
 
 ### Navigation
+
 - Bottom tab bar for primary actions
 - Swipe gestures for navigation
 - Pull-to-refresh
 
 ### Contract Cards
+
 - Swipe actions (archive, share)
 - Tap to expand details
 - Long-press for quick actions
 
 ### Upload
+
 - Camera integration for document capture
 - Share sheet integration
 
@@ -236,6 +260,7 @@ Actions:
 ## ♿ Accessibility Improvements
 
 ### WCAG 2.1 AA Compliance
+
 - [ ] All interactive elements keyboard accessible
 - [ ] Focus indicators visible
 - [ ] Color contrast ratios ≥ 4.5:1
@@ -246,6 +271,7 @@ Actions:
 - [ ] Reduced motion support
 
 ### ARIA Enhancements
+
 ```tsx
 // Example: Notification badge
 <Button aria-label="Notifications, 3 unread">
@@ -259,17 +285,20 @@ Actions:
 ## 🛠 Technical Implementation
 
 ### Component Library Updates
+
 1. Update shadcn/ui components to latest
 2. Add Radix UI primitives for complex components
 3. Implement compound components pattern
 
 ### Performance Optimizations
+
 1. Virtual scrolling for long lists
 2. Image lazy loading with blur placeholder
 3. Component code splitting
 4. Prefetching for common navigation paths
 
 ### State Management
+
 1. React Query for server state
 2. Zustand for client state
 3. URL state for shareable views

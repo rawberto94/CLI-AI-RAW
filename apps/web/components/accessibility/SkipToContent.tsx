@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname } from 'next/navigation';
+import { usePathname as _usePathname } from 'next/navigation';
 
 /**
  * Skip to main content link for keyboard navigation accessibility.
@@ -38,7 +38,7 @@ export function SkipToContent({
   return (
     <a
       href={`#${targetId}`}
-      className="skip-to-content sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2 transition-all"
+      className="skip-to-content sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 transition-all"
     >
       {label}
     </a>
@@ -63,7 +63,7 @@ export function SkipLinks({
           <li key={link.targetId}>
             <a
               href={`#${link.targetId}`}
-              className="block px-4 py-2 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md focus:bg-blue-100 dark:focus:bg-blue-900/40 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors"
+              className="block px-4 py-2 text-violet-600 dark:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-900/20 rounded-md focus:bg-violet-100 dark:focus:bg-violet-900/40 focus:outline-none focus:ring-2 focus:ring-violet-500 transition-colors"
             >
               {link.label}
             </a>
@@ -122,7 +122,7 @@ export function FocusSkipLink({
     <a
       href={`#${targetId}`}
       onClick={handleClick}
-      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+      className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
     >
       {label}
     </a>

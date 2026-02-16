@@ -3,19 +3,12 @@
  * 
  * Distributed tracing for production observability.
  * Traces requests across services and provides insights into performance.
+ * 
+ * All heavy @opentelemetry/* imports are done dynamically so webpack
+ * doesn't try to resolve the full dependency tree in dev mode
+ * (avoids the `@opentelemetry/otlp-exporter-base/node-http` build error).
  */
 
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
-import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
-import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-http';
-import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
-import { Resource } from '@opentelemetry/resources';
-import { 
-  SEMRESATTRS_SERVICE_NAME, 
-  SEMRESATTRS_SERVICE_VERSION,
-  SEMRESATTRS_DEPLOYMENT_ENVIRONMENT 
-} from '@opentelemetry/semantic-conventions';
 import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 
 // Enable debug logging in development
@@ -30,13 +23,39 @@ const ENVIRONMENT = process.env.NODE_ENV || 'development';
 
 /**
  * Initialize OpenTelemetry SDK
+ * Returns null in development unless OTEL_ENABLED=true.
  */
-export function initTelemetry(): NodeSDK | null {
+export async function initTelemetry(): Promise<any | null> {
   // Skip in development unless explicitly enabled
   if (ENVIRONMENT === 'development' && process.env.OTEL_ENABLED !== 'true') {
     console.log('OpenTelemetry disabled in development. Set OTEL_ENABLED=true to enable.');
     return null;
   }
+
+  // Dynamic imports — only resolved when OTEL is actually enabled
+  const [
+    { NodeSDK },
+    { getNodeAutoInstrumentations },
+    { OTLPTraceExporter },
+    { OTLPMetricExporter },
+    { PeriodicExportingMetricReader },
+    { Resource },
+    semanticConventions,
+  ] = await Promise.all([
+    import('@opentelemetry/sdk-node'),
+    import('@opentelemetry/auto-instrumentations-node'),
+    import('@opentelemetry/exporter-trace-otlp-http'),
+    import('@opentelemetry/exporter-metrics-otlp-http'),
+    import('@opentelemetry/sdk-metrics'),
+    import('@opentelemetry/resources'),
+    import('@opentelemetry/semantic-conventions'),
+  ]);
+
+  const {
+    SEMRESATTRS_SERVICE_NAME,
+    SEMRESATTRS_SERVICE_VERSION,
+    SEMRESATTRS_DEPLOYMENT_ENVIRONMENT,
+  } = semanticConventions;
 
   const resource = new Resource({
     [SEMRESATTRS_SERVICE_NAME]: SERVICE_NAME,
@@ -99,13 +118,9 @@ export function initTelemetry(): NodeSDK | null {
   // Start the SDK
   sdk.start();
 
-  // Graceful shutdown
-  process.on('SIGTERM', () => {
-    sdk.shutdown()
-      .then(() => console.log('OpenTelemetry shut down successfully'))
-      .catch((error) => console.error('Error shutting down OpenTelemetry', error))
-      .finally(() => process.exit(0));
-  });
+  // NOTE: Do NOT register process.on('SIGTERM') here.
+  // Shutdown is managed by instrumentation.ts's graceful shutdown handler
+  // which calls sdk.shutdown() before process.exit().
 
   console.log(`OpenTelemetry initialized for ${SERVICE_NAME} (${ENVIRONMENT})`);
   return sdk;

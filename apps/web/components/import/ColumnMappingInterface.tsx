@@ -107,7 +107,7 @@ export function ColumnMappingInterface({
                   onClick={() => setSelectedColumn(header)}
                   className={`
                     p-4 border rounded-lg cursor-pointer transition-colors
-                    ${isSelected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'}
+                    ${isSelected ? 'border-violet-500 bg-violet-50' : 'border-gray-200 hover:border-gray-300'}
                   `}
                 >
                   <div className="flex items-start justify-between">
@@ -221,7 +221,7 @@ export function ColumnMappingInterface({
         <button
           onClick={onConfirm}
           disabled={missingRequired.length > 0}
-          className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+          className="flex-1 px-6 py-3 bg-violet-600 text-white rounded-lg hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
         >
           Confirm Mapping
         </button>

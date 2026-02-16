@@ -10,16 +10,16 @@
 import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { analyticalIntelligenceService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || '',
-});
+  apiKey: process.env.OPENAI_API_KEY || '' });
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request, ctx) => {
   const startTime = Date.now();
 
   try {
@@ -40,8 +40,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const tenantId = await getServerTenantId();
-
     // Fetch contract
     const contract = await prisma.contract.findUnique({
       where: { id: contractId },
@@ -49,9 +47,7 @@ export async function POST(request: NextRequest) {
         id: true,
         fileName: true,
         rawText: true,
-        tenantId: true,
-      },
-    });
+        tenantId: true } });
 
     if (!contract) {
       return new Response(
@@ -110,22 +106,27 @@ Output your analysis in the following markdown format:
 
 ## Recommendations
 1. [Recommendation 1]
-2. [Recommendation 2]`,
-        },
+2. [Recommendation 2]` },
         {
           role: 'user',
-          content: analysisPrompt,
-        },
+          content: analysisPrompt },
       ],
       temperature: 0.3,
       max_tokens: 2000,
-      stream: true,
-    });
+      stream: true });
 
     // Create a ReadableStream for SSE
     const encoder = new TextEncoder();
     const readableStream = new ReadableStream({
       async start(controller) {
+        let aborted = false;
+        
+        // Handle client disconnect to stop wasting OpenAI tokens
+        request.signal.addEventListener('abort', () => {
+          aborted = true;
+          try { controller.close(); } catch { /* already closed */ }
+        });
+
         try {
           // Send initial metadata
           controller.enqueue(
@@ -134,14 +135,14 @@ Output your analysis in the following markdown format:
                 type: 'metadata',
                 contractId,
                 fileName: contract.fileName,
-                startTime,
-              })}\n\n`
+                startTime })}\n\n`
             )
           );
 
           let fullContent = '';
           
           for await (const chunk of stream) {
+            if (aborted) break;
             const content = chunk.choices[0]?.delta?.content || '';
             if (content) {
               fullContent += content;
@@ -149,8 +150,7 @@ Output your analysis in the following markdown format:
                 encoder.encode(
                   `data: ${JSON.stringify({
                     type: 'content',
-                    content,
-                  })}\n\n`
+                    content })}\n\n`
                 )
               );
             }
@@ -164,8 +164,7 @@ Output your analysis in the following markdown format:
                 type: 'complete',
                 processingTime,
                 wordCount: contractText.split(/\s+/).length,
-                totalLength: fullContent.length,
-              })}\n\n`
+                totalLength: fullContent.length })}\n\n`
             )
           );
 
@@ -175,32 +174,27 @@ Output your analysis in the following markdown format:
             encoder.encode(
               `data: ${JSON.stringify({
                 type: 'error',
-                error: error instanceof Error ? error.message : 'Unknown error',
-              })}\n\n`
+                error: error instanceof Error ? error.message : 'Unknown error' })}\n\n`
             )
           );
           controller.close();
         }
-      },
-    });
+      } });
 
     return new Response(readableStream, {
       headers: {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
         'Connection': 'keep-alive',
-        'X-Accel-Buffering': 'no',
-      },
-    });
+        'X-Accel-Buffering': 'no' } });
   } catch (error) {
     return new Response(
       JSON.stringify({
-        error: error instanceof Error ? error.message : 'Analysis failed',
-      }),
+        error: error instanceof Error ? error.message : 'Analysis failed' }),
       { status: 500, headers: { 'Content-Type': 'application/json' } }
     );
   }
-}
+});
 
 function getAnalysisPrompt(type: string, contractText: string): string {
   const basePrompt = `Analyze this contract and provide a comprehensive analysis:\n\n${contractText}\n\n`;

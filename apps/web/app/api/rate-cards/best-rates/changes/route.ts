@@ -4,30 +4,27 @@
  * Track and notify about changes in best rates
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET /api/rate-cards/best-rates/changes
  * Get recent best rate changes for the tenant
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    if (!ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const benchmarkEngine = new rateCardBenchmarkingService(prisma);
-    const changes = await benchmarkEngine.trackBestRateChanges(session.user.tenantId);
+    const changes = await benchmarkEngine.trackBestRateChanges(ctx.tenantId);
 
     // Sort by absolute change percentage (most significant first)
     changes.sort((a, b) => Math.abs(b.changePercentage) - Math.abs(a.changePercentage));
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       changes,
       total: changes.length,
       summary: {
@@ -36,10 +33,4 @@ export async function GET(request: NextRequest) {
         totalAffectedRateCards: changes.reduce((sum, c) => sum + c.affectedRateCards, 0),
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to track changes' },
-      { status: 500 }
-    );
-  }
-}
+  });

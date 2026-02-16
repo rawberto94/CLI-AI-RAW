@@ -5,6 +5,7 @@ This directory contains the global error handling system components and utilitie
 ## Components
 
 ### GlobalErrorBoundary
+
 Top-level error boundary that catches all React errors in the application. Automatically integrated in the root layout.
 
 ```tsx
@@ -16,6 +17,7 @@ import { GlobalErrorBoundary } from '@/components/errors/GlobalErrorBoundary';
 ```
 
 ### ErrorBoundary
+
 Component-level error boundary for catching errors in specific parts of the UI.
 
 ```tsx
@@ -27,6 +29,7 @@ import { ErrorBoundary } from '@/components/errors/ErrorBoundary';
 ```
 
 ### ErrorAlert
+
 Inline error display component with retry functionality.
 
 ```tsx
@@ -42,14 +45,17 @@ import { ErrorAlert } from '@/components/errors/ErrorAlert';
 ```
 
 ### GlobalErrorFallback
+
 Full-page error UI displayed when the global error boundary catches an error.
 
 ### ErrorFallback
+
 Component-level error UI displayed when a component error boundary catches an error.
 
 ## Hooks
 
 ### useApiCall
+
 Hook for making API calls with automatic retry logic and error handling.
 
 ```tsx
@@ -84,6 +90,7 @@ function MyComponent() {
 ## API Error Handling
 
 ### withErrorHandling
+
 Middleware wrapper for API routes that provides automatic error handling and logging.
 
 ```tsx
@@ -102,6 +109,7 @@ export const GET = withErrorHandling(handler);
 ```
 
 ### Error Classes
+
 Custom error classes for different error types:
 
 - `ValidationError` - Input validation errors (400)
@@ -112,6 +120,7 @@ Custom error classes for different error types:
 - `RateLimitError` - Rate limit exceeded (429)
 
 ### withRetry
+
 Utility function for retrying async operations with exponential backoff.
 
 ```tsx
@@ -129,6 +138,7 @@ const result = await withRetry(
 ## Monitoring
 
 ### Monitoring Service
+
 Centralized monitoring service for logging errors, metrics, and traces.
 
 ```tsx

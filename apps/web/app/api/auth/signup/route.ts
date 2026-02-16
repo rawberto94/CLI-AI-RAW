@@ -3,22 +3,30 @@
  * Handles new user signup with optional organization creation
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { hash } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { auditTrailService } from 'data-orchestration/services';
+import { getApiContext, createSuccessResponse, createErrorResponse } from '@/lib/api-middleware';
 
 const signupSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Valid email is required"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  password: z.string()
+    .min(8, "Password must be at least 8 characters")
+    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+    .regex(/[0-9]/, "Password must contain at least one number")
+    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
   organizationName: z.string().optional(),
   organizationSlug: z.string().optional(),
   inviteToken: z.string().optional(),
 });
 
 export async function POST(request: NextRequest) {
+  const ctx = getApiContext(request);
   try {
     const body = await request.json();
     const validated = signupSchema.parse(body);
@@ -29,9 +37,10 @@ export async function POST(request: NextRequest) {
     });
 
     if (existingUser) {
-      return NextResponse.json(
-        { error: "An account with this email already exists" },
-        { status: 409 }
+      return createErrorResponse(
+        ctx, 'CONFLICT',
+        "An account with this email already exists",
+        409
       );
     }
 
@@ -51,9 +60,10 @@ export async function POST(request: NextRequest) {
       });
 
       if (!invitation) {
-        return NextResponse.json(
-          { error: "Invalid or expired invitation" },
-          { status: 400 }
+        return createErrorResponse(
+          ctx, 'BAD_REQUEST',
+          "Invalid or expired invitation",
+          400
         );
       }
 
@@ -77,50 +87,119 @@ export async function POST(request: NextRequest) {
       });
 
       if (existingTenant) {
-        return NextResponse.json(
-          { error: "An organization with this name or URL already exists" },
-          { status: 409 }
+        return createErrorResponse(
+          ctx, 'CONFLICT',
+          "An organization with this name or URL already exists",
+          409
         );
       }
 
-      // Create new tenant
-      const tenant = await prisma.tenant.create({
-        data: {
-          name: validated.organizationName,
-          slug: validated.organizationSlug,
-          status: "ACTIVE",
-          configuration: {
-            create: {
-              aiModels: {},
-              securitySettings: {},
-              integrations: {},
-              workflowSettings: {},
+      // Hash password before transaction
+      const passwordHash = await hash(validated.password, 12);
+
+      // Wrap entire creation in a transaction to prevent orphaned records
+      const result = await prisma.$transaction(async (tx) => {
+        // Create new tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name: validated.organizationName!,
+            slug: validated.organizationSlug!,
+            status: "ACTIVE",
+            configuration: {
+              create: {
+                aiModels: {},
+                securitySettings: {},
+                integrations: {},
+                workflowSettings: {},
+              },
+            },
+            subscription: {
+              create: {
+                plan: "FREE",
+                status: "ACTIVE",
+                billingCycle: "MONTHLY",
+                startDate: new Date(),
+              },
+            },
+            usage: {
+              create: {
+                resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              },
             },
           },
-          subscription: {
-            create: {
-              plan: "FREE",
-              status: "ACTIVE",
-              billingCycle: "MONTHLY",
-              startDate: new Date(),
+        });
+
+        // Create user
+        const user = await tx.user.create({
+          data: {
+            email: validated.email,
+            firstName: validated.firstName,
+            lastName: validated.lastName,
+            passwordHash,
+            tenantId: tenant.id,
+            role: "owner",
+            status: "ACTIVE",
+            emailVerified: false,
+          },
+        });
+
+        // Find or create the role
+        let roleRecord = await tx.role.findFirst({
+          where: { name: "owner" },
+        });
+        if (!roleRecord) {
+          roleRecord = await tx.role.create({
+            data: {
+              name: "owner",
+              description: "Owner role",
+              isSystem: true,
+            },
+          });
+        }
+
+        // Assign role to user
+        await tx.userRole.create({
+          data: { userId: user.id, roleId: roleRecord.id },
+        });
+
+        // Create audit log
+        await tx.auditLog.create({
+          data: {
+            tenantId: tenant.id,
+            userId: user.id,
+            action: "USER_REGISTERED",
+            entityType: "USER",
+            entityId: user.id,
+            metadata: {
+              email: validated.email,
+              role: "owner",
+              method: "self-registration",
             },
           },
-          usage: {
-            create: {
-              resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            },
-          },
-        },
+        });
+
+        return { user, tenantId: tenant.id };
       });
 
-      tenantId = tenant.id;
-      userRole = "owner"; // Creator becomes owner
+      return createSuccessResponse(ctx, {
+        success: true,
+        message: "Account created successfully",
+        user: {
+          id: result.user.id,
+          email: result.user.email,
+          firstName: result.user.firstName,
+          lastName: result.user.lastName,
+        },
+      });
     } else {
-      return NextResponse.json(
-        { error: "Organization name and URL are required, or provide an invite token" },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'BAD_REQUEST',
+        "Organization name and URL are required, or provide an invite token",
+        400
       );
     }
+
+    // --- Invite-based signup path (non-transactional since tenant already exists) ---
 
     // Hash password
     const passwordHash = await hash(validated.password, 12);
@@ -135,7 +214,7 @@ export async function POST(request: NextRequest) {
         tenantId,
         role: userRole,
         status: "ACTIVE",
-        emailVerified: false, // Would need email verification flow
+        emailVerified: false,
       },
     });
 
@@ -173,12 +252,12 @@ export async function POST(request: NextRequest) {
         metadata: {
           email: validated.email,
           role: userRole,
-          method: validated.inviteToken ? "invitation" : "self-registration",
+          method: "invitation",
         },
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: "Account created successfully",
       user: {
@@ -191,15 +270,17 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) {
     if (error instanceof Error && error.name === "ZodError") {
       const zodError = error as { errors?: Array<{ message?: string }> };
-      return NextResponse.json(
-        { error: zodError.errors?.[0]?.message || "Invalid input" },
-        { status: 400 }
+      return createErrorResponse(
+        ctx, 'VALIDATION_ERROR',
+        zodError.errors?.[0]?.message || "Invalid input",
+        400
       );
     }
 
-    return NextResponse.json(
-      { error: "Failed to create account" },
-      { status: 500 }
+    return createErrorResponse(
+      ctx, 'INTERNAL_ERROR',
+      "Failed to create account",
+      500
     );
   }
 }

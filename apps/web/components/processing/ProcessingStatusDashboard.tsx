@@ -229,7 +229,7 @@ export default function ProcessingStatusDashboard() {
     switch (status) {
       case 'completed': return <CheckCircle className="h-3.5 w-3.5 text-green-500" />
       case 'failed': return <XCircle className="h-3.5 w-3.5 text-red-500" />
-      case 'processing': return <Activity className="h-3.5 w-3.5 text-blue-500 animate-pulse" />
+      case 'processing': return <Activity className="h-3.5 w-3.5 text-violet-500 animate-pulse" />
       case 'queued': return <Clock className="h-3.5 w-3.5 text-yellow-500" />
       case 'paused': return <Pause className="h-3.5 w-3.5 text-gray-500" />
       default: return <AlertTriangle className="h-3.5 w-3.5 text-orange-500" />
@@ -240,7 +240,7 @@ export default function ProcessingStatusDashboard() {
     const variants = {
       completed: 'bg-green-100 text-green-800 px-3 py-1',
       failed: 'bg-red-100 text-red-800 px-3 py-1',
-      processing: 'bg-blue-100 text-blue-800 px-3 py-1',
+      processing: 'bg-violet-100 text-violet-800 px-3 py-1',
       queued: 'bg-yellow-100 text-yellow-800 px-3 py-1',
       paused: 'bg-gray-100 text-gray-800 px-3 py-1'
     }
@@ -304,7 +304,7 @@ export default function ProcessingStatusDashboard() {
                   <p className="text-sm text-muted-foreground">Total Jobs</p>
                   <p className="text-2xl font-bold">{metrics.totalJobs}</p>
                 </div>
-                <TrendingUp className="h-8 w-8 text-blue-500" />
+                <TrendingUp className="h-8 w-8 text-violet-500" />
               </div>
             </CardContent>
           </Card>
@@ -314,9 +314,9 @@ export default function ProcessingStatusDashboard() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Active Jobs</p>
-                  <p className="text-2xl font-bold text-blue-600">{metrics.activeJobs}</p>
+                  <p className="text-2xl font-bold text-violet-600">{metrics.activeJobs}</p>
                 </div>
-                <Activity className="h-8 w-8 text-blue-500 animate-pulse" />
+                <Activity className="h-8 w-8 text-violet-500 animate-pulse" />
               </div>
             </CardContent>
           </Card>

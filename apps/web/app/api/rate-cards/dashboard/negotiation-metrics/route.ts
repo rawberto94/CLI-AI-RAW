@@ -1,36 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-// Mock data for when table doesn't exist
-const mockNegotiationMetrics = {
-  totalNegotiated: 89,
-  successRate: 78.5,
-  upcomingRenewals: [
-    { clientName: 'Acme Corp', msaReference: 'MSA-2024-001', renewalDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), rateCardCount: 12 },
-    { clientName: 'TechStart Inc', msaReference: 'MSA-2024-015', renewalDate: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), rateCardCount: 8 },
-    { clientName: 'Global Services', msaReference: 'MSA-2023-089', renewalDate: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), rateCardCount: 15 },
-  ],
-  recentNegotiations: [
-    { clientName: 'DataFlow Systems', negotiationDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000), savingsPercentage: 12.5 },
-    { clientName: 'CloudNet Solutions', negotiationDate: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000), savingsPercentage: 8.3 },
-  ],
-  opportunitiesCount: 14,
-};
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/dashboard/negotiation-metrics
  * Get negotiation status metrics for dashboard
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Try to get data from database
@@ -43,11 +25,15 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      // If we got this far with 0 results, return mock data for demo
+      // No negotiated rates found yet
       if (totalNegotiated === 0) {
-        return NextResponse.json({
-          ...mockNegotiationMetrics,
-          source: 'mock',
+        return createSuccessResponse(ctx, {
+          totalNegotiated: 0,
+          successRate: 0,
+          upcomingRenewals: [],
+          recentNegotiations: [],
+          opportunitiesCount: 0,
+          source: 'database',
         });
       }
 
@@ -117,7 +103,7 @@ export async function GET(request: NextRequest) {
 
       const opportunitiesCount = Math.floor(totalNegotiated * 0.15);
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         totalNegotiated,
         successRate,
         upcomingRenewals,
@@ -126,16 +112,15 @@ export async function GET(request: NextRequest) {
         source: 'database',
       });
     } catch {
-      // Table doesn't exist or other DB error - return mock data
-      return NextResponse.json({
-        ...mockNegotiationMetrics,
-        source: 'mock',
+      // Table doesn't exist or other DB error - return zero-value metrics
+      return createSuccessResponse(ctx, {
+        totalNegotiated: 0,
+        successRate: 0,
+        upcomingRenewals: [],
+        recentNegotiations: [],
+        opportunitiesCount: 0,
+        source: 'empty',
+        message: 'Negotiation metrics unavailable - database error',
       });
     }
-  } catch {
-    return NextResponse.json({
-      ...mockNegotiationMetrics,
-      source: 'mock-fallback',
-    });
-  }
-}
+  });

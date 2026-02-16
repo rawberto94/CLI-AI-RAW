@@ -211,7 +211,7 @@ export const RealTimeProgressTracker: React.FC<RealTimeProgressTrackerProps> = (
                     ? 'bg-green-500' 
                     : progress.stage === 'failed'
                     ? 'bg-red-500'
-                    : 'bg-blue-500'
+                    : 'bg-violet-500'
                 }`}
                 style={{ width: `${getProgressPercentage()}%` }}
               />

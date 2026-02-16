@@ -48,9 +48,11 @@ This document outlines the recommended improvements for the Contract Intelligenc
 ## Critical Fixes Applied ✅
 
 ### 1. Artifact Type Naming Consistency
+
 **Issue:** Inconsistent artifact type naming between workers (`OVERVIEW`, `CLAUSES`) and mock data (`overview`, `key_clauses`).
 
 **Fixed Files:**
+
 - `apps/web/app/api/contracts/[id]/artifacts/stream/route.ts`
 - `apps/web/components/contracts/RealtimeArtifactViewer.tsx`
 - `packages/workers/src/artifact-generator.ts`
@@ -59,11 +61,13 @@ This document outlines the recommended improvements for the Contract Intelligenc
 **Solution:** Standardized on UPPERCASE types: `OVERVIEW`, `CLAUSES`, `FINANCIAL`, `RISK`, `COMPLIANCE`
 
 ### 2. SSE Stream Escape Character Issue
+
 **Issue:** Double-escaped newlines (`\\n\\n`) in SSE stream route causing malformed events.
 
 **Fixed File:** `apps/web/app/api/contracts/[id]/artifacts/stream/route.ts`
 
 ### 3. RealtimeArtifactViewer Type Normalization
+
 **Issue:** Component couldn't handle mixed-case artifact types from different sources.
 
 **Solution:** Added `normalizeType()` helper function to convert any format to uppercase.
@@ -75,9 +79,11 @@ This document outlines the recommended improvements for the Contract Intelligenc
 ### Phase 1: Core Infrastructure (Priority: HIGH)
 
 #### 1.1 Queue Reliability Enhancement
+
 **Current Issue:** Jobs can be lost if workers crash during processing.
 
 **Recommendation:**
+
 ```typescript
 // Implement dead-letter queue for failed jobs
 const dlqQueue = new Queue('contract-processing-dlq', { connection });
@@ -95,9 +101,11 @@ worker.on('failed', async (job, error) => {
 ```
 
 #### 1.2 Idempotent Job Processing
+
 **Current Issue:** Same contract might be processed multiple times if upload retries.
 
 **Recommendation:**
+
 ```typescript
 // Use contract ID as jobId to prevent duplicates
 await queue.add('process-contract', data, {
@@ -108,9 +116,11 @@ await queue.add('process-contract', data, {
 ```
 
 #### 1.3 Storage Service Resilience
+
 **Current Issue:** Storage service initialization can fail silently.
 
 **Recommendation:**
+
 ```typescript
 // Add health check endpoint
 export async function checkStorageHealth(): Promise<HealthStatus> {
@@ -126,9 +136,11 @@ export async function checkStorageHealth(): Promise<HealthStatus> {
 ### Phase 2: Performance Optimization (Priority: MEDIUM)
 
 #### 2.1 Parallel Artifact Generation
+
 **Current State:** Artifacts are generated in parallel but could be optimized further.
 
 **Recommendation:**
+
 ```typescript
 // Use worker threads for CPU-intensive OCR
 import { Worker } from 'worker_threads';
@@ -138,9 +150,11 @@ ocrWorker.postMessage({ filePath, buffer });
 ```
 
 #### 2.2 Caching Strategy
+
 **Current State:** Basic in-memory cache in workers.
 
 **Recommendation:**
+
 ```typescript
 // Use Redis for distributed caching
 const cacheKey = `artifact:${contractId}:${type}`;
@@ -152,9 +166,11 @@ await redis.setex(cacheKey, 3600, JSON.stringify(artifact));
 ```
 
 #### 2.3 Stream Optimization
+
 **Current State:** SSE polls every 1 second.
 
 **Recommendation:**
+
 ```typescript
 // Use Redis Pub/Sub for real-time updates
 const pubsub = new Redis();
@@ -168,9 +184,11 @@ pubsub.on('message', (channel, message) => {
 ### Phase 3: AI/ML Enhancement (Priority: MEDIUM)
 
 #### 3.1 Real AI Integration
+
 **Current State:** Placeholder artifact generation with mock data.
 
 **Recommendation:**
+
 ```typescript
 // Integrate with OpenAI for real artifact extraction
 async function generateArtifactWithAI(type: string, text: string): Promise<Artifact> {
@@ -193,9 +211,11 @@ async function generateArtifactWithAI(type: string, text: string): Promise<Artif
 ```
 
 #### 3.2 RAG Enhancement
+
 **Current State:** ChromaDB for vector storage but underutilized.
 
 **Recommendation:**
+
 ```typescript
 // Implement semantic search across artifacts
 async function searchSimilarClauses(query: string, limit: number = 5) {
@@ -215,7 +235,9 @@ async function searchSimilarClauses(query: string, limit: number = 5) {
 ### Phase 4: Observability & Monitoring (Priority: HIGH)
 
 #### 4.1 Structured Logging
+
 **Recommendation:**
+
 ```typescript
 // Add correlation IDs for request tracing
 const logger = pino({
@@ -229,7 +251,9 @@ const logger = pino({
 ```
 
 #### 4.2 Metrics Collection
+
 **Recommendation:**
+
 ```typescript
 // Add Prometheus metrics
 import { Registry, Counter, Histogram } from 'prom-client';
@@ -251,7 +275,9 @@ const processingDuration = new Histogram({
 ```
 
 #### 4.3 Health Checks Dashboard
+
 **Recommendation:**
+
 ```typescript
 // Add /api/health endpoint
 export async function GET() {
@@ -273,7 +299,9 @@ export async function GET() {
 ### Phase 5: Security Enhancements (Priority: HIGH)
 
 #### 5.1 File Validation Enhancement
+
 **Recommendation:**
+
 ```typescript
 // Add magic byte validation
 import fileType from 'file-type';
@@ -293,7 +321,9 @@ async function validateFile(buffer: Buffer): Promise<ValidationResult> {
 ```
 
 #### 5.2 Rate Limiting
+
 **Recommendation:**
+
 ```typescript
 // Add per-tenant rate limiting
 import rateLimit from 'express-rate-limit';
@@ -306,6 +336,7 @@ const uploadLimiter = rateLimit({
 ```
 
 #### 5.3 API Key Rotation
+
 **Current State:** Static API keys in environment variables.
 
 **Recommendation:** Implement automated key rotation with AWS Secrets Manager or HashiCorp Vault.
@@ -315,6 +346,7 @@ const uploadLimiter = rateLimit({
 ## Database Schema Improvements
 
 ### Current Schema Issues
+
 1. Prisma 7 deprecation warnings for datasource URL
 2. Missing indexes for common queries
 3. No soft delete support
@@ -344,6 +376,7 @@ model Artifact {
 ## Deployment Recommendations
 
 ### 1. Docker Compose Improvements
+
 ```yaml
 # Add healthcheck with dependencies
 services:
@@ -363,11 +396,13 @@ services:
 ```
 
 ### 2. Kubernetes Ready
+
 - Add HPA for auto-scaling workers based on queue depth
 - Implement pod disruption budgets
 - Add network policies for security
 
 ### 3. CI/CD Pipeline
+
 - Add E2E tests for upload flow
 - Run security scanning (Snyk, Trivy)
 - Performance regression testing
@@ -389,6 +424,7 @@ services:
 ## Quick Start Testing
 
 ### Test the Upload Flow:
+
 ```bash
 # Start services
 docker-compose -f docker-compose.dev.yml up -d

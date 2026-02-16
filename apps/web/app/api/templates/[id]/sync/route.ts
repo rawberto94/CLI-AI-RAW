@@ -6,8 +6,7 @@
  * Syncs a template to cloud storage (SharePoint, OneDrive, Google Drive)
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import {
   syncTemplateToCloud,
@@ -15,20 +14,24 @@ import {
   type CloudProvider,
 } from '@/lib/templates/cloud-sync-service';
 import type { ContractTemplate } from '@/lib/templates/document-service';
+import { getServerSession } from '@/lib/auth';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
     }
 
     const { id } = await params;
@@ -46,10 +49,7 @@ export async function POST(
     };
 
     if (!provider) {
-      return NextResponse.json(
-        { error: 'Provider is required (sharepoint, onedrive, or google-drive)' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Provider is required (sharepoint, onedrive, or google-drive)', 400);
     }
 
     // Fetch the template
@@ -58,24 +58,18 @@ export async function POST(
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     // Check tenant access
     if (template.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 
     // Check if provider is available
     const availableProviders = await getAvailableCloudProviders(tenantId);
     if (!availableProviders.includes(provider)) {
-      return NextResponse.json(
-        {
-          error: `${provider} is not connected. Please connect it in Settings → Contract Sources.`,
-          availableProviders,
-        },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', `${provider} is not connected. Please connect it in Settings → Contract Sources.`, 400);
     }
 
     // Parse metadata
@@ -120,10 +114,7 @@ export async function POST(
     });
 
     if (!result.success) {
-      return NextResponse.json(
-        { error: result.error || 'Sync failed' },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error, 500);
     }
 
     // Update template with sync info
@@ -143,18 +134,14 @@ export async function POST(
       },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: `Template synced to ${provider} successfully`,
       fileId: result.remoteFileId,
       url: result.remoteUrl,
     });
   } catch (error) {
-    console.error('Template sync error:', error);
-    return NextResponse.json(
-      { error: 'Failed to sync template', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -167,15 +154,16 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
 
     const tenantId = session.user.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant not found' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant not found', 400);
     }
 
     const { id } = await params;
@@ -191,11 +179,11 @@ export async function GET(
     });
 
     if (!template) {
-      return NextResponse.json({ error: 'Template not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Template not found', 404);
     }
 
     if (template.tenantId !== tenantId) {
-      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'Access denied', 403);
     }
 
     // Get available providers
@@ -205,15 +193,11 @@ export async function GET(
     const metadata = template.metadata as Record<string, unknown> || {};
     const lastCloudSync = metadata.lastCloudSync as Record<string, unknown> | undefined;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       availableProviders,
       lastSync: lastCloudSync || null,
     });
   } catch (error) {
-    console.error('Get sync status error:', error);
-    return NextResponse.json(
-      { error: 'Failed to get sync status' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

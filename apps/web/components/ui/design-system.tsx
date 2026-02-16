@@ -69,10 +69,10 @@ export const colors = {
     900: '#7f1d1d',
   },
   ai: {
-    gradient: 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600',
-    gradientHover: 'hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700',
-    text: 'text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600',
-    border: 'border-gradient-to-r from-blue-600 via-purple-600 to-indigo-600',
+    gradient: 'bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600',
+    gradientHover: 'hover:from-violet-700 hover:via-purple-700 hover:to-purple-700',
+    text: 'text-transparent bg-clip-text bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600',
+    border: 'border-gradient-to-r from-violet-600 via-purple-600 to-purple-600',
   }
 }
 
@@ -108,7 +108,7 @@ export const variants = {
     default: 'rounded-lg border bg-card text-card-foreground shadow-sm',
     elevated: 'rounded-lg border bg-card text-card-foreground shadow-lg',
     interactive: 'rounded-lg border bg-card text-card-foreground shadow-sm hover:shadow-md transition-shadow cursor-pointer',
-    ai: 'rounded-lg border bg-gradient-to-br from-blue-50 to-purple-50 text-card-foreground shadow-sm border-blue-200',
+    ai: 'rounded-lg border bg-gradient-to-br from-violet-50 to-purple-50 text-card-foreground shadow-sm border-violet-200',
   },
   button: {
     primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
@@ -116,15 +116,15 @@ export const variants = {
     success: 'bg-green-600 text-white hover:bg-green-700',
     warning: 'bg-yellow-600 text-white hover:bg-yellow-700',
     error: 'bg-red-600 text-white hover:bg-red-700',
-    ai: 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 text-white hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700',
+    ai: 'bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 text-white hover:from-violet-700 hover:via-purple-700 hover:to-purple-700',
   },
   badge: {
     default: 'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium',
     success: 'bg-green-100 text-green-800',
     warning: 'bg-yellow-100 text-yellow-800',
     error: 'bg-red-100 text-red-800',
-    info: 'bg-blue-100 text-blue-800',
-    ai: 'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800',
+    info: 'bg-violet-100 text-violet-800',
+    ai: 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-800',
   }
 }
 
@@ -133,8 +133,8 @@ export const statusColors = {
   success: 'text-green-600 bg-green-50 border-green-200',
   warning: 'text-yellow-600 bg-yellow-50 border-yellow-200',
   error: 'text-red-600 bg-red-50 border-red-200',
-  info: 'text-blue-600 bg-blue-50 border-blue-200',
-  processing: 'text-purple-600 bg-purple-50 border-purple-200',
+  info: 'text-violet-600 bg-violet-50 border-violet-200',
+  processing: 'text-violet-600 bg-violet-50 border-violet-200',
 }
 
 // Animation Classes
@@ -234,7 +234,7 @@ export const AIBadge: React.FC<{
 }> = ({ children, className }) => (
   <span className={cn(
     'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
-    'bg-gradient-to-r from-blue-100 to-purple-100 text-blue-800 border border-blue-200',
+    'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-800 border border-violet-200',
     className
   )}>
     {children}
@@ -252,7 +252,7 @@ export const LoadingSpinner: React.FC<{
   }
 
   return (
-    <div className={cn('animate-spin rounded-full border-2 border-gray-300 border-t-blue-600', sizes[size], className)} />
+    <div className={cn('animate-spin rounded-full border-2 border-gray-300 border-t-violet-600', sizes[size], className)} />
   )
 }
 

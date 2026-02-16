@@ -9,16 +9,16 @@
  * - Smart completions
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerTenantId } from '@/lib/tenant-server';
+import { aiCopilotService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 /**
  * GET - Get search suggestions
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = await getServerTenantId();
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     
     const prefix = searchParams.get('q') || '';
@@ -58,12 +58,10 @@ export async function GET(request: NextRequest) {
         where: {
           tenantId,
           action: { startsWith: 'ai.' },
-          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
-        },
+          createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } },
         select: { resource: true },
         orderBy: { createdAt: 'desc' },
-        take: 100,
-      });
+        take: 100 });
 
       // Count query frequency
       const queryFreq = new Map<string, number>();
@@ -96,7 +94,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Build response
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       suggestions: suggestions.slice(0, 10),
       popularQueries: popularQueries.slice(0, 5),
       categories: [
@@ -110,25 +108,15 @@ export async function GET(request: NextRequest) {
         { 
           label: 'Analyze All Risks', 
           query: 'What are all the high-risk clauses across my contracts?',
-          icon: 'alert-triangle',
-        },
+          icon: 'alert-triangle' },
         { 
           label: 'Upcoming Expirations', 
           query: 'Show contracts expiring in the next 90 days',
-          icon: 'clock',
-        },
+          icon: 'clock' },
         { 
           label: 'Spending Analysis', 
           query: 'What is my total contract value by supplier?',
-          icon: 'bar-chart',
-        },
-      ],
-    });
+          icon: 'bar-chart' },
+      ] });
 
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to get suggestions' },
-      { status: 500 }
-    );
-  }
-}
+  });

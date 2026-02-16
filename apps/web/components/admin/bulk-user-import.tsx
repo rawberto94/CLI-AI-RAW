@@ -3,7 +3,7 @@
 import { useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { Input as _Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
@@ -52,7 +52,11 @@ interface ImportSummary {
   errors: number;
 }
 
-export function BulkUserImport() {
+interface BulkUserImportProps {
+  onComplete?: () => void;
+}
+
+export function BulkUserImport({ onComplete }: BulkUserImportProps) {
   const [csvContent, setCsvContent] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -107,7 +111,7 @@ export function BulkUserImport() {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       toast.success('Template downloaded');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to download template');
     }
   };
@@ -151,6 +155,9 @@ export function BulkUserImport() {
       setShowResultsDialog(true);
       
       toast.success(`Imported ${data.summary.created + data.summary.invited} users`);
+      
+      // Call onComplete callback if provided
+      onComplete?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Import failed');
     } finally {
@@ -164,7 +171,7 @@ export function BulkUserImport() {
       case 'created':
         return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'invited':
-        return <Clock className="h-4 w-4 text-blue-500" />;
+        return <Clock className="h-4 w-4 text-violet-500" />;
       case 'skipped':
         return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
       case 'error':
@@ -326,8 +333,8 @@ export function BulkUserImport() {
                 <div className="text-2xl font-bold text-green-600">{summary.created}</div>
                 <div className="text-xs text-muted-foreground">Created</div>
               </div>
-              <div className="text-center p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{summary.invited}</div>
+              <div className="text-center p-3 bg-violet-100 dark:bg-violet-900/30 rounded-lg">
+                <div className="text-2xl font-bold text-violet-600">{summary.invited}</div>
                 <div className="text-xs text-muted-foreground">Invited</div>
               </div>
               <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">

@@ -77,7 +77,7 @@ export function OfflineStatusIndicator({
     <div className={`${positionClass} ${className}`}>
       <AnimatePresence>
         {isExpanded ? (
-          <motion.div
+          <motion.div key="OfflineStatusIndicator-ap-1"
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -133,7 +133,7 @@ export function OfflineStatusIndicator({
             {showDetails && queue.length === 0 && !isOnline && (
               <div className="p-4 text-center text-slate-500 text-sm">
                 <CloudOff className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>You're offline</p>
+                <p>You&apos;re offline</p>
                 <p className="text-xs mt-1">Requests will be queued automatically</p>
               </div>
             )}
@@ -177,7 +177,7 @@ export function OfflineStatusIndicator({
             onClick={() => setIsExpanded(true)}
             className={`flex items-center gap-2 px-3 py-2 rounded-full shadow-lg transition-colors ${
               isOnline
-                ? 'bg-blue-500 text-white hover:bg-blue-600'
+                ? 'bg-violet-500 text-white hover:bg-violet-600'
                 : 'bg-amber-500 text-white hover:bg-amber-600'
             }`}
           >
@@ -212,7 +212,7 @@ function QueueItem({
 
   const statusIcons: Record<string, React.ReactNode> = {
     pending: <Clock className="w-4 h-4 text-slate-400" />,
-    processing: <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />,
+    processing: <Loader2 className="w-4 h-4 text-violet-500 animate-spin" />,
     completed: <CheckCircle className="w-4 h-4 text-green-500" />,
     failed: <XCircle className="w-4 h-4 text-red-500" />,
   };
@@ -263,7 +263,7 @@ export function OfflineBadge() {
     <div
       className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${
         isOnline
-          ? 'bg-blue-100 text-blue-700'
+          ? 'bg-violet-100 text-violet-700'
           : 'bg-amber-100 text-amber-700'
       }`}
     >
@@ -285,11 +285,9 @@ export function useNetworkStatusToast() {
   useEffect(() => {
     if (!isOnline) {
       setWasOffline(true);
-      // Show offline toast (would integrate with your toast system)
-      console.log('[Network] Offline - requests will be queued');
+      // Offline - requests will be queued
     } else if (wasOffline) {
-      // Show back online toast
-      console.log('[Network] Back online - syncing queued requests');
+      // Back online - syncing queued requests
       setWasOffline(false);
     }
   }, [isOnline, wasOffline]);

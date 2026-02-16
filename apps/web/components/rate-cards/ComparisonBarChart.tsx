@@ -66,7 +66,7 @@ export function ComparisonBarChart({
   }, [data, sortBy, sortOrder]);
 
   const getBarColor = (item: any) => {
-    if (!showVariance || !item.baseline) return '#3b82f6'; // blue-500
+    if (!showVariance || !item.baseline) return '#7c3aed'; // violet-500
     
     if (item.variance > 10) return '#ef4444'; // red-500
     if (item.variance > 0) return '#f59e0b'; // amber-500

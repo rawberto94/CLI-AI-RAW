@@ -5,17 +5,11 @@
  * for long-term personalization
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getEpisodicMemoryService } from '@repo/data-orchestration';
+import { NextRequest } from 'next/server';
+import { getEpisodicMemoryService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { 
       tenantId, 
@@ -25,14 +19,10 @@ export async function POST(request: NextRequest) {
       context = {},
       importance = 0.5,
       metadata = {},
-      expiresInDays,
-    } = body;
+      expiresInDays } = body;
 
     if (!tenantId || !content) {
-      return NextResponse.json(
-        { error: 'TenantId and content are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'TenantId and content are required', 400);
     }
 
     const memoryService = getEpisodicMemoryService();
@@ -44,37 +34,34 @@ export async function POST(request: NextRequest) {
       case 'conversation':
         const conversationMemory = await memoryService.rememberConversation({
           tenantId,
-          userId: userId || session.user.id || 'anonymous',
+          userId: userId || ctx.userId,
           userMessage: content.userMessage || content,
           assistantResponse: content.assistantResponse || '',
           intent: context.intent,
           entities: context.entities,
-          contractId: context.contractId,
-        });
+          contractId: context.contractId });
         memoryId = conversationMemory.id;
         break;
         
       case 'correction':
         const correctionMemory = await memoryService.rememberCorrection({
           tenantId,
-          userId: userId || session.user.id || 'anonymous',
+          userId: userId || ctx.userId,
           contractId: context.contractId || '',
           artifactType: context.artifactType || 'general',
           originalValue: content.original || content,
           correctedValue: content.corrected || '',
-          fieldPath: context.fieldPath || 'unknown',
-        });
+          fieldPath: context.fieldPath || 'unknown' });
         memoryId = correctionMemory.id;
         break;
         
       case 'preference':
         const preferenceMemory = await memoryService.rememberPreference({
           tenantId,
-          userId: userId || session.user.id || 'anonymous',
+          userId: userId || ctx.userId,
           preferenceType: context.category || 'general',
           value: content,
-          context: context.description,
-        });
+          context: context.description });
         memoryId = preferenceMemory.id;
         break;
         
@@ -82,7 +69,7 @@ export async function POST(request: NextRequest) {
         // Generic memory storage
         const memory = await memoryService.remember({
           tenantId,
-          userId: userId || session.user.id || 'anonymous',
+          userId: userId || ctx.userId,
           type,
           content,
           context,
@@ -90,21 +77,11 @@ export async function POST(request: NextRequest) {
           expiresAt: expiresInDays 
             ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000)
             : undefined,
-          metadata,
-        });
+          metadata });
         memoryId = memory.id;
     }
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       memoryId,
-      message: 'Memory stored successfully',
-    });
-  } catch (error) {
-    console.error('Memory store error:', error);
-    return NextResponse.json(
-      { error: 'Failed to store memory' },
-      { status: 500 }
-    );
-  }
-}
+      message: 'Memory stored successfully' });
+  });

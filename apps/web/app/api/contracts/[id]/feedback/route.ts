@@ -9,11 +9,13 @@
  * 3. Enabling AI prompt improvements based on patterns
  */
 
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { getServerSession } from '@/lib/auth'
 import { getSessionTenantId } from '@/lib/tenant-server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import type { Prisma } from '@prisma/client'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPES
@@ -48,13 +50,14 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id: contractId } = await params
@@ -64,10 +67,7 @@ export async function POST(
     const { feedbackType, fields } = body
 
     if (!fields || !Array.isArray(fields) || fields.length === 0) {
-      return NextResponse.json(
-        { success: false, error: 'fields array is required' },
-        { status: 400 }
-      )
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'fields array is required', 400);
     }
 
     // Verify contract exists
@@ -77,10 +77,7 @@ export async function POST(
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     // Record each piece of feedback
@@ -158,7 +155,7 @@ export async function POST(
     // Analyze patterns for this contract type
     const patterns = await analyzeCorrectionsForPatterns(tenantId, contract.contractType || 'unknown')
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         recorded: feedbackRecords.length,
@@ -168,12 +165,9 @@ export async function POST(
         patterns: patterns.slice(0, 5), // Top 5 patterns
         learningImpact: calculateLearningImpact(correctCount, incorrectCount),
       }
-    })
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to record feedback' },
-      { status: 500 }
-    )
+    });
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -185,13 +179,14 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ): Promise<NextResponse> {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const session = await getServerSession()
     if (!session?.user) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const { id: contractId } = await params
@@ -206,10 +201,7 @@ export async function GET(
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { success: false, error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (view === 'history') {
@@ -223,7 +215,7 @@ export async function GET(
       const metadata = contract.metadata as Record<string, unknown>
       const feedbackStats = metadata?.feedbackStats as Record<string, number> | undefined
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: {
           corrections: corrections.map(c => ({
@@ -241,7 +233,7 @@ export async function GET(
             corrections: 0,
           },
         }
-      })
+      });
     }
 
     if (view === 'accuracy') {
@@ -272,7 +264,7 @@ export async function GET(
         sampleSize: stats.total,
       })).sort((a, b) => a.accuracy - b.accuracy) // Worst accuracy first
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: {
           contractType: contract.contractType,
@@ -282,18 +274,12 @@ export async function GET(
             : null,
           totalSamples: allCorrections.length,
         }
-      })
+      });
     }
 
-    return NextResponse.json({
-      success: false,
-      error: 'Invalid view parameter'
-    }, { status: 400 })
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to get feedback history' },
-      { status: 500 }
-    )
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid view parameter', 400);
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 

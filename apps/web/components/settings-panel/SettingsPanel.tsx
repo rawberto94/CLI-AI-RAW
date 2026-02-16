@@ -61,7 +61,7 @@ export function ToggleSwitch({
       disabled={disabled}
       className={`
         ${container} rounded-full p-1 transition-colors
-        ${checked ? 'bg-blue-600' : 'bg-gray-300 dark:bg-gray-600'}
+        ${checked ? 'bg-violet-600' : 'bg-gray-300 dark:bg-gray-600'}
         ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         ${className}
       `}
@@ -279,15 +279,15 @@ export function ThemeSelector({
           onClick={() => onChange(theme.id)}
           className={`flex-1 flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-colors ${
             value === theme.id
-              ? 'border-blue-600 bg-blue-50 dark:bg-blue-950'
+              ? 'border-violet-600 bg-violet-50 dark:bg-violet-950'
               : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
           }`}
         >
-          <div className={value === theme.id ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400'}>
+          <div className={value === theme.id ? 'text-violet-600' : 'text-gray-500 dark:text-gray-400'}>
             {theme.icon}
           </div>
           <span className={`text-sm font-medium ${
-            value === theme.id ? 'text-blue-600' : 'text-gray-700 dark:text-gray-300'
+            value === theme.id ? 'text-violet-600' : 'text-gray-700 dark:text-gray-300'
           }`}>
             {theme.name}
           </span>
@@ -350,7 +350,7 @@ export function PrivacySettings({
             <select
               value={setting.value}
               onChange={e => updateSetting(setting.id, e.target.value as PrivacySetting['value'])}
-              className="appearance-none bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent cursor-pointer"
+              className="appearance-none bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg pl-3 pr-8 py-2 text-sm focus:ring-2 focus:ring-violet-500 focus:border-transparent cursor-pointer"
             >
               {options.map(opt => (
                 <option key={opt.value} value={opt.value}>
@@ -471,7 +471,7 @@ export function ColorPickerSetting({
 
         <AnimatePresence>
           {showPicker && (
-            <motion.div
+            <motion.div key="picker"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}

@@ -147,8 +147,6 @@ export * from './wizard';
 // Contextual Help
 export * from './help';
 
-// Notification Center
-export * from './notification-center';
 
 // Inline Edit
 export * from './inline-edit';

@@ -21,7 +21,36 @@ export class ContractHealthMonitor extends BaseAgent {
   capabilities = ['health-monitoring', 'prediction', 'issue-detection'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contract } = input.context;
+    // Build contract from the enriched context provided by orchestrator
+    const ctxContract = input.context?.contract || {};
+    const contract = {
+      id: ctxContract.id || input.contractId,
+      title: ctxContract.title || ctxContract.contractTitle || '',
+      contractType: ctxContract.contractType || input.context?.contractType || 'OTHER',
+      parties: ctxContract.parties || [ctxContract.supplierName].filter(Boolean),
+      effectiveDate: ctxContract.effectiveDate,
+      expirationDate: ctxContract.expirationDate,
+      value: ctxContract.value || ctxContract.totalValue || 0,
+      status: ctxContract.status || 'ACTIVE',
+      department: ctxContract.department || '',
+      owner: ctxContract.owner || '',
+      description: ctxContract.description || '',
+      renewalInitiated: ctxContract.renewalInitiated || false,
+      autoRenewalEnabled: ctxContract.autoRenewalEnabled || false,
+      supplierName: ctxContract.supplierName || '',
+    };
+
+    if (!contract || !contract.id) {
+      return {
+        success: false,
+        data: null,
+        confidence: 0,
+        reasoning: 'No contract data available for health assessment',
+        metadata: {
+          processingTime: 0,
+        },
+      };
+    }
 
     const healthReport = await this.assessHealth(contract);
 
@@ -65,6 +94,7 @@ export class ContractHealthMonitor extends BaseAgent {
       reasoning: `Health Score: ${healthReport.score}/100 (${healthReport.overallHealth})`,
     }));
 
+    const startTime = input.metadata?.timestamp?.getTime?.() || Date.now();
     return {
       success: true,
       data: healthReport,
@@ -82,7 +112,7 @@ export class ContractHealthMonitor extends BaseAgent {
         ...healthReport.predictions.map(pred => `🔮 ${pred.description} (${(pred.probability * 100).toFixed(0)}% probability)`),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - startTime,
       },
     };
   }

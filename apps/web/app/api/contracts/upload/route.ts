@@ -14,10 +14,13 @@ import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { createHash } from "crypto";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
+// TODO: Replace prisma.contract.create with contractService.createContractWithIntegrity
 import { triggerArtifactGeneration, PROCESSING_PRIORITY } from "@/lib/artifact-trigger";
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
 import { contractUploadSchema } from "@/lib/validation/contract.validation";
 import { ZodError } from "zod";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
@@ -177,118 +180,101 @@ function sanitizeFileName(fileName: string): string {
  * Upload a contract file with validation
  * Requirements: 1.1, 1.7
  */
-export async function POST(
-  request: NextRequest
-): Promise<NextResponse> {
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+  
+  // Require tenant ID for data isolation
+  if (!tenantId) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400, {
+      details: 'Please provide x-tenant-id header',
+    });
+  }
+
+  const formData = await request.formData();
+  const file = formData.get("file") as File;
+
+  if (!file) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'No file provided', 400, {
+      details: 'Please select a file to upload',
+    });
+  }
+
+  // Extract and validate metadata using Zod schema
   try {
-    const tenantId = request.headers.get("x-tenant-id");
-    
-    // Require tenant ID for data isolation
-    if (!tenantId) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Tenant ID is required",
-          details: "Please provide x-tenant-id header",
-        },
-        { status: 400 }
-      );
+    const metadata = {
+      contractType: formData.get("contractType") ? (formData.get("contractType") as string) : undefined,
+      startDate: formData.get("startDate") ? (formData.get("startDate") as string) : undefined,
+      endDate: formData.get("endDate") ? (formData.get("endDate") as string) : undefined,
+      totalValue: formData.get("totalValue") ? parseFloat(formData.get("totalValue") as string) : undefined,
+      currency: formData.get("currency") ? (formData.get("currency") as string) : undefined,
+      clientName: formData.get("clientName") ? (formData.get("clientName") as string) : undefined,
+      supplierName: formData.get("supplierName") ? (formData.get("supplierName") as string) : undefined,
+      contractTitle: formData.get("contractTitle") ? (formData.get("contractTitle") as string) : undefined,
+      description: formData.get("description") ? (formData.get("description") as string) : undefined,
+      category: formData.get("category") ? (formData.get("category") as string) : undefined,
+      uploadedBy: formData.get("uploadedBy") ? (formData.get("uploadedBy") as string) : undefined,
+      priority: formData.get("priority") ? (formData.get("priority") as string) : undefined,
+      ocrMode: formData.get("ocrMode") ? (formData.get("ocrMode") as string) : undefined,
+    };
+
+    // Validate with contractUploadSchema
+    contractUploadSchema.parse(metadata);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Validation failed', 400, {
+        details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
+      });
     }
+    throw error;
+  }
 
-    const formData = await request.formData();
-    const file = formData.get("file") as File;
+  // Validate file
+  const typeValidation = validateFileType(file);
+  if (!typeValidation.valid) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', typeValidation.error || 'Invalid file type', 400, {
+      details: typeValidation.details,
+    });
+  }
 
-    if (!file) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "No file provided",
-          details: "Please select a file to upload",
-        },
-        { status: 400 }
-      );
-    }
+  const sizeValidation = validateFileSize(file);
+  if (!sizeValidation.valid) {
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', sizeValidation.error || 'Invalid file size', 400, {
+      details: sizeValidation.details,
+    });
+  }
 
-    // Extract and validate metadata using Zod schema
+  // Save file to object storage (MinIO/S3)
+  const timestamp = Date.now();
+  const sanitizedFileName = sanitizeFileName(file.name);
+  const storedFileName = `${timestamp}-${sanitizedFileName}`;
+  const objectKey = `contracts/${tenantId}/${storedFileName}`;
+  
+  const bytes = await file.arrayBuffer();
+  const buffer = Buffer.from(bytes);
+  
+  // Generate content hash for deduplication (uses checksum field)
+  const contentHash = generateContentHash(buffer);
+  
+  // Check for duplicate file using transactional read for consistency
+  // DISABLED: Duplicate detection is currently disabled to avoid false positives
+  // To re-enable, set ENABLE_DUPLICATE_DETECTION=true in env
+  const skipDuplicateCheck = request.headers.get('x-skip-duplicate-check') === 'true';
+  const enableDuplicateDetection = process.env.ENABLE_DUPLICATE_DETECTION === 'true';
+  
+  if (enableDuplicateDetection && !skipDuplicateCheck) {
     try {
-      const metadata = {
-        contractType: formData.get("contractType") ? (formData.get("contractType") as string) : undefined,
-        startDate: formData.get("startDate") ? (formData.get("startDate") as string) : undefined,
-        endDate: formData.get("endDate") ? (formData.get("endDate") as string) : undefined,
-        totalValue: formData.get("totalValue") ? parseFloat(formData.get("totalValue") as string) : undefined,
-        currency: formData.get("currency") ? (formData.get("currency") as string) : undefined,
-        clientName: formData.get("clientName") ? (formData.get("clientName") as string) : undefined,
-        supplierName: formData.get("supplierName") ? (formData.get("supplierName") as string) : undefined,
-        contractTitle: formData.get("contractTitle") ? (formData.get("contractTitle") as string) : undefined,
-        description: formData.get("description") ? (formData.get("description") as string) : undefined,
-        category: formData.get("category") ? (formData.get("category") as string) : undefined,
-        uploadedBy: formData.get("uploadedBy") ? (formData.get("uploadedBy") as string) : undefined,
-        priority: formData.get("priority") ? (formData.get("priority") as string) : undefined,
-        ocrMode: formData.get("ocrMode") ? (formData.get("ocrMode") as string) : undefined,
-      };
-
-      // Validate with contractUploadSchema
-      contractUploadSchema.parse(metadata);
-    } catch (error) {
-      if (error instanceof ZodError) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Validation failed",
-            details: error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', '),
-          },
-          { status: 400 }
-        );
-      }
-      throw error;
-    }
-
-    // Validate file
-    const typeValidation = validateFileType(file);
-    if (!typeValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: typeValidation.error,
-          details: typeValidation.details,
-        },
-        { status: 400 }
-      );
-    }
-
-    const sizeValidation = validateFileSize(file);
-    if (!sizeValidation.valid) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: sizeValidation.error,
-          details: sizeValidation.details,
-        },
-        { status: 400 }
-      );
-    }
-
-    // Save file to object storage (MinIO/S3)
-    const timestamp = Date.now();
-    const sanitizedFileName = sanitizeFileName(file.name);
-    const storedFileName = `${timestamp}-${sanitizedFileName}`;
-    const objectKey = `contracts/${tenantId}/${storedFileName}`;
-    
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    
-    // Generate content hash for deduplication (uses checksum field)
-    const contentHash = generateContentHash(buffer);
-    
-    // Check for duplicate file using transactional read for consistency
-    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
       const existingContract = await prisma.$transaction(async (tx) => {
         const contract = await tx.contract.findFirst({
           where: {
             tenantId,
             checksum: contentHash,
             isDeleted: false,
-            status: { notIn: ['FAILED', 'DELETED'] }
+            status: { notIn: ['FAILED', 'DELETED'] },
+            // Only consider as duplicate if uploaded in last 7 days
+            createdAt: { gte: sevenDaysAgo }
           },
           select: { id: true, status: true, fileName: true, createdAt: true }
         });
@@ -309,115 +295,116 @@ export async function POST(
       });
       
       if (existingContract) {
-        return NextResponse.json(
-          {
-            success: true,
+        const successResp = createSuccessResponse(ctx, {
             contractId: existingContract.id,
             fileName: file.name,
             fileSize: file.size,
             mimeType: file.type,
             status: existingContract.status,
-            message: "This file was already uploaded. Returning existing contract.",
+            message: "This file was uploaded recently (within 7 days). You can re-process or view existing.",
             isDuplicate: true,
-          },
-          { status: 200 }
-        );
+        });
+        return successResp;
       }
     } catch {
       // Continue with upload if duplicate check fails
     }
+  }
 
-    let filePath = objectKey;
-    let storageProvider = "s3";
-    let uploadResult: { success: boolean; url?: string; error?: string } | null = null;
+  let filePath = objectKey;
+  let storageProvider = "s3";
+  let uploadResult: { success: boolean; url?: string; error?: string } | null = null;
 
-    // Try to upload to object storage first
-    try {
-      const { initializeStorage } = await import("@/lib/storage-service");
-      const storageService = initializeStorage();
-      
-      if (storageService) {
-        uploadResult = await storageService.upload({
-          fileName: objectKey,
-          buffer,
-          contentType: file.type,
-          metadata: {
-            tenantId,
-            originalName: file.name,
-            uploadedAt: new Date().toISOString(),
-          },
-        });
-
-        if (uploadResult.success) {
-          filePath = objectKey;
-          storageProvider = "s3";
-        } else {
-          throw new Error(uploadResult.error || "Upload failed");
-        }
-      } else {
-        throw new Error("Storage service not available");
-      }
-    } catch {
-      // Fallback to local filesystem
-      const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
-      await mkdir(uploadDir, { recursive: true });
-      const localPath = join(uploadDir, storedFileName);
-      await writeFile(localPath, buffer);
-      
-      filePath = localPath;
-      storageProvider = "local";
-    }
-
-    // Extract metadata
-    const metadata = {
-      contractType: formData.get("contractType") as string | null,
-      contractTitle: formData.get("contractTitle") as string | null,
-      clientName: formData.get("clientName") as string | null,
-      supplierName: formData.get("supplierName") as string | null,
-      uploadedBy: formData.get("uploadedBy") as string | null,
-      description: formData.get("description") as string | null,
-      category: formData.get("category") as string | null,
-      totalValue: formData.get("totalValue") as string | null,
-      currency: formData.get("currency") as string | null,
-      lifecycle: formData.get("lifecycle") as string | null,
-    };
-
-    // Create contract with all side effects in a transaction
-    const idempotencyKey = formData.get("idempotency_key") as string | undefined;
+  // Try to upload to object storage first
+  try {
+    const { initializeStorage } = await import("@/lib/storage-service");
+    const storageService = initializeStorage();
     
-    const { result: transactionResult, wasExecuted } = await (async () => {
-      try {
-        const { createContractWithSideEffects } = await import("@/lib/transaction-service");
-        
-        return await createContractWithSideEffects({
-          contractData: {
-            tenantId: tenantId,
-            fileName: file.name,
-            originalName: file.name,
-            fileSize: BigInt(file.size),
-            mimeType: file.type || "application/octet-stream",
-            storagePath: filePath,
-            storageProvider: storageProvider,
-            status: metadata.lifecycle === 'NEW' || metadata.lifecycle === 'AMENDMENT' ? "DRAFT" : "PROCESSING",
-            documentRole: metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
-                         metadata.lifecycle === 'AMENDMENT' ? 'AMENDMENT' :
-                         metadata.lifecycle === 'RENEWAL' ? 'RENEWAL' : 'EXISTING',
-            uploadedBy: metadata.uploadedBy || "anonymous",
-            contractType: metadata.contractType || "UNKNOWN",
-            contractTitle: metadata.contractTitle || file.name,
-            clientName: metadata.clientName || undefined,
-            supplierName: metadata.supplierName || undefined,
-            description: metadata.description || undefined,
-            category: metadata.category || undefined,
-            uploadedAt: new Date(),
-            checksum: contentHash, // Add checksum for deduplication
-          },
-          idempotencyKey,
-        });
-      } catch {
-        
-        // Fallback to direct creation
-        const contract = await prisma.contract.create({
+    if (storageService) {
+      uploadResult = await storageService.upload({
+        fileName: objectKey,
+        buffer,
+        contentType: file.type,
+        metadata: {
+          tenantId,
+          originalName: file.name,
+          uploadedAt: new Date().toISOString(),
+        },
+      });
+
+      if (uploadResult.success) {
+        filePath = objectKey;
+        storageProvider = "s3";
+      } else {
+        throw new Error(uploadResult.error || "Upload failed");
+      }
+    } else {
+      throw new Error("Storage service not available");
+    }
+  } catch {
+    // Fallback to local filesystem
+    const uploadDir = join(process.cwd(), "uploads", "contracts", tenantId);
+    await mkdir(uploadDir, { recursive: true });
+    const localPath = join(uploadDir, storedFileName);
+    await writeFile(localPath, buffer);
+    
+    filePath = localPath;
+    storageProvider = "local";
+  }
+
+  // Extract metadata
+  const metadata = {
+    contractType: formData.get("contractType") as string | null,
+    contractTitle: formData.get("contractTitle") as string | null,
+    clientName: formData.get("clientName") as string | null,
+    supplierName: formData.get("supplierName") as string | null,
+    uploadedBy: formData.get("uploadedBy") as string | null,
+    description: formData.get("description") as string | null,
+    category: formData.get("category") as string | null,
+    totalValue: formData.get("totalValue") as string | null,
+    currency: formData.get("currency") as string | null,
+    lifecycle: formData.get("lifecycle") as string | null,
+  };
+
+  // Create contract with all side effects in a transaction
+  const idempotencyKey = formData.get("idempotency_key") as string | undefined;
+  
+  const { result: transactionResult, wasExecuted } = await (async () => {
+    try {
+      const { createContractWithSideEffects } = await import("@/lib/transaction-service");
+      
+      return await createContractWithSideEffects({
+        contractData: {
+          tenantId: tenantId,
+          fileName: file.name,
+          originalName: file.name,
+          fileSize: BigInt(file.size),
+          mimeType: file.type || "application/octet-stream",
+          storagePath: filePath,
+          storageProvider: storageProvider,
+          status: metadata.lifecycle === 'REVIEW' ? "PENDING" :
+                 metadata.lifecycle === 'NEW' || metadata.lifecycle === 'AMENDMENT' ? "DRAFT" : "PROCESSING",
+          documentRole: metadata.lifecycle === 'REVIEW' ? 'REVIEW' :
+                       metadata.lifecycle === 'NEW' ? 'NEW_CONTRACT' : 
+                       metadata.lifecycle === 'AMENDMENT' ? 'AMENDMENT' :
+                       metadata.lifecycle === 'RENEWAL' ? 'RENEWAL' : 'EXISTING',
+          uploadedBy: metadata.uploadedBy || "anonymous",
+          contractType: metadata.contractType || "UNKNOWN",
+          contractTitle: metadata.contractTitle || file.name,
+          clientName: metadata.clientName || undefined,
+          supplierName: metadata.supplierName || undefined,
+          description: metadata.description || undefined,
+          category: metadata.category || undefined,
+          uploadedAt: new Date(),
+          checksum: contentHash, // Add checksum for deduplication
+        },
+        idempotencyKey,
+      });
+    } catch {
+      
+      // Fallback to direct creation — use transaction for atomicity
+      const txResult = await prisma.$transaction(async (tx) => {
+        const contract = await tx.contract.create({
           data: {
             tenantId: tenantId,
             fileName: file.name,
@@ -439,7 +426,7 @@ export async function POST(
           },
         });
 
-        const processingJob = await prisma.processingJob.create({
+        const processingJob = await tx.processingJob.create({
           data: {
             contractId: contract.id,
             tenantId: contract.tenantId,
@@ -453,185 +440,206 @@ export async function POST(
           },
         });
 
-        return {
-          result: { contract, processingJob, outboxEvent: null },
-          wasExecuted: true,
-        };
-      }
-    })();
-
-    const { contract, processingJob } = transactionResult;
-
-    if (wasExecuted) {
-      await publishRealtimeEvent({
-        event: "contract:created",
-        data: {
-          tenantId: contract.tenantId,
-          contractId: contract.id,
-          status: contract.status,
-        },
-        source: "api:contracts/upload",
+        return { contract, processingJob, outboxEvent: null };
       });
-    }
 
-    // Initialize contract metadata (non-blocking)
-    try {
-      const { initializeContractMetadata } = await import(
-        "@/lib/contract-integration"
-      );
-      await initializeContractMetadata(contract.id, contract.tenantId, {
-        fileName: file.name,
-        contractType: metadata.contractType,
-        clientName: metadata.clientName,
-        supplierName: metadata.supplierName,
-        totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
-        currency: metadata.currency,
-      }).catch((err) => {
-        console.error('[ContractUpload] Metadata initialization error:', err);
-      });
-    } catch {
-      // Silently handle import errors
+      return {
+        result: txResult,
+        wasExecuted: true,
+      };
     }
+  })();
 
-    // Classify contract using taxonomy (non-blocking, async)
-    try {
-      // Read first few pages for classification
-      const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
-      
-      const { quickClassifyContract } = await import("@/lib/ai/contract-classifier-taxonomy");
-      
-      // Run classification in background
-      quickClassifyContract(textContent, file.name)
-        .then(async (classification) => {
-          // Validate category ownership before assignment
-          const category = await prisma.taxonomyCategory.findFirst({
-            where: { 
-              id: classification.category_id,
-              tenantId 
+  const { contract, processingJob } = transactionResult;
+
+  if (wasExecuted) {
+    await publishRealtimeEvent({
+      event: "contract:created",
+      data: {
+        tenantId: contract.tenantId,
+        contractId: contract.id,
+        status: contract.status,
+      },
+      source: "api:contracts/upload",
+    });
+  }
+
+  // Initialize contract metadata (non-blocking)
+  try {
+    const { initializeContractMetadata } = await import(
+      "@/lib/contract-integration"
+    );
+    await initializeContractMetadata(contract.id, contract.tenantId, {
+      fileName: file.name,
+      contractType: metadata.contractType,
+      clientName: metadata.clientName,
+      supplierName: metadata.supplierName,
+      totalValue: metadata.totalValue ? Number(metadata.totalValue) : undefined,
+      currency: metadata.currency,
+    }).catch((err) => {
+      console.error('[ContractUpload] Metadata initialization error:', err);
+    });
+  } catch {
+    // Silently handle import errors
+  }
+
+  // Classify contract using taxonomy (non-blocking, async)
+  try {
+    // Read first few pages for classification
+    const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
+    
+    const { quickClassifyContract } = await import("@/lib/ai/contract-classifier-taxonomy");
+    
+    // Run classification in background
+    quickClassifyContract(textContent, file.name)
+      .then(async (classification) => {
+        // Validate category ownership before assignment
+        const category = await prisma.taxonomyCategory.findFirst({
+          where: { 
+            id: classification.category_id,
+            tenantId 
+          },
+        });
+        
+        // Only update if category is valid for this tenant
+        if (category || !classification.category_id) {
+          // Update contract with taxonomy classification
+          await prisma.contract.update({
+            where: { id: contract.id },
+            data: {
+              contractCategoryId: classification.category_id,
+              contractSubtype: classification.subtype,
+              documentRole: classification.role,
+              classificationConf: classification.confidence,
+              classifiedAt: new Date(),
             },
           });
-          
-          // Only update if category is valid for this tenant
-          if (category || !classification.category_id) {
-            // Update contract with taxonomy classification
-            await prisma.contract.update({
-              where: { id: contract.id },
-              data: {
-                contractCategoryId: classification.category_id,
-                contractSubtype: classification.subtype,
-                documentRole: classification.role,
-                classificationConf: classification.confidence,
-                classifiedAt: new Date(),
-              },
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('[ContractUpload] Classification error:', err);
-        });
-    } catch {
-      // Silently handle taxonomy classifier import errors
-    }
-
-    // Trigger artifact generation via queue (non-blocking)
-    try {
-      // Initialize queue service if not already done
-      await import("@/lib/queue-init");
-      
-      // Determine priority from form data or default to NORMAL
-      const priorityParam = formData.get("priority") as string | null;
-      let priority: number = PROCESSING_PRIORITY.NORMAL;
-      
-      if (priorityParam === 'urgent' || priorityParam === 'high') {
-        priority = PROCESSING_PRIORITY.HIGH;
-      } else if (priorityParam === 'low' || priorityParam === 'bulk') {
-        priority = PROCESSING_PRIORITY.LOW;
-      } else if (priorityParam === 'background') {
-        priority = PROCESSING_PRIORITY.BACKGROUND;
-      }
-      
-      // Get OCR mode from form data (user-selected AI model)
-      const ocrMode = formData.get("ocrMode") as string | null;
-      
-      const artifactResult = await triggerArtifactGeneration({
-        contractId: contract.id,
-        tenantId: contract.tenantId,
-        filePath,
-        mimeType: file.type,
-        useQueue: true, // Use queue system
-        priority: priority as any, // Type assertion for numeric priority
-        source: 'upload',
-        ocrMode: ocrMode || undefined, // Pass user's AI model selection
+        }
+      })
+      .catch((err) => {
+        console.error('[ContractUpload] Classification error:', err);
       });
-      
-      if (artifactResult.jobId) {
-        // Update processing job with queue job ID
-        await prisma.processingJob.update({
-          where: { id: processingJob.id },
-          data: {
-            queueId: artifactResult.jobId,
-            status: "RUNNING",
-          },
-        }).catch((err) => console.error('[ContractUpload] Processing job update error:', err));
-      }
-    } catch {
-      // Continue anyway - job will still process via fallback
-    }
-
-    const response = NextResponse.json<UploadResponse>(
-      {
-        success: true,
-        contractId: contract.id,
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        status: "PROCESSING",
-        processingJobId: processingJob.id,
-        message: "File uploaded successfully",
-      },
-      { status: 201 }
-    );
-    return cors.addCorsHeaders(response, request, "POST, OPTIONS");
-  } catch (error: unknown) {
-    // Determine error type and retryability
-    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-    let code = "UPLOAD_ERROR";
-    let retryable = true;
-    let statusCode = 500;
-    
-    if (errorMessage.includes("rate limit") || errorMessage.includes("too many")) {
-      code = "RATE_LIMITED";
-      retryable = true;
-      statusCode = 429;
-    } else if (errorMessage.includes("quota") || errorMessage.includes("storage")) {
-      code = "QUOTA_EXCEEDED";
-      retryable = false;
-      statusCode = 507;
-    } else if (errorMessage.includes("validation") || errorMessage.includes("invalid")) {
-      code = "VALIDATION_ERROR";
-      retryable = false;
-      statusCode = 400;
-    } else if (errorMessage.includes("connection") || errorMessage.includes("timeout")) {
-      code = "CONNECTION_ERROR";
-      retryable = true;
-      statusCode = 503;
-    }
-    
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Upload failed",
-        code,
-        details: errorMessage,
-        retryable,
-      },
-      {
-        status: statusCode,
-        headers: code === "RATE_LIMITED" ? { "Retry-After": "60" } : {},
-      }
-    );
+  } catch {
+    // Silently handle taxonomy classifier import errors
   }
-}
+
+  // Fast text-based party extraction at upload time
+  // Gives immediate clientName/supplierName from document text before AI processing
+  try {
+    const partyText = buffer.toString('utf-8', 0, Math.min(15000, buffer.length));
+    if (!metadata.clientName && !metadata.supplierName && partyText.length > 50) {
+      const partyUpdate: Record<string, string> = {};
+      // "between X and Y" — most common contract pattern
+      const betweenMatch = partyText.match(
+        /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
+      );
+      if (betweenMatch) {
+        partyUpdate.clientName = betweenMatch[1].replace(/\s+$/, '').trim();
+        partyUpdate.supplierName = betweenMatch[2].replace(/\s+$/, '').trim();
+      } else {
+        // Label patterns: "Client: X", "Vendor: X"
+        const clientMatch = partyText.match(/(?:Client|Buyer|Customer|Auftraggeber)\s*[:.]\s*(.+?)(?:\n|$)/i);
+        const supplierMatch = partyText.match(/(?:Service Provider|Vendor|Supplier|Provider|Contractor|Auftragnehmer)\s*[:.]\s*(.+?)(?:\n|$)/i);
+        if (clientMatch) partyUpdate.clientName = clientMatch[1].replace(/[,;]+$/, '').trim().substring(0, 200);
+        if (supplierMatch) partyUpdate.supplierName = supplierMatch[1].replace(/[,;]+$/, '').trim().substring(0, 200);
+      }
+      if (Object.keys(partyUpdate).length > 0) {
+        await prisma.contract.update({
+          where: { id: contract.id },
+          data: partyUpdate,
+        });
+      }
+    }
+  } catch {
+    // Non-critical — AI worker will extract parties later
+  }
+
+  // Fast keyword-based contract type detection at upload time
+  // This gives an immediate contractType (e.g., "SOW", "NDA", "MSA") without an API call.
+  // The OCR worker will later refine this with AI-based detection for higher accuracy.
+  try {
+    const textContent = buffer.toString('utf-8', 0, Math.min(10000, buffer.length));
+    const { detectContractType } = await import("@repo/workers/contract-type-profiles");
+    const detection = detectContractType(textContent);
+    if (detection.type !== 'OTHER' && detection.confidence >= 0.4) {
+      await prisma.contract.update({
+        where: { id: contract.id },
+        data: {
+          contractType: detection.type,
+          classificationMeta: {
+            method: 'upload-keyword-detection',
+            confidence: detection.confidence,
+            matchedKeywords: detection.matchedKeywords,
+            detectedAt: new Date().toISOString(),
+          },
+        },
+      });
+    }
+  } catch {
+    // Silently handle - OCR worker will detect type later
+  }
+
+  // Trigger artifact generation via queue (non-blocking)
+  try {
+    // Initialize queue service if not already done
+    await import("@/lib/queue-init");
+    
+    // Determine priority from form data or default to NORMAL
+    const priorityParam = formData.get("priority") as string | null;
+    let priority: number = PROCESSING_PRIORITY.NORMAL;
+    
+    if (priorityParam === 'urgent' || priorityParam === 'high') {
+      priority = PROCESSING_PRIORITY.HIGH;
+    } else if (priorityParam === 'low' || priorityParam === 'bulk') {
+      priority = PROCESSING_PRIORITY.LOW;
+    } else if (priorityParam === 'background') {
+      priority = PROCESSING_PRIORITY.BACKGROUND;
+    }
+    
+    // Get OCR mode from form data (user-selected AI model)
+    const ocrMode = formData.get("ocrMode") as string | null;
+    
+    const artifactResult = await triggerArtifactGeneration({
+      contractId: contract.id,
+      tenantId: contract.tenantId,
+      filePath,
+      mimeType: file.type,
+      useQueue: true, // Use queue system
+      priority: priority as any, // Type assertion for numeric priority
+      source: 'upload',
+      ocrMode: ocrMode || undefined, // Pass user's AI model selection
+    });
+    
+    if (artifactResult.jobId) {
+      // Update processing job with queue job ID
+      await prisma.processingJob.update({
+        where: { id: processingJob.id },
+        data: {
+          queueId: artifactResult.jobId,
+          status: "RUNNING",
+        },
+      }).catch((err) => console.error('[ContractUpload] Processing job update error:', err));
+    }
+  } catch {
+    // Continue anyway - job will still process via fallback
+  }
+
+  const response = createSuccessResponse(ctx, {
+      contractId: contract.id,
+      fileName: file.name,
+      fileSize: file.size,
+      mimeType: file.type,
+      status: metadata.lifecycle === 'REVIEW' ? "PENDING" : "PROCESSING",
+      documentRole: metadata.lifecycle === 'REVIEW' ? 'REVIEW' : undefined,
+      processingJobId: processingJob.id,
+      message: metadata.lifecycle === 'REVIEW' 
+        ? "File uploaded for review — AI analysis is running in the background"
+        : "File uploaded successfully",
+    },
+    { status: 201 }
+  );
+  return cors.addCorsHeaders(response, request, "POST, OPTIONS");
+});
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
@@ -643,5 +651,6 @@ export async function POST(
  * Handle CORS preflight requests
  */
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "POST, OPTIONS");
 }

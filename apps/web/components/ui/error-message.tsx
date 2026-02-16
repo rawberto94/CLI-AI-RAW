@@ -72,7 +72,7 @@ export function ErrorMessage({
 
   return (
     <AnimatePresence mode="wait">
-      <motion.div
+      <motion.div key="error-message-ap-1"
         initial="hidden"
         animate={isShaking ? "shake" : "visible"}
         exit="exit"
@@ -140,7 +140,7 @@ export function ErrorMessage({
                 </button>
                 <AnimatePresence>
                   {isExpanded && (
-                    <motion.div
+                    <motion.div key="expanded"
                       initial={{ opacity: 0, height: 0 }}
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}

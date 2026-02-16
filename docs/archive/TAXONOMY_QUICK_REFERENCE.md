@@ -30,19 +30,23 @@
 ## Tag Dimensions
 
 ### Pricing Models
+
 - `fixed_fee` | `time_and_materials` | `subscription`
 - `milestone` | `unit_based` | `revenue_share`
 
 ### Delivery Models
+
 - `consulting` | `managed_services`
 - `outsourcing_bpo` | `outsourcing_ito`
 - `staff_augmentation` | `software_saas` | `software_perpetual`
 
 ### Data Profiles
+
 - `no_personal_data` | `personal_data`
 - `special_category_data` | `cross_border_transfer`
 
 ### Risk Flags
+
 - `auto_renewal` | `uncapped_liability`
 - `broad_indemnity` | `customer_unilateral_termination`
 - `audit_rights_broad` | `nonstandard_governing_law`
@@ -349,16 +353,19 @@ pnpm test contract-classifier-taxonomy
 ## Troubleshooting
 
 ### Classification too slow?
+
 - Use `quickClassifyContract` instead of `classifyContract`
 - Batch process multiple contracts
 - Cache common classifications
 
 ### Low confidence scores?
+
 - Check text extraction quality
 - Include filename in classification
 - Use AI reclassification in migration
 
 ### Query performance issues?
+
 - Ensure GIN indexes are created for JSON fields
 - Use pagination for large result sets
 - Consider materialized views for analytics

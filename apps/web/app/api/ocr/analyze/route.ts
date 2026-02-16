@@ -5,139 +5,123 @@
  * Returns quality metrics and preprocessing recommendations
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { 
-  DocumentPreprocessor, 
+  DocumentPreprocessor as _DocumentPreprocessor, 
   analyzeDocumentQuality, 
   shouldPreprocess,
   preprocessForOCR,
   smartPreprocessForOCR,
 } from '@/lib/ai/document-preprocessor';
-
 // ============================================================================
 // POST - Analyze Document Quality
 // ============================================================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const formData = await request.formData();
-    const file = formData.get('file') as File | null;
-    const action = formData.get('action') as string || 'analyze';
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const formData = await request.formData();
+  const file = formData.get('file') as File | null;
+  const action = formData.get('action') as string || 'analyze';
 
-    if (!file) {
-      return NextResponse.json(
-        { success: false, error: 'No file provided' },
-        { status: 400 }
-      );
-    }
-
-    // Get file buffer
-    const buffer = Buffer.from(await file.arrayBuffer());
-
-    switch (action) {
-      case 'analyze': {
-        // Just analyze quality without processing
-        const quality = await analyzeDocumentQuality(buffer);
-        const recommendation = await shouldPreprocess(buffer);
-
-        return NextResponse.json({
-          success: true,
-          data: {
-            quality,
-            recommendation,
-            filename: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-          },
-        });
-      }
-
-      case 'preprocess': {
-        // Preprocess the document
-        const preset = (formData.get('preset') as 'fast' | 'balanced' | 'quality') || 'balanced';
-        const result = await preprocessForOCR(buffer, preset);
-
-        // Return the processed image as base64 for preview, plus metrics
-        return NextResponse.json({
-          success: true,
-          data: {
-            qualityBefore: result.qualityBefore,
-            qualityAfter: result.qualityAfter,
-            stepsApplied: result.stepsApplied,
-            processingTimeMs: result.processingTimeMs,
-            estimatedAccuracyImprovement: result.estimatedAccuracyImprovement,
-            // Include base64 preview (limited to 1MB for response size)
-            preview: result.buffer.length < 1024 * 1024 
-              ? result.buffer.toString('base64')
-              : null,
-            previewTruncated: result.buffer.length >= 1024 * 1024,
-            outputSize: result.buffer.length,
-          },
-        });
-      }
-
-      case 'smart-preprocess': {
-        // Smart preprocessing that only processes if needed
-        const result = await smartPreprocessForOCR(buffer);
-
-        return NextResponse.json({
-          success: true,
-          data: {
-            qualityBefore: result.qualityBefore,
-            qualityAfter: result.qualityAfter,
-            stepsApplied: result.stepsApplied,
-            processingTimeMs: result.processingTimeMs,
-            estimatedAccuracyImprovement: result.estimatedAccuracyImprovement,
-            wasProcessed: !result.stepsApplied.includes('skipped-good-quality'),
-          },
-        });
-      }
-
-      case 'batch-analyze': {
-        // For multiple files, return summary analysis
-        // Note: In production, this would handle multiple files
-        const quality = await analyzeDocumentQuality(buffer);
-        
-        return NextResponse.json({
-          success: true,
-          data: {
-            files: [{
-              filename: file.name,
-              quality,
-              needsPreprocessing: quality.qualityScore < 75,
-            }],
-            summary: {
-              totalFiles: 1,
-              needsPreprocessing: quality.qualityScore < 75 ? 1 : 0,
-              averageQuality: quality.qualityScore,
-            },
-          },
-        });
-      }
-
-      default:
-        return NextResponse.json(
-          { success: false, error: `Unknown action: ${action}` },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: error instanceof Error ? error.message : 'Failed to analyze document' 
-      },
-      { status: 500 }
-    );
+  if (!file) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'No file provided', 400);
   }
-}
+
+  // Get file buffer
+  const buffer = Buffer.from(await file.arrayBuffer());
+
+  switch (action) {
+    case 'analyze': {
+      // Just analyze quality without processing
+      const quality = await analyzeDocumentQuality(buffer);
+      const recommendation = await shouldPreprocess(buffer);
+
+      return createSuccessResponse(ctx, {
+        success: true,
+        data: {
+          quality,
+          recommendation,
+          filename: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        },
+      });
+    }
+
+    case 'preprocess': {
+      // Preprocess the document
+      const preset = (formData.get('preset') as 'fast' | 'balanced' | 'quality') || 'balanced';
+      const result = await preprocessForOCR(buffer, preset);
+
+      // Return the processed image as base64 for preview, plus metrics
+      return createSuccessResponse(ctx, {
+        success: true,
+        data: {
+          qualityBefore: result.qualityBefore,
+          qualityAfter: result.qualityAfter,
+          stepsApplied: result.stepsApplied,
+          processingTimeMs: result.processingTimeMs,
+          estimatedAccuracyImprovement: result.estimatedAccuracyImprovement,
+          // Include base64 preview (limited to 1MB for response size)
+          preview: result.buffer.length < 1024 * 1024 
+            ? result.buffer.toString('base64')
+            : null,
+          previewTruncated: result.buffer.length >= 1024 * 1024,
+          outputSize: result.buffer.length,
+        },
+      });
+    }
+
+    case 'smart-preprocess': {
+      // Smart preprocessing that only processes if needed
+      const result = await smartPreprocessForOCR(buffer);
+
+      return createSuccessResponse(ctx, {
+        success: true,
+        data: {
+          qualityBefore: result.qualityBefore,
+          qualityAfter: result.qualityAfter,
+          stepsApplied: result.stepsApplied,
+          processingTimeMs: result.processingTimeMs,
+          estimatedAccuracyImprovement: result.estimatedAccuracyImprovement,
+          wasProcessed: !result.stepsApplied.includes('skipped-good-quality'),
+        },
+      });
+    }
+
+    case 'batch-analyze': {
+      // For multiple files, return summary analysis
+      // Note: In production, this would handle multiple files
+      const quality = await analyzeDocumentQuality(buffer);
+
+      return createSuccessResponse(ctx, {
+        success: true,
+        data: {
+          files: [{
+            filename: file.name,
+            quality,
+            needsPreprocessing: quality.qualityScore < 75,
+          }],
+          summary: {
+            totalFiles: 1,
+            needsPreprocessing: quality.qualityScore < 75 ? 1 : 0,
+            averageQuality: quality.qualityScore,
+          },
+        },
+      });
+    }
+
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', `Unknown action: ${action}`, 400);
+  }
+});
 
 // ============================================================================
 // GET - Get Quality Analysis Guidelines
 // ============================================================================
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  return createSuccessResponse(ctx, {
     success: true,
     data: {
       qualityMetrics: {
@@ -219,4 +203,4 @@ export async function GET() {
       ],
     },
   });
-}
+});

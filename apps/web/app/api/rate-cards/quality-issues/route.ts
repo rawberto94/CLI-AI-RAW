@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { dataQualityScorerService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
-export async function GET(request: NextRequest) {
-  try {
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const tenantId = await getApiTenantId(request);
     const minScore = searchParams.get('minScore');
     const maxScore = searchParams.get('maxScore');
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const qualityService = new dataQualityScorerService(prisma);
@@ -29,20 +29,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         ...report,
         lowQualityRateCards,
       },
     });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to fetch quality issues',
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
-  }
-}
+  });

@@ -98,197 +98,7 @@ interface Threshold {
   enabled: boolean;
 }
 
-const mockPolicies: Policy[] = [
-  {
-    id: 'p1',
-    name: 'Liability Cap Policy',
-    description: 'Ensures liability limitations meet company standards',
-    category: 'risk',
-    status: 'active',
-    severity: 'critical',
-    rules: 5,
-    violations: 2,
-    lastUpdated: '2024-03-10',
-    enforcement: 'block',
-  },
-  {
-    id: 'p2',
-    name: 'GDPR Compliance',
-    description: 'Data protection and privacy requirements',
-    category: 'compliance',
-    status: 'active',
-    severity: 'critical',
-    rules: 12,
-    violations: 0,
-    lastUpdated: '2024-03-12',
-    enforcement: 'block',
-  },
-  {
-    id: 'p3',
-    name: 'Payment Terms Standard',
-    description: 'Net 45+ payment terms required',
-    category: 'commercial',
-    status: 'active',
-    severity: 'medium',
-    rules: 3,
-    violations: 5,
-    lastUpdated: '2024-03-08',
-    enforcement: 'warn',
-  },
-  {
-    id: 'p4',
-    name: 'Termination Rights',
-    description: 'Must include termination for convenience',
-    category: 'legal',
-    status: 'active',
-    severity: 'high',
-    rules: 4,
-    violations: 3,
-    lastUpdated: '2024-03-05',
-    enforcement: 'warn',
-  },
-  {
-    id: 'p5',
-    name: 'Contract Value Threshold',
-    description: 'Approval requirements based on contract value',
-    category: 'operational',
-    status: 'active',
-    severity: 'high',
-    rules: 6,
-    violations: 1,
-    lastUpdated: '2024-03-14',
-    enforcement: 'block',
-  },
-  {
-    id: 'p6',
-    name: 'IP Ownership Standards',
-    description: 'Customer must retain IP for deliverables',
-    category: 'legal',
-    status: 'draft',
-    severity: 'high',
-    rules: 3,
-    violations: 0,
-    lastUpdated: '2024-03-14',
-    enforcement: 'audit',
-  },
-];
-
-const mockAuditLogs: AuditLog[] = [
-  {
-    id: 'log1',
-    timestamp: '2024-03-14 10:30:00',
-    action: 'Contract clause modified',
-    user: 'Sarah Chen',
-    resource: 'MSA - Acme Corp',
-    decision: 'approved',
-    reason: 'Within policy parameters',
-    policyId: 'p1',
-    riskScore: 25,
-  },
-  {
-    id: 'log2',
-    timestamp: '2024-03-14 10:15:00',
-    action: 'Liability clause violation',
-    user: 'Mike Johnson',
-    resource: 'SLA - CloudTech',
-    decision: 'escalated',
-    reason: 'Unlimited liability detected',
-    policyId: 'p1',
-    riskScore: 95,
-  },
-  {
-    id: 'log3',
-    timestamp: '2024-03-14 09:45:00',
-    action: 'Payment terms deviation',
-    user: 'Lisa Park',
-    resource: 'MSA - DataTech',
-    decision: 'overridden',
-    reason: 'Business exception approved by VP',
-    policyId: 'p3',
-    riskScore: 45,
-  },
-  {
-    id: 'log4',
-    timestamp: '2024-03-14 09:30:00',
-    action: 'Contract submission blocked',
-    user: 'Tom Wilson',
-    resource: 'PO - VendorX',
-    decision: 'rejected',
-    reason: 'Missing GDPR clauses',
-    policyId: 'p2',
-    riskScore: 85,
-  },
-  {
-    id: 'log5',
-    timestamp: '2024-03-14 09:00:00',
-    action: 'AI suggestion accepted',
-    user: 'Sarah Chen',
-    resource: 'SOW - ConsultPro',
-    decision: 'approved',
-    reason: 'Improved contract health score',
-    policyId: 'p4',
-    riskScore: 15,
-  },
-];
-
-const mockRiskFlags: RiskFlag[] = [
-  {
-    id: 'rf1',
-    type: 'deviation',
-    severity: 'critical',
-    title: 'Unlimited Liability Clause',
-    description: 'Contract contains unlimited liability exposure contrary to policy',
-    contract: 'MSA - Acme Corp',
-    clause: 'Section 7.2',
-    detectedAt: '2024-03-14 09:00:00',
-    status: 'open',
-    recommendation: 'Add liability cap at contract value or $1M',
-  },
-  {
-    id: 'rf2',
-    type: 'compliance',
-    severity: 'high',
-    title: 'Missing DPA Clause',
-    description: 'Data Processing Agreement not included for GDPR compliance',
-    contract: 'SLA - CloudTech',
-    clause: 'Missing',
-    detectedAt: '2024-03-13 14:30:00',
-    status: 'acknowledged',
-    recommendation: 'Add standard DPA addendum to contract',
-  },
-  {
-    id: 'rf3',
-    type: 'threshold',
-    severity: 'medium',
-    title: 'Contract Value Exceeds $500K',
-    description: 'Requires VP-level approval per policy',
-    contract: 'Master Agreement - TechVendor',
-    detectedAt: '2024-03-13 10:00:00',
-    status: 'resolved',
-    recommendation: 'Route to VP approval workflow',
-  },
-  {
-    id: 'rf4',
-    type: 'ai-generated',
-    severity: 'low',
-    title: 'Ambiguous Termination Language',
-    description: 'AI detected potentially unclear termination provisions',
-    contract: 'SOW - ConsultPro',
-    clause: 'Section 12.1',
-    detectedAt: '2024-03-12 16:00:00',
-    status: 'open',
-    recommendation: 'Clarify termination notice period and process',
-  },
-];
-
-const mockThresholds: Threshold[] = [
-  { id: 't1', name: 'Max Contract Value (Auto)', metric: 'Contract Value', operator: 'lte', value: 100000, unit: 'USD', action: 'notify', enabled: true },
-  { id: 't2', name: 'VP Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 500000, unit: 'USD', action: 'escalate', enabled: true },
-  { id: 't3', name: 'Exec Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 1000000, unit: 'USD', action: 'block', enabled: true },
-  { id: 't4', name: 'Max Contract Duration', metric: 'Term Length', operator: 'lte', value: 36, unit: 'months', action: 'warn', enabled: true },
-  { id: 't5', name: 'Risk Score Limit', metric: 'Risk Score', operator: 'lt', value: 70, unit: 'points', action: 'block', enabled: true },
-  { id: 't6', name: 'Min Payment Terms', metric: 'Payment Terms', operator: 'gte', value: 45, unit: 'days', action: 'warn', enabled: false },
-];
+// Dead mock data removed — all data comes from /api/governance
 
 const getSeverityColor = (severity: string) => {
   switch (severity) {
@@ -299,7 +109,7 @@ const getSeverityColor = (severity: string) => {
     case 'medium':
       return 'bg-yellow-100 text-yellow-700 border-yellow-200';
     case 'low':
-      return 'bg-blue-100 text-blue-700 border-blue-200';
+      return 'bg-violet-100 text-violet-700 border-violet-200';
     default:
       return 'bg-gray-100 text-gray-700 border-gray-200';
   }
@@ -308,13 +118,13 @@ const getSeverityColor = (severity: string) => {
 const getCategoryColor = (category: string) => {
   switch (category) {
     case 'compliance':
-      return 'bg-purple-100 text-purple-700';
+      return 'bg-violet-100 text-violet-700';
     case 'risk':
       return 'bg-red-100 text-red-700';
     case 'commercial':
       return 'bg-green-100 text-green-700';
     case 'legal':
-      return 'bg-blue-100 text-blue-700';
+      return 'bg-violet-100 text-violet-700';
     case 'operational':
       return 'bg-gray-100 text-gray-700';
     default:
@@ -331,7 +141,7 @@ const getDecisionColor = (decision: string) => {
     case 'escalated':
       return 'text-orange-600 bg-orange-50';
     case 'overridden':
-      return 'text-purple-600 bg-purple-50';
+      return 'text-violet-600 bg-violet-50';
     default:
       return 'text-gray-600 bg-gray-50';
   }
@@ -344,6 +154,18 @@ export function AIGuardrails() {
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [riskFlags, setRiskFlags] = useState<RiskFlag[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [apiStats, setApiStats] = useState<{
+    totalChecks: number; complianceRate: number; avgRiskScore: number;
+    auditLogCount: number; complianceScore: number; highValueContracts: number;
+  }>({ totalChecks: 0, complianceRate: 100, avgRiskScore: 0, auditLogCount: 0, complianceScore: 100, highValueContracts: 0 });
+  const [thresholds, setThresholds] = useState<Threshold[]>([
+    { id: 't1', name: 'Max Contract Value (Auto)', metric: 'Contract Value', operator: 'lte', value: 100000, unit: 'USD', action: 'notify', enabled: true },
+    { id: 't2', name: 'VP Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 500000, unit: 'USD', action: 'escalate', enabled: true },
+    { id: 't3', name: 'Exec Approval Threshold', metric: 'Contract Value', operator: 'gt', value: 1000000, unit: 'USD', action: 'block', enabled: true },
+    { id: 't4', name: 'Max Contract Duration', metric: 'Term Length', operator: 'lte', value: 36, unit: 'months', action: 'warn', enabled: true },
+    { id: 't5', name: 'Risk Score Limit', metric: 'Risk Score', operator: 'lt', value: 70, unit: 'points', action: 'block', enabled: true },
+    { id: 't6', name: 'Min Payment Terms', metric: 'Payment Terms', operator: 'gte', value: 45, unit: 'days', action: 'warn', enabled: false },
+  ]);
   const [loading, setLoading] = useState(true);
 
   // Fetch governance data from API - no mock data fallback
@@ -357,6 +179,16 @@ export function AIGuardrails() {
           setPolicies(json.data.policies || []);
           setRiskFlags(json.data.flags || []);
           setAuditLogs(json.data.auditLogs || []);
+          if (json.data.stats) {
+            setApiStats({
+              totalChecks: json.data.stats.totalChecks || 0,
+              complianceRate: json.data.stats.complianceRate ?? 100,
+              avgRiskScore: json.data.stats.avgRiskScore || 0,
+              auditLogCount: json.data.stats.auditLogCount || 0,
+              complianceScore: json.data.stats.complianceScore || 100,
+              highValueContracts: json.data.stats.highValueContracts || 0,
+            });
+          }
         } else {
           // API error - show empty state, not mock data
           setPolicies([]);
@@ -497,7 +329,7 @@ export function AIGuardrails() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading governance data...</p>
         </div>
       </div>
@@ -510,7 +342,7 @@ export function AIGuardrails() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-purple-500 to-blue-500 rounded-xl">
+            <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-500 rounded-xl">
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -518,6 +350,17 @@ export function AIGuardrails() {
               <p className="text-gray-500">Policy enforcement, risk management, and audit controls</p>
             </div>
           </div>
+          <button
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('openAIChatbot', {
+                detail: { message: 'Analyze our current governance posture — policies, open risk flags, compliance rate, and recommend improvements.' }
+              }));
+            }}
+            className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm"
+          >
+            <Brain className="h-4 w-4" />
+            Ask AI
+          </button>
         </div>
 
         {/* Stats */}
@@ -579,12 +422,12 @@ export function AIGuardrails() {
             className="bg-white rounded-xl p-5 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Brain className="h-5 w-5 text-blue-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <Brain className="h-5 w-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">94%</p>
-                <p className="text-sm text-gray-500">AI Accuracy</p>
+                <p className="text-2xl font-bold text-gray-900">{apiStats.complianceRate}%</p>
+                <p className="text-sm text-gray-500">Compliance Rate</p>
               </div>
             </div>
           </motion.div>
@@ -596,11 +439,11 @@ export function AIGuardrails() {
             className="bg-white rounded-xl p-5 shadow-sm border border-gray-200"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <Scale className="h-5 w-5 text-purple-600" />
+              <div className="p-2 bg-violet-100 rounded-lg">
+                <Scale className="h-5 w-5 text-violet-600" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">78</p>
+                <p className="text-2xl font-bold text-gray-900">{apiStats.avgRiskScore}</p>
                 <p className="text-sm text-gray-500">Avg Risk Score</p>
               </div>
             </div>
@@ -623,7 +466,7 @@ export function AIGuardrails() {
                     onClick={() => setActiveTab(tab.id as typeof activeTab)}
                     className={`flex items-center gap-2 py-4 border-b-2 text-sm font-medium transition-colors ${
                       activeTab === tab.id
-                        ? 'border-purple-600 text-purple-600'
+                        ? 'border-violet-600 text-violet-600'
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
                   >
@@ -631,7 +474,7 @@ export function AIGuardrails() {
                     {tab.label}
                     {tab.count !== undefined && (
                       <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        activeTab === tab.id ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-600'
+                        activeTab === tab.id ? 'bg-violet-100 text-violet-600' : 'bg-gray-100 text-gray-600'
                       }`}>
                         {tab.count}
                       </span>
@@ -639,7 +482,7 @@ export function AIGuardrails() {
                   </button>
                 ))}
               </nav>
-              <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+              <button onClick={handleConfigure} className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                 <Settings className="h-4 w-4" />
                 Configure
               </button>
@@ -656,7 +499,7 @@ export function AIGuardrails() {
                     animate={{ opacity: 1 }}
                     className={`bg-gray-50 rounded-xl p-5 border cursor-pointer transition-all ${
                       selectedPolicy === policy.id
-                        ? 'border-purple-300 ring-2 ring-purple-100'
+                        ? 'border-violet-300 ring-2 ring-violet-100'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => setSelectedPolicy(selectedPolicy === policy.id ? null : policy.id)}
@@ -710,7 +553,7 @@ export function AIGuardrails() {
 
                     <AnimatePresence>
                       {selectedPolicy === policy.id && (
-                        <motion.div
+                        <motion.div key="selected-policy"
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, height: 0 }}
@@ -723,15 +566,15 @@ export function AIGuardrails() {
                             </div>
                             <div className="p-3 bg-white rounded-lg">
                               <p className="text-xs text-gray-500 mb-1">Total Checks</p>
-                              <p className="font-medium text-gray-900">1,234</p>
+                              <p className="font-medium text-gray-900">{apiStats.totalChecks.toLocaleString()}</p>
                             </div>
                             <div className="p-3 bg-white rounded-lg">
                               <p className="text-xs text-gray-500 mb-1">Compliance Rate</p>
-                              <p className="font-medium text-green-600">98.5%</p>
+                              <p className="font-medium text-green-600">{apiStats.complianceRate}%</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2 mt-4">
-                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 text-sm">
+                            <button onClick={() => handleViewRules(policy.id, policy.name)} className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-violet-50 text-violet-600 rounded-lg hover:bg-violet-100 text-sm">
                               <Eye className="h-4 w-4" />
                               View Rules
                             </button>
@@ -786,14 +629,14 @@ export function AIGuardrails() {
                   >
                     <div className="flex items-start gap-4">
                       <div className={`p-2 rounded-lg ${
-                        flag.type === 'ai-generated' ? 'bg-purple-100' :
+                        flag.type === 'ai-generated' ? 'bg-violet-100' :
                         flag.type === 'deviation' ? 'bg-red-100' :
-                        flag.type === 'compliance' ? 'bg-blue-100' :
+                        flag.type === 'compliance' ? 'bg-violet-100' :
                         'bg-yellow-100'
                       }`}>
-                        {flag.type === 'ai-generated' ? <Brain className="h-5 w-5 text-purple-600" /> :
+                        {flag.type === 'ai-generated' ? <Brain className="h-5 w-5 text-violet-600" /> :
                          flag.type === 'deviation' ? <AlertTriangle className="h-5 w-5 text-red-600" /> :
-                         flag.type === 'compliance' ? <Shield className="h-5 w-5 text-blue-600" /> :
+                         flag.type === 'compliance' ? <Shield className="h-5 w-5 text-violet-600" /> :
                          <Target className="h-5 w-5 text-yellow-600" />}
                       </div>
                       <div className="flex-1">
@@ -817,12 +660,12 @@ export function AIGuardrails() {
                           {flag.clause && <span>Clause: {flag.clause}</span>}
                           <span>Detected: {flag.detectedAt}</span>
                         </div>
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
+                        <div className="mt-3 p-3 bg-violet-50 rounded-lg border border-violet-100">
                           <div className="flex items-start gap-2">
-                            <Zap className="h-4 w-4 text-blue-600 mt-0.5" />
+                            <Zap className="h-4 w-4 text-violet-600 mt-0.5" />
                             <div>
-                              <p className="text-xs font-medium text-blue-700">AI Recommendation</p>
-                              <p className="text-sm text-blue-600 mt-0.5">{flag.recommendation}</p>
+                              <p className="text-xs font-medium text-violet-700">AI Recommendation</p>
+                              <p className="text-sm text-violet-600 mt-0.5">{flag.recommendation}</p>
                             </div>
                           </div>
                         </div>
@@ -851,7 +694,7 @@ export function AIGuardrails() {
                     <input
                       type="text"
                       placeholder="Search audit logs..."
-                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                      className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                     />
                   </div>
                   <div className="flex items-center gap-2">
@@ -870,45 +713,39 @@ export function AIGuardrails() {
                   <table className="w-full">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Time</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Action</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Resource</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Decision</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Risk</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reason</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Entity</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {auditLogs.map((log) => (
+                      {auditLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-12 text-center text-gray-400">
+                            <History className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p>No audit log entries found</p>
+                            <p className="text-xs mt-1">Activity will appear here as actions are performed</p>
+                          </td>
+                        </tr>
+                      ) : auditLogs.map((log: any) => (
                         <tr key={log.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-500">{log.timestamp}</td>
+                          <td className="px-4 py-3 text-sm text-gray-500">{log.time || log.timestamp || '—'}</td>
                           <td className="px-4 py-3 text-sm font-medium text-gray-900">{log.action}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.user}</td>
-                          <td className="px-4 py-3 text-sm text-gray-600">{log.resource}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{log.user || 'System'}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600">{log.entity || log.resource || '—'}</td>
                           <td className="px-4 py-3">
-                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${getDecisionColor(log.decision)}`}>
-                              {log.decision === 'approved' && <CheckCircle2 className="h-3 w-3" />}
-                              {log.decision === 'rejected' && <XCircle className="h-3 w-3" />}
-                              {log.decision === 'escalated' && <AlertCircle className="h-3 w-3" />}
-                              {log.decision === 'overridden' && <Unlock className="h-3 w-3" />}
-                              {log.decision}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              (log.status || log.decision) === 'completed' || (log.status || log.decision) === 'approved'
+                                ? 'text-green-600 bg-green-50'
+                                : (log.status || log.decision) === 'rejected'
+                                ? 'text-red-600 bg-red-50'
+                                : 'text-gray-600 bg-gray-50'
+                            }`}>
+                              {log.status || log.decision || 'completed'}
                             </span>
                           </td>
-                          <td className="px-4 py-3">
-                            <div className={`h-2 w-16 rounded-full overflow-hidden bg-gray-200`}>
-                              <div
-                                className={`h-full ${
-                                  log.riskScore >= 80 ? 'bg-red-500' :
-                                  log.riskScore >= 60 ? 'bg-orange-500' :
-                                  log.riskScore >= 40 ? 'bg-yellow-500' :
-                                  'bg-green-500'
-                                }`}
-                                style={{ width: `${log.riskScore}%` }}
-                              />
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500 max-w-xs truncate">{log.reason}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -921,18 +758,18 @@ export function AIGuardrails() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="font-semibold text-gray-900">Automated Thresholds</h3>
-                  <button className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 text-sm">
+                  <button className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 text-sm">
                     <Sliders className="h-4 w-4" />
                     Add Threshold
                   </button>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <div className="bg-violet-50 border border-violet-200 rounded-lg p-4 mb-6">
                   <div className="flex items-start gap-3">
-                    <Info className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <Info className="h-5 w-5 text-violet-600 mt-0.5" />
                     <div>
-                      <p className="text-sm font-medium text-blue-900">Threshold Rules</p>
-                      <p className="text-sm text-blue-700 mt-0.5">
+                      <p className="text-sm font-medium text-violet-900">Threshold Rules</p>
+                      <p className="text-sm text-violet-700 mt-0.5">
                         Thresholds automatically trigger actions when contract attributes exceed defined limits.
                         Actions include blocking, warnings, notifications, and escalations.
                       </p>
@@ -941,7 +778,7 @@ export function AIGuardrails() {
                 </div>
 
                 <div className="space-y-3">
-                  {mockThresholds.map((threshold) => (
+                  {thresholds.map((threshold) => (
                     <div
                       key={threshold.id}
                       className={`p-4 rounded-xl border ${
@@ -954,12 +791,12 @@ export function AIGuardrails() {
                             threshold.action === 'block' ? 'bg-red-100' :
                             threshold.action === 'warn' ? 'bg-yellow-100' :
                             threshold.action === 'escalate' ? 'bg-orange-100' :
-                            'bg-blue-100'
+                            'bg-violet-100'
                           }`}>
                             {threshold.action === 'block' ? <Ban className="h-5 w-5 text-red-600" /> :
                              threshold.action === 'warn' ? <AlertTriangle className="h-5 w-5 text-yellow-600" /> :
                              threshold.action === 'escalate' ? <TrendingUp className="h-5 w-5 text-orange-600" /> :
-                             <Bell className="h-5 w-5 text-blue-600" />}
+                             <Bell className="h-5 w-5 text-violet-600" />}
                           </div>
                           <div>
                             <h4 className="font-medium text-gray-900">{threshold.name}</h4>
@@ -978,7 +815,7 @@ export function AIGuardrails() {
                             threshold.action === 'block' ? 'bg-red-100 text-red-700' :
                             threshold.action === 'warn' ? 'bg-yellow-100 text-yellow-700' :
                             threshold.action === 'escalate' ? 'bg-orange-100 text-orange-700' :
-                            'bg-blue-100 text-blue-700'
+                            'bg-violet-100 text-violet-700'
                           }`}>
                             {threshold.action}
                           </span>
@@ -986,10 +823,15 @@ export function AIGuardrails() {
                             <input
                               type="checkbox"
                               checked={threshold.enabled}
-                              onChange={() => {}}
+                              onChange={() => {
+                                setThresholds(prev => prev.map(t =>
+                                  t.id === threshold.id ? { ...t, enabled: !t.enabled } : t
+                                ));
+                                toast.success(`Threshold "${threshold.name}" ${threshold.enabled ? 'disabled' : 'enabled'}`);
+                              }}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-violet-100 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-violet-600"></div>
                           </label>
                           <button className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100">
                             <Settings className="h-4 w-4" />

@@ -85,7 +85,7 @@ const QUICK_FILTERS: CommandItem[] = [
     label: 'Processing',
     description: 'Contracts currently being processed',
     icon: Clock,
-    iconColor: 'text-blue-500',
+    iconColor: 'text-violet-500',
     category: 'filter',
     action: () => {},
   },
@@ -94,7 +94,7 @@ const QUICK_FILTERS: CommandItem[] = [
     label: 'Active Contracts',
     description: 'All active and completed contracts',
     icon: FileText,
-    iconColor: 'text-emerald-500',
+    iconColor: 'text-violet-500',
     category: 'filter',
     action: () => {},
   },
@@ -115,7 +115,7 @@ const AI_COMMANDS: CommandItem[] = [
     label: 'AI Summary',
     description: 'Generate an overview of filtered contracts',
     icon: Sparkles,
-    iconColor: 'text-purple-500',
+    iconColor: 'text-violet-500',
     category: 'ai',
     action: () => {},
   },
@@ -174,7 +174,7 @@ export const CommandPaletteSearch = memo(function CommandPaletteSearch({
         label: `Search: "${query}"`,
         description: 'Search contracts, parties, and terms',
         icon: Search,
-        iconColor: 'text-blue-500',
+        iconColor: 'text-violet-500',
         category: 'action',
         action: () => {
           onSearch(query);
@@ -246,7 +246,7 @@ export const CommandPaletteSearch = memo(function CommandPaletteSearch({
         label: 'Upload Contract',
         description: 'Upload a new contract document',
         icon: Upload,
-        iconColor: 'text-blue-500',
+        iconColor: 'text-violet-500',
         category: 'action',
         action: () => {
           onUploadClick();
@@ -259,7 +259,7 @@ export const CommandPaletteSearch = memo(function CommandPaletteSearch({
         label: 'Export Contracts',
         description: 'Download contracts as CSV or PDF',
         icon: Download,
-        iconColor: 'text-emerald-500',
+        iconColor: 'text-violet-500',
         category: 'action',
         action: () => {
           onExportClick();
@@ -378,7 +378,7 @@ export const CommandPaletteSearch = memo(function CommandPaletteSearch({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100]">
+      <div key="CommandPaletteSearch-ap-1" className="fixed inset-0 z-[100]">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}

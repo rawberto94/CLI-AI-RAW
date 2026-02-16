@@ -126,7 +126,7 @@ interface AgentMetrics {
 }
 
 // Future types - reserved for extended functionality
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 interface _DebateTrace {
   id: string;
   topic: string;
@@ -145,7 +145,7 @@ interface _DebateTrace {
   endTime?: Date;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 interface _ToolUsageEvent {
   toolId: string;
   toolName: string;
@@ -159,138 +159,22 @@ interface _ToolUsageEvent {
 }
 
 // =============================================================================
-// MOCK DATA (would come from API in production)
+// DEFAULT EMPTY METRICS (shown when API returns no data)
 // =============================================================================
 
-const generateMockTraces = (): AgentTrace[] => [
-  {
-    id: 'trace-1',
-    agentId: 'react-agent',
-    agentName: 'ReAct Contract Analyzer',
-    agentType: 'react',
-    sessionId: 'session-123',
-    startTime: new Date(Date.now() - 120000),
-    endTime: new Date(Date.now() - 30000),
-    status: 'completed',
-    goal: 'Analyze termination clauses and identify potential risks',
-    steps: [
-      {
-        id: 'step-1',
-        stepNumber: 1,
-        type: 'thought',
-        content: 'I need to first identify all termination-related clauses in the contract.',
-        timestamp: new Date(Date.now() - 115000),
-        durationMs: 1200,
-        confidence: 0.9,
-        tokens: 45,
-      },
-      {
-        id: 'step-2',
-        stepNumber: 2,
-        type: 'tool_call',
-        content: 'Calling clause extraction tool',
-        timestamp: new Date(Date.now() - 113000),
-        durationMs: 2500,
-        toolId: 'clause-extractor',
-        toolInput: { clauseTypes: ['termination', 'cancellation'] },
-        toolOutput: { clauses: [{ type: 'termination', text: '30-day notice period' }] },
-        tokens: 120,
-      },
-      {
-        id: 'step-3',
-        stepNumber: 3,
-        type: 'observation',
-        content: 'Found 3 termination clauses: 30-day notice, for-cause termination, and convenience termination.',
-        timestamp: new Date(Date.now() - 110000),
-        durationMs: 800,
-        tokens: 65,
-      },
-      {
-        id: 'step-4',
-        stepNumber: 4,
-        type: 'thought',
-        content: 'Now I should analyze each clause for potential risks to our client.',
-        timestamp: new Date(Date.now() - 108000),
-        durationMs: 1100,
-        confidence: 0.85,
-        tokens: 55,
-      },
-      {
-        id: 'step-5',
-        stepNumber: 5,
-        type: 'decision',
-        content: 'Analysis complete: High risk - convenience termination has no cure period.',
-        timestamp: new Date(Date.now() - 35000),
-        durationMs: 1800,
-        confidence: 0.92,
-        tokens: 180,
-      },
-    ],
-    tokensUsed: 465,
-    estimatedCost: 0.0023,
-    contractId: 'contract-abc',
-    tenantId: 'tenant-1',
-    userId: 'user-1',
-  },
-  {
-    id: 'trace-2',
-    agentId: 'debate-agent',
-    agentName: 'Multi-Agent Debate',
-    agentType: 'debate',
-    sessionId: 'session-124',
-    startTime: new Date(Date.now() - 60000),
-    status: 'running',
-    goal: 'Evaluate liability cap adequacy for enterprise software contract',
-    steps: [
-      {
-        id: 'step-d1',
-        stepNumber: 1,
-        type: 'thought',
-        content: '[Primary Analyst] Analyzing liability cap structure...',
-        timestamp: new Date(Date.now() - 55000),
-        durationMs: 2000,
-        tokens: 150,
-      },
-      {
-        id: 'step-d2',
-        stepNumber: 2,
-        type: 'critique',
-        content: '[Critical Reviewer] The $1M cap seems low for enterprise scope...',
-        timestamp: new Date(Date.now() - 50000),
-        durationMs: 1800,
-        confidence: 0.75,
-        tokens: 180,
-      },
-    ],
-    tokensUsed: 330,
-    estimatedCost: 0.0016,
-    contractId: 'contract-xyz',
-    tenantId: 'tenant-1',
-    userId: 'user-1',
-  },
-];
-
-const generateMockMetrics = (): AgentMetrics => ({
-  totalAgents: 9,
-  activeAgents: 3,
-  completedToday: 47,
-  failedToday: 2,
-  avgCompletionTimeMs: 12500,
-  avgTokensPerTask: 520,
-  successRate: 0.958,
-  topAgents: [
-    { agentId: 'react-agent', name: 'ReAct Analyzer', taskCount: 23 },
-    { agentId: 'extraction-agent', name: 'Smart Extractor', taskCount: 18 },
-    { agentId: 'validation-agent', name: 'Validator', taskCount: 12 },
-  ],
-  topTools: [
-    { toolId: 'clause-extractor', name: 'Clause Extractor', usageCount: 156 },
-    { toolId: 'contract-analyzer', name: 'Contract Analyzer', usageCount: 89 },
-    { toolId: 'semantic-search', name: 'Semantic Search', usageCount: 67 },
-  ],
-  costToday: 12.45,
-  costTrend: -5.2,
-});
+const emptyMetrics: AgentMetrics = {
+  totalAgents: 0,
+  activeAgents: 0,
+  completedToday: 0,
+  failedToday: 0,
+  avgCompletionTimeMs: 0,
+  avgTokensPerTask: 0,
+  successRate: 0,
+  topAgents: [],
+  topTools: [],
+  costToday: 0,
+  costTrend: 0,
+};
 
 // =============================================================================
 // SUB-COMPONENTS
@@ -359,12 +243,12 @@ const StepTypeIcon = memo(function StepTypeIcon({ type }: { type: AgentStep['typ
 
 const StepTypeBadge = memo(function StepTypeBadge({ type }: { type: AgentStep['type'] }) {
   const styleMap: Record<AgentStep['type'], string> = {
-    thought: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    thought: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
     action: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
     observation: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-    tool_call: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+    tool_call: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
     critique: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
-    decision: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+    decision: 'bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200',
   };
 
   return (
@@ -430,8 +314,8 @@ const AgentStepItem = memo(function AgentStepItem({
             </div>
             
             {step.toolId && (
-              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800">
-                <p className="text-xs font-medium text-purple-700 dark:text-purple-300 mb-2">
+              <div className="p-3 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                <p className="text-xs font-medium text-violet-700 dark:text-violet-300 mb-2">
                   Tool: {step.toolId}
                 </p>
                 {step.toolInput && (
@@ -476,7 +360,7 @@ const TraceCard = memo(function TraceCard({
   onSelect: () => void;
 }) {
   const statusConfig = {
-    running: { color: 'text-blue-600', bg: 'bg-blue-100', icon: Activity },
+    running: { color: 'text-violet-600', bg: 'bg-violet-100', icon: Activity },
     completed: { color: 'text-green-600', bg: 'bg-green-100', icon: CheckCircle2 },
     failed: { color: 'text-red-600', bg: 'bg-red-100', icon: XCircle },
     paused: { color: 'text-yellow-600', bg: 'bg-yellow-100', icon: Pause },
@@ -569,9 +453,6 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   tenantId: _tenantId,
   className,
 }: AgentObservabilityDashboardProps) {
-  // Suppress unused variable warnings
-  void _tenantId;
-
   // State
   const [traces, setTraces] = useState<AgentTrace[]>([]);
   const [metrics, setMetrics] = useState<AgentMetrics | null>(null);
@@ -584,37 +465,51 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [agentTypeFilter, setAgentTypeFilter] = useState<string>('all');
 
-  // Fetch data
+  // Fetch data from real API, show empty states when no data
+  const fetchObservabilityData = useCallback(async () => {
+    try {
+      const res = await fetch('/api/agents/observability');
+      const json = await res.json();
+      if (json.success) {
+        setTraces(json.data?.traces ?? []);
+        setMetrics(json.data?.metrics ?? emptyMetrics);
+        return;
+      }
+    } catch {
+      // API unavailable — show empty states
+    }
+    setTraces([]);
+    setMetrics(emptyMetrics);
+  }, []);
+
   useEffect(() => {
-    const fetchData = async () => {
+    const load = async () => {
       setIsLoading(true);
       try {
-        // In production, fetch from API
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setTraces(generateMockTraces());
-        setMetrics(generateMockMetrics());
+        await fetchObservabilityData();
       } catch {
         toast.error('Failed to load observability data');
       } finally {
         setIsLoading(false);
       }
     };
+    load();
+  }, [fetchObservabilityData]);
 
-    fetchData();
-  }, []);
-
-  // Live mode polling
+  // Live mode polling — fetches real API data on interval
   useEffect(() => {
     if (!isLiveMode) return;
 
-    const interval = setInterval(() => {
-      // In production, fetch updates from SSE or polling
-      const newTraces = generateMockTraces();
-      setTraces(newTraces);
+    const interval = setInterval(async () => {
+      try {
+        await fetchObservabilityData();
+      } catch {
+        // Silently continue with stale data
+      }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [isLiveMode]);
+  }, [isLiveMode, fetchObservabilityData]);
 
   // Filter traces
   const filteredTraces = useMemo(() => {
@@ -633,15 +528,17 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
   }, [traces, statusFilter, agentTypeFilter, searchQuery]);
 
   // Handlers
-  const handleRefresh = useCallback(() => {
+  const handleRefresh = useCallback(async () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setTraces(generateMockTraces());
-      setMetrics(generateMockMetrics());
-      setIsLoading(false);
+    try {
+      await fetchObservabilityData();
       toast.success('Data refreshed');
-    }, 500);
-  }, []);
+    } catch {
+      toast.error('Refresh failed');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fetchObservabilityData]);
 
   const toggleStep = useCallback((stepId: string) => {
     setExpandedSteps(prev => {
@@ -823,8 +720,10 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
                       />
                     ))}
                     {filteredTraces.length === 0 && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        No traces found
+                      <div className="text-center py-12 text-muted-foreground">
+                        <Activity className="h-8 w-8 mx-auto mb-3 opacity-40" />
+                        <p className="font-medium">No agent traces recorded yet</p>
+                        <p className="text-sm mt-1">Agent traces will appear here as contracts are processed</p>
                       </div>
                     )}
                   </div>
@@ -1039,8 +938,8 @@ export const AgentObservabilityDashboard = memo(function AgentObservabilityDashb
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
-                    <Lightbulb className="h-5 w-5 text-blue-600 mb-2" />
+                  <div className="p-4 rounded-lg bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800">
+                    <Lightbulb className="h-5 w-5 text-violet-600 mb-2" />
                     <h5 className="font-medium">Efficiency Improving</h5>
                     <p className="text-sm text-muted-foreground mt-1">
                       Average task completion time decreased by 15% this week

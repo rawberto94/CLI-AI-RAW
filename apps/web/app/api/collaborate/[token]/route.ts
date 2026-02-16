@@ -4,9 +4,11 @@
  * Handles token-based access for external collaborators
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auditLog, AuditAction } from '@/lib/security/audit';
+import { getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { contractService } from 'data-orchestration/services';
 
 /**
  * GET /api/collaborate/[token] - Validate access token and get collaborator portal
@@ -15,11 +17,12 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { token } = await params;
     
     if (!token) {
-      return NextResponse.json({ error: 'Access token required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Access token required', 400);
     }
     
     // Find collaborator by token
@@ -33,9 +36,6 @@ export async function GET(
         ],
       },
       include: {
-        tenant: {
-          select: { id: true, name: true },
-        },
         contractAccess: {
           include: {
             contract: {
@@ -58,10 +58,14 @@ export async function GET(
     });
     
     if (!collaborator) {
-      return NextResponse.json({ 
-        error: 'Invalid or expired access link' 
-      }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid or expired access link', 401);
     }
+    
+    // Get tenant info separately
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: collaborator.tenantId },
+      select: { id: true, name: true },
+    });
     
     // Update last access
     await prisma.externalCollaborator.update({
@@ -83,22 +87,22 @@ export async function GET(
         email: collaborator.email,
         ip: request.headers.get('x-forwarded-for') || 'unknown',
       },
-      request,
+      requestId: request.headers.get('x-request-id') || undefined,
     });
     
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       collaborator: {
         id: collaborator.id,
         name: collaborator.name,
         email: collaborator.email,
         company: collaborator.company,
-        type: collaborator.collaboratorType,
+        type: collaborator.type,
         permissions: collaborator.permissions,
       },
-      tenant: {
-        id: collaborator.tenant.id,
-        name: collaborator.tenant.name,
-      },
+      tenant: tenant ? {
+        id: tenant.id,
+        name: tenant.name,
+      } : null,
       contracts: collaborator.contractAccess.map(ca => ({
         id: ca.contract.id,
         name: ca.contract.contractTitle || ca.contract.fileName,
@@ -118,8 +122,7 @@ export async function GET(
       expiresAt: collaborator.expiresAt,
     });
   } catch (error) {
-    console.error('[Collaborate GET Error]:', error);
-    return NextResponse.json({ error: 'Failed to validate access' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }
 
@@ -130,11 +133,12 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  const ctx = getApiContext(request);
   try {
     const { token } = await params;
     
     if (!token) {
-      return NextResponse.json({ error: 'Access token required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Access token required', 400);
     }
     
     // Validate collaborator
@@ -159,7 +163,7 @@ export async function POST(
     });
     
     if (!collaborator) {
-      return NextResponse.json({ error: 'Invalid or expired access' }, { status: 401 });
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Invalid or expired access', 401);
     }
     
     const body = await request.json();
@@ -168,7 +172,7 @@ export async function POST(
     // Check contract access
     const contractAccess = collaborator.contractAccess.find(ca => ca.contractId === contractId);
     if (!contractAccess) {
-      return NextResponse.json({ error: 'No access to this contract' }, { status: 403 });
+      return createErrorResponse(ctx, 'FORBIDDEN', 'No access to this contract', 403);
     }
     
     // Check permission for action
@@ -177,7 +181,7 @@ export async function POST(
     switch (action) {
       case 'view_contract':
         if (!permissions.includes('view_contract')) {
-          return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+          return createErrorResponse(ctx, 'FORBIDDEN', 'Permission denied', 403);
         }
         // Return contract details
         const contract = await prisma.contract.findUnique({
@@ -197,43 +201,42 @@ export async function POST(
             metadata: true,
           },
         });
-        return NextResponse.json({ contract });
+        return createSuccessResponse(ctx, { contract });
         
       case 'download_contract':
         if (!permissions.includes('download_contract')) {
-          return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+          return createErrorResponse(ctx, 'FORBIDDEN', 'Permission denied', 403);
         }
         // Return download URL (would integrate with storage)
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           downloadUrl: `/api/contracts/${contractId}/download?token=${token}` 
         });
         
       case 'view_summary':
         if (!permissions.includes('view_summary')) {
-          return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+          return createErrorResponse(ctx, 'FORBIDDEN', 'Permission denied', 403);
         }
         // Return AI summary
         const metadata = await prisma.contractMetadata.findUnique({
           where: { contractId },
           select: { aiSummary: true, aiKeyInsights: true },
         });
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           summary: metadata?.aiSummary,
           insights: metadata?.aiKeyInsights,
         });
         
       case 'add_comment':
         if (!permissions.includes('comment')) {
-          return NextResponse.json({ error: 'Permission denied' }, { status: 403 });
+          return createErrorResponse(ctx, 'FORBIDDEN', 'Permission denied', 403);
         }
         // Add comment
         const comment = await prisma.contractComment.create({
           data: {
             contractId,
+            tenantId: collaborator.tenantId,
+            userId: collaborator.id, // Use collaborator ID as the user
             content: data.content,
-            authorType: 'EXTERNAL',
-            authorId: collaborator.id,
-            authorEmail: collaborator.email,
           },
         });
         
@@ -244,16 +247,15 @@ export async function POST(
           resourceType: 'contract',
           resourceId: contractId,
           metadata: { commentId: comment.id },
-          request,
+          requestId: request.headers.get('x-request-id') || undefined,
         });
         
-        return NextResponse.json({ success: true, comment });
+        return createSuccessResponse(ctx, { success: true, comment });
         
       default:
-        return NextResponse.json({ error: 'Unknown action' }, { status: 400 });
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Unknown action', 400);
     }
   } catch (error) {
-    console.error('[Collaborate POST Error]:', error);
-    return NextResponse.json({ error: 'Action failed' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }

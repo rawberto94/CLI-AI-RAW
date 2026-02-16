@@ -5,12 +5,14 @@
  * Returns confidence scores and suggestions for each field.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import cors from '@/lib/security/cors';
 import OpenAI from 'openai';
 import { getApiTenantId } from '@/lib/tenant-server';
 import { CONTRACT_METADATA_FIELDS, MetadataFieldDefinition } from '@/lib/types/contract-metadata-schema';
 import type { Prisma } from '@prisma/client';
+import { contractService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -65,18 +67,22 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const { id: contractId } = await params;
+  const { id: _contractId } = await params;
   
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body: ValidationRequest = await request.json();
     const { fields, contractText, validateAll = true, fieldsToValidate } = body;
-    const tenantId = await getApiTenantId(request);
+    const _tenantId = await getApiTenantId(request);
 
     if (!fields || Object.keys(fields).length === 0) {
-      return NextResponse.json(
-        { error: 'No fields provided for validation' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'No fields provided for validation', 400);
     }
 
     // Determine which fields to validate
@@ -87,7 +93,7 @@ export async function POST(
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
       // Return deterministic rule-based validation if no API key
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: generateFallbackValidation(fieldsToProcess),
         message: 'Validation completed using rule-based validation (OpenAI not configured)'
@@ -97,7 +103,7 @@ export async function POST(
     // Use AI for validation if contract text is available
     if (contractText) {
       const aiValidation = await validateWithAI(fieldsToProcess, contractText);
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: aiValidation
       });
@@ -105,19 +111,13 @@ export async function POST(
 
     // Rule-based validation fallback
     const ruleBasedValidation = validateWithRules(fieldsToProcess);
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: ruleBasedValidation
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to validate metadata', 
-        details: (error as Error).message 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -130,6 +130,13 @@ export async function PUT(
 ) {
   const { id: contractId } = await params;
   
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
     const body = await request.json();
     const { fieldKey, action, newValue, reason, allFields, resetAll } = body;
@@ -159,17 +166,13 @@ export async function PUT(
           });
         }
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'All verifications have been reset',
           data: { contractId }
         });
-      } catch {
-        return NextResponse.json({
-          success: true,
-          message: 'Reset processed (demo mode)',
-          data: { contractId }
-        });
+      } catch (error) {
+        return handleApiError(ctx, error);
       }
     }
 
@@ -217,7 +220,7 @@ export async function PUT(
           });
         }
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'All validated metadata saved successfully',
           data: { contractId, fieldCount: Object.keys(allFields).length }
@@ -228,10 +231,7 @@ export async function PUT(
     }
 
     if (!fieldKey || !action) {
-      return NextResponse.json(
-        { error: 'Field key and action are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Field key and action are required', 400);
     }
 
     // Record the validation action for single field
@@ -304,20 +304,14 @@ export async function PUT(
       // Continue with success response for demo
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: validationRecord,
       message: `Field "${fieldKey}" ${action}d successfully`
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to confirm validation', 
-        details: (error as Error).message 
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -360,7 +354,7 @@ Respond in JSON format:
 
   try {
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       messages: [
         {
           role: 'system',

@@ -83,7 +83,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
 
   useEffect(() => {
     calculateAnalytics();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [rateCards]);
 
   const calculateAnalytics = async () => {
@@ -216,7 +216,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
   const getPositionBadge = (position: MarketPosition['position']) => {
     const config = {
       EXCELLENT: { color: 'bg-green-600', label: 'Excellent' },
-      GOOD: { color: 'bg-blue-600', label: 'Good' },
+      GOOD: { color: 'bg-violet-600', label: 'Good' },
       AVERAGE: { color: 'bg-yellow-600', label: 'Average' },
       ABOVE_AVERAGE: { color: 'bg-orange-600', label: 'Above Average' },
       POOR: { color: 'bg-red-600', label: 'Poor' },
@@ -272,12 +272,12 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-100 rounded-lg">
-                <BarChart3 className="h-6 w-6 text-blue-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <BarChart3 className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Avg Savings Potential</p>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-violet-600">
                   {avgSavingsPercentage.toFixed(1)}%
                 </p>
                 <p className="text-xs text-muted-foreground">vs best rate</p>
@@ -289,12 +289,12 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-purple-100 rounded-lg">
-                <Award className="h-6 w-6 text-purple-600" />
+              <div className="p-3 bg-violet-100 rounded-lg">
+                <Award className="h-6 w-6 text-violet-600" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Recommendations</p>
-                <p className="text-2xl font-bold text-purple-600">
+                <p className="text-2xl font-bold text-violet-600">
                   {recommendations.length}
                 </p>
                 <p className="text-xs text-muted-foreground">switching options</p>
@@ -431,7 +431,7 @@ export function ComparisonAnalytics({ rateCards }: ComparisonAnalyticsProps) {
                   </div>
 
                   {/* Recommendation */}
-                  <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="p-3 bg-violet-50 rounded-lg">
                     <p className="text-sm">{rec.recommendation}</p>
                   </div>
 

@@ -389,7 +389,7 @@ export function AIDraftAssistant() {
   }, [messages])
   
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-purple-50/30">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-6 py-4">
@@ -406,7 +406,7 @@ export function AIDraftAssistant() {
               </Button>
               <Separator orientation="vertical" className="h-6" />
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl">
+                <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl">
                   <Sparkles className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -451,7 +451,7 @@ export function AIDraftAssistant() {
                       )}
                     >
                       {message.role === 'assistant' && (
-                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                           <Bot className="h-4 w-4 text-white" />
                         </div>
                       )}
@@ -459,7 +459,7 @@ export function AIDraftAssistant() {
                       <div className={cn(
                         "max-w-[80%] rounded-2xl px-4 py-3",
                         message.role === 'user' 
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-500 text-white"
+                          ? "bg-gradient-to-r from-violet-500 to-purple-500 text-white"
                           : "bg-slate-100 text-slate-900"
                       )}>
                         {message.isLoading ? (
@@ -483,7 +483,7 @@ export function AIDraftAssistant() {
                               onClick={() => setShowDraftPanel(true)}
                               className="w-full bg-white gap-2"
                             >
-                              <FileText className="h-4 w-4 text-indigo-500" />
+                              <FileText className="h-4 w-4 text-violet-500" />
                               View Draft
                               <ChevronRight className="h-4 w-4 ml-auto" />
                             </Button>
@@ -513,10 +513,10 @@ export function AIDraftAssistant() {
                       <button
                         key={index}
                         onClick={() => handleSuggestionClick(suggestion.text)}
-                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors group"
+                        className="text-left p-3 rounded-xl border border-slate-200 hover:border-indigo-300 hover:bg-violet-50/50 transition-colors group"
                       >
                         <span className="text-lg mr-2">{suggestion.icon}</span>
-                        <span className="text-sm text-slate-700 group-hover:text-indigo-700">
+                        <span className="text-sm text-slate-700 group-hover:text-violet-700">
                           {suggestion.text.slice(0, 40)}...
                         </span>
                       </button>
@@ -545,7 +545,7 @@ export function AIDraftAssistant() {
                   <Button
                     onClick={handleSend}
                     disabled={!input.trim() || isLoading}
-                    className="bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 px-4"
+                    className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 px-4"
                   >
                     {isLoading ? (
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -564,7 +564,7 @@ export function AIDraftAssistant() {
           {/* Draft Panel */}
           <AnimatePresence>
             {showDraftPanel && currentDraft && (
-              <motion.div
+              <motion.div key="draft-panel"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
@@ -574,7 +574,7 @@ export function AIDraftAssistant() {
                   <CardHeader className="pb-3 flex-shrink-0">
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-indigo-500" />
+                        <FileText className="h-5 w-5 text-violet-500" />
                         Contract Draft
                       </CardTitle>
                       <Button
@@ -611,8 +611,8 @@ export function AIDraftAssistant() {
                               key={index}
                               className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg"
                             >
-                              <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                                <User className="h-4 w-4 text-indigo-600" />
+                              <div className="w-8 h-8 rounded-full bg-violet-100 flex items-center justify-center">
+                                <User className="h-4 w-4 text-violet-600" />
                               </div>
                               <div>
                                 <p className="font-medium text-slate-900">{party.name}</p>
@@ -698,7 +698,7 @@ export function AIDraftAssistant() {
                     <Button
                       onClick={handleSaveDraft}
                       disabled={isSaving}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600"
+                      className="w-full bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600"
                     >
                       {isSaving ? (
                         <>

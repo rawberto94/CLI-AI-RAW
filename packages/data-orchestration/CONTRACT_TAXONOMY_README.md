@@ -90,6 +90,7 @@ await prisma.contract.update({
 Governing terms that apply across multiple future orders/work.
 
 **Subtypes:**
+
 - Master Services Agreement (MSA)
 - Framework Agreement
 - Master Agreement
@@ -103,6 +104,7 @@ Governing terms that apply across multiple future orders/work.
 Documents that authorize and define a specific scope, deliverables, timeline, acceptance, and commercials.
 
 **Subtypes:**
+
 - Statement of Work (SOW)
 - Work Order
 - Task Order
@@ -116,6 +118,7 @@ Documents that authorize and define a specific scope, deliverables, timeline, ac
 Buying goods or supply chain relationships.
 
 **Subtypes:**
+
 - Purchase Order (PO)
 - Supply Agreement
 - Manufacturing Agreement
@@ -131,6 +134,7 @@ Buying goods or supply chain relationships.
 Services agreements where delivery terms are central.
 
 **Subtypes:**
+
 - Professional Services Agreement (PSA)
 - Consulting Agreement
 - Managed Services Agreement
@@ -145,6 +149,7 @@ Services agreements where delivery terms are central.
 Licensing/subscription/hosting agreements covering software, SaaS, cloud services.
 
 **Subtypes:**
+
 - SaaS Subscription Agreement
 - Software License Agreement
 - Cloud Services Agreement
@@ -160,6 +165,7 @@ Licensing/subscription/hosting agreements covering software, SaaS, cloud service
 Operational performance commitments (SLAs, KPIs, service credits).
 
 **Subtypes:**
+
 - Service Level Agreement (SLA)
 - KPI / Scorecard Agreement
 - Service Credits Schedule
@@ -172,6 +178,7 @@ Operational performance commitments (SLAs, KPIs, service credits).
 Agreements focused on confidentiality, IP ownership, and collaboration.
 
 **Subtypes:**
+
 - Mutual NDA
 - Unilateral NDA
 - Confidentiality Agreement
@@ -186,6 +193,7 @@ Agreements focused on confidentiality, IP ownership, and collaboration.
 Data protection and security obligations.
 
 **Subtypes:**
+
 - Data Processing Agreement/Addendum (DPA)
 - Standard Contractual Clauses (SCCs)
 - UK GDPR Addendum
@@ -200,6 +208,7 @@ Data protection and security obligations.
 Pricing, revenue share, commission, guarantees, settlements.
 
 **Subtypes:**
+
 - Pricing Schedule / Rate Card Appendix
 - Revenue Share Agreement
 - Commission Agreement
@@ -214,6 +223,7 @@ Pricing, revenue share, commission, guarantees, settlements.
 Documents that modify or transfer contractual rights/obligations.
 
 **Subtypes:**
+
 - Amendment
 - Addendum
 - Novation Agreement
@@ -236,6 +246,7 @@ Documents that modify or transfer contractual rights/obligations.
 ## Tag Dimensions
 
 ### Pricing Models
+
 - `fixed_fee` - Fixed price for entire engagement
 - `time_and_materials` - Hourly/daily rates plus expenses
 - `subscription` - Recurring subscription fees
@@ -244,6 +255,7 @@ Documents that modify or transfer contractual rights/obligations.
 - `revenue_share` - Revenue sharing arrangement
 
 ### Delivery Models
+
 - `consulting` - Professional consulting services
 - `managed_services` - Ongoing managed services
 - `outsourcing_bpo` - Business process outsourcing
@@ -253,12 +265,14 @@ Documents that modify or transfer contractual rights/obligations.
 - `software_perpetual` - Perpetual software license
 
 ### Data Profiles
+
 - `no_personal_data` - No personal data processed
 - `personal_data` - Personal data is processed
 - `special_category_data` - Special category/sensitive data
 - `cross_border_transfer` - Cross-border data transfers
 
 ### Risk Flags
+
 - `auto_renewal` - Auto-renewal clause present
 - `uncapped_liability` - Liability is uncapped or very high
 - `broad_indemnity` - Broad indemnification obligations

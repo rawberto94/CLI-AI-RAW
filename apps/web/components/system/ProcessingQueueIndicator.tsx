@@ -118,7 +118,7 @@ export const ProcessingQueueIndicator = memo(function ProcessingQueueIndicator({
             'h-8 px-2.5 gap-1.5 rounded-lg',
             hasIssues 
               ? 'bg-amber-50 text-amber-700 hover:bg-amber-100' 
-              : 'bg-blue-50 text-blue-700 hover:bg-blue-100',
+              : 'bg-violet-50 text-violet-700 hover:bg-violet-100',
             className
           )}
         >
@@ -152,9 +152,9 @@ export const ProcessingQueueIndicator = memo(function ProcessingQueueIndicator({
 
           {/* Stats Grid */}
           <div className="grid grid-cols-4 gap-2">
-            <div className="text-center p-2 rounded-lg bg-blue-50">
-              <div className="text-lg font-bold text-blue-700">{status?.active || 0}</div>
-              <div className="text-[10px] text-blue-600">Active</div>
+            <div className="text-center p-2 rounded-lg bg-violet-50">
+              <div className="text-lg font-bold text-violet-700">{status?.active || 0}</div>
+              <div className="text-[10px] text-violet-600">Active</div>
             </div>
             <div className="text-center p-2 rounded-lg bg-slate-50">
               <div className="text-lg font-bold text-slate-700">{status?.pending || 0}</div>
@@ -184,7 +184,7 @@ export const ProcessingQueueIndicator = memo(function ProcessingQueueIndicator({
                   >
                     <div className="flex-shrink-0">
                       {job.status === 'processing' && (
-                        <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                        <Loader2 className="h-4 w-4 animate-spin text-violet-500" />
                       )}
                       {job.status === 'pending' && (
                         <Clock className="h-4 w-4 text-slate-400" />

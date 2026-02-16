@@ -6,10 +6,11 @@
  * DELETE /api/obligations/notifications/[id] - Delete notification
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { getApiTenantId } from '@/lib/tenant-server';
+import { aiObligationTrackerService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,14 +19,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -35,22 +33,15 @@ export async function GET(
     });
 
     if (!notification) {
-      return NextResponse.json(
-        { success: false, error: 'Notification not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Notification not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: { notification },
     });
   } catch (error) {
-    console.error('Error fetching notification:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch notification' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -59,14 +50,11 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -78,10 +66,7 @@ export async function PATCH(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Notification not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Notification not found', 404);
     }
 
     const {
@@ -95,10 +80,7 @@ export async function PATCH(
 
     if (status !== undefined) {
       if (!['PENDING', 'SENT', 'FAILED', 'CANCELLED'].includes(status)) {
-        return NextResponse.json(
-          { success: false, error: 'Invalid status' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid status', 400);
       }
       updateData.status = status;
       
@@ -117,16 +99,12 @@ export async function PATCH(
       data: updateData,
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: { notification },
     });
   } catch (error) {
-    console.error('Error updating notification:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to update notification' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -135,14 +113,11 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
 
     const tenantId = await getApiTenantId(request);
     const { id } = await params;
@@ -153,25 +128,18 @@ export async function DELETE(
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Notification not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Notification not found', 404);
     }
 
     await prisma.obligationNotification.delete({
       where: { id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Notification deleted',
     });
   } catch (error) {
-    console.error('Error deleting notification:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to delete notification' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

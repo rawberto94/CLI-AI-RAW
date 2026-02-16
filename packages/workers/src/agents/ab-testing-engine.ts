@@ -311,7 +311,7 @@ export class ABTestingEngine {
       `;
 
       // Calculate win rates from head-to-head comparisons
-      const winRates = await this.calculateWinRates(testName, results.map(r => String(r.variant_id)));
+      const winRates = await this.calculateWinRates(testName, results.map((r: Record<string, unknown>) => String(r.variant_id)));
 
       return results.map((r: Record<string, unknown>) => ({
         variantId: String(r.variant_id),

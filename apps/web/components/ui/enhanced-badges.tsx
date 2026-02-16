@@ -53,10 +53,10 @@ interface EnhancedBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref' | 'chil
 const badgeVariants = {
   default: 'bg-slate-900 text-white dark:bg-white dark:text-slate-900',
   secondary: 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200',
-  success: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+  success: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
   warning: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
   danger: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
-  info: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+  info: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-400',
   premium: 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-lg shadow-orange-500/20',
   outline: 'bg-transparent border border-slate-300 text-slate-700 dark:border-slate-600 dark:text-slate-300',
   subtle: 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-400',
@@ -65,10 +65,10 @@ const badgeVariants = {
 const glowVariants = {
   default: 'shadow-slate-500/30',
   secondary: 'shadow-slate-500/20',
-  success: 'shadow-emerald-500/40',
+  success: 'shadow-violet-500/40',
   warning: 'shadow-amber-500/40',
   danger: 'shadow-red-500/40',
-  info: 'shadow-blue-500/40',
+  info: 'shadow-violet-500/40',
   premium: 'shadow-orange-500/50',
   outline: 'shadow-slate-500/20',
   subtle: 'shadow-slate-500/10',
@@ -174,10 +174,10 @@ interface StatusBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref' | 'childr
 
 const statusConfig: Record<StatusType, { color: string; bgColor: string; label: string; dotClass: string }> = {
   online: {
-    color: 'text-emerald-700 dark:text-emerald-400',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+    color: 'text-violet-700 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Online',
-    dotClass: 'bg-emerald-500',
+    dotClass: 'bg-violet-500',
   },
   offline: {
     color: 'text-slate-500 dark:text-slate-400',
@@ -198,16 +198,16 @@ const statusConfig: Record<StatusType, { color: string; bgColor: string; label: 
     dotClass: 'bg-red-500',
   },
   pending: {
-    color: 'text-blue-700 dark:text-blue-400',
-    bgColor: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-700 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Pending',
-    dotClass: 'bg-blue-500',
+    dotClass: 'bg-violet-500',
   },
   active: {
-    color: 'text-emerald-700 dark:text-emerald-400',
-    bgColor: 'bg-emerald-100 dark:bg-emerald-900/30',
+    color: 'text-violet-700 dark:text-violet-400',
+    bgColor: 'bg-violet-100 dark:bg-violet-900/30',
     label: 'Active',
-    dotClass: 'bg-emerald-500',
+    dotClass: 'bg-violet-500',
   },
   inactive: {
     color: 'text-slate-500 dark:text-slate-400',
@@ -276,9 +276,9 @@ export function CountBadge({
 
   const countVariants = {
     default: 'bg-slate-600 text-white',
-    primary: 'bg-blue-600 text-white',
+    primary: 'bg-violet-600 text-white',
     danger: 'bg-red-600 text-white',
-    success: 'bg-emerald-600 text-white',
+    success: 'bg-violet-600 text-white',
   };
 
   const countSizes = {
@@ -333,7 +333,7 @@ export function TrendBadge({
   const trendConfig = isNeutral
     ? { icon: Circle, color: 'text-slate-600 dark:text-slate-400', bg: 'bg-slate-100 dark:bg-slate-800' }
     : isPositive
-    ? { icon: TrendingUp, color: 'text-emerald-700 dark:text-emerald-400', bg: 'bg-emerald-100 dark:bg-emerald-900/30' }
+    ? { icon: TrendingUp, color: 'text-violet-700 dark:text-violet-400', bg: 'bg-violet-100 dark:bg-violet-900/30' }
     : { icon: TrendingDown, color: 'text-red-700 dark:text-red-400', bg: 'bg-red-100 dark:bg-red-900/30' };
 
   const Icon = trendConfig.icon;
@@ -389,8 +389,8 @@ const priorityConfig: Record<PriorityLevel, { color: string; bg: string; icon: t
     label: 'Medium',
   },
   low: {
-    color: 'text-blue-700 dark:text-blue-400',
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
+    color: 'text-violet-700 dark:text-violet-400',
+    bg: 'bg-violet-100 dark:bg-violet-900/30',
     icon: Info,
     label: 'Low',
   },
@@ -442,18 +442,18 @@ interface FeatureBadgeProps extends Omit<HTMLMotionProps<'span'>, 'ref'> {
 
 const featureConfig: Record<FeatureType, { bg: string; text: string; label: string; icon?: typeof Sparkles }> = {
   new: {
-    bg: 'bg-gradient-to-r from-emerald-500 to-teal-500',
+    bg: 'bg-gradient-to-r from-violet-500 to-violet-500',
     text: 'text-white',
     label: 'NEW',
     icon: Sparkles,
   },
   beta: {
-    bg: 'bg-gradient-to-r from-blue-500 to-indigo-500',
+    bg: 'bg-gradient-to-r from-violet-500 to-purple-500',
     text: 'text-white',
     label: 'BETA',
   },
   alpha: {
-    bg: 'bg-gradient-to-r from-purple-500 to-pink-500',
+    bg: 'bg-gradient-to-r from-violet-500 to-pink-500',
     text: 'text-white',
     label: 'ALPHA',
   },

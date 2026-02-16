@@ -14,7 +14,7 @@ interface Experiment {
   enabled: boolean
 }
 
-interface ExperimentResult {
+interface _ExperimentResult {
   experimentId: string
   variant: string
   userId?: string

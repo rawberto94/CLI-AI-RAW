@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
-
-export async function GET(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { monitoringService } from 'data-orchestration/services';
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');
   const type = searchParams.get('type');
@@ -27,13 +27,10 @@ export async function GET(request: NextRequest) {
       });
 
       if (!integration) {
-        return NextResponse.json(
-          { success: false, error: 'Integration not found' },
-          { status: 404 }
-        );
+        return createErrorResponse(ctx, 'NOT_FOUND', 'Integration not found', 404);
       }
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: integration,
       });
@@ -59,7 +56,7 @@ export async function GET(request: NextRequest) {
       totalRecords: integrations.reduce((sum, i) => sum + (i.recordsProcessed || 0), 0),
     };
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         integrations,
@@ -67,15 +64,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch integrations' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to fetch integrations', 500);
   }
-}
+});
 
-export async function POST(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
   
   try {
     const body = await request.json();
@@ -96,13 +90,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration created',
           data: integration,
         });
-      } catch (dbError) {
-        return NextResponse.json({
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration created (mock)',
           data: {
@@ -128,13 +122,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration connected',
           data: integration,
         });
-      } catch (dbError) {
-        return NextResponse.json({
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration connected',
           data: {
@@ -155,13 +149,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration disconnected',
           data: integration,
         });
-      } catch (dbError) {
-        return NextResponse.json({
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Integration disconnected',
           data: {
@@ -194,7 +188,7 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Sync initiated',
           data: {
@@ -203,8 +197,8 @@ export async function POST(request: NextRequest) {
             startedAt: syncLog.startedAt,
           },
         });
-      } catch (dbError) {
-        return NextResponse.json({
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Sync initiated',
           data: {
@@ -220,7 +214,7 @@ export async function POST(request: NextRequest) {
       // Simulate connection test
       const latency = Math.floor(Math.random() * 300) + 100;
       
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: {
           integrationId,
@@ -240,13 +234,13 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Configuration updated',
           data: integration,
         });
-      } catch (dbError) {
-        return NextResponse.json({
+      } catch (_dbError) {
+        return createSuccessResponse(ctx, {
           success: true,
           message: 'Configuration updated',
           data: {
@@ -258,35 +252,23 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json(
-      { success: false, error: 'Invalid action' },
-      { status: 400 }
-    );
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, error: 'Invalid request body' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
+  } catch (_error) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid request body', 400);
   }
-}
+});
 
-export async function DELETE(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = await ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const integrationId = searchParams.get('id');
 
   if (!integrationId) {
-    return NextResponse.json(
-      { success: false, error: 'Integration ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Integration ID required', 400);
   }
 
   if (!tenantId) {
-    return NextResponse.json(
-      { success: false, error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
   }
 
   try {
@@ -297,24 +279,21 @@ export async function DELETE(request: NextRequest) {
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Integration not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Integration not found', 404);
     }
 
     await prisma.integration.delete({
       where: { id: existing.id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Integration deleted',
     });
-  } catch (error) {
-    return NextResponse.json({
+  } catch (_error) {
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Integration deleted (mock)',
     });
   }
-}
+});

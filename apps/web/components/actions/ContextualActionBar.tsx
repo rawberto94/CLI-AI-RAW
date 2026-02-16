@@ -24,7 +24,7 @@ import {
   Settings,
   ChevronUp,
   ChevronDown,
-  X,
+  X as _X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -164,15 +164,15 @@ export function ContextualActionBar({
 
   const variantStyles = {
     default: 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700',
-    primary: 'bg-indigo-500 text-white hover:bg-indigo-600',
-    success: 'bg-emerald-500 text-white hover:bg-emerald-600',
+    primary: 'bg-violet-500 text-white hover:bg-violet-600',
+    success: 'bg-violet-500 text-white hover:bg-violet-600',
     warning: 'bg-amber-500 text-white hover:bg-amber-600',
   };
 
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, y: position === 'bottom' ? 20 : -20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: position === 'bottom' ? 20 : -20 }}
@@ -209,7 +209,7 @@ export function ContextualActionBar({
             {/* Actions */}
             <AnimatePresence>
               {isExpanded && (
-                <motion.div
+                <motion.div key="expanded"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: 'auto', opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}

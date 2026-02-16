@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
 import { requiresApprovalWorkflow, getContractLifecycle, suggestWorkflow } from '@/lib/contract-helpers';
 import { autoAssignWorkflowSteps } from '@/lib/workflow-auto-assign';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
+import { workflowService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -135,302 +136,244 @@ const workflowTemplates = {
   },
 };
 
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const userId = ctx.userId;
+  const body = await request.json();
+
+  const {
+    contractId,
+    contractTitle,
+    workflowType = 'standard',
+    priority = 'medium',
+    deadline,
+    notes,
+    approvers = [],
+  } = body;
+
+  if (!contractId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
+  }
+
+  const effectiveWorkflowType = (
+    typeof workflowType === 'string' && workflowType in workflowTemplates ? workflowType : 'standard'
+  ) as keyof typeof workflowTemplates;
+
+  // Get template or use custom approvers
+  const template = workflowTemplates[effectiveWorkflowType] || workflowTemplates.standard;
+
+  // Try database first
   try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-    const userId = session.user.id;
-    const body = await request.json();
-    
-    const {
-      contractId,
-      contractTitle,
-      workflowType = 'standard',
-      priority = 'medium',
-      deadline,
-      notes,
-      approvers = [],
-    } = body;
+    // Check if contract exists
+    const contract = await prisma.contract.findUnique({
+      where: { id: contractId },
+      select: { 
+        id: true, 
+        contractTitle: true, 
+        supplierName: true, 
+        totalValue: true,
+        status: true,
+        documentRole: true,
+        metadata: true,
+      },
+    });
 
-    if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: 'Contract ID is required' },
-        { status: 400 }
-      );
+    if (!contract) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
-    const effectiveWorkflowType = (
-      typeof workflowType === 'string' && workflowType in workflowTemplates ? workflowType : 'standard'
-    ) as keyof typeof workflowTemplates;
+    // Only allow approval workflows for NEW contracts (DRAFT status or documentRole=NEW_CONTRACT)
+    // Skip approval for EXISTING contracts being uploaded for reference/storage
+    if (!requiresApprovalWorkflow(contract)) {
+      const lifecycle = getContractLifecycle(contract);
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Approval workflows are only required for new contracts being created or amendments.', 400);
+    }
 
-    // Get template or use custom approvers
-    const template = workflowTemplates[effectiveWorkflowType] || workflowTemplates.standard;
+    // Suggest appropriate workflow if not specified
+    const suggestedWorkflow = suggestWorkflow({
+      totalValue: contract.totalValue != null ? Number(contract.totalValue) : null,
+      documentRole: contract.documentRole,
+      metadata: contract.metadata,
+    });
+    const _effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
 
-    // Try database first
-    try {
-      // Check if contract exists
-      const contract = await prisma.contract.findUnique({
-        where: { id: contractId },
-        select: { 
-          id: true, 
-          contractTitle: true, 
-          supplierName: true, 
-          totalValue: true,
-          status: true,
-          documentRole: true,
-          metadata: true,
-        },
-      });
+    // Check for existing active approval workflow
+    const existingWorkflow = await prisma.workflowExecution.findFirst({
+      where: {
+        contractId,
+        status: { in: ['PENDING', 'IN_PROGRESS'] },
+      },
+    });
 
-      if (!contract) {
-        return NextResponse.json(
-          { success: false, error: 'Contract not found' },
-          { status: 404 }
-        );
-      }
+    if (existingWorkflow) {
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract already has an active approval workflow', 400);
+    }
 
-      // Only allow approval workflows for NEW contracts (DRAFT status or documentRole=NEW_CONTRACT)
-      // Skip approval for EXISTING contracts being uploaded for reference/storage
-      if (!requiresApprovalWorkflow(contract)) {
-        const lifecycle = getContractLifecycle(contract);
-        return NextResponse.json(
-          { 
-            success: false, 
-            error: 'Approval workflows are only required for new contracts being created or amendments.',
-            lifecycle,
-            hint: 'To submit for approval, set contract status=DRAFT or documentRole=NEW_CONTRACT',
-            currentStatus: contract.status,
-            currentDocumentRole: contract.documentRole,
-          },
-          { status: 400 }
-        );
-      }
+    // Create or find workflow definition
+    let workflow = await prisma.workflow.findFirst({
+      where: {
+        tenantId,
+        name: template.name,
+        type: 'APPROVAL',
+      },
+    });
 
-      // Suggest appropriate workflow if not specified
-      const suggestedWorkflow = suggestWorkflow({
-        totalValue: contract.totalValue != null ? Number(contract.totalValue) : null,
-        documentRole: contract.documentRole,
-        metadata: contract.metadata,
-      });
-      const effectiveWorkflowType = workflowType || suggestedWorkflow || 'standard';
-
-      // Check for existing active approval workflow
-      const existingWorkflow = await prisma.workflowExecution.findFirst({
-        where: {
-          contractId,
-          status: { in: ['PENDING', 'IN_PROGRESS'] },
-        },
-      });
-
-      if (existingWorkflow) {
-        return NextResponse.json(
-          { success: false, error: 'Contract already has an active approval workflow' },
-          { status: 400 }
-        );
-      }
-
-      // Create or find workflow definition
-      let workflow = await prisma.workflow.findFirst({
-        where: {
-          tenantId,
-          name: template.name,
-          type: 'APPROVAL',
-        },
-      });
-
-      if (!workflow) {
-        workflow = await prisma.workflow.create({
-          data: {
-            tenantId,
-            name: template.name,
-            description: `${template.name} workflow for contract approvals`,
-            type: 'APPROVAL',
-            isActive: true,
-            config: {
-              steps: template.steps.map((step, idx) => ({
-                order: idx + 1,
-                ...step,
-              })),
-            },
-            createdBy: userId,
-          },
-        });
-      }
-
-      // Calculate due date
-      const totalDays = template.steps.reduce((sum, step) => sum + step.durationDays, 0);
-      const dueDate = deadline 
-        ? new Date(deadline)
-        : new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000);
-
-      // Create workflow execution
-      const execution = await prisma.workflowExecution.create({
+    if (!workflow) {
+      workflow = await prisma.workflow.create({
         data: {
           tenantId,
-          workflowId: workflow.id,
-          contractId,
-          status: 'PENDING',
-          currentStep: '1',
-          startedBy: userId,
-          dueDate,
-          metadata: {
-            priority,
-            notes,
-            submittedAt: new Date().toISOString(),
-            contractTitle: contract.contractTitle || contractTitle,
-            workflowType,
+          name: template.name,
+          description: `${template.name} workflow for contract approvals`,
+          type: 'APPROVAL',
+          isActive: true,
+          config: {
+            steps: template.steps.map((step, idx) => ({
+              order: idx + 1,
+              ...step,
+            })),
           },
+          createdBy: userId,
         },
       });
+    }
 
-      // Create step executions
-      const stepsToCreate = approvers.length > 0 
-        ? approvers.map((approver: { name: string; email: string }, idx: number) => ({
-            executionId: execution.id,
-            stepOrder: idx + 1,
-            stepName: `Step ${idx + 1}: ${approver.name}`,
-            status: idx === 0 ? 'PENDING' : 'WAITING',
-            assignedTo: approver.email,
-          }))
-        : template.steps.map((step, idx) => ({
-            executionId: execution.id,
-            stepOrder: idx + 1,
-            stepName: step.name,
-            status: idx === 0 ? 'PENDING' : 'WAITING',
-            assignedTo: null, // Will be assigned based on role
-          }));
+    // Calculate due date
+    const totalDays = template.steps.reduce((sum, step) => sum + step.durationDays, 0);
+    const dueDate = deadline 
+      ? new Date(deadline)
+      : new Date(Date.now() + totalDays * 24 * 60 * 60 * 1000);
 
-      await prisma.workflowStepExecution.createMany({
-        data: stepsToCreate,
-      });
-
-      // Auto-assign workflow steps to users based on roles
-      const { assigned } = await autoAssignWorkflowSteps(tenantId, execution.id);
-      
-      void assigned; // Used for auto-assignment tracking
-
-      // Update contract status
-      await prisma.contract.update({
-        where: { id: contractId },
-        data: { 
-          status: 'PENDING',
-          updatedAt: new Date(),
+    // Create workflow execution
+    const execution = await prisma.workflowExecution.create({
+      data: {
+        tenantId,
+        workflowId: workflow.id,
+        contractId,
+        status: 'PENDING',
+        currentStep: '1',
+        startedBy: userId,
+        dueDate,
+        metadata: {
+          priority,
+          notes,
+          submittedAt: new Date().toISOString(),
+          contractTitle: contract.contractTitle || contractTitle,
+          workflowType,
         },
-      });
+      },
+    });
 
-      void publishRealtimeEvent({
-        event: 'approval:submitted',
-        data: { tenantId, contractId, executionId: execution.id },
-        source: 'api:approvals/submit',
-      });
-      void publishRealtimeEvent({
-        event: 'contract:updated',
-        data: { tenantId, contractId, status: 'PENDING' },
-        source: 'api:approvals/submit',
-      });
+    // Create step executions
+    const stepsToCreate = approvers.length > 0 
+      ? approvers.map((approver: { name: string; email: string }, idx: number) => ({
+          executionId: execution.id,
+          stepOrder: idx + 1,
+          stepName: `Step ${idx + 1}: ${approver.name}`,
+          status: idx === 0 ? 'PENDING' : 'WAITING',
+          assignedTo: approver.email,
+        }))
+      : template.steps.map((step, idx) => ({
+          executionId: execution.id,
+          stepOrder: idx + 1,
+          stepName: step.name,
+          status: idx === 0 ? 'PENDING' : 'WAITING',
+          assignedTo: null, // Will be assigned based on role
+        }));
 
-      // Create notification for first approver if assigned
-      const firstApprover = approvers[0]?.email;
-      if (firstApprover) {
-        await prisma.notification.create({
-          data: {
-            tenantId,
-            userId: firstApprover,
-            type: 'APPROVAL_REQUEST',
-            title: 'New Approval Request',
-            message: `${contract.contractTitle || contractTitle} requires your approval`,
-            link: '/approvals',
-            metadata: {
-              executionId: execution.id,
-              contractId,
-              priority,
-            },
-          },
-        });
-      }
+    await prisma.workflowStepExecution.createMany({
+      data: stepsToCreate,
+    });
 
-      // Log activity
-      // Activity log - using notification as audit trail
+    // Auto-assign workflow steps to users based on roles
+    const { assigned } = await autoAssignWorkflowSteps(tenantId, execution.id);
+
+    void assigned; // Used for auto-assignment tracking
+
+    // Update contract status
+    await prisma.contract.update({
+      where: { id: contractId },
+      data: { 
+        status: 'PENDING',
+        updatedAt: new Date(),
+      },
+    });
+
+    void publishRealtimeEvent({
+      event: 'approval:submitted',
+      data: { tenantId, contractId, executionId: execution.id },
+      source: 'api:approvals/submit',
+    });
+    void publishRealtimeEvent({
+      event: 'contract:updated',
+      data: { tenantId, contractId, status: 'PENDING' },
+      source: 'api:approvals/submit',
+    });
+
+    // Create notification for first approver if assigned
+    const firstApprover = approvers[0]?.email;
+    if (firstApprover) {
       await prisma.notification.create({
         data: {
           tenantId,
-          userId,
-          type: 'SYSTEM',
-          title: 'Approval Submitted',
-          message: `Contract submitted for ${workflowType} approval`,
-          link: `/contracts/${contractId}`,
+          userId: firstApprover,
+          type: 'APPROVAL_REQUEST',
+          title: 'New Approval Request',
+          message: `${contract.contractTitle || contractTitle} requires your approval`,
+          link: '/approvals',
           metadata: {
-            action: 'SUBMIT_FOR_APPROVAL',
-            resourceType: 'CONTRACT',
-            resourceId: contractId,
-            workflowType,
-            priority,
             executionId: execution.id,
-            approverCount: approvers.length || template.steps.length,
+            contractId,
+            priority,
           },
         },
       });
-
-      return NextResponse.json({
-        success: true,
-        message: 'Contract submitted for approval',
-        data: {
-          executionId: execution.id,
-          workflowName: template.name,
-          contractId,
-          contractTitle: contract.contractTitle || contractTitle,
-          priority,
-          dueDate: dueDate.toISOString(),
-          totalSteps: stepsToCreate.length,
-          status: 'pending',
-        },
-        source: 'database',
-      });
-    } catch {
-      // Continue to mock fallback
     }
 
-    // Fallback mock response
-    const dueDate = deadline 
-      ? new Date(deadline)
-      : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Log activity
+    // Activity log - using notification as audit trail
+    await prisma.notification.create({
+      data: {
+        tenantId,
+        userId,
+        type: 'SYSTEM',
+        title: 'Approval Submitted',
+        message: `Contract submitted for ${workflowType} approval`,
+        link: `/contracts/${contractId}`,
+        metadata: {
+          action: 'SUBMIT_FOR_APPROVAL',
+          resourceType: 'CONTRACT',
+          resourceId: contractId,
+          workflowType,
+          priority,
+          executionId: execution.id,
+          approverCount: approvers.length || template.steps.length,
+        },
+      },
+    });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Contract submitted for approval',
       data: {
-        executionId: `exec_${Date.now()}`,
+        executionId: execution.id,
         workflowName: template.name,
         contractId,
-        contractTitle,
+        contractTitle: contract.contractTitle || contractTitle,
         priority,
         dueDate: dueDate.toISOString(),
-        totalSteps: approvers.length || template.steps.length,
+        totalSteps: stepsToCreate.length,
         status: 'pending',
       },
-      source: 'mock',
+      source: 'database',
     });
-  } catch {
-    return NextResponse.json(
-      { success: false, error: 'Failed to submit for approval' },
-      { status: 500 }
-    );
+  } catch (error) {
+    throw error;
   }
-}
+});
 
 // Get available workflow templates
-export async function GET() {
-  const session = await getServerSession();
-  if (!session?.user?.tenantId) {
-    return NextResponse.json(
-      { success: false, error: 'Unauthorized' },
-      { status: 401 }
-    );
-  }
-  const tenantId = session.user.tenantId;
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
 
   try {
     // Try to get custom workflows from database
@@ -466,7 +409,7 @@ export async function GET() {
       })),
     ];
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         templates,
@@ -475,7 +418,7 @@ export async function GET() {
     });
   } catch {
     // Return default templates on error
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         templates: Object.entries(workflowTemplates).map(([key, value]) => ({
@@ -489,4 +432,4 @@ export async function GET() {
       },
     });
   }
-}
+});

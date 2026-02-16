@@ -7,9 +7,20 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { DropboxConnector } from '@/lib/integrations/connectors/dropbox.connector';
+import { auditTrailService } from 'data-orchestration/services';
+import { withApiHandler } from '@/lib/api-middleware';
+import { auth } from '@/lib/auth';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (request: NextRequest) => {
   try {
+    // M15 FIX: Validate user session
+    const session = await auth();
+    if (!session?.user?.id || !session.user.tenantId) {
+      return NextResponse.redirect(
+        new URL('/auth/signin?error=session_expired&redirect=/settings/contract-sources', request.url)
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const code = searchParams.get('code');
     const state = searchParams.get('state');
@@ -36,8 +47,26 @@ export async function GET(request: NextRequest) {
       try {
         const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
         sourceId = stateData.sourceId;
+        // M15 FIX: Verify tenant ownership
+        if (stateData.tenantId && stateData.tenantId !== session.user.tenantId) {
+          return NextResponse.redirect(
+            new URL('/settings/contract-sources?error=Unauthorized: tenant mismatch', request.url)
+          );
+        }
       } catch {
         console.warn('Failed to parse OAuth state');
+      }
+    }
+
+    // M15 FIX: Verify sourceId ownership before update
+    if (sourceId) {
+      const source = await prisma.contractSource.findFirst({
+        where: { id: sourceId, tenantId: session.user.tenantId },
+      });
+      if (!source) {
+        return NextResponse.redirect(
+          new URL('/settings/contract-sources?error=Source not found or unauthorized', request.url)
+        );
       }
     }
 
@@ -92,4 +121,4 @@ export async function GET(request: NextRequest) {
       new URL(`/settings/contract-sources?error=${encodeURIComponent(message)}`, request.url)
     );
   }
-}
+});

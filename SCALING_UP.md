@@ -1,5 +1,9 @@
 # ConTigo - Scaling Up Guide
 
+> **DEPRECATED:** Superseded by [docs/ROADMAP_SCALING.md](docs/ROADMAP_SCALING.md). Retained for historical reference only.
+
+---
+
 ## Why No VMs or Kubernetes for Pilot?
 
 ### The Short Answer

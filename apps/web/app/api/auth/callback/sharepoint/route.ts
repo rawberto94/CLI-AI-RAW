@@ -6,11 +6,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { cookies } from 'next/headers';
+import { cookies as _cookies } from 'next/headers';
 import { SharePointConnector } from '@/lib/integrations/connectors/sharepoint.connector';
 import { SharePointCredentials } from '@/lib/integrations/connectors/types';
+import { auditTrailService } from 'data-orchestration/services';
+import { withApiHandler } from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (request: NextRequest) => {
   try {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
@@ -92,7 +94,7 @@ export async function GET(request: NextRequest) {
       error instanceof Error ? error.message : 'Authentication failed'
     );
   }
-}
+});
 
 function redirectWithError(message: string): NextResponse {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || '';

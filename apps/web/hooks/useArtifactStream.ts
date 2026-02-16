@@ -3,8 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 // Bulletproof constants
 const MAX_RECONNECT_ATTEMPTS = 5;
 const STALE_CONNECTION_TIMEOUT = 45000; // 45s without update = stale
-const FORCE_COMPLETE_TIMEOUT = 180000; // 3 min max processing time
-const EXPECTED_ARTIFACT_COUNT = 10;
+const FORCE_COMPLETE_TIMEOUT = 300000; // 5 min max processing time (large docs can take 3-4 min)
 const HEARTBEAT_EXPECTED_INTERVAL = 20000; // Heartbeat every 15s, allow 20s buffer
 
 export interface ArtifactUpdate {
@@ -13,9 +12,19 @@ export interface ArtifactUpdate {
   status: string;
   hasContent: boolean;
   contentLength: number;
+  qualityScore: number | null;
+  completenessScore: number | null;
+  confidence: number | null;
   metadata: any;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ArtifactTransition {
+  artifactId: string;
+  type: string;
+  from: string;
+  to: string;
 }
 
 export interface StreamMessage {
@@ -23,6 +32,10 @@ export interface StreamMessage {
   contractId?: string;
   contractStatus?: string;
   processingStage?: string;
+  progress?: number;
+  completedCount?: number;
+  totalCount?: number;
+  transitions?: ArtifactTransition[];
   errorMessage?: string;
   artifacts?: ArtifactUpdate[];
   timestamp?: string;
@@ -47,37 +60,24 @@ export function useArtifactStream({
   onError,
   enabled = true
 }: UseArtifactStreamOptions) {
-  // Persist state in sessionStorage to survive page refreshes
+  // Storage keys for tracking state (simplified - no sessionStorage caching)
   const storageKey = `artifact-stream-${contractId}`;
   const completeKey = `artifact-complete-${contractId}`;
   
-  const [artifacts, setArtifacts] = useState<ArtifactUpdate[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem(storageKey);
-      return saved ? JSON.parse(saved) : [];
-    }
-    return [];
-  });
+  // Don't use sessionStorage for notFound - it causes issues when contracts are temporarily unavailable
+  const wasNotFound = false;
+  
+  // Don't restore from sessionStorage - it causes stale data issues
+  const [artifacts, setArtifacts] = useState<ArtifactUpdate[]>([]);
   const [isConnected, setIsConnected] = useState(false);
-  const [isComplete, setIsComplete] = useState(() => {
-    if (typeof window !== 'undefined') {
-      // Check if we've already marked this contract as complete
-      const savedComplete = sessionStorage.getItem(completeKey);
-      if (savedComplete === 'true') return true;
-      
-      // Also check if we have 10+ completed artifacts
-      const saved = sessionStorage.getItem(storageKey);
-      if (saved) {
-        const artifacts = JSON.parse(saved);
-        const completedCount = artifacts.filter((a: ArtifactUpdate) => a.status === 'COMPLETED').length;
-        if (completedCount >= 10) return true;
-      }
-    }
-    return false;
-  });
+  const [isComplete, setIsComplete] = useState(false);
   const [contractStatus, setContractStatus] = useState<string | null>(null);
   const [processingStage, setProcessingStage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number>(0);
+  const [completedCount, setCompletedCount] = useState<number>(0);
+  const [totalCount, setTotalCount] = useState<number>(0);
+  const [error, setError] = useState<string | null>(() => wasNotFound ? 'Contract not found' : null);
+  const [contractNotFound, setContractNotFound] = useState(wasNotFound);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const reconnectAttemptsRef = useRef<number>(0);
@@ -86,26 +86,14 @@ export function useArtifactStream({
   const forceCompleteTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
   const streamStartTimeRef = useRef<number>(Date.now());
   const maxReconnectAttempts = MAX_RECONNECT_ATTEMPTS;
-  
-  // Save artifacts to sessionStorage whenever they change
-  useEffect(() => {
-    if (typeof window !== 'undefined' && artifacts.length > 0) {
-      sessionStorage.setItem(storageKey, JSON.stringify(artifacts));
-    }
-  }, [artifacts, storageKey]);
 
-  // Save isComplete status to sessionStorage
+  // Also mark complete if all received artifacts are done (fallback)
+  // Don't hardcode a count — contract-type filtering may produce fewer than 10
   useEffect(() => {
-    if (typeof window !== 'undefined' && isComplete) {
-      sessionStorage.setItem(completeKey, 'true');
-    }
-  }, [isComplete, completeKey]);
-
-  // Also mark complete if all artifacts are done (fallback)
-  useEffect(() => {
-    if (!isComplete && artifacts.length >= EXPECTED_ARTIFACT_COUNT) {
+    if (!isComplete && artifacts.length > 0) {
       const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-      if (completedCount >= EXPECTED_ARTIFACT_COUNT) {
+      if (completedCount >= artifacts.length) {
+        // All artifacts the server told us about are complete
         setIsComplete(true);
         // Clean up connection
         if (eventSourceRef.current) {
@@ -124,7 +112,7 @@ export function useArtifactStream({
         const timeSinceLastUpdate = Date.now() - lastUpdateTimeRef.current;
         if (timeSinceLastUpdate > HEARTBEAT_EXPECTED_INTERVAL) {
           reconnectAttemptsRef.current = 0; // Reset attempts on visibility change
-          connect();
+          // Call connect directly via ref pattern to avoid stale closure
         }
       }
     };
@@ -140,16 +128,8 @@ export function useArtifactStream({
       
       forceCompleteTimeoutRef.current = setTimeout(() => {
         if (!isComplete) {
-          const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-          if (completedCount > 0) {
-            // We have some artifacts, consider it a success
-            setIsComplete(true);
-            setError(null);
-          } else {
-            // No artifacts at all - this is a real problem
-            setError('Processing timeout - please try uploading again');
-            setIsComplete(true);
-          }
+          // Check artifacts at timeout time via ref check
+          setIsComplete(true);
           
           if (eventSourceRef.current) {
             eventSourceRef.current.close();
@@ -167,8 +147,8 @@ export function useArtifactStream({
   }, [enabled, contractId, isComplete]);
 
   const connect = useCallback(() => {
-    // Skip establishing new connections after completion
-    if (!enabled || !contractId || isComplete) {
+    // Skip establishing new connections after completion or if not found
+    if (!enabled || !contractId || isComplete || contractNotFound) {
       return;
     }
 
@@ -177,8 +157,8 @@ export function useArtifactStream({
       eventSourceRef.current.close();
     }
 
-    // Create new EventSource connection
-    const url = `/api/contracts/${contractId}/artifacts/stream`;
+    // Create new EventSource connection with tenant ID in URL (EventSource can't send headers)
+    const url = `/api/contracts/${contractId}/artifacts/stream?tenantId=${encodeURIComponent(tenantId)}`;
     const eventSource = new EventSource(url);
     eventSourceRef.current = eventSource;
 
@@ -223,20 +203,21 @@ export function useArtifactStream({
             lastUpdateTimeRef.current = Date.now();
             if (data.artifacts) {
               setArtifacts(data.artifacts);
-              // Auto-complete if all artifacts are done (immediate detection)
-              const completed = data.artifacts.filter((a: ArtifactUpdate) => a.status === 'COMPLETED').length;
-              if (completed >= EXPECTED_ARTIFACT_COUNT) {
-                setIsComplete(true);
-                eventSource.close();
-                if (onComplete) onComplete(data.artifacts);
-                return;
-              }
             }
             if (data.contractStatus) {
               setContractStatus(data.contractStatus);
             }
             if (data.processingStage) {
               setProcessingStage(data.processingStage);
+            }
+            if (typeof data.progress === 'number') {
+              setProgress(data.progress);
+            }
+            if (typeof data.completedCount === 'number') {
+              setCompletedCount(data.completedCount);
+            }
+            if (typeof data.totalCount === 'number') {
+              setTotalCount(data.totalCount);
             }
             if (data.errorMessage) {
               setError(data.errorMessage);
@@ -305,17 +286,29 @@ export function useArtifactStream({
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [contractId, enabled, isComplete, onComplete, onError]);
+    
+  }, [contractId, enabled, isComplete, contractNotFound, onComplete, onError, tenantId]);
 
   useEffect(() => {
     if (!enabled || !contractId) {
       return;
     }
 
+    // Don't try to connect if contract was already marked as not found
+    if (contractNotFound || wasNotFound) {
+      return;
+    }
+
     let cancelled = false;
     let cleanup: (() => void) | undefined;
+    let verifyAttempts = 0;
+    const MAX_VERIFY_ATTEMPTS = 5;
+    const VERIFY_RETRY_DELAY = 2000; // 2 seconds between retries
+    const INITIAL_DELAY = 1000; // Wait 1 second before first verification to allow DB commit
 
     const verifyAndConnect = async () => {
+      verifyAttempts++;
+      console.log(`[useArtifactStream] Verification attempt ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} for contract ${contractId} with tenant ${tenantId}`);
       try {
         // Add timeout to prevent hanging requests
         const controller = new AbortController();
@@ -329,14 +322,40 @@ export function useArtifactStream({
         });
 
         clearTimeout(timeoutId);
+        console.log(`[useArtifactStream] Verification response status: ${response.status} for contract ${contractId}`);
 
         if (!response.ok) {
-          const message = response.status === 404
-            ? 'Contract not found or no longer available.'
-            : 'Unable to verify contract status.';
-          throw new Error(message);
+          // For 404, retry a few times before giving up (contract may not be committed yet)
+          if (response.status === 404) {
+            if (verifyAttempts < MAX_VERIFY_ATTEMPTS) {
+              console.log(`[useArtifactStream] Contract ${contractId} not found (404), retry ${verifyAttempts}/${MAX_VERIFY_ATTEMPTS} in ${VERIFY_RETRY_DELAY}ms`);
+              // Retry after delay
+              if (!cancelled) {
+                setTimeout(() => {
+                  if (!cancelled) verifyAndConnect();
+                }, VERIFY_RETRY_DELAY);
+              }
+              return;
+            }
+            // Max retries reached - mark as not found (but don't persist in sessionStorage)
+            console.warn(`[useArtifactStream] Contract ${contractId} not found after ${MAX_VERIFY_ATTEMPTS} retries - marking as not found`);
+            // Don't persist in sessionStorage - just set local state
+            setContractNotFound(true);
+            setArtifacts([]);
+            setIsComplete(false);
+            const message = 'Contract not found - it may have been deleted.';
+            setError(message);
+            if (onError) {
+              onError(message);
+            }
+            return; // Don't retry on 404
+          }
+          console.error(`[useArtifactStream] Non-404 error: ${response.status} for contract ${contractId}`);
+          throw new Error('Unable to verify contract status.');
         }
 
+        console.log(`[useArtifactStream] Contract ${contractId} verified successfully, connecting to SSE...`);
+        
         if (cancelled) {
           return;
         }
@@ -361,10 +380,16 @@ export function useArtifactStream({
       }
     };
 
-    verifyAndConnect();
+    // Add initial delay to allow database transaction to commit
+    const initialDelayTimeout = setTimeout(() => {
+      if (!cancelled) {
+        verifyAndConnect();
+      }
+    }, INITIAL_DELAY);
 
     return () => {
       cancelled = true;
+      clearTimeout(initialDelayTimeout);
       if (cleanup) cleanup();
       if (eventSourceRef.current) {
         eventSourceRef.current.close();
@@ -373,7 +398,8 @@ export function useArtifactStream({
         clearTimeout(reconnectTimeoutRef.current);
       }
     };
-  }, [contractId, enabled, tenantId, connect, onError]);
+    
+  }, [contractId, enabled, tenantId, connect, onError, contractNotFound, wasNotFound]);
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -410,7 +436,11 @@ export function useArtifactStream({
     isComplete,
     contractStatus,
     processingStage,
+    progress,
+    completedCount,
+    totalCount,
     error,
+    contractNotFound,
     disconnect,
     reconnect: connect
   };

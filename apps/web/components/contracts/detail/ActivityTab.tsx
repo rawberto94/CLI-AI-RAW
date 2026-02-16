@@ -87,7 +87,10 @@ export function ActivityTab({ contractId }: { contractId: string }) {
   }, [contractId])
 
   const formatTimeAgo = (date: Date) => {
-    const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000)
+    const time = new Date(date).getTime()
+    if (isNaN(time)) return 'Unknown'
+    const seconds = Math.floor((Date.now() - time) / 1000)
+    if (seconds < 0) return 'Just now'
     if (seconds < 60) return 'Just now'
     if (seconds < 3600) return `${Math.floor(seconds / 60)} minutes ago`
     if (seconds < 86400) return `${Math.floor(seconds / 3600)} hours ago`

@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 // ============================================================================
 
 type BadgeVariant = 'default' | 'outline' | 'soft';
-type BadgeColor = 'slate' | 'indigo' | 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'pink';
+type BadgeColor = 'slate' | 'indigo' | 'emerald' | 'amber' | 'red' | 'blue' | 'purple' | 'pink' | 'violet';
 type BadgeSize = 'sm' | 'md' | 'lg';
 
 interface BadgeProps {
@@ -42,45 +42,49 @@ interface ChipProps extends Omit<BadgeProps, 'dot' | 'dotPulse'> {
 const colorClasses: Record<BadgeVariant, Record<BadgeColor, string>> = {
   default: {
     slate: 'bg-slate-700 text-white',
-    indigo: 'bg-indigo-600 text-white',
-    emerald: 'bg-emerald-600 text-white',
+    indigo: 'bg-violet-600 text-white',
+    emerald: 'bg-violet-600 text-white',
     amber: 'bg-amber-500 text-white',
     red: 'bg-red-600 text-white',
-    blue: 'bg-blue-600 text-white',
-    purple: 'bg-purple-600 text-white',
+    blue: 'bg-violet-600 text-white',
+    purple: 'bg-violet-600 text-white',
     pink: 'bg-pink-600 text-white',
+    violet: 'bg-violet-600 text-white',
   },
   outline: {
     slate: 'border border-slate-300 text-slate-700',
-    indigo: 'border border-indigo-300 text-indigo-700',
-    emerald: 'border border-emerald-300 text-emerald-700',
+    indigo: 'border border-indigo-300 text-violet-700',
+    emerald: 'border border-violet-300 text-violet-700',
     amber: 'border border-amber-300 text-amber-700',
     red: 'border border-red-300 text-red-700',
-    blue: 'border border-blue-300 text-blue-700',
-    purple: 'border border-purple-300 text-purple-700',
+    blue: 'border border-violet-300 text-violet-700',
+    purple: 'border border-violet-300 text-violet-700',
     pink: 'border border-pink-300 text-pink-700',
+    violet: 'border border-violet-300 text-violet-700',
   },
   soft: {
     slate: 'bg-slate-100 text-slate-700',
-    indigo: 'bg-indigo-100 text-indigo-700',
-    emerald: 'bg-emerald-100 text-emerald-700',
+    indigo: 'bg-violet-100 text-violet-700',
+    emerald: 'bg-violet-100 text-violet-700',
     amber: 'bg-amber-100 text-amber-700',
     red: 'bg-red-100 text-red-700',
-    blue: 'bg-blue-100 text-blue-700',
-    purple: 'bg-purple-100 text-purple-700',
+    blue: 'bg-violet-100 text-violet-700',
+    purple: 'bg-violet-100 text-violet-700',
     pink: 'bg-pink-100 text-pink-700',
+    violet: 'bg-violet-100 text-violet-700',
   },
 };
 
 const dotColors: Record<BadgeColor, string> = {
   slate: 'bg-slate-500',
-  indigo: 'bg-indigo-500',
-  emerald: 'bg-emerald-500',
+  indigo: 'bg-violet-500',
+  emerald: 'bg-violet-500',
   amber: 'bg-amber-500',
   red: 'bg-red-500',
-  blue: 'bg-blue-500',
-  purple: 'bg-purple-500',
+  blue: 'bg-violet-500',
+  purple: 'bg-violet-500',
   pink: 'bg-pink-500',
+  violet: 'bg-violet-500',
 };
 
 const sizeClasses: Record<BadgeSize, string> = {
@@ -194,12 +198,12 @@ export function Chip({
 type StatusType = 'success' | 'warning' | 'error' | 'info' | 'pending' | 'active' | 'inactive';
 
 const statusConfig: Record<StatusType, { color: BadgeColor; dot?: boolean; dotPulse?: boolean }> = {
-  success: { color: 'emerald', dot: true },
+  success: { color: 'violet', dot: true },
   warning: { color: 'amber', dot: true },
   error: { color: 'red', dot: true },
   info: { color: 'blue', dot: true },
   pending: { color: 'amber', dot: true, dotPulse: true },
-  active: { color: 'emerald', dot: true, dotPulse: true },
+  active: { color: 'violet', dot: true, dotPulse: true },
   inactive: { color: 'slate', dot: true },
 };
 

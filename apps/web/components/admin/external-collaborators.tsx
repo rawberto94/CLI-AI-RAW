@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar as _Avatar, AvatarFallback as _AvatarFallback, AvatarImage as _AvatarImage } from '@/components/ui/avatar';
 import {
   Dialog,
   DialogContent,
@@ -38,8 +38,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs as _Tabs, TabsContent as _TabsContent, TabsList as _TabsList, TabsTrigger as _TabsTrigger } from '@/components/ui/tabs';
 import {
   ExternalLink,
   UserPlus,
@@ -49,7 +49,7 @@ import {
   Clock,
   Shield,
   Eye,
-  Pencil,
+  Pencil as _Pencil,
   MessageSquare,
   Download,
   Trash2,
@@ -63,7 +63,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatDistanceToNow, format, addDays } from 'date-fns';
+import { formatDistanceToNow, format as _format, addDays } from 'date-fns';
 
 interface Collaborator {
   id: string;
@@ -115,7 +115,7 @@ const STATUS_CONFIG = {
 export function ExternalCollaborators() {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
@@ -143,7 +143,7 @@ export function ExternalCollaborators() {
         const data = await response.json();
         setCollaborators(data.collaborators);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to fetch collaborators');
     } finally {
       setLoading(false);
@@ -161,8 +161,8 @@ export function ExternalCollaborators() {
           type: c.type || 'general',
         })));
       }
-    } catch (error) {
-      console.error('Failed to fetch contracts');
+    } catch (_error) {
+      console.warn('Failed to fetch contracts');
     }
   };
 

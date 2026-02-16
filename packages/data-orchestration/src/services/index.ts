@@ -203,6 +203,10 @@ export { analyticsService } from './analytics.service';
 export { analyticalIntelligenceService } from './analytical-intelligence.service';
 export { analyticalSyncService } from './analytical-sync.service';
 
+// Reporting services
+export { reportGeneratorService } from './report-generator.service';
+export { reportExportService } from './report-export.service';
+
 // Metadata and locking
 export { metadataEditorService } from './metadata-editor.service';
 export { optimisticLockingService, OptimisticLockError } from './optimistic-locking.service';
@@ -301,6 +305,7 @@ export { sseConnectionManager, sseConnectionManager as sseConnectionManagerServi
 export { dataSanitizationService } from './data-sanitization.service';
 export { artifactValidationService } from './artifact-validation.service';
 export { conversationMemoryService } from './conversation-memory.service';
+export { knowledgeGraphService } from './knowledge-graph.service';
 
 // Real-time Extraction Streaming Services
 export {
@@ -595,3 +600,24 @@ export {
   type ComplianceCheck,
   type AlternativeVersion,
 } from './contract-generation.service';
+
+// Workflow Auto-Start Service - Automatic workflow triggering
+export {
+  WorkflowAutoStartService,
+  getWorkflowAutoStartService,
+  workflowAutoStartService,
+  type WorkflowTemplateKey as AutoStartWorkflowTemplateKey,
+  type AutoStartRule,
+  type AutoStartCondition,
+} from './workflow-auto-start.service';
+
+// Feature Integration Services
+export { ContractRequestService } from './contract-request.service';
+export { DelegationOfAuthorityService } from './delegation-of-authority.service';
+export { EvidenceService } from './evidence.service';
+export { AmendmentService } from './amendment.service';
+export { VendorRiskService } from './vendor-risk.service';
+export { SpendManagementService } from './spend-management.service';
+export { EnterpriseSecurityService } from './enterprise-security.service';
+export { AIGovernanceService } from './ai-governance.service';
+export { DocumentExpiryService } from './document-expiry.service';

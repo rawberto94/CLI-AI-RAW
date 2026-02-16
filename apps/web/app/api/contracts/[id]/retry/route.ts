@@ -3,49 +3,43 @@
  * POST /api/contracts/:id/retry - Retry failed processing job and regenerate artifacts
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { getServerTenantId } from "@/lib/tenant-server";
 import { triggerArtifactGeneration } from "@/lib/artifact-trigger";
 import { prisma } from "@/lib/prisma";
+import { contractService } from 'data-orchestration/services';
 import { publishRealtimeEvent } from "@/lib/realtime/publish";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const params = await context.params;
     const contractId = params?.id;
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     const tenantId = await getServerTenantId();
     
-    // Get contract from database
-    const contract = await prisma.contract.findFirst({
-      where: {
-        id: contractId,
-        tenantId: tenantId
-      }
-    });
+    // Get contract from database via service layer
+    const contractResult = await contractService.getContract(contractId, tenantId!);
 
-    if (!contract) {
-      return NextResponse.json(
-        { error: "No contract found for this ID" },
-        { status: 404 }
-      );
+    if (!contractResult.success || !contractResult.data) {
+      return createErrorResponse(ctx, 'NOT_FOUND', 'No contract found for this ID', 404);
     }
 
-    // Reset contract status to PROCESSING
-    await prisma.contract.update({
-      where: { id: contractId },
-      data: { status: 'PROCESSING' }
-    });
+    const contract = contractResult.data;
+
+    // Reset contract status to PROCESSING via service layer
+    await contractService.updateContract(contractId, tenantId!, { status: 'PROCESSING' as any });
 
     void publishRealtimeEvent({
       event: 'processing:started',
@@ -98,23 +92,14 @@ export async function POST(
       source: 'reprocess'
     });
 
-    return NextResponse.json(
-      {
+    return createSuccessResponse(ctx, {
         message: "AI analysis started - artifacts will be generated shortly",
         contractId,
         jobId: queueResult.jobId || `retry-${Date.now()}`,
         status: "PROCESSING",
         progress: 5,
-      },
-      { status: 200 }
-    );
+      });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: "Failed to start AI analysis",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

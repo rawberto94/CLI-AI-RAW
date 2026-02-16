@@ -5,6 +5,7 @@ This directory contains K6 load testing scripts for the Contigo platform.
 ## Prerequisites
 
 Install K6:
+
 ```bash
 # macOS
 brew install k6
@@ -23,6 +24,7 @@ docker pull grafana/k6
 ## Test Types
 
 ### 1. Smoke Test (`k6-smoke.js`)
+
 Quick sanity check to verify the system works under minimal load.
 
 ```bash
@@ -32,6 +34,7 @@ k6 run k6-smoke.js --env BASE_URL=http://localhost:3000
 **When to use:** Before deployments, after infrastructure changes.
 
 ### 2. Load Test (`k6-load.js`)
+
 Simulate normal and peak traffic conditions.
 
 ```bash
@@ -41,6 +44,7 @@ k6 run k6-load.js \
 ```
 
 **Stages:**
+
 - 2 min ramp up to 50 VUs
 - 5 min sustained at 50 VUs
 - 2 min ramp up to 100 VUs
@@ -48,6 +52,7 @@ k6 run k6-load.js \
 - 2 min cool down
 
 ### 3. Stress Test (`k6-stress.js`)
+
 Find the breaking point of the system.
 
 ```bash
@@ -55,6 +60,7 @@ k6 run k6-stress.js --env BASE_URL=http://localhost:3000
 ```
 
 **Stages:**
+
 - Progressively increases from 100 to 400 VUs
 - Identifies when the system starts to degrade
 
@@ -89,6 +95,7 @@ Add to your GitHub Actions workflow:
 ## Results
 
 Test results are saved to `results/`:
+
 - `smoke-summary.json` - Smoke test results
 - `load-summary.json` - Load test results  
 - `load-summary.html` - HTML report

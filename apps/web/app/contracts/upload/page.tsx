@@ -16,6 +16,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from '@/components/ui/alert'
 import { RealtimeArtifactViewer } from '@/components/contracts/RealtimeArtifactViewer'
 import { EnhancedUploadProgress, ProcessingConfig } from '@/components/contracts/upload'
 import type { ProcessingOptions } from '@/components/contracts/upload/ProcessingConfig'
@@ -48,6 +53,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Timer,
+  Key,
   Layers,
   BarChart3,
   FileUp,
@@ -59,6 +65,7 @@ import {
   Award,
   Activity,
   Scale,
+  Edit3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
@@ -77,6 +84,7 @@ interface UploadFile {
   existingContractId?: string
   startTime?: number
   endTime?: number
+  skipDuplicateCheck?: boolean
 }
 
 const DEFAULT_PROCESSING_OPTIONS: ProcessingOptions = {
@@ -106,7 +114,7 @@ function getFileIcon(fileName: string) {
   switch (ext) {
     case 'pdf': return { icon: FileText, color: 'text-red-500', bg: 'bg-red-100' }
     case 'doc':
-    case 'docx': return { icon: FileText, color: 'text-blue-500', bg: 'bg-blue-100' }
+    case 'docx': return { icon: FileText, color: 'text-violet-500', bg: 'bg-violet-100' }
     case 'html': return { icon: FileImage, color: 'text-orange-500', bg: 'bg-orange-100' }
     default: return { icon: File, color: 'text-gray-500', bg: 'bg-gray-100' }
   }
@@ -121,6 +129,17 @@ function formatDuration(ms: number): string {
   return `${minutes}m ${remainingSeconds}s`
 }
 
+// AI Status interface
+interface AIStatus {
+  status: 'healthy' | 'degraded' | 'limited' | 'error';
+  providers: {
+    openai: { configured: boolean; status: string };
+    mistral: { configured: boolean; status: string };
+  };
+  capabilities: Record<string, boolean>;
+  recommendations: string[];
+}
+
 export default function UploadPage() {
   const router = useRouter()
   const { dataMode, isRealData, isMockData, isAIGenerated } = useDataMode()
@@ -131,6 +150,59 @@ export default function UploadPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [totalProcessingTime, setTotalProcessingTime] = useState(0)
   const [activeTab, setActiveTab] = useState<'upload' | 'queue' | 'recent'>('upload')
+  const [aiStatus, setAiStatus] = useState<AIStatus | null>(null)
+  const [aiStatusLoading, setAiStatusLoading] = useState(true)
+  const [isMounted, setIsMounted] = useState(false)
+  const [uploadPurpose, setUploadPurpose] = useState<'store' | 'review'>('store')
+
+  // Simple approach: Clear ALL stale state on mount
+  // HMR preserves React state, so any files in "uploading"/"processing" are stale
+  useEffect(() => {
+    // Clear files array completely - any HMR-preserved state is stale
+    setFiles([]);
+    setIsUploading(false);
+    setIsMounted(true);
+    
+    // Also clear any stale sessionStorage
+    if (typeof window !== 'undefined') {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && (
+          key.startsWith('artifact-stream-') || 
+          key.startsWith('artifact-complete-') || 
+          key.startsWith('artifact-notfound-') ||
+          key.startsWith('valid-contract-')
+        )) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(key => sessionStorage.removeItem(key));
+    }
+  }, []);
+
+  // Check AI status on mount
+  useEffect(() => {
+    const checkAIStatus = async () => {
+      try {
+        const response = await fetch('/api/ai/status', {
+          headers: { 'x-tenant-id': getTenantId() }
+        })
+        if (response.ok) {
+          const data = await response.json()
+          setAiStatus(data.data ?? data)
+        }
+      } catch (error) {
+        console.error('Failed to check AI status:', error)
+      } finally {
+        setAiStatusLoading(false)
+      }
+    }
+    checkAIStatus()
+  }, [])
+
+  // Auto-start upload when files are added via drop/browse
+  const [shouldAutoStart, setShouldAutoStart] = useState(false)
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     const newFiles: UploadFile[] = acceptedFiles.map(file => ({
@@ -146,6 +218,9 @@ export default function UploadPage() {
     if (files.length === 0 && newFiles.length > 0) {
       setActiveTab('queue')
     }
+    
+    // Auto-start upload after files are added
+    setShouldAutoStart(true)
   }, [files.length])
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -155,6 +230,7 @@ export default function UploadPage() {
       'application/msword': ['.doc'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'text/plain': ['.txt'],
+      'text/html': ['.html', '.htm'],
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg'],
     },
@@ -163,18 +239,21 @@ export default function UploadPage() {
     disabled: isUploading,
   })
 
-  const uploadFile = async (uploadFile: UploadFile) => {
+  const uploadFile = async (uploadFile: UploadFile, skipDuplicateCheck = false) => {
     const formData = new FormData()
     formData.append('file', uploadFile.file)
     formData.append('dataMode', dataMode)
     formData.append('ocrMode', processingOptions.aiModel)
     formData.append('processingMode', processingOptions.processingMode)
+    if (uploadPurpose === 'review') {
+      formData.append('lifecycle', 'REVIEW')
+    }
 
     try {
       // Update to uploading
       setFiles(prev => prev.map(f =>
         f.id === uploadFile.id
-          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...' }
+          ? { ...f, status: 'uploading', progress: 10, processingStage: 'Uploading file...', isDuplicate: false }
           : f
       ))
 
@@ -192,36 +271,45 @@ export default function UploadPage() {
         ))
       }
 
-      // Upload file
+      // Upload file - skip duplicate check if re-processing
+      const headers: Record<string, string> = {
+        'x-tenant-id': getTenantId(),
+        'x-data-mode': dataMode
+      }
+      if (skipDuplicateCheck) {
+        headers['x-skip-duplicate-check'] = 'true'
+      }
+      
       const uploadResponse = await fetch('/api/contracts/upload', {
         method: 'POST',
         body: formData,
-        headers: {
-          'x-tenant-id': getTenantId(),
-          'x-data-mode': dataMode
-        }
+        headers
       })
 
       const responseData = await uploadResponse.json()
       
       if (!uploadResponse.ok) {
-        const errorMessage = responseData.details 
-          ? `${responseData.error}: ${responseData.details}` 
-          : (responseData.error || 'Upload failed');
+        const err = responseData.error || {};
+        const errorMessage = typeof err === 'string' ? err
+          : err.details ? `${err.message}: ${err.details}`
+          : (err.message || 'Upload failed');
         throw new Error(errorMessage);
       }
 
+      // API wraps response in { success, data, meta } envelope
+      const result = responseData.data ?? responseData;
+
       // Check for duplicate
-      if (responseData.isDuplicate) {
+      if (result.isDuplicate) {
         setFiles(prev => prev.map(f =>
           f.id === uploadFile.id
             ? { 
                 ...f, 
                 status: 'completed', 
                 progress: 100, 
-                contractId: responseData.contractId,
+                contractId: result.contractId,
                 isDuplicate: true,
-                existingContractId: responseData.contractId,
+                existingContractId: result.contractId,
                 endTime: Date.now(),
               }
             : f
@@ -229,7 +317,10 @@ export default function UploadPage() {
         return
       }
 
-      const { contractId } = responseData
+      const { contractId } = result
+      
+      // Debug log the contract ID received from server
+      console.log(`[Upload] Received contractId from server: ${contractId}, File: ${uploadFile.file.name}`);
 
       // Update to processing with artifact viewer enabled
       setFiles(prev => prev.map(f =>
@@ -266,11 +357,24 @@ export default function UploadPage() {
       if (isPaused) break
       
       const batch = pendingFiles.slice(i, i + concurrency)
-      await Promise.all(batch.map(file => uploadFile(file)))
+      // Pass skipDuplicateCheck flag if set (for re-processing)
+      await Promise.all(batch.map(file => uploadFile(file, file.skipDuplicateCheck)))
     }
     
     setIsUploading(false)
   }, [files, processingOptions.concurrency, isPaused])
+
+  // Auto-start upload effect (must be after handleUploadAll is defined)
+  useEffect(() => {
+    if (shouldAutoStart && !isUploading && files.some(f => f.status === 'pending')) {
+      setShouldAutoStart(false)
+      // Small delay to ensure state is updated
+      const timer = setTimeout(() => {
+        handleUploadAll()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [shouldAutoStart, isUploading, files, handleUploadAll])
 
   const handlePauseAll = useCallback(() => {
     setIsPaused(true)
@@ -282,7 +386,7 @@ export default function UploadPage() {
 
   const retryFile = useCallback((id: string) => {
     setFiles(prev => prev.map(f =>
-      f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined } : f
+      f.id === id ? { ...f, status: 'pending', progress: 0, error: undefined, isDuplicate: false, existingContractId: undefined, skipDuplicateCheck: true } : f
     ))
   }, [])
 
@@ -324,9 +428,9 @@ export default function UploadPage() {
   }, [isUploading, processingCount])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 dark:from-slate-900 dark:via-blue-950/30 dark:to-indigo-950/40">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/40 dark:from-slate-900 dark:via-purple-950/30 dark:to-purple-950/40">
       {/* Hero Header */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700 dark:from-blue-800 dark:via-indigo-800 dark:to-purple-900 shadow-2xl">
+      <div className="relative overflow-hidden bg-gradient-to-br from-violet-600 via-purple-600 to-purple-700 dark:from-violet-800 dark:via-purple-800 dark:to-purple-900 shadow-2xl">
         <div className="absolute inset-0 bg-grid-white/10 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))]" aria-hidden="true" />
         
         {/* Animated background elements */}
@@ -341,7 +445,7 @@ export default function UploadPage() {
             transition={{ duration: 8, repeat: Infinity }}
           />
           <motion.div 
-            className="absolute bottom-10 left-10 w-48 h-48 bg-purple-400/20 rounded-full blur-3xl motion-reduce:animate-none"
+            className="absolute bottom-10 left-10 w-48 h-48 bg-violet-400/20 rounded-full blur-3xl motion-reduce:animate-none"
             animate={{ 
               scale: [1, 1.3, 1],
               x: [0, -20, 0],
@@ -364,7 +468,7 @@ export default function UploadPage() {
                 <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
                   Upload Contracts
                 </h1>
-                <p className="text-blue-100 text-lg">
+                <p className="text-violet-100 text-lg">
                   AI-powered contract analysis in seconds
                 </p>
               </div>
@@ -402,6 +506,47 @@ export default function UploadPage() {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6 space-y-6">
+        {/* AI Status Alert */}
+        {!aiStatusLoading && aiStatus && (aiStatus.status === 'limited' || aiStatus.status === 'degraded') && (
+          <Alert variant={aiStatus.status === 'limited' ? 'destructive' : 'default'} className="border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/30">
+            <Key className="h-4 w-4" />
+            <AlertTitle className="font-semibold">
+              {aiStatus.status === 'limited' ? 'AI Features Limited' : 'AI System Degraded'}
+            </AlertTitle>
+            <AlertDescription className="mt-2">
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2 text-sm">
+                  <span className="font-medium">Providers:</span>
+                  <Badge variant={aiStatus.providers.openai.configured ? 'default' : 'outline'} className="text-xs">
+                    OpenAI: {aiStatus.providers.openai.configured ? '✅ Ready' : '❌ Not configured'}
+                  </Badge>
+                  <Badge variant={aiStatus.providers.mistral.configured ? 'default' : 'outline'} className="text-xs">
+                    Mistral: {aiStatus.providers.mistral.configured ? '✅ Ready' : '❌ Not configured'}
+                  </Badge>
+                </div>
+                {aiStatus.recommendations.length > 0 && (
+                  <ul className="text-sm list-disc list-inside space-y-1 mt-2 text-muted-foreground">
+                    {aiStatus.recommendations.map((rec, idx) => (
+                      <li key={idx}>{rec}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {/* AI Ready Status */}
+        {!aiStatusLoading && aiStatus?.status === 'healthy' && (
+          <Alert className="border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/30">
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <AlertTitle className="font-semibold text-green-800 dark:text-green-200">AI System Ready</AlertTitle>
+            <AlertDescription className="text-green-700 dark:text-green-300">
+              All AI providers are configured and operational. Upload your contracts for instant AI analysis.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
           <div className="flex items-center justify-between mb-4">
@@ -444,7 +589,7 @@ export default function UploadPage() {
             {/* Processing Config (collapsible) */}
             <AnimatePresence>
               {showSettings && (
-                <motion.div
+                <motion.div key="settings"
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
@@ -458,6 +603,42 @@ export default function UploadPage() {
               )}
             </AnimatePresence>
             
+            {/* Document Purpose Selector */}
+            <div className="flex items-center gap-3 p-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-sm w-fit">
+              <button
+                onClick={() => setUploadPurpose('store')}
+                disabled={isUploading}
+                className={cn(
+                  'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  uploadPurpose === 'store'
+                    ? 'bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                )}
+              >
+                <FolderUp className="h-4 w-4" />
+                Store &amp; Process
+              </button>
+              <button
+                onClick={() => setUploadPurpose('review')}
+                disabled={isUploading}
+                className={cn(
+                  'flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-medium transition-all',
+                  uploadPurpose === 'review'
+                    ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-md'
+                    : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700'
+                )}
+              >
+                <Scale className="h-4 w-4" />
+                Upload for Review
+              </button>
+            </div>
+            {uploadPurpose === 'review' && (
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl text-sm text-blue-700 dark:text-blue-300">
+                <Info className="h-4 w-4 shrink-0" />
+                Documents will be uploaded for AI-powered review, redlining, and collaboration — not stored as executed contracts.
+              </div>
+            )}
+
             {/* Drop Zone */}
             <Card className="shadow-xl border-0 dark:border dark:border-slate-700/50 bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
               <CardContent className="p-8">
@@ -471,8 +652,8 @@ export default function UploadPage() {
                     className={cn(
                       'relative border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer transition-all duration-300 overflow-hidden motion-reduce:transition-none',
                       isDragActive
-                        ? 'border-blue-500 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 scale-[1.02]'
-                        : 'border-gray-300 dark:border-slate-600 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-blue-50/30 dark:hover:from-slate-800 dark:hover:to-blue-900/20',
+                        ? 'border-violet-500 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 scale-[1.02]'
+                        : 'border-gray-300 dark:border-slate-600 hover:border-violet-400 dark:hover:border-violet-500 hover:bg-gradient-to-br hover:from-gray-50 hover:to-purple-50/30 dark:hover:from-slate-800 dark:hover:to-violet-900/20',
                       isUploading && 'opacity-50 cursor-not-allowed'
                     )}
                   >
@@ -486,7 +667,7 @@ export default function UploadPage() {
                       className={cn(
                         'mx-auto mb-6 p-6 rounded-full w-fit motion-reduce:animate-none',
                         isDragActive 
-                          ? 'bg-gradient-to-br from-blue-500 to-indigo-600 shadow-xl'
+                          ? 'bg-gradient-to-br from-violet-500 to-purple-600 shadow-xl'
                           : 'bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600'
                       )}
                       animate={isDragActive ? { scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] } : {}}
@@ -501,20 +682,20 @@ export default function UploadPage() {
                     
                     {isDragActive ? (
                       <>
-                        <p className="text-2xl font-bold text-blue-600 dark:text-blue-400 mb-2">
-                          Drop your contracts here!
+                        <p className="text-2xl font-bold text-violet-600 dark:text-violet-400 mb-2">
+                          {uploadPurpose === 'review' ? 'Drop your documents here!' : 'Drop your contracts here!'}
                         </p>
                         <p className="text-gray-600 dark:text-gray-300">
-                          Release to start the AI analysis
+                          {uploadPurpose === 'review' ? 'Release to start AI-powered review' : 'Release to start the AI analysis'}
                         </p>
                       </>
                     ) : (
                       <>
                         <p className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                          Drag & drop contracts here
+                          {uploadPurpose === 'review' ? 'Drag & drop documents for review' : 'Drag & drop contracts here'}
                         </p>
                         <p className="text-gray-600 dark:text-gray-400 mb-6 text-lg">
-                          or click to browse your files
+                          {uploadPurpose === 'review' ? 'AI will analyze for redlining, risks, and recommendations' : 'or click to browse your files'}
                         </p>
                         
                         {/* Supported formats */}
@@ -553,14 +734,14 @@ export default function UploadPage() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-900/30 border-blue-200 dark:border-blue-700 hover:shadow-lg transition-all motion-reduce:transition-none">
+                <Card className="bg-gradient-to-br from-violet-50 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 border-violet-200 dark:border-violet-700 hover:shadow-lg transition-all motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
-                    <div className="p-2 bg-blue-200 dark:bg-blue-800 rounded-lg">
-                      <Activity className={cn("h-5 w-5 text-blue-600 dark:text-blue-400", processingCount > 0 && "motion-safe:animate-pulse")} aria-hidden="true" />
+                    <div className="p-2 bg-violet-200 dark:bg-violet-800 rounded-lg">
+                      <Activity className={cn("h-5 w-5 text-violet-600 dark:text-violet-400", processingCount > 0 && "motion-safe:animate-pulse")} aria-hidden="true" />
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{processingCount}</p>
-                      <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Processing</p>
+                      <p className="text-2xl font-bold text-violet-600 dark:text-violet-400">{processingCount}</p>
+                      <p className="text-xs text-violet-600 dark:text-violet-400 font-medium">Processing</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -577,7 +758,7 @@ export default function UploadPage() {
                   </CardContent>
                 </Card>
                 
-                <Card className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
+                <Card className="bg-gradient-to-br from-violet-50 to-violet-50 dark:from-violet-900/30 dark:to-violet-900/30 border-green-200 dark:border-green-700 hover:shadow-lg transition-shadow motion-reduce:transition-none">
                   <CardContent className="p-4 flex items-center gap-3">
                     <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
                       <Award className="h-5 w-5 text-green-600 dark:text-green-400" aria-hidden="true" />
@@ -607,9 +788,9 @@ export default function UploadPage() {
             {!hasFiles && (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 {[
-                  { icon: Zap, gradient: 'from-blue-500 to-indigo-600', title: 'Lightning Fast', desc: 'AI extraction in seconds' },
-                  { icon: Shield, gradient: 'from-green-500 to-emerald-600', title: 'Secure Storage', desc: 'Bank-grade encryption' },
-                  { icon: Brain, gradient: 'from-purple-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
+                  { icon: Zap, gradient: 'from-violet-500 to-purple-600', title: 'Lightning Fast', desc: 'AI extraction in seconds' },
+                  { icon: Shield, gradient: 'from-violet-500 to-violet-600', title: 'Secure Storage', desc: 'Bank-grade encryption' },
+                  { icon: Brain, gradient: 'from-violet-500 to-pink-600', title: 'AI Analysis', desc: 'GPT-4 powered insights' },
                   { icon: BarChart3, gradient: 'from-orange-500 to-red-600', title: 'Smart Reports', desc: '10 artifact types' },
                 ].map(feature => (
                   <Card key={feature.title} className="border-0 dark:border dark:border-slate-700/50 shadow-lg hover:shadow-xl transition-shadow motion-reduce:transition-none dark:bg-slate-800/80">
@@ -651,7 +832,10 @@ export default function UploadPage() {
                       )}
                       
                       {pendingCount > 0 && !isUploading && (
-                        <Button onClick={handleUploadAll} className="gap-2 bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <Button 
+                          onClick={handleUploadAll} 
+                          className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600"
+                        >
                           <Play className="h-4 w-4" aria-hidden="true" />
                           Start All ({pendingCount})
                         </Button>
@@ -688,7 +872,7 @@ export default function UploadPage() {
                 <CardContent className="pt-0">
                   <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
                     <AnimatePresence mode="popLayout">
-                      {files.map((file, index) => (
+                      {isMounted && files.map((file, index) => (
                         <motion.div
                           key={file.id}
                           initial={{ opacity: 0, y: 20 }}
@@ -708,7 +892,24 @@ export default function UploadPage() {
                             onRetry={() => retryFile(file.id)}
                             onRemove={() => removeFile(file.id)}
                             onViewContract={viewContract}
-                            tenantId="demo"
+                            onContractNotFound={() => {
+                              // Don't remove the file - show error state instead
+                              console.log('[Upload] EnhancedUploadProgress: Contract not found for file:', file.id);
+                              setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                  ? { ...f, status: 'error', error: 'Contract not found. Please try uploading again.', endTime: Date.now() }
+                                  : f
+                              ));
+                            }}
+                            onComplete={() => {
+                              // Update file status to completed when processing finishes
+                              setFiles(prev => prev.map(f =>
+                                f.id === file.id
+                                  ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
+                                  : f
+                              ))
+                            }}
+                            tenantId={getTenantId()}
                           />
                           
                           {/* Realtime artifact viewer for processing files */}
@@ -716,20 +917,31 @@ export default function UploadPage() {
                             <motion.div
                               initial={{ opacity: 0, height: 0 }}
                               animate={{ opacity: 1, height: 'auto' }}
-                              className="mt-3 p-4 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/30 dark:to-blue-900/30 rounded-xl border border-purple-200 dark:border-purple-700"
+                              className="mt-3 p-4 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 rounded-xl border border-violet-200 dark:border-violet-700"
                             >
                               <div className="flex items-center gap-2 mb-3">
-                                <Sparkles className="h-4 w-4 text-purple-600 dark:text-purple-400" aria-hidden="true" />
-                                <span className="font-medium text-purple-900 dark:text-purple-200 text-sm">Live AI Processing</span>
+                                <Sparkles className="h-4 w-4 text-violet-600 dark:text-violet-400" aria-hidden="true" />
+                                <span className="font-medium text-violet-900 dark:text-violet-200 text-sm">Live AI Processing</span>
                               </div>
                               <RealtimeArtifactViewer
                                 contractId={file.contractId}
+                                tenantId={getTenantId()}
                                 onComplete={() => {
                                   setFiles(prev => prev.map(f =>
                                     f.id === file.id
                                       ? { ...f, status: 'completed', progress: 100, endTime: Date.now() }
                                       : f
                                   ))
+                                }}
+                                onContractNotFound={() => {
+                                  // Don't remove the file - show error state instead
+                                  // This gives user a chance to retry or see what happened
+                                  console.log('[Upload] Contract not found for file:', file.id);
+                                  setFiles(prev => prev.map(f =>
+                                    f.id === file.id
+                                      ? { ...f, status: 'error', error: 'Contract not found. Please try uploading again.', endTime: Date.now() }
+                                      : f
+                                  ));
                                 }}
                               />
                             </motion.div>
@@ -792,7 +1004,7 @@ export default function UploadPage() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <Card className="border-0 shadow-xl bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 text-white">
+                <Card className="border-0 shadow-xl bg-gradient-to-br from-violet-500 via-violet-500 to-violet-600 text-white">
                   <CardContent className="p-6">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="flex items-center gap-4">
@@ -805,29 +1017,61 @@ export default function UploadPage() {
                         </motion.div>
                         <div>
                           <h3 className="text-xl font-bold">
-                            {completedCount} Contract{completedCount !== 1 ? 's' : ''} Processed Successfully!
+                            {completedCount} {uploadPurpose === 'review' ? 'Document' : 'Contract'}{completedCount !== 1 ? 's' : ''} Processed Successfully!
                           </h3>
                           <p className="text-green-100 mt-1">
-                            AI analysis complete. Your contracts are ready for review.
+                            {uploadPurpose === 'review' 
+                              ? 'AI analysis complete. Start a legal review or redline session to proceed.'
+                              : 'AI analysis complete. Your contracts are ready for review.'}
                           </p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
-                        <Button 
-                          variant="secondary" 
-                          className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                          onClick={() => router.push('/contracts')}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          View All Contracts
-                        </Button>
-                        <Button 
-                          className="bg-white text-green-700 hover:bg-green-50"
-                          onClick={() => setActiveTab('upload')}
-                        >
-                          <Upload className="h-4 w-4 mr-2" />
-                          Upload More
-                        </Button>
+                        {uploadPurpose === 'review' ? (
+                          <>
+                            <Button 
+                              variant="secondary" 
+                              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                              onClick={() => {
+                                const firstCompleted = files.find(f => f.status === 'completed')
+                                if (firstCompleted?.contractId) router.push(`/contracts/${firstCompleted.contractId}/legal-review`)
+                                else router.push('/contracts')
+                              }}
+                            >
+                              <Scale className="h-4 w-4 mr-2" />
+                              Start Legal Review
+                            </Button>
+                            <Button 
+                              className="bg-white text-violet-700 hover:bg-violet-50"
+                              onClick={() => {
+                                const firstCompleted = files.find(f => f.status === 'completed')
+                                if (firstCompleted?.contractId) router.push(`/contracts/${firstCompleted.contractId}/redline`)
+                                else router.push('/contracts')
+                              }}
+                            >
+                              <Edit3 className="h-4 w-4 mr-2" />
+                              Start Redlining
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button 
+                              variant="secondary" 
+                              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+                              onClick={() => router.push('/contracts')}
+                            >
+                              <FileText className="h-4 w-4 mr-2" />
+                              View All Contracts
+                            </Button>
+                            <Button 
+                              className="bg-white text-green-700 hover:bg-green-50"
+                              onClick={() => setActiveTab('upload')}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Upload More
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                     
@@ -890,7 +1134,7 @@ export default function UploadPage() {
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: index * 0.05 }}
-                        className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-md transition-all motion-reduce:transition-none"
+                        className="flex items-center justify-between p-4 bg-gradient-to-r from-violet-50 to-violet-50 dark:from-violet-900/30 dark:to-violet-900/30 rounded-xl border border-green-200 dark:border-green-700 hover:shadow-md transition-all motion-reduce:transition-none"
                       >
                         <div className="flex items-center gap-3">
                           <div className="p-2 bg-green-200 dark:bg-green-800 rounded-lg">
@@ -924,6 +1168,15 @@ export default function UploadPage() {
                           <Button
                             size="sm"
                             variant="outline"
+                            onClick={() => router.push(`/contracts/${file.contractId}/redline`)}
+                            className="gap-1 hidden md:flex dark:border-slate-600 dark:hover:bg-slate-700"
+                          >
+                            <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
+                            Redline
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
                             onClick={() => router.push(`/contracts/${file.contractId}/legal-review`)}
                             className="gap-1 hidden md:flex dark:border-slate-600 dark:hover:bg-slate-700"
                           >
@@ -954,8 +1207,8 @@ export default function UploadPage() {
                     
                     {/* Quick Start Guide */}
                     <div className="max-w-2xl mx-auto">
-                      <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 rounded-xl border border-blue-100 dark:border-blue-700 text-left">
-                        <h4 className="font-medium text-blue-900 dark:text-blue-200 mb-3 flex items-center gap-2">
+                      <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/30 dark:to-purple-900/30 rounded-xl border border-violet-100 dark:border-violet-700 text-left">
+                        <h4 className="font-medium text-violet-900 dark:text-violet-200 mb-3 flex items-center gap-2">
                           <Info className="h-4 w-4" aria-hidden="true" />
                           How it works
                         </h4>
@@ -967,7 +1220,7 @@ export default function UploadPage() {
                             { step: '4', label: 'Use', desc: 'Track & manage' },
                           ].map(item => (
                             <div key={item.step} className="flex items-start gap-2">
-                              <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0" aria-hidden="true">
+                              <div className="w-6 h-6 rounded-full bg-violet-600 text-white flex items-center justify-center text-xs font-bold flex-shrink-0" aria-hidden="true">
                                 {item.step}
                               </div>
                               <div>

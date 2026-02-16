@@ -97,7 +97,7 @@ export function BaselineTrackingDashboard() {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm text-gray-500">Active Baselines</p>
-            <Target className="h-5 w-5 text-blue-500" />
+            <Target className="h-5 w-5 text-violet-500" />
           </div>
           <p className="text-3xl font-bold">{summary.activeBaselines}</p>
           <p className="text-xs text-gray-500 mt-1">

@@ -8,8 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,7 +23,6 @@ import {
   AlertCircle,
   CheckCircle,
   Edit3,
-  Eye,
   RotateCcw,
   History,
   Plus,
@@ -37,7 +35,6 @@ import {
   DollarSign,
   Users,
   Clock,
-  MapPin,
   Hash,
   Type,
   List,
@@ -140,7 +137,7 @@ const artifactFieldSchemas: Record<string, Record<string, FieldSchema>> = {
 // FIELD RENDERERS
 // =========================================================================
 
-function getFieldIcon(type: string) {
+function _getFieldIcon(type: string) {
   switch (type) {
     case 'string': return <Type className="h-4 w-4" />;
     case 'number': return <Hash className="h-4 w-4" />;
@@ -321,6 +318,16 @@ export function EnhancedArtifactEditor({
       setSuccess(true);
       setChangedFields(new Set());
       
+      // Dispatch event to notify chatbot and other components about the update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, artifactId: artifact.id, type: 'artifact', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('artifacts:refresh', { 
+          detail: { contractId } 
+        }));
+      }
+      
       if (onSave) {
         onSave(result.artifact);
       }
@@ -371,7 +378,7 @@ export function EnhancedArtifactEditor({
               <Button
                 variant="link"
                 size="sm"
-                className="ml-2 h-auto p-0 text-blue-600"
+                className="ml-2 h-auto p-0 text-violet-600"
                 onClick={() => handleFieldChange(fullPath, getDefaultValue(fieldType))}
               >
                 Add value
@@ -385,7 +392,7 @@ export function EnhancedArtifactEditor({
     // Object type - render recursively
     if (typeof value === 'object' && !Array.isArray(value)) {
       return (
-        <div key={fullPath} className="space-y-3 pl-4 border-l-2 border-blue-200">
+        <div key={fullPath} className="space-y-3 pl-4 border-l-2 border-violet-200">
           <Label className="text-sm font-semibold text-gray-700">{label}</Label>
           {Object.entries(value).map(([k, v]) => renderField(k, v, fullPath))}
         </div>
@@ -418,7 +425,7 @@ export function EnhancedArtifactEditor({
             {value.map((item, index) => (
               <Card key={`${fullPath}-${index}`} className={cn(
                 "p-3",
-                isEditing ? "border-blue-200" : "border-gray-200"
+                isEditing ? "border-violet-200" : "border-gray-200"
               )}>
                 <div className="flex justify-between items-start">
                   <div className="flex-1 space-y-2">
@@ -466,7 +473,7 @@ export function EnhancedArtifactEditor({
       const dateValue = value ? new Date(value) : undefined;
       return (
         <div key={fullPath} className="space-y-2">
-          <Label className={cn("text-sm", isChanged && "text-blue-600 font-medium")}>
+          <Label className={cn("text-sm", isChanged && "text-violet-600 font-medium")}>
             {label}
           </Label>
           {isEditing ? (
@@ -509,7 +516,7 @@ export function EnhancedArtifactEditor({
     if (typeof value === 'boolean' || fieldType === 'boolean') {
       return (
         <div key={fullPath} className="flex items-center justify-between">
-          <Label className={cn("text-sm", isChanged && "text-blue-600 font-medium")}>
+          <Label className={cn("text-sm", isChanged && "text-violet-600 font-medium")}>
             {label}
           </Label>
           {isEditing ? (
@@ -530,7 +537,7 @@ export function EnhancedArtifactEditor({
     if (typeof value === 'number' || fieldType === 'number' || fieldType === 'currency') {
       return (
         <div key={fullPath} className="space-y-2">
-          <Label className={cn("text-sm", isChanged && "text-blue-600 font-medium")}>
+          <Label className={cn("text-sm", isChanged && "text-violet-600 font-medium")}>
             {label}
           </Label>
           {isEditing ? (
@@ -559,7 +566,7 @@ export function EnhancedArtifactEditor({
     if (fieldType === 'textarea' || (typeof value === 'string' && value.length > 100)) {
       return (
         <div key={fullPath} className="space-y-2">
-          <Label className={cn("text-sm", isChanged && "text-blue-600 font-medium")}>
+          <Label className={cn("text-sm", isChanged && "text-violet-600 font-medium")}>
             {label}
           </Label>
           {isEditing ? (
@@ -581,7 +588,7 @@ export function EnhancedArtifactEditor({
     // Default string type
     return (
       <div key={fullPath} className="space-y-2">
-        <Label className={cn("text-sm", isChanged && "text-blue-600 font-medium")}>
+        <Label className={cn("text-sm", isChanged && "text-violet-600 font-medium")}>
           {label}
         </Label>
         {isEditing ? (
@@ -737,7 +744,7 @@ export function EnhancedArtifactEditor({
       {/* Alerts */}
       <AnimatePresence>
         {error && (
-          <motion.div
+          <motion.div key="error"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -807,7 +814,7 @@ export function EnhancedArtifactEditor({
               
               <AnimatePresence initial={false}>
                 {expandedSections.has(group) && (
-                  <motion.div
+                  <motion.div key="EnhancedArtifactEditor-ap-1"
                     initial={{ height: 0, opacity: 0 }}
                     animate={{ height: 'auto', opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
@@ -904,12 +911,12 @@ function getArtifactIcon(type: string) {
 
 function getArtifactColor(type: string): string {
   switch (type.toLowerCase()) {
-    case 'overview': return 'bg-gradient-to-br from-blue-500 to-blue-600';
-    case 'parties': return 'bg-gradient-to-br from-green-500 to-green-600';
-    case 'financial': return 'bg-gradient-to-br from-emerald-500 to-emerald-600';
-    case 'obligations': return 'bg-gradient-to-br from-purple-500 to-purple-600';
+    case 'overview': return 'bg-gradient-to-br from-violet-500 to-purple-600';
+    case 'parties': return 'bg-gradient-to-br from-violet-500 to-purple-600';
+    case 'financial': return 'bg-gradient-to-br from-violet-500 to-violet-600';
+    case 'obligations': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'risks': return 'bg-gradient-to-br from-red-500 to-red-600';
-    case 'clauses': return 'bg-gradient-to-br from-indigo-500 to-indigo-600';
+    case 'clauses': return 'bg-gradient-to-br from-violet-500 to-purple-600';
     case 'rates': return 'bg-gradient-to-br from-amber-500 to-amber-600';
     default: return 'bg-gradient-to-br from-gray-500 to-gray-600';
   }

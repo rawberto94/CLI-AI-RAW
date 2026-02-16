@@ -1,66 +1,25 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { publishRealtimeEvent } from '@/lib/realtime/publish';
-
-// Mock signature workflows
-const mockSignatureWorkflows = [
-  {
-    id: 'sig-workflow-001',
-    contractId: 'contract-001',
-    contractName: 'Master Service Agreement',
-    provider: 'docusign',
-    status: 'in_progress',
-    signers: [
-      {
-        id: 'signer-1',
-        name: 'Roberto Ostojic',
-        email: 'roberto@acmecorp.com',
-        role: 'Client Signatory',
-        status: 'signed',
-        order: 1,
-        sentAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        viewedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-        signedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        ipAddress: '192.168.1.100',
-      },
-      {
-        id: 'signer-2',
-        name: 'Sarah Johnson',
-        email: 'sarah.johnson@vendor.com',
-        role: 'Vendor Representative',
-        status: 'viewed',
-        order: 2,
-        sentAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-        viewedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-      },
-      {
-        id: 'signer-3',
-        name: 'Michael Brown',
-        email: 'michael.brown@legal.com',
-        role: 'Witness',
-        status: 'pending',
-        order: 3,
-      },
-    ],
-    createdBy: 'Alice Anderson',
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    expiresAt: new Date(Date.now() + 4 * 24 * 60 * 60 * 1000).toISOString(),
-    message: 'Please review and sign this Master Service Agreement at your earliest convenience.',
-  },
-];
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // GET /api/contracts/[id]/signatures - Get signature workflows for a contract
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
 
-    // Try database first
+    // Verify contract belongs to the caller's tenant
+    const tenantId = ctx.tenantId;
     try {
-      const contract = await prisma.contract.findUnique({
-        where: { id: contractId },
+      const contract = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
         select: { 
           id: true, 
           contractTitle: true,
@@ -74,30 +33,23 @@ export async function GET(
         const signatureData = metadata?.signatureWorkflows as unknown[] | undefined;
         
         if (signatureData && Array.isArray(signatureData) && signatureData.length > 0) {
-          return NextResponse.json({ 
+          return createSuccessResponse(ctx, { 
             workflows: signatureData,
             source: 'database'
           });
         }
       }
     } catch {
-      // Database lookup failed, will use fallback
+      // Database lookup failed
     }
 
-    // Fallback to mock data - filter by contractId or return all if it's a specific contract
-    const workflows = contractId === 'contract-001' 
-      ? mockSignatureWorkflows 
-      : mockSignatureWorkflows.map(w => ({ ...w, contractId }));
-    
-    return NextResponse.json({ 
-      workflows,
-      source: 'mock'
+    // No signature workflows found — return empty
+    return createSuccessResponse(ctx, { 
+      workflows: [],
+      source: 'database'
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch signature workflows' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -106,6 +58,10 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const { id: contractId } = await params;
     const body = await request.json();
@@ -130,10 +86,11 @@ export async function POST(
       message,
     };
 
-    // Try to store in database
+    // Store in database — verify tenant ownership
+    const tenantId = ctx.tenantId;
     try {
-      const contract = await prisma.contract.findUnique({
-        where: { id: contractId },
+      const contract = await prisma.contract.findFirst({
+        where: { id: contractId, tenantId },
         select: { tenantId: true, searchMetadata: true },
       });
 
@@ -159,23 +116,18 @@ export async function POST(
           });
         }
 
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           workflow: newWorkflow,
           source: 'database'
         });
       }
     } catch {
-      // Database update failed, will use fallback
+      // Database update failed — return the workflow without persistence
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Failed to persist signature workflow', 500);
     }
 
-    return NextResponse.json({ 
-      workflow: newWorkflow,
-      source: 'mock'
-    });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to create signature request' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

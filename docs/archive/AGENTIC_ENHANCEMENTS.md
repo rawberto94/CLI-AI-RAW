@@ -26,6 +26,7 @@ Validates generated artifacts across multiple dimensions:
 - **Overall Score** (0.7 threshold): Weighted average of all dimensions
 
 **Self-Critique Mechanism:**
+
 - AI reviews its own output using GPT-4o-mini
 - Identifies hallucinations by cross-referencing contract text
 - Suggests specific improvements
@@ -36,11 +37,13 @@ Validates generated artifacts across multiple dimensions:
 Smart retry logic with model fallback:
 
 **Model Hierarchy:**
+
 1. GPT-4o (highest capability, highest cost)
 2. GPT-4o-mini (balanced)
 3. GPT-3.5-turbo (fallback, lowest cost)
 
 **Failure Classification:**
+
 - `RATE_LIMIT`: Exponential backoff with 2x delay multiplier
 - `CONTEXT_LENGTH`: Automatic fallback to next model or text chunking
 - `TIMEOUT`: Retry same model (network issue)
@@ -49,6 +52,7 @@ Smart retry logic with model fallback:
 - `NETWORK`: Retry with jitter to avoid thundering herd
 
 **Adaptive Behavior:**
+
 - Exponential backoff: 1s → 2s → 4s → 8s (max 30s)
 - Jitter factor: ±30% to distribute load
 - Smart model switching based on error type
@@ -67,6 +71,7 @@ When quality validation fails:
    - If max regenerations → Store with warning flag
 
 **Stored Metadata:**
+
 ```json
 {
   "qualityScore": 0.85,
@@ -84,23 +89,27 @@ When quality validation fails:
 ## 📊 Benefits
 
 ### **Reliability Improvements:**
+
 - ✅ Automatic recovery from transient failures
 - ✅ Graceful degradation with model fallback
 - ✅ Context-aware retry strategies
 - ✅ Reduced false positives (hallucinations)
 
 ### **Quality Improvements:**
+
 - ✅ Consistent data formatting
 - ✅ Source attribution for all extracted data
 - ✅ Flagged inferred vs. extracted information
 - ✅ Human review triggers for low confidence
 
 ### **Cost Optimization:**
+
 - ✅ Use cheaper models first (GPT-4o-mini)
 - ✅ Only escalate to expensive models when needed
 - ✅ Avoid unnecessary regenerations with smart thresholds
 
 ### **Observability:**
+
 - ✅ Detailed quality scores for each artifact
 - ✅ Regeneration tracking
 - ✅ Model usage analytics
@@ -134,6 +143,7 @@ When quality validation fails:
 ## 🎓 Learning & Adaptation
 
 The system learns from:
+
 - **Quality scores**: Track which artifact types need regeneration
 - **Model performance**: Which models work best for each type
 - **Failure patterns**: Common error types and their solutions
@@ -142,6 +152,7 @@ The system learns from:
 ## 🚀 Future Enhancements
 
 Ready to add:
+
 1. **Learning from user feedback**: Adjust thresholds based on user edits
 2. **A/B testing**: Compare different prompts/models automatically
 3. **Predictive quality**: Estimate quality before generation
@@ -152,6 +163,7 @@ Ready to add:
 ## 📈 Monitoring
 
 Key metrics now tracked:
+
 - Quality scores per artifact type
 - Regeneration rates
 - Model fallback frequency
@@ -162,6 +174,7 @@ Key metrics now tracked:
 ## ⚙️ Configuration
 
 Environment variables for tuning:
+
 ```env
 # Quality Thresholds
 ARTIFACT_QUALITY_OVERALL=0.7
@@ -182,6 +195,7 @@ ENABLE_SELF_CRITIQUE=true
 ## 🎯 Impact Summary
 
 **Before:**
+
 - Fixed retry count (3 attempts with same model)
 - No quality validation
 - No self-awareness of output quality
@@ -189,6 +203,7 @@ ENABLE_SELF_CRITIQUE=true
 - All-or-nothing artifact generation
 
 **After:**
+
 - ✅ Adaptive retry with model fallback
 - ✅ Multi-dimensional quality validation
 - ✅ Self-critique and auto-regeneration

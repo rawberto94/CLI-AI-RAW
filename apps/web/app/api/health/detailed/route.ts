@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { healthCheckService } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -8,7 +9,7 @@ export const dynamic = 'force-dynamic';
  * Detailed health check endpoint
  * Returns comprehensive health information for all system components
  */
-export async function GET(request: NextRequest) {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const health = await healthCheckService.getOverallHealth();
     
@@ -41,21 +42,18 @@ export async function GET(request: NextRequest) {
     
     const statusCode = health.status === 'healthy' ? 200 : health.status === 'degraded' ? 200 : 503;
     
-    return NextResponse.json(response, { 
+    if (statusCode === 503) {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'System unhealthy', 503);
+    }
+    return createSuccessResponse(ctx, response, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        status: 'unhealthy',
-        timestamp: new Date().toISOString(),
-        error: (error as Error).message,
-        stack: process.env.NODE_ENV === 'development' ? (error as Error).stack : undefined,
-      },
-      { status: 503 }
-    );
+    return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', (error as Error).message, 503, {
+      details: process.env.NODE_ENV === 'development' ? (error as Error).stack : undefined,
+    });
   }
-}
+});

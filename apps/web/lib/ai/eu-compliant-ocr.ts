@@ -65,7 +65,7 @@ export interface BoundingBox {
 
 export interface OCROptions {
   /** Preferred provider (will fallback if unavailable) */
-  provider?: 'azure-ch' | 'azure-eu' | 'google-eu' | 'ovh' | 'tesseract' | 'infomaniak';
+  provider?: 'azure-ch' | 'azure-eu' | 'azure-di' | 'google-eu' | 'ovh' | 'tesseract' | 'infomaniak';
 
   /** Target language (improves accuracy) */
   language?: 'de' | 'fr' | 'it' | 'en' | 'auto';
@@ -81,6 +81,24 @@ export interface OCROptions {
 
   /** Encryption key (required if encryptResult is true) */
   encryptionKey?: string;
+
+  /**
+   * Azure Document Intelligence model override.
+   *
+   * - 'layout'   — Full structural extraction (text + tables + KV pairs + paragraphs)
+   * - 'contract' — Prebuilt contract party/date/jurisdiction extraction
+   * - 'invoice'  — Vendor, line items, totals, payment terms
+   * - 'read'     — Lightweight text-only OCR (default)
+   *
+   * Only applies when provider is 'azure-ch', 'azure-eu' or 'azure-di'.
+   */
+  diModel?: 'layout' | 'contract' | 'invoice' | 'read';
+
+  /** Enable key-value pair extraction (DI v4.0 layout/contract models) */
+  extractKeyValuePairs?: boolean;
+
+  /** Ad-hoc query fields to extract from the document (DI v4.0 layout model) */
+  queryFields?: string[];
 }
 
 // ============================================================================
@@ -88,20 +106,22 @@ export interface OCROptions {
 // ============================================================================
 
 /**
- * Azure Computer Vision / Document Intelligence
+ * Azure Document Intelligence v4.0 — Switzerland Region
  * Region: Switzerland North (Zurich) or Switzerland West (Geneva)
  *
  * Data residency: Data processed and stored in Switzerland
  * Compliance: ISO 27001, SOC 2, GDPR, FINMA-ready
  *
- * Setup:
- * 1. Create Azure account
- * 2. Create Computer Vision resource in "Switzerland North" region
- * 3. Get endpoint and key from Azure Portal
+ * Models available:
+ * - prebuilt-layout  (default): Text + tables + key-value pairs + paragraphs
+ * - prebuilt-contract: Parties, dates, jurisdiction, governing law
+ * - prebuilt-invoice:  Vendor, line items, totals, payment terms
+ * - prebuilt-read:     Lightweight text-only OCR
  *
  * Environment variables:
- *   AZURE_VISION_ENDPOINT_CH=https://your-resource.cognitiveservices.azure.com
- *   AZURE_VISION_KEY_CH=your-key
+ *   AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://di-contracts-ch.cognitiveservices.azure.com
+ *   AZURE_DOCUMENT_INTELLIGENCE_KEY=your-di-key
+ *   (fallback) AZURE_VISION_ENDPOINT_CH / AZURE_VISION_KEY_CH
  */
 export async function performAzureSwitzerlandOCR(
   fileBuffer: Buffer,
@@ -109,24 +129,46 @@ export async function performAzureSwitzerlandOCR(
 ): Promise<OCRResult> {
   const startTime = Date.now();
 
-  const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
-  const apiKey = process.env.AZURE_VISION_KEY_CH;
+  // ── Prefer Document Intelligence v4.0 credentials ──
+  const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+  const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+
+  // Fall back to legacy Vision credentials
+  const endpoint = diEndpoint || process.env.AZURE_VISION_ENDPOINT_CH;
+  const apiKey = diKey || process.env.AZURE_VISION_KEY_CH;
 
   if (!endpoint || !apiKey) {
     throw new Error(
-      'Azure Switzerland Vision not configured. Set AZURE_VISION_ENDPOINT_CH and AZURE_VISION_KEY_CH'
+      'Azure Switzerland Vision not configured. Set AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT/KEY or AZURE_VISION_ENDPOINT_CH/KEY_CH'
     );
   }
 
-  // Ensure we're using Swiss endpoint
-  if (!endpoint.includes('switzerland') && !endpoint.includes('.ch.')) {
-    // Warning: Azure endpoint may not be in Switzerland
-  }
-
+  const useDIv4 = !!(diEndpoint && diKey);
   const languageHint = options.language === 'auto' ? undefined : options.language;
 
-  // Use Document Intelligence for better results on contracts
-  const analyzeUrl = `${endpoint}/formrecognizer/documentModels/prebuilt-read:analyze?api-version=2023-07-31`;
+  // ── Determine which DI model to use ──
+  const modelMap: Record<string, string> = {
+    layout: 'prebuilt-layout',
+    contract: 'prebuilt-contract',
+    invoice: 'prebuilt-invoice',
+    read: 'prebuilt-read',
+  };
+  const selectedModel = modelMap[options.diModel || 'layout'] || 'prebuilt-layout';
+  const apiVersion = useDIv4 ? '2024-11-30' : '2023-07-31';
+  const apiPath = useDIv4 ? 'documentintelligence' : 'formrecognizer';
+  const actualModel = useDIv4 ? selectedModel : 'prebuilt-read'; // Legacy only supports read
+
+  // Build URL with optional features
+  const params = new URLSearchParams({ 'api-version': apiVersion });
+  if (useDIv4 && (options.extractKeyValuePairs !== false) && actualModel !== 'prebuilt-read') {
+    params.set('features', 'keyValuePairs');
+  }
+  if (useDIv4 && options.queryFields?.length) {
+    params.set('features', [params.get('features'), 'queryFields'].filter(Boolean).join(','));
+    params.set('queryFields', options.queryFields.join(','));
+  }
+
+  const analyzeUrl = `${endpoint.replace(/\/$/, '')}/${apiPath}/documentModels/${actualModel}:analyze?${params.toString()}`;
 
   const response = await fetch(analyzeUrl, {
     method: 'POST',
@@ -151,7 +193,7 @@ export async function performAzureSwitzerlandOCR(
   // Poll for results
   let result: any = null;
   let attempts = 0;
-  const maxAttempts = 60; // 60 seconds timeout
+  const maxAttempts = 60;
 
   while (attempts < maxAttempts) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -169,14 +211,13 @@ export async function performAzureSwitzerlandOCR(
     } else if (statusData.status === 'failed') {
       throw new Error(`Azure analysis failed: ${JSON.stringify(statusData.error)}`);
     }
-    // Continue polling if 'running'
   }
 
   if (!result) {
     throw new Error('Azure OCR timed out');
   }
 
-  // Extract text from result
+  // Extract pages
   const pages: PageResult[] = (result.pages || []).map((page: any, idx: number) => ({
     pageNumber: idx + 1,
     text: (page.lines || []).map((line: any) => line.content).join('\n'),
@@ -196,30 +237,71 @@ export async function performAzureSwitzerlandOCR(
     })),
   }));
 
-  // Extract tables if requested
-  const tables: TableResult[] = options.extractTables
+  // Extract tables (DI v4.0 returns richer table data)
+  const tables: TableResult[] = (options.extractTables !== false)
     ? (result.tables || []).map((table: any) => ({
         pageNumber: table.boundingRegions?.[0]?.pageNumber || 1,
-        headers: table.cells
-          ?.filter((c: any) => c.kind === 'columnHeader')
+        headers: (table.cells || [])
+          .filter((c: any) => c.kind === 'columnHeader')
+          .sort((a: any, b: any) => a.columnIndex - b.columnIndex)
           .map((c: any) => c.content) || [],
         rows: groupTableCells(table.cells || []),
         confidence: table.confidence || 0.9,
       }))
     : [];
 
+  // Extract key-value pairs (DI v4.0)
+  const keyValuePairs: Array<{ key: string; value: string; confidence: number }> = [];
+  if (result.keyValuePairs) {
+    for (const kv of result.keyValuePairs) {
+      keyValuePairs.push({
+        key: kv.key?.content || '',
+        value: kv.value?.content || '',
+        confidence: Math.min(kv.key?.confidence ?? 0.9, kv.value?.confidence ?? 0.9),
+      });
+    }
+  }
+
+  // Extract document fields (contract/invoice models)
+  const documentFields: Record<string, any> = {};
+  if (result.documents?.[0]?.fields) {
+    for (const [key, val] of Object.entries(result.documents[0].fields as Record<string, any>)) {
+      documentFields[key] = {
+        value: val.value ?? val.valueString ?? val.content ?? null,
+        confidence: val.confidence ?? 0.9,
+        type: val.type,
+      };
+    }
+  }
+
   const fullText = result.content || pages.map((p) => p.text).join('\n\n');
   const processingTime = Date.now() - startTime;
 
   let resultText = fullText;
+
+  // Append structured data as enrichment
+  if (keyValuePairs.length > 0) {
+    resultText += '\n\n--- KEY-VALUE PAIRS ---\n';
+    for (const kv of keyValuePairs) {
+      if (kv.key && kv.value) resultText += `${kv.key}: ${kv.value}\n`;
+    }
+  }
+
+  if (Object.keys(documentFields).length > 0) {
+    resultText += '\n\n--- DOCUMENT FIELDS ---\n';
+    for (const [key, field] of Object.entries(documentFields)) {
+      if (field.value) resultText += `${key}: ${field.value}\n`;
+    }
+  }
+
   if (options.encryptResult && options.encryptionKey) {
-    resultText = encryptText(fullText, options.encryptionKey);
+    resultText = encryptText(resultText, options.encryptionKey);
   }
 
   return {
     text: resultText,
     confidence: calculateAverageConfidence(pages),
-    provider: 'azure-document-intelligence',
+    provider: useDIv4 ? 'azure-document-intelligence-v4' : 'azure-document-intelligence',
     region: 'switzerland-north',
     pages,
     tables,
@@ -233,11 +315,14 @@ export async function performAzureSwitzerlandOCR(
 // ============================================================================
 
 /**
- * Azure Computer Vision - EU Region
+ * Azure Document Intelligence v4.0 — EU Region
  * Regions: West Europe (Netherlands), North Europe (Ireland), France Central
  *
  * Data residency: Data stays within EU
  * Compliance: GDPR compliant
+ *
+ * Uses DI v4.0 when AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU is set,
+ * otherwise falls back to legacy Form Recognizer API.
  */
 export async function performAzureEUOCR(
   fileBuffer: Buffer,
@@ -245,15 +330,34 @@ export async function performAzureEUOCR(
 ): Promise<OCRResult> {
   const startTime = Date.now();
 
-  const endpoint = process.env.AZURE_VISION_ENDPOINT_EU || process.env.AZURE_VISION_ENDPOINT;
-  const apiKey = process.env.AZURE_VISION_KEY_EU || process.env.AZURE_VISION_KEY;
+  // Try DI-specific EU credentials first, then legacy
+  const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU;
+  const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY_EU;
+  const endpoint = diEndpoint || process.env.AZURE_VISION_ENDPOINT_EU || process.env.AZURE_VISION_ENDPOINT;
+  const apiKey = diKey || process.env.AZURE_VISION_KEY_EU || process.env.AZURE_VISION_KEY;
 
   if (!endpoint || !apiKey) {
     throw new Error('Azure EU Vision not configured. Set AZURE_VISION_ENDPOINT_EU and AZURE_VISION_KEY_EU');
   }
 
-  // Same implementation as Swiss, different endpoint
-  const analyzeUrl = `${endpoint}/formrecognizer/documentModels/prebuilt-read:analyze?api-version=2023-07-31`;
+  const useDIv4 = !!(diEndpoint && diKey);
+  const modelMap: Record<string, string> = {
+    layout: 'prebuilt-layout',
+    contract: 'prebuilt-contract',
+    invoice: 'prebuilt-invoice',
+    read: 'prebuilt-read',
+  };
+  const selectedModel = modelMap[options.diModel || 'layout'] || 'prebuilt-layout';
+  const apiVersion = useDIv4 ? '2024-11-30' : '2023-07-31';
+  const apiPath = useDIv4 ? 'documentintelligence' : 'formrecognizer';
+  const actualModel = useDIv4 ? selectedModel : 'prebuilt-read';
+
+  const params = new URLSearchParams({ 'api-version': apiVersion });
+  if (useDIv4 && (options.extractKeyValuePairs !== false) && actualModel !== 'prebuilt-read') {
+    params.set('features', 'keyValuePairs');
+  }
+
+  const analyzeUrl = `${endpoint.replace(/\/$/, '')}/${apiPath}/documentModels/${actualModel}:analyze?${params.toString()}`;
 
   const response = await fetch(analyzeUrl, {
     method: 'POST',
@@ -273,7 +377,6 @@ export async function performAzureEUOCR(
     throw new Error('No operation location returned');
   }
 
-  // Poll for results (same as Swiss)
   let result: any = null;
   for (let i = 0; i < 60; i++) {
     await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -295,17 +398,45 @@ export async function performAzureEUOCR(
   const pages: PageResult[] = (result.pages || []).map((page: any, idx: number) => ({
     pageNumber: idx + 1,
     text: (page.lines || []).map((l: any) => l.content).join('\n'),
-    confidence: 0.9,
-    blocks: [],
+    confidence: page.confidence || 0.9,
+    blocks: (page.lines || []).map((l: any) => ({
+      text: l.content,
+      confidence: l.confidence || 0.9,
+      blockType: 'text' as const,
+    })),
   }));
 
+  const tables: TableResult[] = (options.extractTables !== false)
+    ? (result.tables || []).map((table: any) => ({
+        pageNumber: table.boundingRegions?.[0]?.pageNumber || 1,
+        headers: (table.cells || [])
+          .filter((c: any) => c.kind === 'columnHeader')
+          .sort((a: any, b: any) => a.columnIndex - b.columnIndex)
+          .map((c: any) => c.content) || [],
+        rows: groupTableCells(table.cells || []),
+        confidence: table.confidence || 0.9,
+      }))
+    : [];
+
+  let fullText = result.content || pages.map((p) => p.text).join('\n\n');
+
+  // Append key-value pairs if available
+  if (result.keyValuePairs?.length) {
+    fullText += '\n\n--- KEY-VALUE PAIRS ---\n';
+    for (const kv of result.keyValuePairs) {
+      const k = kv.key?.content || '';
+      const v = kv.value?.content || '';
+      if (k && v) fullText += `${k}: ${v}\n`;
+    }
+  }
+
   return {
-    text: result.content || '',
-    confidence: 0.9,
-    provider: 'azure-document-intelligence',
+    text: fullText,
+    confidence: calculateAverageConfidence(pages),
+    provider: useDIv4 ? 'azure-document-intelligence-v4-eu' : 'azure-document-intelligence',
     region: 'west-europe',
     pages,
-    tables: [],
+    tables,
     processingTime: Date.now() - startTime,
     dataResidency: 'eu',
   };
@@ -682,6 +813,7 @@ export async function performEUCompliantOCR(
   if (provider) {
     switch (provider) {
       case 'azure-ch':
+      case 'azure-di':
         return performAzureSwitzerlandOCR(fileBuffer, options);
       case 'azure-eu':
         return performAzureEUOCR(fileBuffer, options);
@@ -836,6 +968,12 @@ export function getAvailableProviders(): {
 }[] {
   return [
     {
+      provider: 'azure-di',
+      configured: !!(process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT && process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY),
+      region: 'Switzerland North (Zurich) — Document Intelligence v4.0',
+      dataResidency: 'Switzerland',
+    },
+    {
       provider: 'azure-ch',
       configured: !!(process.env.AZURE_VISION_ENDPOINT_CH && process.env.AZURE_VISION_KEY_CH),
       region: 'Switzerland North (Zurich)',
@@ -844,6 +982,7 @@ export function getAvailableProviders(): {
     {
       provider: 'azure-eu',
       configured: !!(
+        process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT_EU ||
         process.env.AZURE_VISION_ENDPOINT_EU ||
         process.env.AZURE_VISION_ENDPOINT
       ),

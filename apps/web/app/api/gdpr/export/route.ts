@@ -8,18 +8,18 @@
  */
 
 import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 import { 
   requestDataExport, 
   getExportStatus,
-  requestAccountDeletion,
-  cancelAccountDeletion,
+  requestAccountDeletion as _requestAccountDeletion,
+  cancelAccountDeletion as _cancelAccountDeletion,
 } from '@/lib/gdpr/data-rights';
-
 // Data Export
-export async function POST(request: NextRequest) {
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return requestDataExport(request);
-}
+});
 
-export async function GET(request: NextRequest) {
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
   return getExportStatus(request);
-}
+});

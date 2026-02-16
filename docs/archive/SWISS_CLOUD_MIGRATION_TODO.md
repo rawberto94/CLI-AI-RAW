@@ -424,6 +424,7 @@ export async function POST(request: NextRequest) {
 ## 🚀 Quick Start Commands
 
 ### Step 1: Validate Current State
+
 ```bash
 # Run type checking
 pnpm typecheck
@@ -436,6 +437,7 @@ pnpm lint
 ```
 
 ### Step 2: Fix Critical Issues
+
 ```bash
 # Implement missing APIs
 touch apps/web/app/api/analytics/metrics/route.ts
@@ -444,6 +446,7 @@ touch apps/web/app/api/contracts/bulk/route.ts
 ```
 
 ### Step 3: Build for Production
+
 ```bash
 # Build Docker images
 docker build -t contract-intel:latest .
@@ -453,6 +456,7 @@ docker compose -f docker-compose.prod.yml up
 ```
 
 ### Step 4: Deploy to Cloud
+
 ```bash
 # Azure example
 az aks get-credentials --resource-group rg-contracts --name aks-contracts-ch

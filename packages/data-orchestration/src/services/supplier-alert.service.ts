@@ -9,11 +9,10 @@
  * Requirements: 4.2
  */
 
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 import { supplierTrendAnalyzerService, getSupplierTrendAnalyzerService } from './supplier-trend-analyzer.service';
 import { supplierIntelligenceService } from './supplier-intelligence.service';
 
-const prisma = new PrismaClient();
 const trendAnalyzer = getSupplierTrendAnalyzerService(prisma);
 
 export interface SupplierAlert {
@@ -484,7 +483,8 @@ export class SupplierAlertService {
    */
   async acknowledgeAlert(
     alertId: string,
-    userId: string
+    userId: string,
+    tenantId: string
   ): Promise<SupplierAlert> {
     await prisma.$executeRaw`
       UPDATE "SupplierAlert"
@@ -493,12 +493,12 @@ export class SupplierAlertService {
         "acknowledgedBy" = ${userId},
         "acknowledgedAt" = NOW(),
         "updatedAt" = NOW()
-      WHERE id = ${alertId}
+      WHERE id = ${alertId} AND "tenantId" = ${tenantId}
     `;
 
     const alert = await prisma.$queryRaw<any[]>`
       SELECT * FROM "SupplierAlert"
-      WHERE id = ${alertId}
+      WHERE id = ${alertId} AND "tenantId" = ${tenantId}
     `;
 
     return this.mapDatabaseAlertToSupplierAlert(alert[0]);
@@ -507,7 +507,7 @@ export class SupplierAlertService {
   /**
    * Resolve an alert
    */
-  async resolveAlert(resolution: AlertResolution): Promise<SupplierAlert> {
+  async resolveAlert(resolution: AlertResolution & { tenantId: string }): Promise<SupplierAlert> {
     await prisma.$executeRaw`
       UPDATE "SupplierAlert"
       SET 
@@ -516,12 +516,12 @@ export class SupplierAlertService {
         "resolvedAt" = ${resolution.resolvedAt},
         resolution = ${resolution.resolution},
         "updatedAt" = NOW()
-      WHERE id = ${resolution.alertId}
+      WHERE id = ${resolution.alertId} AND "tenantId" = ${resolution.tenantId}
     `;
 
     const alert = await prisma.$queryRaw<any[]>`
       SELECT * FROM "SupplierAlert"
-      WHERE id = ${resolution.alertId}
+      WHERE id = ${resolution.alertId} AND "tenantId" = ${resolution.tenantId}
     `;
 
     return this.mapDatabaseAlertToSupplierAlert(alert[0]);
@@ -530,7 +530,7 @@ export class SupplierAlertService {
   /**
    * Dismiss an alert
    */
-  async dismissAlert(alertId: string, userId: string): Promise<SupplierAlert> {
+  async dismissAlert(alertId: string, userId: string, tenantId: string): Promise<SupplierAlert> {
     await prisma.$executeRaw`
       UPDATE "SupplierAlert"
       SET 
@@ -538,12 +538,12 @@ export class SupplierAlertService {
         "resolvedBy" = ${userId},
         "resolvedAt" = NOW(),
         "updatedAt" = NOW()
-      WHERE id = ${alertId}
+      WHERE id = ${alertId} AND "tenantId" = ${tenantId}
     `;
 
     const alert = await prisma.$queryRaw<any[]>`
       SELECT * FROM "SupplierAlert"
-      WHERE id = ${alertId}
+      WHERE id = ${alertId} AND "tenantId" = ${tenantId}
     `;
 
     return this.mapDatabaseAlertToSupplierAlert(alert[0]);

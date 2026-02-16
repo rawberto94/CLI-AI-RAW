@@ -5,17 +5,11 @@
  * for personalizing AI responses
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-import { getEpisodicMemoryService } from '@repo/data-orchestration';
+import { NextRequest } from 'next/server';
+import { getEpisodicMemoryService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { 
       query, 
@@ -25,14 +19,10 @@ export async function POST(request: NextRequest) {
       types,
       limit = 5, 
       recencyBias = 0.3,
-      minImportance = 0.3,
-    } = body;
+      minImportance = 0.3 } = body;
 
     if (!query || !tenantId) {
-      return NextResponse.json(
-        { error: 'Query and tenantId are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Query and tenantId are required', 400);
     }
 
     const memoryService = getEpisodicMemoryService();
@@ -45,19 +35,9 @@ export async function POST(request: NextRequest) {
       types,
       limit,
       recencyBias,
-      minImportance,
-    });
+      minImportance });
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       memories,
-      count: memories.length,
-    });
-  } catch (error) {
-    console.error('Memory recall error:', error);
-    return NextResponse.json(
-      { error: 'Failed to recall memories' },
-      { status: 500 }
-    );
-  }
-}
+      count: memories.length });
+  });

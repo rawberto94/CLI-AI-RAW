@@ -24,14 +24,14 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
 
   useEffect(() => {
     loadMarketIntelligence();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [selectedRole, selectedSeniority, selectedCountry, periodMonths]);
 
   useEffect(() => {
     loadTrendingRoles();
     loadSupplierRankings();
     loadEmergingTrends();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [periodMonths]);
 
   const loadMarketIntelligence = async () => {
@@ -284,7 +284,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                         <div className="text-lg font-semibold">${intelligence.statistics.p90.toFixed(0)}</div>
                       </div>
                     </div>
-                    <div className="h-2 bg-gradient-to-r from-green-500 via-yellow-500 to-red-500 rounded-full" />
+                    <div className="h-2 bg-gradient-to-r from-violet-500 via-yellow-500 to-red-500 rounded-full" />
                   </div>
                 </CardContent>
               </Card>
@@ -470,7 +470,7 @@ export function MarketIntelligenceDashboard({ tenantId }: MarketIntelligenceProp
                         <AlertTriangle className={`h-5 w-5 flex-shrink-0 mt-0.5 ${
                           trend.severity === 'HIGH' ? 'text-red-500' : 
                           trend.severity === 'MEDIUM' ? 'text-yellow-500' : 
-                          'text-blue-500'
+                          'text-violet-500'
                         }`} />
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">

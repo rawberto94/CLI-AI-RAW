@@ -7,7 +7,6 @@ import {
   Home,
   FolderOpen,
   Bell,
-  FileText,
   Presentation,
   Sparkles,
   MessageSquare,
@@ -20,12 +19,8 @@ import {
   X,
   Upload,
   Search,
-  Zap,
   Shield,
   ClipboardList,
-  Calendar,
-  Users,
-  TrendingUp,
   Clock,
   Menu,
   ArrowLeftRight,
@@ -34,6 +29,22 @@ import {
   Rocket,
   PlayCircle,
   GitBranch,
+  FileSignature,
+  Scale,
+  DollarSign,
+  AlertTriangle,
+  Key,
+  Brain,
+  Cog,
+  Archive,
+  RefreshCw,
+  Layers,
+  ShieldCheck,
+  Inbox,
+  CalendarClock,
+  Gauge,
+  GitCompare,
+  Target,
 } from "lucide-react";
 import {
   Tooltip,
@@ -67,8 +78,7 @@ interface NavItem {
   tourId?: string; // For onboarding tour targeting
 }
 
-// Navigation groups - ONLY showing currently active features
-// See UNUSED_FILES.md for future upgrades (Renewals, Approvals, etc.)
+// Navigation groups - Full feature set
 const navigationGroups: NavGroup[] = [
   {
     id: 'getting-started',
@@ -87,11 +97,12 @@ const navigationGroups: NavGroup[] = [
     label: 'Overview',
     icon: LayoutDashboard,
     defaultOpen: true,
-    gradient: 'from-blue-500 to-indigo-500',
+    gradient: 'from-violet-500 to-purple-500',
     items: [
       { href: "/dashboard", label: "Dashboard", icon: Home, description: "Your contract overview and key metrics", tourId: "dashboard" },
       { href: "/contracts", label: "Contracts", icon: FolderOpen, description: "Manage and analyze your contracts", tourId: "contracts" },
       { href: "/upload", label: "Upload", icon: Upload, description: "Add new contracts", tourId: "upload" },
+      { href: "/notifications", label: "Notifications", icon: Bell, description: "Alerts, reminders, and updates", tourId: "notifications" },
     ],
   },
   {
@@ -99,21 +110,85 @@ const navigationGroups: NavGroup[] = [
     label: 'AI Intelligence',
     icon: Sparkles,
     defaultOpen: true,
-    gradient: 'from-purple-500 to-pink-500',
+    gradient: 'from-violet-500 to-pink-500',
     items: [
-      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Ask questions about your contracts", tourId: "ai-assistant" },
+      { href: "/intelligence", label: "Intelligence Hub", icon: Brain, description: "Central AI intelligence dashboard", isNew: true, tourId: "intelligence-hub" },
+      { href: "/ai/chat", label: "AI Assistant", icon: MessageSquare, description: "Chat with AI agent personas via @mentions", tourId: "ai-assistant" },
+      { href: "/agents", label: "Agent Dashboard", icon: Cog, description: "Monitor all 12 intelligence agents", isNew: true, tourId: "agents" },
+      { href: "/agents/observability", label: "Agent Observability", icon: Gauge, description: "Agent metrics, latency & error rates", isNew: true, tourId: "agent-observability" },
       { href: "/search", label: "Smart Search", icon: Search, description: "AI-powered contract search", tourId: "smart-search" },
+      { href: "/search/saved", label: "Saved Searches", icon: Inbox, description: "Saved searches with alerts", isNew: true, tourId: "saved-searches" },
+      { href: "/intelligence/search", label: "RAG Search", icon: Search, description: "Semantic vector search with RAG", isNew: true, tourId: "rag-search" },
+      { href: "/intelligence/health", label: "Contract Health", icon: ShieldCheck, description: "Portfolio health scoring & trends", isNew: true, tourId: "contract-health" },
+      { href: "/intelligence/graph", label: "Knowledge Graph", icon: GitBranch, description: "Entity-relationship explorer", isNew: true, tourId: "knowledge-graph" },
       { href: "/compare", label: "Compare", icon: ArrowLeftRight, description: "Compare contracts side by side", tourId: "compare" },
+      { href: "/intelligence/negotiate", label: "Negotiation Copilot", icon: Scale, description: "AI-powered negotiation strategy", isNew: true, tourId: "negotiate" },
+      { href: "/ai/smart-compare", label: "AI Comparison", icon: GitCompare, description: "Semantic clause-level comparison", isNew: true, tourId: "smart-compare" },
+      { href: "/ai/predictions", label: "Predictive Analytics", icon: Target, description: "Renewal & cost predictions", isNew: true, tourId: "predictions" },
+      { href: "/ai-insights", label: "AI Insights", icon: Sparkles, description: "Aggregated AI-driven insights", isNew: true, tourId: "ai-insights" },
+      { href: "/admin/rag-eval", label: "RAG Quality", icon: Gauge, description: "RAG pipeline quality monitoring", isNew: true, tourId: "rag-eval" },
+    ],
+  },
+  {
+    id: 'management',
+    label: 'Management',
+    icon: Layers,
+    defaultOpen: false,
+    gradient: 'from-emerald-500 to-teal-500',
+    items: [
+      { href: "/requests", label: "Requests", icon: Inbox, description: "Contract request intake and triage", isNew: true, tourId: "requests" },
+      { href: "/renewals", label: "Renewals", icon: RefreshCw, description: "Track contract renewals", tourId: "renewals" },
+      { href: "/amendments", label: "Amendments", icon: FileSignature, description: "Contract amendment lifecycle", isNew: true, tourId: "amendments" },
+      { href: "/templates", label: "Templates", icon: BookOpen, description: "Contract templates library", tourId: "templates" },
+      { href: "/clauses/governance", label: "Clause Governance", icon: BookOpen, description: "Clause approval workflows", isNew: true, tourId: "clause-governance" },
+      { href: "/clauses/versions", label: "Clause Versions", icon: GitBranch, description: "Version history and diff viewer", isNew: true, tourId: "clause-versions" },
+      { href: "/document-expiry", label: "Document Expiry", icon: CalendarClock, description: "Track document expirations", isNew: true, tourId: "document-expiry" },
+      { href: "/contracts/bulk", label: "Bulk Operations", icon: Archive, description: "Export, import, and bulk actions", isNew: true, tourId: "bulk-ops" },
+    ],
+  },
+  {
+    id: 'governance',
+    label: 'Governance',
+    icon: Shield,
+    defaultOpen: false,
+    gradient: 'from-blue-500 to-indigo-500',
+    items: [
+      { href: "/governance/delegation", label: "Delegation Matrix", icon: Scale, description: "Delegation of authority rules", isNew: true, tourId: "doa" },
+      { href: "/governance/signature-policies", label: "Signature Policies", icon: FileSignature, description: "E-signature configuration", isNew: true, tourId: "sig-policies" },
+      { href: "/governance/pre-approval-gates", label: "Pre-Approval Gates", icon: Shield, description: "Required approval checkpoints", isNew: true, tourId: "pre-approval" },
+      { href: "/governance/routing-rules", label: "Routing Rules", icon: GitBranch, description: "Auto-routing configuration", isNew: true, tourId: "routing" },
+      { href: "/evidence", label: "Evidence Vault", icon: ClipboardList, description: "Obligation evidence repository", isNew: true, tourId: "evidence" },
+    ],
+  },
+  {
+    id: 'procurement',
+    label: 'Procurement & Risk',
+    icon: DollarSign,
+    defaultOpen: false,
+    gradient: 'from-amber-500 to-orange-500',
+    items: [
+      { href: "/risk", label: "Risk Dashboard", icon: AlertTriangle, description: "Contract risk assessment & radar", isNew: true, tourId: "risk" },
+      { href: "/intelligence/risk-radar", label: "Risk Radar", icon: Target, description: "Visual risk severity analysis", isNew: true, tourId: "risk-radar" },
+      { href: "/compliance", label: "Compliance", icon: Shield, description: "Compliance monitoring & violations", isNew: true, tourId: "compliance" },
+      { href: "/obligations", label: "Obligations", icon: ClipboardList, description: "Obligation tracking & deadlines", isNew: true, tourId: "obligations" },
+      { href: "/spend", label: "Spend Management", icon: DollarSign, description: "POs, invoices, and 3-way matching", isNew: true, tourId: "spend" },
+      { href: "/rate-cards", label: "Rate Cards", icon: BarChart3, description: "Rate card tracking and compliance", tourId: "rate-cards" },
+      { href: "/vendor-risk", label: "Vendor Risk", icon: AlertTriangle, description: "Vendor risk assessments", isNew: true, tourId: "vendor-risk" },
+      { href: "/suppliers/performance", label: "Supplier Performance", icon: BarChart3, description: "Supplier scorecards", tourId: "suppliers" },
+      { href: "/analytics/rate-compliance", label: "Rate Compliance", icon: ShieldCheck, description: "Rate card compliance checker", isNew: true, tourId: "rate-compliance" },
     ],
   },
   {
     id: 'analytics',
-    label: 'Analytics',
+    label: 'Analytics & Reports',
     icon: BarChart3,
     defaultOpen: false,
     gradient: 'from-amber-500 to-orange-500',
     items: [
-      { href: "/analytics", label: "Reports", icon: Presentation, description: "View insights and reports", tourId: "analytics" },
+      { href: "/analytics", label: "Analytics", icon: Presentation, description: "Dashboards and insights", tourId: "analytics" },
+      { href: "/reports", label: "Reports", icon: BarChart3, description: "Custom and scheduled reports", tourId: "reports" },
+      { href: "/monitoring", label: "System Monitoring", icon: Gauge, description: "Platform health & performance", isNew: true, tourId: "monitoring" },
+      { href: "/workflows/sla", label: "SLA Monitoring", icon: Clock, description: "SLA compliance tracking", tourId: "sla" },
     ],
   },
   {
@@ -124,23 +199,17 @@ const navigationGroups: NavGroup[] = [
     gradient: 'from-slate-600 to-slate-800',
     items: [
       { href: "/workflows", label: "Workflows", icon: GitBranch, description: "Approval workflow management", tourId: "workflows" },
+      { href: "/workflows/designer", label: "Workflow Designer", icon: Layers, description: "Visual drag-and-drop builder", isNew: true, tourId: "workflow-designer" },
       { href: "/audit-logs", label: "Audit Logs", icon: ClipboardList, description: "System activity and compliance tracking", tourId: "audit-logs" },
+      { href: "/admin/api-keys", label: "API Keys", icon: Key, description: "External integration keys", isNew: true, tourId: "api-keys" },
+      { href: "/admin/legal-holds", label: "Legal Holds", icon: Scale, description: "Litigation hold management", isNew: true, tourId: "legal-holds" },
+      { href: "/admin/dlp", label: "DLP Policies", icon: ShieldCheck, description: "Data loss prevention", isNew: true, tourId: "dlp" },
+      { href: "/admin/ai-governance", label: "AI Governance", icon: Brain, description: "AI model management and drift", isNew: true, tourId: "ai-governance" },
+      { href: "/admin/job-monitor", label: "Job Monitor", icon: Cog, description: "Background job queue status", isNew: true, tourId: "job-monitor" },
+      { href: "/admin/records", label: "Records", icon: Archive, description: "Archival and defensible deletion", isNew: true, tourId: "records" },
+      { href: "/settings", label: "Settings", icon: Settings, description: "Platform configuration", tourId: "settings" },
     ],
   },
-  // FUTURE UPGRADES - Uncomment when ready:
-  // {
-  //   id: 'management',
-  //   label: 'Management',
-  //   icon: Calendar,
-  //   defaultOpen: false,
-  //   gradient: 'from-emerald-500 to-teal-500',
-  //   items: [
-  //     { href: "/renewals", label: "Renewals", icon: Clock, description: "Track contract renewals" },
-  //     { href: "/approvals", label: "Approvals", icon: Shield, description: "Pending approvals queue" },
-  //     { href: "/compliance", label: "Compliance", icon: Shield, description: "Compliance monitoring" },
-  //     { href: "/governance", label: "Governance", icon: Shield, description: "Policies & compliance" },
-  //   ],
-  // },
 ];
 
 function isPathActive(pathname: string, href: string) {
@@ -204,7 +273,7 @@ const NavGroupSection = memo(function NavGroupSection({
       
       <AnimatePresence initial={false}>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             id={contentId}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -247,7 +316,7 @@ const NavItemComponent = memo(function NavItemComponent({
           className={cn(
             "group flex items-center gap-2.5 px-3 py-2 text-sm rounded-lg transition-all duration-200",
             active
-              ? `bg-gradient-to-r ${gradient || 'from-blue-50 to-indigo-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50`
+              ? `bg-gradient-to-r ${gradient || 'from-violet-50 to-purple-50'} text-slate-900 font-semibold shadow-sm border border-slate-200/50`
               : "text-slate-600 hover:bg-slate-100/60 hover:text-slate-900"
           )}
         >
@@ -264,7 +333,7 @@ const NavItemComponent = memo(function NavItemComponent({
           </motion.div>
           <span className="flex-1">{item.label}</span>
           {item.isNew && (
-            <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 animate-pulse">
+            <Badge className="h-4 px-1.5 text-[9px] font-bold bg-gradient-to-r from-violet-500 to-pink-500 text-white border-0 animate-pulse">
               NEW
             </Badge>
           )}
@@ -275,7 +344,7 @@ const NavItemComponent = memo(function NavItemComponent({
                 "h-5 px-1.5 text-[10px] font-bold rounded-full",
                 item.badgeVariant === 'destructive'
                   ? "bg-gradient-to-r from-rose-100 to-red-100 text-rose-700"
-                  : "bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-700"
+                  : "bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700"
               )}
             >
               {item.badge}
@@ -342,7 +411,7 @@ function MobileSidebar({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -380,7 +449,7 @@ function MobileSidebar({
             
             {/* Navigation */}
             <TooltipProvider delayDuration={500}>
-              <nav className="p-4 space-y-2">
+              <nav className="p-4 space-y-2" aria-label="Main navigation">
                 {navigationGroups.map((group) => (
                   <NavGroupSection key={group.id} group={group} pathname={pathname} />
                 ))}
@@ -393,7 +462,7 @@ function MobileSidebar({
               <Link
                 href="/tour"
                 onClick={onClose}
-                className="flex items-center gap-3 w-full px-3 py-2.5 mb-3 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25"
+                className="flex items-center gap-3 w-full px-3 py-2.5 mb-3 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25"
               >
                 <div className="p-1.5 bg-white/20 rounded-lg">
                   <PlayCircle className="h-4 w-4" />
@@ -409,14 +478,14 @@ function MobileSidebar({
                 <button
                   type="button"
                   onClick={resetTutorial}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+                  className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
                 >
                   <HelpCircle className="h-4 w-4" />
                   <span className="font-medium">Quick Start Guide</span>
                 </button>
                 
                 <Link href="/tour#learn" onClick={onClose}>
-                  <div className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all">
+                  <div className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all">
                     <GraduationCap className="h-4 w-4" />
                     <span className="font-medium">Learning Center</span>
                   </div>
@@ -424,7 +493,7 @@ function MobileSidebar({
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );
@@ -500,7 +569,7 @@ export function Sidebar() {
                 <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} className="flex-1">
                   <Link
                     href="/upload"
-                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-md shadow-blue-500/25 hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                    className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
                   >
                     <Upload className="h-3.5 w-3.5" />
                     Upload
@@ -530,14 +599,14 @@ export function Sidebar() {
         {/* Welcome Tutorial Banner */}
         <AnimatePresence>
           {showTutorial && (
-            <motion.div 
+            <motion.div key="tutorial" 
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
               <div className="p-3 border-b border-slate-200/60">
-                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100 shadow-sm">
+                <div className="relative bg-gradient-to-br from-violet-50 via-purple-50 to-purple-50 rounded-xl p-4 border border-violet-100 shadow-sm">
                   <motion.button 
                     type="button"
                     onClick={dismissTutorial}
@@ -552,7 +621,7 @@ export function Sidebar() {
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
                       transition={{ type: "spring", delay: 0.2 }}
-                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-purple-500/30"
+                      className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-lg shadow-violet-500/30"
                     >
                       <Sparkles className="h-5 w-5 text-white" />
                     </motion.div>
@@ -564,7 +633,7 @@ export function Sidebar() {
                       <div className="flex gap-2 mt-3">
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Link href="/contracts">
-                            <Button size="sm" className="h-7 text-xs rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-purple-500/25">
+                            <Button size="sm" className="h-7 text-xs rounded-lg bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 shadow-md shadow-violet-500/25">
                               <FolderOpen className="h-3 w-3 mr-1" />
                               Explore
                             </Button>
@@ -572,7 +641,7 @@ export function Sidebar() {
                         </motion.div>
                         <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
                           <Link href="/ai/chat">
-                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg border-purple-200 text-purple-700 hover:bg-purple-50">
+                            <Button size="sm" variant="outline" className="h-7 text-xs rounded-lg border-violet-200 text-violet-700 hover:bg-violet-50">
                               <MessageSquare className="h-3 w-3 mr-1" />
                               AI Chat
                             </Button>
@@ -589,7 +658,7 @@ export function Sidebar() {
 
         {/* Navigation */}
         <div className="flex-1 overflow-y-auto py-4 px-3">
-          <nav className="space-y-1">
+          <nav className="space-y-1" aria-label="Main navigation">
             {navigationGroups.map((group) => (
               <NavGroupSection key={group.id} group={group} pathname={pathname} />
             ))}
@@ -606,7 +675,7 @@ export function Sidebar() {
           >
             <Link
               href="/tour"
-              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-purple-500/25 hover:shadow-lg hover:shadow-purple-500/30 transition-all"
+              className="flex items-center gap-3 w-full px-3 py-2.5 text-sm rounded-xl bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25 hover:shadow-lg hover:shadow-violet-500/30 transition-all"
             >
               <div className="p-1.5 bg-white/20 rounded-lg">
                 <PlayCircle className="h-4 w-4" />
@@ -626,7 +695,7 @@ export function Sidebar() {
               type="button"
               onClick={resetTutorial}
               whileHover={{ x: 2 }}
-              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all"
+              className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
             >
               <PlayCircle className="h-4 w-4" />
               <span className="font-medium">Take the Tour</span>
@@ -636,7 +705,7 @@ export function Sidebar() {
             <Link href="/tour#learn">
               <motion.div
                 whileHover={{ x: 2 }}
-                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all"
+                className="flex items-center gap-2 w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
               >
                 <GraduationCap className="h-4 w-4" />
                 <span className="font-medium">Learning Center</span>
@@ -648,7 +717,7 @@ export function Sidebar() {
               type="button"
               onClick={() => window.dispatchEvent(new CustomEvent('openKeyboardShortcuts'))}
               whileHover={{ x: 2 }}
-              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              className="flex items-center justify-between w-full px-3 py-2 text-xs text-slate-500 hover:text-violet-600 hover:bg-violet-50 rounded-lg transition-all"
             >
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -670,7 +739,7 @@ export function Sidebar() {
           
           <div className="flex items-center justify-between px-2 pt-2 border-t border-slate-200/60">
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-violet-500 animate-pulse" />
               <span className="text-[10px] text-slate-400 font-medium">System Online</span>
             </div>
             <div className="flex items-center gap-1">

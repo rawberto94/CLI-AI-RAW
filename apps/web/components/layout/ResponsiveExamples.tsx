@@ -30,25 +30,25 @@ export function ResponsiveExamples() {
       <ResponsiveNav
         logo={
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg" />
+            <div className="w-8 h-8 bg-violet-600 rounded-lg" />
             <span className="font-bold text-xl">Logo</span>
           </div>
         }
         desktopNav={
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <Link href="/" className="flex items-center gap-2 text-gray-700 hover:text-violet-600">
               <Home className="w-4 h-4" />
               Home
             </Link>
-            <Link href="/contracts" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <Link href="/contracts" className="flex items-center gap-2 text-gray-700 hover:text-violet-600">
               <FileText className="w-4 h-4" />
               Contracts
             </Link>
-            <Link href="/analytics" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <Link href="/analytics" className="flex items-center gap-2 text-gray-700 hover:text-violet-600">
               <BarChart className="w-4 h-4" />
               Analytics
             </Link>
-            <Link href="/settings" className="flex items-center gap-2 text-gray-700 hover:text-blue-600">
+            <Link href="/settings" className="flex items-center gap-2 text-gray-700 hover:text-violet-600">
               <Settings className="w-4 h-4" />
               Settings
             </Link>
@@ -103,7 +103,7 @@ export function ResponsiveExamples() {
           >
             {Array.from({ length: 8 }).map((_, i) => (
               <div key={i} className="bg-white p-6 rounded-lg shadow-sm border">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg mb-3" />
+                <div className="w-12 h-12 bg-violet-100 rounded-lg mb-3" />
                 <h4 className="font-semibold mb-2">Card {i + 1}</h4>
                 <p className="text-sm text-gray-600">
                   This grid adapts to different screen sizes
@@ -118,7 +118,7 @@ export function ResponsiveExamples() {
           <h3 className="text-xl font-semibold mb-4">Responsive Stack</h3>
           <div className="bg-white rounded-lg p-6 shadow-sm">
             <ResponsiveStack direction="horizontal" breakpoint="md" gap={4}>
-              <div className="flex-1 p-4 bg-blue-50 rounded-lg">
+              <div className="flex-1 p-4 bg-violet-50 rounded-lg">
                 <h4 className="font-semibold mb-2">Section 1</h4>
                 <p className="text-sm text-gray-600">
                   Stacks vertically on mobile, horizontally on desktop
@@ -130,7 +130,7 @@ export function ResponsiveExamples() {
                   Responsive layout without media queries
                 </p>
               </div>
-              <div className="flex-1 p-4 bg-purple-50 rounded-lg">
+              <div className="flex-1 p-4 bg-violet-50 rounded-lg">
                 <h4 className="font-semibold mb-2">Section 3</h4>
                 <p className="text-sm text-gray-600">
                   Automatically adjusts based on screen size
@@ -145,8 +145,8 @@ export function ResponsiveExamples() {
           <h3 className="text-xl font-semibold mb-4">Conditional Rendering</h3>
           <div className="space-y-4">
             <ResponsiveShow on="mobile">
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-900 font-medium">
+              <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+                <p className="text-violet-900 font-medium">
                   📱 This content is only visible on mobile devices
                 </p>
               </div>
@@ -161,8 +161,8 @@ export function ResponsiveExamples() {
             </ResponsiveShow>
 
             <ResponsiveShow on="desktop">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                <p className="text-purple-900 font-medium">
+              <div className="bg-violet-50 border border-violet-200 rounded-lg p-4">
+                <p className="text-violet-900 font-medium">
                   🖥️ This content is only visible on desktop
                 </p>
               </div>
@@ -240,9 +240,9 @@ function InfoCard({ label, value }: { label: string; value: string }) {
 
 function Badge({ children, color }: { children: React.ReactNode; color: string }) {
   const colors = {
-    blue: 'bg-blue-100 text-blue-800',
+    blue: 'bg-violet-100 text-violet-800',
     green: 'bg-green-100 text-green-800',
-    purple: 'bg-purple-100 text-purple-800',
+    purple: 'bg-violet-100 text-violet-800',
     orange: 'bg-orange-100 text-orange-800',
     gray: 'bg-gray-100 text-gray-800',
   };

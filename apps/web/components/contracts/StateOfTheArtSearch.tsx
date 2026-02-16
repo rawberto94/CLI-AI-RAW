@@ -108,14 +108,14 @@ interface StateOfTheArtSearchProps {
 
 const STATUS_OPTIONS: FilterOption[] = [
   { id: 'all', label: 'All Statuses', value: 'all', color: 'slate' },
-  { id: 'completed', label: 'Active', value: 'completed', color: 'emerald' },
+  { id: 'completed', label: 'Active', value: 'completed', color: 'violet' },
   { id: 'processing', label: 'Processing', value: 'processing', color: 'blue' },
   { id: 'pending', label: 'Pending', value: 'pending', color: 'amber' },
   { id: 'failed', label: 'Failed', value: 'failed', color: 'red' },
 ];
 
 const RISK_OPTIONS: FilterOption[] = [
-  { id: 'low', label: 'Low Risk', value: 'low', icon: Shield, color: 'emerald' },
+  { id: 'low', label: 'Low Risk', value: 'low', icon: Shield, color: 'violet' },
   { id: 'medium', label: 'Medium Risk', value: 'medium', icon: Shield, color: 'amber' },
   { id: 'high', label: 'High Risk', value: 'high', icon: AlertTriangle, color: 'red' },
 ];
@@ -266,9 +266,9 @@ const SmartSearchInput = memo(function SmartSearchInput({
     switch (type) {
       case 'recent': return 'text-slate-400';
       case 'trending': return 'text-amber-500';
-      case 'contract': return 'text-blue-500';
+      case 'contract': return 'text-violet-500';
       case 'ai': return 'text-violet-500';
-      case 'filter': return 'text-emerald-500';
+      case 'filter': return 'text-violet-500';
       default: return 'text-slate-400';
     }
   };
@@ -280,7 +280,7 @@ const SmartSearchInput = memo(function SmartSearchInput({
         <div className={cn(
           "absolute inset-0 rounded-xl transition-all duration-300",
           isFocused 
-            ? "bg-gradient-to-r from-violet-500/10 via-blue-500/10 to-cyan-500/10 blur-xl scale-105" 
+            ? "bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-purple-500/10 blur-xl scale-105" 
             : "bg-transparent"
         )} />
         <div className={cn(
@@ -337,7 +337,7 @@ const SmartSearchInput = memo(function SmartSearchInput({
       {/* Dropdown */}
       <AnimatePresence>
         {showDropdown && (
-          <motion.div
+          <motion.div key="dropdown"
             ref={dropdownRef}
             initial={{ opacity: 0, y: -8, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -350,7 +350,7 @@ const SmartSearchInput = memo(function SmartSearchInput({
               <div className="p-2 border-b border-slate-100 dark:border-slate-800">
                 <button
                   onClick={() => onAIClick(value)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/50 dark:hover:to-purple-950/50 transition-colors group"
+                  className="w-full flex items-center gap-3 p-3 rounded-lg bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-950/30 dark:to-purple-950/30 hover:from-violet-100 hover:to-purple-100 dark:hover:from-violet-950/50 dark:hover:to-violet-950/50 transition-colors group"
                 >
                   <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg shadow-md">
                     <Sparkles className="h-4 w-4 text-white" />
@@ -466,39 +466,39 @@ const FilterChip = memo(function FilterChip({
 }: FilterChipProps) {
   const colorClasses = {
     violet: {
-      active: 'bg-violet-100 border-violet-300 text-violet-700 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
-      inactive: 'hover:bg-violet-50 dark:hover:bg-violet-950/30',
-      badge: 'bg-violet-500',
+      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
+      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
+      badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
     },
     blue: {
-      active: 'bg-blue-100 border-blue-300 text-blue-700 dark:bg-blue-950/50 dark:border-blue-700 dark:text-blue-300',
-      inactive: 'hover:bg-blue-50 dark:hover:bg-blue-950/30',
-      badge: 'bg-blue-500',
+      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
+      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
+      badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
     },
     emerald: {
-      active: 'bg-emerald-100 border-emerald-300 text-emerald-700 dark:bg-emerald-950/50 dark:border-emerald-700 dark:text-emerald-300',
-      inactive: 'hover:bg-emerald-50 dark:hover:bg-emerald-950/30',
-      badge: 'bg-emerald-500',
+      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
+      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
+      badge: 'bg-gradient-to-r from-violet-500 to-violet-500',
     },
     amber: {
-      active: 'bg-amber-100 border-amber-300 text-amber-700 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300',
-      inactive: 'hover:bg-amber-50 dark:hover:bg-amber-950/30',
-      badge: 'bg-amber-500',
+      active: 'bg-amber-100 border-amber-300 text-amber-700 shadow-sm shadow-amber-200/50 dark:bg-amber-950/50 dark:border-amber-700 dark:text-amber-300',
+      inactive: 'hover:bg-amber-50 hover:border-amber-200 dark:hover:bg-amber-950/30',
+      badge: 'bg-gradient-to-r from-amber-500 to-orange-500',
     },
     red: {
-      active: 'bg-red-100 border-red-300 text-red-700 dark:bg-red-950/50 dark:border-red-700 dark:text-red-300',
-      inactive: 'hover:bg-red-50 dark:hover:bg-red-950/30',
-      badge: 'bg-red-500',
+      active: 'bg-red-100 border-red-300 text-red-700 shadow-sm shadow-red-200/50 dark:bg-red-950/50 dark:border-red-700 dark:text-red-300',
+      inactive: 'hover:bg-red-50 hover:border-red-200 dark:hover:bg-red-950/30',
+      badge: 'bg-gradient-to-r from-red-500 to-rose-500',
     },
     teal: {
-      active: 'bg-teal-100 border-teal-300 text-teal-700 dark:bg-teal-950/50 dark:border-teal-700 dark:text-teal-300',
-      inactive: 'hover:bg-teal-50 dark:hover:bg-teal-950/30',
-      badge: 'bg-teal-500',
+      active: 'bg-violet-100 border-violet-300 text-violet-700 shadow-sm shadow-violet-200/50 dark:bg-violet-950/50 dark:border-violet-700 dark:text-violet-300',
+      inactive: 'hover:bg-violet-50 hover:border-violet-200 dark:hover:bg-violet-950/30',
+      badge: 'bg-gradient-to-r from-violet-500 to-purple-500',
     },
     slate: {
-      active: 'bg-slate-200 border-slate-400 text-slate-700 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300',
-      inactive: 'hover:bg-slate-100 dark:hover:bg-slate-800/50',
-      badge: 'bg-slate-500',
+      active: 'bg-slate-200 border-slate-400 text-slate-700 shadow-sm shadow-slate-200/50 dark:bg-slate-800 dark:border-slate-600 dark:text-slate-300',
+      inactive: 'hover:bg-slate-100 hover:border-slate-300 dark:hover:bg-slate-800/50',
+      badge: 'bg-gradient-to-r from-slate-500 to-slate-600',
     },
   };
 
@@ -510,21 +510,22 @@ const FilterChip = memo(function FilterChip({
         <PopoverTrigger asChild>
           <button
             className={cn(
-              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200",
-              isActive ? colors.active : `border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 ${colors.inactive}`
+              "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all duration-200",
+              isActive ? colors.active : `border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 ${colors.inactive}`,
+              "hover:scale-[1.02] active:scale-[0.98]"
             )}
           >
             <Icon className="h-3.5 w-3.5" />
             {label}
             {count > 0 && (
-              <span className={cn("min-w-[18px] h-[18px] rounded-full text-white text-[10px] flex items-center justify-center font-semibold", colors.badge)}>
+              <span className={cn("min-w-[18px] h-[18px] rounded-full text-white text-[10px] flex items-center justify-center font-bold shadow-sm", colors.badge)}>
                 {count}
               </span>
             )}
-            <ChevronDown className="h-3 w-3 ml-0.5 opacity-50" />
+            <ChevronDown className="h-3 w-3 ml-0.5 opacity-60" />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-56 p-1">
+        <PopoverContent align="start" className="w-56 p-1.5 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200">
           {children}
         </PopoverContent>
       </Popover>
@@ -535,14 +536,15 @@ const FilterChip = memo(function FilterChip({
     <button
       onClick={onClick}
       className={cn(
-        "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-200",
-        isActive ? colors.active : `border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 ${colors.inactive}`
+        "inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-semibold border transition-all duration-200",
+        isActive ? colors.active : `border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 ${colors.inactive}`,
+        "hover:scale-[1.02] active:scale-[0.98]"
       )}
     >
       <Icon className="h-3.5 w-3.5" />
       {label}
       {count > 0 && (
-        <span className={cn("min-w-[18px] h-[18px] rounded-full text-white text-[10px] flex items-center justify-center font-semibold", colors.badge)}>
+        <span className={cn("min-w-[18px] h-[18px] rounded-full text-white text-[10px] flex items-center justify-center font-bold shadow-sm", colors.badge)}>
           {count}
         </span>
       )}
@@ -571,24 +573,24 @@ const FilterOptionItem = memo(function FilterOptionItem({
     <button
       onClick={onToggle}
       className={cn(
-        "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors",
+        "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
         isSelected 
-          ? "bg-slate-100 dark:bg-slate-800" 
+          ? "bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-800/50 shadow-sm" 
           : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
       )}
     >
       <div className={cn(
-        "w-4 h-4 rounded border-2 flex items-center justify-center transition-colors",
+        "w-4.5 h-4.5 rounded border-2 flex items-center justify-center transition-all duration-200",
         isSelected 
-          ? "bg-violet-500 border-violet-500" 
-          : "border-slate-300 dark:border-slate-600"
+          ? "bg-gradient-to-br from-violet-500 to-purple-600 border-violet-500 shadow-sm shadow-violet-500/30" 
+          : "border-slate-300 dark:border-slate-600 hover:border-violet-300"
       )}>
-        {isSelected && <Check className="h-2.5 w-2.5 text-white" />}
+        {isSelected && <Check className="h-3 w-3 text-white" />}
       </div>
       {Icon && <Icon className={cn("h-4 w-4", `text-${option.color}-500`)} />}
-      <span className="flex-1 text-left text-slate-700 dark:text-slate-300">{option.label}</span>
+      <span className="flex-1 text-left text-slate-700 dark:text-slate-300 font-medium">{option.label}</span>
       {option.count !== undefined && (
-        <span className="text-xs text-slate-400">{option.count}</span>
+        <span className="text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">{option.count}</span>
       )}
     </button>
   );
@@ -610,52 +612,55 @@ const ActiveFilters = memo(function ActiveFilters({
   if (filters.length === 0) return null;
 
   const colorClasses: Record<string, string> = {
-    violet: 'bg-violet-100 text-violet-700 border-violet-200 dark:bg-violet-950/50 dark:text-violet-300 dark:border-violet-800',
-    blue: 'bg-blue-100 text-blue-700 border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800',
-    emerald: 'bg-emerald-100 text-emerald-700 border-emerald-200 dark:bg-emerald-950/50 dark:text-emerald-300 dark:border-emerald-800',
-    amber: 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800',
-    red: 'bg-red-100 text-red-700 border-red-200 dark:bg-red-950/50 dark:text-red-300 dark:border-red-800',
-    teal: 'bg-teal-100 text-teal-700 border-teal-200 dark:bg-teal-950/50 dark:text-teal-300 dark:border-teal-800',
-    slate: 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700',
+    violet: 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-200/30 dark:from-violet-950/50 dark:to-purple-950/50 dark:text-violet-300 dark:border-violet-800',
+    blue: 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-200/30 dark:from-violet-950/50 dark:to-purple-950/50 dark:text-violet-300 dark:border-violet-800',
+    emerald: 'bg-gradient-to-r from-violet-100 to-violet-100 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-200/30 dark:from-violet-950/50 dark:to-violet-950/50 dark:text-violet-300 dark:border-violet-800',
+    amber: 'bg-gradient-to-r from-amber-100 to-orange-100 text-amber-700 border-amber-200/60 shadow-sm shadow-amber-200/30 dark:from-amber-950/50 dark:to-orange-950/50 dark:text-amber-300 dark:border-amber-800',
+    red: 'bg-gradient-to-r from-red-100 to-rose-100 text-red-700 border-red-200/60 shadow-sm shadow-red-200/30 dark:from-red-950/50 dark:to-rose-950/50 dark:text-red-300 dark:border-red-800',
+    teal: 'bg-gradient-to-r from-violet-100 to-purple-100 text-violet-700 border-violet-200/60 shadow-sm shadow-violet-200/30 dark:from-violet-950/50 dark:to-purple-950/50 dark:text-violet-300 dark:border-violet-800',
+    slate: 'bg-gradient-to-r from-slate-100 to-slate-50 text-slate-700 border-slate-200/60 shadow-sm shadow-slate-200/30 dark:from-slate-800 dark:to-slate-800/50 dark:text-slate-300 dark:border-slate-700',
   };
 
   return (
     <motion.div
       initial={{ opacity: 0, y: -5 }}
       animate={{ opacity: 1, y: 0 }}
-      className="flex items-center gap-2 flex-wrap"
+      className="flex items-center gap-2 flex-wrap p-3 rounded-xl bg-slate-50/50 dark:bg-slate-900/50 border border-slate-200/50 dark:border-slate-800"
     >
-      <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Active filters:</span>
+      <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">Filters:</span>
       <AnimatePresence mode="popLayout">
         {filters.map((filter, idx) => (
           <motion.span
             key={filter.id}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
+            initial={{ opacity: 0, scale: 0.8, y: -5 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.8, y: -5 }}
+            whileHover={{ scale: 1.02 }}
             transition={{ delay: idx * 0.02 }}
             className={cn(
-              "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border",
+              "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border",
               colorClasses[filter.color] || colorClasses.slate
             )}
           >
             {filter.label}
             <button
               onClick={filter.onRemove}
-              className="p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition-colors"
+              className="p-0.5 rounded-full hover:bg-black/15 dark:hover:bg-white/15 transition-colors"
             >
               <X className="h-3 w-3" />
             </button>
           </motion.span>
         ))}
       </AnimatePresence>
-      <button
+      <motion.button
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
         onClick={onClearAll}
-        className="inline-flex items-center gap-1 px-2 py-1 text-xs text-slate-500 hover:text-red-600 dark:text-slate-400 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-md transition-colors"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-950/50 rounded-full transition-colors border border-red-200/50 dark:border-red-800/50"
       >
         <RotateCcw className="h-3 w-3" />
         Clear all
-      </button>
+      </motion.button>
     </motion.div>
   );
 });
@@ -885,7 +890,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       {/* Loading shimmer overlay */}
       <AnimatePresence>
         {isLoading && (
-          <motion.div
+          <motion.div key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -950,7 +955,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
       {/* Filter Chips Row */}
       <AnimatePresence>
         {showAdvanced && (
-          <motion.div
+          <motion.div key="advanced"
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
@@ -976,8 +981,8 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                       <span className={cn(
                         "w-2 h-2 rounded-full",
                         status.color === 'slate' && "bg-slate-400",
-                        status.color === 'emerald' && "bg-emerald-500",
-                        status.color === 'blue' && "bg-blue-500",
+                        status.color === 'emerald' && "bg-violet-500",
+                        status.color === 'blue' && "bg-violet-500",
                         status.color === 'amber' && "bg-amber-500",
                         status.color === 'red' && "bg-red-500"
                       )} />
@@ -1059,7 +1064,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                   <FilterChip
                     label="Supplier"
                     icon={Building2}
-                    color="teal"
+                    color="violet"
                     count={supplierFilters.length}
                     isActive={supplierFilters.length > 0}
                     onClick={() => {}}
@@ -1081,7 +1086,7 @@ export const StateOfTheArtSearch = memo(function StateOfTheArtSearch({
                 <FilterChip
                   label="Value"
                   icon={DollarSign}
-                  color="emerald"
+                  color="violet"
                   count={valueRangeFilter ? 1 : 0}
                   isActive={!!valueRangeFilter}
                   onClick={() => {}}

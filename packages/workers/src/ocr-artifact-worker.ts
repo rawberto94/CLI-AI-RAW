@@ -36,9 +36,52 @@ import {
   getTabPriorityOrder,
 } from './contract-type-profiles';
 
+// Import OCR enhancements module
+import {
+  deskewImage,
+  postOCRValidation,
+  selectAdaptiveModel,
+  runOCREnhancementPipeline,
+  collectTrainingData,
+  analyzeCharacterConfidence,
+  getLowConfidenceRegions,
+  type OCREnhancementPipelineResult,
+  type AdaptiveModelConfig,
+} from './ocr-enhancements';
+
+// Import LLM-enhanced OCR module (Swiss data protection compliant)
+import {
+  runHybridEnhancement,
+  type HybridEnhancementResult,
+} from './ocr-llm-enhancement';
+
 import { getTraceContextFromJobData } from './observability/trace';
 import { buildProcessingPlan } from './workflow/planner';
 import { ensureProcessingJob, setProcessingPlan } from './workflow/processing-job';
+
+// Unified artifact prompts, types, and helpers from shared module
+import {
+  DEFAULT_ARTIFACT_TYPES as SHARED_ARTIFACT_TYPES,
+  buildArtifactPrompt,
+  getSystemPrompt,
+  getFallbackTemplate,
+  truncateTextForType,
+  estimateTokenCost as sharedEstimateTokenCost,
+  safeParseJSON as sharedSafeParseJSON,
+  ArtifactCostTracker,
+  PROMPT_VERSION,
+  UNIFIED_QUALITY_THRESHOLDS,
+  type ArtifactTypeConfig as SharedArtifactTypeConfig,
+  type PromptContext,
+} from './utils/artifact-prompts';
+
+// Type-only imports for Azure Document Intelligence
+import type {
+  DIAnalyzeResult,
+  ContractExtractionResult,
+  InvoiceExtractionResult,
+} from './azure-document-intelligence';
+import { ArtifactQualityValidator, selfCritiqueArtifact } from './utils/artifact-quality-validator';
 
 // Check if we're in build mode - skip worker initialization
 const isBuildTime = process.env.NEXT_BUILD === 'true';
@@ -59,6 +102,26 @@ const WORKER_CONFIG = {
     enableImageOCR: true,                  // Enable OCR for images in PDFs
     enableTableExtraction: true,           // Enhanced table extraction
     confidenceThreshold: 0.7,              // Minimum confidence for extracted data
+    enablePreprocessing: true,             // Enable image preprocessing before OCR
+    preprocessingPreset: 'balanced' as const, // 'fast' | 'balanced' | 'quality'
+    minQualityScoreForSkip: 80,            // Skip preprocessing if quality > this
+    // NEW: OCR accuracy enhancements
+    enableDeskew: true,                    // Enable automatic image deskewing
+    enableLegalSpellCheck: true,           // Enable legal dictionary spell-check
+    enableDateValidation: true,            // Validate and correct date formats
+    enableAmountValidation: true,          // Validate and correct currency amounts
+    enablePostOCRCorrection: true,         // Apply post-OCR corrections
+    enableAdaptiveModelSelection: true,    // Auto-select best model based on document
+    enableCharacterConfidenceAnalysis: true, // Analyze character-level confidence
+    collectTrainingData: true,             // Collect corrections for training
+    lowConfidenceThreshold: 0.6,           // Threshold for flagging low confidence
+    // LLM-enhanced correction (Swiss data protection compliant)
+    enableLLMCorrection: true,             // Use LLM for intelligent spell correction
+    // Data residency: 'CH' (Switzerland only), 'EU' (EU regions), 'ANY' (dev mode)
+    llmDataResidency: (process.env.NODE_ENV === 'production' ? 'CH' : 'ANY') as 'CH' | 'EU' | 'ANY',
+    llmAnonymizePII: true,                 // Anonymize PII before sending to LLM
+    llmAuditLogging: true,                 // Log all LLM operations for compliance
+    llmBlockNonCompliant: process.env.NODE_ENV === 'production', // Block in prod only
   },
   // AI Extraction Enhancement
   ai: {
@@ -391,15 +454,330 @@ const storageCircuitBreaker = new CircuitBreaker('storage', {
 const prisma = getClient();
 
 // Use distributed Redis cache instead of in-memory cache
-import { ocrCache, artifactCache } from '@repo/utils/cache/distributed-cache';
+import { ocrCache } from '@repo/utils/cache/distributed-cache';
 
-// TTL values for reference (applied via the distributed cache)
-const ARTIFACT_CACHE_TTL = 60 * 60; // 1 hour in seconds
+// ============ IMAGE PREPROCESSING UTILITIES ============
+
+/**
+ * Preprocessing options for image enhancement before OCR
+ */
+interface ImagePreprocessingOptions {
+  enableDeskew: boolean;
+  enableDenoise: boolean;
+  enableContrastEnhancement: boolean;
+  enableBinarization: boolean;
+  targetDpi: number;
+  maxDimension: number;
+}
+
+/**
+ * Quality metrics from preprocessing analysis
+ */
+interface PreprocessingQualityMetrics {
+  estimatedDpi: number;
+  sharpness: number;
+  contrast: number;
+  brightness: number;
+  noiseLevel: number;
+  qualityScore: number;
+  recommendations: string[];
+}
+
+/**
+ * Result from image preprocessing
+ */
+interface PreprocessingResult {
+  buffer: Buffer;
+  qualityBefore: PreprocessingQualityMetrics;
+  qualityAfter: PreprocessingQualityMetrics;
+  stepsApplied: string[];
+  processingTimeMs: number;
+  estimatedAccuracyImprovement: number;
+}
+
+/**
+ * Preprocess image buffer for better OCR accuracy using sharp
+ * This is a lightweight preprocessing pipeline for the worker
+ */
+async function preprocessImageForOCR(
+  imageBuffer: Buffer,
+  options: Partial<ImagePreprocessingOptions> = {}
+): Promise<PreprocessingResult> {
+  const startTime = Date.now();
+  const stepsApplied: string[] = [];
+  
+  const opts: ImagePreprocessingOptions = {
+    enableDeskew: options.enableDeskew ?? true,
+    enableDenoise: options.enableDenoise ?? true,
+    enableContrastEnhancement: options.enableContrastEnhancement ?? true,
+    enableBinarization: options.enableBinarization ?? false,
+    targetDpi: options.targetDpi ?? 300,
+    maxDimension: options.maxDimension ?? 3000,
+  };
+  
+  try {
+    const sharp = (await import('sharp')).default;
+    
+    // Analyze initial quality
+    const inputImage = sharp(imageBuffer);
+    const metadata = await inputImage.metadata();
+    const stats = await inputImage.stats();
+    
+    // Calculate initial quality metrics
+    const qualityBefore = calculateImageQuality(metadata, stats);
+    
+    // Skip preprocessing if quality is already good
+    if (qualityBefore.qualityScore >= WORKER_CONFIG.ocr.minQualityScoreForSkip) {
+      logger.info({ qualityScore: qualityBefore.qualityScore }, 'Image quality sufficient, skipping preprocessing');
+      return {
+        buffer: imageBuffer,
+        qualityBefore,
+        qualityAfter: qualityBefore,
+        stepsApplied: ['skipped-good-quality'],
+        processingTimeMs: Date.now() - startTime,
+        estimatedAccuracyImprovement: 0,
+      };
+    }
+    
+    let pipeline = sharp(imageBuffer);
+    
+    // Step 1: Convert to grayscale
+    if (metadata.channels && metadata.channels > 1) {
+      pipeline = pipeline.grayscale();
+      stepsApplied.push('grayscale');
+    }
+    
+    // Step 2: Resize if too large (memory efficiency)
+    const width = metadata.width || 0;
+    const height = metadata.height || 0;
+    if (width > opts.maxDimension || height > opts.maxDimension) {
+      pipeline = pipeline.resize({
+        width: opts.maxDimension,
+        height: opts.maxDimension,
+        fit: 'inside',
+        withoutEnlargement: true,
+      });
+      stepsApplied.push('resize');
+    }
+    
+    // Step 3: Upscale low-DPI images
+    if (qualityBefore.estimatedDpi < opts.targetDpi && width < opts.maxDimension / 2) {
+      const scale = Math.min(2, opts.targetDpi / Math.max(qualityBefore.estimatedDpi, 72));
+      if (scale > 1.1) {
+        const newWidth = Math.round(width * scale);
+        pipeline = pipeline.resize({
+          width: Math.min(newWidth, opts.maxDimension),
+          fit: 'inside',
+        });
+        stepsApplied.push(`upscale-${scale.toFixed(1)}x`);
+      }
+    }
+    
+    // Step 3b: Deskew if enabled (NEW ENHANCEMENT)
+    if (opts.enableDeskew && WORKER_CONFIG.ocr.enableDeskew) {
+      try {
+        const tempBuffer = await pipeline.toBuffer();
+        const deskewResult = await deskewImage(tempBuffer);
+        if (deskewResult.wasApplied) {
+          pipeline = sharp(deskewResult.buffer);
+          stepsApplied.push(`deskew-${deskewResult.angle.toFixed(1)}deg`);
+          logger.info({ angle: deskewResult.angle, confidence: deskewResult.confidence }, 'Deskew applied');
+        }
+      } catch (deskewError) {
+        logger.warn({ error: deskewError }, 'Deskew failed, continuing without');
+      }
+    }
+    
+    // Step 4: Denoise if noisy
+    if (opts.enableDenoise && qualityBefore.noiseLevel > 0.3) {
+      pipeline = pipeline.median(3);
+      stepsApplied.push('denoise');
+    }
+    
+    // Step 5: Enhance contrast
+    if (opts.enableContrastEnhancement) {
+      pipeline = pipeline.normalize();
+      stepsApplied.push('normalize-contrast');
+      
+      // Additional contrast boost for low-contrast images
+      if (qualityBefore.contrast < 0.5) {
+        pipeline = pipeline.linear(1.2, -30);
+        stepsApplied.push('boost-contrast');
+      }
+    }
+    
+    // Step 6: Sharpen if blurry
+    if (qualityBefore.sharpness < 0.7) {
+      pipeline = pipeline.sharpen({
+        sigma: 1.5,
+        m1: 1.0,
+        m2: 0.5,
+      });
+      stepsApplied.push('sharpen');
+    }
+    
+    // Step 7: Binarize for very low quality
+    if (opts.enableBinarization && qualityBefore.qualityScore < 50) {
+      pipeline = pipeline.threshold(128);
+      stepsApplied.push('binarize');
+    }
+    
+    // Output as PNG for best quality
+    const processedBuffer = await pipeline
+      .png({ compressionLevel: 6 })
+      .toBuffer();
+    
+    // Analyze output quality
+    const outputImage = sharp(processedBuffer);
+    const outputMetadata = await outputImage.metadata();
+    const outputStats = await outputImage.stats();
+    const qualityAfter = calculateImageQuality(outputMetadata, outputStats);
+    
+    const processingTimeMs = Date.now() - startTime;
+    const estimatedAccuracyImprovement = Math.max(0, ((qualityAfter.qualityScore - qualityBefore.qualityScore) / 10) * 5);
+    
+    logger.info({
+      qualityBefore: qualityBefore.qualityScore,
+      qualityAfter: qualityAfter.qualityScore,
+      stepsApplied,
+      processingTimeMs,
+      estimatedAccuracyImprovement: `${estimatedAccuracyImprovement.toFixed(1)}%`,
+    }, 'Image preprocessing completed');
+    
+    return {
+      buffer: processedBuffer,
+      qualityBefore,
+      qualityAfter,
+      stepsApplied,
+      processingTimeMs,
+      estimatedAccuracyImprovement,
+    };
+  } catch (error) {
+    logger.warn({ error }, 'Image preprocessing failed, using original buffer');
+    const defaultMetrics: PreprocessingQualityMetrics = {
+      estimatedDpi: 72,
+      sharpness: 0.5,
+      contrast: 0.5,
+      brightness: 128,
+      noiseLevel: 0.2,
+      qualityScore: 50,
+      recommendations: ['Preprocessing failed - using original'],
+    };
+    return {
+      buffer: imageBuffer,
+      qualityBefore: defaultMetrics,
+      qualityAfter: defaultMetrics,
+      stepsApplied: ['preprocessing-failed'],
+      processingTimeMs: Date.now() - startTime,
+      estimatedAccuracyImprovement: 0,
+    };
+  }
+}
+
+/**
+ * Calculate image quality score from metadata and stats
+ */
+function calculateImageQuality(
+  metadata: { width?: number; height?: number; density?: number; channels?: number },
+  stats: { channels: Array<{ min: number; max: number; mean: number; stdev?: number }> }
+): PreprocessingQualityMetrics {
+  const width = metadata.width || 1;
+  const height = metadata.height || 1;
+  
+  // Estimate DPI (assume letter size 8.5x11 if no metadata)
+  const estimatedDpi = metadata.density || Math.round(((width / 8.5) + (height / 11)) / 2);
+  
+  // Get channel stats (use first channel for grayscale metrics)
+  const channel = stats.channels[0] || { min: 0, max: 255, mean: 128 };
+  
+  // Calculate contrast from range
+  const contrast = (channel.max - channel.min) / 255;
+  
+  // Brightness from mean
+  const brightness = channel.mean;
+  
+  // Simplified sharpness and noise estimation
+  const sharpness = contrast > 0.6 ? 0.8 : contrast > 0.4 ? 0.6 : 0.4;
+  const noiseLevel = contrast < 0.3 ? 0.5 : 0.2;
+  
+  // Calculate overall quality score (0-100)
+  let qualityScore = 0;
+  
+  // DPI contribution (30 points)
+  if (estimatedDpi >= 300) qualityScore += 30;
+  else if (estimatedDpi >= 200) qualityScore += 20;
+  else if (estimatedDpi >= 150) qualityScore += 10;
+  
+  // Contrast contribution (25 points)
+  qualityScore += contrast * 25;
+  
+  // Sharpness contribution (20 points)
+  qualityScore += sharpness * 20;
+  
+  // Brightness contribution (10 points, optimal 100-180)
+  if (brightness >= 100 && brightness <= 180) qualityScore += 10;
+  else if (brightness >= 50 && brightness <= 220) qualityScore += 5;
+  
+  // Noise penalty (15 points max)
+  qualityScore += (1 - noiseLevel) * 15;
+  
+  // Generate recommendations
+  const recommendations: string[] = [];
+  if (estimatedDpi < 200) recommendations.push('Consider higher DPI scan (300+ recommended)');
+  if (sharpness < 0.5) recommendations.push('Image appears blurry');
+  if (contrast < 0.4) recommendations.push('Low contrast detected');
+  if (brightness < 80) recommendations.push('Image is too dark');
+  if (brightness > 200) recommendations.push('Image is too bright');
+  if (noiseLevel > 0.4) recommendations.push('High noise detected');
+  if (qualityScore >= 75) recommendations.push('Quality is acceptable');
+  
+  return {
+    estimatedDpi,
+    sharpness,
+    contrast,
+    brightness,
+    noiseLevel,
+    qualityScore: Math.max(0, Math.min(100, qualityScore)),
+    recommendations,
+  };
+}
+
+/**
+ * Check if file is an image type that can be preprocessed
+ */
+function isPreprocessableImage(filePath: string): boolean {
+  const ext = filePath.toLowerCase().split('.').pop() || '';
+  return ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff', 'tif'].includes(ext);
+}
 const OCR_CACHE_TTL = 24 * 60 * 60; // 24 hours in seconds
 
-// OCR fallback chain - includes OpenAI for testing, Swiss FADP compliant options (Azure CH → Mistral EU)
-const OCR_FALLBACK_CHAIN = ['openai', 'azure-ch', 'mistral'] as const;
-type OCRMode = typeof OCR_FALLBACK_CHAIN[number];
+// Valid OCR modes — includes DI v4.0 models + legacy providers
+type OCRMode =
+  | 'openai'
+  | 'azure-ch'
+  | 'mistral'
+  | 'azure-di-layout'
+  | 'azure-di-contract'
+  | 'azure-di-invoice'
+  | 'auto';
+
+// Fallback chain for generic/legacy modes (DI modes short-circuit before this)
+const OCR_FALLBACK_CHAIN: readonly OCRMode[] = ['openai', 'azure-ch', 'mistral'];
+
+// Map preclassification OCRModel → worker OCRMode
+const OCR_MODEL_TO_MODE: Record<string, OCRMode> = {
+  AZURE_DI_LAYOUT: 'azure-di-layout',
+  AZURE_DI_CONTRACT: 'azure-di-contract',
+  AZURE_DI_INVOICE: 'azure-di-invoice',
+  AZURE_READ: 'azure-ch',
+  AZURE_FORM: 'azure-di-layout', // superseded by DI v4.0
+  GOOGLE_DOCUMENT_AI: 'openai',  // not available, best alternative
+  GOOGLE_VISION: 'openai',
+  AWS_TEXTRACT: 'openai',
+  TESSERACT_FAST: 'mistral',
+  TESSERACT_BEST: 'mistral',
+  MANUAL_REVIEW: 'openai',
+};
 
 // Preload heavy modules to reduce cold start time
 let pdfParseModule: any = null;
@@ -417,7 +795,10 @@ let mistralModule: any = null;
   }
 })();
 
-// Initialize S3 client for MinIO
+// Initialize S3 client for MinIO — fail fast if credentials are missing in production
+if (process.env.NODE_ENV === 'production' && (!process.env.MINIO_ACCESS_KEY || !process.env.MINIO_SECRET_KEY)) {
+  throw new Error('CRITICAL: MINIO_ACCESS_KEY and MINIO_SECRET_KEY must be configured in production');
+}
 const s3Client = new S3Client({
   endpoint: `http://${process.env.MINIO_ENDPOINT || 'localhost'}:${process.env.MINIO_PORT || '9000'}`,
   region: 'us-east-1',
@@ -447,7 +828,7 @@ function generateOCRCacheKey(filePath: string, fileSize: number): string {
 /**
  * Perform OCR extraction on a file with circuit breaker protection and caching
  */
-async function performOCR(filePath: string, ocrMode: string, fileSize?: number): Promise<string> {
+async function performOCR(filePath: string, ocrMode: string, fileSize?: number, onProgress?: (pct: number) => void): Promise<string> {
   logger.info({ filePath, ocrMode }, 'Performing OCR extraction');
   
   // Check distributed cache first
@@ -460,6 +841,91 @@ async function performOCR(filePath: string, ocrMode: string, fileSize?: number):
     }
   }
   
+  // ── DI modes: try the specific model first, then fall through to legacy chain ──
+  const DI_MODES: OCRMode[] = ['azure-di-layout', 'azure-di-contract', 'azure-di-invoice'];
+  if (DI_MODES.includes(ocrMode as OCRMode)) {
+    try {
+      const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
+      if (isDIConfigured() && isDIEnabled() && azureCircuitBreaker.getState() !== CircuitState.OPEN) {
+        onProgress?.(15); // DI submission starting
+        const result = await azureCircuitBreaker.execute(() =>
+          retry(async () => {
+            const { analyzeLayout, analyzeContract, analyzeInvoice } = await import('./azure-document-intelligence');
+            const fileBuffer = await fs.readFile(filePath);
+
+            if (ocrMode === 'azure-di-contract') {
+              const { analysis, contract } = await analyzeContract(fileBuffer);
+              const parts = [analysis.content];
+              if (contract.parties.length > 0) {
+                parts.push('\n--- CONTRACT PARTIES ---');
+                for (const p of contract.parties) parts.push(`${p.role || 'Party'}: ${p.name}`);
+              }
+              if (contract.dates.effectiveDate) parts.push(`Effective Date: ${contract.dates.effectiveDate}`);
+              if (contract.dates.expirationDate) parts.push(`Expiration Date: ${contract.dates.expirationDate}`);
+              if (contract.jurisdiction) parts.push(`Jurisdiction: ${contract.jurisdiction}`);
+              return parts.join('\n');
+            } else if (ocrMode === 'azure-di-invoice') {
+              const { analysis, invoice } = await analyzeInvoice(fileBuffer);
+              const parts = [analysis.content, '\n--- INVOICE DATA ---'];
+              if (invoice.vendorName) parts.push(`Vendor: ${invoice.vendorName}`);
+              if (invoice.invoiceId) parts.push(`Invoice #: ${invoice.invoiceId}`);
+              if (invoice.invoiceDate) parts.push(`Date: ${invoice.invoiceDate}`);
+              if (invoice.invoiceTotal != null) parts.push(`Total: ${invoice.currency || ''} ${invoice.invoiceTotal}`);
+              if (invoice.lineItems.length > 0) {
+                parts.push('\n| Description | Qty | Unit Price | Amount |');
+                parts.push('| --- | --- | --- | --- |');
+                for (const li of invoice.lineItems) {
+                  parts.push(`| ${li.description || '-'} | ${li.quantity ?? '-'} | ${li.unitPrice ?? '-'} | ${li.amount ?? '-'} |`);
+                }
+              }
+              return parts.join('\n');
+            } else {
+              // azure-di-layout
+              const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+              const parts = [result.content];
+              if (result.tables.length > 0) {
+                parts.push('\n--- EXTRACTED TABLES ---');
+                for (const t of result.tables) {
+                  if (t.headers.length) {
+                    parts.push(`| ${t.headers.join(' | ')} |`);
+                    parts.push(`| ${t.headers.map(() => '---').join(' | ')} |`);
+                  }
+                  for (const r of t.rows) parts.push(`| ${r.join(' | ')} |`);
+                }
+              }
+              if (result.keyValuePairs.length > 0) {
+                parts.push('\n--- KEY-VALUE PAIRS ---');
+                for (const kv of result.keyValuePairs) {
+                  if (kv.key && kv.value) parts.push(`${kv.key}: ${kv.value}`);
+                }
+              }
+              return parts.join('\n');
+            }
+          }, {
+            maxAttempts: 2,
+            initialDelay: 2000,
+            maxDelay: 15000,
+            onRetry: (error, attempt, delay) => {
+              logger.warn({ error: error.message, attempt, delay, ocrMode }, 'DI model retry');
+            },
+          })
+        );
+
+        // Cache and return
+        if (fileSize && result && result.length > 100) {
+          const cacheKey = generateOCRCacheKey(filePath, fileSize);
+          await ocrCache.set(cacheKey, result);
+        }
+        logger.info({ ocrMode, textLength: result.length }, 'DI model OCR succeeded');
+        onProgress?.(55); // DI analysis complete
+        return result;
+      }
+    } catch (diError) {
+      logger.warn({ error: (diError as Error).message, ocrMode }, 'DI model OCR failed, falling through to legacy chain');
+    }
+    // Fall through to legacy fallback chain
+  }
+
   // Build fallback chain starting from preferred mode
   const preferredIndex = OCR_FALLBACK_CHAIN.indexOf(ocrMode as OCRMode);
   const fallbackOrder = preferredIndex >= 0 
@@ -568,33 +1034,94 @@ async function extractTextFallback(filePath: string): Promise<string> {
 
 /**
  * Azure Switzerland OCR extraction (Swiss FADP compliant)
- * Uses Azure Computer Vision API in Switzerland North region
+ *
+ * Uses Azure Document Intelligence v4.0 Layout model when DI credentials
+ * are available (richer output: text + tables + key-value pairs + structure).
+ * Falls back to legacy Computer Vision Read API v3.2 otherwise.
  */
 async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
   try {
-    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
-    const apiKey = process.env.AZURE_VISION_KEY_CH;
-    
-    if (!endpoint || !apiKey) {
-      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH, AZURE_VISION_KEY_CH)');
-    }
-    
     const fileBuffer = await fs.readFile(filePath);
     const ext = filePath.toLowerCase().split('.').pop() || '';
     const isTextFile = ['txt', 'text', 'md', 'html', 'htm', 'xml', 'json', 'csv'].includes(ext);
-    
+
     // For text files, just read directly
     if (isTextFile) {
       logger.info({ filePath, size: fileBuffer.length }, 'Reading text file directly (no OCR needed)');
       return fileBuffer.toString('utf-8');
     }
+
+    // ── Try Document Intelligence v4.0 Layout model first ──
+    const diEndpoint = process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT;
+    const diKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY;
+
+    if (diEndpoint && diKey) {
+      try {
+        const { analyzeLayout } = await import('./azure-document-intelligence');
+        const result = await analyzeLayout(fileBuffer, { extractKeyValuePairs: true });
+
+        // Build rich text output with tables rendered as markdown
+        const parts: string[] = [];
+        parts.push(result.content);
+
+        // Append tables as markdown for downstream AI processing
+        if (result.tables.length > 0) {
+          parts.push('\n\n--- EXTRACTED TABLES ---\n');
+          for (const table of result.tables) {
+            if (table.headers.length > 0) {
+              parts.push(`| ${table.headers.join(' | ')} |`);
+              parts.push(`| ${table.headers.map(() => '---').join(' | ')} |`);
+            }
+            for (const row of table.rows) {
+              parts.push(`| ${row.join(' | ')} |`);
+            }
+            parts.push('');
+          }
+        }
+
+        // Append key-value pairs
+        if (result.keyValuePairs.length > 0) {
+          parts.push('\n--- KEY-VALUE PAIRS ---\n');
+          for (const kv of result.keyValuePairs) {
+            if (kv.key && kv.value) {
+              parts.push(`${kv.key}: ${kv.value}`);
+            }
+          }
+        }
+
+        const extractedText = parts.join('\n');
+        logger.info(
+          {
+            textLength: extractedText.length,
+            pages: result.metadata.pageCount,
+            tables: result.tables.length,
+            kvPairs: result.keyValuePairs.length,
+            model: 'prebuilt-layout',
+            apiVersion: 'v4.0',
+          },
+          'Azure Document Intelligence v4.0 OCR completed'
+        );
+        return extractedText;
+      } catch (diError) {
+        logger.warn(
+          { error: (diError as Error).message },
+          'Document Intelligence v4.0 failed, falling back to Read API v3.2'
+        );
+        // Fall through to legacy path
+      }
+    }
+
+    // ── Legacy fallback: Azure Computer Vision Read API v3.2 ──
+    const endpoint = process.env.AZURE_VISION_ENDPOINT_CH;
+    const apiKey = process.env.AZURE_VISION_KEY_CH;
     
-    // Use Azure Computer Vision Read API for OCR
+    if (!endpoint || !apiKey) {
+      throw new Error('Azure Switzerland credentials not configured (AZURE_VISION_ENDPOINT_CH / AZURE_VISION_KEY_CH or AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT / AZURE_DOCUMENT_INTELLIGENCE_KEY)');
+    }
+    
     const readUrl = `${endpoint}/vision/v3.2/read/analyze`;
+    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR (legacy Read v3.2)');
     
-    logger.info({ filePath, endpoint: readUrl }, 'Using Azure Switzerland OCR');
-    
-    // Submit the document for reading
     const submitResponse = await fetch(readUrl, {
       method: 'POST',
       headers: {
@@ -609,24 +1136,20 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       throw new Error(`Azure OCR submit failed: ${submitResponse.status} ${errorText}`);
     }
     
-    // Get the operation location from the response headers
     const operationLocation = submitResponse.headers.get('Operation-Location');
     if (!operationLocation) {
       throw new Error('Azure OCR did not return Operation-Location header');
     }
     
-    // Poll for results
     let result;
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds max wait
+    const maxAttempts = 30;
     
     while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       const resultResponse = await fetch(operationLocation, {
-        headers: {
-          'Ocp-Apim-Subscription-Key': apiKey,
-        },
+        headers: { 'Ocp-Apim-Subscription-Key': apiKey },
       });
       
       if (!resultResponse.ok) {
@@ -635,11 +1158,8 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       
       result = await resultResponse.json();
       
-      if (result.status === 'succeeded') {
-        break;
-      } else if (result.status === 'failed') {
-        throw new Error('Azure OCR processing failed');
-      }
+      if (result.status === 'succeeded') break;
+      if (result.status === 'failed') throw new Error('Azure OCR processing failed');
       
       attempts++;
     }
@@ -648,15 +1168,11 @@ async function performAzureSwitzerlandOCR(filePath: string): Promise<string> {
       throw new Error('Azure OCR timed out or failed');
     }
     
-    // Extract text from all pages and lines
     const extractedText = result.analyzeResult.readResults
-      .map((page: any) => 
-        page.lines.map((line: any) => line.text).join('\n')
-      )
+      .map((page: any) => page.lines.map((line: any) => line.text).join('\n'))
       .join('\n\n');
     
-    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed');
-    
+    logger.info({ textLength: extractedText.length, pages: result.analyzeResult.readResults.length }, 'Azure Switzerland OCR completed (legacy Read v3.2)');
     return extractedText;
   } catch (error) {
     const err = error as Error;
@@ -728,20 +1244,44 @@ async function performMistralOCR(filePath: string): Promise<string> {
       logger.info({ enhancedLength: enhancedText.length }, 'Text enhanced with Mistral AI');
       return enhancedText;
     } else if (isImage) {
-      // For images, use Pixtral vision model
+      // For images, use Pixtral vision model with optional preprocessing
       const { Mistral } = await import('@mistralai/mistralai');
       const apiKey = process.env.MISTRAL_API_KEY;
       if (!apiKey) {
         throw new Error('MISTRAL_API_KEY not configured');
       }
       
+      // Apply preprocessing if enabled
+      let processedBuffer: Buffer = fileBuffer;
+      if (WORKER_CONFIG.ocr.enablePreprocessing) {
+        logger.info({ filePath }, 'Preprocessing image for better OCR accuracy');
+        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
+          enableDeskew: true,
+          enableDenoise: true,
+          enableContrastEnhancement: true,
+          enableBinarization: false,
+          targetDpi: 300,
+          maxDimension: 3000,
+        });
+        processedBuffer = Buffer.from(preprocessResult.buffer);
+        
+        if (preprocessResult.estimatedAccuracyImprovement > 0) {
+          logger.info({
+            qualityBefore: preprocessResult.qualityBefore.qualityScore,
+            qualityAfter: preprocessResult.qualityAfter.qualityScore,
+            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
+            stepsApplied: preprocessResult.stepsApplied,
+          }, 'Image preprocessing improved quality');
+        }
+      }
+      
       const client = new Mistral({ apiKey });
-      const base64Data = fileBuffer.toString('base64');
+      const base64Data = processedBuffer.toString('base64');
       const mimeType = ext === 'png' ? 'image/png' : 
                        ext === 'gif' ? 'image/gif' : 
                        ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
-      logger.info({ filePath, size: fileBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
+      logger.info({ filePath, size: processedBuffer.length, mimeType }, 'Processing image with Mistral Pixtral Vision OCR');
       
       const chatResponse = await client.chat.complete({
         model: 'pixtral-12b-2409',
@@ -851,15 +1391,40 @@ async function performGPT4OCR(filePath: string): Promise<string> {
       
       return enhancedText;
     } else if (isImage) {
-      // For images, use GPT-4o Vision (full model for best accuracy)
-      const base64 = fileBuffer.toString('base64');
+      // For images, use GPT-4o Vision (full model for best accuracy) with preprocessing
+      
+      // Apply preprocessing if enabled for better OCR accuracy
+      let processedBuffer: Buffer = fileBuffer;
+      if (WORKER_CONFIG.ocr.enablePreprocessing) {
+        logger.info({ filePath }, 'Preprocessing image for GPT-4o Vision OCR');
+        const preprocessResult = await preprocessImageForOCR(fileBuffer, {
+          enableDeskew: true,
+          enableDenoise: true,
+          enableContrastEnhancement: true,
+          enableBinarization: false,
+          targetDpi: 300,
+          maxDimension: 4000, // Higher resolution for GPT-4o Vision
+        });
+        processedBuffer = Buffer.from(preprocessResult.buffer);
+        
+        if (preprocessResult.estimatedAccuracyImprovement > 0) {
+          logger.info({
+            qualityBefore: preprocessResult.qualityBefore.qualityScore,
+            qualityAfter: preprocessResult.qualityAfter.qualityScore,
+            accuracyImprovement: `${preprocessResult.estimatedAccuracyImprovement.toFixed(1)}%`,
+            stepsApplied: preprocessResult.stepsApplied,
+          }, 'Image preprocessing improved quality for GPT-4o Vision');
+        }
+      }
+      
+      const base64 = processedBuffer.toString('base64');
       const mimeType = ext === 'png' ? 'image/png' : 
                        ext === 'gif' ? 'image/gif' : 
                        ext === 'webp' ? 'image/webp' : 'image/jpeg';
       
       // Use GPT-4o for Vision OCR (NOT gpt-4o-mini) for best quality
       const visionModel = WORKER_CONFIG.ai.visionModel || 'gpt-4o';
-      logger.info({ filePath, size: fileBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
+      logger.info({ filePath, size: processedBuffer.length, mimeType, visionModel }, 'Processing image with GPT-4o Vision OCR');
       
       const response = await openai.chat.completions.create({
         model: visionModel,
@@ -1019,26 +1584,173 @@ export async function processOCRArtifactJob(
     jobLogger.info({ filePath: localFilePath }, 'Running OCR extraction');
     await publishJobProgress(job.id || '', contractId, tenantId, 20, 'ocr', 'Extracting text from document');
     
-    // Get ocrMode from job data (user selection) or fallback to default
-    const ocrMode = job.data.ocrMode || 'mistral'; // Default to Mistral OCR
-    const rawExtractedText = await performOCR(localFilePath, ocrMode);
+    // Get ocrMode from job data (user selection) or use preclassification
+    let ocrMode: string = job.data.ocrMode || 'auto';
+
+    // Auto-select: run quick preclassification to pick the optimal DI model
+    if (ocrMode === 'auto') {
+      try {
+        const { isDIConfigured, isDIEnabled } = await import('./azure-document-intelligence');
+        if (isDIConfigured() && isDIEnabled()) {
+          // Read a small text sample for preclassification (use pdf-parse for PDFs)
+          let textSample = '';
+          const ext = localFilePath.toLowerCase().split('.').pop() || '';
+          if (['pdf'].includes(ext)) {
+            try {
+              const buf = await fs.readFile(localFilePath);
+              const pdfParse = pdfParseModule || (await import('pdf-parse')).default;
+              const parsed = await pdfParse(buf, { max: 3 }); // first 3 pages
+              textSample = (parsed.text || '').slice(0, 3000);
+            } catch { /* ignore, proceed without sample */ }
+          }
+
+          if (textSample.length > 50) {
+            const { quickClassify } = await import('./document-preclassification');
+            const classification = await quickClassify(textSample);
+            const mappedMode = OCR_MODEL_TO_MODE[classification.recommendedModel];
+            if (mappedMode) {
+              ocrMode = mappedMode;
+              jobLogger.info({
+                category: classification.category,
+                contractType: classification.contractType,
+                recommendedModel: classification.recommendedModel,
+                resolvedMode: ocrMode,
+              }, 'Preclassification selected DI model');
+            }
+          }
+        }
+
+        // Still auto? fall back to azure-ch (which already tries DI v4.0 internally)
+        if (ocrMode === 'auto') ocrMode = 'azure-ch';
+      } catch (preErr) {
+        jobLogger.warn({ error: (preErr as Error).message }, 'Preclassification failed, defaulting to azure-ch');
+        ocrMode = 'azure-ch';
+      }
+    }
+
+    const rawExtractedText = await performOCR(localFilePath, ocrMode, undefined, async (pct) => {
+      try { await job.updateProgress(pct); } catch { /* best-effort */ }
+    });
+    
+    // ============ OCR ENHANCEMENT PIPELINE (NEW) ============
+    // Apply post-OCR corrections, validation, and quality improvements
+    let enhancedText = rawExtractedText;
+    let ocrEnhancementResult: OCREnhancementPipelineResult | null = null;
+    let adaptiveConfig: AdaptiveModelConfig | null = null;
+    
+    if (WORKER_CONFIG.ocr.enablePostOCRCorrection && rawExtractedText.length > 0) {
+      try {
+        jobLogger.info('Running OCR enhancement pipeline...');
+        await publishJobProgress(job.id || '', contractId, tenantId, 30, 'ocr-enhancement', 'Enhancing OCR accuracy');
+        
+        // Run the full enhancement pipeline
+        const enhancementResult = await runOCREnhancementPipeline(
+          Buffer.alloc(0), // Image buffer not needed for text-only enhancements
+          rawExtractedText,
+          {
+            enableDeskew: false, // Already done in preprocessing
+            enableSpellCheck: WORKER_CONFIG.ocr.enableLegalSpellCheck,
+            enableDateValidation: WORKER_CONFIG.ocr.enableDateValidation,
+            enableAmountValidation: WORKER_CONFIG.ocr.enableAmountValidation,
+            enableAdaptiveModel: WORKER_CONFIG.ocr.enableAdaptiveModelSelection,
+            collectTrainingData: WORKER_CONFIG.ocr.collectTrainingData,
+            tenantId,
+            contractId,
+            ocrProvider: ocrMode,
+          }
+        );
+        
+        enhancedText = enhancementResult.enhancedText;
+        ocrEnhancementResult = enhancementResult;
+        adaptiveConfig = enhancementResult.preprocessing.adaptiveConfig || null;
+        
+        jobLogger.info({
+          correctionsApplied: enhancementResult.validation.metrics.totalCorrections,
+          spellingCorrections: enhancementResult.validation.metrics.spellingCorrections,
+          dateCorrections: enhancementResult.validation.metrics.dateCorrections,
+          amountCorrections: enhancementResult.validation.metrics.amountCorrections,
+          confidenceImprovement: enhancementResult.validation.metrics.confidenceImprovement.toFixed(2),
+          lowConfidenceRegions: enhancementResult.lowConfidenceRegions?.length || 0,
+        }, 'OCR enhancement pipeline completed');
+        
+        // Flag low-confidence regions for human review
+        if (enhancementResult.lowConfidenceRegions && enhancementResult.lowConfidenceRegions.length > 5) {
+          jobLogger.warn({
+            regionCount: enhancementResult.lowConfidenceRegions.length,
+          }, 'Multiple low-confidence regions detected - document may need human review');
+        }
+      } catch (enhancementError) {
+        jobLogger.warn({ error: enhancementError }, 'OCR enhancement failed, using raw text');
+        enhancedText = rawExtractedText;
+      }
+    }
+    
+    // ============ LLM ENHANCEMENT (Swiss Data Protection Compliant) ============
+    // Use AI for intelligent spell correction with data residency compliance
+    let llmEnhancementResult: HybridEnhancementResult | null = null;
+    
+    if (WORKER_CONFIG.ocr.enableLLMCorrection && enhancedText.length > 100) {
+      try {
+        jobLogger.info({
+          dataResidency: WORKER_CONFIG.ocr.llmDataResidency,
+          anonymizePII: WORKER_CONFIG.ocr.llmAnonymizePII,
+        }, 'Running LLM-enhanced spell correction (Swiss compliant)...');
+        
+        await publishJobProgress(job.id || '', contractId, tenantId, 35, 'llm-enhancement', 'AI spell correction (Swiss compliant)');
+        
+        llmEnhancementResult = await runHybridEnhancement(enhancedText, {
+          enableLLMCorrection: true,
+          enableLocalCorrection: false, // Already done above
+          dataProtection: {
+            dataResidencyRegion: WORKER_CONFIG.ocr.llmDataResidency,
+            anonymizePII: WORKER_CONFIG.ocr.llmAnonymizePII,
+            auditLogging: WORKER_CONFIG.ocr.llmAuditLogging,
+            blockNonCompliant: WORKER_CONFIG.ocr.llmBlockNonCompliant,
+            tenantId,
+            contractId,
+          },
+          focusAreas: ['legal', 'financial', 'general'],
+          tenantId,
+          contractId,
+        });
+        
+        if (llmEnhancementResult.totalCorrections > 0) {
+          enhancedText = llmEnhancementResult.enhancedText;
+          
+          jobLogger.info({
+            llmCorrections: llmEnhancementResult.llmResult?.corrections.length || 0,
+            provider: llmEnhancementResult.llmResult?.provider || 'none',
+            piiProtected: llmEnhancementResult.dataProtection.piiProtected,
+            region: llmEnhancementResult.dataProtection.region,
+            processingTimeMs: llmEnhancementResult.processingTimeMs,
+          }, 'LLM enhancement completed (Swiss compliant)');
+        } else {
+          jobLogger.info({
+            llmUsed: llmEnhancementResult.dataProtection.llmUsed,
+            region: llmEnhancementResult.dataProtection.region,
+          }, 'LLM enhancement found no corrections needed');
+        }
+      } catch (llmError) {
+        jobLogger.warn({ error: llmError }, 'LLM enhancement failed, continuing with local enhancements only');
+      }
+    }
     
     // Initialize quality metrics
     qualityMetrics = {
       contractId,
       startTime: Date.now(),
-      textLength: rawExtractedText.length,
+      textLength: enhancedText.length,
       artifactsGenerated: 0,
       failedArtifacts: [],
-      textConfidence: 0.5,
+      textConfidence: ocrEnhancementResult?.validation.confidence || 0.5,
       tablesDetected: 0,
       financialIndicators: { hasCurrency: false, currencies: [], hasPercentages: false, hasPaymentTerms: false, estimatedTotalValue: null, confidence: 0.5 },
       errors: [],
       warnings: [],
     };
     
-    // 3.1 Preprocess the extracted text
-    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(rawExtractedText);
+    // 3.1 Preprocess the extracted text (use enhanced text)
+    const { cleanedText: extractedText, tables, metrics: textMetrics } = preprocessText(enhancedText);
     qualityMetrics.textLength = extractedText.length;
     qualityMetrics.textConfidence = textMetrics.confidenceScore;
     qualityMetrics.tablesDetected = textMetrics.tablesDetected;
@@ -1053,12 +1765,21 @@ export async function processOCRArtifactJob(
     jobLogger.info({ 
       ocrMode, 
       rawTextLength: rawExtractedText.length,
+      enhancedTextLength: enhancedText.length,
       cleanedTextLength: extractedText.length, 
       tablesDetected: textMetrics.tablesDetected,
       textConfidence: textMetrics.confidenceScore,
       hasCurrency: financialIndicators.hasCurrency,
       currencies: financialIndicators.currencies,
       hasRateTables: rateTableInfo.hasRateTables,
+      ocrEnhancements: ocrEnhancementResult ? {
+        totalCorrections: ocrEnhancementResult.validation.metrics.totalCorrections,
+        spellingCorrections: ocrEnhancementResult.validation.metrics.spellingCorrections,
+        dateCorrections: ocrEnhancementResult.validation.metrics.dateCorrections,
+        amountCorrections: ocrEnhancementResult.validation.metrics.amountCorrections,
+        lowConfidenceRegions: ocrEnhancementResult.lowConfidenceRegions?.length || 0,
+        confidence: ocrEnhancementResult.validation.confidence,
+      } : null,
     }, 'OCR extraction and preprocessing completed');
 
     // Save extracted text to contract's rawText field for AI processing
@@ -1068,6 +1789,9 @@ export async function processOCRArtifactJob(
           where: { id: contractId, tenantId },
           data: {
             rawText: extractedText,
+            ocrProvider: ocrMode,
+            ocrModel: ocrMode.startsWith('azure-di-') ? `prebuilt-${ocrMode.replace('azure-di-', '')}` : undefined,
+            ocrProcessedAt: new Date(),
             updatedAt: new Date(),
           },
         });
@@ -1093,30 +1817,77 @@ export async function processOCRArtifactJob(
       displayName: profile.displayName,
     }, 'Contract type detected using AI analysis');
 
+    // Persist detected contract type + classification metadata to the Contract record
+    try {
+      await prisma.contract.updateMany({
+        where: { id: contractId, tenantId },
+        data: {
+          contractType: detectedContractType,
+          classificationConf: contractTypeDetection.confidence,
+          classificationMeta: {
+            method: 'ocr-artifact-worker-ai',
+            reasoning: contractTypeDetection.reasoning,
+            matchedKeywords: contractTypeDetection.matchedKeywords || [],
+            profileDisplayName: profile.displayName,
+            detectedAt: new Date().toISOString(),
+          },
+          classifiedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+      jobLogger.info({ contractId, contractType: detectedContractType }, 'Contract type persisted to contract record');
+    } catch (typeUpdateError) {
+      jobLogger.warn({ error: typeUpdateError }, 'Failed to persist contract type, continuing');
+    }
+
     // 4. Generate artifacts using AI with partial success tracking
     // Use contract type to determine which artifacts to generate
     jobLogger.info('Generating AI artifacts (adaptive based on contract type)');
     
-    // All possible artifact types
-    const allArtifactTypes: ArtifactType[] = [
-      'OVERVIEW',
-      'CLAUSES', 
-      'FINANCIAL',
-      'RISK',
-      'COMPLIANCE',
-      'OBLIGATIONS',
-      'RENEWAL',
-      'NEGOTIATION_POINTS',
-      'AMENDMENTS',
-      'CONTACTS',
-    ];
+    // Load tenant-specific artifact config overrides (P2 #2: respect tenant config)
+    let enabledArtifactTypes = SHARED_ARTIFACT_TYPES.filter(c => c.enabled);
+    try {
+      const tenantConfig = await prisma.tenantConfig.findUnique({
+        where: { tenantId },
+        select: { workflowSettings: true },
+      });
+      if (tenantConfig?.workflowSettings && typeof tenantConfig.workflowSettings === 'object') {
+        const settings = tenantConfig.workflowSettings as Record<string, any>;
+        const artifactOverrides = settings.artifactTypes || {};
+        
+        // Also check per-contract-type overrides (P3 #16)
+        const contractTypeOverrides = settings.contractTypeOverrides?.[detectedContractType] || {};
+        
+        enabledArtifactTypes = SHARED_ARTIFACT_TYPES.map(defaultType => {
+          const globalOverride = artifactOverrides[defaultType.type] || {};
+          const perTypeOverride = contractTypeOverrides[defaultType.type] || {};
+          // Per-contract-type overrides take precedence over global tenant overrides
+          return {
+            ...defaultType,
+            enabled: perTypeOverride.enabled ?? globalOverride.enabled ?? defaultType.enabled,
+            priority: perTypeOverride.priority ?? globalOverride.priority ?? defaultType.priority,
+            qualityThreshold: perTypeOverride.qualityThreshold ?? globalOverride.qualityThreshold ?? defaultType.qualityThreshold,
+            maxRetries: perTypeOverride.maxRetries ?? globalOverride.maxRetries ?? defaultType.maxRetries,
+          };
+        }).filter(c => c.enabled);
+        jobLogger.info({ overrides: Object.keys(artifactOverrides), contractTypeOverrides: Object.keys(contractTypeOverrides) }, 'Applied tenant artifact config overrides');
+      }
+    } catch (configError) {
+      jobLogger.warn({ error: configError }, 'Failed to load tenant artifact config, using defaults');
+    }
 
-    // Filter to relevant artifacts based on contract type
-    const relevantArtifacts = getRelevantArtifacts(detectedContractType);
-    const artifactTypes = allArtifactTypes.filter(type => relevantArtifacts.includes(type));
+    // Use unified artifact types from shared module (P1 #1: single source of truth)
+    const allArtifactTypes: ArtifactType[] = enabledArtifactTypes
+      .sort((a, b) => a.priority - b.priority)
+      .map(c => c.type as ArtifactType);
+
+    // Filter to relevant artifacts using isArtifactApplicable (P1 #2: proper tenant config)
+    const artifactTypes = allArtifactTypes.filter(type => 
+      isArtifactApplicable(detectedContractType, type as any)
+    );
     
     // Track non-applicable artifacts
-    const notApplicableArtifacts = allArtifactTypes.filter(type => !relevantArtifacts.includes(type));
+    const notApplicableArtifacts = allArtifactTypes.filter(type => !artifactTypes.includes(type));
     
     jobLogger.info({ 
       relevantArtifacts: artifactTypes,
@@ -1126,36 +1897,142 @@ export async function processOCRArtifactJob(
     const failedArtifacts: string[] = [];
     const successfulArtifacts: string[] = [];
 
-    // Generate relevant artifacts in parallel with retry logic
-    const artifactPromises = artifactTypes.map(async (artifactType) => {
-      const maxRetries = 2;
+    // Quality validator using unified thresholds (P2 #7: consistent quality)
+    const qualityValidator = new ArtifactQualityValidator(UNIFIED_QUALITY_THRESHOLDS);
+
+    // Cost budget enforcement (P2 #11: limit per-contract and per-tenant spend)
+    const budgetTracker = new ArtifactCostTracker();
+
+    // Generate relevant artifacts sequentially in priority order (P2 #7)
+    // This ensures high-priority artifacts (OVERVIEW, FINANCIAL) complete first,
+    // handles rate limits gracefully, and enables real-time per-artifact progress.
+    const generatedArtifactResults: any[] = [];
+    
+    for (let i = 0; i < artifactTypes.length; i++) {
+      const artifactType = artifactTypes[i];
+      // Use per-type config from shared module
+      const typeConfig = SHARED_ARTIFACT_TYPES.find(c => c.type === artifactType);
+      const maxRetries = typeConfig?.maxRetries ?? 2;
+      const maxRegenerations = 1; // Allow 1 quality-based regeneration
       let lastError: Error | null = null;
+      let bestArtifactData: Record<string, any> | null = null;
+      let bestQualityScore = 0;
+      let tokensUsed = 0;
+      let modelUsed = 'unknown';
       
+      jobLogger.info({ artifactType, progress: `${i + 1}/${artifactTypes.length}` }, 'Generating artifact');
+
+      // Check cost budget before generating (P2 #11)
+      const budgetCheck = budgetTracker.canProceed(contractId, tenantId);
+      if (!budgetCheck.allowed) {
+        jobLogger.warn({ artifactType, reason: budgetCheck.reason }, 'Cost budget exhausted, skipping artifact');
+        failedArtifacts.push(artifactType);
+        generatedArtifactResults.push({
+          contractId,
+          tenantId,
+          type: artifactType,
+          data: {
+            error: 'Budget limit reached',
+            type: artifactType,
+            fallback: true,
+            retryable: true,
+            budgetExceeded: true,
+            _extractionMeta: {
+              contractType: detectedContractType,
+              contractTypeConfidence: contractTypeDetection.confidence,
+              isApplicable: true,
+            }
+          },
+          validationStatus: 'error',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+        continue;
+      }
+      if (budgetCheck.warning) {
+        jobLogger.warn({ artifactType, warning: budgetCheck.warning }, 'Approaching cost budget limit');
+      }
+
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
         try {
-          const artifactData = await generateArtifactWithAI(
+          const artifactResult = await generateArtifactWithAI(
             artifactType, 
             extractedText, 
             contract,
             detectedContractType // Pass detected type for adaptive prompts
           );
-          successfulArtifacts.push(artifactType);
-          return {
-            contractId,
-            tenantId,
-            type: artifactType,
-            data: {
-              ...artifactData,
-              _extractionMeta: {
-                contractType: detectedContractType,
-                contractTypeConfidence: contractTypeDetection.confidence,
-                isApplicable: true,
+          
+          // Track token usage from the result metadata
+          if (artifactResult._meta) {
+            tokensUsed = artifactResult._meta.tokensUsed || 0;
+            modelUsed = artifactResult._meta.model || 'unknown';
+            // Track cost for budget enforcement (P2 #11)
+            const estimatedCost = sharedEstimateTokenCost(
+              modelUsed,
+              artifactResult._meta.promptTokens || Math.floor(tokensUsed * 0.7),
+              artifactResult._meta.completionTokens || Math.floor(tokensUsed * 0.3)
+            );
+            budgetTracker.addCost(contractId, tenantId, estimatedCost);
+          }
+          
+          // Quality validation — check if generated content meets quality thresholds
+          let qualityScore;
+          try {
+            qualityScore = await qualityValidator.validateArtifact(
+              artifactType,
+              artifactResult,
+              extractedText
+            );
+            
+            jobLogger.info({
+              artifactType,
+              qualityScore: qualityScore.overall.toFixed(2),
+              passesThreshold: qualityScore.passesThreshold,
+              issues: qualityScore.issues.length,
+            }, 'Artifact quality validation');
+            
+            // If quality is acceptable, use this result
+            if (qualityScore.passesThreshold || qualityScore.overall >= 0.65) {
+              bestArtifactData = artifactResult;
+              bestQualityScore = qualityScore.overall;
+              break;
+            }
+            
+            // Quality is low — try self-critique if this is our first attempt
+            if (attempt === 1 && maxRegenerations > 0) {
+              try {
+                const critique = await selfCritiqueArtifact(artifactType, artifactResult, extractedText);
+                if (critique.shouldRegenerate) {
+                  jobLogger.warn({
+                    artifactType,
+                    qualityScore: qualityScore.overall.toFixed(2),
+                    critiqueIssues: critique.issues.length,
+                  }, 'Low quality detected, regenerating artifact');
+                  // Keep track of best so far in case regeneration also fails
+                  if (qualityScore.overall > bestQualityScore) {
+                    bestArtifactData = artifactResult;
+                    bestQualityScore = qualityScore.overall;
+                  }
+                  continue; // Retry with another attempt
+                }
+              } catch {
+                // Self-critique failed, accept current result
               }
-            },
-            validationStatus: 'valid',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          };
+            }
+            
+            // Accept what we have (quality check ran but didn't meet threshold)
+            if (!bestArtifactData || qualityScore.overall > bestQualityScore) {
+              bestArtifactData = artifactResult;
+              bestQualityScore = qualityScore.overall;
+            }
+            break;
+            
+          } catch {
+            // Quality validation failed — accept the artifact as-is
+            bestArtifactData = artifactResult;
+            break;
+          }
+          
         } catch (error) {
           lastError = error as Error;
           jobLogger.warn({ error, artifactType, attempt }, `Artifact generation attempt ${attempt} failed`);
@@ -1166,32 +2043,61 @@ export async function processOCRArtifactJob(
         }
       }
       
-      // Track failed artifact for partial success reporting
-      failedArtifacts.push(artifactType);
-      
-      // Generate fallback artifact with retry metadata
-      jobLogger.error({ error: lastError, artifactType }, `All attempts failed, creating fallback artifact`);
-      return {
-        contractId,
-        tenantId,
-        type: artifactType,
-        data: { 
-          error: 'Failed to generate', 
-          type: artifactType, 
-          fallback: true,
-          retryable: true,
-          lastError: lastError?.message,
-          _extractionMeta: {
-            contractType: detectedContractType,
-            contractTypeConfidence: contractTypeDetection.confidence,
-            isApplicable: true,
-          }
-        },
-        validationStatus: 'error',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-    });
+      // If we got a valid result (even low quality), use it
+      if (bestArtifactData) {
+        successfulArtifacts.push(artifactType);
+        generatedArtifactResults.push({
+          contractId,
+          tenantId,
+          type: artifactType,
+          data: {
+            ...bestArtifactData,
+            _extractionMeta: {
+              contractType: detectedContractType,
+              contractTypeConfidence: contractTypeDetection.confidence,
+              isApplicable: true,
+              qualityScore: bestQualityScore,
+              tokensUsed,
+              modelUsed,
+            }
+          },
+          validationStatus: bestQualityScore >= 0.65 ? 'valid' : 'low-quality',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      } else {
+        // Track failed artifact for partial success reporting
+        failedArtifacts.push(artifactType);
+        
+        // Generate fallback artifact with retry metadata
+        jobLogger.error({ error: lastError, artifactType }, `All attempts failed, creating fallback artifact`);
+        generatedArtifactResults.push({
+          contractId,
+          tenantId,
+          type: artifactType,
+          data: { 
+            error: 'Failed to generate', 
+            type: artifactType, 
+            fallback: true,
+            retryable: true,
+            lastError: lastError?.message,
+            _extractionMeta: {
+              contractType: detectedContractType,
+              contractTypeConfidence: contractTypeDetection.confidence,
+              isApplicable: true,
+            }
+          },
+          validationStatus: 'error',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
+      }
+
+      // Brief pause between artifacts to respect rate limits (50ms)
+      if (i < artifactTypes.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+    }
 
     // Also create "not applicable" placeholder artifacts for skipped types
     const notApplicableArtifactData = notApplicableArtifacts.map(artifactType => ({
@@ -1213,7 +2119,7 @@ export async function processOCRArtifactJob(
       updatedAt: new Date(),
     }));
 
-    const generatedArtifacts = (await Promise.all(artifactPromises)).filter(Boolean);
+    const generatedArtifacts = generatedArtifactResults.filter(Boolean);
     
     // ============ ENHANCEMENT: Add industry insights and smart suggestions ============
     // Enrich OVERVIEW artifact with contract type insights
@@ -1263,17 +2169,55 @@ export async function processOCRArtifactJob(
     
     // Use transaction to ensure artifacts and contract update are atomic
     const artifacts = await prisma.$transaction(async (tx: any) => {
-      // Batch create all artifacts at once
-      const result = await tx.artifact.createMany({
-        data: artifactDataArray as any,
-        skipDuplicates: true,
-      });
+      // Upsert all artifacts to support both initial processing and reprocessing
+      // This allows us to update existing artifacts with new AI-generated data
+      const upsertPromises = artifactDataArray.map((artifact: any) => 
+        tx.artifact.upsert({
+          where: {
+            contractId_type: {
+              contractId: artifact.contractId,
+              type: artifact.type,
+            },
+          },
+          create: artifact,
+          update: {
+            data: artifact.data,
+            validationStatus: artifact.validationStatus || 'valid',
+            updatedAt: new Date(),
+          },
+        })
+      );
+      
+      await Promise.all(upsertPromises);
+      
+      jobLogger.info({ artifactCount: artifactDataArray.length }, 'Artifacts upserted (created or updated)');
       
       // 4b. Apply OVERVIEW artifact data to contract record for display
       const overviewArtifact = artifactDataArray.find((a: any) => a.type === 'OVERVIEW') as any;
       if (overviewArtifact?.data && !overviewArtifact.data?.error) {
         const overviewData = overviewArtifact.data as any;
         const contractUpdate: Record<string, any> = {};
+        
+        // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+        const unwrap = (val: any) => val?.value !== undefined ? val.value : val;
+        const unwrapNumber = (val: any): number | null => {
+          const unwrapped = unwrap(val);
+          if (typeof unwrapped === 'number') return unwrapped;
+          if (typeof unwrapped === 'string') {
+            const cleaned = unwrapped.replace(/[$€£¥,]/g, '').trim();
+            const parsed = parseFloat(cleaned);
+            return isNaN(parsed) ? null : parsed;
+          }
+          return null;
+        };
+        const unwrapDate = (val: any): Date | null => {
+          const unwrapped = unwrap(val);
+          if (!unwrapped) return null;
+          try {
+            const d = new Date(unwrapped);
+            return isNaN(d.getTime()) ? null : d;
+          } catch { return null; }
+        };
         
         // IMPROVEMENT: Use keyword-detected contract type (more reliable) with fallback to AI
         // Prefer our keyword detection over AI-generated type since it's validated against our enum
@@ -1287,67 +2231,71 @@ export async function processOCRArtifactJob(
             detectedType: detectedContractType,
             confidence: contractTypeDetection.confidence,
             matchedKeywords: contractTypeDetection.matchedKeywords,
-            aiSuggestedType: overviewData.contractType,
+            aiSuggestedType: unwrap(overviewData.contractType),
             needsHumanReview: contractTypeDetection.confidence < 0.6,
             detectedAt: new Date().toISOString(),
           }
         };
         
-        // Extract parties
+        // Extract parties - handle various structures
         if (overviewData.parties && Array.isArray(overviewData.parties)) {
-          const clientParty = overviewData.parties.find((p: any) => 
-            p.role?.toLowerCase().includes('client') || 
-            p.role?.toLowerCase().includes('buyer') ||
-            p.role?.toLowerCase().includes('customer')
-          );
-          const supplierParty = overviewData.parties.find((p: any) => 
-            p.role?.toLowerCase().includes('supplier') || 
-            p.role?.toLowerCase().includes('vendor') ||
-            p.role?.toLowerCase().includes('provider') ||
-            p.role?.toLowerCase().includes('contractor')
-          );
+          const getPartyName = (p: any) => unwrap(p.name) || unwrap(p.legalName) || p;
+          const getPartyRole = (p: any) => (unwrap(p.role) || '').toLowerCase();
           
-          if (clientParty?.name) contractUpdate.clientName = clientParty.name;
-          if (supplierParty?.name) contractUpdate.supplierName = supplierParty.name;
+          const clientParty = overviewData.parties.find((p: any) => {
+            const role = getPartyRole(p);
+            return role.includes('client') || role.includes('buyer') || role.includes('customer');
+          });
+          const supplierParty = overviewData.parties.find((p: any) => {
+            const role = getPartyRole(p);
+            return role.includes('supplier') || role.includes('vendor') || role.includes('provider') || role.includes('contractor');
+          });
+          
+          if (clientParty) {
+            const name = getPartyName(clientParty);
+            if (name && typeof name === 'string') contractUpdate.clientName = name;
+          }
+          if (supplierParty) {
+            const name = getPartyName(supplierParty);
+            if (name && typeof name === 'string') contractUpdate.supplierName = name;
+          }
           
           // If only one party found, use it as supplier
           if (!contractUpdate.supplierName && !contractUpdate.clientName && overviewData.parties.length > 0) {
-            contractUpdate.supplierName = overviewData.parties[0].name;
+            const name = getPartyName(overviewData.parties[0]);
+            if (name && typeof name === 'string') contractUpdate.supplierName = name;
           }
         }
         
-        // Extract total value
-        if (overviewData.totalValue && typeof overviewData.totalValue === 'number' && overviewData.totalValue > 0) {
-          contractUpdate.totalValue = overviewData.totalValue;
+        // Extract total value - handle wrapped values and strings
+        const totalValue = unwrapNumber(overviewData.totalValue);
+        if (totalValue && totalValue > 0) {
+          contractUpdate.totalValue = totalValue;
         }
-        if (overviewData.currency) {
-          contractUpdate.currency = overviewData.currency;
+        const currency = unwrap(overviewData.currency);
+        if (currency && typeof currency === 'string') {
+          contractUpdate.currency = currency;
         }
         
-        // Extract dates
-        if (overviewData.effectiveDate) {
-          try {
-            const effDate = new Date(overviewData.effectiveDate);
-            if (!isNaN(effDate.getTime())) {
-              contractUpdate.effectiveDate = effDate;
-            }
-          } catch { /* ignore invalid dates */ }
+        // Extract dates - handle wrapped values
+        const effectiveDate = unwrapDate(overviewData.effectiveDate);
+        if (effectiveDate) {
+          contractUpdate.effectiveDate = effectiveDate;
         }
-        if (overviewData.expirationDate) {
-          try {
-            const expDate = new Date(overviewData.expirationDate);
-            if (!isNaN(expDate.getTime())) {
-              contractUpdate.expirationDate = expDate;
-            }
-          } catch { /* ignore invalid dates */ }
+        const expirationDate = unwrapDate(overviewData.expirationDate);
+        if (expirationDate) {
+          contractUpdate.expirationDate = expirationDate;
         }
         
         // Extract contract title if we have a summary
         if (overviewData.summary && !contract.contractTitle) {
           // Use first sentence of summary as title, max 100 chars
-          const title = overviewData.summary.split('.')[0].substring(0, 100);
-          if (title.length > 10) {
-            contractUpdate.contractTitle = title;
+          const summaryText = unwrap(overviewData.summary);
+          if (summaryText && typeof summaryText === 'string') {
+            const title = summaryText.split('.')[0].substring(0, 100);
+            if (title.length > 10) {
+              contractUpdate.contractTitle = title;
+            }
           }
         }
         
@@ -1366,7 +2314,7 @@ export async function processOCRArtifactJob(
         }
       }
       
-      return result;
+      return { count: artifactDataArray.length };
     }, {
       maxWait: 10000, // 10s max wait for transaction
       timeout: 30000, // 30s timeout for transaction
@@ -1388,15 +2336,19 @@ export async function processOCRArtifactJob(
     const complianceData: any = complianceArtifact?.data || {};
     const contactsData: any = contactsArtifact?.data || {};
 
+    // Helper to unwrap values (AI may return { value: X, source: '...' } or just X)
+    const unwrapVal = (val: any) => val?.value !== undefined ? val.value : val;
+
     // Build external parties array from overview
     const externalParties: Array<{legalName: string; role: string; registeredAddress?: string}> = [];
     if (overviewArtifactData.parties && Array.isArray(overviewArtifactData.parties)) {
       for (const party of overviewArtifactData.parties) {
-        if (party.name) {
+        const partyName = unwrapVal(party.name) || unwrapVal(party.legalName);
+        if (partyName && typeof partyName === 'string') {
           externalParties.push({
-            legalName: party.name,
-            role: party.role || 'Party',
-            registeredAddress: party.address || party.contact || '',
+            legalName: partyName,
+            role: unwrapVal(party.role) || 'Party',
+            registeredAddress: unwrapVal(party.address) || unwrapVal(party.contact) || '',
           });
         }
       }
@@ -1454,33 +2406,46 @@ export async function processOCRArtifactJob(
     const enterpriseMetadata = {
       // Document identification
       document_number: contractId,
-      document_title: overviewArtifactData.contractTitle || overviewArtifactData.summary?.split('.')[0]?.substring(0, 100) || '',
-      contract_short_description: overviewArtifactData.summary || '',
+      document_title: unwrapVal(overviewArtifactData.contractTitle) || 
+        (unwrapVal(overviewArtifactData.summary) || '').split('.')[0]?.substring(0, 100) || '',
+      contract_short_description: unwrapVal(overviewArtifactData.summary) || '',
       
       // Parties
       external_parties: externalParties,
       
-      // Financial
-      tcv_amount: overviewArtifactData.totalValue || financialData.totalValue || 0,
-      tcv_text: financialData.totalValueText || (overviewArtifactData.totalValue ? `$${overviewArtifactData.totalValue.toLocaleString()}` : ''),
+      // Financial - handle wrapped values
+      tcv_amount: (() => {
+        const val = unwrapVal(overviewArtifactData.totalValue) || unwrapVal(financialData.totalValue);
+        if (typeof val === 'number') return val;
+        if (typeof val === 'string') {
+          const cleaned = val.replace(/[$€£¥,]/g, '').trim();
+          const parsed = parseFloat(cleaned);
+          return isNaN(parsed) ? 0 : parsed;
+        }
+        return 0;
+      })(),
+      tcv_text: unwrapVal(financialData.totalValueText) || 
+        (unwrapVal(overviewArtifactData.totalValue) ? 
+          `$${Number(unwrapVal(overviewArtifactData.totalValue) || 0).toLocaleString()}` : ''),
       payment_type: paymentType,
       billing_frequency_type: billingFrequency,
       periodicity: billingFrequency || '',
-      currency: overviewArtifactData.currency || financialData.currency || 'USD',
+      currency: unwrapVal(overviewArtifactData.currency) || unwrapVal(financialData.currency) || 'USD',
       
       // Dates
-      execution_date: overviewArtifactData.executionDate || overviewArtifactData.effectiveDate || null,
-      contract_effective_date: overviewArtifactData.effectiveDate || null,
-      contract_end_date: overviewArtifactData.expirationDate || null,
+      execution_date: unwrapVal(overviewArtifactData.executionDate) || 
+        unwrapVal(overviewArtifactData.effectiveDate) || null,
+      contract_effective_date: unwrapVal(overviewArtifactData.effectiveDate) || null,
+      contract_end_date: unwrapVal(overviewArtifactData.expirationDate) || null,
       
       // Signature status (from CONTACTS artifact)
-      signature_status: contactsData.signatureStatus || 'unknown',
-      signature_date: contactsData.signatureDate || 
+      signature_status: unwrapVal(contactsData.signatureStatus) || 'unknown',
+      signature_date: unwrapVal(contactsData.signatureDate) || 
         (contactsData.signatories?.find((s: any) => s.dateSigned)?.dateSigned) || 
-        overviewArtifactData.executionDate || null,
-      signature_required_flag: contactsData.signatureStatus === 'unsigned' || 
-        contactsData.signatureStatus === 'partially_signed' ||
-        (!contactsData.signatureDate && contactsData.signatureStatus !== 'signed'),
+        unwrapVal(overviewArtifactData.executionDate) || null,
+      signature_required_flag: unwrapVal(contactsData.signatureStatus) === 'unsigned' || 
+        unwrapVal(contactsData.signatureStatus) === 'partially_signed' ||
+        (!unwrapVal(contactsData.signatureDate) && unwrapVal(contactsData.signatureStatus) !== 'signed'),
       signatories: contactsData.signatories || [],
       signature_analysis: contactsData.signatureAnalysis || null,
       
@@ -1490,15 +2455,16 @@ export async function processOCRArtifactJob(
       final_reminder_days: 30,
       
       // Contract details
-      auto_renewing: overviewArtifactData.autoRenewal === true || clausesData.autoRenewal === true,
+      auto_renewing: unwrapVal(overviewArtifactData.autoRenewal) === true || 
+        unwrapVal(clausesData.autoRenewal) === true,
       notice_period: noticePeriod,
-      jurisdiction: overviewArtifactData.jurisdiction || '',
+      jurisdiction: unwrapVal(overviewArtifactData.jurisdiction) || '',
       
       // Internal tracking
       owner_name: '',
       owner_email: '',
       internal_organization: '',
-      is_inbound: overviewArtifactData.isInbound ?? null,
+      is_inbound: unwrapVal(overviewArtifactData.isInbound) ?? null,
       
       // Extraction metadata
       _extractedAt: new Date().toISOString(),
@@ -1509,17 +2475,30 @@ export async function processOCRArtifactJob(
       _confidence: {
         overall: successfulArtifacts.length / artifactDataArray.length,
         parties: externalParties.length > 0 ? 0.9 : 0.3,
-        financial: financialData.totalValue ? 0.9 : 0.5,
-        dates: overviewArtifactData.effectiveDate ? 0.9 : 0.5,
+        financial: unwrapVal(financialData.totalValue) ? 0.9 : 0.5,
+        dates: unwrapVal(overviewArtifactData.effectiveDate) ? 0.9 : 0.5,
       },
     };
 
-    // Save enterprise metadata to contract.aiMetadata
+    // Save enterprise metadata to contract.aiMetadata AND update signature status on contract
     try {
+      // Parse signature date if string
+      let signatureDateParsed: Date | null = null;
+      if (enterpriseMetadata.signature_date) {
+        const parsed = new Date(enterpriseMetadata.signature_date);
+        if (!isNaN(parsed.getTime())) {
+          signatureDateParsed = parsed;
+        }
+      }
+      
       await prisma.contract.updateMany({
         where: { id: contractId, tenantId },
         data: {
           aiMetadata: enterpriseMetadata as any,
+          // Update signature fields on the contract model for easy querying and legal tracking
+          signatureStatus: enterpriseMetadata.signature_status || 'unknown',
+          signatureDate: signatureDateParsed,
+          signatureRequiredFlag: enterpriseMetadata.signature_required_flag || false,
           updatedAt: new Date(),
         },
       });
@@ -1527,7 +2506,9 @@ export async function processOCRArtifactJob(
         fieldsPopulated: Object.keys(enterpriseMetadata).filter(k => !k.startsWith('_')).length,
         partiesCount: externalParties.length,
         hasFinancials: !!enterpriseMetadata.tcv_amount,
-      }, 'Enterprise metadata schema populated in aiMetadata');
+        signatureStatus: enterpriseMetadata.signature_status,
+        signatureRequiredFlag: enterpriseMetadata.signature_required_flag,
+      }, 'Enterprise metadata schema populated in aiMetadata and signature status updated');
     } catch (metadataError) {
       jobLogger.warn({ error: metadataError }, 'Failed to save enterprise metadata, continuing with processing');
     }
@@ -1552,6 +2533,17 @@ export async function processOCRArtifactJob(
         smartGapFillingAgent,
         contractHealthMonitor,
       } = await import('./agents');
+      
+      // Get tenant extraction settings for configurable thresholds
+      const tenantConfig = await prisma.tenantConfig.findUnique({
+        where: { tenantId },
+        select: { extractionSettings: true },
+      });
+      
+      const extractionSettings = (tenantConfig?.extractionSettings as Record<string, unknown>) || {};
+      const tenantCompleteness = (extractionSettings.gapFillingCompletenessThreshold as number) ?? 0.85;
+      const tenantAlwaysRun = (extractionSettings.alwaysRunGapFilling as boolean) ?? false;
+      const tenantAggressive = (extractionSettings.aggressiveGapFilling as boolean) ?? true;
 
       // 1. Run proactive validation on all artifacts
       jobLogger.info('Running proactive validation agent');
@@ -1565,13 +2557,38 @@ export async function processOCRArtifactJob(
         triggeredBy: 'ocr_pipeline',
       });
 
-      // 2. Run smart gap filling if validation found issues or data is incomplete
+      // 2. Run smart gap filling ALWAYS to ensure completeness
+      // Triggers: validation issues, partial success, or proactive gap detection
       const hasGaps = validationResult.output?.issues?.some((i: any) => 
         i.type === 'missing_critical_data' || i.type === 'placeholder_detected'
       ) || false;
       
-      if (hasGaps || hasPartialSuccess) {
-        jobLogger.info('Running smart gap filling agent');
+      // Calculate overall completeness to decide on gap filling aggressiveness
+      const overallCompleteness = validationResult.output?.overallCompleteness ?? 1.0;
+      // Use tenant setting, env var fallback, or default 0.85
+      const completenessThreshold = tenantCompleteness || parseFloat(process.env.GAP_FILLING_COMPLETENESS_THRESHOLD || '0.85');
+      const alwaysRunGapFilling = tenantAlwaysRun || process.env.ALWAYS_RUN_GAP_FILLING === 'true';
+      const aggressiveMode = tenantAggressive;
+      
+      // Run gap filling if:
+      // 1. There are identified gaps from validation
+      // 2. There was any partial success during artifact generation
+      // 3. Overall completeness is below threshold (default 85%)
+      // 4. ALWAYS_RUN_GAP_FILLING env var is set to true or tenant config
+      const shouldRunGapFilling = hasGaps || 
+                                   hasPartialSuccess || 
+                                   overallCompleteness < completenessThreshold ||
+                                   alwaysRunGapFilling;
+      
+      if (shouldRunGapFilling) {
+        jobLogger.info({ 
+          hasGaps, 
+          hasPartialSuccess, 
+          overallCompleteness, 
+          completenessThreshold,
+          alwaysRunGapFilling,
+          aggressiveMode,
+        }, 'Running smart gap filling agent');
         const gapFillingResult = await smartGapFillingAgent.executeWithTracking({
           contractId,
           tenantId,
@@ -1579,6 +2596,10 @@ export async function processOCRArtifactJob(
             artifacts: artifactDataArray,
             validationIssues: validationResult.output?.issues,
             contractType: detectedContractType,
+            // Pass additional context for more aggressive gap filling
+            aggressiveMode, // Use tenant setting
+            minimumCompleteness: completenessThreshold,
+            contractText: extractedText, // Pass full text for re-extraction
           },
           triggeredBy: 'ocr_pipeline',
         });
@@ -1996,8 +3017,183 @@ export async function processOCRArtifactJob(
 }
 
 /**
- * Generate artifact data using OpenAI API - REAL AI ANALYSIS
- * Now adaptive based on detected contract type
+ * AI provider configuration for artifact generation
+ */
+const AI_RETRY_CONFIG = {
+  maxAttempts: 4,
+  baseDelay: 2000,
+  maxDelay: 30000,
+  backoffMultiplier: 2,
+  jitter: true,
+};
+
+/**
+ * Call Mistral AI for artifact generation with retry logic
+ */
+async function callMistralForArtifact(
+  prompt: string,
+  systemPrompt: string,
+  type: string
+): Promise<{ success: boolean; data?: Record<string, any>; error?: string }> {
+  const apiKey = process.env.MISTRAL_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: 'MISTRAL_API_KEY not configured' };
+  }
+
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
+    try {
+      const Mistral = mistralModule || (await import('@mistralai/mistralai')).Mistral;
+      const client = new Mistral({ apiKey });
+      
+      logger.info({ type, attempt }, 'Calling Mistral for artifact generation');
+      
+      const response = await client.chat.complete({
+        model: 'mistral-large-latest',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.2,
+        maxTokens: 8192,
+        responseFormat: { type: 'json_object' },
+      });
+
+      const content = response.choices?.[0]?.message?.content;
+      if (!content || typeof content !== 'string') {
+        throw new Error('Empty response from Mistral');
+      }
+
+      const artifactData = sharedSafeParseJSON(content, type);
+      if (!artifactData) {
+        throw new Error(`Failed to parse Mistral response as JSON for ${type}`);
+      }
+      logger.info({ type, keys: Object.keys(artifactData) }, 'Mistral artifact generation succeeded');
+      
+      return { success: true, data: artifactData };
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMsg = lastError.message;
+      
+      // Check if retryable (rate limits, server errors)
+      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate') || errorMsg.includes('quota');
+      const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
+      const isRetryable = isRateLimited || isServerError;
+      
+      if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
+        logger.warn({ type, attempt, error: errorMsg }, 'Mistral artifact generation failed');
+        return { success: false, error: errorMsg };
+      }
+      
+      // Calculate backoff delay with jitter
+      const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1);
+      const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
+      
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'Mistral rate limited, retrying');
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  
+  return { success: false, error: lastError?.message || 'Unknown Mistral error' };
+}
+
+/**
+ * Call OpenAI for artifact generation with retry logic
+ */
+async function callOpenAIForArtifact(
+  prompt: string,
+  systemPrompt: string,
+  type: string
+): Promise<{ success: boolean; data?: Record<string, any>; error?: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return { success: false, error: 'OPENAI_API_KEY not configured' };
+  }
+
+  let lastError: Error | null = null;
+  let isDowngraded = false;
+  
+  for (let attempt = 1; attempt <= AI_RETRY_CONFIG.maxAttempts; attempt++) {
+    try {
+      const OpenAI = (await import('openai')).default;
+      const openai = new OpenAI({ apiKey });
+      
+      logger.info({ type, attempt }, 'Calling OpenAI for artifact generation');
+      
+      // Model downgrade cascade: gpt-4o → gpt-4o-mini on rate limit retries
+      const primaryModel = process.env.OPENAI_MODEL || 'gpt-4o';
+      const currentModel = (attempt >= 3 && isDowngraded) ? 'gpt-4o-mini' : primaryModel;
+      
+      const response = await openai.chat.completions.create({
+        model: currentModel,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: prompt }
+        ],
+        max_tokens: currentModel === 'gpt-4o-mini' ? 4096 : 8192,
+        temperature: 0.2,
+        response_format: { type: 'json_object' }
+      });
+
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('Empty response from OpenAI');
+      }
+
+      const artifactData = sharedSafeParseJSON(content, type);
+      if (!artifactData) {
+        throw new Error(`Failed to parse OpenAI response as JSON for ${type}`);
+      }
+      const usage = response.usage;
+      logger.info({ type, model: currentModel, keys: Object.keys(artifactData), tokensUsed: usage?.total_tokens }, 'OpenAI artifact generation succeeded');
+      
+      return { 
+        success: true, 
+        data: artifactData,
+        tokensUsed: usage?.total_tokens || 0,
+        promptTokens: usage?.prompt_tokens || 0,
+        completionTokens: usage?.completion_tokens || 0,
+        model: currentModel,
+      };
+      
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error(String(error));
+      const errorMsg = lastError.message;
+      
+      // Check if retryable (rate limits, server errors)
+      const isRateLimited = errorMsg.includes('429') || errorMsg.includes('rate_limit') || errorMsg.includes('quota');
+      const isServerError = errorMsg.includes('500') || errorMsg.includes('502') || errorMsg.includes('503') || errorMsg.includes('504');
+      const isRetryable = isRateLimited || isServerError;
+      
+      // Downgrade model on rate limit to increase chance of success
+      if (isRateLimited && !isDowngraded) {
+        isDowngraded = true;
+        logger.warn({ type, attempt }, 'Rate limited on primary model, will downgrade to gpt-4o-mini on next attempt');
+      }
+      
+      if (!isRetryable || attempt >= AI_RETRY_CONFIG.maxAttempts) {
+        logger.warn({ type, attempt, error: errorMsg, wasDowngraded: isDowngraded }, 'OpenAI artifact generation failed');
+        return { success: false, error: errorMsg };
+      }
+      
+      // Calculate backoff delay with jitter (longer for rate limits)
+      const multiplier = isRateLimited ? 3 : 1;
+      const baseDelay = AI_RETRY_CONFIG.baseDelay * Math.pow(AI_RETRY_CONFIG.backoffMultiplier, attempt - 1) * multiplier;
+      const delay = Math.min(baseDelay, AI_RETRY_CONFIG.maxDelay) * (0.5 + Math.random());
+      
+      logger.warn({ type, attempt, delay: Math.round(delay), error: errorMsg }, 'OpenAI rate limited, retrying');
+      await new Promise(r => setTimeout(r, delay));
+    }
+  }
+  
+  return { success: false, error: lastError?.message || 'Unknown OpenAI error' };
+}
+
+/**
+ * Generate artifact data using AI (Mistral first, OpenAI fallback)
+ * Now adaptive based on detected contract type with retry logic for rate limits
  */
 async function generateArtifactWithAI(
   type: string,
@@ -2005,659 +3201,155 @@ async function generateArtifactWithAI(
   contract: any,
   detectedContractType?: ContractType
 ): Promise<Record<string, any>> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
   
-  // If no API key, use fallback templates
-  if (!apiKey) {
-    logger.warn('OPENAI_API_KEY not configured, using fallback templates');
+  // If no AI keys, use fallback templates
+  if (!mistralKey && !openaiKey) {
+    logger.warn('No AI API keys configured, using fallback templates');
     return getFallbackArtifact(type, contractText, contract);
   }
-
+  
   try {
-    const OpenAI = (await import('openai')).default;
-    const openai = new OpenAI({ apiKey });
-    
     // Get contract type profile for adaptive extraction
     const contractType = detectedContractType || 'OTHER';
     const profile = getContractProfile(contractType);
     
-    // Adjust text limit based on contract complexity
-    const textLimit = contractType === 'MSA' || contractType === 'LOAN' ? 20000 : 15000;
-    const truncatedText = contractText.substring(0, textLimit);
-    
-    // Build contract-type-specific extraction hints
-    const typeContext = detectedContractType ? `
-CONTRACT TYPE DETECTED: ${profile.displayName}
-${profile.extractionHints}
-EXPECTED SECTIONS: ${profile.expectedSections.join(', ')}
-` : '';
-    
-    // Get adaptive clause categories based on contract type
-    const clauseCategories = profile.clauseCategories.length > 0 
-      ? profile.clauseCategories.join(', ')
-      : 'payment, termination, liability, confidentiality, indemnification, warranty, scope, other';
-
-    // Get adaptive financial fields
-    const financialFieldsHint = profile.financialFields.length > 0
-      ? `Focus on extracting: ${profile.financialFields.join(', ')}`
-      : 'Extract any financial terms present';
-
-    // Get adaptive risk categories
-    const riskCategoriesHint = profile.riskCategories.length > 0
-      ? `Key risk areas for this contract type: ${profile.riskCategories.join(', ')}`
-      : 'Analyze general contract risks';
-    
-    const prompts: Record<string, string> = {
-      OVERVIEW: `Analyze this contract and extract key information. Return a JSON object with:
-{
-  "summary": "A 2-3 sentence executive summary of what this contract is about",
-  "executiveBriefing": "A one-paragraph (4-5 sentences) briefing suitable for executives highlighting: 1) what this contract does, 2) key value proposition, 3) main obligations, 4) notable risks or opportunities",
-  "contractType": "The type of contract (e.g., Service Agreement, NDA, MSA, SOW, Employment, Lease)",
-  "contractTypeConfidence": number 0-100 indicating confidence in type classification,
-  "parties": [{"name": "Party name", "role": "Client/Vendor/Contractor/etc", "address": "if mentioned"}],
-  "effectiveDate": "YYYY-MM-DD or null if not found",
-  "expirationDate": "YYYY-MM-DD or null if not found",
-  "totalValue": numeric value or 0 if not found,
-  "currency": "USD/EUR/GBP/etc",
-  "keyTerms": ["list", "of", "key", "terms", "or", "topics"],
-  "jurisdiction": "Legal jurisdiction if mentioned",
-  "governingLaw": "Applicable law/state",
-  "definedTerms": [{"term": "Definition name", "definition": "Brief definition"}],
-  "documentStructure": ["List of main sections/headings found"],
-  "keyDates": [{"event": "Event name (signing, start, end, renewal)", "date": "YYYY-MM-DD", "description": "Brief description"}],
-  "keyNumbers": [{"metric": "Metric name", "value": "Value with units", "context": "What this number represents"}],
-  "redFlags": ["Any immediate concerns or issues spotted in first pass"],
-  "additionalFindings": [
-    {
-      "field": "Auto-discovered field name not in schema above",
-      "value": "Extracted value",
-      "sourceSection": "Section/location in document where found",
-      "confidence": 0.85,
-      "category": "legal|financial|operational|dates|parties|other"
-    }
-  ],
-  "openEndedNotes": "Any other relevant observations, unusual terms, or important context not captured by the structured fields above. Include anything a contract reviewer should know."
-}
-
-${typeContext}
-
-IMPORTANT EXTRACTION RULES:
-1. Be thorough - scan the ENTIRE document for information.
-2. Extract ALL parties mentioned, not just primary parties.
-3. Look for dates in multiple formats (MM/DD/YYYY, DD.MM.YYYY, "January 1, 2024", "1st day of January").
-4. For totalValue, include recurring costs multiplied by term length if applicable.
-5. If you discover important information that doesn't fit the schema above, add it to additionalFindings. Never discard relevant contract details.
-6. KeyNumbers should capture any significant metrics (headcount, quantities, limits, thresholds).
-7. The executiveBriefing should be actionable - what would an executive need to know to make decisions?
-
-Contract text:
-${truncatedText}`,
-
-      CLAUSES: `Extract the key clauses from this contract. Return a JSON object with:
-{
-  "clauses": [
-    {
-      "title": "Clause title/name",
-      "section": "Section number if available (e.g., 5.2)",
-      "content": "Brief summary of what the clause says (2-3 sentences)",
-      "fullText": "The verbatim clause text if short enough (under 500 chars)",
-      "importance": "high/medium/low",
-      "category": "${clauseCategories.split(', ').slice(0, 5).join('/')}",
-      "obligations": ["List any specific obligations created"],
-      "risks": ["Any risks or concerns with this clause"],
-      "crossReferences": ["References to other sections/clauses"]
-    }
-  ],
-  "missingClauses": ["Standard clauses NOT found that might be expected"],
-  "unusualClauses": ["Any non-standard or unusual provisions"],
-  "additionalFindings": [
-    {
-      "field": "Any clause-related info not fitting above schema",
-      "value": "The extracted content",
-      "sourceSection": "Section/location",
-      "confidence": 0.85,
-      "category": "legal|financial|operational|restriction|right|obligation"
-    }
-  ],
-  "openEndedNotes": "Any other clause-related observations, cross-references, or dependencies between clauses not captured above."
-}
-
-${typeContext}
-
-Find ALL significant clauses (aim for 5-20 clauses). Focus on:
-${clauseCategories}
-
-IMPORTANT: If you find clauses or provisions that don't fit the schema, add them to additionalFindings. Capture EVERYTHING relevant.
-If a standard clause for this contract type is missing, note it in missingClauses.
-
-Contract text:
-${truncatedText}`,
-
-      FINANCIAL: `Extract ALL financial terms from this contract comprehensively. Return a JSON object with:
-{
-  "totalValue": numeric value or 0 or null if not applicable,
-  "currency": "USD/EUR/GBP/etc",
-  "hasFinancialTerms": true/false - set false if this contract type typically has no financial terms (like NDAs),
-  "paymentTerms": "Description of payment terms (e.g., Net 30, monthly, milestone-based)",
-  "paymentSchedule": [{"milestone": "description", "amount": number, "dueDate": "date or trigger", "year": number}],
-  "yearlyBreakdown": [
-    {
-      "year": 1,
-      "label": "Year 1 (2024-2025)",
-      "payments": [{"description": "Payment description", "amount": number, "dueDate": "date"}],
-      "subtotal": number
-    }
-  ],
-  "costBreakdown": [{"category": "name", "amount": number, "description": "details"}],
-  "rateCards": [
-    {
-      "id": "rate-1",
-      "role": "Job title or resource type (e.g., Senior Developer, Project Manager)",
-      "rate": numeric hourly/daily/monthly rate,
-      "unit": "hourly/daily/monthly/yearly",
-      "currency": "USD/EUR/GBP"
-    }
-  ],
-  "financialTables": [
-    {
-      "tableName": "Name/title of the pricing table",
-      "headers": ["Column1", "Column2", "Amount"],
-      "rows": [
-        {"Column1": "value", "Column2": "value", "Amount": number}
-      ],
-      "totals": {"Column1": "Total", "Amount": number},
-      "notes": "Any footnotes or additional info"
-    }
-  ],
-  "offers": [
-    {
-      "offerName": "Name of offer/proposal",
-      "validityPeriod": "How long the offer is valid",
-      "totalAmount": number,
-      "lineItems": [
-        {"description": "item description", "quantity": 1, "unit": "each/hour/month", "unitPrice": number, "total": number}
-      ],
-      "terms": ["List of terms for this offer"]
-    }
-  ],
-  "penalties": [
-    {"type": "late_payment/breach/sla_violation", "amount": number, "description": "description", "trigger": "what triggers the penalty"}
-  ],
-  "discounts": [
-    {"type": "early_payment/volume/loyalty", "value": number, "unit": "percentage/fixed", "description": "details"}
-  ],
-  "paymentMethod": "How payments should be made (wire, check, ACH, etc.)",
-  "invoicingRequirements": "Any invoicing requirements mentioned",
-  "contractTypeSpecificFinancials": {},
-  "additionalFindings": [
-    {
-      "field": "Any financial info not fitting above schema (bonuses, royalties, escalations, caps, etc.)",
-      "value": "The extracted value or description",
-      "sourceSection": "Section/table where found",
-      "confidence": 0.85,
-      "category": "pricing|payment|penalty|incentive|cap|escalation|other"
-    }
-  ],
-  "openEndedNotes": "Any other financial observations - hidden costs, unusual payment structures, financial risks, or pricing anomalies not captured above."
-}
-
-${typeContext}
-${financialFieldsHint}
-
-IMPORTANT EXTRACTION RULES:
-1. If this is an NDA or similar non-financial contract, set hasFinancialTerms=false and skip financial extraction.
-2. For EMPLOYMENT: Extract base salary, bonuses, equity grants, benefits value, severance.
-3. For LEASE: Extract rent schedule, CAM charges, security deposit, tenant improvements.
-4. For LICENSE/SUBSCRIPTION: Extract license fees, royalties, usage tiers.
-5. For LOAN: Extract principal, interest rate, repayment schedule.
-6. Group payments by contract year in yearlyBreakdown. Year 1 starts from contract effective date.
-7. Extract ALL rate cards/pricing for labor, resources, or services.
-8. Look for pricing tables - extract as financialTables with proper column headers.
-9. For tables, preserve the structure with headers and row data.
-10. **CRITICAL: If you find ANY financial information not fitting the schema, add it to additionalFindings. Never discard financial data.**
-
-Contract text:
-${truncatedText}`,
-
-      RISK: `Analyze this contract for risks specific to its type. Return a JSON object with:
-{
-  "overallRisk": "Low/Medium/High/Critical",
-  "riskScore": number from 0-100 (0=no risk, 100=extreme risk),
-  "contractTypeRisks": "${profile.riskCategories.slice(0, 5).join(', ')}",
-  "risks": [
-    {
-      "category": "Financial/Legal/Operational/Compliance/Reputational/ContractTypeSpecific",
-      "level": "Low/Medium/High/Critical",
-      "title": "Short risk title",
-      "description": "Detailed description of the risk",
-      "mitigation": "Suggested mitigation or action",
-      "clauseReference": "Section/clause number where risk originates"
-    }
-  ],
-  "redFlags": ["List any critical concerns or red flags"],
-  "missingProtections": ["Standard protections for this contract type that are missing"],
-  "recommendations": ["Key recommendations for negotiation or review"],
-  "comparativeAnalysis": "How this contract compares to market standard for its type",
-  "additionalFindings": [
-    {
-      "field": "Any risk-related finding not fitting above schema",
-      "value": "Description of the risk or concern",
-      "sourceSection": "Section/clause where found",
-      "confidence": 0.85,
-      "severity": "critical|high|medium|low"
-    }
-  ],
-  "openEndedNotes": "Any other risk observations, potential disputes, enforceability concerns, or contextual risks not captured above."
-}
-
-${typeContext}
-${riskCategoriesHint}
-
-Look for:
-- Unfavorable terms, one-sided clauses
-- Missing protections (liability caps, termination rights)
-- Contract-type-specific risks (see above)
-- Compliance concerns (GDPR, regulatory)
-- Financial risks (payment terms, penalties)
-- Ambiguous language that could cause disputes
-- **IMPORTANT: Any risk or concern not fitting the schema goes in additionalFindings**
-
-Contract text:
-${truncatedText}`,
-
-      COMPLIANCE: `Review this contract for compliance requirements. Return a JSON object with:
-{
-  "compliant": true/false (overall assessment),
-  "complianceScore": number from 0-100,
-  "checks": [
-    {
-      "regulation": "Name of regulation/standard (GDPR, SOC2, HIPAA, etc)",
-      "status": "compliant/non-compliant/needs-review/not-applicable",
-      "details": "Brief explanation"
-    }
-  ],
-  "issues": [
-    {
-      "severity": "high/medium/low",
-      "description": "Description of the compliance issue",
-      "recommendation": "How to address it"
-    }
-  ],
-  "dataProtection": {
-    "hasDataProcessing": true/false,
-    "hasDPA": true/false,
-    "concerns": ["any data protection concerns"]
-  },
-  "recommendations": ["List of compliance recommendations"],
-  "additionalFindings": [
-    {
-      "field": "Any compliance-related finding not in schema",
-      "value": "Description",
-      "regulation": "Related regulation if any",
-      "severity": "critical|high|medium|low"
-    }
-  ],
-  "openEndedNotes": "Any other regulatory concerns, industry-specific compliance needs, or jurisdictional issues not captured above."
-}
-
-Contract text:
-${truncatedText}`,
-
-      OBLIGATIONS: `Extract all contractual obligations from this contract. Return a JSON object with:
-{
-  "obligations": [
-    {
-      "party": "Name of responsible party",
-      "obligation": "Description of the obligation",
-      "type": "deliverable/payment/reporting/compliance/performance",
-      "dueDate": "Due date or trigger event if specified",
-      "frequency": "one-time/daily/weekly/monthly/quarterly/annually/ongoing",
-      "status": "pending/in-progress/completed/overdue",
-      "priority": "high/medium/low"
-    }
-  ],
-  "milestones": [
-    {
-      "name": "Milestone name",
-      "description": "What needs to be delivered",
-      "dueDate": "Date or timeframe",
-      "associatedPayment": number or null,
-      "status": "pending"
-    }
-  ],
-  "keyDeadlines": ["List of critical deadlines mentioned"],
-  "summary": "Brief summary of major obligations for each party",
-  "additionalFindings": [
-    {
-      "field": "Any obligation not fitting the schema above",
-      "value": "Description of the obligation",
-      "party": "Responsible party",
-      "dueInfo": "Timing or trigger if known",
-      "category": "deliverable|payment|reporting|compliance|operational|other"
-    }
-  ],
-  "openEndedNotes": "Any other obligation-related observations, dependencies between obligations, or conditional triggers not captured above."
-}
-
-Contract text:
-${truncatedText}`,
-
-      RENEWAL: `Analyze the renewal and termination terms of this contract. Return a JSON object with:
-{
-  "autoRenewal": true/false,
-  "renewalTerms": "Description of how renewal works",
-  "renewalPeriod": "Duration of renewal period (e.g., 1 year, 12 months)",
-  "renewalNoticeRequired": true/false,
-  "noticeRequirements": {
-    "noticePeriod": "How many days before expiry",
-    "noticeMethod": "How notice must be given (written, email, etc.)",
-    "noticeRecipient": "Who to notify"
-  },
-  "terminationRights": {
-    "forCause": "Conditions allowing termination for cause",
-    "forConvenience": "Conditions for termination without cause",
-    "noticePeriod": "Required notice for termination"
-  },
-  "earlyTerminationFees": "Any fees for early termination",
-  "expirationDate": "Contract end date if specified",
-  "renewalHistory": [],
-  "recommendations": ["Recommendations for renewal strategy"],
-  "additionalFindings": [
-    {
-      "field": "Any renewal/termination info not in schema",
-      "value": "Description",
-      "sourceSection": "Section where found",
-      "category": "renewal|termination|extension|option|other"
-    }
-  ],
-  "openEndedNotes": "Any other renewal/termination observations - special conditions, negotiation opportunities, or strategic considerations."
-}
-
-Contract text:
-${truncatedText}`,
-
-      NEGOTIATION_POINTS: `Identify negotiation points and areas for improvement in this contract. Return a JSON object with:
-{
-  "negotiationPoints": [
-    {
-      "clause": "Name or section of the clause",
-      "currentTerms": "Current contract language or terms",
-      "concern": "Why this might be problematic",
-      "suggestedChange": "Recommended modification",
-      "priority": "high/medium/low",
-      "impact": "financial/legal/operational"
-    }
-  ],
-  "favorabilityScore": number from 0-100 (0=very unfavorable, 100=very favorable),
-  "favorabilityAssessment": "Overall assessment of contract favorability",
-  "imbalances": ["List of terms that heavily favor one party"],
-  "missingSprotections": ["Standard clauses or protections that are missing"],
-  "strongPoints": ["Terms that are particularly favorable"],
-  "recommendations": ["Top recommendations for negotiation"],
-  "additionalFindings": [
-    {
-      "field": "Any negotiation-relevant finding not in schema",
-      "value": "Description",
-      "leverage": "strong|weak|neutral",
-      "category": "pricing|terms|rights|obligations|other"
-    }
-  ],
-  "openEndedNotes": "Any other negotiation insights - leverage points, counterparty pressures, market context, or strategic observations."
-}
-
-Contract text:
-${truncatedText}`,
-
-      AMENDMENTS: `Extract information about any amendments, addenda, or modifications to this contract. Return a JSON object with:
-{
-  "hasAmendments": true/false,
-  "amendments": [
-    {
-      "number": "Amendment number or identifier",
-      "date": "Date of amendment",
-      "title": "Title or subject of amendment",
-      "summary": "Brief description of changes",
-      "affectedSections": ["List of sections modified"],
-      "parties": ["Parties who signed"]
-    }
-  ],
-  "changeHistory": [
-    {
-      "date": "Date of change",
-      "type": "amendment/addendum/modification/side-letter",
-      "description": "What was changed"
-    }
-  ],
-  "originalContractDate": "Date of original contract if mentioned",
-  "latestVersion": "Current version number if versioned",
-  "summary": "Overview of contract modification history",
-  "additionalFindings": [
-    {
-      "field": "Any amendment-related info not in schema",
-      "value": "Description",
-      "date": "Date if known",
-      "category": "amendment|addendum|side-letter|modification|other"
-    }
-  ],
-  "openEndedNotes": "Any other observations about the amendment history, superseded terms, or version conflicts."
-}
-
-Contract text:
-${truncatedText}`,
-
-      CONTACTS: `Extract all contact information, key personnel, and SIGNATURE STATUS from this contract. Return a JSON object with:
-{
-  "contacts": [
-    {
-      "name": "Full name",
-      "role": "Job title or role",
-      "organization": "Company name",
-      "partyType": "client/vendor/witness/guarantor",
-      "email": "Email address if provided",
-      "phone": "Phone number if provided",
-      "address": "Mailing address if provided",
-      "isSignatory": true/false,
-      "isPrimaryContact": true/false
-    }
-  ],
-  "signatories": [
-    {
-      "name": "Name of signatory",
-      "title": "Job title",
-      "organization": "Company",
-      "dateSigned": "Signature date if shown (YYYY-MM-DD format)",
-      "isSigned": true/false - TRUE if actual signature/handwriting present, FALSE if signature line is blank/empty
-    }
-  ],
-  "signatureStatus": "signed/partially_signed/unsigned/unknown",
-  "signatureDate": "YYYY-MM-DD - the date the contract was signed (look for dates near signatures)",
-  "signatureAnalysis": {
-    "totalSignatureBlocks": "Number of signature blocks/lines found",
-    "signedBlocks": "Number of blocks with actual signatures",
-    "unsignedBlocks": "Number of empty/blank signature lines",
-    "hasWitnessSignatures": true/false,
-    "hasNotaryOrSeal": true/false,
-    "executionLanguage": "Any 'IN WITNESS WHEREOF' or similar execution language found"
-  },
-  "noticeAddresses": [
-    {
-      "party": "Party name",
-      "address": "Full notice address",
-      "attention": "Attention to (if specified)"
-    }
-  ],
-  "summary": "Overview of key contacts for contract management",
-  "additionalFindings": [
-    {
-      "field": "Any contact-related info not in schema",
-      "value": "Description",
-      "contactType": "escalation|emergency|technical|billing|legal|other"
-    }
-  ],
-  "openEndedNotes": "Any other contact observations - escalation procedures, preferred communication methods, or key relationship notes."
-}
-
-CRITICAL SIGNATURE STATUS DETECTION RULES:
-- Look at the END of the document for signature blocks
-- "signed" = ALL signature lines have actual signatures (handwritten marks, typed /s/ names with dates, or electronic signature indicators like DocuSign stamps)
-- "partially_signed" = SOME but NOT ALL signature lines have signatures
-- "unsigned" = NO signatures present, all signature lines are blank/empty (just lines like ______)
-- "unknown" = Cannot find signature blocks or unclear if document requires signatures
-- Look for: actual handwriting/cursive marks, "/s/ Name" typed signatures, dates written near signatures, "Signed:", "By:", electronic signature timestamps
-- Empty lines like "________________________" or "Signature: _______" without marks = unsigned
-- Names TYPED above/below signature lines are NOT signatures unless accompanied by "/s/" or actual handwriting
-
-Contract text:
-${truncatedText}`
+    // Build prompt context from contract profile for the shared module
+    const promptCtx: PromptContext = {
+      contractText,
+      contractType: contractType,
+      contractTypeDisplayName: profile.displayName,
+      contractTypeHints: detectedContractType ? profile.extractionHints : undefined,
+      expectedSections: detectedContractType ? profile.expectedSections : undefined,
+      clauseCategories: profile.clauseCategories.length > 0 ? profile.clauseCategories : undefined,
+      financialFieldsHint: profile.financialFields.length > 0 
+        ? `Focus on extracting: ${profile.financialFields.join(', ')}`
+        : undefined,
+      riskCategoriesHint: profile.riskCategories.length > 0
+        ? `Key risk areas for this contract type: ${profile.riskCategories.join(', ')}`
+        : undefined,
     };
 
-    const prompt = prompts[type];
+    // Use shared module for prompt generation (single source of truth)
+    const prompt = buildArtifactPrompt(type, promptCtx);
     if (!prompt) {
       logger.warn({ type }, 'Unknown artifact type, using fallback');
       return getFallbackArtifact(type, contractText, contract);
     }
 
-    logger.info({ type, textLength: truncatedText.length }, 'Calling OpenAI for artifact generation');
+    const truncatedText = truncateTextForType(contractText, type);
+    const systemPrompt = getSystemPrompt();
+    let usedProvider = 'none';
+    let artifactData: Record<string, any> | null = null;
 
-    const response = await openai.chat.completions.create({
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a contract analysis expert. Analyze contracts and return ONLY valid JSON (no markdown, no explanation). Be thorough and accurate.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      max_tokens: 4000,
-      temperature: 0.2, // Low temperature for consistent, accurate extraction
-      response_format: { type: 'json_object' }
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('Empty response from OpenAI');
+    // Try Mistral first (if configured)
+    if (mistralKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Trying Mistral for artifact generation');
+      const mistralResult = await callMistralForArtifact(prompt, systemPrompt, type);
+      
+      if (mistralResult.success && mistralResult.data) {
+        artifactData = mistralResult.data;
+        usedProvider = 'mistral-large-latest';
+      } else {
+        logger.warn({ type, error: mistralResult.error }, 'Mistral failed, trying OpenAI fallback');
+      }
     }
 
-    const artifactData = JSON.parse(content);
-    logger.info({ type, keys: Object.keys(artifactData) }, 'Successfully generated artifact with AI');
+    // Fall back to OpenAI if Mistral failed or not configured
+    if (!artifactData && openaiKey) {
+      logger.info({ type, textLength: truncatedText.length }, 'Trying OpenAI for artifact generation');
+      const openaiResult = await callOpenAIForArtifact(prompt, systemPrompt, type);
+      
+      if (openaiResult.success && openaiResult.data) {
+        artifactData = openaiResult.data;
+        usedProvider = openaiResult.model || process.env.OPENAI_MODEL || 'gpt-4o';
+        // Capture token usage from OpenAI
+        artifactData._tokenUsage = {
+          tokensUsed: openaiResult.tokensUsed || 0,
+          promptTokens: openaiResult.promptTokens || 0,
+          completionTokens: openaiResult.completionTokens || 0,
+        };
+      } else {
+        logger.warn({ type, error: openaiResult.error }, 'OpenAI also failed');
+      }
+    }
+
+    // If both AI providers failed, use fallback templates
+    if (!artifactData) {
+      logger.error({ type }, 'All AI providers failed, using fallback templates');
+      return getFallbackArtifact(type, contractText, contract);
+    }
+
+    // Add metadata including token usage tracking
+    const tokenUsage = artifactData._tokenUsage || {};
+    delete artifactData._tokenUsage; // Remove temp field
     
-    // Add metadata
     artifactData._meta = {
       generatedAt: new Date().toISOString(),
-      model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+      model: usedProvider,
       aiGenerated: true,
-      textAnalyzed: truncatedText.length
+      textAnalyzed: truncatedText.length,
+      tokensUsed: tokenUsage.tokensUsed || 0,
+      promptTokens: tokenUsage.promptTokens || 0,
+      completionTokens: tokenUsage.completionTokens || 0,
+      estimatedCost: sharedEstimateTokenCost(usedProvider, tokenUsage.promptTokens || 0, tokenUsage.completionTokens || 0),
+      promptVersion: PROMPT_VERSION,
+      antiHallucinationEnabled: true,
     };
 
+    logger.info({ type, provider: usedProvider, tokensUsed: tokenUsage.tokensUsed || 0 }, 'Successfully generated artifact with AI');
     return artifactData;
 
   } catch (error) {
-    logger.error({ error, type }, 'OpenAI artifact generation failed, using fallback');
+    logger.error({ error, type }, 'AI artifact generation failed unexpectedly, using fallback');
     return getFallbackArtifact(type, contractText, contract);
   }
 }
 
 /**
- * Fallback artifact templates when AI is unavailable
+ * Estimate token cost in USD — delegates to shared module
+ */
+function estimateTokenCost(model: string, promptTokens: number, completionTokens: number): number {
+  return sharedEstimateTokenCost(model, promptTokens, completionTokens);
+}
+
+/**
+ * Fallback artifact templates when AI is unavailable (delegates to shared module with contract overlay)
  */
 function getFallbackArtifact(type: string, contractText: string, contract: any): Record<string, any> {
-  const artifactTemplates: Record<string, any> = {
-    OVERVIEW: {
-      summary: `Contract uploaded: ${contract.fileName || contract.contractTitle || 'Unknown'}. AI analysis unavailable - please review manually.`,
-      contractType: contract.contractType || 'Unknown',
-      parties: [contract.clientName, contract.supplierName].filter(Boolean).map((name: string) => ({ name, role: 'Party' })),
-      effectiveDate: contract.effectiveDate?.toISOString() || null,
-      expirationDate: contract.expirationDate?.toISOString() || null,
-      totalValue: contract.totalValue || 0,
-      currency: contract.currency || 'USD',
-      keyTerms: [],
-      extractedLength: contractText.length,
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    CLAUSES: {
-      clauses: [],
-      _meta: { fallback: true, reason: 'AI unavailable', message: 'Clause extraction requires AI analysis' }
-    },
-    FINANCIAL: {
-      totalValue: contract.totalValue || 0,
-      currency: contract.currency || 'USD',
-      paymentTerms: 'Not analyzed',
-      paymentSchedule: [],
-      yearlyBreakdown: [],
-      costBreakdown: [],
-      paymentMethod: null,
-      invoicingRequirements: null,
-      analysis: 'Financial analysis requires AI - please configure OPENAI_API_KEY',
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    RISK: {
-      overallRisk: 'Unknown',
-      riskScore: 50,
-      risks: [],
-      redFlags: [],
-      recommendations: ['Configure AI analysis for proper risk assessment'],
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    COMPLIANCE: {
-      compliant: null,
-      complianceScore: null,
-      checks: [],
-      issues: [],
-      recommendations: ['Configure AI analysis for compliance review'],
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    OBLIGATIONS: {
-      obligations: [],
-      milestones: [],
-      keyDeadlines: [],
-      summary: 'Obligation extraction requires AI - please configure OPENAI_API_KEY',
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    RENEWAL: {
-      autoRenewal: null,
-      renewalTerms: 'Not analyzed',
-      renewalPeriod: null,
-      renewalNoticeRequired: null,
-      noticeRequirements: null,
-      terminationRights: null,
-      earlyTerminationFees: null,
-      expirationDate: contract.expirationDate?.toISOString() || null,
-      renewalHistory: [],
-      recommendations: ['Configure AI analysis for renewal terms extraction'],
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    NEGOTIATION_POINTS: {
-      negotiationPoints: [],
-      favorabilityScore: 50,
-      favorabilityAssessment: 'AI analysis required',
-      imbalances: [],
-      missingProtections: [],
-      strongPoints: [],
-      recommendations: ['Configure AI analysis for negotiation points'],
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    AMENDMENTS: {
-      hasAmendments: false,
-      amendments: [],
-      changeHistory: [],
-      originalContractDate: null,
-      latestVersion: null,
-      summary: 'Amendment extraction requires AI analysis',
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-    CONTACTS: {
-      contacts: [],
-      signatories: [],
-      noticeAddresses: [],
-      summary: 'Contact extraction requires AI analysis',
-      _meta: { fallback: true, reason: 'AI unavailable' }
-    },
-  };
-
-  return artifactTemplates[type] || { type, generated: true, timestamp: new Date(), _meta: { fallback: true } };
+  const base = getFallbackTemplate(type);
+  
+  // Overlay contract-specific data for richer fallbacks
+  if (type === 'OVERVIEW' && base) {
+    base.summary = `Contract uploaded: ${contract.fileName || contract.contractTitle || 'Unknown'}. AI analysis unavailable - please review manually.`;
+    base.contractType = contract.contractType || 'Unknown';
+    // Try to extract parties from DB fields or text
+    const parties: Array<{name: string; role: string}> = [];
+    if (contract.clientName) parties.push({ name: contract.clientName, role: 'Client' });
+    if (contract.supplierName) parties.push({ name: contract.supplierName, role: 'Supplier' });
+    if (parties.length === 0 && contractText?.length > 50) {
+      const betweenMatch = contractText.match(
+        /(?:between|by and between|entered into by)\s+([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(.*?\))?\s*(?:,?\s*(?:and|&)\s+)([A-Z][A-Za-z0-9\s&,.'()\-]{2,80}?)\s*(?:\(|,|\n)/i
+      );
+      if (betweenMatch) {
+        parties.push({ name: betweenMatch[1].trim(), role: 'Party A' });
+        parties.push({ name: betweenMatch[2].trim(), role: 'Party B' });
+      }
+    }
+    if (parties.length > 0) base.parties = parties;
+    base.effectiveDate = contract.effectiveDate?.toISOString() || null;
+    base.expirationDate = contract.expirationDate?.toISOString() || null;
+    if (contract.totalValue) base.totalValue = contract.totalValue;
+    if (contract.currency) base.currency = contract.currency;
+  } else if (type === 'FINANCIAL' && base) {
+    if (contract.totalValue) base.totalValue = { value: contract.totalValue, source: 'database', extractedFromText: false };
+    if (contract.currency) base.currency = { value: contract.currency, source: 'database', extractedFromText: false };
+  } else if (type === 'RENEWAL' && base) {
+    if (contract.expirationDate) base.currentTermEnd = contract.expirationDate.toISOString();
+  }
+  
+  return base;
 }
 
 /**
@@ -2705,7 +3397,10 @@ if (isMainModule) {
   logger.info('Starting OCR + Artifact worker...');
   
   // Initialize queue service with config before registering worker
-  const redisUrl = process.env.REDIS_URL || 'redis://localhost:6379';
+  const redisUrl = process.env.REDIS_URL;
+  if (!redisUrl) {
+    throw new Error('REDIS_URL environment variable must be configured');
+  }
   getQueueService({
     redis: { url: redisUrl },
     defaultJobOptions: {
@@ -2718,16 +3413,25 @@ if (isMainModule) {
   
   registerOCRArtifactWorker();
   
-  // Keep process alive
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully...');
+  // Graceful shutdown — wait for in-progress jobs before exiting
+  const shutdown = async (signal: string) => {
+    logger.info({ signal }, 'Received shutdown signal, closing worker gracefully...');
+    const queueService = getQueueService();
+    try {
+      // worker.close() waits for active jobs to finish
+      await Promise.race([
+        queueService.close(),
+        new Promise(resolve => setTimeout(resolve, 30000)), // 30s timeout
+      ]);
+      logger.info('Worker shutdown complete');
+    } catch (err) {
+      logger.error({ err }, 'Error during worker shutdown');
+    }
     process.exit(0);
-  });
+  };
 
-  process.on('SIGINT', () => {
-    logger.info('SIGINT received, shutting down gracefully...');
-    process.exit(0);
-  });
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 /**

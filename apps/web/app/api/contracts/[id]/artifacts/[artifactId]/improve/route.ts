@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { getEnhancedPrompt, validateExtractedData } from '@/lib/enhanced-prompts';
 import { editableArtifactService } from 'data-orchestration/services';
 import { dbAdaptor } from 'data-orchestration';
 import { queueRAGReindex } from '@/lib/rag/reindex-helper';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Improve an artifact using a user-supplied refinement prompt
 export async function POST(
@@ -10,30 +11,34 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const body = await request.json();
     const { userPrompt, userId } = body;
 
-    if (!userId) return NextResponse.json({ error: 'userId required' }, { status: 400 });
-    if (!userPrompt) return NextResponse.json({ error: 'userPrompt required' }, { status: 400 });
+    if (!userId) return createErrorResponse(ctx, 'BAD_REQUEST', 'userId required', 400);
+    if (!userPrompt) return createErrorResponse(ctx, 'BAD_REQUEST', 'userPrompt required', 400);
 
     const client = dbAdaptor.getClient();
     const artifact = await client.artifact.findFirst({ where: { id: params.artifactId, tenantId } });
-    if (!artifact) return NextResponse.json({ error: 'Artifact not found' }, { status: 404 });
-    if (artifact.contractId !== params.id) return NextResponse.json({ error: 'Artifact does not belong to contract' }, { status: 403 });
+    if (!artifact) return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
+    if (artifact.contractId !== params.id) return createErrorResponse(ctx, 'FORBIDDEN', 'Artifact does not belong to contract', 403);
 
     const contract = await client.contract.findFirst({ where: { id: params.id, tenantId } });
     const artifactData = artifact.data as any;
     const rawText = contract?.rawText || artifactData?.text || '';
-    if (!rawText) return NextResponse.json({ error: 'No rawText available to improve from' }, { status: 400 });
+    if (!rawText) return createErrorResponse(ctx, 'BAD_REQUEST', 'No rawText available to improve from', 400);
 
   const promptConfig = getEnhancedPrompt(artifact.type);
-    if (!promptConfig) return NextResponse.json({ error: 'No prompt config for artifact type' }, { status: 400 });
+    if (!promptConfig) return createErrorResponse(ctx, 'BAD_REQUEST', 'No prompt config for artifact type', 400);
 
   // Mark artifact as processing so UI/SSE show progress
   await client.artifact.update({ where: { id: artifact.id }, data: { validationStatus: 'PROCESSING', lastEditedAt: new Date() } });
@@ -74,8 +79,8 @@ export async function POST(
       reason: `artifact ${artifact.type} improved`,
     });
 
-    return NextResponse.json({ success: true, artifactId: artifact.id, validation });
+    return createSuccessResponse(ctx, { success: true, artifactId: artifact.id, validation });
   } catch (error: unknown) {
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed' }, { status: 500 });
+    return handleApiError(ctx, error);
   }
 }

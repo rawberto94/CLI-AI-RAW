@@ -22,7 +22,29 @@ export class SmartGapFillingAgent extends BaseAgent {
   capabilities = ['gap-filling', 'cross-artifact-inference', 'targeted-extraction'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const gapInput = input.context as GapFillingInput;
+    // Build GapFillingInput from orchestrator context if not directly provided
+    const gapInput: GapFillingInput = input.context?.artifact
+      ? input.context as GapFillingInput
+      : (() => {
+          // Convert artifacts Record to array
+          const artifactArray = input.context?.artifactArray || (
+            input.context?.artifacts
+              ? Object.entries(input.context.artifacts).map(([type, data]) => ({ id: type, type, data }))
+              : []
+          );
+
+          // Pick the first artifact as the primary target (or OVERVIEW if available)
+          const primaryArtifact = artifactArray.find((a: any) => a.type === 'OVERVIEW') || artifactArray[0] || { id: 'unknown', type: 'unknown', data: {} };
+
+          return {
+            artifact: primaryArtifact,
+            allArtifacts: artifactArray,
+            contractText: input.context?.contractText || '',
+            contractMetadata: input.context?.contract || {},
+            aggressiveMode: false,
+            minimumCompleteness: 0.85,
+          } as GapFillingInput;
+        })();
     const result = await this.fillMissingFields(gapInput);
 
     const actions: AgentAction[] = [];
@@ -86,7 +108,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         ),
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
@@ -101,14 +123,18 @@ export class SmartGapFillingAgent extends BaseAgent {
   private async fillMissingFields(
     input: GapFillingInput
   ): Promise<GapFillingResult> {
-    const { artifact, allArtifacts, contractText } = input;
+    const { artifact, allArtifacts, contractText, aggressiveMode, minimumCompleteness } = input;
 
-    // Step 1: Identify gaps
-    const gaps = this.identifyGaps(artifact);
+    // Step 1: Identify gaps (more thorough in aggressive mode)
+    const gaps = this.identifyGaps(artifact, aggressiveMode);
     const originalCompleteness = this.calculateCompleteness(artifact);
 
     const filledGaps: FilledGap[] = [];
     const remainingGaps: IdentifiedGap[] = [];
+
+    // In aggressive mode, lower the confidence thresholds
+    const crossArtifactConfidenceThreshold = aggressiveMode ? 0.65 : 0.8;
+    const aiExtractionConfidenceThreshold = aggressiveMode ? 0.55 : 0.7;
 
     // Step 2: Try to fill each gap
     for (const gap of gaps) {
@@ -120,7 +146,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         allArtifacts
       );
 
-      if (inferredValue && inferredValue.confidence > 0.8) {
+      if (inferredValue && inferredValue.confidence > crossArtifactConfidenceThreshold) {
         filledGaps.push({
           field: gap.field,
           value: inferredValue.value,
@@ -132,15 +158,20 @@ export class SmartGapFillingAgent extends BaseAgent {
         continue;
       }
 
-      // Strategy 2: Targeted AI extraction
+      // Strategy 2: Targeted AI extraction (use full text in aggressive mode)
       if (!filled && gap.fillability !== 'impossible') {
+        const textToUse = aggressiveMode && contractText 
+          ? contractText 
+          : contractText?.slice(0, 8000) ?? '';
+          
         const extracted = await this.targetedExtraction(
           gap.field,
-          contractText,
-          String(artifact.type ?? '')
+          textToUse,
+          String(artifact.type ?? ''),
+          aggressiveMode
         );
 
-        if (extracted && extracted.confidence > 0.7) {
+        if (extracted && extracted.confidence > aiExtractionConfidenceThreshold) {
           filledGaps.push({
             field: gap.field,
             value: extracted.value,
@@ -170,6 +201,27 @@ export class SmartGapFillingAgent extends BaseAgent {
         }
       }
 
+      // Strategy 4 (Aggressive mode only): Context-aware inference
+      if (!filled && aggressiveMode && contractText) {
+        const contextInferred = await this.contextAwareInference(
+          gap.field,
+          contractText,
+          allArtifacts
+        );
+        
+        if (contextInferred && contextInferred.confidence > 0.5) {
+          filledGaps.push({
+            field: gap.field,
+            value: contextInferred.value,
+            source: 'context_inference',
+            confidence: contextInferred.confidence,
+            reasoning: contextInferred.reasoning,
+          });
+          filled = true;
+          continue;
+        }
+      }
+
       // If still not filled, add to remaining gaps
       if (!filled) {
         remainingGaps.push(gap);
@@ -188,31 +240,111 @@ export class SmartGapFillingAgent extends BaseAgent {
       ? filledGaps.reduce((sum, g) => sum + g.confidence, 0) / filledGaps.length
       : 1.0;
 
+    // Check if we've met the minimum completeness threshold
+    const targetCompleteness = minimumCompleteness ?? 0.85;
+    const meetsTarget = newCompleteness >= targetCompleteness;
+
     return {
       originalCompleteness,
       newCompleteness,
       filledGaps,
       remainingGaps,
       confidence: avgConfidence,
+      meetsTargetCompleteness: meetsTarget,
+      targetCompleteness,
     };
+  }
+
+  /**
+   * Context-aware inference for aggressive gap filling
+   * Uses surrounding context and document patterns to infer missing values
+   */
+  private async contextAwareInference(
+    field: string,
+    contractText: string,
+    allArtifacts: any[]
+  ): Promise<{ value: any; confidence: number; reasoning: string } | null> {
+    try {
+      const prompt = `You are a contract analysis expert. Based on the full context of this contract, infer the most likely value for the missing field.
+
+Field to infer: ${field}
+
+Contract context (analyze for patterns, implicit information, industry standards):
+${contractText.slice(0, 10000)}
+
+Guidelines:
+1. Look for implicit information that could indicate the value
+2. Consider industry standards and common practices
+3. Look for related terms that might indicate the value
+4. If inferring dates, look for time-related clauses
+5. If inferring values, look for financial context
+6. Be conservative but provide best reasonable inference
+
+Return JSON: { "value": inferred_value_or_null, "confidence": 0.0-1.0, "reasoning": "detailed explanation of inference" }
+If you cannot make a reasonable inference, return: { "value": null, "confidence": 0, "reasoning": "explanation" }`;
+
+      const response = await openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are an expert at analyzing contracts and inferring missing information from context.' },
+          { role: 'user', content: prompt },
+        ],
+        temperature: 0.2,
+        response_format: { type: 'json_object' },
+      });
+
+      const result = JSON.parse(response.choices[0]?.message?.content || '{}');
+
+      if (result.value && !this.isFieldEmpty(result.value) && result.confidence > 0.3) {
+        return {
+          value: result.value,
+          confidence: result.confidence,
+          reasoning: `Context inference: ${result.reasoning}`,
+        };
+      }
+
+      return null;
+    } catch (error) {
+      logger.error({ error, field }, 'Context-aware inference failed');
+      return null;
+    }
   }
 
   /**
    * Identify gaps in artifact data
    */
-  private identifyGaps(artifact: any): IdentifiedGap[] {
+  private identifyGaps(artifact: any, aggressiveMode: boolean = false): IdentifiedGap[] {
     const gaps: IdentifiedGap[] = [];
 
-    // Define critical fields by artifact type
+    // Define critical fields by artifact type (expanded for aggressive mode)
     const criticalFieldsByType: Record<string, string[]> = {
-      OVERVIEW: ['parties', 'effectiveDate', 'expirationDate', 'contractValue'],
-      FINANCIAL: ['totalValue', 'paymentTerms', 'currency'],
-      OBLIGATIONS: ['obligations'],
+      OVERVIEW: ['parties', 'effectiveDate', 'expirationDate', 'contractValue', 'title', 'summary', 'contractType'],
+      FINANCIAL: ['totalValue', 'paymentTerms', 'currency', 'paymentSchedule', 'fees'],
+      OBLIGATIONS: ['obligations', 'deliverables', 'milestones'],
       CLAUSES: ['clauses'],
-      RISK: ['riskScore', 'riskFactors'],
+      RISK: ['riskScore', 'riskFactors', 'mitigationStrategies'],
+      PARTIES: ['parties', 'roles', 'contactInfo'],
+      TIMELINE: ['effectiveDate', 'expirationDate', 'milestones', 'renewalTerms'],
+      DELIVERABLES: ['deliverables', 'acceptanceCriteria', 'timeline'],
+      PRICING: ['pricing', 'rates', 'discounts', 'totalValue'],
     };
 
-    const criticalFields = criticalFieldsByType[artifact.type] || [];
+    // Additional fields to check in aggressive mode
+    const additionalFieldsByType: Record<string, string[]> = {
+      OVERVIEW: ['governingLaw', 'jurisdiction', 'terminationConditions', 'renewalTerms'],
+      FINANCIAL: ['penalties', 'discounts', 'taxes', 'invoicingTerms'],
+      OBLIGATIONS: ['performanceMetrics', 'serviceLevel', 'escalationPath'],
+      CLAUSES: ['keyTerms', 'definitions', 'exhibits'],
+      RISK: ['complianceRequirements', 'insuranceRequirements', 'liabilityLimits'],
+    };
+
+    let criticalFields = criticalFieldsByType[artifact.type] || [];
+    
+    // In aggressive mode, also check additional fields
+    if (aggressiveMode) {
+      const additionalFields = additionalFieldsByType[artifact.type] || [];
+      criticalFields = [...criticalFields, ...additionalFields];
+    }
 
     // Check each critical field
     for (const field of criticalFields) {
@@ -222,7 +354,7 @@ export class SmartGapFillingAgent extends BaseAgent {
         gaps.push({
           field,
           artifactType: artifact.type,
-          importance: 'critical',
+          importance: aggressiveMode ? 'high' : 'critical',
           fillability: this.assessFillability(field, artifact),
           suggestions: this.generateSuggestions(field, artifact),
         });
@@ -230,7 +362,7 @@ export class SmartGapFillingAgent extends BaseAgent {
     }
 
     // Check for low-quality extractions (placeholders, etc)
-    this.findLowQualityFields(artifact, gaps);
+    this.findLowQualityFields(artifact, gaps, aggressiveMode);
 
     return gaps;
   }
@@ -266,7 +398,7 @@ export class SmartGapFillingAgent extends BaseAgent {
   /**
    * Find fields with low-quality data
    */
-  private findLowQualityFields(artifact: any, gaps: IdentifiedGap[]): void {
+  private findLowQualityFields(artifact: any, gaps: IdentifiedGap[], aggressiveMode: boolean = false): void {
     const checkObject = (obj: any, prefix: string = '') => {
       if (!obj || typeof obj !== 'object') return;
 
@@ -277,12 +409,21 @@ export class SmartGapFillingAgent extends BaseAgent {
           gaps.push({
             field: fieldPath,
             artifactType: artifact.type,
-            importance: 'medium',
+            importance: aggressiveMode ? 'high' : 'medium',
             fillability: 'medium',
             suggestions: [`Re-extract ${fieldPath} from contract text`],
           });
-        } else if (typeof value === 'object' && value !== null) {
+        } else if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
           checkObject(value, fieldPath);
+        } else if (aggressiveMode && Array.isArray(value) && value.length === 0) {
+          // In aggressive mode, flag empty arrays too
+          gaps.push({
+            field: fieldPath,
+            artifactType: artifact.type,
+            importance: 'medium',
+            fillability: 'medium',
+            suggestions: [`Extract ${fieldPath} items from contract text`],
+          });
         }
       }
     };
@@ -360,10 +501,14 @@ export class SmartGapFillingAgent extends BaseAgent {
   private async targetedExtraction(
     field: string,
     contractText: string,
-    artifactType: string
+    artifactType: string,
+    aggressiveMode: boolean = false
   ): Promise<{ value: any; confidence: number; reasoning: string } | null> {
     try {
-      const prompt = this.buildFieldSpecificPrompt(field, artifactType);
+      const prompt = this.buildFieldSpecificPrompt(field, artifactType, aggressiveMode);
+      
+      // Use more text in aggressive mode
+      const textLength = aggressiveMode ? 12000 : 8000;
 
       const response = await openai.chat.completions.create({
         model: 'gpt-4o-mini',
@@ -374,10 +519,10 @@ export class SmartGapFillingAgent extends BaseAgent {
           },
           {
             role: 'user',
-            content: `Extract the following field from this contract:\n\nField: ${field}\n\nContract Text:\n${contractText.slice(0, 8000)}`,
+            content: `Extract the following field from this contract:\n\nField: ${field}\n\nContract Text:\n${contractText.slice(0, textLength)}`,
           },
         ],
-        temperature: 0.1,
+        temperature: aggressiveMode ? 0.2 : 0.1, // Slightly higher temp in aggressive mode for more creative extraction
         response_format: { type: 'json_object' },
       });
 
@@ -401,18 +546,27 @@ export class SmartGapFillingAgent extends BaseAgent {
   /**
    * Build field-specific extraction prompt
    */
-  private buildFieldSpecificPrompt(field: string, artifactType: string): string {
-    const fieldPrompts: Record<string, string> = {
-      'effectiveDate': `Extract the contract effective date. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'expirationDate': `Extract the contract expiration date. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'parties': `Extract all contract parties with their roles. Return JSON: { "value": [{"name": "Party Name", "role": "buyer|seller|etc"}], "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'contractValue': `Extract the total contract value. Return JSON: { "value": numeric_value, "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'paymentTerms': `Extract payment terms (e.g., "Net 30", "Monthly"). Return JSON: { "value": "terms", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
-      'currency': `Extract the contract currency (USD, EUR, etc). Return JSON: { "value": "currency_code", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+  private buildFieldSpecificPrompt(field: string, artifactType: string, aggressiveMode: boolean = false): string {
+    const basePrompts: Record<string, string> = {
+      'effectiveDate': `Extract the contract effective date. Look for "effective date", "commencement date", "start date", or dates mentioned near the beginning. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'expirationDate': `Extract the contract expiration/termination date. Look for "expiration", "termination", "end date", or term duration clauses. Return JSON: { "value": "YYYY-MM-DD", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'parties': `Extract all contract parties with their roles. Look for signature blocks, "between...and", "parties" sections. Return JSON: { "value": [{"name": "Party Name", "role": "buyer|seller|service_provider|customer|etc"}], "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'contractValue': `Extract the total contract value/amount. Look for total price, contract amount, consideration, or fee sections. Return JSON: { "value": numeric_value, "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'paymentTerms': `Extract payment terms (e.g., "Net 30", "Monthly", "Upon delivery"). Look for payment, invoicing, or billing sections. Return JSON: { "value": "terms", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'currency': `Extract the contract currency (USD, EUR, GBP, etc). Look for currency symbols or explicit currency mentions. Return JSON: { "value": "currency_code", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'governingLaw': `Extract the governing law/jurisdiction. Look for "governed by", "jurisdiction", or "applicable law" clauses. Return JSON: { "value": "jurisdiction", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'terminationConditions': `Extract termination conditions. Look for termination clause, notice periods, and termination for cause/convenience. Return JSON: { "value": "conditions summary", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
+      'renewalTerms': `Extract renewal terms. Look for auto-renewal, renewal notice, or term extension clauses. Return JSON: { "value": "renewal terms", "confidence": 0.0-1.0, "reasoning": "explanation" }`,
     };
+    
+    const aggressiveHint = aggressiveMode 
+      ? '\n\nIMPORTANT: Even if the information is not explicitly stated, try to infer it from context, related clauses, or industry standards. Provide your best reasonable interpretation with appropriate confidence level.'
+      : '';
 
-    return fieldPrompts[field] || 
+    const basePrompt = basePrompts[field] || 
       `Extract the field "${field}" from the contract. Return JSON: { "value": extracted_value, "confidence": 0.0-1.0, "reasoning": "explanation" }`;
+    
+    return basePrompt + aggressiveHint;
   }
 
   /**

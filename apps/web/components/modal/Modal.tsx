@@ -124,7 +124,7 @@ export function Modal({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalContext.Provider value={{ close: onClose }}>
+        <ModalContext.Provider key="open" value={{ close: onClose }}>
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -215,8 +215,8 @@ interface AlertModalProps {
 }
 
 const alertConfig: Record<AlertType, { icon: LucideIcon; color: string; bgColor: string }> = {
-  info: { icon: Info, color: 'text-blue-600 dark:text-blue-400', bgColor: 'bg-blue-100 dark:bg-blue-900/50' },
-  success: { icon: CheckCircle, color: 'text-emerald-600 dark:text-emerald-400', bgColor: 'bg-emerald-100 dark:bg-emerald-900/50' },
+  info: { icon: Info, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/50' },
+  success: { icon: CheckCircle, color: 'text-violet-600 dark:text-violet-400', bgColor: 'bg-violet-100 dark:bg-violet-900/50' },
   warning: { icon: AlertTriangle, color: 'text-amber-600 dark:text-amber-400', bgColor: 'bg-amber-100 dark:bg-amber-900/50' },
   error: { icon: AlertTriangle, color: 'text-red-600 dark:text-red-400', bgColor: 'bg-red-100 dark:bg-red-900/50' },
 };
@@ -253,7 +253,7 @@ export function AlertModal({
         <p className="text-slate-600 dark:text-slate-400 mb-6">{message}</p>
         <button
           onClick={handleConfirm}
-          className="w-full px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+          className="w-full px-4 py-2.5 bg-violet-600 text-white rounded-xl font-medium hover:bg-violet-700 transition-colors"
         >
           {confirmLabel}
         </button>
@@ -307,7 +307,7 @@ export function Drawer({
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Overlay */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -346,7 +346,7 @@ export function Drawer({
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">{children}</div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

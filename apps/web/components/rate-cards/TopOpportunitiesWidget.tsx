@@ -52,8 +52,8 @@ export function TopOpportunitiesWidget() {
   const getCategoryColor = (category: string) => {
     const colors: Record<string, string> = {
       HIGH_RATE: 'bg-red-100 text-red-800',
-      VOLUME_DISCOUNT: 'bg-blue-100 text-blue-800',
-      GEOGRAPHIC_ARBITRAGE: 'bg-purple-100 text-purple-800',
+      VOLUME_DISCOUNT: 'bg-violet-100 text-violet-800',
+      GEOGRAPHIC_ARBITRAGE: 'bg-violet-100 text-violet-800',
       SUPPLIER_CONSOLIDATION: 'bg-green-100 text-green-800',
     };
     return colors[category] || 'bg-gray-100 text-gray-800';
@@ -164,7 +164,7 @@ export function TopOpportunitiesWidget() {
         <div className="mt-4 pt-4 border-t">
           <Link
             href="/rate-cards/opportunities"
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+            className="text-sm text-violet-600 hover:text-violet-700 font-medium flex items-center gap-1"
           >
             View all opportunities
             <ArrowRight className="h-4 w-4" />

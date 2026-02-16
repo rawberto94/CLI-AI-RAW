@@ -22,7 +22,53 @@ export class AutonomousDeadlineManager extends BaseAgent {
   capabilities = ['deadline-management', 'prediction', 'auto-escalation'];
 
   async execute(input: AgentInput): Promise<AgentOutput> {
-    const { contracts } = input.context;
+    // Support both singular contract (from pipeline) and plural contracts (from scheduler)
+    let contracts: any[];
+    if (Array.isArray(input.context?.contracts)) {
+      contracts = input.context.contracts;
+    } else if (input.context?.contract) {
+      contracts = [input.context.contract];
+    } else {
+      // Fallback: query recent tenant contracts with expiration data
+      try {
+        const dbContracts = await prisma.contract.findMany({
+          where: { tenantId: input.tenantId },
+          select: {
+            id: true, contractTitle: true, status: true,
+            totalValue: true, effectiveDate: true, expirationDate: true,
+            supplierName: true, counterparty: true, autoRenewalEnabled: true,
+            renewalInitiatedAt: true, department: true,
+          },
+          take: 50,
+          orderBy: { expirationDate: 'asc' },
+        });
+        contracts = dbContracts.map(c => ({
+          id: c.id,
+          title: c.contractTitle || '',
+          status: c.status,
+          value: c.totalValue ?? 0,
+          effectiveDate: c.effectiveDate,
+          expirationDate: c.expirationDate,
+          supplierName: c.supplierName || c.counterparty || '',
+          autoRenewalEnabled: c.autoRenewalEnabled ?? false,
+          renewalInitiated: !!c.renewalInitiatedAt,
+          department: c.department || '',
+        }));
+      } catch {
+        contracts = [];
+      }
+    }
+
+    if (!contracts.length) {
+      return {
+        success: true,
+        data: { assessments: [], summary: { total: 0, critical: 0, high: 0, medium: 0, low: 0 } },
+        actions: [],
+        confidence: 1,
+        reasoning: 'No contracts available for deadline assessment',
+        metadata: { processingTime: 0 },
+      };
+    }
 
     // Monitor all contracts and generate actions
     const assessments = await Promise.all(
@@ -98,7 +144,7 @@ export class AutonomousDeadlineManager extends BaseAgent {
         `Auto-Escalations: ${allActions.filter(a => a.type === 'escalate').length}`,
       ]),
       metadata: {
-        processingTime: Date.now() - input.metadata!.timestamp.getTime(),
+        processingTime: Date.now() - (input.metadata?.timestamp?.getTime() ?? Date.now()),
       },
     };
   }
@@ -229,31 +275,92 @@ export class AutonomousDeadlineManager extends BaseAgent {
   }
 
   /**
-   * Analyze historical performance
+   * Analyze historical performance from completed processing jobs
    */
   private async analyzeHistoricalPerformance(contract: any): Promise<PredictionFactor> {
-    // This would analyze similar contracts' completion times
-    // For now, use a generic factor
-    return {
-      factor: 'Historical Performance',
-      impact: 'neutral',
-      weight: 0.2,
-      description: 'Similar contracts completed in 5-7 days on average',
-    };
+    try {
+      const completed = await prisma.processingJob.findMany({
+        where: {
+          tenantId: contract.tenantId,
+          status: 'COMPLETED',
+          completedAt: { not: null },
+          startedAt: { not: null },
+          contract: { contractType: contract.contractType },
+        },
+        select: { startedAt: true, completedAt: true },
+        orderBy: { completedAt: 'desc' },
+        take: 20,
+      });
+
+      if (completed.length === 0) {
+        return {
+          factor: 'Historical Performance',
+          impact: 'neutral',
+          weight: 0.2,
+          description: 'No historical data available for this contract type',
+        };
+      }
+
+      const durations = completed.map(j =>
+        (j.completedAt!.getTime() - j.startedAt!.getTime()) / 86400000
+      );
+      const avgDays = durations.reduce((a, b) => a + b, 0) / durations.length;
+
+      const impact = avgDays <= 3 ? 'positive' : avgDays <= 7 ? 'neutral' : 'negative';
+
+      return {
+        factor: 'Historical Performance',
+        impact,
+        weight: 0.2,
+        description: `Similar contracts completed in ${avgDays.toFixed(1)} days on average (${completed.length} samples)`,
+      };
+    } catch (error) {
+      logger.warn({ error }, 'Failed to analyze historical performance');
+      return {
+        factor: 'Historical Performance',
+        impact: 'neutral',
+        weight: 0.2,
+        description: 'Unable to retrieve historical data',
+      };
+    }
   }
 
   /**
-   * Analyze current workload
+   * Analyze current workload from active processing jobs
    */
   private async analyzeWorkload(contract: any): Promise<PredictionFactor> {
-    // This would check team workload
-    // High workload = longer processing time
-    return {
-      factor: 'Team Workload',
-      impact: 'neutral',
-      weight: 0.2,
-      description: 'Team workload is moderate',
-    };
+    try {
+      const activeJobs = await prisma.processingJob.count({
+        where: {
+          tenantId: contract.tenantId,
+          status: { in: ['PENDING', 'PROCESSING'] },
+        },
+      });
+
+      let impact: 'positive' | 'neutral' | 'negative';
+      let description: string;
+
+      if (activeJobs <= 5) {
+        impact = 'positive';
+        description = `Light workload (${activeJobs} active jobs)`;
+      } else if (activeJobs <= 20) {
+        impact = 'neutral';
+        description = `Moderate workload (${activeJobs} active jobs)`;
+      } else {
+        impact = 'negative';
+        description = `Heavy workload (${activeJobs} active jobs) — may cause delays`;
+      }
+
+      return { factor: 'Team Workload', impact, weight: 0.2, description };
+    } catch (error) {
+      logger.warn({ error }, 'Failed to analyze workload');
+      return {
+        factor: 'Team Workload',
+        impact: 'neutral',
+        weight: 0.2,
+        description: 'Unable to assess current workload',
+      };
+    }
   }
 
   /**

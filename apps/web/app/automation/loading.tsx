@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { Zap, Settings, Play, Repeat } from 'lucide-react';
+import { Zap, Settings, Play as _Play, Repeat } from 'lucide-react';
 
 export default function AutomationLoading() {
   return (
@@ -26,7 +26,7 @@ export default function AutomationLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <Settings className="h-4 w-4 text-blue-500" />
+              <Settings className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
           
@@ -36,7 +36,7 @@ export default function AutomationLoading() {
             className="absolute inset-0"
           >
             <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 p-2 bg-white dark:bg-slate-800 rounded-lg shadow-md dark:shadow-slate-900/50">
-              <Repeat className="h-4 w-4 text-emerald-500" />
+              <Repeat className="h-4 w-4 text-violet-500" />
             </div>
           </motion.div>
         </div>

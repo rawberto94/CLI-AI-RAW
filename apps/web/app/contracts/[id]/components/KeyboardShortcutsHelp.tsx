@@ -2,10 +2,8 @@
 
 import React, { memo } from 'react'
 import { motion } from 'framer-motion'
-import { cn } from '@/lib/utils'
 import {
   Keyboard,
-  X,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,6 +25,7 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['1'], description: 'Switch to Summary tab', category: 'navigation' },
   { keys: ['2'], description: 'Switch to Details tab', category: 'navigation' },
   { keys: ['3'], description: 'Switch to Activity tab', category: 'navigation' },
+  { keys: ['4', 'A'], description: 'Switch to AI tab', category: 'navigation' },
   { keys: ['P'], description: 'Toggle PDF viewer', category: 'navigation' },
   { keys: ['Esc'], description: 'Close dialogs / Exit edit mode', category: 'navigation' },
   // Actions
@@ -86,18 +85,18 @@ export const KeyboardShortcutsHelp = memo(function KeyboardShortcutsHelp() {
                 {categoryLabels[category as keyof typeof categoryLabels]}
               </h4>
               <div className="space-y-2">
-                {items.map((shortcut, idx) => (
+                {items.map((shortcut) => (
                   <motion.div
-                    key={idx}
+                    key={shortcut.description}
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: idx * 0.03 }}
+                    transition={{ delay: 0.03 }}
                     className="flex items-center justify-between py-1.5"
                   >
                     <span className="text-sm text-slate-700">{shortcut.description}</span>
                     <div className="flex items-center gap-1">
                       {shortcut.keys.map((key, keyIdx) => (
-                        <React.Fragment key={keyIdx}>
+                        <React.Fragment key={key}>
                           <KeyboardKey>{key}</KeyboardKey>
                           {keyIdx < shortcut.keys.length - 1 && (
                             <span className="text-slate-400 text-xs">+</span>

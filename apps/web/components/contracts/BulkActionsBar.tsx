@@ -63,13 +63,13 @@ export const BulkActionsBar = memo(function BulkActionsBar({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="BulkActionsBar-ap-1"
         initial={{ opacity: 0, y: -20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: -20, scale: 0.95 }}
         transition={{ duration: 0.2, type: "spring", stiffness: 300 }}
       >
-        <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 border-0 shadow-xl shadow-blue-500/25">
+        <Card className="bg-gradient-to-r from-violet-600 to-purple-600 border-0 shadow-xl shadow-violet-500/25">
           <CardContent className="py-4 px-5">
             <div className="flex items-center justify-between flex-wrap gap-3">
               {/* Selection Info */}
@@ -81,7 +81,7 @@ export const BulkActionsBar = memo(function BulkActionsBar({
                   <span className="font-semibold text-white">
                     {selectedCount} contract{selectedCount !== 1 ? 's' : ''} selected
                   </span>
-                  <p className="text-blue-100 text-xs">Ready for bulk actions</p>
+                  <p className="text-violet-100 text-xs">Ready for bulk actions</p>
                 </div>
                 <Button
                   variant="ghost"
@@ -132,7 +132,7 @@ export const BulkActionsBar = memo(function BulkActionsBar({
                   <TooltipTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white border-0 shadow-lg shadow-purple-500/25"
+                      className="bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white border-0 shadow-lg shadow-violet-500/25"
                       onClick={onAiReport}
                       disabled={isProcessing}
                     >
@@ -147,7 +147,7 @@ export const BulkActionsBar = memo(function BulkActionsBar({
                   <TooltipTrigger asChild>
                     <Button
                       size="sm"
-                      className="bg-gradient-to-r from-indigo-500 to-blue-500 hover:from-indigo-600 hover:to-blue-600 text-white border-0 shadow-lg shadow-indigo-500/25"
+                      className="bg-gradient-to-r from-violet-500 to-violet-600 hover:from-violet-600 hover:to-purple-700 text-white border-0 shadow-lg shadow-violet-500/25"
                       onClick={onCategorize}
                       disabled={isProcessing || isCategorizing}
                     >
@@ -221,14 +221,14 @@ export const CompactBulkActions = memo(function CompactBulkActions({
       exit={{ opacity: 0, scale: 0.9 }}
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50"
     >
-      <Card className="bg-blue-600 border-0 shadow-xl">
+      <Card className="bg-violet-600 border-0 shadow-xl">
         <CardContent className="py-2 px-4 flex items-center gap-3">
           <span className="text-white text-sm font-medium">
             {selectedCount} selected
           </span>
           <Button
             size="sm"
-            className="bg-white text-blue-600 hover:bg-blue-50"
+            className="bg-white text-violet-600 hover:bg-violet-50"
             onClick={onOpenMenu}
           >
             Actions
@@ -236,7 +236,7 @@ export const CompactBulkActions = memo(function CompactBulkActions({
           <Button
             size="sm"
             variant="ghost"
-            className="text-white hover:bg-blue-700"
+            className="text-white hover:bg-violet-700"
             onClick={onClear}
           >
             <X className="h-4 w-4" />

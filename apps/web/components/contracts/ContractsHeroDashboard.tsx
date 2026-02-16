@@ -88,15 +88,15 @@ function Sparkline({
   className?: string;
 }) {
   const colorClasses = {
-    blue: 'stroke-blue-500',
-    green: 'stroke-emerald-500',
+    blue: 'stroke-violet-500',
+    green: 'stroke-violet-500',
     red: 'stroke-red-500',
     amber: 'stroke-amber-500',
   };
 
   const fillClasses = {
-    blue: 'fill-blue-500/10',
-    green: 'fill-emerald-500/10',
+    blue: 'fill-violet-500/10',
+    green: 'fill-violet-500/10',
     red: 'fill-red-500/10',
     amber: 'fill-amber-500/10',
   };
@@ -193,7 +193,7 @@ const AnimatedCounter = memo(function AnimatedCounter({
   const formattedValue = formatFn ? formatFn(displayValue) : displayValue.toLocaleString();
   
   return (
-    <span className={cn(className, isAnimating && 'text-blue-400 transition-colors duration-300')}>
+    <span className={cn(className, isAnimating && 'text-violet-400 transition-colors duration-300')}>
       {prefix}{formattedValue}{suffix}
     </span>
   );
@@ -232,16 +232,16 @@ const StatCard = memo(function StatCard({
 }: StatCardProps) {
   const colorStyles = {
     blue: {
-      bg: 'bg-gradient-to-br from-blue-500 to-blue-600',
-      light: 'bg-blue-50',
-      text: 'text-blue-600',
-      ring: 'ring-blue-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
     green: {
-      bg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
-      light: 'bg-emerald-50',
-      text: 'text-emerald-600',
-      ring: 'ring-emerald-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-violet-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
     amber: {
       bg: 'bg-gradient-to-br from-amber-500 to-amber-600',
@@ -256,16 +256,16 @@ const StatCard = memo(function StatCard({
       ring: 'ring-red-500/20',
     },
     purple: {
-      bg: 'bg-gradient-to-br from-purple-500 to-purple-600',
-      light: 'bg-purple-50',
-      text: 'text-purple-600',
-      ring: 'ring-purple-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
     cyan: {
-      bg: 'bg-gradient-to-br from-cyan-500 to-cyan-600',
-      light: 'bg-cyan-50',
-      text: 'text-cyan-600',
-      ring: 'ring-cyan-500/20',
+      bg: 'bg-gradient-to-br from-violet-500 to-purple-600',
+      light: 'bg-violet-50',
+      text: 'text-violet-600',
+      ring: 'ring-violet-500/20',
     },
   };
 
@@ -300,7 +300,7 @@ const StatCard = memo(function StatCard({
           {trend !== undefined && (
             <div className={cn(
               "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full",
-              trend >= 0 ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+              trend >= 0 ? "bg-violet-50 text-violet-600" : "bg-red-50 text-red-600"
             )}>
               {trend >= 0 ? (
                 <TrendingUp className="h-3 w-3" />
@@ -372,16 +372,18 @@ const AlertCard = memo(function AlertCard({
 }: AlertCardProps) {
   const colorStyles = {
     amber: {
-      bg: 'bg-gradient-to-r from-amber-50 to-orange-50',
-      border: 'border-amber-200',
-      icon: 'bg-amber-100 text-amber-600',
+      bg: 'bg-gradient-to-r from-amber-50 via-orange-50/80 to-amber-50',
+      border: 'border-amber-200/60',
+      icon: 'bg-gradient-to-br from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30',
       text: 'text-amber-700',
+      hover: 'hover:border-amber-300 hover:shadow-amber-200/50',
     },
     red: {
-      bg: 'bg-gradient-to-r from-red-50 to-rose-50',
-      border: 'border-red-200',
-      icon: 'bg-red-100 text-red-600',
+      bg: 'bg-gradient-to-r from-red-50 via-rose-50/80 to-red-50',
+      border: 'border-red-200/60',
+      icon: 'bg-gradient-to-br from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/30',
       text: 'text-red-700',
+      hover: 'hover:border-red-300 hover:shadow-red-200/50',
     },
   };
 
@@ -391,27 +393,28 @@ const AlertCard = memo(function AlertCard({
     <motion.div
       initial={{ opacity: 0, x: -10 }}
       animate={{ opacity: 1, x: 0 }}
-      whileHover={{ x: 4 }}
+      whileHover={{ x: 4, scale: 1.01 }}
       onClick={onClick}
       className={cn(
-        "flex items-center gap-3 p-3 rounded-xl border transition-all",
+        "flex items-center gap-4 p-4 rounded-xl border transition-all duration-300",
         styles.bg,
         styles.border,
-        onClick && "cursor-pointer hover:shadow-md"
+        styles.hover,
+        onClick && "cursor-pointer hover:shadow-lg"
       )}
     >
-      <div className={cn("p-2 rounded-lg", styles.icon)}>
-        <Icon className="h-4 w-4" />
+      <div className={cn("p-2.5 rounded-xl", styles.icon)}>
+        <Icon className="h-5 w-5" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className={cn("text-lg font-bold", styles.text)}>{count}</span>
-          <span className="text-sm font-medium text-slate-700">{title}</span>
+          <span className={cn("text-xl font-bold", styles.text)}>{count}</span>
+          <span className="text-sm font-semibold text-slate-700">{title}</span>
         </div>
-        <p className="text-xs text-slate-500 truncate">{description}</p>
+        <p className="text-xs text-slate-500 truncate mt-0.5">{description}</p>
       </div>
       {onClick && (
-        <ArrowUpRight className={cn("h-4 w-4", styles.text)} />
+        <ArrowUpRight className={cn("h-5 w-5 opacity-50 group-hover:opacity-100 transition-opacity", styles.text)} />
       )}
     </motion.div>
   );
@@ -437,9 +440,9 @@ const QuickAction = memo(function QuickAction({
   href,
 }: QuickActionProps) {
   const colorStyles = {
-    blue: 'bg-blue-600 hover:bg-blue-700 shadow-blue-500/25',
-    purple: 'bg-purple-600 hover:bg-purple-700 shadow-purple-500/25',
-    cyan: 'bg-cyan-600 hover:bg-cyan-700 shadow-cyan-500/25',
+    blue: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
+    purple: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
+    cyan: 'bg-violet-600 hover:bg-violet-700 shadow-violet-500/25',
   };
 
   const content = (
@@ -543,12 +546,12 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-900 p-4"
+        className="relative overflow-hidden rounded-xl bg-gradient-to-br from-slate-900 via-slate-800 to-purple-900 p-4"
       >
         {/* Animated background elements */}
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-blue-500/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-500/10 blur-3xl" />
+          <div className="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(120,119,198,0.1),transparent_50%)]" />
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_80%,rgba(74,144,226,0.1),transparent_50%)]" />
@@ -586,7 +589,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             <Link href="/contracts/upload">
               <Button 
                 onClick={onUploadClick}
-                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-white text-slate-900 hover:bg-slate-100 shadow-lg shadow-black/20 transition-all hover:shadow-xl hover:scale-[1.02]"
+                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-white text-slate-900 hover:bg-slate-100 shadow-lg shadow-black/20 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Upload</span>
@@ -595,7 +598,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             <Link href="/contracts/generate">
               <Button 
                 onClick={onGenerateClick}
-                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white shadow-lg shadow-purple-500/25 transition-all hover:shadow-xl hover:scale-[1.02]"
+                className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
               >
                 <Sparkles className="h-4 w-4 mr-2" />
                 <span className="hidden sm:inline">Generate</span>
@@ -603,7 +606,7 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             </Link>
             <Button 
               onClick={onAskAIClick}
-              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-medium bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white shadow-lg shadow-cyan-500/25 transition-all hover:shadow-xl hover:scale-[1.02]"
+              className="h-10 md:h-11 px-4 md:px-5 rounded-xl font-semibold bg-gradient-to-r from-violet-500 to-purple-500 hover:from-violet-600 hover:to-purple-600 text-white shadow-lg shadow-violet-500/30 transition-all duration-300 hover:shadow-xl hover:scale-[1.03] active:scale-[0.98]"
             >
               <Target className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Ask AI</span>
@@ -612,42 +615,46 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
         </div>
 
         {/* Stats Cards - Inside Hero */}
-        <div data-testid="contracts-stats" className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2">
+        <div data-testid="contracts-stats" className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Total Contracts */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2 }}
             data-testid="stat-total"
-            className="group relative overflow-hidden rounded-lg bg-white/10 backdrop-blur-md border border-white/10 p-2.5 md:p-3 hover:bg-white/15 transition-all cursor-pointer"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+            {/* Background glow effect */}
+            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <FileText className="w-full h-full text-white" />
             </div>
-            <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-blue-500/20 backdrop-blur-sm">
-                <FileText className="h-4 w-4 text-blue-300" />
+            <div className="relative">
+              <div className="flex items-start justify-between mb-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                  <FileText className="h-5 w-5 text-white" />
+                </div>
+                {(stats.trends?.contracts ?? 0) !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
+                    (stats.trends?.contracts ?? 0) >= 0 ? "bg-violet-500/20 text-violet-300" : "bg-red-500/20 text-red-300"
+                  )}>
+                    {(stats.trends?.contracts ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(stats.trends?.contracts ?? 0)}%
+                  </div>
+                )}
               </div>
-              {(stats.trends?.contracts ?? 0) !== 0 && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm",
-                  (stats.trends?.contracts ?? 0) >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
-                )}>
-                  {(stats.trends?.contracts ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {Math.abs(stats.trends?.contracts ?? 0)}%
+              <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <AnimatedCounter value={stats.totalContracts ?? 0} />
+              </h3>
+              <p className="text-sm text-slate-200 mt-1 font-medium">Total Contracts</p>
+              <p className="text-xs text-slate-400">{stats.activeContracts ?? 0} active</p>
+              {sparklines.contracts.length > 0 && (
+                <div className="absolute bottom-3 right-3 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                  <Sparkline data={sparklines.contracts} color="blue" height={28} />
                 </div>
               )}
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-              <AnimatedCounter value={stats.totalContracts ?? 0} />
-            </h3>
-            <p className="text-sm text-slate-300 mt-1">Total Contracts</p>
-            <p className="text-xs text-slate-400">{stats.activeContracts ?? 0} active</p>
-            {sparklines.contracts.length > 0 && (
-              <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
-                <Sparkline data={sparklines.contracts} color="blue" height={24} />
-              </div>
-            )}
           </motion.div>
 
           {/* Total Value */}
@@ -656,38 +663,42 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.3 }}
             data-testid="stat-value"
-            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+            {/* Background glow effect */}
+            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <DollarSign className="w-full h-full text-white" />
             </div>
-            <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-emerald-500/20 backdrop-blur-sm">
-                <DollarSign className="h-4 w-4 text-emerald-300" />
+            <div className="relative">
+              <div className="flex items-start justify-between mb-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 shadow-lg shadow-violet-500/30">
+                  <DollarSign className="h-5 w-5 text-white" />
+                </div>
+                {(stats.trends?.value ?? 0) !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full backdrop-blur-sm",
+                    (stats.trends?.value ?? 0) >= 0 ? "bg-violet-500/20 text-violet-300" : "bg-red-500/20 text-red-300"
+                  )}>
+                    {(stats.trends?.value ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                    {Math.abs(stats.trends?.value ?? 0)}%
+                  </div>
+                )}
               </div>
-              {(stats.trends?.value ?? 0) !== 0 && (
-                <div className={cn(
-                  "flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full backdrop-blur-sm",
-                  (stats.trends?.value ?? 0) >= 0 ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"
-                )}>
-                  {(stats.trends?.value ?? 0) >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                  {Math.abs(stats.trends?.value ?? 0)}%
+              <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <AnimatedCounter 
+                  value={stats.totalValue ?? 0} 
+                  formatFn={formatCurrency}
+                />
+              </h3>
+              <p className="text-sm text-slate-200 mt-1 font-medium">Portfolio Value</p>
+              <p className="text-xs text-slate-400">All contracts</p>
+              {sparklines.value.length > 0 && (
+                <div className="absolute bottom-3 right-3 opacity-50 group-hover:opacity-100 transition-opacity duration-300">
+                  <Sparkline data={sparklines.value} color="green" height={28} />
                 </div>
               )}
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-              <AnimatedCounter 
-                value={stats.totalValue ?? 0} 
-                formatFn={formatCurrency}
-              />
-            </h3>
-            <p className="text-sm text-slate-300 mt-1">Portfolio Value</p>
-            <p className="text-xs text-slate-400">All contracts</p>
-            {sparklines.value.length > 0 && (
-              <div className="absolute bottom-3 right-3 opacity-60 group-hover:opacity-100 transition-opacity">
-                <Sparkline data={sparklines.value} color="green" height={24} />
-              </div>
-            )}
           </motion.div>
 
           {/* Risk Score */}
@@ -696,32 +707,40 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.4 }}
             data-testid="stat-risk"
-            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+            {/* Background glow effect based on risk level */}
+            <div className={cn(
+              "absolute -inset-px rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500",
+              (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-r from-violet-500/20 via-transparent to-transparent" :
+              (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-r from-amber-500/20 via-transparent to-transparent" :
+              "bg-gradient-to-r from-red-500/20 via-transparent to-transparent"
+            )} />
+            <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <Shield className="w-full h-full text-white" />
             </div>
-            <div className="flex items-start justify-between mb-3">
-              <div className={cn(
-                "p-2 rounded-lg backdrop-blur-sm",
-                (stats.avgRiskScore ?? 0) < 30 ? "bg-emerald-500/20" : (stats.avgRiskScore ?? 0) < 70 ? "bg-amber-500/20" : "bg-red-500/20"
-              )}>
-                <Shield className={cn(
-                  "h-4 w-4",
-                  (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-300" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-300" : "text-red-300"
-                )} />
+            <div className="relative">
+              <div className="flex items-start justify-between mb-3">
+                <div className={cn(
+                  "p-2.5 rounded-xl shadow-lg backdrop-blur-sm",
+                  (stats.avgRiskScore ?? 0) < 30 ? "bg-gradient-to-br from-violet-500 to-violet-600 shadow-violet-500/30" : 
+                  (stats.avgRiskScore ?? 0) < 70 ? "bg-gradient-to-br from-amber-500 to-amber-600 shadow-amber-500/30" : 
+                  "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30"
+                )}>
+                  <Shield className="h-5 w-5 text-white" />
+                </div>
               </div>
+              <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <AnimatedCounter value={stats.avgRiskScore ?? 0} suffix="%" />
+              </h3>
+              <p className="text-sm text-slate-200 mt-1 font-medium">Avg Risk Score</p>
+              <p className={cn(
+                "text-xs font-medium",
+                (stats.avgRiskScore ?? 0) < 30 ? "text-violet-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
+              )}>
+                {(stats.avgRiskScore ?? 0) < 30 ? 'Low risk portfolio' : (stats.avgRiskScore ?? 0) < 70 ? 'Moderate risk' : 'High risk - attention needed'}
+              </p>
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-              <AnimatedCounter value={stats.avgRiskScore ?? 0} suffix="%" />
-            </h3>
-            <p className="text-sm text-slate-300 mt-1">Avg Risk Score</p>
-            <p className={cn(
-              "text-xs",
-              (stats.avgRiskScore ?? 0) < 30 ? "text-emerald-400" : (stats.avgRiskScore ?? 0) < 70 ? "text-amber-400" : "text-red-400"
-            )}>
-              {(stats.avgRiskScore ?? 0) < 30 ? 'Low risk portfolio' : (stats.avgRiskScore ?? 0) < 70 ? 'Moderate risk' : 'High risk - attention needed'}
-            </p>
           </motion.div>
 
           {/* Recent Activity */}
@@ -730,27 +749,35 @@ export const ContractsHeroDashboard = memo(function ContractsHeroDashboard({
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.5 }}
             data-testid="stat-active"
-            className="group relative overflow-hidden rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 p-4 md:p-5 hover:bg-white/15 transition-all cursor-pointer"
+            className="group relative overflow-hidden rounded-xl bg-white/10 backdrop-blur-md border border-white/10 p-3 md:p-4 hover:bg-white/15 hover:border-white/20 transition-all duration-300 cursor-pointer hover:scale-[1.02]"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 opacity-5">
+            {/* Background glow effect */}
+            <div className="absolute -inset-px bg-gradient-to-r from-violet-500/20 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="absolute top-0 right-0 w-32 h-32 opacity-5 group-hover:opacity-10 transition-opacity">
               <Zap className="w-full h-full text-white" />
             </div>
-            <div className="flex items-start justify-between mb-3">
-              <div className="p-2 rounded-lg bg-purple-500/20 backdrop-blur-sm">
-                <Zap className="h-4 w-4 text-purple-300" />
-              </div>
-              {(stats.recentlyAdded ?? 0) > 0 && (
-                <div className="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full bg-purple-500/20 text-purple-300 backdrop-blur-sm">
-                  <span className="animate-pulse w-1.5 h-1.5 rounded-full bg-purple-400" />
-                  New
+            <div className="relative">
+              <div className="flex items-start justify-between mb-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-lg shadow-violet-500/30">
+                  <Zap className="h-5 w-5 text-white" />
                 </div>
-              )}
+                {(stats.recentlyAdded ?? 0) > 0 && (
+                  <div className="flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full bg-violet-500/20 text-violet-300 backdrop-blur-sm">
+                    <motion.span 
+                      className="w-2 h-2 rounded-full bg-violet-400"
+                      animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                    />
+                    New
+                  </div>
+                )}
+              </div>
+              <h3 className="text-3xl md:text-4xl font-bold text-white tracking-tight">
+                <AnimatedCounter value={stats.recentlyAdded ?? 0} />
+              </h3>
+              <p className="text-sm text-slate-200 mt-1 font-medium">Recently Added</p>
+              <p className="text-xs text-slate-400">Last 7 days</p>
             </div>
-            <h3 className="text-2xl md:text-3xl font-bold text-white tracking-tight">
-              <AnimatedCounter value={stats.recentlyAdded ?? 0} />
-            </h3>
-            <p className="text-sm text-slate-300 mt-1">Recently Added</p>
-            <p className="text-xs text-slate-400">Last 7 days</p>
           </motion.div>
         </div>
       </motion.div>

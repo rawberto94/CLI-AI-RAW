@@ -22,9 +22,10 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
+import { Progress as _Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { toast } from 'sonner';
 
 interface AgentEvent {
   id: string;
@@ -78,7 +79,7 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
       setEvents(data.events || []);
       setRecommendations(data.recommendations || []);
     } catch {
-      // Error handled silently
+      toast.error('Failed to load agent status');
     } finally {
       setIsLoading(false);
     }
@@ -99,7 +100,7 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
       case 'success': return 'text-green-600';
       case 'failure': return 'text-red-600';
       case 'partial': return 'text-yellow-600';
-      case 'pending': return 'text-blue-600';
+      case 'pending': return 'text-violet-600';
       default: return 'text-gray-600';
     }
   };
@@ -134,7 +135,7 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
       <CardHeader className="p-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <Zap className="h-4 w-4 text-blue-600" />
+            <Zap className="h-4 w-4 text-violet-600" />
             <CardTitle className="text-base">AI Agent Activity</CardTitle>
           </div>
           {!isLoading && events.length > 0 && (
@@ -271,7 +272,7 @@ export function AgentStatus({ contractId }: AgentStatusProps) {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -20 }}
                         transition={{ duration: 0.2, delay: index * 0.05 }}
-                        className="p-4 border rounded-lg hover:border-blue-300 transition-colors bg-white"
+                        className="p-4 border rounded-lg hover:border-violet-300 transition-colors bg-white"
                       >
                         <div className="flex items-start justify-between gap-3 mb-2">
                           <div className="flex-1">

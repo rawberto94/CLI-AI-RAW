@@ -11,13 +11,13 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  RefreshCw,
+  RefreshCw as _RefreshCw,
   Plus,
   Trash2,
   Download,
   Lock,
-  Eye,
-  EyeOff,
+  Eye as _Eye,
+  EyeOff as _EyeOff,
   Copy,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -90,8 +90,8 @@ interface SecuritySettings {
 }
 
 export default function SecurityPage() {
-  const { data: session } = useSession();
-  const [loading, setLoading] = useState(true);
+  const { data: _session } = useSession();
+  const [_loading, setLoading] = useState(true);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [mfaStatus, setMfaStatus] = useState<MFAStatus>({ enabled: false, method: null, enrolledAt: null });
   const [ipAllowlist, setIpAllowlist] = useState<IPAllowlistEntry[]>([]);
@@ -124,7 +124,7 @@ export default function SecurityPage() {
       const [sessionsRes, mfaRes, ipRes, settingsRes] = await Promise.all([
         fetch('/api/admin/sessions'),
         fetch('/api/auth/mfa/status'),
-        fetch('/api/admin/ip-allowlist'),
+        fetch('/api/admin/security/ip-allowlist'),
         fetch('/api/admin/security-settings'),
       ]);
 
@@ -147,7 +147,7 @@ export default function SecurityPage() {
         const data = await settingsRes.json();
         setSettings(data.settings || settings);
       }
-    } catch (error) {
+    } catch (_error) {
       console.error('Failed to fetch security data');
     } finally {
       setLoading(false);
@@ -258,7 +258,7 @@ export default function SecurityPage() {
     }
 
     try {
-      const response = await fetch('/api/admin/ip-allowlist', {
+      const response = await fetch('/api/admin/security/ip-allowlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newIP),
@@ -277,7 +277,7 @@ export default function SecurityPage() {
 
   const handleRemoveIP = async (id: string) => {
     try {
-      const response = await fetch(`/api/admin/ip-allowlist/${id}`, {
+      const response = await fetch(`/api/admin/security/ip-allowlist/${id}`, {
         method: 'DELETE',
       });
 

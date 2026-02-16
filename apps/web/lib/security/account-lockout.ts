@@ -93,7 +93,7 @@ export class AccountLockout {
   private config: LockoutConfig;
   
   constructor(redis?: InstanceType<typeof Redis>, config?: Partial<LockoutConfig>) {
-    this.redis = redis || new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    this.redis = redis || new Redis(process.env.REDIS_URL || '');
     this.config = { ...DEFAULT_CONFIG, ...config };
   }
   

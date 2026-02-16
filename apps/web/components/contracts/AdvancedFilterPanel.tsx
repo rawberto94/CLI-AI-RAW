@@ -56,19 +56,19 @@ interface AdvancedFilterPanelProps {
 }
 
 const STATUS_OPTIONS = [
-  { value: 'DRAFT', label: 'Draft', color: 'bg-blue-100 text-blue-700', icon: FileText },
+  { value: 'DRAFT', label: 'Draft', color: 'bg-violet-100 text-violet-700', icon: FileText },
   { value: 'PENDING', label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: Clock },
-  { value: 'PROCESSING', label: 'Processing', color: 'bg-purple-100 text-purple-700', icon: Clock },
+  { value: 'PROCESSING', label: 'Processing', color: 'bg-violet-100 text-violet-700', icon: Clock },
   { value: 'ACTIVE', label: 'Active', color: 'bg-green-100 text-green-700', icon: CheckCircle2 },
-  { value: 'COMPLETED', label: 'Completed', color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
+  { value: 'COMPLETED', label: 'Completed', color: 'bg-violet-100 text-violet-700', icon: CheckCircle2 },
   { value: 'FAILED', label: 'Failed', color: 'bg-red-100 text-red-700', icon: X },
   { value: 'EXPIRED', label: 'Expired', color: 'bg-orange-100 text-orange-700', icon: Clock },
 ];
 
 const DOCUMENT_ROLE_OPTIONS = [
-  { value: 'NEW_CONTRACT', label: 'New Contract', color: 'bg-blue-100 text-blue-700' },
+  { value: 'NEW_CONTRACT', label: 'New Contract', color: 'bg-violet-100 text-violet-700' },
   { value: 'EXISTING', label: 'Existing', color: 'bg-slate-100 text-slate-700' },
-  { value: 'AMENDMENT', label: 'Amendment', color: 'bg-purple-100 text-purple-700' },
+  { value: 'AMENDMENT', label: 'Amendment', color: 'bg-violet-100 text-violet-700' },
   { value: 'RENEWAL', label: 'Renewal', color: 'bg-amber-100 text-amber-700' },
 ];
 
@@ -138,14 +138,14 @@ export function AdvancedFilterPanel({
       <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg">
+            <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg">
               <SlidersHorizontal className="h-5 w-5 text-white" />
             </div>
             <div>
               <CardTitle className="text-lg">Advanced Filters</CardTitle>
               <CardDescription>
                 {activeFiltersCount > 0 ? (
-                  <span className="text-indigo-600 font-medium">
+                  <span className="text-violet-600 font-medium">
                     {activeFiltersCount} filter{activeFiltersCount !== 1 ? 's' : ''} active
                   </span>
                 ) : (
@@ -179,7 +179,7 @@ export function AdvancedFilterPanel({
         {/* Status Filter */}
         <div className="space-y-3" data-testid="status-filters">
           <Label className="text-sm font-semibold flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-indigo-600" />
+            <CheckCircle2 className="h-4 w-4 text-violet-600" />
             Contract Status
           </Label>
           <div className="grid grid-cols-2 gap-2">
@@ -194,14 +194,14 @@ export function AdvancedFilterPanel({
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
                     isSelected
-                      ? 'border-indigo-500 bg-indigo-50 text-indigo-700 shadow-sm'
+                      ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
                   )}
                 >
                   <Icon className="h-4 w-4" />
                   {option.label}
                   {isSelected && (
-                    <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-indigo-600" />
+                    <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-violet-600" />
                   )}
                 </button>
               );
@@ -212,7 +212,7 @@ export function AdvancedFilterPanel({
         {/* Document Role Filter */}
         <div className="space-y-3">
           <Label className="text-sm font-semibold flex items-center gap-2">
-            <FileText className="h-4 w-4 text-purple-600" />
+            <FileText className="h-4 w-4 text-violet-600" />
             Document Role
           </Label>
           <div className="grid grid-cols-2 gap-2">
@@ -225,13 +225,13 @@ export function AdvancedFilterPanel({
                   className={cn(
                     'flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all text-sm font-medium',
                     isSelected
-                      ? 'border-purple-500 bg-purple-50 text-purple-700 shadow-sm'
+                      ? 'border-violet-500 bg-violet-50 text-violet-700 shadow-sm'
                       : 'border-slate-200 hover:border-slate-300 text-slate-600'
                   )}
                 >
                   {option.label}
                   {isSelected && (
-                    <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-purple-600" />
+                    <CheckCircle2 className="h-3.5 w-3.5 ml-auto text-violet-600" />
                   )}
                 </button>
               );
@@ -242,7 +242,7 @@ export function AdvancedFilterPanel({
         {/* Date Range Filter */}
         <div className="space-y-3">
           <Label className="text-sm font-semibold flex items-center gap-2">
-            <CalendarIcon className="h-4 w-4 text-blue-600" />
+            <CalendarIcon className="h-4 w-4 text-violet-600" />
             Date Range
           </Label>
           <div className="grid grid-cols-2 gap-3">

@@ -183,6 +183,16 @@ export function ContractMetadataEditor({
       toast.success('Saved', 'Contract metadata updated successfully');
       setIsEditing(false);
       
+      // Dispatch event to notify chatbot and other components about the update
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('artifact-updated', { 
+          detail: { contractId, type: 'metadata', timestamp: Date.now() } 
+        }));
+        window.dispatchEvent(new CustomEvent('contract:refresh', { 
+          detail: { contractId } 
+        }));
+      }
+      
       if (onUpdate) {
         onUpdate(result.data);
       }
@@ -263,7 +273,7 @@ export function ContractMetadataEditor({
             size="sm"
             data-metadata-edit
             onClick={() => setIsEditing(true)}
-            className="gap-2 hover:bg-blue-50 hover:border-blue-300"
+            className="gap-2 hover:bg-violet-50 hover:border-violet-300"
           >
             <Edit2 className="h-4 w-4" />
             Edit Metadata
@@ -282,7 +292,7 @@ export function ContractMetadataEditor({
                 onClick={() => setActiveCategory(cat.id)}
                 className={cn(
                   activeCategory === cat.id &&
-                    'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md'
+                    'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-md'
                 )}
               >
                 <Icon className="h-4 w-4 mr-2" />
@@ -313,11 +323,11 @@ export function ContractMetadataEditor({
                   <div className="flex items-center gap-2">
                     <div className={cn(
                       'p-2 rounded-lg',
-                      hasLowConfidence ? 'bg-yellow-200' : 'bg-blue-100'
+                      hasLowConfidence ? 'bg-yellow-200' : 'bg-violet-100'
                     )}>
                       <Icon className={cn(
                         'h-4 w-4',
-                        hasLowConfidence ? 'text-yellow-700' : 'text-blue-600'
+                        hasLowConfidence ? 'text-yellow-700' : 'text-violet-600'
                       )} />
                     </div>
                     <div>
@@ -352,14 +362,14 @@ export function ContractMetadataEditor({
         </div>
 
         {/* Confidence Score Summary */}
-        <div className="mt-6 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl border-2 border-blue-200">
+        <div className="mt-6 p-6 bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl border-2 border-violet-200">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Sparkles className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-violet-100 rounded-lg">
+              <Sparkles className="h-6 w-6 text-violet-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 mb-2">AI Extraction Quality</h3>
-              <p className="text-sm text-blue-700 mb-4">
+              <h3 className="font-semibold text-violet-900 mb-2">AI Extraction Quality</h3>
+              <p className="text-sm text-violet-700 mb-4">
                 Fields with low confidence scores (below 70%) are highlighted and should be manually reviewed for accuracy.
               </p>
               <div className="flex items-center gap-4 text-sm flex-wrap">
@@ -483,11 +493,11 @@ export function ContractMetadataEditor({
   };
 
   return (
-    <div className="space-y-6 border-2 border-blue-200 rounded-xl p-6 bg-gradient-to-br from-blue-50/50 to-indigo-50/50">
+    <div className="space-y-6 border-2 border-violet-200 rounded-xl p-6 bg-gradient-to-br from-violet-50/50 to-purple-50/50">
       <div className="flex items-center justify-between">
         <h3 className="text-xl font-bold flex items-center gap-2">
-          <Edit2 className="h-5 w-5 text-blue-600" />
-          <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+          <Edit2 className="h-5 w-5 text-violet-600" />
+          <span className="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
             Editing Contract Metadata
           </span>
         </h3>
@@ -507,7 +517,7 @@ export function ContractMetadataEditor({
             size="sm"
             onClick={handleSave}
             disabled={saving}
-            className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 shadow-lg"
+            className="bg-gradient-to-r from-violet-600 to-violet-600 hover:from-violet-700 hover:to-purple-700 shadow-lg"
           >
             {saving ? (
               <>Saving...</>
@@ -533,7 +543,7 @@ export function ContractMetadataEditor({
               onClick={() => setActiveCategory(cat.id)}
               className={cn(
                 activeCategory === cat.id &&
-                  'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-md'
+                  'bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white shadow-md'
               )}
             >
               <Icon className="h-4 w-4 mr-2" />
@@ -557,19 +567,19 @@ export function ContractMetadataEditor({
                 'p-4 rounded-xl border-2 transition-all',
                 hasLowConfidence
                   ? 'border-yellow-200 bg-yellow-50'
-                  : 'border-blue-200 bg-white',
-                'hover:border-blue-400 hover:shadow-md'
+                  : 'border-violet-200 bg-white',
+                'hover:border-violet-400 hover:shadow-md'
               )}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     'p-2 rounded-lg',
-                    hasLowConfidence ? 'bg-yellow-200' : 'bg-blue-100'
+                    hasLowConfidence ? 'bg-yellow-200' : 'bg-violet-100'
                   )}>
                     <Icon className={cn(
                       'h-4 w-4',
-                      hasLowConfidence ? 'text-yellow-700' : 'text-blue-600'
+                      hasLowConfidence ? 'text-yellow-700' : 'text-violet-600'
                     )} />
                   </div>
                   <div>
@@ -604,7 +614,7 @@ export function ContractMetadataEditor({
         })}
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-blue-700 mt-4 p-4 bg-blue-100 rounded-lg border border-blue-300">
+      <div className="flex items-center gap-2 text-sm text-violet-700 mt-4 p-4 bg-violet-100 rounded-lg border border-violet-300">
         <Check className="h-4 w-4" />
         <span>Changes will be saved to the database and tracked in audit logs</span>
       </div>

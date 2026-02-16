@@ -13,6 +13,7 @@
 import 'server-only';
 
 import { getContractQueue } from '@/lib/queue/contract-queue';
+import { logger } from '@/lib/logger';
 
 /**
  * Priority levels matching queue configuration
@@ -127,11 +128,53 @@ async function triggerLegacyProcessing(options: TriggerOptions): Promise<QueueRe
   // Spawn a separate Node process to avoid blocking/crashing the main server
   const { spawn } = await import('child_process');
   const { join } = await import('path');
+  const { existsSync } = await import('fs');
   
-  const workerScript = join(process.cwd(), '../../scripts/generate-artifacts-worker.mjs');
-  const worker = spawn('npx', ['tsx', workerScript, contractId, tenantId, filePath, mimeType], {
+  // Get the workspace root directory - try multiple paths since Next.js can run from different locations
+  const possibleRoots = [
+    join(process.cwd(), '..', '..'), // If running from apps/web
+    join(process.cwd(), '..'),       // If running from apps level
+    process.cwd(),                    // If running from workspace root
+  ];
+  
+  let workspaceRoot = process.cwd();
+  let workerScript = '';
+  
+  for (const root of possibleRoots) {
+    const testPath = join(root, 'scripts', 'generate-artifacts-worker.mjs');
+    if (existsSync(testPath)) {
+      workspaceRoot = root;
+      workerScript = testPath;
+      break;
+    }
+  }
+  
+  // Fallback: assume standard monorepo structure
+  if (!workerScript) {
+    workspaceRoot = join(process.cwd(), '..', '..');
+    workerScript = join(workspaceRoot, 'scripts', 'generate-artifacts-worker.mjs');
+  }
+  
+  logger.info('Spawning legacy worker for contract', { contractId, workerScript, workspaceRoot });
+  
+  const worker = spawn('npx', ['tsx', workerScript, contractId, tenantId, filePath, mimeType || 'application/octet-stream'], {
     detached: true,
-    stdio: 'inherit'
+    stdio: 'pipe', // Use pipe to avoid blocking but capture errors
+    cwd: workspaceRoot,
+    env: {
+      ...process.env,
+      // Ensure the worker can find node_modules
+      PATH: process.env.PATH,
+    },
+  });
+  
+  // Log any errors from the worker
+  worker.stderr?.on('data', (data) => {
+    logger.error('Legacy worker stderr', { contractId, output: String(data) });
+  });
+  
+  worker.on('error', (err) => {
+    logger.error('Failed to start legacy worker', { contractId, error: err.message });
   });
   
   worker.unref(); // Allow parent to exit independently

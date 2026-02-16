@@ -1,6 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { analyticsService } from 'data-orchestration/services';
+import { getCached, setCached } from '@/lib/cache';
 
 // Helper to get month string
 function getMonthString(date: Date): string {
@@ -194,84 +196,74 @@ async function discoverOpportunities(tenantId: string) {
   }];
 }
 
-export async function GET(request: NextRequest) {
-  const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const tenantId = ctx.tenantId;
   const { searchParams } = new URL(request.url);
   const timeRange = searchParams.get('timeRange') || '12m';
   const months = timeRange === '6m' ? 6 : timeRange === '24m' ? 24 : 12;
 
-  try {
-    // Get current portfolio value
-    const contracts = await prisma.contract.findMany({
-      where: { tenantId, isDeleted: false },
-      select: {
-        id: true,
-        totalValue: true,
-        supplierName: true,
-        status: true,
-      },
-    });
+  const cacheKey = `analytics:forecasting:${tenantId}:${timeRange}`;
+  const cached = await getCached(cacheKey);
+  if (cached) return createSuccessResponse(ctx, cached);
 
-    const currentValue = contracts.reduce((sum, c) => sum + (c.totalValue ? Number(c.totalValue) : 0), 0);
+  // Get current portfolio value
+  const contracts = await prisma.contract.findMany({
+    where: { tenantId, isDeleted: false },
+    select: {
+      id: true,
+      totalValue: true,
+      supplierName: true,
+      status: true,
+    },
+  });
 
-    // Generate all data in parallel
-    const [forecastData, scenarios, opportunities] = await Promise.all([
-      generateForecastData(tenantId, months),
-      generateScenarios(tenantId, currentValue),
-      discoverOpportunities(tenantId),
-    ]);
+  const currentValue = contracts.reduce((sum, c) => sum + (c.totalValue ? Number(c.totalValue) : 0), 0);
 
-    // Calculate supplier spend from real contracts
-    const supplierSpendMap = new Map<string, { currentSpend: number; contractCount: number }>();
-    
-    contracts.forEach(c => {
-      if (c.supplierName && c.totalValue) {
-        const existing = supplierSpendMap.get(c.supplierName) || { currentSpend: 0, contractCount: 0 };
-        supplierSpendMap.set(c.supplierName, {
-          currentSpend: existing.currentSpend + Number(c.totalValue),
-          contractCount: existing.contractCount + 1,
-        });
-      }
-    });
+  // Generate all data in parallel
+  const [forecastData, scenarios, opportunities] = await Promise.all([
+    generateForecastData(tenantId, months),
+    generateScenarios(tenantId, currentValue),
+    discoverOpportunities(tenantId),
+  ]);
 
-    const supplierSpend = Array.from(supplierSpendMap.entries())
-      .map(([supplier, data]) => ({
-        supplier,
-        currentSpend: Math.round(data.currentSpend),
-        projectedSpend: Math.round(data.currentSpend * 1.05),
-        changePercent: 5.0,
-        contractCount: data.contractCount,
-        riskLevel: data.currentSpend > 500000 ? 'high' : data.currentSpend > 100000 ? 'medium' : 'low',
-      }))
-      .sort((a, b) => b.currentSpend - a.currentSpend)
-      .slice(0, 10);
+  // Calculate supplier spend from real contracts
+  const supplierSpendMap = new Map<string, { currentSpend: number; contractCount: number }>();
+  
+  contracts.forEach(c => {
+    if (c.supplierName && c.totalValue) {
+      const existing = supplierSpendMap.get(c.supplierName) || { currentSpend: 0, contractCount: 0 };
+      supplierSpendMap.set(c.supplierName, {
+        currentSpend: existing.currentSpend + Number(c.totalValue),
+        contractCount: existing.contractCount + 1,
+      });
+    }
+  });
 
-    return NextResponse.json({
-      success: true,
-      forecastData,
-      scenarios,
-      opportunities,
-      supplierSpend,
-      metadata: {
-        contractCount: contracts.length,
-        portfolioValue: currentValue,
-        timeRange,
-        generatedAt: new Date().toISOString(),
-        source: 'database',
-      },
-    });
-  } catch {
-    return NextResponse.json({
-      success: false,
-      error: 'Failed to generate forecasting data',
-      forecastData: [],
-      scenarios: [],
-      opportunities: [],
-      supplierSpend: [],
-      metadata: {
-        contractCount: 0,
-        generatedAt: new Date().toISOString(),
-      },
-    }, { status: 500 });
-  }
-}
+  const supplierSpend = Array.from(supplierSpendMap.entries())
+    .map(([supplier, data]) => ({
+      supplier,
+      currentSpend: Math.round(data.currentSpend),
+      projectedSpend: Math.round(data.currentSpend * 1.05),
+      changePercent: 5.0,
+      contractCount: data.contractCount,
+      riskLevel: data.currentSpend > 500000 ? 'high' : data.currentSpend > 100000 ? 'medium' : 'low',
+    }))
+    .sort((a, b) => b.currentSpend - a.currentSpend)
+    .slice(0, 10);
+
+  const responseData = {
+    forecastData,
+    scenarios,
+    opportunities,
+    supplierSpend,
+    metadata: {
+      contractCount: contracts.length,
+      portfolioValue: currentValue,
+      timeRange,
+      generatedAt: new Date().toISOString(),
+      source: 'database',
+    },
+  };
+  await setCached(cacheKey, responseData, 600);
+  return createSuccessResponse(ctx, responseData);
+});

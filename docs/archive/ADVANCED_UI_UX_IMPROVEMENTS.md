@@ -1,6 +1,7 @@
 # Advanced UI/UX Improvements - Phase 2
 
 ## Overview
+
 This document details the advanced performance optimizations applied to the application following the initial enterprise UI/UX audit. These improvements extend lazy loading patterns, add virtual scrolling for large lists, and provide additional form examples using best practices.
 
 ## Improvements Implemented
@@ -8,32 +9,39 @@ This document details the advanced performance optimizations applied to the appl
 ### 1. Extended Lazy Loading
 
 #### Workflows Page
+
 **File:** `/apps/web/app/workflows/page.tsx`
 
 **Changes:**
+
 - Replaced `WorkflowBuilder` with `LazyWorkflowBuilder`
 - Replaced `SimpleApprovalsQueue` with `LazySimpleApprovalsQueue`
 
 **Before:**
+
 ```tsx
 import { WorkflowBuilder } from '@/components/workflows/WorkflowBuilder'
 import { SimpleApprovalsQueue } from '@/components/workflows/SimpleApprovalsQueue'
 ```
 
 **After:**
+
 ```tsx
 import { LazyWorkflowBuilder as WorkflowBuilder, LazySimpleApprovalsQueue as SimpleApprovalsQueue } from '@/components/lazy'
 ```
 
 **Impact:**
+
 - Reduced initial bundle size by ~150KB
 - Improved First Contentful Paint (FCP) by ~200ms
 - Components load on-demand with loading states
 
 #### New Lazy Component
+
 **File:** `/apps/web/components/lazy/index.tsx`
 
 Added `LazySimpleApprovalsQueue`:
+
 ```tsx
 export const LazySimpleApprovalsQueue = dynamic(
   () => import('@/components/workflows/SimpleApprovalsQueue')
@@ -49,9 +57,11 @@ export const LazySimpleApprovalsQueue = dynamic(
 ### 2. Virtual Scrolling for Large Lists
 
 #### VirtualizedContractList Component
+
 **File:** `/apps/web/components/contracts/VirtualizedContractList.tsx` (NEW)
 
 **Features:**
+
 - Uses `@tanstack/react-virtual` for efficient rendering
 - Only renders visible items + overscan
 - Handles 1000+ contracts without performance degradation
@@ -59,6 +69,7 @@ export const LazySimpleApprovalsQueue = dynamic(
 - Overscan: 10 items
 
 **Usage Example:**
+
 ```tsx
 import { VirtualizedContractList } from '@/components/contracts/VirtualizedContractList';
 
@@ -79,12 +90,14 @@ import { VirtualizedContractList } from '@/components/contracts/VirtualizedContr
 ```
 
 **Performance Benefits:**
+
 - **Before:** 1000 contracts = 1000 DOM nodes = ~5-10s render time
 - **After:** 1000 contracts = ~15-20 visible DOM nodes = <100ms render time
 - **Memory:** 95% reduction in DOM memory usage
 - **Scrolling:** 60fps smooth scrolling with large datasets
 
 **Implementation:**
+
 ```tsx
 const rowVirtualizer = useVirtualizer({
   count: contracts.length,
@@ -97,9 +110,11 @@ const rowVirtualizer = useVirtualizer({
 ### 3. Advanced Form Pattern - File Upload
 
 #### UploadForm Component
+
 **File:** `/apps/web/components/forms/UploadForm.tsx` (NEW)
 
 **Features:**
+
 - React Hook Form + Zod validation
 - Drag-and-drop file upload
 - File type and size validation (PDF, DOC, DOCX, TXT, max 10MB)
@@ -109,6 +124,7 @@ const rowVirtualizer = useVirtualizer({
 - Full ARIA accessibility
 
 **Validation Schema:**
+
 ```tsx
 const uploadSchema = z.object({
   file: z
@@ -127,6 +143,7 @@ const uploadSchema = z.object({
 ```
 
 **Drag & Drop Implementation:**
+
 ```tsx
 const handleDrop = useCallback((e: React.DragEvent) => {
   e.preventDefault();
@@ -144,6 +161,7 @@ const handleDrop = useCallback((e: React.DragEvent) => {
 ```
 
 **Usage Example:**
+
 ```tsx
 import { UploadForm } from '@/components/forms/UploadForm';
 
@@ -190,6 +208,7 @@ import { UploadForm } from '@/components/forms/UploadForm';
 ## Browser Support
 
 All improvements use modern web standards:
+
 - Virtual scrolling: All modern browsers (Chrome 90+, Firefox 88+, Safari 14+)
 - Drag & drop: All browsers (including IE11 with polyfills)
 - React Hook Form: All browsers with React 16.8+
@@ -197,6 +216,7 @@ All improvements use modern web standards:
 ## Accessibility Features
 
 ### UploadForm
+
 - ✅ Full keyboard navigation
 - ✅ ARIA labels and descriptions
 - ✅ Error announcements for screen readers
@@ -204,6 +224,7 @@ All improvements use modern web standards:
 - ✅ Visual and semantic feedback
 
 ### VirtualizedContractList
+
 - ✅ Maintains focus during scrolling
 - ✅ Keyboard navigation preserved
 - ✅ Screen reader compatible
@@ -214,11 +235,13 @@ All improvements use modern web standards:
 ### Replacing Regular Lists with Virtual Scrolling
 
 **Step 1:** Import VirtualizedContractList
+
 ```tsx
 import { VirtualizedContractList } from '@/components/contracts/VirtualizedContractList';
 ```
 
 **Step 2:** Replace map with virtualized component
+
 ```tsx
 // Before
 {contracts.map((contract) => (
@@ -234,6 +257,7 @@ import { VirtualizedContractList } from '@/components/contracts/VirtualizedContr
 ```
 
 **Step 3:** Adjust height in CSS
+
 ```tsx
 // Container must have fixed height for virtual scrolling
 <div className="h-[600px] overflow-auto">
@@ -244,6 +268,7 @@ import { VirtualizedContractList } from '@/components/contracts/VirtualizedContr
 ### Using UploadForm Pattern for Other Forms
 
 **Template for new forms:**
+
 1. Define Zod schema
 2. Use `useForm` with `zodResolver`
 3. Implement auto-save with `useWatch` + `useEffect`
@@ -252,6 +277,7 @@ import { VirtualizedContractList } from '@/components/contracts/VirtualizedContr
 6. Add ARIA attributes
 
 **Example: Settings Form**
+
 ```tsx
 const settingsSchema = z.object({
   emailNotifications: z.boolean(),
@@ -271,6 +297,7 @@ export function SettingsForm({ onSubmit }: SettingsFormProps) {
 ## Testing Checklist
 
 ### Virtual Scrolling
+
 - [ ] Test with 0, 10, 100, 500, 1000+ items
 - [ ] Verify smooth scrolling at 60fps
 - [ ] Check keyboard navigation (arrow keys, page up/down)
@@ -279,6 +306,7 @@ export function SettingsForm({ onSubmit }: SettingsFormProps) {
 - [ ] Check responsive behavior on mobile
 
 ### Upload Form
+
 - [ ] Test drag and drop with valid files
 - [ ] Test drag and drop with invalid files (size, type)
 - [ ] Verify file size validation (>10MB)
@@ -291,6 +319,7 @@ export function SettingsForm({ onSubmit }: SettingsFormProps) {
 - [ ] Test with screen reader
 
 ### Lazy Loading
+
 - [ ] Verify loading states appear
 - [ ] Check that components load on demand
 - [ ] Test with slow 3G network throttling
@@ -300,6 +329,7 @@ export function SettingsForm({ onSubmit }: SettingsFormProps) {
 ## Next Steps
 
 ### Additional Optimizations
+
 1. **Image Optimization**
    - Add `next/image` for automatic optimization
    - Implement lazy loading for images
@@ -324,6 +354,7 @@ export function SettingsForm({ onSubmit }: SettingsFormProps) {
 ### Recommended Lighthouse Audit
 
 Run after deploying these changes:
+
 ```bash
 # Build production bundle
 pnpm build
@@ -338,6 +369,7 @@ lighthouse http://localhost:3000/workflows --view
 ```
 
 **Expected Scores:**
+
 - Performance: 85+ → 92+
 - Accessibility: 95+ → 98+
 - Best Practices: 90+ → 95+
@@ -346,6 +378,7 @@ lighthouse http://localhost:3000/workflows --view
 ## Resources
 
 ### Documentation
+
 - [React Hook Form](https://react-hook-form.com/)
 - [Zod Validation](https://zod.dev/)
 - [TanStack Virtual](https://tanstack.com/virtual/latest)
@@ -353,6 +386,7 @@ lighthouse http://localhost:3000/workflows --view
 - [Web.dev Performance](https://web.dev/performance/)
 
 ### Tools
+
 - [Lighthouse](https://developers.google.com/web/tools/lighthouse)
 - [Chrome DevTools Performance](https://developer.chrome.com/docs/devtools/performance/)
 - [React DevTools Profiler](https://react.dev/learn/react-developer-tools)

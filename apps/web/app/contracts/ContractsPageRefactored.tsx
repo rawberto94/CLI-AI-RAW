@@ -39,10 +39,10 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import {
   FileText,
   Search,
-  Plus,
+  Plus as _Plus,
   Upload,
   RefreshCw,
-  Filter,
+  Filter as _Filter,
   X,
   LayoutGrid,
   LayoutList,
@@ -52,16 +52,16 @@ import {
   Trash2,
   Share2,
   MoreHorizontal,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
+  ChevronLeft as _ChevronLeft,
+  ChevronRight as _ChevronRight,
+  ChevronsLeft as _ChevronsLeft,
+  ChevronsRight as _ChevronsRight,
   Sparkles,
   Tag,
   Settings,
   Eye,
-  Pencil,
-  ClipboardCheck,
+  Pencil as _Pencil,
+  ClipboardCheck as _ClipboardCheck,
   Brain,
 } from 'lucide-react';
 
@@ -183,7 +183,7 @@ const ContractRow = memo(function ContractRow({
     const colors: Record<string, string> = {
       completed: 'bg-green-100 text-green-800',
       active: 'bg-green-100 text-green-800',
-      processing: 'bg-blue-100 text-blue-800',
+      processing: 'bg-violet-100 text-violet-800',
       pending: 'bg-yellow-100 text-yellow-800',
       failed: 'bg-red-100 text-red-800',
     };
@@ -299,7 +299,7 @@ export default function ContractsPageRefactored() {
   
   // Data fetching
   const { data: contractsData, isLoading, error, refetch } = useContracts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  
   const contracts = Array.isArray(contractsData) 
     ? contractsData 
     : (contractsData?.contracts || []);
@@ -324,8 +324,8 @@ export default function ContractsPageRefactored() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteContractId, setDeleteContractId] = useState<string | null>(null);
   const [approvalModalOpen, setApprovalModalOpen] = useState(false);
-  const [approvalContractId, setApprovalContractId] = useState<string | null>(null);
-  const [approvalContractTitle, setApprovalContractTitle] = useState('');
+  const [approvalContractId, _setApprovalContractId] = useState<string | null>(null);
+  const [approvalContractTitle, _setApprovalContractTitle] = useState('');
 
   // Categories
   const [categories, setCategories] = useState<TaxonomyCategory[]>([]);
@@ -478,7 +478,7 @@ export default function ContractsPageRefactored() {
       
       toast.success('Contract deleted');
       refetch();
-    } catch (err) {
+    } catch (_err) {
       toast.error('Failed to delete contract');
     } finally {
       setDeleteDialogOpen(false);
@@ -507,7 +507,7 @@ export default function ContractsPageRefactored() {
       toast.success(`Categorized ${data.data?.results?.filter((r: any) => r.success).length || 0} contracts`);
       refetch();
       clearSelection();
-    } catch (err) {
+    } catch (_err) {
       toast.error('Failed to categorize contracts');
     }
   }, [selectedIds, dataMode, refetch, clearSelection]);
@@ -776,7 +776,7 @@ export default function ContractsPageRefactored() {
         {/* Bulk Actions Bar */}
         <AnimatePresence>
           {selectedIds.size > 0 && (
-            <motion.div
+            <motion.div key="selected-ids-size"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -882,7 +882,7 @@ export default function ContractsPageRefactored() {
                   <div className="flex flex-wrap items-center gap-2 mb-3">
                     <Badge className={cn(
                       contract.status === 'completed' ? 'bg-green-100 text-green-800' :
-                      contract.status === 'processing' ? 'bg-blue-100 text-blue-800' :
+                      contract.status === 'processing' ? 'bg-violet-100 text-violet-800' :
                       contract.status === 'failed' ? 'bg-red-100 text-red-800' :
                       'bg-gray-100 text-gray-800'
                     )}>

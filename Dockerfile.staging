@@ -1,18 +1,23 @@
 # Multi-stage build for staging environment
-FROM node:20-alpine AS base
+FROM node:22.12-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm (match version in package.json packageManager field)
+RUN npm install -g pnpm@8.9.0
 
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
-COPY packages/*/package.json ./packages/
+COPY packages/clients/db/package.json ./packages/clients/db/
+COPY packages/data-orchestration/package.json ./packages/data-orchestration/
+COPY packages/utils/package.json ./packages/utils/
+COPY packages/workers/package.json ./packages/workers/
+COPY packages/agents/package.json ./packages/agents/
+COPY packages/schemas/package.json ./packages/schemas/
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -22,7 +27,7 @@ FROM base AS builder
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm@8.9.0
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -32,8 +37,16 @@ ENV NODE_ENV=staging
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS="--max-old-space-size=8192"
 
-# Build the application
-RUN pnpm run build
+# Generate Prisma client
+RUN cd packages/clients/db && npx prisma generate
+
+# Build packages first
+RUN pnpm --filter @repo/utils build
+RUN pnpm --filter clients-db build
+RUN pnpm --filter @repo/data-orchestration build
+
+# Build Next.js app
+RUN cd apps/web && pnpm build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -60,5 +73,8 @@ EXPOSE 3000
 
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1
 
 CMD ["node", "apps/web/server.js"]

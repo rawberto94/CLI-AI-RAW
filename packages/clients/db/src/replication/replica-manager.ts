@@ -421,11 +421,10 @@ export class ReplicaManager {
     try {
       // Write a marker to primary
       const marker = Date.now().toString();
-      await this.primaryClient.$executeRawUnsafe(
-        `CREATE TEMP TABLE IF NOT EXISTS _lag_check (marker TEXT, ts TIMESTAMP DEFAULT NOW());
-         DELETE FROM _lag_check;
-         INSERT INTO _lag_check (marker) VALUES ('${marker}');`
-      );
+      await this.primaryClient.$executeRaw`
+        CREATE TEMP TABLE IF NOT EXISTS _lag_check (marker TEXT, ts TIMESTAMP DEFAULT NOW())`;
+      await this.primaryClient.$executeRaw`DELETE FROM _lag_check`;
+      await this.primaryClient.$executeRaw`INSERT INTO _lag_check (marker) VALUES (${marker})`;
 
       // Check if marker is visible on replica
       const start = Date.now();
@@ -435,9 +434,9 @@ export class ReplicaManager {
 
       while (!found && attempts < maxAttempts) {
         try {
-          const result = await replica.$queryRawUnsafe<Array<{ marker: string }>>(
-            `SELECT marker FROM _lag_check WHERE marker = '${marker}'`
-          );
+          const result = await replica.$queryRaw<Array<{ marker: string }>>`
+            SELECT marker FROM _lag_check WHERE marker = ${marker}
+          `;
           found = result.length > 0;
         } catch {
           // Table might not exist on replica yet

@@ -86,11 +86,11 @@ export function StatCard({
   className = '',
 }: StatCardProps) {
   const colorClasses = {
-    blue: 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400',
+    blue: 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400',
     green: 'bg-green-50 dark:bg-green-950 text-green-600 dark:text-green-400',
     red: 'bg-red-50 dark:bg-red-950 text-red-600 dark:text-red-400',
     yellow: 'bg-yellow-50 dark:bg-yellow-950 text-yellow-600 dark:text-yellow-400',
-    purple: 'bg-purple-50 dark:bg-purple-950 text-purple-600 dark:text-purple-400',
+    purple: 'bg-violet-50 dark:bg-violet-950 text-violet-600 dark:text-violet-400',
     gray: 'bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400',
   };
 
@@ -111,8 +111,8 @@ export function StatCard({
     <Wrapper
       {...wrapperProps}
       className={`
-        block bg-white dark:bg-gray-900 rounded-xl p-6 border border-gray-200 dark:border-gray-800
-        ${(href || onClick) ? 'hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-700 transition-all cursor-pointer' : ''}
+        block bg-white dark:bg-slate-900 rounded-xl p-6 border border-slate-200 dark:border-slate-800
+        ${(href || onClick) ? 'hover:shadow-lg hover:shadow-violet-500/10 hover:border-violet-200 dark:hover:border-violet-700 transition-all cursor-pointer' : ''}
         ${className}
       `}
     >
@@ -289,7 +289,7 @@ export function LiveCounter({
           animate={{ rotate: isRefreshing ? 360 : 0 }}
           transition={{ duration: 1, repeat: isRefreshing ? Infinity : 0, ease: 'linear' }}
         >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'text-blue-500' : 'text-gray-400'}`} />
+          <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'text-violet-500' : 'text-gray-400'}`} />
         </motion.div>
       </div>
       

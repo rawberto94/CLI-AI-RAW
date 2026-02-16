@@ -48,7 +48,7 @@ export function DataModeToggle({
       case 'real':
         return 'bg-green-500/10 text-green-700 border-green-500/20';
       case 'mock':
-        return 'bg-blue-500/10 text-blue-700 border-blue-500/20';
+        return 'bg-violet-500/10 text-violet-700 border-violet-500/20';
       case 'fallback':
         return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20';
     }
@@ -120,12 +120,12 @@ export function DataModeToggle({
             onClick={() => onModeChange('mock')}
             className="flex items-start gap-3 py-2.5"
           >
-            <TestTube className="h-4 w-4 mt-0.5 text-blue-600" />
+            <TestTube className="h-4 w-4 mt-0.5 text-violet-600" />
             <div className="flex-1">
               <div className="flex items-center gap-2">
                 <span className="font-medium">Mock Data</span>
                 {currentMode === 'mock' && (
-                  <CheckCircle className="h-3.5 w-3.5 text-blue-600" />
+                  <CheckCircle className="h-3.5 w-3.5 text-violet-600" />
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
@@ -160,7 +160,7 @@ export function DataModeIndicator({ mode }: { mode: DataMode }) {
       case 'real':
         return 'bg-green-500/10 text-green-700 border-green-500/20';
       case 'mock':
-        return 'bg-blue-500/10 text-blue-700 border-blue-500/20';
+        return 'bg-violet-500/10 text-violet-700 border-violet-500/20';
       case 'fallback':
         return 'bg-yellow-500/10 text-yellow-700 border-yellow-500/20';
     }

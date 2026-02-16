@@ -1,6 +1,7 @@
 # PactumAI API Structure
 
 ## Overview
+
 - **Total Routes**: 231 API endpoints
 - **Database**: PostgreSQL with Prisma ORM
 - **Caching**: Redis with configurable TTL
@@ -9,6 +10,7 @@
 ## API Organization
 
 ### Core Contract Management
+
 ```
 /api/contracts
   GET     /                     - List contracts (paginated, filtered)
@@ -21,6 +23,7 @@
 ```
 
 ### AI & Intelligence
+
 ```
 /api/ai
   POST    /analyze              - AI contract analysis
@@ -36,6 +39,7 @@
 ```
 
 ### Analytics & Reporting
+
 ```
 /api/analytics
   GET     /dashboard            - Main dashboard metrics
@@ -46,6 +50,7 @@
 ```
 
 ### Rate Cards
+
 ```
 /api/rate-cards
   GET     /                     - List rate cards
@@ -56,6 +61,7 @@
 ```
 
 ### System Health
+
 ```
 /api/health
   GET     /                     - Basic health check
@@ -67,6 +73,7 @@
 ## Production Features
 
 ### ✅ Implemented
+
 - Multi-tenant isolation via x-tenant-id header
 - Redis caching with cache invalidation
 - Pagination with limit/offset
@@ -77,6 +84,7 @@
 - Slow query logging (dev mode)
 
 ### Response Format
+
 ```json
 {
   "success": true,
@@ -97,6 +105,7 @@
 ## Database Schema Highlights
 
 ### Core Tables
+
 - `Contract` - Main contract storage
 - `Artifact` - AI-generated analysis
 - `ProcessingJob` - Background job tracking
@@ -104,6 +113,7 @@
 - `rate_card_entries` - Individual rates
 
 ### Indexes (Contract table)
+
 - `Contract_tenantId_idx` - Tenant isolation
 - `Contract_status_idx` - Status filtering
 - `Contract_tenantId_status_idx` - Combined queries

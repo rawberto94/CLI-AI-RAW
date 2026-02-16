@@ -5,8 +5,9 @@
  * Leverages the AI artifact generator with custom prompts.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import OpenAI from 'openai';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Initialize OpenAI client
 const openai = new OpenAI({
@@ -108,10 +109,17 @@ export async function POST(
 ) {
   const { id: contractId } = await params;
   
+  const ctx = getAuthenticatedApiContext(request);
+  
+  if (!ctx) {
+  
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  
+  }
   try {
-    const tenantId = request.headers.get('x-tenant-id');
+    const tenantId = ctx.tenantId;
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID is required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID is required', 400);
     }
 
     const body: GenerationRequest = await request.json();
@@ -119,30 +127,19 @@ export async function POST(
 
     // Validate topic
     if (!topic || !TOPIC_PROMPTS[topic]) {
-      return NextResponse.json(
-        { error: 'Invalid topic. Valid topics: ' + Object.keys(TOPIC_PROMPTS).join(', ') },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid topic. Valid topics: ', 400);
     }
 
     // Check if OpenAI is configured
     if (!process.env.OPENAI_API_KEY) {
-      // Return mock data if no API key
-      return NextResponse.json({
-        success: true,
-        artifact: generateMockArtifact(topic, focusArea),
-        message: 'Generated using mock data (OpenAI not configured)'
-      });
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'AI service not configured. Please set OPENAI_API_KEY.', 503);
     }
 
     // Fetch contract text (mock for now, would fetch from database)
     const contractText = await getContractText(contractId, tenantId);
     
     if (!contractText) {
-      return NextResponse.json(
-        { error: 'Contract not found or has no text content' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found or has no text content', 404);
     }
 
     // Build the prompt
@@ -151,7 +148,7 @@ export async function POST(
 
     // Call OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4-turbo-preview',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt }
@@ -166,17 +163,14 @@ export async function POST(
     // Parse and structure the response
     const parsedAnalysis = parseAnalysis(rawAnalysis, topic, focusArea);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       artifact: parsedAnalysis,
       usage: completion.usage
     });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to generate custom artifact', details: (error as Error).message },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -253,141 +247,6 @@ function parseAnalysis(rawAnalysis: string, topic: string, focusArea?: string): 
   }
 }
 
-function generateMockArtifact(topic: string, focusArea?: string): ArtifactResult {
-  const topicTitles: Record<string, string> = {
-    liability: 'Liability & Risk Analysis',
-    ip: 'Intellectual Property Analysis',
-    termination: 'Termination Rights Analysis',
-    payment: 'Payment Terms Analysis',
-    confidentiality: 'Confidentiality Analysis',
-    sla: 'Service Level Analysis',
-    compliance: 'Compliance Analysis',
-    custom: 'Custom Analysis'
-  };
-
-  const mockFindings: Record<string, any[]> = {
-    liability: [
-      {
-        title: 'Liability Cap Identified',
-        description: 'Contract limits liability to the total fees paid in the preceding 12 months.',
-        severity: 'medium',
-        recommendation: 'Consider negotiating for a higher cap or carve-outs for willful misconduct.'
-      },
-      {
-        title: 'Indemnification Asymmetry',
-        description: 'The indemnification obligations appear to be more extensive for the buyer than the seller.',
-        severity: 'high',
-        recommendation: 'Request mutual indemnification terms or limit scope of buyer obligations.'
-      }
-    ],
-    ip: [
-      {
-        title: 'IP Assignment Clause Present',
-        description: 'All work product created under this agreement is assigned to the client.',
-        severity: 'low',
-        recommendation: 'Standard provision. Ensure background IP exceptions are clearly defined.'
-      },
-      {
-        title: 'License Grant for Tools',
-        description: 'Vendor retains ownership of pre-existing tools and grants a limited license.',
-        severity: 'low',
-        recommendation: 'Verify license scope covers intended business use.'
-      }
-    ],
-    termination: [
-      {
-        title: 'Termination for Convenience',
-        description: 'Either party may terminate with 30 days written notice.',
-        severity: 'medium',
-        recommendation: 'Consider negotiating for a longer notice period or transition assistance.'
-      },
-      {
-        title: 'Auto-Renewal Clause',
-        description: 'Contract auto-renews for 1-year terms unless notice given 60 days prior.',
-        severity: 'high',
-        recommendation: 'Set calendar reminder for renewal notice deadline.'
-      }
-    ],
-    payment: [
-      {
-        title: 'Net-30 Payment Terms',
-        description: 'Invoices are due within 30 days of receipt.',
-        severity: 'low',
-        recommendation: 'Standard payment terms. No action required.'
-      },
-      {
-        title: 'Late Payment Interest',
-        description: 'Late payments accrue interest at 1.5% per month.',
-        severity: 'medium',
-        recommendation: 'Ensure payment processes can meet deadlines to avoid charges.'
-      }
-    ],
-    confidentiality: [
-      {
-        title: 'Broad Confidentiality Definition',
-        description: 'Confidential information includes all non-public business information.',
-        severity: 'low',
-        recommendation: 'Ensure marking and identification procedures are in place.'
-      },
-      {
-        title: '5-Year Confidentiality Period',
-        description: 'Obligations survive for 5 years after contract termination.',
-        severity: 'medium',
-        recommendation: 'Track confidential materials for compliance with retention period.'
-      }
-    ],
-    sla: [
-      {
-        title: '99.9% Uptime Guarantee',
-        description: 'Service provider guarantees 99.9% monthly uptime.',
-        severity: 'low',
-        recommendation: 'Calculate acceptable downtime (43.8 minutes/month) against business needs.'
-      },
-      {
-        title: 'Service Credit Cap',
-        description: 'Maximum service credits limited to 10% of monthly fees.',
-        severity: 'high',
-        recommendation: 'May be insufficient for critical services. Negotiate higher cap.'
-      }
-    ],
-    compliance: [
-      {
-        title: 'GDPR Compliance Required',
-        description: 'Contract includes data processing addendum for EU data.',
-        severity: 'medium',
-        recommendation: 'Ensure internal processes align with DPA requirements.'
-      },
-      {
-        title: 'Audit Rights Included',
-        description: 'Customer has right to audit vendor compliance annually.',
-        severity: 'low',
-        recommendation: 'Schedule audits and maintain compliance documentation.'
-      }
-    ],
-    custom: [
-      {
-        title: 'General Finding',
-        description: focusArea || 'Analysis completed based on custom parameters.',
-        severity: 'medium',
-        recommendation: 'Review findings and consider follow-up analysis if needed.'
-      }
-    ]
-  };
-
-  return {
-    id: `custom-${Date.now()}`,
-    type: 'custom',
-    topic,
-    title: topicTitles[topic] || 'Custom Analysis',
-    summary: `Comprehensive ${topic} analysis completed. ${mockFindings[topic]?.length || 1} key findings identified requiring attention.`,
-    keyFindings: mockFindings[topic] ?? mockFindings.custom ?? [],
-    riskScore: Math.floor(Math.random() * 30) + 40,
-    confidence: Math.floor(Math.random() * 15) + 80,
-    generatedAt: new Date().toISOString(),
-    focusArea
-  };
-}
-
 async function getContractText(contractId: string, tenantId: string): Promise<string | null> {
   // In production, this would fetch from database
   // For now, return mock contract text
@@ -395,7 +254,7 @@ async function getContractText(contractId: string, tenantId: string): Promise<st
   try {
     // Try to fetch from internal API or database
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3005'}/api/contracts/${contractId}`,
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/contracts/${contractId}`,
       {
         headers: { 'x-tenant-id': tenantId }
       }
@@ -406,45 +265,9 @@ async function getContractText(contractId: string, tenantId: string): Promise<st
       return data.rawText || data.content || data.extractedText || null;
     }
   } catch {
-    // Could not fetch contract text, using mock
+    // Could not fetch contract text
   }
   
-  // Return mock text for demo
-  return `
-    MASTER SERVICES AGREEMENT
-    
-    This Master Services Agreement ("Agreement") is entered into as of the Effective Date
-    by and between Company A ("Client") and Company B ("Provider").
-    
-    1. SERVICES
-    Provider shall provide the services described in each Statement of Work.
-    
-    2. TERM
-    This Agreement shall commence on the Effective Date and continue for a period of
-    three (3) years, unless earlier terminated.
-    
-    3. FEES AND PAYMENT
-    Client shall pay Provider the fees set forth in each Statement of Work.
-    Payment is due within thirty (30) days of invoice date.
-    
-    4. CONFIDENTIALITY
-    Each party agrees to maintain the confidentiality of the other party's
-    Confidential Information for a period of five (5) years.
-    
-    5. LIMITATION OF LIABILITY
-    Neither party's liability shall exceed the total fees paid in the preceding
-    twelve (12) month period.
-    
-    6. INDEMNIFICATION
-    Each party shall indemnify the other against third-party claims arising from
-    their breach of this Agreement.
-    
-    7. TERMINATION
-    Either party may terminate this Agreement with thirty (30) days written notice.
-    Termination for material breach may be immediate upon notice.
-    
-    8. INTELLECTUAL PROPERTY
-    All work product created under this Agreement shall be owned by Client.
-    Provider retains ownership of pre-existing materials and tools.
-  `;
+  // No mock fallback — return null so the caller can return a proper error
+  return null;
 }

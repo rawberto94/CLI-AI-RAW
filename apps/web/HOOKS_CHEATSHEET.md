@@ -25,6 +25,7 @@ Quick reference for all custom hooks and utilities available in the codebase.
 ## Data Fetching
 
 ### `useFetch<T>`
+
 Simple data fetching with caching.
 
 ```tsx
@@ -36,6 +37,7 @@ const { data, isLoading, error, refetch } = useFetch<User[]>('/api/users', {
 ```
 
 ### `useMutation<T, V>`
+
 Handle mutations with loading/error states.
 
 ```tsx
@@ -46,6 +48,7 @@ const { mutate, isLoading, error, data } = useMutation<User, CreateUserData>(
 ```
 
 ### `useInfiniteScroll<T>`
+
 Infinite scroll with load-more support.
 
 ```tsx
@@ -63,6 +66,7 @@ const { items, isLoading, hasMore, loadMore, sentinelRef } = useInfiniteScroll<P
 ## UI State Management
 
 ### `useToggle`
+
 Boolean toggle state.
 
 ```tsx
@@ -73,6 +77,7 @@ const [isOpen, toggle, setIsOpen] = useToggle(false);
 ```
 
 ### `useDisclosure`
+
 Modal/drawer state management.
 
 ```tsx
@@ -83,6 +88,7 @@ const { isOpen, open, close, toggle } = useDisclosure();
 ```
 
 ### `useCounter`
+
 Numeric counter with min/max.
 
 ```tsx
@@ -90,6 +96,7 @@ const { count, increment, decrement, reset, set } = useCounter(0, { min: 0, max:
 ```
 
 ### `useSetState<T>`
+
 Object state with partial updates (like class component setState).
 
 ```tsx
@@ -99,6 +106,7 @@ setState({ name: 'John' }); // Only updates name, keeps age
 ```
 
 ### `useMap<K, V>` / `useSet<T>`
+
 Map and Set state helpers.
 
 ```tsx
@@ -111,6 +119,7 @@ const [set, { add, remove, toggle }] = useSet<string>();
 ## Forms
 
 ### `useForm<T>`
+
 Lightweight form management with validation.
 
 ```tsx
@@ -128,6 +137,7 @@ const form = useForm<LoginData>({
 ```
 
 ### `useFieldArray<T>`
+
 Dynamic array fields.
 
 ```tsx
@@ -166,6 +176,7 @@ validators.custom((value) => value !== 'admin' || 'Cannot use admin')
 ## Lists & Tables
 
 ### `useListState<T>`
+
 Complete list management with filter/sort/paginate.
 
 ```tsx
@@ -192,6 +203,7 @@ const list = useListState(users, {
 ```
 
 ### `useFilteredList<T>`
+
 Simple filtering.
 
 ```tsx
@@ -204,6 +216,7 @@ setFilter('category', ['tech', 'design']);
 ```
 
 ### `useSortedList<T>`
+
 Just sorting.
 
 ```tsx
@@ -211,6 +224,7 @@ const { sortedItems, toggleSort, sortConfig } = useSortedList(items);
 ```
 
 ### `usePaginatedList<T>`
+
 Just pagination.
 
 ```tsx
@@ -224,6 +238,7 @@ const { paginatedItems, page, nextPage, prevPage, hasNextPage, showingText } = u
 ## Selection
 
 ### `useSelection<T>`
+
 Multi-selection state.
 
 ```tsx
@@ -249,6 +264,7 @@ const selection = useSelection<User>({
 ```
 
 ### `useSelectionWithShift<T>`
+
 Selection with shift-click for ranges.
 
 ```tsx
@@ -260,6 +276,7 @@ const { handleClick, selected } = useSelectionWithShift({ items: users });
 ```
 
 ### `useCheckboxGroup<T>` / `useRadioGroup<T>`
+
 Form checkbox/radio groups.
 
 ```tsx
@@ -275,6 +292,7 @@ const radios = useRadioGroup({ initialValue: 'option1' });
 ## Modals & Overlays
 
 ### `useModal<T>`
+
 Generic modal state with data passing.
 
 ```tsx
@@ -288,6 +306,7 @@ const modal = useModal<User>();
 ```
 
 ### `useConfirmModal`
+
 Confirmation dialogs.
 
 ```tsx
@@ -306,6 +325,7 @@ const confirm = useConfirmModal({
 ```
 
 ### `useMultiStepModal`
+
 Wizard/multi-step modals.
 
 ```tsx
@@ -321,6 +341,7 @@ const wizard = useMultiStepModal({ totalSteps: 3 });
 ```
 
 ### `useOverlay`
+
 Combined overlay behavior (scroll lock, focus trap, escape key).
 
 ```tsx
@@ -342,6 +363,7 @@ function Modal({ isOpen, onClose, children }) {
 ## Navigation
 
 ### `useTabs`
+
 Tab state management.
 
 ```tsx
@@ -364,6 +386,7 @@ const tabs = useTabs(['overview', 'settings', 'users'], { defaultTab: 'overview'
 ```
 
 ### `useTabsWithHistory`
+
 Tabs synced to URL.
 
 ```tsx
@@ -372,6 +395,7 @@ const tabs = useTabsWithHistory(['overview', 'settings'], { paramName: 'tab' });
 ```
 
 ### `useSteps`
+
 Step/wizard navigation.
 
 ```tsx
@@ -390,6 +414,7 @@ const steps = useSteps(4);
 ```
 
 ### `useAccordion`
+
 Accordion state.
 
 ```tsx
@@ -409,6 +434,7 @@ const accordion = useAccordion(['section1', 'section2'], { allowMultiple: true }
 ## Responsive Design
 
 ### `useMediaQuery`
+
 Track media query matches.
 
 ```tsx
@@ -417,6 +443,7 @@ const prefersDark = useMediaQuery('(prefers-color-scheme: dark)');
 ```
 
 ### `useBreakpoint`
+
 Tailwind breakpoint detection.
 
 ```tsx
@@ -426,6 +453,7 @@ const { isMobile, isTablet, isDesktop, breakpoint } = useBreakpoint();
 ```
 
 ### `usePreferredColorScheme` / `usePreferredMotion`
+
 User preferences.
 
 ```tsx
@@ -440,6 +468,7 @@ const shouldAnimate = motion !== 'reduce';
 ## Time & Async
 
 ### `useDebounce` / `useThrottle`
+
 Debounced/throttled values.
 
 ```tsx
@@ -452,6 +481,7 @@ useEffect(() => {
 ```
 
 ### `useDebounceCallback` / `useThrottleCallback`
+
 Debounced/throttled functions.
 
 ```tsx
@@ -461,6 +491,7 @@ const handleSearch = useDebounceCallback((query) => {
 ```
 
 ### `useAsync<T>`
+
 Async operation state.
 
 ```tsx
@@ -472,6 +503,7 @@ const { execute, isLoading, data, error } = useAsync(fetchUserData);
 ```
 
 ### `useInterval` / `useTimeout`
+
 Timer hooks.
 
 ```tsx
@@ -485,6 +517,7 @@ useTimeout(() => {
 ```
 
 ### `useCountdown`
+
 Countdown timer.
 
 ```tsx
@@ -499,6 +532,7 @@ const { seconds, isRunning, start, stop, reset } = useCountdown(60);
 ## Events & DOM
 
 ### `useEventListener`
+
 Add event listeners declaratively.
 
 ```tsx
@@ -510,6 +544,7 @@ useEventListener('scroll', handleScroll, containerRef);
 ```
 
 ### `useOnClickOutside`
+
 Detect clicks outside element.
 
 ```tsx
@@ -520,6 +555,7 @@ useOnClickOutside(ref, () => setIsOpen(false));
 ```
 
 ### `useWindowSize`
+
 Track window dimensions.
 
 ```tsx
@@ -527,6 +563,7 @@ const { width, height } = useWindowSize();
 ```
 
 ### `useScrollPosition`
+
 Track scroll position.
 
 ```tsx
@@ -535,6 +572,7 @@ const showBackToTop = y > 500;
 ```
 
 ### `useHover` / `useFocus`
+
 Track hover/focus state.
 
 ```tsx
@@ -543,6 +581,7 @@ const [focusRef, isFocused] = useFocus();
 ```
 
 ### `useIsVisible`
+
 Intersection observer.
 
 ```tsx
@@ -558,6 +597,7 @@ const [ref, isVisible] = useIsVisible({ threshold: 0.5 });
 ## Storage
 
 ### `useLocalStorage<T>`
+
 Persist state to localStorage.
 
 ```tsx
@@ -565,6 +605,7 @@ const [theme, setTheme] = useLocalStorage('theme', 'light');
 ```
 
 ### `useCopyToClipboard`
+
 Copy text to clipboard.
 
 ```tsx
@@ -580,6 +621,7 @@ const { copy, copied } = useCopyToClipboard();
 ## Downloads & Exports
 
 ### `useDownload`
+
 Download files/data.
 
 ```tsx
@@ -590,6 +632,7 @@ const { downloadJson, downloadCsv, downloadText, downloading } = useDownload();
 ```
 
 ### `useExportCsv<T>`
+
 Export objects to CSV.
 
 ```tsx
@@ -608,6 +651,7 @@ const { exportToCsv, exporting } = useExportCsv<User>();
 ```
 
 ### `usePrint`
+
 Print content.
 
 ```tsx
@@ -621,6 +665,7 @@ const { print, printElement } = usePrint({ title: 'Invoice' });
 ## Utilities
 
 ### `usePrevious<T>`
+
 Get previous value.
 
 ```tsx
@@ -628,6 +673,7 @@ const previousCount = usePrevious(count);
 ```
 
 ### `useHasChanged`
+
 Detect value changes.
 
 ```tsx
@@ -635,6 +681,7 @@ const hasChanged = useHasChanged(formValues);
 ```
 
 ### `useFirstRender`
+
 Detect first render.
 
 ```tsx
@@ -642,6 +689,7 @@ const isFirstRender = useFirstRender();
 ```
 
 ### `useUpdateEffect`
+
 useEffect that skips first render.
 
 ```tsx
@@ -656,6 +704,7 @@ useUpdateEffect(() => {
 ## Conditional Components
 
 ### `<Show>`
+
 Conditional rendering.
 
 ```tsx
@@ -665,6 +714,7 @@ Conditional rendering.
 ```
 
 ### `<Switch>` / `<Match>`
+
 Pattern matching.
 
 ```tsx
@@ -676,6 +726,7 @@ Pattern matching.
 ```
 
 ### `<For>`
+
 List iteration with fallback.
 
 ```tsx
@@ -685,6 +736,7 @@ List iteration with fallback.
 ```
 
 ### `<ConditionalWrapper>`
+
 Conditionally wrap children.
 
 ```tsx

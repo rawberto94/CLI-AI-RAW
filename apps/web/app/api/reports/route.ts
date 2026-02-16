@@ -7,10 +7,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
-import { reportGeneratorService } from '@/packages/data-orchestration/src/services/report-generator.service';
-import { reportExportService } from '@/packages/data-orchestration/src/services/report-export.service';
-import { analyticsService } from '@/packages/data-orchestration/src/services/analytics.service';
+import { reportGeneratorService } from 'data-orchestration/services';
+import { reportExportService } from 'data-orchestration/services';
+import { analyticsService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 // Import deep analysis from ai-builder
 import { prisma } from '@/lib/prisma';
@@ -19,162 +19,145 @@ import { prisma } from '@/lib/prisma';
 // UNIFIED REPORT GENERATION
 // ============================================
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const { searchParams } = new URL(request.url);
+  const reportType = searchParams.get('type') || 'executive';
+  const format = searchParams.get('format') || 'json';
+  const supplierName = searchParams.get('supplier');
+  const _deepAnalysis = searchParams.get('deep') === 'true';
 
-    const { searchParams } = new URL(request.url);
-    const reportType = searchParams.get('type') || 'executive';
-    const format = searchParams.get('format') || 'json';
-    const supplierName = searchParams.get('supplier');
-    const deepAnalysis = searchParams.get('deep') === 'true';
+  const tenantId = ctx.tenantId;
 
-    const tenantId = session.user.tenantId;
+  let report;
 
-    let report;
+  // Generate report based on type (uses new analytics service)
+  switch (reportType) {
+    case 'executive':
+      report = await reportGeneratorService.generateExecutiveReport(tenantId);
+      break;
 
-    // Generate report based on type (uses new analytics service)
-    switch (reportType) {
-      case 'executive':
-        report = await reportGeneratorService.generateExecutiveReport(tenantId);
-        break;
+    case 'financial':
+      report = await reportGeneratorService.generateFinancialReport(tenantId);
+      break;
 
-      case 'financial':
-        report = await reportGeneratorService.generateFinancialReport(tenantId);
-        break;
+    case 'risk':
+      report = await reportGeneratorService.generateRiskReport(tenantId);
+      break;
 
-      case 'risk':
-        report = await reportGeneratorService.generateRiskReport(tenantId);
-        break;
+    case 'compliance':
+      report = await reportGeneratorService.generateComplianceReport(tenantId);
+      break;
 
-      case 'compliance':
-        report = await reportGeneratorService.generateComplianceReport(tenantId);
-        break;
+    case 'supplier':
+      if (!supplierName) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Supplier name required for supplier reports', 400);
+      }
+      report = await reportGeneratorService.generateSupplierReport(tenantId, supplierName);
+      break;
 
-      case 'supplier':
-        if (!supplierName) {
-          return NextResponse.json({ error: 'Supplier name required for supplier reports' }, { status: 400 });
-        }
-        report = await reportGeneratorService.generateSupplierReport(tenantId, supplierName);
-        break;
-
-      default:
-        return NextResponse.json({ error: 'Invalid report type' }, { status: 400 });
-    }
-
-    // Export in requested format
-    let exportedData;
-    let contentType;
-    let filename;
-
-    switch (format) {
-      case 'pdf':
-        exportedData = await reportExportService.exportToPDF(report);
-        contentType = 'text/html';
-        filename = `${report.type}-report-${Date.now()}.html`;
-        break;
-
-      case 'excel':
-      case 'csv':
-        exportedData = await reportExportService.exportToExcel(report);
-        contentType = 'text/csv';
-        filename = `${report.type}-report-${Date.now()}.csv`;
-        break;
-
-      case 'json':
-      default:
-        exportedData = await reportExportService.exportToJSON(report);
-        contentType = 'application/json';
-        filename = `${report.type}-report-${Date.now()}.json`;
-        break;
-    }
-
-    // Return report
-    if (format === 'json') {
-      return NextResponse.json(report);
-    } else {
-      return new NextResponse(exportedData, {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Content-Disposition': `attachment; filename="${filename}"`,
-        },
-      });
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to generate report', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid report type', 400);
   }
-}
+
+  // Export in requested format
+  let exportedData;
+  let contentType;
+  let filename;
+
+  switch (format) {
+    case 'pdf':
+      exportedData = await reportExportService.exportToPDF(report);
+      contentType = 'text/html';
+      filename = `${report.type}-report-${Date.now()}.html`;
+      break;
+
+    case 'excel':
+    case 'csv':
+      exportedData = await reportExportService.exportToExcel(report);
+      contentType = 'text/csv';
+      filename = `${report.type}-report-${Date.now()}.csv`;
+      break;
+
+    case 'json':
+    default:
+      exportedData = await reportExportService.exportToJSON(report);
+      contentType = 'application/json';
+      filename = `${report.type}-report-${Date.now()}.json`;
+      break;
+  }
+
+  // Return report
+  if (format === 'json') {
+    return createSuccessResponse(ctx, report);
+  } else {
+    return new NextResponse(exportedData, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
+      },
+    });
+  }
+});
 
 // ============================================
 // UNIFIED ANALYTICS & CUSTOM REPORTS
 // ============================================
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await auth();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const body = await request.json();
+  const { action, fields, filters, groupBy } = body;
+
+  switch (action) {
+    // Portfolio-level analytics (from new system)
+    case 'portfolio_metrics': {
+      const metrics = await analyticsService.getPortfolioMetrics(tenantId);
+      return createSuccessResponse(ctx, { metrics });
     }
 
-    const tenantId = session.user.tenantId;
-    const body = await request.json();
-    const { action, fields, filters, groupBy } = body;
-
-    switch (action) {
-      // Portfolio-level analytics (from new system)
-      case 'portfolio_metrics':
-        const metrics = await analyticsService.getPortfolioMetrics(tenantId);
-        return NextResponse.json({ metrics });
-
-      case 'spend_analysis':
-        const spend = await analyticsService.getSpendAnalysis(tenantId);
-        return NextResponse.json({ spend });
-
-      case 'risk_analysis':
-        const risks = await analyticsService.getRiskAnalysis(tenantId);
-        return NextResponse.json({ risks });
-
-      case 'savings_opportunities':
-        const savings = await analyticsService.getSavingsOpportunities(tenantId);
-        return NextResponse.json({ savings });
-
-      case 'supplier_performance':
-        const { supplierName } = body;
-        if (!supplierName) {
-          return NextResponse.json({ error: 'Supplier name required' }, { status: 400 });
-        }
-        const performance = await analyticsService.getSupplierPerformance(tenantId, supplierName);
-        return NextResponse.json({ performance });
-
-      case 'anomaly_detection':
-        const anomalies = await analyticsService.detectAnomalies(tenantId);
-        return NextResponse.json({ anomalies });
-
-      // Custom field-based reports (from ReportBuilder)
-      case 'custom_report':
-        if (!fields || fields.length === 0) {
-          return NextResponse.json({ error: 'Fields required for custom reports' }, { status: 400 });
-        }
-        const customData = await generateCustomReport(tenantId, fields, filters, groupBy);
-        return NextResponse.json({ success: true, data: customData, rows: customData.length });
-
-      default:
-        return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
+    case 'spend_analysis': {
+      const spend = await analyticsService.getSpendAnalysis(tenantId);
+      return createSuccessResponse(ctx, { spend });
     }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      { error: 'Failed to process request', details: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+
+    case 'risk_analysis': {
+      const risks = await analyticsService.getRiskAnalysis(tenantId);
+      return createSuccessResponse(ctx, { risks });
+    }
+
+    case 'savings_opportunities': {
+      const savings = await analyticsService.getSavingsOpportunities(tenantId);
+      return createSuccessResponse(ctx, { savings });
+    }
+
+    case 'supplier_performance': {
+      const { supplierName } = body;
+      if (!supplierName) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Supplier name required', 400);
+      }
+      const performance = await analyticsService.getSupplierPerformance(tenantId, supplierName);
+      return createSuccessResponse(ctx, { performance });
+    }
+
+    case 'anomaly_detection': {
+      const anomalies = await analyticsService.detectAnomalies(tenantId);
+      return createSuccessResponse(ctx, { anomalies });
+    }
+
+    // Custom field-based reports (from ReportBuilder)
+    case 'custom_report': {
+      if (!fields || fields.length === 0) {
+        return createErrorResponse(ctx, 'BAD_REQUEST', 'Fields required for custom reports', 400);
+      }
+      const customData = await generateCustomReport(tenantId, fields, filters, groupBy);
+      return createSuccessResponse(ctx, { data: customData, rows: customData.length });
+    }
+
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action', 400);
   }
-}
+});
 
 // ============================================
 // CUSTOM REPORT GENERATION
@@ -185,7 +168,7 @@ async function generateCustomReport(
   tenantId: string,
   fields: string[],
   filters: Record<string, any> = {},
-  groupBy?: string
+  _groupBy?: string
 ): Promise<any[]> {
   // Build dynamic query based on selected fields
   const where: any = { tenantId };

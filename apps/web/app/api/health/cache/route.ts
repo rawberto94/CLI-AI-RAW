@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { healthCheckService } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,27 +8,24 @@ export const dynamic = 'force-dynamic';
 /**
  * Cache-specific health check endpoint
  */
-export async function GET() {
+export const GET = withApiHandler(async (_request: NextRequest, ctx) => {
   try {
     const cacheHealth = await healthCheckService.checkCache();
     
     const statusCode = cacheHealth.status === 'healthy' ? 200 : cacheHealth.status === 'degraded' ? 200 : 503;
     
-    return NextResponse.json(cacheHealth, { 
+    if (statusCode === 503) {
+      return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Cache unhealthy', 503);
+    }
+    return createSuccessResponse(ctx, cacheHealth, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
       },
     });
   } catch (error) {
-    return NextResponse.json(
-      {
-        status: 'unhealthy',
-        message: 'Cache health check failed',
-        error: (error as Error).message,
-        timestamp: new Date().toISOString(),
-      },
-      { status: 503 }
-    );
+    return createErrorResponse(ctx, 'SERVICE_UNAVAILABLE', 'Cache health check failed', 503, {
+      details: (error as Error).message,
+    });
   }
-}
+});

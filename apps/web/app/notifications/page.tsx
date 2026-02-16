@@ -1,20 +1,22 @@
 /**
  * Notifications Page
  * Centralized notification management and history
+ * Uses real database data via /api/notifications
  */
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { PageBreadcrumb } from "@/components/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Bell,
   BellOff,
@@ -45,19 +47,22 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
-// Notification type
+
+
+// Notification type - matches database schema
 interface Notification {
   id: string;
-  type: "renewal" | "risk" | "savings" | "deadline" | "system" | "contract";
+  type: "renewal" | "risk" | "savings" | "deadline" | "system" | "contract" | "APPROVAL_REQUEST" | "APPROVAL_COMPLETED" | "COMMENT_MENTION" | "COMMENT_REPLY" | "CONTRACT_DEADLINE" | "CONTRACT_UPDATE" | "WORKFLOW_STEP" | "SHARE_INVITE" | "SYSTEM";
   title: string;
-  description: string;
-  timestamp: Date;
-  read: boolean;
-  starred: boolean;
-  priority: "low" | "medium" | "high" | "urgent";
-  actionUrl?: string;
-  actionLabel?: string;
+  message?: string;
+  description?: string; // Legacy support
+  link?: string;
+  createdAt: string | Date;
+  isRead: boolean;
+  starred?: boolean;
+  priority?: "low" | "medium" | "high" | "urgent";
   metadata?: {
     contractId?: string;
     contractName?: string;
@@ -65,94 +70,35 @@ interface Notification {
   };
 }
 
-// Demo notifications
-const DEMO_NOTIFICATIONS: Notification[] = [
-  {
-    id: "1",
-    type: "renewal",
-    title: "Contract Renewal Due",
-    description: "Microsoft Enterprise Agreement expires in 30 days. Review and initiate renewal process.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 30),
-    read: false,
-    starred: true,
-    priority: "urgent",
-    actionUrl: "/contracts/ms-ea-2024",
-    actionLabel: "View Contract",
-    metadata: { contractId: "ms-ea-2024", contractName: "Microsoft EA", value: 250000 },
-  },
-  {
-    id: "2",
-    type: "risk",
-    title: "High-Risk Clause Detected",
-    description: "Auto-renewal clause with 60-day notice period found in AWS Services Agreement.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-    read: false,
-    starred: false,
-    priority: "high",
-    actionUrl: "/contracts/aws-sa-2024",
-    actionLabel: "Review Clause",
-    metadata: { contractId: "aws-sa-2024", contractName: "AWS Services Agreement" },
-  },
-  {
-    id: "3",
-    type: "savings",
-    title: "Savings Opportunity Identified",
-    description: "Potential $15,000 savings found through rate optimization in IT Services contract.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5),
-    read: true,
-    starred: false,
-    priority: "medium",
-    actionUrl: "/analytics/savings",
-    actionLabel: "View Analysis",
-    metadata: { value: 15000 },
-  },
-  {
-    id: "4",
-    type: "deadline",
-    title: "Payment Deadline Approaching",
-    description: "Invoice #INV-2024-0892 for Salesforce subscription due in 5 days.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-    read: true,
-    starred: false,
-    priority: "medium",
-    actionUrl: "/contracts/sf-sub-2024",
-    actionLabel: "View Details",
-    metadata: { value: 12500 },
-  },
-  {
-    id: "5",
-    type: "system",
-    title: "OCR Processing Complete",
-    description: "5 contracts have been successfully processed and are ready for review.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 48),
-    read: true,
-    starred: false,
-    priority: "low",
-    actionUrl: "/contracts?status=pending_review",
-    actionLabel: "Review Contracts",
-  },
-  {
-    id: "6",
-    type: "contract",
-    title: "New Contract Uploaded",
-    description: "Vendor Services Agreement uploaded by John Smith and pending approval.",
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 72),
-    read: true,
-    starred: false,
-    priority: "low",
-    actionUrl: "/approvals",
-    actionLabel: "View Approval",
-    metadata: { contractName: "Vendor Services Agreement" },
-  },
-];
+// Map database notification types to display types
+const mapNotificationType = (type: string): "renewal" | "risk" | "savings" | "deadline" | "system" | "contract" => {
+  const typeMap: Record<string, "renewal" | "risk" | "savings" | "deadline" | "system" | "contract"> = {
+    APPROVAL_REQUEST: "contract",
+    APPROVAL_COMPLETED: "contract",
+    COMMENT_MENTION: "system",
+    COMMENT_REPLY: "system",
+    CONTRACT_DEADLINE: "deadline",
+    CONTRACT_UPDATE: "contract",
+    WORKFLOW_STEP: "system",
+    SHARE_INVITE: "system",
+    SYSTEM: "system",
+    renewal: "renewal",
+    risk: "risk",
+    savings: "savings",
+    deadline: "deadline",
+    system: "system",
+    contract: "contract",
+  };
+  return typeMap[type] || "system";
+};
 
 // Type icons and colors
 const TYPE_CONFIG = {
   renewal: { color: "text-orange-500", bg: "bg-orange-100 dark:bg-orange-900/30" },
   risk: { color: "text-red-500", bg: "bg-red-100 dark:bg-red-900/30" },
   savings: { color: "text-green-500", bg: "bg-green-100 dark:bg-green-900/30" },
-  deadline: { color: "text-blue-500", bg: "bg-blue-100 dark:bg-blue-900/30" },
-  system: { color: "text-purple-500", bg: "bg-purple-100 dark:bg-purple-900/30" },
+  deadline: { color: "text-violet-500", bg: "bg-violet-100 dark:bg-violet-900/30" },
+  system: { color: "text-violet-500", bg: "bg-violet-100 dark:bg-violet-900/30" },
   contract: { color: "text-slate-500", bg: "bg-slate-100 dark:bg-slate-800" },
 };
 
@@ -171,59 +117,146 @@ const getTypeIcon = (type: string) => {
 
 const PRIORITY_CONFIG = {
   low: { label: "Low", color: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 px-3 py-1" },
-  medium: { label: "Medium", color: "bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 px-3 py-1" },
+  medium: { label: "Medium", color: "bg-violet-100 text-violet-600 dark:bg-violet-900/30 dark:text-violet-400 px-3 py-1" },
   high: { label: "High", color: "bg-orange-100 text-orange-600 dark:bg-orange-900/30 dark:text-orange-400 px-3 py-1" },
   urgent: { label: "Urgent", color: "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400 px-3 py-1" },
 };
 
 export default function NotificationsPage() {
-  const [notifications, setNotifications] = useState<Notification[]>(DEMO_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<"all" | "unread" | "starred">("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  
+  // Fetch notifications from API
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const response = await fetch('/api/notifications');
+      if (!response.ok) throw new Error('Failed to fetch notifications');
+      const data = await response.json();
+      
+      // Transform API data to match UI format
+      const transformed = (data.notifications || []).map((n: Notification) => ({
+        ...n,
+        type: mapNotificationType(n.type),
+        description: n.message || n.description || '',
+        timestamp: new Date(n.createdAt),
+        read: n.isRead,
+        starred: n.starred || false,
+        priority: n.priority || 'medium',
+        actionUrl: n.link,
+      }));
+      
+      setNotifications(transformed);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      toast.error('Failed to load notifications');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  // Initial fetch
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   // Filter notifications
   const filteredNotifications = useMemo(() => {
     return notifications.filter((n) => {
       // Search filter
+      const desc = n.description || n.message || '';
       if (searchQuery && !n.title.toLowerCase().includes(searchQuery.toLowerCase()) && 
-          !n.description.toLowerCase().includes(searchQuery.toLowerCase())) {
+          !desc.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
       }
       // Read/unread filter
-      if (filter === "unread" && n.read) return false;
+      if (filter === "unread" && n.isRead) return false;
       if (filter === "starred" && !n.starred) return false;
       // Type filter
-      if (typeFilter !== "all" && n.type !== typeFilter) return false;
+      if (typeFilter !== "all" && mapNotificationType(n.type) !== typeFilter) return false;
       return true;
     });
   }, [notifications, searchQuery, filter, typeFilter]);
 
   // Stats
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
   const starredCount = notifications.filter((n) => n.starred).length;
 
-  // Actions
-  const markAsRead = (ids: string[]) => {
-    setNotifications((prev) =>
-      prev.map((n) => (ids.includes(n.id) ? { ...n, read: true } : n))
-    );
+  // Actions - now persist to API
+  const markAsRead = async (ids: string[]) => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds: ids }),
+      });
+      if (!response.ok) throw new Error('Failed to mark as read');
+      
+      setNotifications((prev) =>
+        prev.map((n) => (ids.includes(n.id) ? { ...n, isRead: true } : n))
+      );
+    } catch {
+      toast.error('Failed to mark notifications as read');
+    }
   };
 
-  const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+      if (!response.ok) throw new Error('Failed to mark all as read');
+      
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      toast.success('All notifications marked as read');
+    } catch {
+      toast.error('Failed to mark all as read');
+    }
   };
 
-  const toggleStar = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, starred: !n.starred } : n))
-    );
+  const toggleStar = async (id: string) => {
+    const notification = notifications.find((n) => n.id === id);
+    if (!notification) return;
+    
+    try {
+      await fetch(`/api/notifications/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ starred: !notification.starred }),
+      });
+      
+      // Optimistic update even if API fails (star is local feature)
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, starred: !n.starred } : n))
+      );
+    } catch {
+      // Still toggle locally - starring is optional feature
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === id ? { ...n, starred: !n.starred } : n))
+      );
+    }
   };
 
-  const deleteNotifications = (ids: string[]) => {
-    setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
-    setSelectedIds(new Set());
+  const deleteNotifications = async (ids: string[]) => {
+    try {
+      const response = await fetch('/api/notifications', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationIds: ids }),
+      });
+      if (!response.ok) throw new Error('Failed to delete notifications');
+      
+      setNotifications((prev) => prev.filter((n) => !ids.includes(n.id)));
+      setSelectedIds(new Set());
+      toast.success(`Deleted ${ids.length} notification${ids.length > 1 ? 's' : ''}`);
+    } catch {
+      toast.error('Failed to delete notifications');
+    }
   };
 
   const toggleSelect = (id: string) => {
@@ -246,9 +279,10 @@ export default function NotificationsPage() {
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (date: Date | string) => {
+    const d = date instanceof Date ? date : new Date(date);
     const now = new Date();
-    const diff = now.getTime() - date.getTime();
+    const diff = now.getTime() - d.getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
@@ -256,8 +290,33 @@ export default function NotificationsPage() {
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
-    return date.toLocaleDateString();
+    return d.toLocaleDateString();
   };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+        <div className="max-w-5xl mx-auto px-4 pt-4">
+          <PageBreadcrumb />
+        </div>
+        <div className="max-w-5xl mx-auto px-4 py-8 space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i} className="p-4">
+              <div className="flex items-start gap-4">
+                <Skeleton className="w-10 h-10 rounded-lg" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/3" />
+                  <Skeleton className="h-3 w-full" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
@@ -278,19 +337,23 @@ export default function NotificationsPage() {
                 </Button>
               </Link>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center shadow-lg">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center shadow-lg">
                   <Bell className="h-5 w-5 text-white" />
                 </div>
                 <div>
                   <h1 className="font-semibold text-lg">Notifications</h1>
                   <p className="text-xs text-muted-foreground">
-                    {unreadCount} unread • {starredCount} starred
+                    {loading ? "Loading..." : `${unreadCount} unread • ${starredCount} starred`}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2.5">
+              <Button variant="outline" size="sm" onClick={() => fetchNotifications()} disabled={loading}>
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-2", loading && "animate-spin")} />
+                Refresh
+              </Button>
               <Button variant="outline" size="sm" onClick={markAllAsRead} disabled={unreadCount === 0}>
                 <CheckCheck className="h-3.5 w-3.5 mr-2" />
                 Mark all read
@@ -319,12 +382,12 @@ export default function NotificationsPage() {
           </div>
           
           <Tabs value={filter} onValueChange={(v) => setFilter(v as typeof filter)}>
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="unread">
+            <TabsList className="p-1 bg-slate-100/80 dark:bg-slate-800/80 backdrop-blur-sm border border-slate-200/50 dark:border-slate-700/50 rounded-xl">
+              <TabsTrigger value="all" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">All</TabsTrigger>
+              <TabsTrigger value="unread" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-amber-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-amber-500/30 transition-all duration-300">
                 Unread {unreadCount > 0 && <Badge variant="secondary" className="ml-1.5 px-2 py-0.5">{unreadCount}</Badge>}
               </TabsTrigger>
-              <TabsTrigger value="starred">Starred</TabsTrigger>
+              <TabsTrigger value="starred" className="rounded-lg data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-violet-500/30 transition-all duration-300">Starred</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -334,7 +397,7 @@ export default function NotificationsPage() {
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2.5 p-3 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800"
+            className="flex items-center gap-2.5 p-3 mb-4 bg-violet-50 dark:bg-violet-900/20 rounded-lg border border-violet-200 dark:border-violet-800"
           >
             <span className="text-sm font-medium">{selectedIds.size} selected</span>
             <Button size="sm" variant="secondary" onClick={() => markAsRead(Array.from(selectedIds))}>
@@ -397,7 +460,8 @@ export default function NotificationsPage() {
               <ScrollArea className="max-h-[600px]">
                 <AnimatePresence>
                   {filteredNotifications.map((notification) => {
-                    const TypeIcon = getTypeIcon(notification.type);
+                    const displayType = mapNotificationType(notification.type);
+                    const TypeIcon = getTypeIcon(displayType);
                     return (
                       <motion.div
                         key={notification.id}
@@ -406,7 +470,7 @@ export default function NotificationsPage() {
                         exit={{ opacity: 0, x: -20 }}
                         className={cn(
                           "flex items-start gap-4 p-4 border-b hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors",
-                          !notification.read && "bg-blue-50/50 dark:bg-blue-900/10"
+                          !notification.isRead && "bg-violet-50/50 dark:bg-violet-900/10"
                         )}
                       >
                         <Checkbox
@@ -414,39 +478,39 @@ export default function NotificationsPage() {
                           onCheckedChange={() => toggleSelect(notification.id)}
                         />
                         
-                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", TYPE_CONFIG[notification.type].bg)}>
-                          <TypeIcon className={cn("h-4 w-4", TYPE_CONFIG[notification.type].color)} />
+                        <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0", TYPE_CONFIG[displayType].bg)}>
+                          <TypeIcon className={cn("h-4 w-4", TYPE_CONFIG[displayType].color)} />
                         </div>
 
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start justify-between gap-3">
                             <div>
-                              <h4 className={cn("font-medium text-sm", !notification.read && "font-semibold")}>
+                              <h4 className={cn("font-medium text-sm", !notification.isRead && "font-semibold")}>
                                 {notification.title}
                               </h4>
                               <p className="text-sm text-muted-foreground line-clamp-2 mt-0.5">
-                                {notification.description}
+                                {notification.description || notification.message}
                               </p>
                             </div>
                             <div className="flex items-center gap-2.5 flex-shrink-0">
-                              <Badge className={PRIORITY_CONFIG[notification.priority].color}>
-                                {PRIORITY_CONFIG[notification.priority].label}
+                              <Badge className={PRIORITY_CONFIG[notification.priority || 'medium'].color}>
+                                {PRIORITY_CONFIG[notification.priority || 'medium'].label}
                               </Badge>
                               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                                {formatTime(notification.timestamp)}
+                                {formatTime(notification.createdAt)}
                               </span>
                             </div>
                           </div>
 
                           <div className="flex items-center gap-2.5 mt-3">
-                            {notification.actionUrl && (
-                              <Link href={notification.actionUrl}>
+                            {notification.link && (
+                              <Link href={notification.link}>
                                 <Button size="sm" variant="secondary" className="h-8">
-                                  {notification.actionLabel || "View"}
+                                  View
                                 </Button>
                               </Link>
                             )}
-                            {!notification.read && (
+                            {!notification.isRead && (
                               <Button
                                 size="sm"
                                 variant="ghost"

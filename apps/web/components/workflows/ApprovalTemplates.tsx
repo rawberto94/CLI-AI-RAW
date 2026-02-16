@@ -315,9 +315,9 @@ const getCategoryIcon = (category: TemplateCategory) => {
 
 const getCategoryColor = (category: TemplateCategory) => {
   const colors = {
-    vendor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+    vendor: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
     client: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-    internal: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+    internal: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
     compliance: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
     financial: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
   };

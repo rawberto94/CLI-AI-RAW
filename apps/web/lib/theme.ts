@@ -1,25 +1,25 @@
 // AI Intelligence Platform Theme Configuration
 
 export const aiTheme = {
-  // Brand Colors
+  // Brand Colors — Violet primary
   colors: {
     primary: {
-      50: '#eff6ff',
-      100: '#dbeafe',
-      500: '#3b82f6',
-      600: '#2563eb',
-      700: '#1d4ed8',
-    },
-    secondary: {
       50: '#f5f3ff',
       100: '#ede9fe',
       500: '#8b5cf6',
       600: '#7c3aed',
       700: '#6d28d9',
     },
+    secondary: {
+      50: '#faf5ff',
+      100: '#f3e8ff',
+      500: '#a855f7',
+      600: '#9333ea',
+      700: '#7e22ce',
+    },
     accent: {
-      50: '#eef2ff',
-      100: '#e0e7ff',
+      50: '#f5f3ff',
+      100: '#ede9fe',
       500: '#6366f1',
       600: '#4f46e5',
       700: '#4338ca',
@@ -49,34 +49,34 @@ export const aiTheme = {
 
   // Gradient Patterns
   gradients: {
-    primary: 'bg-gradient-to-r from-blue-500 to-purple-600',
-    secondary: 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600',
-    accent: 'bg-gradient-to-br from-blue-50 to-purple-50',
-    success: 'bg-gradient-to-r from-green-50 to-blue-50',
+    primary: 'bg-gradient-to-r from-violet-500 to-purple-600',
+    secondary: 'bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600',
+    accent: 'bg-gradient-to-br from-violet-50 to-purple-50',
+    success: 'bg-gradient-to-r from-green-50 to-violet-50',
     warning: 'bg-gradient-to-r from-yellow-50 to-orange-50',
-    background: 'bg-gradient-to-br from-blue-50 via-white to-purple-50',
+    background: 'bg-gradient-to-br from-violet-50 via-white to-purple-50',
   },
 
   // Component Styles
   components: {
     card: {
-      base: 'bg-white border border-gray-200 rounded-lg shadow-sm',
-      hover: 'hover:shadow-xl transition-all duration-300 border-2 hover:border-blue-300',
-      gradient: 'bg-gradient-to-br from-white to-gray-50',
+      base: 'bg-white border border-slate-200 rounded-lg shadow-sm',
+      hover: 'hover:shadow-xl transition-all duration-300 border-2 hover:border-violet-300',
+      gradient: 'bg-gradient-to-br from-white to-slate-50',
     },
     button: {
-      primary: 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white',
-      secondary: 'bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 hover:from-blue-700 hover:via-purple-700 hover:to-indigo-700 text-white',
-      outline: 'border-2 border-blue-500 text-blue-600 hover:bg-blue-50',
+      primary: 'bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700 text-white',
+      secondary: 'bg-gradient-to-r from-violet-600 via-purple-600 to-fuchsia-600 hover:from-violet-700 hover:via-purple-700 hover:to-fuchsia-700 text-white',
+      outline: 'border-2 border-violet-500 text-violet-600 hover:bg-violet-50',
     },
     icon: {
-      container: 'w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center',
-      small: 'w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center',
-      large: 'w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center',
+      container: 'w-12 h-12 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center',
+      small: 'w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center',
+      large: 'w-16 h-16 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center',
     },
     status: {
       online: 'flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg border border-green-200',
-      processing: 'flex items-center gap-2 px-3 py-2 bg-blue-50 rounded-lg border border-blue-200',
+      processing: 'flex items-center gap-2 px-3 py-2 bg-violet-50 rounded-lg border border-violet-200',
       warning: 'flex items-center gap-2 px-3 py-2 bg-yellow-50 rounded-lg border border-yellow-200',
       error: 'flex items-center gap-2 px-3 py-2 bg-red-50 rounded-lg border border-red-200',
     },
@@ -94,16 +94,16 @@ export const aiTheme = {
   // Typography
   typography: {
     heading: {
-      h1: 'text-3xl font-bold text-gray-900',
-      h2: 'text-2xl font-bold text-gray-900',
-      h3: 'text-xl font-bold text-gray-900',
-      h4: 'text-lg font-semibold text-gray-900',
+      h1: 'text-3xl font-bold text-slate-900',
+      h2: 'text-2xl font-bold text-slate-900',
+      h3: 'text-xl font-bold text-slate-900',
+      h4: 'text-lg font-semibold text-slate-900',
     },
     body: {
-      large: 'text-lg text-gray-700',
-      base: 'text-base text-gray-700',
-      small: 'text-sm text-gray-600',
-      xs: 'text-xs text-gray-500',
+      large: 'text-lg text-slate-700',
+      base: 'text-base text-slate-700',
+      small: 'text-sm text-slate-600',
+      xs: 'text-xs text-slate-500',
     },
   },
 

@@ -10,10 +10,95 @@
  * - Performance timing
  */
 
-export const runtime = 'nodejs'; // Force nodejs runtime for middleware
-
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import NextAuth from "next-auth";
+import { authConfig } from "@/lib/auth.config";
+
+// Edge-compatible auth wrapper (no Prisma/DB dependencies)
+const { auth } = NextAuth(authConfig);
+
+// Edge-compatible HMAC-SHA256 using Web Crypto API
+async function hmacSha256Hex(secret: string, data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', cryptoKey, encoder.encode(data));
+  return Array.from(new Uint8Array(sig))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// Edge-compatible constant-time string comparison
+function constantTimeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let result = 0;
+  for (let i = 0; i < a.length; i++) {
+    result |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// CSRF constants (inline to avoid server-only import chain)
+const CSRF_TOKEN_NAME = 'csrf_token';
+const CSRF_HEADER_NAME = 'x-csrf-token';
+const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
+
+// Safe HTTP methods that don't need CSRF validation
+const CSRF_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+// API routes exempt from CSRF enforcement
+const CSRF_EXEMPT_PATHS = [
+  '/api/auth/callback',      // NextAuth OAuth callbacks need to work without CSRF header
+  '/api/auth/session',       // NextAuth session endpoint
+  '/api/auth/csrf',          // NextAuth CSRF token endpoint  
+  '/api/auth/signin',        // NextAuth signin handler
+  '/api/auth/signout',       // NextAuth signout handler
+  '/api/auth/providers',     // NextAuth providers list
+  '/api/auth/error',         // NextAuth error handler
+  '/api/auth/mfa',           // MFA verify during login (half-authenticated state)
+  '/api/health',
+  '/api/monitoring/health',
+  '/api/webhooks',
+  '/api/csrf',
+  '/api/cron',
+];
+
+/**
+ * Verify CSRF token signature and expiry (Edge-compatible implementation)
+ */
+async function verifyCSRFToken(token: string, userId?: string): Promise<boolean> {
+  try {
+    const secret = process.env.NEXTAUTH_SECRET || process.env.CSRF_SECRET;
+    if (!secret) return false;
+
+    const decoded = atob(token);
+    const dotIndex = decoded.lastIndexOf('.');
+    if (dotIndex === -1) return false;
+
+    const data = decoded.substring(0, dotIndex);
+    const signature = decoded.substring(dotIndex + 1);
+    if (!data || !signature) return false;
+
+    const expectedSignature = await hmacSha256Hex(secret, data);
+
+    if (!constantTimeEqual(signature, expectedSignature)) {
+      return false;
+    }
+
+    const payload = JSON.parse(data);
+    if (Date.now() - payload.timestamp > CSRF_TOKEN_EXPIRY) return false;
+    if (userId && payload.userId && payload.userId !== userId) return false;
+
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Generate a unique request ID for tracing
@@ -25,24 +110,96 @@ function generateRequestId(): string {
   return `req_${timestamp}_${random}`;
 }
 
-// Rate limiting configuration (in-memory for middleware)
-const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+// Rate limiting configuration
+// Uses Redis for multi-instance deployments; falls back to in-memory
+const RATE_LIMIT_WINDOW = 60; // 1 minute (seconds for Redis TTL)
 const RATE_LIMIT_MAX = 100; // requests per window for general users
+const RATE_LIMIT_CLEANUP_INTERVAL = 5 * 60 * 1000;
+const RATE_LIMIT_MAX_ENTRIES = 10000;
+
+// In-memory fallback store (used when Redis is unavailable)
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+let lastCleanup = Date.now();
+function cleanupRateLimitStore() {
+  const now = Date.now();
+  if (now - lastCleanup < RATE_LIMIT_CLEANUP_INTERVAL) return;
+  lastCleanup = now;
+  for (const [key, entry] of rateLimitStore) {
+    if (entry.resetAt < now) rateLimitStore.delete(key);
+  }
+  if (rateLimitStore.size > RATE_LIMIT_MAX_ENTRIES) {
+    const excess = rateLimitStore.size - RATE_LIMIT_MAX_ENTRIES;
+    const keys = rateLimitStore.keys();
+    for (let i = 0; i < excess; i++) {
+      const { value } = keys.next();
+      if (value) rateLimitStore.delete(value);
+    }
+  }
+}
+
+// Redis rate limiter — disabled in Edge Runtime (ioredis not available)
+// Falls back to in-memory rate limiting
+
+async function checkRateLimitRedis(
+  _identifier: string,
+  _maxRequests: number
+): Promise<{ allowed: boolean; remaining: number } | null> {
+  return null; // Always use in-memory fallback in Edge Runtime
+}
+
+function checkRateLimitMemory(identifier: string, maxRequests: number): { allowed: boolean; remaining: number } {
+  const now = Date.now();
+  const entry = rateLimitStore.get(identifier);
+  const limit = maxRequests || RATE_LIMIT_MAX;
+
+  if (!entry || entry.resetAt < now) {
+    rateLimitStore.set(identifier, { count: 1, resetAt: now + RATE_LIMIT_WINDOW * 1000 });
+    return { allowed: true, remaining: limit - 1 };
+  }
+
+  entry.count++;
+  if (entry.count > limit) {
+    return { allowed: false, remaining: 0 };
+  }
+
+  return { allowed: true, remaining: limit - entry.count };
+}
+
+async function checkRateLimit(
+  identifier: string,
+  maxRequests?: number
+): Promise<{ allowed: boolean; remaining: number }> {
+  const limit = maxRequests || RATE_LIMIT_MAX;
+  // Try Redis first, fall back to in-memory
+  const redisResult = await checkRateLimitRedis(identifier, limit);
+  if (redisResult) return redisResult;
+  return checkRateLimitMemory(identifier, limit);
+}
 
 // Tiered rate limits by endpoint type and user role
 const RATE_LIMITS: Record<string, { anonymous: number; user: number; admin: number }> = {
-  'ai': { anonymous: 10, user: 50, admin: 200 },       // AI endpoints are expensive
-  'upload': { anonymous: 5, user: 20, admin: 100 },   // Upload endpoints
-  'export': { anonymous: 5, user: 30, admin: 100 },   // Export endpoints
-  'contracts': { anonymous: 50, user: 200, admin: 500 }, // Contract CRUD
-  'default': { anonymous: 50, user: 100, admin: 300 }, // Default limits
+  'auth': { anonymous: 10, user: 20, admin: 50 },      // M14: Strict auth rate limits
+  'ai': { anonymous: 10, user: 50, admin: 200 },
+  'upload': { anonymous: 15, user: 60, admin: 200 },
+  'export': { anonymous: 5, user: 30, admin: 100 },
+  'contracts': { anonymous: 50, user: 200, admin: 500 },
+  'read': { anonymous: 100, user: 300, admin: 600 },    // Read-heavy polling endpoints
+  'default': { anonymous: 50, user: 150, admin: 400 },
 };
 
+// Endpoints completely exempt from rate limiting (health checks, monitoring)
+const RATE_LIMIT_EXEMPT = [
+  '/api/health',
+  '/api/monitoring/health',
+  '/api/csrf',
+];
+
 function getEndpointCategory(pathname: string): string {
+  if (pathname.startsWith('/api/auth/')) return 'auth'; // M14: Auth-specific rate limits
   if (pathname.includes('/ai/')) return 'ai';
   if (pathname.includes('/upload')) return 'upload';
   if (pathname.includes('/export')) return 'export';
+  if (pathname.includes('/extraction/')) return 'read';  // Polling endpoints
   if (pathname.includes('/contracts')) return 'contracts';
   return 'default';
 }
@@ -50,33 +207,16 @@ function getEndpointCategory(pathname: string): string {
 function getRateLimit(pathname: string, role?: string): number {
   const category = getEndpointCategory(pathname);
   const limits = RATE_LIMITS[category] ?? RATE_LIMITS.default;
-  
+
   if (role === 'admin' || role === 'owner') return limits?.admin ?? 300;
   if (role) return limits?.user ?? 100;
   return limits?.anonymous ?? 50;
 }
 
-function checkRateLimit(identifier: string, maxRequests?: number): { allowed: boolean; remaining: number } {
-  const now = Date.now();
-  const entry = rateLimitStore.get(identifier);
-  const limit = maxRequests || RATE_LIMIT_MAX;
-  
-  if (!entry || entry.resetAt < now) {
-    rateLimitStore.set(identifier, { count: 1, resetAt: now + RATE_LIMIT_WINDOW });
-    return { allowed: true, remaining: limit - 1 };
-  }
-  
-  entry.count++;
-  if (entry.count > limit) {
-    return { allowed: false, remaining: 0 };
-  }
-  
-  return { allowed: true, remaining: limit - entry.count };
-}
-
 // Paths that don't require authentication (only auth-related pages)
+// IMPORTANT: Use exact paths or paths that won't prefix-match unrelated routes.
+// "/" MUST be exact-matched to avoid matching every route.
 const publicPaths = [
-  "/",              // Landing page
   "/about",         // About page
   "/pricing",       // Pricing page
   "/features",      // Features page
@@ -86,17 +226,24 @@ const publicPaths = [
   "/auth/error",
   "/auth/forgot-password",
   "/auth/reset-password",
+  "/auth/verify-email",
+  "/auth/mfa-verify",   // MFA verification page (user is half-authenticated)
   "/api/auth",
 ];
+
+// Exact-match paths (no prefix matching)
+const publicExactPaths = new Set([
+  "/",              // Landing page only — must NOT prefix-match other routes
+]);
 
 // API routes that don't require authentication (health checks only)
 const publicApiPaths = [
   "/api/health",
-  "/api/healthz",
-  "/api/ready",
-  "/api/web-health",
+  "/api/monitoring/health",
   "/api/auth",
   "/api/cron", // Allow cron endpoints (protected by CRON_SECRET)
+  "/api/csrf", // CSRF token must be obtainable before/during login
+  "/api/taxonomy/presets", // Industry preset templates (read-only, public)
 ];
 
 // Static/public assets that bypass auth
@@ -121,7 +268,7 @@ function hasAdminAccess(role: string | undefined): boolean {
   return role === "owner" || role === "admin";
 }
 
-export default auth((req) => {
+export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const startTime = Date.now();
   
@@ -129,29 +276,43 @@ export default auth((req) => {
   const requestId = req.headers.get('x-request-id') || generateRequestId();
 
   // Rate limiting for API routes with tiered limits
-  if (pathname.startsWith("/api/")) {
+  // Only skip rate limiting for NextAuth's own internal routes (session, csrf, callback, providers)
+  // Custom auth endpoints (addin-login, mfa/verify-login, signup, forgot-password) MUST be rate-limited
+  const NEXTAUTH_INTERNAL_PREFIXES = [
+    '/api/auth/session', '/api/auth/csrf', '/api/auth/providers',
+    '/api/auth/callback', '/api/auth/signin', '/api/auth/signout',
+    '/api/auth/error',
+  ];
+  const isNextAuthInternal = NEXTAUTH_INTERNAL_PREFIXES.some(p => pathname.startsWith(p));
+  const isRateLimitExempt = RATE_LIMIT_EXEMPT.some(p => pathname.startsWith(p));
+  if (pathname.startsWith("/api/") && !isNextAuthInternal && !isRateLimitExempt) {
+    // Periodically prune expired entries
+    cleanupRateLimitStore();
+    
     const forwarded = req.headers.get('x-forwarded-for');
     const ip = forwarded?.split(',')[0] ?? 'unknown';
     const userId = req.auth?.user?.id;
     const tenantId = req.auth?.user?.tenantId;
     const userRole = (req.auth?.user as any)?.role;
     
-    // Use tenant+user for rate limit grouping (per-tenant limits)
-    const identifier = tenantId 
+    // Use tenant+user+category for rate limit grouping (per-category, per-tenant limits)
+    const category = getEndpointCategory(pathname);
+    const baseId = tenantId 
       ? `tenant:${tenantId}:${userId || ip}`
       : userId || `ip:${ip}`;
+    const identifier = `${category}:${baseId}`;
     
     // Get dynamic rate limit based on endpoint and role
     const maxRequests = getRateLimit(pathname, userRole);
     
-    const rateLimit = checkRateLimit(identifier, maxRequests);
+    const rateLimit = await checkRateLimit(identifier, maxRequests);
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: 'Too Many Requests', message: 'Rate limit exceeded', requestId },
         { 
           status: 429,
           headers: {
-            'X-RateLimit-Limit': String(RATE_LIMIT_MAX),
+            'X-RateLimit-Limit': String(maxRequests), // M15: Show actual tiered limit, not global
             'X-RateLimit-Remaining': '0',
             'Retry-After': '60',
             'X-Request-ID': requestId,
@@ -165,6 +326,27 @@ export default auth((req) => {
   const addTracingHeaders = (response: NextResponse): NextResponse => {
     response.headers.set('X-Request-ID', requestId);
     response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
+    // M10-M12 FIX: Apply security headers to ALL responses (API + pages)
+    response.headers.set('X-Frame-Options', 'DENY');
+    response.headers.set('X-Content-Type-Options', 'nosniff');
+    response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
+    response.headers.set('X-XSS-Protection', '1; mode=block');
+    // M11: HSTS — enforce HTTPS in production
+    if (process.env.NODE_ENV === 'production') {
+      response.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
+    // M12: Content-Security-Policy
+    response.headers.set('Content-Security-Policy', [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: https:",
+      "font-src 'self' data:",
+      "connect-src 'self' https: wss:",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+    ].join('; '));
     return response;
   };
 
@@ -174,7 +356,7 @@ export default auth((req) => {
   }
 
   // Allow public paths (auth pages only)
-  if (publicPaths.some((path) => pathname.startsWith(path))) {
+  if (publicExactPaths.has(pathname) || publicPaths.some((path) => pathname.startsWith(path))) {
     return addTracingHeaders(NextResponse.next());
   }
 
@@ -197,6 +379,50 @@ export default auth((req) => {
     const signInUrl = new URL("/auth/signin", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);
+  }
+
+  // C1 FIX: MFA enforcement — redirect to MFA verify if required but not verified
+  const mfaRequired = (req.auth.user as any)?.mfaRequired;
+  const mfaVerified = (req.auth.user as any)?.mfaVerified;
+  const mfaPendingPaths = ['/auth/mfa-verify', '/api/auth/mfa', '/api/auth/session', '/api/auth/signout', '/api/auth/csrf'];
+  
+  if (mfaRequired && !mfaVerified && !mfaPendingPaths.some(p => pathname.startsWith(p))) {
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.json(
+        { error: "MFA Required", message: "Multi-factor authentication verification required", code: "MFA_REQUIRED", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
+    const mfaUrl = new URL("/auth/mfa-verify", req.url);
+    mfaUrl.searchParams.set("callbackUrl", pathname);
+    return NextResponse.redirect(mfaUrl);
+  }
+
+  // CSRF enforcement for state-changing API requests
+  if (
+    pathname.startsWith("/api/") &&
+    !CSRF_SAFE_METHODS.has(req.method) &&
+    !CSRF_EXEMPT_PATHS.some((path) => pathname.startsWith(path))
+  ) {
+    const headerToken = req.headers.get(CSRF_HEADER_NAME);
+    const cookieToken = req.cookies.get(CSRF_TOKEN_NAME)?.value;
+
+    if (!headerToken || !cookieToken || headerToken !== cookieToken) {
+      const response = NextResponse.json(
+        { error: "Forbidden", message: "CSRF validation failed", code: "CSRF_INVALID", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
+
+    if (!(await verifyCSRFToken(headerToken, req.auth?.user?.id))) {
+      const response = NextResponse.json(
+        { error: "Forbidden", message: "Invalid or expired CSRF token", code: "CSRF_INVALID", requestId },
+        { status: 403 }
+      );
+      return addTracingHeaders(response);
+    }
   }
 
   // Check admin route access
@@ -282,15 +508,9 @@ export default auth((req) => {
     return addTracingHeaders(response);
   }
 
-  // Apply security headers
+  // Apply security headers to page responses
   const response = NextResponse.next();
-  response.headers.set('X-Request-ID', requestId);
-  response.headers.set('X-Response-Time', `${Date.now() - startTime}ms`);
-  response.headers.set('X-Frame-Options', 'DENY');
-  response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('Referrer-Policy', 'origin-when-cross-origin');
-
-  return response;
+  return addTracingHeaders(response);
 });
 
 // Configure which routes require authentication

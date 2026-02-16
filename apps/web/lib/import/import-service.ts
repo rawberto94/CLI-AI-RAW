@@ -182,16 +182,32 @@ export class ImportService {
       const { prisma } = await import('@/lib/prisma');
       const jobId = `job-${Date.now()}-${Math.random().toString(36).substring(7)}`;
       
+      // Detect file type from extension and MIME type
+      const fileExtension = file.name.split('.').pop()?.toUpperCase() || 'CSV';
+      const validFileTypes = ['XLSX', 'XLS', 'CSV', 'JSON', 'PDF'] as const;
+      type FileTypeImport = typeof validFileTypes[number];
+      const detectedFileType: FileTypeImport = validFileTypes.includes(fileExtension as FileTypeImport) 
+        ? (fileExtension as FileTypeImport) 
+        : 'CSV';
+      
+      // Get tenant from server context (cookies/headers)
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const tenantId = cookieStore.get('tenantId')?.value;
+      if (!tenantId) {
+        throw new Error('Authentication required: Missing tenant context for import');
+      }
+      
       // Create import job record
       const importJob = await prisma.importJob.create({
         data: {
           id: jobId,
-          tenantId: 'default', // TODO: Get from context
+          tenantId,
           source: 'UPLOAD',
           status: 'PROCESSING',
           fileName: file.name,
           fileSize: BigInt(file.size),
-          fileType: 'XLSX', // TODO: Detect from file
+          fileType: detectedFileType,
           extractedData: {},
           columnMappings: mappings.map(m => ({ source: m.sourceColumn, target: m.targetField })),
         },

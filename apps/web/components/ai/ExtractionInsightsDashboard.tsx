@@ -93,7 +93,7 @@ export function ExtractionInsightsDashboard({
   const AlertIcon = ({ type }: { type: 'warning' | 'error' | 'info' }) => {
     if (type === 'error') return <AlertCircle className="h-4 w-4 text-red-600" />;
     if (type === 'warning') return <AlertTriangle className="h-4 w-4 text-yellow-600" />;
-    return <Info className="h-4 w-4 text-blue-600" />;
+    return <Info className="h-4 w-4 text-violet-600" />;
   };
 
   if (compact) {
@@ -140,7 +140,7 @@ export function ExtractionInsightsDashboard({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold flex items-center gap-2">
-            <Brain className="h-6 w-6 text-purple-600" />
+            <Brain className="h-6 w-6 text-violet-600" />
             AI Extraction Insights
           </h2>
           <p className="text-muted-foreground">Real-time performance metrics and recommendations</p>
@@ -233,8 +233,8 @@ export function ExtractionInsightsDashboard({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Zap className="h-5 w-5 text-blue-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Zap className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Avg Confidence</p>
@@ -252,8 +252,8 @@ export function ExtractionInsightsDashboard({
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Clock className="h-5 w-5 text-purple-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Clock className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Avg Processing Time</p>
@@ -284,7 +284,7 @@ export function ExtractionInsightsDashboard({
                 variant={alert.type === 'error' ? 'destructive' : 'default'}
                 className={cn(
                   alert.type === 'warning' && 'border-yellow-500 bg-yellow-50',
-                  alert.type === 'info' && 'border-blue-500 bg-blue-50'
+                  alert.type === 'info' && 'border-violet-500 bg-violet-50'
                 )}
               >
                 <AlertIcon type={alert.type} />

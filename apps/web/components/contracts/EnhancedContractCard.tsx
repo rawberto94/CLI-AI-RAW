@@ -159,8 +159,8 @@ export interface EnhancedContractCardProps {
 // Helper Functions
 // ============================================================================
 
-function formatCurrency(value: number, currency: string = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+function formatCurrency(value: number, currency: string = "CHF"): string {
+  return new Intl.NumberFormat("de-CH", {
     style: "currency",
     currency,
     notation: value >= 1000000 ? "compact" : "standard",
@@ -198,10 +198,10 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       dotColor: "bg-amber-400",
     },
     active: {
-      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      color: "bg-violet-50 text-violet-700 border-violet-200",
       icon: CheckCircle2,
       label: "Active",
-      dotColor: "bg-emerald-400",
+      dotColor: "bg-violet-400",
     },
     expired: {
       color: "bg-red-50 text-red-700 border-red-200",
@@ -216,22 +216,22 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
       dotColor: "bg-gray-400",
     },
     renewal: {
-      color: "bg-blue-50 text-blue-700 border-blue-200",
+      color: "bg-violet-50 text-violet-700 border-violet-200",
       icon: AlertCircle,
       label: "Up for Renewal",
-      dotColor: "bg-blue-400",
+      dotColor: "bg-violet-400",
     },
     processing: {
-      color: "bg-blue-50 text-blue-700 border-blue-200",
+      color: "bg-violet-50 text-violet-700 border-violet-200",
       icon: Clock,
       label: "Processing",
-      dotColor: "bg-blue-400",
+      dotColor: "bg-violet-400",
     },
     completed: {
-      color: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      color: "bg-violet-50 text-violet-700 border-violet-200",
       icon: CheckCircle2,
       label: "Completed",
-      dotColor: "bg-emerald-400",
+      dotColor: "bg-violet-400",
     },
     failed: {
       color: "bg-red-50 text-red-700 border-red-200",
@@ -249,7 +249,7 @@ function getStatusConfig(status?: EnhancedContract["status"]): StatusConfig {
 
 function getRiskConfig(riskLevel?: ContractHealth["riskLevel"]) {
   const configs = {
-    low: { color: "text-emerald-500", bg: "bg-emerald-100", label: "Low Risk" },
+    low: { color: "text-violet-500", bg: "bg-violet-100", label: "Low Risk" },
     medium: { color: "text-amber-500", bg: "bg-amber-100", label: "Medium Risk" },
     high: { color: "text-orange-500", bg: "bg-orange-100", label: "High Risk" },
     critical: { color: "text-red-500", bg: "bg-red-100", label: "Critical Risk" },
@@ -274,15 +274,15 @@ const PartyAvatar = memo(function PartyAvatar({ party, size = "md" }: PartyAvata
   };
 
   const roleColors = {
-    client: "bg-blue-100 text-blue-700 ring-blue-200",
-    vendor: "bg-purple-100 text-purple-700 ring-purple-200",
-    partner: "bg-emerald-100 text-emerald-700 ring-emerald-200",
+    client: "bg-violet-100 text-violet-700 ring-violet-200",
+    vendor: "bg-violet-100 text-violet-700 ring-violet-200",
+    partner: "bg-violet-100 text-violet-700 ring-violet-200",
     other: "bg-gray-100 text-gray-700 ring-gray-200",
   };
 
   if (party.logo) {
     return (
-      /* eslint-disable-next-line @next/next/no-img-element */
+      
       <img
         src={party.logo}
         alt={party.name}
@@ -436,7 +436,7 @@ const ExpiryBadge = memo(function ExpiryBadge({ endDate, status }: ExpiryBadgePr
     default: "bg-gray-100 text-gray-700",
     warning: "bg-amber-100 text-amber-700",
     danger: "bg-red-100 text-red-700 animate-pulse",
-    success: "bg-emerald-100 text-emerald-700",
+    success: "bg-violet-100 text-violet-700",
   };
 
   return (
@@ -466,7 +466,7 @@ const SignatureBadge = memo(function SignatureBadge({ signatureStatus, signature
 
   const configs = {
     signed: {
-      color: "bg-emerald-100 text-emerald-700",
+      color: "bg-violet-100 text-violet-700",
       icon: CheckCircle2,
       label: "Signed",
     },
@@ -545,7 +545,7 @@ const HierarchyBadge = memo(function HierarchyBadge({ contract }: HierarchyBadge
           <span
             className={cn(
               "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium",
-              hasParent ? "bg-indigo-100 text-indigo-700" : "bg-purple-100 text-purple-700"
+              hasParent ? "bg-violet-100 text-violet-700" : "bg-violet-100 text-violet-700"
             )}
           >
             {hasParent ? (
@@ -603,7 +603,7 @@ const CompletenessBar = memo(function CompletenessBar({ percentage }: Completene
           className={cn(
             "h-full rounded-full",
             percentage >= 80
-              ? "bg-emerald-500"
+              ? "bg-violet-500"
               : percentage >= 50
               ? "bg-amber-500"
               : "bg-red-500"
@@ -628,52 +628,64 @@ interface QuickPreviewProps {
 const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: 10 }}
-      className="absolute left-full top-0 ml-2 z-50 w-72 bg-white rounded-xl shadow-xl border p-4 pointer-events-none"
+      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+      className="absolute left-full top-0 ml-3 z-50 w-80 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/60 p-5 pointer-events-none overflow-hidden"
     >
+      {/* Decorative gradient */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-500 via-violet-500 to-purple-500" />
+      
       {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h4 className="font-semibold text-sm line-clamp-1">{contract.title}</h4>
-          <p className="text-xs text-muted-foreground">{contract.type}</p>
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex-1 min-w-0">
+          <h4 className="font-bold text-base text-slate-900 line-clamp-1">{contract.title}</h4>
+          <p className="text-xs text-slate-500 mt-0.5">{contract.type}</p>
         </div>
-        {contract.health && <HealthIndicator health={contract.health} />}
+        {contract.health && (
+          <div className="ml-3">
+            <HealthIndicator health={contract.health} size="md" />
+          </div>
+        )}
       </div>
 
       {/* Description */}
       {contract.description && (
-        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{contract.description}</p>
+        <p className="text-sm text-slate-600 mb-4 line-clamp-2 leading-relaxed">{contract.description}</p>
       )}
 
       {/* Key Info Grid */}
-      <div className="grid grid-cols-2 gap-2 text-xs mb-3">
+      <div className="grid grid-cols-2 gap-3 mb-4">
         {contract.value !== undefined && (
-          <div className="flex items-center gap-1.5">
-            <DollarSign className="w-3.5 h-3.5 text-emerald-500" />
-            <span className="font-medium">
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-violet-50 border border-violet-100">
+            <div className="p-1.5 rounded-lg bg-violet-500 shadow-sm">
+              <DollarSign className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="font-semibold text-sm text-violet-700">
               {formatCurrency(contract.value, contract.currency)}
             </span>
           </div>
         )}
         {contract.endDate && (
-          <div className="flex items-center gap-1.5">
-            <Calendar className="w-3.5 h-3.5 text-blue-500" />
-            <span>{format(parseISO(contract.endDate), "MMM d, yyyy")}</span>
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-violet-50 border border-violet-100">
+            <div className="p-1.5 rounded-lg bg-violet-500 shadow-sm">
+              <Calendar className="w-3.5 h-3.5 text-white" />
+            </div>
+            <span className="text-sm text-violet-700 font-medium">{format(parseISO(contract.endDate), "MMM d, yyyy")}</span>
           </div>
         )}
       </div>
 
       {/* Parties */}
-      <div className="border-t pt-3">
-        <p className="text-[10px] text-muted-foreground mb-2">Parties</p>
-        <div className="space-y-1.5">
+      <div className="border-t border-slate-100 pt-4">
+        <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-2.5">Parties</p>
+        <div className="space-y-2">
           {contract.parties && Array.isArray(contract.parties) && contract.parties.slice(0, 3).map((party: ContractParty) => (
-            <div key={party.id || party.name} className="flex items-center gap-2">
+            <div key={party.id || party.name} className="flex items-center gap-2.5 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors">
               <PartyAvatar party={party} size="sm" />
-              <span className="text-xs truncate">{party.name}</span>
-              <span className="text-[10px] text-muted-foreground capitalize">({party.role})</span>
+              <span className="text-sm font-medium text-slate-700 truncate flex-1">{party.name}</span>
+              <span className="text-[10px] text-slate-400 capitalize px-2 py-0.5 bg-white rounded-full border border-slate-200">{party.role}</span>
             </div>
           ))}
         </div>
@@ -681,14 +693,14 @@ const QuickPreview = memo(function QuickPreview({ contract }: QuickPreviewProps)
 
       {/* Tags */}
       {contract.tags && contract.tags.length > 0 && (
-        <div className="flex flex-wrap gap-1 mt-3">
+        <div className="flex flex-wrap gap-1.5 mt-4 pt-4 border-t border-slate-100">
           {contract.tags.slice(0, 4).map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-[10px] px-1.5 py-0">
+            <Badge key={tag} variant="secondary" className="text-[10px] px-2 py-0.5 bg-slate-100 text-slate-600 border-0">
               {tag}
             </Badge>
           ))}
           {contract.tags.length > 4 && (
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            <Badge variant="outline" className="text-[10px] px-2 py-0.5 border-slate-200">
               +{contract.tags.length - 4}
             </Badge>
           )}
@@ -803,7 +815,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
         <AnimatePresence>
           {contract.isFavorite && (
-            <motion.div
+            <motion.div key="EnhancedContractCard-ap-1"
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               exit={{ scale: 0 }}
@@ -881,18 +893,18 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
         <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm">
           {contract.value !== undefined && (
             <div className="flex items-center gap-1.5 text-gray-700">
-              <div className="p-1 rounded-md bg-emerald-50">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <div className="p-1 rounded-md bg-violet-50">
+                <DollarSign className="w-3.5 h-3.5 text-violet-600" />
               </div>
-              <span className="font-semibold text-emerald-700">
+              <span className="font-semibold text-violet-700">
                 {formatCurrency(contract.value, contract.currency)}
               </span>
             </div>
           )}
           {contract.endDate && (
             <div className="flex items-center gap-1.5 text-gray-600">
-              <div className="p-1 rounded-md bg-blue-50">
-                <Calendar className="w-3.5 h-3.5 text-blue-600" />
+              <div className="p-1 rounded-md bg-violet-50">
+                <Calendar className="w-3.5 h-3.5 text-violet-600" />
               </div>
               <span>{format(parseISO(contract.endDate), "MMM d, yyyy")}</span>
             </div>
@@ -962,7 +974,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
       {/* Quick Actions Bar (appears on hover) - Premium Glassmorphism */}
       <AnimatePresence>
         {isHovered && (
-          <motion.div
+          <motion.div key="hovered"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
@@ -977,7 +989,7 @@ export const EnhancedContractCard = memo(function EnhancedContractCard({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-8 w-8 p-0 hover:bg-blue-100 hover:text-blue-600 transition-colors"
+                        className="h-8 w-8 p-0 hover:bg-violet-100 hover:text-violet-600 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
                           onPreview?.(contract.id);
@@ -1148,15 +1160,27 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      whileHover={{ backgroundColor: "rgba(249, 250, 251, 1)" }}
       className={cn(
-        "group flex items-center gap-4 px-4 py-3 bg-white border-b hover:bg-gray-50 transition-colors cursor-pointer",
-        isSelected && "bg-primary/5 border-l-4 border-l-primary",
+        "group relative flex items-center gap-4 px-4 py-3.5 bg-white border-b border-slate-100 transition-all duration-200 cursor-pointer",
+        isSelected && "bg-gradient-to-r from-primary/5 to-violet-500/5 border-l-[3px] border-l-primary shadow-sm",
+        isHovered && !isSelected && "bg-slate-50/80",
         className
       )}
       onClick={() => onClick?.(contract.id)}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
+      {/* Selection indicator glow */}
+      {isSelected && (
+        <motion.div
+          layoutId={`row-glow-${contract.id}`}
+          className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-primary via-violet-500 to-purple-500 rounded-r"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        />
+      )}
+      
       {/* Checkbox */}
       <input
         type="checkbox"
@@ -1166,7 +1190,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
           onSelect?.(contract.id, e.target.checked);
         }}
         onClick={(e) => e.stopPropagation()}
-        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary shrink-0"
+        className="w-4 h-4 rounded border-slate-300 text-primary focus:ring-primary focus:ring-offset-0 shrink-0 accent-primary cursor-pointer"
       />
 
       {/* Pin/Favorite indicators */}
@@ -1178,14 +1202,14 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       {/* Title & Type */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h4 className="font-medium text-gray-900 truncate group-hover:text-primary transition-colors">
+          <h4 className="font-semibold text-slate-900 truncate group-hover:text-primary transition-colors duration-200">
             {contract.title}
           </h4>
           <ExpiryBadge endDate={contract.endDate} status={contract.status} />
           <SignatureBadge signatureStatus={contract.signatureStatus} signatureRequiredFlag={contract.signatureRequiredFlag} />
           <HierarchyBadge contract={contract} />
         </div>
-        <p className="text-sm text-muted-foreground truncate">{contract.type}</p>
+        <p className="text-sm text-slate-500 truncate mt-0.5">{contract.type}</p>
       </div>
 
       {/* Parties */}
@@ -1201,9 +1225,11 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       </div>
 
       {/* Value */}
-      <div className="hidden md:flex items-center gap-1 w-28 shrink-0">
-        <DollarSign className="w-4 h-4 text-emerald-500" />
-        <span className="font-medium text-sm">
+      <div className="hidden md:flex items-center gap-1.5 w-28 shrink-0">
+        <div className="p-1 rounded-md bg-violet-50">
+          <DollarSign className="w-3.5 h-3.5 text-violet-600" />
+        </div>
+        <span className="font-semibold text-sm text-violet-700">
           {contract.value !== undefined
             ? formatCurrency(contract.value, contract.currency)
             : "-"}
@@ -1216,9 +1242,9 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       </div>
 
       {/* Status */}
-      <div className="w-28 shrink-0">
-        <Badge variant="outline" className={cn("text-xs", statusConfig.color)}>
-          <span className={cn("w-2 h-2 rounded-full mr-1.5", statusConfig.dotColor)} />
+      <div className="w-32 shrink-0">
+        <Badge variant="outline" className={cn("text-xs border shadow-sm transition-shadow hover:shadow-md", statusConfig.color)}>
+          <span className={cn("w-2 h-2 rounded-full mr-1.5 animate-pulse", statusConfig.dotColor)} />
           {statusConfig.label}
         </Badge>
       </div>
@@ -1229,19 +1255,19 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
       </div>
 
       {/* Actions */}
-      <div
-        className={cn(
-          "flex items-center gap-1 transition-opacity",
-          isHovered ? "opacity-100" : "opacity-0"
-        )}
+      <motion.div
+        className="flex items-center gap-1"
+        initial={{ opacity: 0, x: 10 }}
+        animate={{ opacity: isHovered ? 1 : 0, x: isHovered ? 0 : 10 }}
+        transition={{ duration: 0.2 }}
       >
-        <TooltipProvider>
+        <TooltipProvider delayDuration={200}>
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 hover:bg-violet-50 hover:text-violet-600 transition-colors"
                 onClick={(e) => {
                   e.stopPropagation();
                   onPreview?.(contract.id);
@@ -1250,7 +1276,7 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
                 <Eye className="w-4 h-4" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Preview</TooltipContent>
+            <TooltipContent className="bg-slate-900 text-white border-0">Preview</TooltipContent>
           </Tooltip>
         </TooltipProvider>
 
@@ -1259,49 +1285,49 @@ export const EnhancedContractRow = memo(function EnhancedContractRow({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hover:bg-slate-100 transition-colors"
               onClick={(e) => e.stopPropagation()}
             >
               <MoreHorizontal className="w-4 h-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={() => onPin?.(contract.id)}>
-              <Pin className="w-4 h-4 mr-2" />
-              {contract.isPinned ? "Unpin" : "Pin"}
+          <DropdownMenuContent align="end" className="w-52 bg-white/95 backdrop-blur-sm shadow-xl border-slate-200">
+            <DropdownMenuItem onClick={() => onPin?.(contract.id)} className="gap-2 cursor-pointer">
+              <Pin className="w-4 h-4 text-amber-500" />
+              {contract.isPinned ? "Unpin" : "Pin to top"}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onFavorite?.(contract.id)}>
-              <Heart className="w-4 h-4 mr-2" />
-              {contract.isFavorite ? "Unfavorite" : "Favorite"}
+            <DropdownMenuItem onClick={() => onFavorite?.(contract.id)} className="gap-2 cursor-pointer">
+              <Heart className="w-4 h-4 text-red-500" />
+              {contract.isFavorite ? "Remove from favorites" : "Add to favorites"}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onAnalyze?.(contract.id)}>
-              <Sparkles className="w-4 h-4 mr-2" />
+            <DropdownMenuItem onClick={() => onAnalyze?.(contract.id)} className="gap-2 cursor-pointer">
+              <Sparkles className="w-4 h-4 text-violet-500" />
               AI Analyze
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onEdit?.(contract.id)}>
-              <Edit className="w-4 h-4 mr-2" />
+            <DropdownMenuSeparator className="bg-slate-100" />
+            <DropdownMenuItem onClick={() => onEdit?.(contract.id)} className="gap-2 cursor-pointer">
+              <Edit className="w-4 h-4 text-slate-500" />
               Edit
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onDuplicate?.(contract.id)}>
-              <Copy className="w-4 h-4 mr-2" />
+            <DropdownMenuItem onClick={() => onDuplicate?.(contract.id)} className="gap-2 cursor-pointer">
+              <Copy className="w-4 h-4 text-slate-500" />
               Duplicate
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onExport?.(contract.id)}>
-              <Download className="w-4 h-4 mr-2" />
+            <DropdownMenuItem onClick={() => onExport?.(contract.id)} className="gap-2 cursor-pointer">
+              <Download className="w-4 h-4 text-slate-500" />
               Export
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-slate-100" />
             <DropdownMenuItem
               onClick={() => onDelete?.(contract.id)}
-              className="text-red-600 focus:text-red-600"
+              className="gap-2 cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
+              <Trash2 className="w-4 h-4" />
               Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
+      </motion.div>
     </motion.div>
 );
 });

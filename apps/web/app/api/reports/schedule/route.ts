@@ -1,91 +1,89 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import prisma from '@/lib/prisma';
 
-interface ScheduleRequest {
-  name: string;
-  templateId: string;
-  frequency: "daily" | "weekly" | "monthly";
-  dayOfWeek?: number;
-  dayOfMonth?: number;
-  time: string;
-  recipients: string[];
-  enabled: boolean;
-}
+// Ensure table exists (idempotent)
+const ensureTable = async () => {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS report_schedules (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      tenant_id UUID NOT NULL,
+      created_by UUID,
+      name TEXT NOT NULL,
+      template_id TEXT NOT NULL,
+      frequency TEXT NOT NULL DEFAULT 'weekly',
+      day_of_week INT,
+      day_of_month INT,
+      time_of_day TEXT NOT NULL DEFAULT '09:00',
+      recipients JSONB NOT NULL DEFAULT '[]',
+      enabled BOOLEAN NOT NULL DEFAULT true,
+      last_run TIMESTAMPTZ,
+      next_run TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+};
 
-// Mock storage - in production, store in database
-const schedules: any[] = [];
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  await ensureTable();
+  const schedules = await prisma.$queryRaw`SELECT * FROM report_schedules WHERE tenant_id = ${ctx.tenantId} ORDER BY created_at DESC`;
+  return createSuccessResponse(ctx, { schedules });
+});
 
-export async function GET(request: NextRequest) {
-  try {
-    return NextResponse.json({ schedules });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to fetch schedules" },
-      { status: 500 }
-    );
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  await ensureTable();
+  const body = await request.json();
+  const { name, templateId, frequency, dayOfWeek, dayOfMonth, time, recipients, enabled } = body;
+
+  if (!name || !templateId) {
+    return createErrorResponse(ctx, 'MISSING_FIELDS', 'name and templateId are required', 400);
   }
-}
 
-export async function POST(request: NextRequest) {
-  try {
-    const body: ScheduleRequest = await request.json();
+  const nextRun = calculateNextRun({ frequency: frequency || 'weekly', dayOfWeek, dayOfMonth, time: time || '09:00' });
 
-    // Calculate next run time
-    const nextRun = calculateNextRun(body);
+  const [schedule] = await prisma.$queryRaw`
+    INSERT INTO report_schedules (tenant_id, created_by, name, template_id, frequency, day_of_week, day_of_month, time_of_day, recipients, enabled, next_run)
+    VALUES (${ctx.tenantId}, ${ctx.userId}, ${name}, ${templateId}, ${frequency || 'weekly'}, ${dayOfWeek || null}, ${dayOfMonth || null}, ${time || '09:00'}, ${JSON.stringify(recipients || [])}::jsonb, ${enabled !== false}, ${nextRun})
+    RETURNING *
+  ` as any[];
 
-    const schedule = {
-      id: Date.now().toString(),
-      ...body,
-      createdAt: new Date().toISOString(),
-      lastRun: null,
-      nextRun: nextRun.toISOString(),
-    };
+  return createSuccessResponse(ctx, { schedule });
+});
 
-    schedules.push(schedule);
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx: AuthenticatedApiContext) => {
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return createErrorResponse(ctx, 'MISSING_ID', 'id is required', 400);
 
-    // In production, this would:
-    // 1. Save to database
-    // 2. Register cron job with Vercel or similar service
-    // 3. Set up email delivery system
+  await ensureTable();
+  await prisma.$queryRaw`DELETE FROM report_schedules WHERE id = ${id}::uuid AND tenant_id = ${ctx.tenantId}`;
+  return createSuccessResponse(ctx, { deleted: true });
+});
 
-    return NextResponse.json({ success: true, schedule });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to create schedule" },
-      { status: 500 }
-    );
-  }
-}
-
-function calculateNextRun(schedule: ScheduleRequest): Date {
+function calculateNextRun(schedule: { frequency: string; dayOfWeek?: number; dayOfMonth?: number; time: string }): Date {
   const now = new Date();
   const [hours, minutes] = schedule.time.split(":").map(Number);
 
   if (schedule.frequency === "daily") {
     const next = new Date(now);
-    next.setHours(hours, minutes, 0, 0);
-    if (next <= now) {
-      next.setDate(next.getDate() + 1);
-    }
+    next.setHours(hours!, minutes!, 0, 0);
+    if (next <= now) next.setDate(next.getDate() + 1);
     return next;
   } else if (schedule.frequency === "weekly") {
     const next = new Date(now);
-    next.setHours(hours, minutes, 0, 0);
+    next.setHours(hours!, minutes!, 0, 0);
     const currentDay = next.getDay();
     const targetDay = schedule.dayOfWeek || 0;
     let daysUntilTarget = targetDay - currentDay;
-    if (daysUntilTarget < 0 || (daysUntilTarget === 0 && next <= now)) {
-      daysUntilTarget += 7;
-    }
+    if (daysUntilTarget < 0 || (daysUntilTarget === 0 && next <= now)) daysUntilTarget += 7;
     next.setDate(next.getDate() + daysUntilTarget);
     return next;
   } else {
-    // monthly
     const next = new Date(now);
-    next.setHours(hours, minutes, 0, 0);
+    next.setHours(hours!, minutes!, 0, 0);
     next.setDate(schedule.dayOfMonth || 1);
-    if (next <= now) {
-      next.setMonth(next.getMonth() + 1);
-    }
+    if (next <= now) next.setMonth(next.getMonth() + 1);
     return next;
   }
 }

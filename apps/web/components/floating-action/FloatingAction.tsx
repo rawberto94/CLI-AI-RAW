@@ -82,7 +82,7 @@ export function FloatingActionButton({
   }, [hideOnScroll]);
 
   const variantStyles = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-500/30',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white shadow-violet-500/30',
     secondary: 'bg-gray-700 hover:bg-gray-800 text-white shadow-gray-500/30',
     success: 'bg-green-600 hover:bg-green-700 text-white shadow-green-500/30',
     danger: 'bg-red-600 hover:bg-red-700 text-white shadow-red-500/30',
@@ -128,7 +128,7 @@ export function FloatingActionButton({
     return (
       <AnimatePresence>
         {isVisible && (
-          <motion.div
+          <motion.div key="visible"
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
@@ -147,7 +147,7 @@ export function FloatingActionButton({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.div
+        <motion.div key="visible"
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}
@@ -187,7 +187,7 @@ export function ExpandableFAB({
   const [isOpen, setIsOpen] = useState(false);
 
   const variantStyles = {
-    primary: 'bg-blue-600 hover:bg-blue-700 text-white',
+    primary: 'bg-violet-600 hover:bg-violet-700 text-white',
     secondary: 'bg-gray-700 hover:bg-gray-800 text-white',
     success: 'bg-green-600 hover:bg-green-700 text-white',
     danger: 'bg-red-600 hover:bg-red-700 text-white',
@@ -211,7 +211,7 @@ export function ExpandableFAB({
       {/* Action Buttons */}
       <AnimatePresence>
         {isOpen && (
-          <>
+          <div key="open" className="contents">
             {/* Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
@@ -267,7 +267,7 @@ export function ExpandableFAB({
                 )}
               </motion.div>
             ))}
-          </>
+          </div>
         )}
       </AnimatePresence>
 
@@ -379,7 +379,7 @@ export function SpeedDialFAB({
       {/* Main Button */}
       <motion.button
         animate={{ rotate: isOpen ? 45 : 0 }}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
       >
         {mainIcon}
       </motion.button>
@@ -430,7 +430,7 @@ export function ContextMenuFAB({
       {/* Menu */}
       <AnimatePresence>
         {isOpen && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
@@ -474,7 +474,7 @@ export function ContextMenuFAB({
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg bg-violet-600 hover:bg-violet-700 text-white transition-colors"
       >
         <MoreVertical className="w-6 h-6" />
       </motion.button>
@@ -525,7 +525,7 @@ export function ScrollToTopFAB({
   return (
     <AnimatePresence>
       {isVisible && (
-        <motion.button
+        <motion.button key="visible"
           initial={{ opacity: 0, scale: 0.8, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.8, y: 20 }}

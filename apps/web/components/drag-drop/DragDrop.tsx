@@ -193,8 +193,8 @@ export function FileDropZone({
         className={`
           relative border-2 border-dashed rounded-xl p-8
           transition-colors cursor-pointer
-          ${isDragOver ? 'bg-blue-50 dark:bg-blue-950' : 'bg-gray-50 dark:bg-gray-900'}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-blue-400'}
+          ${isDragOver ? 'bg-violet-50 dark:bg-violet-950' : 'bg-gray-50 dark:bg-gray-900'}
+          ${disabled ? 'opacity-50 cursor-not-allowed' : 'hover:border-violet-400'}
         `}
       >
         <input
@@ -211,13 +211,13 @@ export function FileDropZone({
           <div className="flex flex-col items-center gap-3 text-center">
             <div className={`
               p-4 rounded-full
-              ${isDragOver ? 'bg-blue-100 dark:bg-blue-900' : 'bg-gray-100 dark:bg-gray-800'}
+              ${isDragOver ? 'bg-violet-100 dark:bg-violet-900' : 'bg-gray-100 dark:bg-gray-800'}
             `}>
-              <Upload className={`w-8 h-8 ${isDragOver ? 'text-blue-500' : 'text-gray-400'}`} />
+              <Upload className={`w-8 h-8 ${isDragOver ? 'text-violet-500' : 'text-gray-400'}`} />
             </div>
             <div>
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                Drop files here or <span className="text-blue-500">browse</span>
+                Drop files here or <span className="text-violet-500">browse</span>
               </p>
               <p className="text-xs text-gray-500 mt-1">
                 Max {maxFiles} files, up to {formatBytes(maxSize)} each
@@ -228,7 +228,7 @@ export function FileDropZone({
 
         <AnimatePresence>
           {error && (
-            <motion.div
+            <motion.div key="error"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
@@ -297,7 +297,7 @@ function FileUploadRow({ item, onRemove, onRetry }: FileUploadRowProps) {
       {/* Preview/Icon */}
       <div className="flex-shrink-0">
         {item.preview ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
+          
           <img 
             src={item.preview} 
             alt={item.file.name}
@@ -328,7 +328,7 @@ function FileUploadRow({ item, onRemove, onRetry }: FileUploadRowProps) {
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${item.progress}%` }}
-              className="h-full bg-blue-500 rounded-full"
+              className="h-full bg-violet-500 rounded-full"
             />
           </div>
         )}
@@ -337,7 +337,7 @@ function FileUploadRow({ item, onRemove, onRetry }: FileUploadRowProps) {
       {/* Status/Actions */}
       <div className="flex-shrink-0 flex items-center gap-2">
         {item.status === 'uploading' && (
-          <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+          <Loader2 className="w-5 h-5 text-violet-500 animate-spin" />
         )}
         {item.status === 'complete' && (
           <Check className="w-5 h-5 text-green-500" />
@@ -345,7 +345,7 @@ function FileUploadRow({ item, onRemove, onRetry }: FileUploadRowProps) {
         {item.status === 'error' && onRetry && (
           <button
             onClick={() => onRetry(item.id)}
-            className="text-xs text-blue-500 hover:underline"
+            className="text-xs text-violet-500 hover:underline"
           >
             Retry
           </button>
@@ -649,7 +649,7 @@ export function useFileUpload({ uploadFn, onComplete, onError }: UseFileUploadOp
         if (f.preview) URL.revokeObjectURL(f.preview);
       });
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); 
 
   return {
     files,

@@ -102,11 +102,11 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
         {availableArtifacts.map((artifact) => {
           const Icon = artifact.icon
           const colorMap = {
-            blue: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-indigo-600',
-            purple: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-pink-600',
-            green: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-500 data-[state=active]:to-emerald-600',
+            blue: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600',
+            purple: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-pink-600',
+            green: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-violet-600',
             red: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-red-500 data-[state=active]:to-orange-600',
-            indigo: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-blue-600'
+            indigo: 'data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-500 data-[state=active]:to-purple-600'
           }
           return (
             <TabsTrigger
@@ -163,7 +163,7 @@ export function ModernArtifactViewer({ artifacts, contractId, initialTab = 'over
 function OverviewArtifact({ data, onCopy, copiedSection }: any) {
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-2xl font-bold text-gray-900">Contract Overview</h3>
@@ -171,7 +171,7 @@ function OverviewArtifact({ data, onCopy, copiedSection }: any) {
               variant="outline"
               size="sm"
               onClick={() => onCopy(data, 'overview')}
-              className="hover:bg-blue-100"
+              className="hover:bg-violet-100"
             >
               {copiedSection === 'overview' ? (
                 <Check className="h-4 w-4 mr-2 text-green-600" />
@@ -193,7 +193,7 @@ function OverviewArtifact({ data, onCopy, copiedSection }: any) {
             {data.parties && data.parties.length > 0 && (
               <div className="p-5 bg-white rounded-xl shadow-sm">
                 <div className="flex items-center gap-2 mb-4">
-                  <Users className="h-5 w-5 text-blue-600" />
+                  <Users className="h-5 w-5 text-violet-600" />
                   <h4 className="font-semibold text-gray-900">Parties</h4>
                 </div>
                 <div className="space-y-3">
@@ -212,7 +212,7 @@ function OverviewArtifact({ data, onCopy, copiedSection }: any) {
 
             <div className="p-5 bg-white rounded-xl shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Calendar className="h-5 w-5 text-blue-600" />
+                <Calendar className="h-5 w-5 text-violet-600" />
                 <h4 className="font-semibold text-gray-900">Key Dates</h4>
               </div>
               <div className="space-y-3">
@@ -241,12 +241,12 @@ function OverviewArtifact({ data, onCopy, copiedSection }: any) {
           {data.keyTerms && data.keyTerms.length > 0 && (
             <div className="mt-6 p-5 bg-white rounded-xl shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <Target className="h-5 w-5 text-blue-600" />
+                <Target className="h-5 w-5 text-violet-600" />
                 <h4 className="font-semibold text-gray-900">Key Terms</h4>
               </div>
               <div className="flex flex-wrap gap-2">
                 {data.keyTerms.map((term: string, idx: number) => (
-                  <Badge key={idx} className="bg-blue-100 text-blue-700 hover:bg-blue-200">
+                  <Badge key={idx} className="bg-violet-100 text-violet-700 hover:bg-violet-200">
                     {term}
                   </Badge>
                 ))}
@@ -265,7 +265,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
   
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-purple-50 to-pink-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-pink-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -276,7 +276,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
               variant="outline"
               size="sm"
               onClick={() => onCopy(data, 'clauses')}
-              className="hover:bg-purple-100"
+              className="hover:bg-violet-100"
             >
               {copiedSection === 'clauses' ? (
                 <Check className="h-4 w-4 mr-2 text-green-600" />
@@ -297,8 +297,8 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
                     className="w-full p-5 flex items-center justify-between hover:bg-gray-50 transition-colors"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <Scale className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-violet-100 rounded-lg">
+                        <Scale className="h-5 w-5 text-violet-600" />
                       </div>
                       <div className="text-left">
                         <p className="font-semibold text-gray-900">{clause.title || clause.type || `Clause ${idx + 1}`}</p>
@@ -348,7 +348,7 @@ function ClausesArtifact({ data, onCopy, copiedSection, expandedSections, toggle
 function FinancialArtifact({ data, onCopy, copiedSection }: any) {
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-green-50 to-emerald-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-violet-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -567,13 +567,13 @@ function RiskArtifact({ data, onCopy, copiedSection, expandedSections, toggleSec
 function ComplianceArtifact({ data, onCopy, copiedSection, expandedSections, toggleSection }: any) {
   return (
     <div className="space-y-6">
-      <Card className="shadow-lg border-0 bg-gradient-to-br from-indigo-50 to-blue-50">
+      <Card className="shadow-lg border-0 bg-gradient-to-br from-violet-50 to-purple-50">
         <CardContent className="p-8">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-2xl font-bold text-gray-900">Compliance Analysis</h3>
               {data.complianceScore !== undefined && (
-                <p className="text-3xl font-bold text-indigo-600 mt-2">
+                <p className="text-3xl font-bold text-violet-600 mt-2">
                   {data.complianceScore}% Compliant
                 </p>
               )}
@@ -582,7 +582,7 @@ function ComplianceArtifact({ data, onCopy, copiedSection, expandedSections, tog
               variant="outline"
               size="sm"
               onClick={() => onCopy(data, 'compliance')}
-              className="hover:bg-indigo-100"
+              className="hover:bg-violet-100"
             >
               {copiedSection === 'compliance' ? (
                 <Check className="h-4 w-4 mr-2 text-green-600" />
@@ -643,8 +643,8 @@ function ComplianceArtifact({ data, onCopy, copiedSection, expandedSections, tog
                             </div>
                           )}
                           {reg.notes && (
-                            <div className="p-3 bg-blue-50 rounded-lg">
-                              <p className="text-sm text-blue-800">{reg.notes}</p>
+                            <div className="p-3 bg-violet-50 rounded-lg">
+                              <p className="text-sm text-violet-800">{reg.notes}</p>
                             </div>
                           )}
                         </div>

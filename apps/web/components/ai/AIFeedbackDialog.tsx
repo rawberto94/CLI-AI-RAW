@@ -137,10 +137,10 @@ export function AIFeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] bg-white">
+      <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-900">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-500" />
+            <Sparkles className="w-5 h-5 text-violet-500" />
             Help ConTigo Learn
           </DialogTitle>
           <DialogDescription>
@@ -150,7 +150,7 @@ export function AIFeedbackDialog({
 
         <AnimatePresence mode="wait">
           {submitted ? (
-            <motion.div
+            <motion.div key="AIFeedbackDialog-ap-1"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
@@ -160,12 +160,12 @@ export function AIFeedbackDialog({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", damping: 10, delay: 0.1 }}
-                className="w-16 h-16 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center"
+                className="w-16 h-16 rounded-full bg-gradient-to-br from-violet-400 to-violet-500 flex items-center justify-center"
               >
                 <CheckCircle className="w-8 h-8 text-white" />
               </motion.div>
-              <h3 className="text-lg font-semibold text-gray-900">Thank you!</h3>
-              <p className="text-sm text-gray-500 text-center">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Thank you!</h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center">
                 Your feedback helps ConTigo AI become smarter and more accurate.
               </p>
             </motion.div>
@@ -178,7 +178,7 @@ export function AIFeedbackDialog({
             >
               {/* Rating */}
               <div className="space-y-3">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   How was this response?
                 </label>
                 <div className="flex gap-3">
@@ -212,13 +212,13 @@ export function AIFeedbackDialog({
               {/* Category (shown for negative feedback) */}
               <AnimatePresence>
                 {rating === "dislike" && (
-                  <motion.div
+                  <motion.div key="rating"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-3"
                   >
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       What was wrong? (optional)
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -228,8 +228,8 @@ export function AIFeedbackDialog({
                           variant={category === cat.value ? "default" : "outline"}
                           className={`cursor-pointer transition-all ${
                             category === cat.value
-                              ? "bg-purple-500 text-white border-purple-500"
-                              : "hover:border-purple-400 hover:bg-purple-50"
+                              ? "bg-violet-500 text-white border-violet-500"
+                              : "hover:border-violet-400 hover:bg-violet-50 dark:hover:bg-violet-950"
                           }`}
                           onClick={() => setCategory(category === cat.value ? null : cat.value)}
                         >
@@ -245,13 +245,13 @@ export function AIFeedbackDialog({
               {/* Correction */}
               <AnimatePresence>
                 {rating === "dislike" && (
-                  <motion.div
+                  <motion.div key="rating"
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     className="space-y-2"
                   >
-                    <label className="text-sm font-medium text-gray-700">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                       What should the correct response be? (optional)
                     </label>
                     <Textarea
@@ -261,7 +261,7 @@ export function AIFeedbackDialog({
                       rows={3}
                       className="resize-none"
                     />
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       This helps train the AI to give better answers in the future.
                     </p>
                   </motion.div>
@@ -270,7 +270,7 @@ export function AIFeedbackDialog({
 
               {/* Additional comments */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">
+                <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Additional comments (optional)
                 </label>
                 <Textarea
@@ -283,9 +283,9 @@ export function AIFeedbackDialog({
               </div>
 
               {/* Original response preview */}
-              <div className="rounded-lg bg-gray-50 p-3 border border-gray-200">
-                <p className="text-xs text-gray-500 mb-1">Response you are rating:</p>
-                <p className="text-sm text-gray-700 line-clamp-3">
+              <div className="rounded-lg bg-gray-50 dark:bg-slate-800 p-3 border border-gray-200 dark:border-slate-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Response you are rating:</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-3">
                   {(messageContent || '').slice(0, 200)}
                   {(messageContent?.length || 0) > 200 && "..."}
                 </p>
@@ -302,7 +302,7 @@ export function AIFeedbackDialog({
             <Button
               onClick={handleSubmit}
               disabled={!rating || isSubmitting}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+              className="bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
             >
               {isSubmitting ? (
                 <>
@@ -362,6 +362,7 @@ export function InlineFeedback({
               : "text-gray-400 hover:text-green-500 hover:bg-green-50"
           }`}
           onClick={() => onReact("like")}
+          aria-label="Mark as helpful"
         >
           <ThumbsUp className="w-3.5 h-3.5" />
         </Button>
@@ -374,6 +375,7 @@ export function InlineFeedback({
               : "text-gray-400 hover:text-red-500 hover:bg-red-50"
           }`}
           onClick={handleDislike}
+          aria-label="Mark as not helpful"
         >
           <ThumbsDown className="w-3.5 h-3.5" />
         </Button>

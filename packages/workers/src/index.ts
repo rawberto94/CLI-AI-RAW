@@ -15,6 +15,8 @@ import { registerCategorizationWorker } from './categorization-worker';
 import { registerRenewalAlertWorker } from './renewal-alert-worker';
 import { registerObligationTrackerWorker } from './obligation-tracker-worker';
 import { registerAgentOrchestratorWorker } from './agent-orchestrator-worker';
+import { registerAutonomousTriggers, processScheduledTrigger } from './autonomous-scheduler';
+import { registerEmbeddingRefreshScheduler } from './embedding-refresh-scheduler';
 import { getMetricsCollector } from './metrics';
 import { startHealthServer } from './health-server';
 import { getDeadLetterQueueManager } from './dead-letter-queue';
@@ -24,6 +26,35 @@ import pino from 'pino';
 
 // Re-export contract type profiles for use in web app
 export * from './contract-type-profiles';
+
+// Re-export Azure Document Intelligence v4.0 service and types
+export {
+  analyzeLayout,
+  analyzeContract,
+  analyzeInvoice,
+  analyzeRead,
+  analyzeWithQueries,
+  checkDIHealth,
+  isDIConfigured,
+  isDIEnabled,
+  diMetrics,
+  diCostTracker,
+} from './azure-document-intelligence';
+export type {
+  DIAnalyzeResult,
+  DIPage,
+  DITable,
+  DIKeyValuePair,
+  DIParagraph,
+  DIDocument,
+  DIField,
+  DIMetadata,
+  DIModel,
+  ContractExtractionResult,
+  ContractParty,
+  InvoiceExtractionResult,
+  InvoiceLineItem,
+} from './azure-document-intelligence';
 
 // Re-export agentic AI agents for use in API routes (excluding ContractType to avoid duplicate export)
 export { 
@@ -68,7 +99,7 @@ async function startWorkers() {
   try {
     // Initialize queue service
     const redisConfig = {
-      host: process.env.REDIS_HOST || 'localhost',
+      host: process.env.REDIS_HOST,
       port: parseInt(process.env.REDIS_PORT || '6379'),
       password: process.env.REDIS_PASSWORD,
       maxRetriesPerRequest: null, // Required for BullMQ
@@ -111,6 +142,12 @@ async function startWorkers() {
     const obligationTrackerWorker = registerObligationTrackerWorker();
     const agentOrchestratorWorker = registerAgentOrchestratorWorker();
 
+    // Register embedding refresh scheduler (daily stale-embedding re-indexing)
+    const embeddingRefreshWorker = registerEmbeddingRefreshScheduler();
+    if (embeddingRefreshWorker) {
+      logger.info('🔄 Embedding refresh scheduler registered');
+    }
+
     // Register workers with metrics collector
     metricsCollector.registerWorker('ocr-artifact', ocrArtifactWorker);
     metricsCollector.registerWorker('artifact-generator', artifactWorker);
@@ -122,6 +159,14 @@ async function startWorkers() {
     metricsCollector.registerWorker('obligation-tracker', obligationTrackerWorker);
     metricsCollector.registerWorker('agent-orchestrator', agentOrchestratorWorker);
 
+    // Register autonomous agent triggers (cron-based)
+    try {
+      await registerAutonomousTriggers();
+      logger.info('🤖 Autonomous agent triggers registered');
+    } catch (triggerError) {
+      logger.warn({ error: triggerError }, '⚠️ Autonomous triggers failed to register (non-fatal)');
+    }
+
     // Start backpressure monitoring
     backpressure.start();
     logger.info('📊 Backpressure monitoring started');
@@ -129,6 +174,32 @@ async function startWorkers() {
     logger.info('✅ All workers registered successfully');
     logger.info('📊 Metrics collection enabled');
     logger.info('🛡️ Resilience patterns active: circuit breaker, retry, backpressure');
+
+    // Wire DLQ: move jobs to dead-letter queue when all retries are exhausted
+    const workerQueueMap = [
+      { worker: ocrArtifactWorker, queue: 'contract-processing' },
+      { worker: artifactWorker, queue: 'artifact-generation' },
+      { worker: webhookWorker, queue: 'webhook-delivery' },
+      { worker: ragWorker, queue: 'rag-indexing' },
+      { worker: metadataWorker, queue: 'metadata-extraction' },
+      { worker: categorizationWorker, queue: 'contract-categorization' },
+      { worker: agentOrchestratorWorker, queue: 'agent-orchestration' },
+    ];
+
+    for (const { worker, queue } of workerQueueMap) {
+      (worker as any).on('failed', async (job: any, error: Error) => {
+        const maxAttempts = job?.opts?.attempts || 3;
+        if (job && job.attemptsMade >= maxAttempts) {
+          try {
+            await dlqManager.moveToDeadLetter(job, error?.message || 'Unknown error', queue);
+            logger.warn({ jobId: job.id, queue, attemptsMade: job.attemptsMade, error: error?.message }, '📮 Job moved to Dead Letter Queue after exhausting retries');
+          } catch (dlqError) {
+            logger.error({ dlqError, jobId: job.id, queue }, 'Failed to move job to DLQ');
+          }
+        }
+      });
+    }
+    logger.info('📮 DLQ auto-move wired for all workers');
     logger.info({
       workers: [
         'ocr-artifact-processing (contract-processing queue)',
@@ -140,6 +211,7 @@ async function startWorkers() {
         'renewal-alerts (deadline monitoring)',
         'obligation-tracker (SLA & milestone monitoring)',
         'agent-orchestrator (manager agent loop)',
+        'autonomous-triggers (cron-based AI agents)',
       ],
       resilience: {
         circuitBreaker: 'enabled',

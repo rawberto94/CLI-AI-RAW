@@ -1,18 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { rateCardBenchmarkingService } from 'data-orchestration/services';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { success: false, error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
   }
   
   try {
@@ -25,33 +28,28 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!opportunity) {
-      return NextResponse.json(
-        { success: false, error: 'Opportunity not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Opportunity not found', 404)
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       opportunity,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }
 
 export async function PATCH(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { success: false, error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
   }
   
   try {
@@ -62,10 +60,7 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Opportunity not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Opportunity not found', 404)
     }
 
     const body = await request.json();
@@ -86,27 +81,25 @@ export async function PATCH(request: NextRequest, props: { params: Promise<{ id:
       data: updateData,
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       opportunity: updated,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }
 
 export async function DELETE(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  const tenantId = await getApiTenantId(request);
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+const tenantId = await getApiTenantId(request);
   
   if (!tenantId) {
-    return NextResponse.json(
-      { success: false, error: 'Tenant ID required' },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400)
   }
   
   try {
@@ -117,24 +110,18 @@ export async function DELETE(request: NextRequest, props: { params: Promise<{ id
     });
 
     if (!existing) {
-      return NextResponse.json(
-        { success: false, error: 'Opportunity not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Opportunity not found', 404)
     }
 
     await prisma.rateSavingsOpportunity.delete({
       where: { id: existing.id },
     });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Opportunity deleted',
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { success: false, error: error instanceof Error ? error.message : 'Unknown error' },
-      { status: 500 }
-    );
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', 'Unknown error', 500)
   }
 }

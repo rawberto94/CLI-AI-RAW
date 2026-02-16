@@ -21,7 +21,7 @@ export default function HealthCheckLoading() {
         <div className="relative w-32 h-32">
           {/* Center icon */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-2xl">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-2xl">
               <Activity className="w-10 h-10 text-white" />
             </div>
           </div>
@@ -64,7 +64,7 @@ export default function HealthCheckLoading() {
           transition={{ delay: 0.3 }}
           className="mt-8 text-center"
         >
-          <h2 className="text-xl font-semibold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+          <h2 className="text-xl font-semibold bg-gradient-to-r from-violet-600 to-violet-600 bg-clip-text text-transparent">
             Loading Health Check
           </h2>
           <p className="mt-2 text-sm text-gray-500 flex items-center justify-center gap-1">

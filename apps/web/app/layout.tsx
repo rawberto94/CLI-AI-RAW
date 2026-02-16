@@ -7,6 +7,7 @@ import { HealthBanner } from "./health-banner";
 import { ConditionalLayout } from "@/components/layout/ConditionalLayout";
 import { DataModeProvider } from "@/contexts/DataModeContext";
 import { ToastProvider } from "@/components/ui/toast-provider";
+import { Toaster } from "sonner";
 import { GlobalErrorBoundary } from "@/components/errors/GlobalErrorBoundary";
 import { RealTimeProvider } from "@/contexts/RealTimeContext";
 import { ModuleProvider } from "@/contexts/ModuleContext";
@@ -43,13 +44,8 @@ export const metadata = {
     title: "ConTigo",
   },
   icons: {
-    icon: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/icons/icon-152x152.png", sizes: "152x152", type: "image/png" },
-    ],
+    icon: { url: "/favicon.svg", type: "image/svg+xml" },
+    apple: { url: "/icons/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
   },
 };
 
@@ -57,7 +53,7 @@ export const viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  themeColor: "#4f46e5",
+  themeColor: "#7C3AED",
 };
 
 export default function RootLayout({
@@ -67,15 +63,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <head>
+        {/* Additional icons rendered manually to avoid Next.js metadata key prop bug */}
+        <link rel="icon" href="/icons/icon-192x192.svg" sizes="192x192" type="image/svg+xml" />
+        <link rel="icon" href="/icons/icon-512x512.svg" sizes="512x512" type="image/svg+xml" />
+      </head>
       <body className="min-h-screen bg-slate-50 dark:bg-slate-900 font-sans antialiased">
         {/* Skip to main content link for accessibility */}
         <a 
           href="#main-content" 
-          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-indigo-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-offset-2"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-violet-600 focus:text-white focus:rounded-lg focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2"
         >
           Skip to main content
         </a>
         <GlobalErrorBoundary>
+          <Toaster position="top-right" richColors closeButton />
           <ThemeProvider defaultTheme="system" storageKey="contigo-theme">
             <AuthProvider>
               <CSRFProvider>
@@ -91,7 +93,7 @@ export default function RootLayout({
                                 <CommandPaletteProvider>
                                   <ConfirmProvider>
                                     <AnnouncerProvider>
-                                    <WelcomeTourProvider autoShowForNewUsers={true}>
+                                    <WelcomeTourProvider autoShowForNewUsers={false}>
                                     <GlobalKeyboardShortcuts>
                                     <GlobalKeyboardShortcutsProvider>
                                     <Suspense fallback={null}>

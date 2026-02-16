@@ -78,7 +78,7 @@ const FILTER_TEMPLATES = [
     type: 'value',
     label: 'Contract Value',
     icon: DollarSign,
-    color: 'emerald',
+    color: 'violet',
     options: ['< $10K', '$10K - $100K', '$100K - $1M', '> $1M'],
   },
   {
@@ -149,21 +149,21 @@ const FILTER_TEMPLATES = [
     label: 'Currency',
     icon: Coins,
     color: 'slate',
-    options: ['USD', 'EUR', 'GBP', 'JPY', 'AUD'],
+    options: ['CHF', 'USD', 'EUR', 'GBP', 'JPY', 'AUD'],
   },
 ] as const;
 
 // Color mapping for consistent styling
 const getColorClasses = (color: string) => {
   const colorMap: Record<string, { border: string; bg: string; hover: string; icon: string; text: string }> = {
-    blue: { border: 'border-blue-200', bg: 'bg-blue-50', hover: 'hover:bg-blue-100', icon: 'text-blue-600', text: 'text-blue-700' },
-    purple: { border: 'border-purple-200', bg: 'bg-purple-50', hover: 'hover:bg-purple-100', icon: 'text-purple-600', text: 'text-purple-700' },
-    emerald: { border: 'border-emerald-200', bg: 'bg-emerald-50', hover: 'hover:bg-emerald-100', icon: 'text-emerald-600', text: 'text-emerald-700' },
+    blue: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
+    purple: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
+    emerald: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     amber: { border: 'border-amber-200', bg: 'bg-amber-50', hover: 'hover:bg-amber-100', icon: 'text-amber-600', text: 'text-amber-700' },
-    indigo: { border: 'border-indigo-200', bg: 'bg-indigo-50', hover: 'hover:bg-indigo-100', icon: 'text-indigo-600', text: 'text-indigo-700' },
-    cyan: { border: 'border-cyan-200', bg: 'bg-cyan-50', hover: 'hover:bg-cyan-100', icon: 'text-cyan-600', text: 'text-cyan-700' },
+    indigo: { border: 'border-indigo-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
+    cyan: { border: 'border-cyan-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     red: { border: 'border-red-200', bg: 'bg-red-50', hover: 'hover:bg-red-100', icon: 'text-red-600', text: 'text-red-700' },
-    teal: { border: 'border-teal-200', bg: 'bg-teal-50', hover: 'hover:bg-teal-100', icon: 'text-teal-600', text: 'text-teal-700' },
+    teal: { border: 'border-violet-200', bg: 'bg-violet-50', hover: 'hover:bg-violet-100', icon: 'text-violet-600', text: 'text-violet-700' },
     pink: { border: 'border-pink-200', bg: 'bg-pink-50', hover: 'hover:bg-pink-100', icon: 'text-pink-600', text: 'text-pink-700' },
     orange: { border: 'border-orange-200', bg: 'bg-orange-50', hover: 'hover:bg-orange-100', icon: 'text-orange-600', text: 'text-orange-700' },
     green: { border: 'border-green-200', bg: 'bg-green-50', hover: 'hover:bg-green-100', icon: 'text-green-600', text: 'text-green-700' },
@@ -324,9 +324,9 @@ export function DragDropFilterBuilder({
       >
         <div className="flex flex-col h-full min-h-0">
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-indigo-50 to-purple-50">
+          <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-violet-50 to-purple-50">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 text-white">
+              <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white">
                 <Wand2 className="h-5 w-5" />
               </div>
               <div>
@@ -352,7 +352,7 @@ export function DragDropFilterBuilder({
             <div className="w-64 border-r bg-slate-50 overflow-y-auto flex-shrink-0">
               <div className="p-4">
               <div className="mb-3 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-indigo-600" />
+                <Sparkles className="h-4 w-4 text-violet-600" />
                 <h3 className="font-semibold text-sm text-slate-900">Filter Library</h3>
               </div>
               <p className="text-xs text-slate-500 mb-3">
@@ -431,7 +431,7 @@ export function DragDropFilterBuilder({
                       addFilterToGroup(filterGroups[0].id, FILTER_TEMPLATES.find(t => t.type === 'status')!);
                     }}
                   >
-                    <CheckCircle2 className="h-3 w-3 mr-2 text-emerald-600" />
+                    <CheckCircle2 className="h-3 w-3 mr-2 text-violet-600" />
                     Active Contracts
                   </Button>
                   <Button
@@ -455,7 +455,7 @@ export function DragDropFilterBuilder({
                       addFilterToGroup(filterGroups[0].id, FILTER_TEMPLATES.find(t => t.type === 'value')!);
                     }}
                   >
-                    <DollarSign className="h-3 w-3 mr-2 text-emerald-600" />
+                    <DollarSign className="h-3 w-3 mr-2 text-violet-600" />
                     High Value (&gt;$100K)
                   </Button>
                 </div>
@@ -491,7 +491,7 @@ export function DragDropFilterBuilder({
             </div>
 
             {/* Canvas */}
-            <div className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-indigo-50/30">
+            <div className="flex-1 p-6 overflow-y-auto bg-gradient-to-br from-slate-50 to-purple-50/30">
               <div className="space-y-4">
                 {filterGroups.map((group, groupIndex) => (
                   <div key={group.id}>
@@ -518,7 +518,7 @@ export function DragDropFilterBuilder({
                       className={cn(
                         'relative rounded-xl border-2 border-dashed transition-all',
                         hoveredGroup === group.id
-                          ? 'border-indigo-400 bg-indigo-50/50'
+                          ? 'border-indigo-400 bg-violet-50/50'
                           : 'border-slate-300 bg-white'
                       )}
                       onDragOver={(e) => {
@@ -753,7 +753,7 @@ export function DragDropFilterBuilder({
               <Button
                 onClick={() => onApply(filterGroups)}
                 disabled={totalFilters === 0}
-                className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
+                className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Apply Filters

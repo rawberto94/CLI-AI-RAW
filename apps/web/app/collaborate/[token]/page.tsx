@@ -8,8 +8,8 @@ import {
   MessageSquare,
   Eye,
   Clock,
-  Building,
-  User,
+  Building as _Building,
+  User as _User,
   AlertTriangle,
   CheckCircle,
   Send,
@@ -22,7 +22,7 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
+  DialogFooter as _DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -92,7 +92,7 @@ export default function CollaboratorPortalPage() {
       const data = await response.json();
       setCollaborator(data.collaborator);
       setContracts(data.contracts);
-    } catch (err) {
+    } catch (_err) {
       setError('Failed to load portal');
     } finally {
       setLoading(false);
@@ -191,7 +191,7 @@ export default function CollaboratorPortalPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-purple-50">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" />
           <p className="text-muted-foreground">Loading portal...</p>
@@ -222,7 +222,7 @@ export default function CollaboratorPortalPage() {
   const isExpiringSoon = new Date(collaborator.expiresAt).getTime() - Date.now() < 7 * 24 * 60 * 60 * 1000;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-purple-50">
       {/* Header */}
       <header className="bg-white border-b sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
@@ -255,13 +255,13 @@ export default function CollaboratorPortalPage() {
       </header>
 
       {/* Permissions Banner */}
-      <div className="bg-blue-50 border-b">
+      <div className="bg-violet-50 border-b">
         <div className="max-w-6xl mx-auto px-4 py-2">
           <div className="flex items-center gap-4 text-sm">
             <span className="text-muted-foreground">Your permissions:</span>
             {collaborator.permissions.canView && (
               <span className="flex items-center gap-1">
-                <Eye className="h-4 w-4 text-blue-600" /> View
+                <Eye className="h-4 w-4 text-violet-600" /> View
               </span>
             )}
             {collaborator.permissions.canDownload && (
@@ -271,7 +271,7 @@ export default function CollaboratorPortalPage() {
             )}
             {collaborator.permissions.canComment && (
               <span className="flex items-center gap-1">
-                <MessageSquare className="h-4 w-4 text-purple-600" /> Comment
+                <MessageSquare className="h-4 w-4 text-violet-600" /> Comment
               </span>
             )}
           </div>
@@ -295,7 +295,7 @@ export default function CollaboratorPortalPage() {
               <Card key={contract.id} className="hover:shadow-lg transition-shadow">
                 <CardHeader className="pb-3">
                   <div className="flex items-start justify-between">
-                    <FileText className="h-8 w-8 text-blue-600" />
+                    <FileText className="h-8 w-8 text-violet-600" />
                     <Badge variant="outline">{contract.type}</Badge>
                   </div>
                   <CardTitle className="text-lg mt-2">{contract.name}</CardTitle>
@@ -374,7 +374,7 @@ export default function CollaboratorPortalPage() {
               comments.map(comment => (
                 <div
                   key={comment.id}
-                  className={`p-3 rounded-lg ${comment.isInternal ? 'bg-blue-50' : 'bg-muted'}`}
+                  className={`p-3 rounded-lg ${comment.isInternal ? 'bg-violet-50' : 'bg-muted'}`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-medium text-sm">{comment.author}</span>

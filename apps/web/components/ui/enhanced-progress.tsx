@@ -32,11 +32,11 @@ export function ProgressBar({
   const percentage = Math.min(100, Math.max(0, (value / max) * 100));
 
   const variants = {
-    default: 'bg-blue-500',
+    default: 'bg-violet-500',
     success: 'bg-green-500',
     warning: 'bg-amber-500',
     error: 'bg-red-500',
-    gradient: 'bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-500'
+    gradient: 'bg-gradient-to-r from-violet-500 via-purple-500 to-purple-500'
   };
 
   const sizes = {
@@ -128,7 +128,7 @@ export function UploadProgress({
             'p-2 rounded-lg',
             status === 'completed' ? 'bg-green-100 text-green-600' :
             status === 'error' ? 'bg-red-100 text-red-600' :
-            'bg-blue-100 text-blue-600'
+            'bg-violet-100 text-violet-600'
           )}>
             {config.icon}
           </div>
@@ -209,14 +209,14 @@ export function StepIndicator({
                   backgroundColor: isCompleted 
                     ? '#22c55e' 
                     : isCurrent 
-                      ? '#3b82f6' 
+                      ? '#8b5cf6' 
                       : '#e5e7eb'
                 }}
                 className={cn(
                   'relative flex items-center justify-center rounded-full transition-colors',
                   orientation === 'horizontal' ? 'h-10 w-10' : 'h-8 w-8',
                   isCompleted && 'bg-green-500',
-                  isCurrent && 'bg-blue-500 ring-4 ring-blue-100',
+                  isCurrent && 'bg-violet-500 ring-4 ring-violet-100',
                   !isCompleted && !isCurrent && 'bg-gray-200'
                 )}
               >
@@ -236,7 +236,7 @@ export function StepIndicator({
                   <motion.span
                     animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="absolute inset-0 rounded-full bg-blue-500"
+                    className="absolute inset-0 rounded-full bg-violet-500"
                   />
                 )}
               </motion.div>
@@ -247,7 +247,7 @@ export function StepIndicator({
               )}>
                 <p className={cn(
                   'text-sm font-medium',
-                  isCurrent ? 'text-blue-600' : 
+                  isCurrent ? 'text-violet-600' : 
                   isCompleted ? 'text-gray-900' : 'text-gray-500'
                 )}>
                   {step.label}
@@ -292,7 +292,7 @@ export function CircularProgress({
   value,
   size = 48,
   strokeWidth = 4,
-  color = '#3b82f6',
+  color = '#8b5cf6',
   showValue = true,
   className
 }: CircularProgressProps) {
@@ -353,13 +353,13 @@ export function AIProcessingIndicator({
   return (
     <div className={cn('flex items-center gap-3', className)}>
       <div className="relative">
-        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500 flex items-center justify-center">
           <Loader2 className="h-4 w-4 text-white animate-spin" />
         </div>
         <motion.div
           animate={{ scale: [1, 1.3, 1], opacity: [0.4, 0.2, 0.4] }}
           transition={{ duration: 1.5, repeat: Infinity }}
-          className="absolute inset-0 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500"
+          className="absolute inset-0 rounded-lg bg-gradient-to-br from-violet-500 to-purple-500"
         />
       </div>
       <div>

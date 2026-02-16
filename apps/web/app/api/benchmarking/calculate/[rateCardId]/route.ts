@@ -3,11 +3,12 @@
  * Endpoints for calculating benchmarks, market intelligence, and savings opportunities
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getApiTenantId } from '@/lib/security/tenant';
 import { rateCardBenchmarkingService } from 'data-orchestration/services';
 import { getErrorMessage } from '@/lib/types/common';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
 
@@ -17,10 +18,15 @@ const benchmarkingEngine = new rateCardBenchmarkingService(prisma);
  */
 export async function POST(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
     const { rateCardId } = params;
@@ -31,23 +37,17 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
     });
 
     if (!rateCard) {
-      return NextResponse.json({ error: 'Rate card not found' }, { status: 404 });
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
     const result = await benchmarkingEngine.calculateBenchmark(rateCardId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: result,
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -57,10 +57,15 @@ export async function POST(request: NextRequest, props: { params: Promise<{ rate
  */
 export async function GET(request: NextRequest, props: { params: Promise<{ rateCardId: string }> }) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
+
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Tenant ID required', 400);
     }
 
     const { rateCardId } = params;
@@ -77,10 +82,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
     });
 
     if (!rateCard) {
-      return NextResponse.json(
-        { success: false, error: 'Rate card not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
     const benchmark = rateCard.benchmarkSnapshots[0];
@@ -88,14 +90,14 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
     if (!benchmark) {
       // No benchmark exists, calculate one
       const result = await benchmarkingEngine.calculateBenchmark(rateCardId);
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         success: true,
         data: result,
         calculated: true,
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         rateCard,
@@ -103,12 +105,6 @@ export async function GET(request: NextRequest, props: { params: Promise<{ rateC
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: getErrorMessage(error),
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

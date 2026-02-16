@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
+import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   GitCompare,
@@ -318,7 +319,7 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
       {/* Expanded Content */}
       <AnimatePresence>
         {isExpanded && (
-          <motion.div
+          <motion.div key="expanded"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -348,24 +349,24 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
               </div>
 
               {/* AI Analysis */}
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
                 <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <div className="w-8 h-8 bg-violet-500 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Lightbulb className="w-4 h-4 text-white" />
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-sm font-medium text-blue-900">AI Analysis</span>
+                      <span className="text-sm font-medium text-violet-900">AI Analysis</span>
                       <div className={`flex items-center gap-1 text-xs ${marketConfig.color}`}>
                         <MarketIcon className="w-3 h-3" />
                         {marketConfig.label} vs Market
                       </div>
                     </div>
-                    <p className="text-sm text-blue-800 mb-3">{redline.aiAnalysis.rationale}</p>
+                    <p className="text-sm text-violet-800 mb-3">{redline.aiAnalysis.rationale}</p>
                     
                     {redline.aiAnalysis.fallbackSuggestion && (
-                      <div className="p-3 bg-white rounded border border-blue-200">
-                        <div className="text-xs font-medium text-blue-600 uppercase mb-1">Suggested Counter</div>
+                      <div className="p-3 bg-white rounded border border-violet-200">
+                        <div className="text-xs font-medium text-violet-600 uppercase mb-1">Suggested Counter</div>
                         <p className="text-sm text-slate-700">{redline.aiAnalysis.fallbackSuggestion}</p>
                       </div>
                     )}
@@ -375,11 +376,11 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
 
               {/* Playbook Match */}
               {redline.playbookMatch && (
-                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="p-4 bg-violet-50 rounded-lg border border-violet-200">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <BookOpen className="w-4 h-4 text-purple-600" />
-                      <span className="text-sm font-medium text-purple-900">Playbook: {redline.playbookMatch.ruleName}</span>
+                      <BookOpen className="w-4 h-4 text-violet-600" />
+                      <span className="text-sm font-medium text-violet-900">Playbook: {redline.playbookMatch.ruleName}</span>
                     </div>
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                       redline.playbookMatch.deviation > 50 ? 'bg-red-100 text-red-700' : 
@@ -389,8 +390,8 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
                       {redline.playbookMatch.deviation}% deviation
                     </span>
                   </div>
-                  <div className="text-xs text-purple-600 uppercase mb-1">Standard Language</div>
-                  <p className="text-sm text-purple-800 italic">&ldquo;{redline.playbookMatch.fallbackLanguage}&rdquo;</p>
+                  <div className="text-xs text-violet-600 uppercase mb-1">Standard Language</div>
+                  <p className="text-sm text-violet-800 italic">&ldquo;{redline.playbookMatch.fallbackLanguage}&rdquo;</p>
                 </div>
               )}
 
@@ -417,7 +418,14 @@ const RedlineCard: React.FC<RedlineCardProps> = ({ redline, isExpanded, onToggle
                   <XCircle className="w-4 h-4" />
                   Reject
                 </button>
-                <button className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors">
+                <button
+                  onClick={() => {
+                    const text = redline.playbookMatch?.fallbackLanguage || redline.proposedText || redline.originalText;
+                    navigator.clipboard.writeText(text).catch(() => {});
+                  }}
+                  className="p-2 bg-slate-100 text-slate-600 rounded-lg hover:bg-slate-200 transition-colors"
+                  title="Copy clause text"
+                >
                   <Copy className="w-4 h-4" />
                 </button>
               </div>
@@ -458,11 +466,31 @@ export const NegotiationCoPilot: React.FC = () => {
         const res = await fetch('/api/intelligence/negotiate');
         const json = await res.json();
         if (json.success && json.data?.redlines?.length > 0) {
-          setRedlines(json.data.redlines);
+          // Map API response to ensure field compatibility
+          const mapped: RedlineChange[] = json.data.redlines.map((r: any) => ({
+            id: r.id,
+            type: r.type || r.changeType || 'modification',
+            originalText: r.originalText || '',
+            proposedText: r.proposedText || '',
+            clause: r.clause || r.section || 'General',
+            section: r.section || r.clause || 'General',
+            riskLevel: r.riskLevel || 'medium',
+            category: r.category || 'other',
+            aiAnalysis: typeof r.aiAnalysis === 'object' ? r.aiAnalysis : {
+              summary: String(r.aiAnalysis || ''),
+              marketPosition: 'neutral' as const,
+              recommendation: 'negotiate' as const,
+              rationale: String(r.aiAnalysis || ''),
+            },
+            playbookMatch: r.playbookMatch || undefined,
+            status: r.status || 'pending',
+          }));
+          setRedlines(mapped);
         } else {
           setRedlines(mockRedlines);
         }
       } catch {
+        toast.error('Failed to load redline analysis — showing sample data');
         setRedlines(mockRedlines);
       } finally {
         setLoading(false);
@@ -490,11 +518,25 @@ export const NegotiationCoPilot: React.FC = () => {
     rejected: redlines.filter(r => r.status === 'rejected').length,
   }), [redlines]);
 
-  // Handle action
-  const handleAction = (id: string, action: 'accept' | 'reject' | 'negotiate') => {
+  // Handle action — update local state AND persist to API
+  const handleAction = async (id: string, action: 'accept' | 'reject' | 'negotiate') => {
     setRedlines(prev => prev.map(r => 
       r.id === id ? { ...r, status: action === 'negotiate' ? 'negotiating' : action === 'accept' ? 'accepted' : 'rejected' } : r
     ));
+    try {
+      await fetch('/api/intelligence/negotiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ redlineId: id, action }),
+      });
+    } catch (err) {
+      console.error('Failed to persist redline action:', err);
+      toast.error('Failed to save action — please try again');
+      // Roll back the optimistic update
+      setRedlines(prev => prev.map(r => 
+        r.id === id ? { ...r, status: 'pending' } : r
+      ));
+    }
   };
 
   // Handle chat with real AI API
@@ -554,13 +596,16 @@ Provide concise, actionable advice. Include specific language suggestions when h
 
       const data = await response.json();
       
+      // API wraps response as { success: true, data: { response: "...", ... } }
+      const aiText = data?.data?.response || data?.message || data?.response || 'No response received';
+
       // Generate suggestions based on the response
-      const suggestions = generateNegotiationSuggestions(chatInput, data.message);
+      const suggestions = generateNegotiationSuggestions(chatInput, aiText);
 
       const aiMsg: NegotiationMessage = {
         id: `m-${Date.now()}-ai`,
         role: 'assistant',
-        content: data.message,
+        content: aiText,
         timestamp: new Date(),
         suggestions,
       };
@@ -616,7 +661,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
     return (
       <div className="h-full flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 text-purple-500 animate-spin mx-auto mb-3" />
+          <Loader2 className="w-8 h-8 text-violet-500 animate-spin mx-auto mb-3" />
           <p className="text-slate-600">Loading negotiation data...</p>
         </div>
       </div>
@@ -630,7 +675,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <GitCompare className="w-5 h-5 text-purple-500" />
+              <GitCompare className="w-5 h-5 text-violet-500" />
               Negotiation Co-Pilot
             </h2>
             <p className="text-sm text-slate-500 mt-1">
@@ -638,14 +683,17 @@ Provide concise, actionable advice. Include specific language suggestions when h
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <button className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2">
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('openAIChatbot', { detail: { message: 'Show me the negotiation playbook rules and recommended positions for the current contract redlines' } }))}
+              className="px-3 py-2 text-sm font-medium bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition-colors flex items-center gap-2"
+            >
               <Settings className="w-4 h-4" />
               Playbook
             </button>
             <button
               onClick={() => setShowChat(!showChat)}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
-                showChat ? 'bg-purple-100 text-purple-700' : 'bg-purple-500 text-white hover:bg-purple-600'
+                showChat ? 'bg-violet-100 text-violet-700' : 'bg-violet-500 text-white hover:bg-violet-600'
               }`}
             >
               <MessageSquare className="w-4 h-4" />
@@ -695,7 +743,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize ${
                   filter === f
-                    ? 'bg-purple-500 text-white'
+                    ? 'bg-violet-500 text-white'
                     : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
                 }`}
               >
@@ -723,7 +771,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
         {/* Chat Panel */}
         <AnimatePresence>
           {showChat && (
-            <motion.div
+            <motion.div key="chat"
               initial={{ width: 0, opacity: 0 }}
               animate={{ width: 384, opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
@@ -731,7 +779,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
             >
               <div className="p-4 border-b border-slate-200 flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-purple-500" />
+                  <Zap className="w-5 h-5 text-violet-500" />
                   <span className="font-medium text-slate-900">AI Negotiation Assistant</span>
                 </div>
                 <button onClick={() => setShowChat(false)} className="p-1 hover:bg-slate-100 rounded">
@@ -742,8 +790,8 @@ Provide concise, actionable advice. Include specific language suggestions when h
               <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {chatMessages.length === 0 ? (
                   <div className="text-center py-8">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <MessageSquare className="w-6 h-6 text-purple-500" />
+                    <div className="w-12 h-12 bg-violet-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <MessageSquare className="w-6 h-6 text-violet-500" />
                     </div>
                     <h4 className="font-medium text-slate-900 mb-1">Ask me anything</h4>
                     <p className="text-sm text-slate-500">I can help with counter-proposals, risk analysis, and negotiation strategy</p>
@@ -752,11 +800,11 @@ Provide concise, actionable advice. Include specific language suggestions when h
                   chatMessages.map(msg => (
                     <div key={msg.id} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                        msg.role === 'user' ? 'bg-purple-500 text-white' : 'bg-slate-100 text-slate-900'
+                        msg.role === 'user' ? 'bg-violet-500 text-white' : 'bg-slate-100 text-slate-900'
                       }`}>
                         {msg.loading ? (
                           <div className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-purple-500" />
+                            <Loader2 className="w-4 h-4 animate-spin text-violet-500" />
                             <span className="text-sm text-slate-500">Analyzing...</span>
                           </div>
                         ) : (
@@ -768,7 +816,7 @@ Provide concise, actionable advice. Include specific language suggestions when h
                                   <button 
                                     key={i} 
                                     onClick={() => setChatInput(s)}
-                                    className="block text-xs text-purple-600 hover:underline"
+                                    className="block text-xs text-violet-600 hover:underline"
                                   >
                                     → {s}
                                   </button>
@@ -792,12 +840,12 @@ Provide concise, actionable advice. Include specific language suggestions when h
                     onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleChatSubmit()}
                     placeholder="Ask about clauses, suggest counters..."
                     disabled={chatLoading}
-                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50"
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 disabled:opacity-50"
                   />
                   <button
                     onClick={handleChatSubmit}
                     disabled={chatLoading || !chatInput.trim()}
-                    className="p-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="p-2 bg-violet-500 text-white rounded-lg hover:bg-violet-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {chatLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />

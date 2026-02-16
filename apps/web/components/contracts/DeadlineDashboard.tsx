@@ -67,7 +67,7 @@ export function DeadlineDashboard({
 
   useEffect(() => {
     loadDeadlines()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [tenantId, clientFilter, filterType])
 
   const loadDeadlines = async () => {
@@ -108,7 +108,7 @@ export function DeadlineDashboard({
         }
       case 'upcoming':
         return { 
-          color: 'bg-blue-100 text-blue-700 border-blue-300',
+          color: 'bg-violet-100 text-violet-700 border-violet-300',
           icon: Clock,
           label: 'Upcoming'
         }
@@ -167,7 +167,7 @@ export function DeadlineDashboard({
       <Card className="shadow-2xl border-0">
         <CardContent className="p-12 flex items-center justify-center">
           <div className="text-center">
-            <RefreshCw className="h-12 w-12 mx-auto animate-spin text-blue-600 mb-4" />
+            <RefreshCw className="h-12 w-12 mx-auto animate-spin text-violet-600 mb-4" />
             <p className="text-gray-600">Loading deadlines...</p>
           </div>
         </CardContent>
@@ -186,11 +186,11 @@ export function DeadlineDashboard({
           <p className="text-gray-600 mt-2">Track contract deadlines, renewals, and key milestones</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={loadDeadlines} className="hover:bg-blue-50">
+          <Button variant="outline" onClick={loadDeadlines} className="hover:bg-violet-50">
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+          <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
             <Bell className="h-4 w-4 mr-2" />
             Configure Alerts
           </Button>
@@ -230,11 +230,11 @@ export function DeadlineDashboard({
         </div>
 
         <div className="group relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-purple-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
           <Card className="relative bg-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg">
                   <Clock className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -245,11 +245,11 @@ export function DeadlineDashboard({
         </div>
 
         <div className="group relative">
-          <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
+          <div className="absolute -inset-0.5 bg-gradient-to-r from-violet-500 to-pink-500 rounded-2xl opacity-75 group-hover:opacity-100 transition-opacity blur"></div>
           <Card className="relative bg-white shadow-xl border-0">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-2">
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg">
+                <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg">
                   <CalendarDays className="h-6 w-6 text-white" />
                 </div>
               </div>
@@ -317,7 +317,7 @@ export function DeadlineDashboard({
                 variant={viewMode === 'timeline' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('timeline')}
-                className={cn(viewMode === 'timeline' && 'bg-gradient-to-r from-blue-600 to-indigo-600')}
+                className={cn(viewMode === 'timeline' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
                 Timeline
               </Button>
@@ -325,7 +325,7 @@ export function DeadlineDashboard({
                 variant={viewMode === 'list' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('list')}
-                className={cn(viewMode === 'list' && 'bg-gradient-to-r from-blue-600 to-indigo-600')}
+                className={cn(viewMode === 'list' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
                 List
               </Button>
@@ -333,7 +333,7 @@ export function DeadlineDashboard({
                 variant={viewMode === 'calendar' ? 'default' : 'outline'}
                 size="sm"
                 onClick={() => setViewMode('calendar')}
-                className={cn(viewMode === 'calendar' && 'bg-gradient-to-r from-blue-600 to-indigo-600')}
+                className={cn(viewMode === 'calendar' && 'bg-gradient-to-r from-violet-600 to-purple-600')}
               >
                 Calendar
               </Button>
@@ -369,7 +369,7 @@ export function DeadlineDashboard({
                       'p-6 rounded-xl border-2 transition-all hover:shadow-lg',
                       deadline.status === 'overdue' && 'border-red-200 bg-red-50',
                       deadline.status === 'due-soon' && 'border-yellow-200 bg-yellow-50',
-                      deadline.status === 'upcoming' && 'border-blue-200 bg-blue-50',
+                      deadline.status === 'upcoming' && 'border-violet-200 bg-violet-50',
                       deadline.status === 'completed' && 'border-green-200 bg-green-50'
                     )}
                   >
@@ -379,8 +379,8 @@ export function DeadlineDashboard({
                           'p-3 rounded-xl shadow-lg',
                           deadline.status === 'overdue' && 'bg-gradient-to-br from-red-500 to-pink-600',
                           deadline.status === 'due-soon' && 'bg-gradient-to-br from-yellow-500 to-orange-600',
-                          deadline.status === 'upcoming' && 'bg-gradient-to-br from-blue-500 to-indigo-600',
-                          deadline.status === 'completed' && 'bg-gradient-to-br from-green-500 to-emerald-600'
+                          deadline.status === 'upcoming' && 'bg-gradient-to-br from-violet-500 to-purple-600',
+                          deadline.status === 'completed' && 'bg-gradient-to-br from-violet-500 to-violet-600'
                         )}>
                           <TypeIcon className="h-6 w-6 text-white" />
                         </div>
@@ -408,7 +408,7 @@ export function DeadlineDashboard({
                                 'font-bold',
                                 deadline.daysUntil < 0 && 'text-red-600',
                                 deadline.daysUntil >= 0 && deadline.daysUntil <= 30 && 'text-yellow-600',
-                                deadline.daysUntil > 30 && 'text-blue-600'
+                                deadline.daysUntil > 30 && 'text-violet-600'
                               )}>
                                 ({deadline.daysUntil < 0 ? `${Math.abs(deadline.daysUntil)} days overdue` : 
                                    deadline.daysUntil === 0 ? 'Due today' :
@@ -440,7 +440,7 @@ export function DeadlineDashboard({
                         </div>
                       </div>
                       
-                      <Button variant="outline" size="sm" className="hover:bg-blue-50">
+                      <Button variant="outline" size="sm" className="hover:bg-violet-50">
                         View Contract
                       </Button>
                     </div>
@@ -453,19 +453,19 @@ export function DeadlineDashboard({
       </Card>
 
       {/* Email Notification Setup */}
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-blue-50 to-indigo-50">
+      <Card className="shadow-xl border-0 bg-gradient-to-br from-violet-50 to-purple-50">
         <CardContent className="p-8">
           <div className="flex items-start gap-4">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Bell className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-violet-100 rounded-lg">
+              <Bell className="h-6 w-6 text-violet-600" />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 mb-2">Automatic Notifications</h3>
-              <p className="text-sm text-blue-700 mb-4">
+              <h3 className="font-semibold text-violet-900 mb-2">Automatic Notifications</h3>
+              <p className="text-sm text-violet-700 mb-4">
                 Configure email alerts for upcoming deadlines. Get notified 30, 14, and 7 days before any deadline.
               </p>
               <div className="flex items-center gap-3">
-                <Button className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700">
+                <Button className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
                   <Mail className="h-4 w-4 mr-2" />
                   Setup Email Alerts
                 </Button>

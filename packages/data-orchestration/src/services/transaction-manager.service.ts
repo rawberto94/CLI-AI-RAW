@@ -7,7 +7,8 @@
  * Requirements: 6.4 - THE System SHALL implement database transactions for multi-step operations
  */
 
-import { PrismaClient, Prisma } from 'clients-db';
+import { Prisma } from '@prisma/client';
+import { prisma, PrismaClient } from '../lib/prisma';
 import { monitoringService } from './monitoring.service';
 
 export interface TransactionOptions {
@@ -35,7 +36,7 @@ class TransactionManagerService {
   private readonly DEFAULT_MAX_WAIT = 5000; // 5 seconds
 
   constructor() {
-    this.db = new PrismaClient();
+    this.db = prisma;
   }
 
   /**

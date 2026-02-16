@@ -1,6 +1,4 @@
 import { 
-  FileText, 
-  ArrowRight,
   Shield,
   Lock,
   Server,
@@ -10,7 +8,8 @@ import {
   Globe,
   AlertTriangle,
   RefreshCw,
-  Users
+  Users,
+  ArrowRight
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -21,8 +20,8 @@ export const metadata = {
 
 const certifications = [
   {
-    title: 'SOC 2 Type II',
-    description: 'Annual third-party audit of security controls',
+    title: 'SOC 2 Ready',
+    description: 'Architecture designed for SOC 2 compliance',
     icon: CheckCircle,
   },
   {
@@ -31,8 +30,8 @@ const certifications = [
     icon: Globe,
   },
   {
-    title: 'ISO 27001',
-    description: 'Information security management certified',
+    title: 'ISO 27001 Ready',
+    description: 'Information security management aligned',
     icon: Shield,
   },
   {
@@ -47,25 +46,25 @@ const securityFeatures = [
     icon: Lock,
     title: 'Encryption at Rest',
     description: 'All data encrypted with AES-256, the same standard used by banks and governments.',
-    color: 'from-emerald-500 to-emerald-600',
+    color: 'from-violet-500 to-violet-600',
   },
   {
     icon: Key,
     title: 'Encryption in Transit',
     description: 'TLS 1.3 encryption for all data transmission, with certificate pinning.',
-    color: 'from-cyan-500 to-cyan-600',
+    color: 'from-violet-500 to-purple-600',
   },
   {
     icon: Shield,
-    title: 'Zero-Knowledge Architecture',
-    description: 'Your encryption keys are unique to your organization. We cannot access your data.',
-    color: 'from-indigo-500 to-indigo-600',
+    title: 'Data Isolation',
+    description: 'Multi-tenant architecture with strict data isolation. Each organization\'s data is encrypted with unique keys.',
+    color: 'from-violet-500 to-purple-600',
   },
   {
     icon: Users,
     title: 'Access Controls',
     description: 'Role-based permissions, SSO integration, and multi-factor authentication.',
-    color: 'from-purple-500 to-purple-600',
+    color: 'from-violet-500 to-purple-600',
   },
   {
     icon: Eye,
@@ -76,19 +75,19 @@ const securityFeatures = [
   {
     icon: RefreshCw,
     title: 'Business Continuity',
-    description: 'Automated backups, disaster recovery, and 99.9% uptime SLA.',
+    description: 'Automated backups, disaster recovery, and enterprise-grade uptime SLA.',
     color: 'from-amber-500 to-amber-600',
   },
 ];
 
 const practices = [
   {
-    title: 'Penetration Testing',
-    description: 'Quarterly penetration tests by independent security firms to identify vulnerabilities.',
+    title: 'Security Assessments',
+    description: 'Regular security assessments and vulnerability scanning to identify and address potential issues.',
   },
   {
-    title: 'Bug Bounty Program',
-    description: 'We reward security researchers who responsibly disclose vulnerabilities.',
+    title: 'Responsible Disclosure',
+    description: 'We welcome responsible vulnerability disclosures from security researchers.',
   },
   {
     title: 'Security Training',
@@ -96,7 +95,7 @@ const practices = [
   },
   {
     title: 'Incident Response',
-    description: '24/7 security monitoring with documented incident response procedures.',
+    description: 'Documented incident response procedures with defined escalation paths.',
   },
   {
     title: 'Vendor Assessment',
@@ -110,49 +109,25 @@ const practices = [
 
 export default function SecurityPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
-      {/* Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-slate-950/80 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <Link href="/" className="group flex items-center gap-2">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-lg shadow-indigo-500/25">
-                <FileText className="h-5 w-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
-                ConTigo
-              </span>
-            </Link>
-            
-            <Link
-              href="/auth/signin"
-              className="group inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-500 to-purple-600 px-5 py-2 text-sm font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:shadow-indigo-500/40 hover:scale-105"
-            >
-              Get Started
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </header>
-
+    <div className="bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950">
       {/* Hero */}
-      <section className="relative pt-32 pb-20 overflow-hidden">
+      <section className="relative pt-16 pb-20 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-emerald-500/20 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 -right-1/4 w-96 h-96 bg-cyan-500/20 rounded-full blur-3xl" />
+          <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 -right-1/4 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
         </div>
         
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-4 py-1.5 mb-8">
-              <Shield className="h-4 w-4 text-emerald-400" />
-              <span className="text-sm font-medium text-emerald-300">Enterprise-Grade Security</span>
+            <div className="inline-flex items-center gap-2 rounded-full border border-violet-500/30 bg-violet-500/10 px-4 py-1.5 mb-8">
+              <Shield className="h-4 w-4 text-violet-400" aria-hidden="true" />
+              <span className="text-sm font-medium text-violet-300">Enterprise-Grade Security</span>
             </div>
             
             <h1 className="text-4xl lg:text-6xl font-bold">
               <span className="text-white">Your Contracts,</span>
               <br />
-              <span className="bg-gradient-to-r from-emerald-400 via-cyan-400 to-indigo-400 bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-violet-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
                 Fully Protected
               </span>
             </h1>
@@ -172,8 +147,8 @@ export default function SecurityPage() {
                 key={cert.title}
                 className="bg-white/5 border border-white/10 rounded-2xl p-6 text-center hover:bg-white/10 transition-colors"
               >
-                <div className="w-14 h-14 bg-gradient-to-br from-emerald-500 to-cyan-600 rounded-xl flex items-center justify-center mx-auto mb-4">
-                  <cert.icon className="w-7 h-7 text-white" />
+                <div className="w-14 h-14 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center mx-auto mb-4">
+                  <cert.icon className="w-7 h-7 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">{cert.title}</h3>
                 <p className="text-sm text-slate-400">{cert.description}</p>
@@ -202,7 +177,7 @@ export default function SecurityPage() {
                 className="group bg-white/5 border border-white/5 rounded-2xl p-6 hover:bg-white/10 hover:border-white/10 transition-all"
               >
                 <div className={`w-12 h-12 bg-gradient-to-br ${feature.color} rounded-xl flex items-center justify-center mb-4 shadow-lg transition-transform group-hover:scale-110`}>
-                  <feature.icon className="w-6 h-6 text-white" />
+                  <feature.icon className="w-6 h-6 text-white" aria-hidden="true" />
                 </div>
                 <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
                 <p className="text-slate-400">{feature.description}</p>
@@ -228,8 +203,8 @@ export default function SecurityPage() {
                     key={practice.title}
                     className="flex items-start gap-4"
                   >
-                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <div className="w-6 h-6 bg-violet-500/20 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <CheckCircle className="w-4 h-4 text-violet-400" aria-hidden="true" />
                     </div>
                     <div>
                       <h3 className="font-semibold text-white">{practice.title}</h3>
@@ -241,25 +216,25 @@ export default function SecurityPage() {
             </div>
             
             <div className="relative">
-              <div className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/10 rounded-3xl p-8 border border-white/10">
+              <div className="bg-gradient-to-br from-violet-500/20 to-purple-500/10 rounded-3xl p-8 border border-white/10">
                 <div className="space-y-6">
-                  {/* Security Stats */}
+                  {/* Security Features */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-emerald-400">99.9%</div>
-                      <div className="text-sm text-slate-400">Uptime SLA</div>
+                      <div className="text-3xl font-bold text-violet-400">AES-256</div>
+                      <div className="text-sm text-slate-400">Encryption</div>
                     </div>
                     <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-cyan-400">0</div>
-                      <div className="text-sm text-slate-400">Data Breaches</div>
+                      <div className="text-3xl font-bold text-violet-400">TLS 1.3</div>
+                      <div className="text-sm text-slate-400">In Transit</div>
                     </div>
                     <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-indigo-400">24/7</div>
-                      <div className="text-sm text-slate-400">Monitoring</div>
+                      <div className="text-3xl font-bold text-violet-400">MFA</div>
+                      <div className="text-sm text-slate-400">Required</div>
                     </div>
                     <div className="bg-white/5 rounded-xl p-4 text-center">
-                      <div className="text-3xl font-bold text-purple-400">&lt;1hr</div>
-                      <div className="text-sm text-slate-400">Response Time</div>
+                      <div className="text-3xl font-bold text-violet-400">RBAC</div>
+                      <div className="text-sm text-slate-400">Access Control</div>
                     </div>
                   </div>
                 </div>
@@ -275,7 +250,7 @@ export default function SecurityPage() {
           <div className="bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 rounded-2xl p-8">
             <div className="flex items-start gap-4">
               <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                <AlertTriangle className="w-6 h-6 text-white" />
+                <AlertTriangle className="w-6 h-6 text-white" aria-hidden="true" />
               </div>
               <div>
                 <h2 className="text-2xl font-bold text-white mb-2">Found a Vulnerability?</h2>
@@ -298,18 +273,18 @@ export default function SecurityPage() {
 
       {/* CTA */}
       <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-emerald-600 to-cyan-600" />
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-purple-600" />
         <div className="relative mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
             Ready to Secure Your Contracts?
           </h2>
-          <p className="mt-4 text-lg text-emerald-100 max-w-2xl mx-auto">
-            Join hundreds of enterprises trusting ConTigo with their sensitive documents.
+          <p className="mt-4 text-lg text-violet-100 max-w-2xl mx-auto">
+            Enterprise-grade security for your sensitive contract data.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link
               href="/auth/signin"
-              className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-emerald-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
+              className="group inline-flex items-center gap-2 rounded-full bg-white px-8 py-4 text-lg font-semibold text-violet-600 shadow-2xl transition-all hover:bg-slate-100 hover:scale-105"
             >
               Get Started
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
@@ -324,27 +299,6 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-white/5 bg-slate-950">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600">
-                <FileText className="h-4 w-4 text-white" />
-              </div>
-              <span className="font-bold text-white">ConTigo</span>
-            </Link>
-            <div className="flex items-center gap-6 text-sm text-slate-400">
-              <Link href="/privacy" className="hover:text-white transition-colors">Privacy</Link>
-              <Link href="/terms" className="hover:text-white transition-colors">Terms</Link>
-              <Link href="/security" className="text-white">Security</Link>
-            </div>
-            <p className="text-sm text-slate-500">
-              © {new Date().getFullYear()} ConTigo
-            </p>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, getApiContext} from '@/lib/api-middleware';
 
-export async function GET() {
+export const GET = withAuthApiHandler(async (_request: NextRequest, ctx) => {
   // Return empty policy packs for now
-  return NextResponse.json({
+  return createSuccessResponse(ctx, {
     success: true,
     data: [],
     message: 'No policy packs configured'
   });
-}
+});

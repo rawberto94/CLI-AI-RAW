@@ -1,9 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { chunkText, embedChunks } from "clients-rag";
+import { chunkText as _chunkText, embedChunks as _embedChunks } from "clients-rag";
 import { aiArtifactGeneratorService } from "data-orchestration/services";
 import { getApiTenantId } from "@/lib/tenant-server";
 import { queueRAGReindex } from "@/lib/rag/reindex-helper";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // aiArtifactGeneratorService is already an instance via getInstance()
 const aiArtifactGenerator = aiArtifactGeneratorService;
@@ -19,6 +20,10 @@ export async function POST(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const contractId = params.id;
     const artifactId = params.artifactId;
@@ -36,17 +41,11 @@ export async function POST(
     });
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (!contract.rawText) {
-      return NextResponse.json(
-        { error: 'Contract has no extracted text. Please reprocess the contract.' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract has no extracted text. Please reprocess the contract.', 400);
     }
 
     // Validate artifact exists
@@ -55,17 +54,11 @@ export async function POST(
     });
 
     if (!artifact) {
-      return NextResponse.json(
-        { error: 'Artifact not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
     }
 
     if (artifact.contractId !== contractId) {
-      return NextResponse.json(
-        { error: 'Artifact does not belong to this contract' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Artifact does not belong to this contract', 400);
     }
 
     // Mark artifact as processing
@@ -83,7 +76,7 @@ export async function POST(
         console.error('[ArtifactRegenerate] Background regeneration error:', err);
       });
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       message: 'Artifact regeneration started',
       artifactId,
@@ -91,11 +84,8 @@ export async function POST(
       type: artifact.type
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to initiate regeneration' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }
 
@@ -171,6 +161,10 @@ export async function GET(
   props: { params: Promise<{ id: string; artifactId: string }> }
 ) {
   const params = await props.params;
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   try {
     const artifactId = params.artifactId;
 
@@ -186,13 +180,10 @@ export async function GET(
     });
 
     if (!artifact) {
-      return NextResponse.json(
-        { error: 'Artifact not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Artifact not found', 404);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       artifactId: artifact.id,
       type: artifact.type,
       status: artifact.validationStatus,
@@ -200,10 +191,7 @@ export async function GET(
       updatedAt: artifact.updatedAt
     });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch status' },
-      { status: 500 }
-    );
+  } catch (error) {
+    return handleApiError(ctx, error);
   }
 }

@@ -76,7 +76,7 @@ export default function NegotiationPrepPage() {
       link.download = `negotiation-prep-${new Date().toISOString().split('T')[0]}.csv`;
       link.click();
       toast.success('Negotiation data exported successfully');
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to export data');
     }
   };
@@ -117,7 +117,7 @@ export default function NegotiationPrepPage() {
         >
           <div>
             <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent flex items-center gap-3">
-              <div className="p-2.5 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/25">
+              <div className="p-2.5 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg shadow-violet-500/25">
                 <Handshake className="w-7 h-7 text-white" />
               </div>
               Negotiation Preparation

@@ -3,8 +3,9 @@
  * Provides endpoints for monitoring memory usage and cache statistics
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { memoryManager } from 'data-orchestration/services';
+import { withApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type ApiContext, getApiContext} from '@/lib/api-middleware';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,102 +14,64 @@ export const dynamic = 'force-dynamic';
  * GET /api/monitoring/memory
  * Get memory statistics
  */
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const action = searchParams.get('action');
+export const GET = withApiHandler(async (request: NextRequest, ctx) => {
+  const searchParams = request.nextUrl.searchParams;
+  const action = searchParams.get('action');
 
-    switch (action) {
-      case 'stats':
-        return getMemoryStats();
-      
-      case 'system':
-        return getSystemMemory();
-      
-      case 'cache':
-        return getCacheStats();
-      
-      default:
-        return getMemoryStats();
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to get memory data',
-        },
-      },
-      { status: 500 }
-    );
+  switch (action) {
+    case 'stats':
+      return getMemoryStats(ctx);
+
+    case 'system':
+      return getSystemMemory(ctx);
+
+    case 'cache':
+      return getCacheStats(ctx);
+
+    default:
+      return getMemoryStats(ctx);
   }
-}
+});
 
 /**
  * POST /api/monitoring/memory
  * Perform memory management actions
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { action } = body;
+export const POST = withApiHandler(async (request: NextRequest, ctx) => {
+  const body = await request.json();
+  const { action } = body;
 
-    switch (action) {
-      case 'cleanup':
-        return performCleanup();
-      
-      case 'clear':
-        return clearCache();
-      
-      case 'gc':
-        return triggerGarbageCollection();
-      
-      default:
-        return NextResponse.json(
-          {
-            error: {
-              code: 'INVALID_ACTION',
-              message: 'Invalid action specified',
-            },
-          },
-          { status: 400 }
-        );
-    }
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'INTERNAL_ERROR',
-          message: error instanceof Error ? error.message : 'Failed to perform action',
-        },
-      },
-      { status: 500 }
-    );
+  switch (action) {
+    case 'cleanup':
+      return performCleanup(ctx);
+
+    case 'clear':
+      return clearCache(ctx);
+
+    case 'gc':
+      return triggerGarbageCollection(ctx);
+
+    default:
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Invalid action specified', 400);
   }
-}
+});
 
 /**
  * Get memory statistics
  */
-function getMemoryStats() {
+function getMemoryStats(ctx: ApiContext) {
   const stats = memoryManager.getStats();
   
-  return NextResponse.json({
-    success: true,
-    data: stats,
-    timestamp: new Date().toISOString(),
-  });
+  return createSuccessResponse(ctx, stats);
 }
 
 /**
  * Get system memory information
  */
-function getSystemMemory() {
+function getSystemMemory(ctx: ApiContext) {
   const memUsage = process.memoryUsage();
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       heapUsed: memUsage.heapUsed,
       heapTotal: memUsage.heapTotal,
       external: memUsage.external,
@@ -121,20 +84,16 @@ function getSystemMemory() {
         external: formatBytes(memUsage.external),
         rss: formatBytes(memUsage.rss),
       },
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Get cache statistics
  */
-function getCacheStats() {
+function getCacheStats(ctx: ApiContext) {
   const stats = memoryManager.getStats();
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       totalCacheSize: stats.totalCacheSize,
       totalCacheEntries: stats.totalCacheEntries,
       maxCacheSize: stats.maxCacheSize,
@@ -147,20 +106,16 @@ function getCacheStats() {
         totalCacheSize: formatBytes(stats.totalCacheSize),
         maxCacheSize: formatBytes(stats.maxCacheSize),
       },
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Perform cleanup of expired entries
  */
-function performCleanup() {
+function performCleanup(ctx: ApiContext) {
   const result = memoryManager.cleanupExpired();
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       entriesRemoved: result.entriesRemoved,
       bytesFreed: result.bytesFreed,
       duration: result.duration,
@@ -168,30 +123,24 @@ function performCleanup() {
         bytesFreed: formatBytes(result.bytesFreed),
       },
       message: `Cleaned up ${result.entriesRemoved} expired entries, freed ${formatBytes(result.bytesFreed)}`,
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Clear all cache
  */
-function clearCache() {
+function clearCache(ctx: ApiContext) {
   memoryManager.clear();
   
-  return NextResponse.json({
-    success: true,
-    data: {
+  return createSuccessResponse(ctx, {
       message: 'Cache cleared successfully',
-    },
-    timestamp: new Date().toISOString(),
   });
 }
 
 /**
  * Trigger garbage collection (if exposed)
  */
-function triggerGarbageCollection() {
+function triggerGarbageCollection(ctx: ApiContext) {
   if (global.gc) {
     const before = process.memoryUsage();
     global.gc();
@@ -199,9 +148,7 @@ function triggerGarbageCollection() {
     
     const freed = before.heapUsed - after.heapUsed;
     
-    return NextResponse.json({
-      success: true,
-      data: {
+    return createSuccessResponse(ctx, {
         before: {
           heapUsed: before.heapUsed,
           formatted: formatBytes(before.heapUsed),
@@ -215,19 +162,9 @@ function triggerGarbageCollection() {
           formatted: formatBytes(freed),
         },
         message: `Garbage collection completed, freed ${formatBytes(freed)}`,
-      },
-      timestamp: new Date().toISOString(),
     });
   } else {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'GC_NOT_AVAILABLE',
-          message: 'Garbage collection is not exposed. Run with --expose-gc flag.',
-        },
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Garbage collection is not exposed. Run with --expose-gc flag.', 400);
   }
 }
 

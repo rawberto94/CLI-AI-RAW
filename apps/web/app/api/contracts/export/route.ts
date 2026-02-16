@@ -3,8 +3,11 @@
  * Export contracts in various formats
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { contractService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import * as XLSX from 'xlsx';
 
 interface ExportConfig {
   format: 'csv' | 'xlsx' | 'json' | 'pdf';
@@ -50,120 +53,119 @@ const fieldMappings: Record<string, string | ((contract: Record<string, unknown>
   },
 };
 
-export async function POST(request: NextRequest) {
-  try {
-    const config: ExportConfig = await request.json();
-    
-    // Build query
-    const where: Record<string, unknown> = {};
-    
-    if (config.contractIds && config.contractIds.length > 0) {
-      where.id = { in: config.contractIds };
-    }
-    
-    if (config.filters?.status && config.filters.status.length > 0) {
-      where.status = { in: config.filters.status };
-    }
-    
-    if (config.filters?.contractTypes && config.filters.contractTypes.length > 0) {
-      where.category = { in: config.filters.contractTypes };
-    }
-    
-    // Fetch contracts
-    const includeHierarchy = 
-      config.includeFields.includes('parentContract') || 
-      config.includeFields.includes('parentContractId') ||
-      config.includeFields.includes('relationshipType') ||
-      config.includeFields.includes('relationshipNote') ||
-      config.includeFields.includes('childContractCount');
-      
-    const contracts = await prisma.contract.findMany({
-      where,
-      include: {
-        artifacts: config.includeFields.includes('summary') || config.includeFields.includes('artifacts'),
-        supplier: config.includeFields.includes('supplier'),
-        parentContract: includeHierarchy ? {
-          select: { id: true, fileName: true, contractType: true }
-        } : false,
-        childContracts: includeHierarchy ? {
-          select: { id: true, fileName: true, contractType: true }
-        } : false,
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    
-    // Transform data based on selected fields
-    const data = contracts.map((contract: Record<string, unknown>) => {
-      const row: Record<string, unknown> = {};
-      
-      for (const field of config.includeFields) {
-        const mapping = fieldMappings[field];
-        if (typeof mapping === 'function') {
-          row[field] = mapping(contract);
-        } else if (mapping) {
-          row[field] = contract[mapping];
-        }
-      }
-      
-      return row;
-    });
-    
-    // Generate export based on format
-    let content: string;
-    let contentType: string;
-    let filename: string;
-    
-    switch (config.format) {
-      case 'json':
-        content = JSON.stringify(data, null, 2);
-        contentType = 'application/json';
-        filename = `contracts-export-${Date.now()}.json`;
-        break;
-        
-      case 'csv':
-        content = generateCSV(data, config.includeFields);
-        contentType = 'text/csv';
-        filename = `contracts-export-${Date.now()}.csv`;
-        break;
-        
-      case 'xlsx':
-        // For XLSX, we'd need a library like xlsx
-        // For now, return CSV-compatible data
-        content = generateCSV(data, config.includeFields);
-        contentType = 'text/csv';
-        filename = `contracts-export-${Date.now()}.csv`;
-        break;
-        
-      case 'pdf':
-        // For PDF, we'd need a library like pdfkit
-        // For now, return JSON
-        content = JSON.stringify(data, null, 2);
-        contentType = 'application/json';
-        filename = `contracts-export-${Date.now()}.json`;
-        break;
-        
-      default:
-        content = JSON.stringify(data, null, 2);
-        contentType = 'application/json';
-        filename = `contracts-export-${Date.now()}.json`;
-    }
-    
-    // In production, upload to S3 and return download URL
-    // For now, return the data directly
-    return NextResponse.json({
-      success: true,
-      count: contracts.length,
-      downloadUrl: `/api/contracts/export/download?file=${filename}`,
-      data: config.format === 'json' ? data : undefined,
-    });
-    
-  } catch {
-    return NextResponse.json(
-      { error: 'Export failed' },
-      { status: 500 }
-    );
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const config: ExportConfig = await request.json();
+  
+  // Build query
+  const where: Record<string, unknown> = {};
+  
+  if (config.contractIds && config.contractIds.length > 0) {
+    where.id = { in: config.contractIds };
   }
-}
+  
+  if (config.filters?.status && config.filters.status.length > 0) {
+    where.status = { in: config.filters.status };
+  }
+  
+  if (config.filters?.contractTypes && config.filters.contractTypes.length > 0) {
+    where.category = { in: config.filters.contractTypes };
+  }
+  
+  // Fetch contracts
+  const includeHierarchy = 
+    config.includeFields.includes('parentContract') || 
+    config.includeFields.includes('parentContractId') ||
+    config.includeFields.includes('relationshipType') ||
+    config.includeFields.includes('relationshipNote') ||
+    config.includeFields.includes('childContractCount');
+    
+  const contracts = await prisma.contract.findMany({
+    where,
+    include: {
+      artifacts: config.includeFields.includes('summary') || config.includeFields.includes('artifacts'),
+      supplier: config.includeFields.includes('supplier'),
+      parentContract: includeHierarchy ? {
+        select: { id: true, fileName: true, contractType: true }
+      } : false,
+      childContracts: includeHierarchy ? {
+        select: { id: true, fileName: true, contractType: true }
+      } : false,
+    },
+    orderBy: { createdAt: 'desc' },
+  });
+  
+  // Transform data based on selected fields
+  const data = contracts.map((contract: Record<string, unknown>) => {
+    const row: Record<string, unknown> = {};
+    
+    for (const field of config.includeFields) {
+      const mapping = fieldMappings[field];
+      if (typeof mapping === 'function') {
+        row[field] = mapping(contract);
+      } else if (mapping) {
+        row[field] = contract[mapping];
+      }
+    }
+    
+    return row;
+  });
+  
+  // Generate export based on format
+  let content: string;
+  let contentType: string;
+  let filename: string;
+  
+  switch (config.format) {
+    case 'json':
+      content = JSON.stringify(data, null, 2);
+      contentType = 'application/json';
+      filename = `contracts-export-${Date.now()}.json`;
+      break;
+      
+    case 'csv':
+      content = generateCSV(data, config.includeFields);
+      contentType = 'text/csv';
+      filename = `contracts-export-${Date.now()}.csv`;
+      break;
+      
+    case 'xlsx': {
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.json_to_sheet(data, { header: config.includeFields });
+      XLSX.utils.book_append_sheet(wb, ws, 'Contracts');
+      const xlsxBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+      return new Response(xlsxBuffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="contracts-export-${Date.now()}.xlsx"`,
+        },
+      });
+    }
+      
+    case 'pdf':
+      // For PDF, we'd need a library like pdfkit
+      // For now, return JSON
+      content = JSON.stringify(data, null, 2);
+      contentType = 'application/json';
+      filename = `contracts-export-${Date.now()}.json`;
+      break;
+      
+    default:
+      content = JSON.stringify(data, null, 2);
+      contentType = 'application/json';
+      filename = `contracts-export-${Date.now()}.json`;
+  }
+  
+  // In production, upload to S3 and return download URL
+  // For now, return the data directly
+  // Note: content and contentType are used when implementing actual file downloads
+  void content;
+  void contentType;
+  return createSuccessResponse(ctx, {
+    count: contracts.length,
+    downloadUrl: `/api/contracts/export/download?file=${filename}`,
+    data: config.format === 'json' ? data : undefined,
+  });
+});
 
 function generateCSV(data: Record<string, unknown>[], fields: string[]): string {
   if (data.length === 0) return '';
@@ -181,9 +183,9 @@ function generateCSV(data: Record<string, unknown>[], fields: string[]): string 
   return [headers, ...rows].join('\n');
 }
 
-export async function GET() {
-  return NextResponse.json({
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  return createSuccessResponse(ctx, {
     message: 'Use POST to export contracts',
     supportedFormats: ['csv', 'xlsx', 'json', 'pdf'],
   });
-}
+});

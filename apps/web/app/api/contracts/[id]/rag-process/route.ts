@@ -1,12 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { contractService } from 'data-orchestration/services'
 import { processContractWithSemanticChunking } from '@/lib/rag/advanced-rag.service'
 import { getServerTenantId } from '@/lib/tenant-server'
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const startTime = Date.now()
   
   try {
@@ -30,17 +36,11 @@ export async function POST(
     })
 
     if (!contract) {
-      return NextResponse.json(
-        { error: 'Contract not found' },
-        { status: 404 }
-      )
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Contract not found', 404);
     }
 
     if (!contract.rawText) {
-      return NextResponse.json(
-        { error: 'Contract has no text content. Upload and process the contract first.' },
-        { status: 400 }
-      )
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract has no text content. Upload and process the contract first.', 400);
     }
 
     let result: { chunksCreated: number; embeddingsGenerated: number }
@@ -62,14 +62,14 @@ export async function POST(
       const chunks = chunkText(contract.rawText)
 
       if (chunks.length === 0) {
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           success: false,
           error: 'No chunks generated from contract text',
           contractId,
           chunksCreated: 0,
           embeddingsGenerated: 0,
           processingTime: Date.now() - startTime
-        })
+        });
       }
 
       const embeddedChunks = await embedChunks(contractId, tenantId, chunks, {
@@ -85,7 +85,7 @@ export async function POST(
 
     const processingTime = Date.now() - startTime
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       contractId,
       fileName: contract.fileName,
@@ -98,17 +98,9 @@ export async function POST(
         semanticChunking: useSemanticChunking,
         structureAware: useSemanticChunking,
       },
-    })
+    });
 
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: error instanceof Error ? error.message : 'Unknown error',
-        contractId: (await params).id,
-        success: false,
-        processingTime: Date.now() - startTime
-      },
-      { status: 500 }
-    )
+    return handleApiError(ctx, error);
   }
 }

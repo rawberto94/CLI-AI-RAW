@@ -90,8 +90,8 @@ interface AccuracyStats {
 
 const ConfidenceBadge = ({ confidence }: { confidence: number }) => {
   const getColor = () => {
-    if (confidence >= 90) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-    if (confidence >= 70) return 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+    if (confidence >= 90) return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
+    if (confidence >= 70) return 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300'
     if (confidence >= 50) return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
     return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
   }
@@ -113,7 +113,7 @@ const ConfidenceBadge = ({ confidence }: { confidence: number }) => {
 
 const TrendIndicator = ({ trend }: { trend: 'improving' | 'stable' | 'declining' }) => {
   const config = {
-    improving: { icon: TrendingUp, color: 'text-emerald-600', label: 'Improving' },
+    improving: { icon: TrendingUp, color: 'text-violet-600', label: 'Improving' },
     stable: { icon: Minus, color: 'text-slate-500', label: 'Stable' },
     declining: { icon: TrendingDown, color: 'text-red-600', label: 'Declining' },
   }
@@ -213,7 +213,7 @@ export function ExtractionFieldWithFeedback({
               className={cn(
                 'text-xs',
                 feedbackGiven === 'correct' 
-                  ? 'border-emerald-300 text-emerald-600' 
+                  ? 'border-violet-300 text-violet-600' 
                   : 'border-amber-300 text-amber-600'
               )}
             >
@@ -265,7 +265,7 @@ export function ExtractionFieldWithFeedback({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-7 w-7 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  className="h-7 w-7 p-0 text-violet-600 hover:text-violet-700 hover:bg-violet-50"
                   onClick={handleConfirm}
                   disabled={isSubmitting}
                 >
@@ -486,13 +486,13 @@ export function ExtractionAccuracyCard({
                 {stats.recommendations.length > 0 && (
                   <div>
                     <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
-                      <Info className="h-3.5 w-3.5 text-blue-500" />
+                      <Info className="h-3.5 w-3.5 text-violet-500" />
                       Recommendations
                     </h4>
                     <ul className="text-xs text-muted-foreground space-y-1">
                       {stats.recommendations.map((rec, i) => (
                         <li key={i} className="flex items-start gap-1.5">
-                          <span className="text-blue-500">•</span>
+                          <span className="text-violet-500">•</span>
                           {rec}
                         </li>
                       ))}

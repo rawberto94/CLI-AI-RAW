@@ -16,18 +16,11 @@
  * Requirements: 4.2
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
+import { NextRequest } from 'next/server';
 import { supplierAlertService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const { searchParams } = new URL(request.url);
     const supplierId = searchParams.get('supplierId');
     const status = searchParams.get('status') || 'active';
@@ -41,12 +34,12 @@ export async function GET(request: NextRequest) {
       // Get alerts for specific supplier
       alerts = await supplierAlertService.getSupplierAlerts(
         supplierId,
-        session.user.tenantId
+        ctx.tenantId
       );
     } else {
       // Get all alerts for tenant
       alerts = await supplierAlertService.getActiveAlerts(
-        session.user.tenantId
+        ctx.tenantId
       );
     }
 
@@ -65,69 +58,42 @@ export async function GET(request: NextRequest) {
 
     // Get alert statistics
     const statistics = await supplierAlertService.getAlertStatistics(
-      session.user.tenantId
+      ctx.tenantId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       alerts,
       count: alerts.length,
       statistics,
       generatedAt: new Date().toISOString()
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch supplier alerts' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     // Trigger alert detection for all suppliers
     const alerts = await supplierAlertService.detectSupplierAlerts(
-      session.user.tenantId
+      ctx.tenantId
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: 'Alert detection completed',
       alertsDetected: alerts.length,
       alerts,
       generatedAt: new Date().toISOString()
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to detect supplier alerts' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * PATCH /api/rate-cards/suppliers/alerts
  * 
  * Update alert status (acknowledge, resolve, dismiss)
  */
-export async function PATCH(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const PATCH = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { alertId, action, resolution } = body;
 
     if (!alertId || !action) {
-      return NextResponse.json(
-        { error: 'Missing required fields: alertId, action' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Missing required fields: alertId, action', 400);
     }
 
     let updatedAlert;
@@ -136,20 +102,17 @@ export async function PATCH(request: NextRequest) {
       case 'acknowledge':
         updatedAlert = await supplierAlertService.acknowledgeAlert(
           alertId,
-          session.user.id
+          ctx.userId
         );
         break;
 
       case 'resolve':
         if (!resolution) {
-          return NextResponse.json(
-            { error: 'Resolution is required for resolve action' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Resolution is required for resolve action', 400);
         }
         updatedAlert = await supplierAlertService.resolveAlert({
           alertId,
-          resolvedBy: session.user.id,
+          resolvedBy: ctx.userId,
           resolvedAt: new Date(),
           resolution: resolution.description,
           actionTaken: resolution.actionTaken,
@@ -160,25 +123,16 @@ export async function PATCH(request: NextRequest) {
       case 'dismiss':
         updatedAlert = await supplierAlertService.dismissAlert(
           alertId,
-          session.user.id
+          ctx.userId
         );
         break;
 
       default:
-        return NextResponse.json(
-          { error: `Invalid action: ${action}. Must be acknowledge, resolve, or dismiss` },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', `Invalid action: ${action}`, 400);
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: `Alert ${action}d successfully`,
       alert: updatedAlert
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update supplier alert' },
-      { status: 500 }
-    );
-  }
-}
+  });

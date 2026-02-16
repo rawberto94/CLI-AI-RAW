@@ -64,30 +64,35 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 ## 🔑 Key Features
 
 ### 1. Multi-Source Data Ingestion
+
 - ✅ **PDF Extraction**: AI-powered extraction from contracts
 - ✅ **Manual Entry**: User-friendly form with validation
 - ✅ **Bulk Upload**: CSV import with mapping templates
 - ✅ **API Integration**: RESTful API for external systems
 
 ### 2. Intelligent Normalization
+
 - 🤖 **Role Standardization**: ML-based role mapping
 - 💱 **Currency Conversion**: Real-time FX rates
 - 🌍 **Geographic Mapping**: Country/region standardization
 - 📊 **Rate Period Unification**: Hourly/daily/monthly/annual
 
 ### 3. Advanced Benchmarking
+
 - 📈 **Statistical Analysis**: Mean, median, percentiles (P25, P50, P75, P90, P95)
 - 🎯 **Market Positioning**: Quartile ranking, percentile scores
 - 📉 **Trend Analysis**: MoM, YoY comparisons
 - 🔍 **Cohort Definition**: Similar roles/locations/tiers
 
 ### 4. Market Intelligence
+
 - 📊 **Role Trends**: Price movements by role/seniority
 - 🌍 **Geographic Analysis**: Regional rate differences
 - 🏢 **Supplier Rankings**: Competitiveness scoring
 - 🔮 **Predictive Insights**: Future rate forecasts
 
 ### 5. Savings Opportunities
+
 - 💰 **Auto-Detection**: Identifies overpriced rates
 - 📋 **Categorization**: 6 categories (rate reduction, supplier switch, etc.)
 - ⚡ **Effort/Risk Scoring**: Prioritization framework
@@ -121,9 +126,11 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 ## 🎨 UI Pages
 
 ### Dashboard (`/rate-cards/dashboard`)
+
 **Purpose**: Executive overview with KPIs and insights
 
 **Widgets**:
+
 - Total rate cards tracked
 - Annual spend
 - Savings identified
@@ -133,9 +140,11 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 - Top opportunities (savings potential)
 
 ### Entries (`/rate-cards/entries`)
+
 **Purpose**: Browse and manage all rate cards
 
 **Features**:
+
 - Sortable table
 - Multi-filter (supplier, role, country, date)
 - Search
@@ -143,26 +152,32 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 - Export
 
 ### Upload (`/rate-cards/upload`)
+
 **Purpose**: Add new rate cards
 
 **Options**:
+
 - **Manual**: Form-based entry
 - **CSV**: Bulk upload with template
 - **Extract**: AI extraction from contracts
 
 ### Benchmarking (`/rate-cards/benchmarking`)
+
 **Purpose**: Analyze market position
 
 **Tools**:
+
 - Market intelligence by role/location
 - Comparison tool (side-by-side)
 - Trend analysis
 - Percentile distributions
 
 ### Suppliers (`/rate-cards/suppliers`)
+
 **Purpose**: Evaluate supplier performance
 
 **Metrics**:
+
 - Competitiveness score (1-5 stars)
 - Average rates
 - Geographic coverage
@@ -170,9 +185,11 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 - Cost rankings
 
 ### Opportunities (`/rate-cards/opportunities`)
+
 **Purpose**: Track savings potential
 
 **Data**:
+
 - All identified opportunities
 - Filter by status/category
 - Sort by savings amount
@@ -183,6 +200,7 @@ Contract Upload → PDF Extraction → Rate Cards → Normalization
 ## 🔌 API Endpoints
 
 ### CRUD Operations
+
 ```
 POST   /api/rate-cards              # Create entry
 GET    /api/rate-cards/:id          # Get entry
@@ -192,17 +210,20 @@ GET    /api/rate-cards              # List entries (paginated)
 ```
 
 ### Bulk Operations
+
 ```
 POST   /api/rate-cards/bulk         # Bulk import
 POST   /api/rate-cards/validate     # Validate CSV
 ```
 
 ### AI Extraction
+
 ```
 POST   /api/rate-cards/extract/:contractId
 ```
 
 ### Benchmarking
+
 ```
 GET    /api/rate-cards/:id/benchmark
 GET    /api/benchmarking/market
@@ -210,6 +231,7 @@ POST   /api/benchmarking/compare
 ```
 
 ### Savings
+
 ```
 GET    /api/opportunities
 GET    /api/opportunities/:id
@@ -217,6 +239,7 @@ PUT    /api/opportunities/:id/status
 ```
 
 ### Suppliers
+
 ```
 GET    /api/suppliers
 GET    /api/suppliers/:id
@@ -229,7 +252,9 @@ GET    /api/suppliers/compare
 ## 💡 Innovative Features
 
 ### 1. AI Rate Extraction
+
 Extract rate cards automatically from PDF contracts:
+
 ```typescript
 Input:  Contract PDF
         ↓
@@ -244,7 +269,9 @@ Output: {
 ```
 
 ### 2. Smart Role Mapping
+
 Learn and improve role standardization:
+
 ```typescript
 "Sr. Java Dev"           → "Software Engineer - Senior"
 "Lead Data Scientist"    → "Data Scientist - Principal"
@@ -252,7 +279,9 @@ Learn and improve role standardization:
 ```
 
 ### 3. Market Position Visualization
+
 Show exactly where you stand:
+
 ```
 P0  P25   P50   P75    P100
 ├────┼─────┼─────┼──────┤
@@ -264,6 +293,7 @@ $800  $950  $1050 $1200  $1500
 ```
 
 ### 4. Savings Categories
+
 - **Rate Reduction**: Negotiate lower rates
 - **Supplier Switch**: Change to cheaper supplier
 - **Volume Discount**: Leverage higher volumes
@@ -272,7 +302,9 @@ $800  $950  $1050 $1200  $1500
 - **Skill Optimization**: Adjust role mix
 
 ### 5. Negotiation Assistant
+
 AI-powered talking points:
+
 ```
 ✓ Market average for this role is $1050 (you pay $1200)
 ✓ 3 comparable suppliers offer $950-$1000
@@ -286,6 +318,7 @@ AI-powered talking points:
 ## 📊 Sample Calculations
 
 ### Benchmark Calculation
+
 ```typescript
 // Given: 50 similar rates
 const rates = [900, 950, 1000, 1050, 1100, ...]; // USD/day
@@ -307,6 +340,7 @@ const rates = [900, 950, 1000, 1050, 1100, ...]; // USD/day
 ```
 
 ### Annual Savings Impact
+
 ```typescript
 const dailyRate = 1200;
 const marketMedian = 1050;
@@ -321,24 +355,28 @@ const annualSavings = (dailyRate - marketMedian) * daysPerYear;
 ## 🎯 Success Metrics
 
 ### Phase 1 (Month 1)
+
 - [ ] 100+ rate cards entered
 - [ ] 10+ suppliers tracked
 - [ ] 5+ countries covered
 - [ ] Benchmark calculation working
 
 ### Phase 2 (Month 2)
+
 - [ ] 500+ rate cards
 - [ ] AI extraction tested on 20+ contracts
 - [ ] $500K+ savings identified
 - [ ] 5+ opportunities reviewed
 
 ### Phase 3 (Month 3)
+
 - [ ] 1000+ rate cards
 - [ ] 50+ suppliers
 - [ ] $2M+ savings identified
 - [ ] First negotiations completed
 
 ### ROI Target
+
 - **15-25%** savings on contractor spend
 - **Break-even**: First successful negotiation
 - **Payback period**: < 3 months
@@ -371,6 +409,7 @@ const annualSavings = (dailyRate - marketMedian) * daysPerYear;
 ### For System Admins
 
 1. **Run Migrations**
+
    ```bash
    cd packages/clients/db
    npx prisma migrate deploy

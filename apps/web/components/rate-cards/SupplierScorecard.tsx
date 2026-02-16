@@ -244,13 +244,13 @@ export function SupplierScorecard({
 
   useEffect(() => {
     fetchScorecard();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [supplierId, periodMonths]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
       </div>
     );
   }
@@ -270,7 +270,7 @@ export function SupplierScorecard({
 
   const getCompetitivenessRating = (score: number) => {
     if (score >= 80) return { stars: 5, label: 'Excellent', color: 'text-green-600' };
-    if (score >= 60) return { stars: 4, label: 'Good', color: 'text-blue-600' };
+    if (score >= 60) return { stars: 4, label: 'Good', color: 'text-violet-600' };
     if (score >= 40) return { stars: 3, label: 'Average', color: 'text-yellow-600' };
     if (score >= 20) return { stars: 2, label: 'Below Average', color: 'text-orange-600' };
     return { stars: 1, label: 'Poor', color: 'text-red-600' };
@@ -292,7 +292,7 @@ export function SupplierScorecard({
       case 'highly_recommended':
         return <Badge className="bg-green-600">Highly Recommended</Badge>;
       case 'recommended':
-        return <Badge className="bg-blue-600">Recommended</Badge>;
+        return <Badge className="bg-violet-600">Recommended</Badge>;
       case 'consider':
         return <Badge className="bg-yellow-600">Consider</Badge>;
       case 'not_recommended':
@@ -525,7 +525,7 @@ export function SupplierScorecard({
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full"
+                  className="bg-violet-600 h-2 rounded-full"
                   style={{
                     width: `${Math.min(
                       100,
@@ -673,7 +673,7 @@ export function SupplierScorecard({
                 <div className="flex items-center gap-2">
                   <div className="flex-1 bg-gray-200 rounded-full h-2">
                     <div
-                      className="bg-blue-600 h-2 rounded-full"
+                      className="bg-violet-600 h-2 rounded-full"
                       style={{
                         width: `${scorecard.serviceLineCoverage.diversityScore}%`,
                       }}
@@ -777,7 +777,7 @@ export function SupplierScorecard({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-blue-600 h-2 rounded-full"
+                        className="bg-violet-600 h-2 rounded-full"
                         style={{
                           width: `${intelligence.competitiveness.dimensions.priceCompetitiveness}%`,
                         }}
@@ -817,7 +817,7 @@ export function SupplierScorecard({
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
-                        className="bg-purple-600 h-2 rounded-full"
+                        className="bg-violet-600 h-2 rounded-full"
                         style={{
                           width: `${intelligence.competitiveness.dimensions.rateStability}%`,
                         }}
@@ -848,7 +848,7 @@ export function SupplierScorecard({
                   <div className="pt-4 border-t">
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-medium">Overall Score</span>
-                      <span className="text-2xl font-bold text-blue-600">
+                      <span className="text-2xl font-bold text-violet-600">
                         {intelligence.competitiveness.overallScore.toFixed(1)}
                       </span>
                     </div>
@@ -946,9 +946,9 @@ export function SupplierScorecard({
                         {intelligence.trends.patterns.map((pattern, idx) => (
                           <div
                             key={idx}
-                            className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg"
+                            className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg"
                           >
-                            <AlertTriangle className="h-5 w-5 text-blue-600 mt-0.5" />
+                            <AlertTriangle className="h-5 w-5 text-violet-600 mt-0.5" />
                             <div className="flex-1">
                               <p className="text-sm font-medium">{pattern.description}</p>
                               <p className="text-xs text-gray-600 dark:text-slate-400 mt-1">
@@ -1026,7 +1026,7 @@ export function SupplierScorecard({
               </CardHeader>
               <CardContent>
                 {/* Summary */}
-                <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+                <div className="mb-6 p-4 bg-violet-50 rounded-lg">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Best Alternative</p>
@@ -1042,7 +1042,7 @@ export function SupplierScorecard({
                     </div>
                     <div>
                       <p className="text-sm text-gray-600 dark:text-slate-400 mb-1">Switching Score</p>
-                      <p className="text-lg font-bold text-blue-600">
+                      <p className="text-lg font-bold text-violet-600">
                         {intelligence.alternatives.recommendations[0]?.switchingScore.toFixed(1) || 0}/100
                       </p>
                     </div>
@@ -1068,7 +1068,7 @@ export function SupplierScorecard({
                           </div>
                           <div className="text-right">
                             <p className="text-sm text-gray-600 dark:text-slate-400">Rank #{alt.ranking}</p>
-                            <p className="text-2xl font-bold text-blue-600">
+                            <p className="text-2xl font-bold text-violet-600">
                               {alt.switchingScore.toFixed(1)}
                             </p>
                           </div>

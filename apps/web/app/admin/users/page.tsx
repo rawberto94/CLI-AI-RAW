@@ -6,22 +6,22 @@ import {
   Users,
   UserPlus,
   Search,
-  Filter,
+  Filter as _Filter,
   MoreVertical,
   Mail,
   Shield,
-  Clock,
+  Clock as _Clock,
   Trash2,
   Edit2,
   Upload,
-  Download,
+  Download as _Download,
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription as _CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -83,9 +83,9 @@ interface Invitation {
 }
 
 const ROLES = [
-  { value: 'owner', label: 'Owner', color: 'bg-purple-100 text-purple-800' },
+  { value: 'owner', label: 'Owner', color: 'bg-violet-100 text-violet-800' },
   { value: 'admin', label: 'Admin', color: 'bg-red-100 text-red-800' },
-  { value: 'manager', label: 'Manager', color: 'bg-blue-100 text-blue-800' },
+  { value: 'manager', label: 'Manager', color: 'bg-violet-100 text-violet-800' },
   { value: 'member', label: 'Member', color: 'bg-green-100 text-green-800' },
   { value: 'viewer', label: 'Viewer', color: 'bg-gray-100 text-gray-800' },
 ];
@@ -98,10 +98,10 @@ const STATUS_CONFIG = {
 };
 
 export default function UsersPage() {
-  const { data: session } = useSession();
+  const { data: _session } = useSession();
   const [users, setUsers] = useState<User[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [_loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -127,7 +127,7 @@ export default function UsersPage() {
         const data = await invitesRes.json();
         setInvitations(data.invitations || []);
       }
-    } catch (error) {
+    } catch (_error) {
       toast.error('Failed to load users');
     } finally {
       setLoading(false);
@@ -358,10 +358,10 @@ export default function UsersPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-blue-600">Admins</CardTitle>
+            <CardTitle className="text-sm font-medium text-violet-600">Admins</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-blue-600">
+            <p className="text-2xl font-bold text-violet-600">
               {users.filter(u => u.role === 'admin' || u.role === 'owner').length}
             </p>
           </CardContent>

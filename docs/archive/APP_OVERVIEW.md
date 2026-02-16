@@ -19,6 +19,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 ## 🚀 Key Features
 
 ### 1. Contract Management
+
 - **Upload & Processing**: Support for PDF, DOCX, XLSX, and other document formats
 - **OCR Processing**: Extract text from scanned documents using AWS Textract
 - **Bulk Operations**: Mass upload and batch processing capabilities
@@ -27,6 +28,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Soft Delete**: Recoverable document deletion with audit trail
 
 ### 2. AI-Powered Analysis
+
 - **Artifact Generation**: Automatically extract key contract information:
   - Overview & Summary
   - Clauses Analysis (liability, termination, SLA, etc.)
@@ -39,6 +41,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Confidence Scoring**: Quality metrics for extracted data
 
 ### 3. Rate Card Intelligence
+
 - **Rate Card Management**: Import, store, and analyze vendor rate cards
 - **Benchmarking**: Compare rates against market averages and internal baselines
 - **Role Standardization**: AI-powered role name normalization across suppliers
@@ -48,6 +51,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Predictive Analytics**: Rate forecasting with trend analysis
 
 ### 4. RAG (Retrieval-Augmented Generation) System
+
 - **Vector Search**: Semantic search using pgvector embeddings
 - **Knowledge Graph**: Entity relationships and contract networks
 - **Multi-Modal Processing**: Tables, images, and mixed content handling
@@ -55,12 +59,14 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Natural Language Queries**: Ask questions about contracts in plain English
 
 ### 5. Workflow & Approvals
+
 - **Configurable Workflows**: Custom approval chains and review processes
 - **Step-Based Execution**: Track progress through multi-step workflows
 - **Assignment & Notifications**: Automatic task assignment with alerts
 - **Deadline Management**: SLA tracking and escalation
 
 ### 6. Analytics & Reporting
+
 - **Dashboard Metrics**: Real-time KPIs and trend visualization
 - **Procurement Analytics**: Spend analysis by category, supplier, and region
 - **Savings Tracking**: Monitor realized vs. projected savings
@@ -68,12 +74,14 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Scheduled Reports**: Automated report delivery via email
 
 ### 7. Collaboration Features
+
 - **Comments & Mentions**: Team discussions on contracts with @mentions
 - **Activity Feed**: Track all changes and interactions
 - **Document Sharing**: Secure sharing with permission controls
 - **Real-Time Notifications**: WebSocket-based instant updates
 
 ### 8. Integration Hub
+
 - **Cloud Storage**: Google Drive, SharePoint, Dropbox integrations
 - **ERP Systems**: SAP, Coupa connectivity
 - **E-Signature**: DocuSign integration
@@ -81,6 +89,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Webhooks**: Event-driven notifications to external systems
 
 ### 9. Expiration & Renewal Management
+
 - **Expiration Tracking**: Automated monitoring of contract end dates
 - **Alert System**: Configurable notifications at 30/60/90 days
 - **Renewal Workflows**: Guided renewal process
@@ -88,6 +97,7 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 - **Health Scoring**: Contract health metrics with trend analysis
 
 ### 10. Compliance & Governance
+
 - **Audit Logging**: Complete trail of all actions
 - **Role-Based Access Control (RBAC)**: Granular permissions
 - **Multi-Tenancy**: Isolated tenant data with configurable settings
@@ -181,12 +191,14 @@ The **Contract Intelligence Platform** is a comprehensive enterprise-grade solut
 Contains 100+ services organized by domain:
 
 **Contract Services:**
+
 - `contract.service.ts` - Core contract CRUD operations
 - `artifact.service.ts` - AI artifact management
 - `processing-job.service.ts` - Contract processing pipeline
 - `chunked-upload.service.ts` - Large file uploads
 
 **Rate Card Services:**
+
 - `rate-card-management.service.ts` - Rate card CRUD
 - `rate-card-benchmarking.service.ts` - Market comparisons
 - `rate-card-intelligence.service.ts` - Advanced analytics
@@ -194,12 +206,14 @@ Contains 100+ services organized by domain:
 - `role-standardization.service.ts` - Role name normalization
 
 **Analytics Services:**
+
 - `analytics.service.ts` - Dashboard metrics
 - `cost-savings-analyzer.service.ts` - Savings identification
 - `predictive-analytics.service.ts` - Forecasting
 - `competitive-intelligence.service.ts` - Market analysis
 
 **Infrastructure Services:**
+
 - `audit-trail.service.ts` - Audit logging
 - `webhook.service.ts` - External notifications
 - `smart-cache.service.ts` - Multi-level caching
@@ -356,6 +370,7 @@ Contains 100+ services organized by domain:
 ## 🛠️ Technology Stack
 
 ### Frontend
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Next.js | 15.1+ | React framework with App Router |
@@ -369,6 +384,7 @@ Contains 100+ services organized by domain:
 | Framer Motion | 11.x | Animations |
 
 ### Backend
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | Node.js | 18+ | Runtime |
@@ -378,6 +394,7 @@ Contains 100+ services organized by domain:
 | Pino | 9.5+ | Logging |
 
 ### Database & Storage
+
 | Technology | Version | Purpose |
 |------------|---------|---------|
 | PostgreSQL | 15+ | Primary database |
@@ -386,6 +403,7 @@ Contains 100+ services organized by domain:
 | MinIO | Latest | S3-compatible storage |
 
 ### AI/ML
+
 | Technology | Purpose |
 |------------|---------|
 | OpenAI GPT-4 | Primary LLM for analysis |
@@ -394,6 +412,7 @@ Contains 100+ services organized by domain:
 | text-embedding-3-small | Vector embeddings |
 
 ### DevOps
+
 | Technology | Purpose |
 |------------|---------|
 | Docker | Containerization |
@@ -456,12 +475,12 @@ pnpm test:e2e      # Playwright tests
 
 | Service | URL |
 |---------|-----|
-| Main Application | http://localhost:3005 |
-| RAG Chat | http://localhost:3005/rag/chat |
-| Intelligence | http://localhost:3005/intelligence |
-| Analytics | http://localhost:3005/analytics |
-| Prisma Studio | http://localhost:5555 |
-| MinIO Console | http://localhost:9001 |
+| Main Application | <http://localhost:3005> |
+| RAG Chat | <http://localhost:3005/rag/chat> |
+| Intelligence | <http://localhost:3005/intelligence> |
+| Analytics | <http://localhost:3005/analytics> |
+| Prisma Studio | <http://localhost:5555> |
+| MinIO Console | <http://localhost:9001> |
 
 ---
 

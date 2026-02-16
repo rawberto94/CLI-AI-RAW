@@ -240,7 +240,7 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
           placeholder={placeholder}
           className={cn(
             'pl-10 pr-10 h-10 bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700',
-            'focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500',
+            'focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500',
             'transition-all duration-200'
           )}
           data-testid="contract-search"
@@ -263,7 +263,7 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
       {/* Dropdown */}
       <AnimatePresence>
         {showDropdown && (
-          <motion.div
+          <motion.div key="dropdown"
             ref={dropdownRef}
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -311,7 +311,7 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
                     className={cn(
                       'w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors',
                       isHighlighted
-                        ? 'bg-blue-50 dark:bg-blue-950/30'
+                        ? 'bg-violet-50 dark:bg-violet-950/30'
                         : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
                     )}
                   >
@@ -320,9 +320,9 @@ export const EnhancedSearchInput = memo(function EnhancedSearchInput({
                         'h-4 w-4 flex-shrink-0',
                         suggestion.type === 'recent' && 'text-slate-400',
                         suggestion.type === 'trending' && 'text-amber-500',
-                        suggestion.type === 'contract' && 'text-blue-500',
-                        suggestion.type === 'party' && 'text-cyan-500',
-                        suggestion.type === 'category' && 'text-purple-500'
+                        suggestion.type === 'contract' && 'text-violet-500',
+                        suggestion.type === 'party' && 'text-violet-500',
+                        suggestion.type === 'category' && 'text-violet-500'
                       )}
                     />
                     <span className="flex-1 text-sm text-slate-700 dark:text-slate-300 truncate">

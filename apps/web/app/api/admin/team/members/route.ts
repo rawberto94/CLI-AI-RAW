@@ -3,44 +3,28 @@
  * List and manage team members
  */
 
-import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import { withAuthApiHandler, createSuccessResponse, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { prisma } from '@/lib/prisma';
+import { monitoringService } from 'data-orchestration/services';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await auth();
-    
-    if (!session?.user?.tenantId) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+export const GET = withAuthApiHandler(async (_request, ctx) => {
+  const members = await prisma.user.findMany({
+    where: { tenantId: ctx.tenantId },
+    select: {
+      id: true,
+      email: true,
+      firstName: true,
+      lastName: true,
+      role: true,
+      status: true,
+      lastLoginAt: true,
+      createdAt: true,
+    },
+    orderBy: [
+      { role: 'asc' },
+      { createdAt: 'asc' },
+    ],
+  });
 
-    const members = await prisma.user.findMany({
-      where: { tenantId: session.user.tenantId },
-      select: {
-        id: true,
-        email: true,
-        firstName: true,
-        lastName: true,
-        role: true,
-        status: true,
-        lastLoginAt: true,
-        createdAt: true,
-      },
-      orderBy: [
-        { role: "asc" },
-        { createdAt: "asc" },
-      ],
-    });
-
-    return NextResponse.json({ members });
-  } catch {
-    return NextResponse.json(
-      { error: "Failed to get team members" },
-      { status: 500 }
-    );
-  }
-}
+  return createSuccessResponse(ctx, { members });
+});

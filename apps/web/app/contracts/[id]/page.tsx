@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useDataMode } from '@/contexts/DataModeContext'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -36,6 +37,10 @@ import { cn } from '@/lib/utils'
 import { getTenantId } from '@/lib/tenant';
 import { toast } from 'sonner'
 import { ComprehensiveAIAnalysis } from '@/components/artifacts/ComprehensiveAIAnalysis'
+import { ContractAIAnalyst } from '@/components/contracts/ContractAIAnalyst'
+import { ContractIntelligenceBrief } from '@/components/ai/ContractIntelligenceBrief'
+import { EnhancedNegotiationPanel } from '@/components/ai/EnhancedNegotiationPanel'
+import { PredictiveInsightsWidget } from '@/components/ai/PredictiveInsightsWidget'
 import { ShareDialog } from '@/components/collaboration/ShareDialog'
 import { useWebSocket } from '@/contexts/websocket-context'
 import { useCrossModuleInvalidation } from '@/hooks/use-queries'
@@ -60,6 +65,7 @@ import { RobustPDFViewer } from '@/components/contracts/RobustPDFViewer'
 import { ActivityTab } from '@/components/contracts/detail/ActivityTab'
 import { VersionManager } from '@/components/contracts/VersionManager'
 import { useSplitPaneResize } from '@/hooks/use-split-pane-resize'
+import { useMediaQuery } from '@/hooks/useMediaQuery'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 
 // Import print styles
@@ -149,6 +155,10 @@ interface ContractData {
   billing_frequency_type?: string | null
   periodicity?: string | null
   signature_date?: string | null
+  signature_status?: string | null
+  signature_required_flag?: boolean | null
+  document_classification?: string | null
+  document_classification_warning?: string | null
   start_date?: string | null
   end_date?: string | null
   termination_date?: string | null
@@ -194,6 +204,7 @@ export default function ContractDetailPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
+  const { data: session } = useSession()
   const { dataMode } = useDataMode()
   const wsContext = useWebSocket()
   const crossModule = useCrossModuleInvalidation()
@@ -231,6 +242,7 @@ export default function ContractDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [showPdfViewer, setShowPdfViewer] = useState(false)
   const [isExtractingAI, setIsExtractingAI] = useState(false)
+  const [isExtractingObligations, setIsExtractingObligations] = useState(false)
   const [isSavingCategory, setIsSavingCategory] = useState(false)
   const [isFavorite, setIsFavorite] = useState(false)
   const [showRenewalModal, setShowRenewalModal] = useState(false)
@@ -269,6 +281,7 @@ export default function ContractDetailPage() {
   const [extractionConfidence, setExtractionConfidence] = useState<number | undefined>(undefined)
   
   // Split pane for PDF viewer
+  const isMobile = useMediaQuery('(max-width: 768px)')
   const {
     containerRef: splitContainerRef,
     ratio: pdfSplitRatio,
@@ -293,7 +306,7 @@ export default function ContractDetailPage() {
           case '1': setTab('overview'); break
           case '2': setTab('details'); break
           case '3': setTab('activity'); break
-          case '4': setTab('ai'); break
+          case '4': case 'a': case 'A': setTab('ai'); break
           case 'p': case 'P': setPdfViewerOpen(!showPdfViewer); break
           case 'e': case 'E': if (!isEditing) setIsEditing(true); break
           case 'f': case 'F': setIsFavorite(prev => !prev); break
@@ -328,7 +341,7 @@ export default function ContractDetailPage() {
     
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [isEditing, setPdfViewerOpen, setTab, showPdfViewer])
 
   // Initialize tab from URL (shareable deep-link)
@@ -374,7 +387,8 @@ export default function ContractDetailPage() {
         throw new Error(`Failed to load contract: ${response.status}`)
       }
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.error) throw new Error(data.error)
       
       setContract(data)
@@ -387,7 +401,7 @@ export default function ContractDetailPage() {
     } finally {
       setLoading(false)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [params.id, dataMode])
 
   const loadVersions = useCallback(async () => {
@@ -398,7 +412,8 @@ export default function ContractDetailPage() {
       
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.versions && Array.isArray(data.versions)) {
         setContractVersions(data.versions.map((v: any) => ({
           id: v.id,
@@ -432,7 +447,8 @@ export default function ContractDetailPage() {
       
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.notes && Array.isArray(data.notes)) {
         setNotes(data.notes.map((n: any) => ({
           id: n.id,
@@ -453,7 +469,8 @@ export default function ContractDetailPage() {
       const response = await fetch(`/api/contracts/${params.id}/family-health`)
       if (!response.ok) return
       
-      const data = await response.json()
+      const raw = await response.json()
+      const data = raw.data ?? raw
       if (data.success !== false) {
         setHealthData({
           healthScore: data.healthScore ?? 100,
@@ -486,6 +503,34 @@ export default function ContractDetailPage() {
     loadContract()
   }, [loadContract])
 
+  // Auto-refresh when contract is still processing
+  useEffect(() => {
+    if (!isProcessing || !contract) return
+    
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/contracts/${params.id}`, {
+          headers: { 'x-data-mode': dataMode }
+        })
+        if (!response.ok) return
+        
+        const raw = await response.json()
+        const data = raw.data ?? raw
+        
+        // If status changed from processing, do a full reload
+        const newStatus = data.status?.toLowerCase()
+        if (newStatus && newStatus !== 'processing' && newStatus !== 'uploaded') {
+          clearInterval(pollInterval)
+          loadContract()
+        }
+      } catch {
+        // Silent fail - will retry on next interval
+      }
+    }, 5000) // Poll every 5 seconds
+    
+    return () => clearInterval(pollInterval)
+  }, [isProcessing, contract, params.id, dataMode, loadContract])
+
   // ============ ACTION HANDLERS ============
   const handleDownload = useCallback(async () => {
     try {
@@ -514,10 +559,10 @@ export default function ContractDetailPage() {
   const handleAIExtraction = useCallback(async () => {
     setIsExtractingAI(true)
     try {
-      const response = await fetch(`/api/contracts/${params.id}/extract`, {
+      const response = await fetch(`/api/contracts/${params.id}/retry`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-tenant-id': getTenantId() },
-        body: JSON.stringify({ force: true, includeConfidence: true })
+        body: JSON.stringify({ force: true })
       })
       
       if (!response.ok) throw new Error('AI extraction failed')
@@ -533,6 +578,48 @@ export default function ContractDetailPage() {
       setIsExtractingAI(false)
     }
   }, [params.id, loadContract])
+
+  const handleExtractObligations = useCallback(async () => {
+    setIsExtractingObligations(true)
+    try {
+      toast.info('Extracting obligations from contract...')
+      
+      const response = await fetch('/api/obligations/v2', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json', 
+          'x-tenant-id': getTenantId() 
+        },
+        body: JSON.stringify({
+          action: 'extract',
+          contractId: params.id,
+        })
+      })
+      
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to extract obligations')
+      }
+      
+      const data = await response.json()
+      const count = data.obligations?.length || 0
+      
+      if (count > 0) {
+        toast.success(`Successfully extracted ${count} obligation${count > 1 ? 's' : ''} from this contract!`, {
+          action: {
+            label: 'View Obligations',
+            onClick: () => router.push(`/obligations?contract=${params.id}`)
+          }
+        })
+      } else {
+        toast.warning('No obligations found in this contract. The AI could not identify specific obligations, deadlines, or requirements.')
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to extract obligations')
+    } finally {
+      setIsExtractingObligations(false)
+    }
+  }, [params.id, router])
 
   const handleCategorySelect = useCallback(async (categoryId: string) => {
     setIsSavingCategory(true)
@@ -567,12 +654,27 @@ export default function ContractDetailPage() {
       if (!response.ok) throw new Error('Failed to categorize')
       
       const data = await response.json()
-      if (data.data?.results?.[0]?.success) {
-        toast.success('Contract categorized by AI')
+      const result = data.data?.results?.[0]
+      if (result?.success && result?.category) {
+        toast.success(`Contract categorized as "${result.category}" (${result.confidence}% confidence)`)
         crossModule.onTaxonomyChange()
         await loadContract()
       } else {
-        toast.warning('AI could not determine a category')
+        // Show specific error reason from API response
+        const errorReason = result?.error || ''
+        if (errorReason.includes('No taxonomy categories')) {
+          toast.error('No categories defined. Go to Settings → Taxonomy to set up categories.', { duration: 5000 })
+        } else if (errorReason.includes('No text available')) {
+          toast.warning('Contract has no text to analyze. Try uploading a document first.')
+        } else if (errorReason.includes('AI not configured')) {
+          toast.error('AI service not available. Please configure OpenAI API key or add keywords to categories.', { duration: 5000 })
+        } else if (errorReason.includes('No category keywords')) {
+          toast.warning('Add keywords to your categories in Settings → Taxonomy for automatic categorization.', { duration: 5000 })
+        } else if (errorReason) {
+          toast.warning(errorReason, { duration: 5000 })
+        } else {
+          toast.warning('Could not determine category. Try selecting one manually.')
+        }
       }
     } catch {
       toast.error('Failed to run AI categorization')
@@ -645,7 +747,7 @@ export default function ContractDetailPage() {
                 <p className="text-sm text-slate-600 mb-6 max-w-[280px] mx-auto">{error}</p>
                 <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                   {!isNotFound && (
-                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-indigo-500 to-purple-600">
+                    <Button onClick={loadContract} size="sm" className="bg-gradient-to-r from-violet-500 to-purple-600">
                       <RefreshCw className="h-4 w-4 mr-2" />
                       Retry
                     </Button>
@@ -668,7 +770,7 @@ export default function ContractDetailPage() {
   // ============ LOADING STATE ============
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex items-center gap-4 mb-6 sm:mb-8">
             <div className="h-8 w-20 bg-gradient-to-r from-slate-200 to-slate-100 rounded-lg animate-pulse" />
@@ -693,7 +795,7 @@ export default function ContractDetailPage() {
 
   // ============ MAIN RENDER ============
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/20 print-container">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-purple-50/20 print-container">
       {/* Skip to main content link for accessibility */}
       <SkipToContent targetId="main-content" />
       
@@ -720,15 +822,17 @@ export default function ContractDetailPage() {
         showPdfViewer={showPdfViewer}
         isEditing={isEditing}
         isExtractingAI={isExtractingAI}
+        isExtractingObligations={isExtractingObligations}
         isExpiredOrExpiring={
-          contract?.expirationDate 
-            ? new Date(contract.expirationDate) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+          metadata.end_date 
+            ? new Date(metadata.end_date) <= new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
             : false
         }
         onRefresh={loadContract}
         onTogglePdf={() => setPdfViewerOpen(!showPdfViewer)}
         onEdit={() => setIsEditing(true)}
         onAIExtract={handleAIExtraction}
+        onExtractObligations={handleExtractObligations}
         onDownload={handleDownload}
         onShare={() => setShowShareDialog(true)}
         onCompare={() => setShowComparison(true)}
@@ -739,8 +843,8 @@ export default function ContractDetailPage() {
       <div 
         ref={splitContainerRef}
         className={cn(
-          "flex",
-          showPdfViewer ? "h-[calc(100vh-4rem)]" : "",
+          showPdfViewer && !isMobile ? "flex h-[calc(100vh-4rem)]" : "",
+          showPdfViewer && isMobile ? "flex flex-col h-[calc(100vh-4rem)]" : "",
           isResizingPanel && "select-none"
         )}
       >
@@ -748,8 +852,11 @@ export default function ContractDetailPage() {
         {showPdfViewer && (
           <>
             <div 
-              className="h-full bg-slate-100 flex-shrink-0 relative"
-              style={{ width: `${pdfSplitRatio}%`, minWidth: '280px' }}
+              className={cn(
+                "bg-slate-100 flex-shrink-0 relative",
+                isMobile ? "w-full h-[50vh]" : "h-full"
+              )}
+              style={isMobile ? undefined : { width: `${pdfSplitRatio}%`, minWidth: '280px' }}
             >
               <RobustPDFViewer
                 contractId={params.id as string}
@@ -760,12 +867,13 @@ export default function ContractDetailPage() {
               />
             </div>
             
-            {/* Resize Handle */}
+            {/* Resize Handle - hidden on mobile */}
+            {!isMobile && (
             <div
               className={cn(
-                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-blue-500 transition-colors flex-shrink-0",
+                "w-1.5 cursor-col-resize bg-slate-300 hover:bg-violet-500 transition-colors flex-shrink-0",
                 "flex items-center justify-center group",
-                isResizingPanel && "bg-blue-500"
+                isResizingPanel && "bg-violet-500"
               )}
               role="separator"
               tabIndex={0}
@@ -787,6 +895,7 @@ export default function ContractDetailPage() {
             >
               <div className="w-0.5 h-8 bg-slate-400 group-hover:bg-white rounded-full" />
             </div>
+            )}
           </>
         )}
         
@@ -795,26 +904,26 @@ export default function ContractDetailPage() {
           id="main-content"
           tabIndex={-1}
           className={cn("overflow-auto", showPdfViewer ? "flex-1" : "w-full")} 
-          style={showPdfViewer ? { minWidth: '320px' } : undefined}
+          style={showPdfViewer && !isMobile ? { minWidth: '320px' } : undefined}
         >
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             
             {/* Processing Banner */}
             <AnimatePresence>
               {isProcessing && (
-                <motion.div
+                <motion.div key="processing"
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   className="mb-4 sm:mb-6"
                 >
-                  <Card className="border-blue-200 bg-blue-50/50">
+                  <Card className="border-violet-200 bg-violet-50/50">
                     <CardContent className="py-3 sm:py-4">
                       <div className="flex items-center gap-3">
-                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-blue-600 animate-spin" />
+                        <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 text-violet-600 animate-spin" />
                         <div className="flex-1 min-w-0">
-                          <p className="font-medium text-blue-900 text-sm sm:text-base">Processing Contract</p>
-                          <p className="text-xs sm:text-sm text-blue-700 truncate">
+                          <p className="font-medium text-violet-900 text-sm sm:text-base">Processing Contract</p>
+                          <p className="text-xs sm:text-sm text-violet-700 truncate">
                             {contract?.processing?.currentStage || 'Generating artifacts...'} ({contract?.processing?.progress || 0}%)
                           </p>
                         </div>
@@ -844,12 +953,15 @@ export default function ContractDetailPage() {
               endDate={metadata.end_date}
               riskLevel={riskInfo.riskLevel}
               complianceOk={complianceInfo.isCompliant}
+              contractStatus={contract?.status}
               signatureStatus={metadata.signature_status}
               documentClassification={metadata.document_classification}
               documentClassificationWarning={metadata.document_classification_warning}
               onAction={() => setActiveTab('overview')}
               onInitiateRenewal={() => router.push(`/contracts/${params.id}/renew`)}
               onSetReminder={() => setShowReminderDialog(true)}
+              onStartReview={() => router.push(`/contracts/${params.id}/legal-review`)}
+              onStartRedline={() => router.push(`/contracts/${params.id}/redline`)}
             />
 
             {/* Quick Overview Card */}
@@ -866,6 +978,8 @@ export default function ContractDetailPage() {
                 riskLevel={riskInfo.riskLevel}
                 complianceStatus={complianceInfo.isCompliant ? 'ok' : 'review'}
                 contractStatus={contract?.status || 'active'}
+                signatureStatus={metadata.signature_status}
+                signatureRequiredFlag={metadata.signature_required_flag}
               />
             </motion.div>
 
@@ -972,6 +1086,25 @@ export default function ContractDetailPage() {
                 
                 <div className="flex-1" />
                 
+                {/* Ask AI Quick Button */}
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setTab('ai')}
+                        aria-label="Ask AI about this contract"
+                        className="h-8 px-2 text-violet-600 hover:text-violet-700 hover:bg-violet-50"
+                      >
+                        <MessageSquare className="h-4 w-4 mr-1.5" />
+                        <span className="text-xs font-medium hidden sm:inline">Ask AI</span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ask AI about this contract (press A)</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                
                 {/* Copy link */}
                 <TooltipProvider>
                   <Tooltip>
@@ -996,20 +1129,20 @@ export default function ContractDetailPage() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
               <Tabs value={activeTab} onValueChange={setTab} className="space-y-4 sm:space-y-6">
                 <div className="sticky top-0 z-20 bg-gradient-to-b from-slate-50 via-slate-50/95 to-transparent pb-4 -mx-4 px-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-                  <TabsList className="w-full bg-white rounded-lg border border-slate-200 p-1 h-auto grid grid-cols-2 sm:flex gap-1 shadow-sm">
-                    <TabsTrigger value="overview" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                  <TabsList className="w-full bg-white/80 backdrop-blur-sm rounded-xl border border-slate-200/60 p-1.5 h-auto grid grid-cols-2 sm:flex gap-1.5 shadow-lg shadow-slate-200/50">
+                    <TabsTrigger value="overview" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Summary
                     </TabsTrigger>
-                    <TabsTrigger value="details" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="details" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Details
                     </TabsTrigger>
-                    <TabsTrigger value="ai" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="ai" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-violet-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md data-[state=active]:shadow-violet-500/20 rounded-lg justify-center transition-all duration-200 hover:bg-violet-50">
                       <Brain className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       AI
                     </TabsTrigger>
-                    <TabsTrigger value="activity" className="py-2 sm:py-2.5 text-xs sm:text-sm data-[state=active]:bg-slate-100 data-[state=active]:text-slate-900 rounded-md justify-center">
+                    <TabsTrigger value="activity" className="py-2.5 sm:py-3 text-xs sm:text-sm font-medium data-[state=active]:bg-gradient-to-r data-[state=active]:from-slate-800 data-[state=active]:to-slate-900 data-[state=active]:text-white data-[state=active]:shadow-md rounded-lg justify-center transition-all duration-200 hover:bg-slate-100">
                       <History className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1.5 sm:mr-2" />
                       Activity
                     </TabsTrigger>
@@ -1039,7 +1172,7 @@ export default function ContractDetailPage() {
                         signatureDate={metadata.signature_date}
                         startDate={metadata.start_date}
                         endDate={metadata.end_date}
-                        terminationDate={contract?.termination_date}
+                        terminationDate={metadata.termination_date}
                       />
                     </SectionErrorBoundary>
                     
@@ -1056,6 +1189,31 @@ export default function ContractDetailPage() {
 
                 {/* AI Tab */}
                 <TabsContent value="ai" className="space-y-4 sm:space-y-6">
+                  {/* Interactive AI Analyst - Always show this */}
+                  <ContractAIAnalyst
+                    contract={{
+                      id: params.id as string,
+                      name: contract?.filename || contract?.document_title || 'Contract',
+                      supplierName: contract?.supplierName || metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || metadata.external_parties?.[0]?.legalName,
+                      contractType: contract?.category?.name || contract?.contractType || undefined,
+                      totalValue: typeof contract?.totalValue === 'number' ? contract.totalValue : undefined,
+                      startDate: metadata.start_date || undefined,
+                      endDate: metadata.end_date || undefined,
+                      status: contract?.status,
+                      extractedText: contract?.rawText || undefined,
+                      metadata: {
+                        jurisdiction: metadata.jurisdiction,
+                        language: metadata.contract_language,
+                        noticePeriod: metadata.notice_period,
+                        parties: metadata.external_parties,
+                        paymentType: metadata.payment_type,
+                        currency: metadata.currency,
+                      },
+                    }}
+                    defaultExpanded={!contract?.extractedData}
+                    className="mb-6"
+                  />
+
                   {contract?.extractedData ? (
                     <ComprehensiveAIAnalysis
                       artifacts={contract.extractedData}
@@ -1104,6 +1262,27 @@ export default function ContractDetailPage() {
                       </CardContent>
                     </Card>
                   )}
+
+                  {/* Intelligence Brief */}
+                  <SectionErrorBoundary sectionName="Intelligence Brief">
+                    <ContractIntelligenceBrief
+                      contractId={params.id as string}
+                      contractName={contract?.filename || contract?.document_title || 'Contract'}
+                    />
+                  </SectionErrorBoundary>
+
+                  {/* Predictive Insights + Negotiation Copilot */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                    <SectionErrorBoundary sectionName="Predictive Insights">
+                      <PredictiveInsightsWidget contractId={params.id as string} />
+                    </SectionErrorBoundary>
+                    <SectionErrorBoundary sectionName="Negotiation Copilot">
+                      <EnhancedNegotiationPanel
+                        contractId={params.id as string}
+                        contractName={contract?.filename || contract?.document_title || 'Contract'}
+                      />
+                    </SectionErrorBoundary>
+                  </div>
                 </TabsContent>
 
                 {/* Details Tab */}
@@ -1167,12 +1346,12 @@ export default function ContractDetailPage() {
                     contractId={params.id as string}
                     onUpdate={loadContract}
                     fields={[
-                      { name: 'supplierName', label: 'Supplier', value: contract?.supplierName, confidence: 92, source: 'ai' },
-                      { name: 'clientName', label: 'Client', value: contract?.clientName, confidence: 88, source: 'ai' },
-                      { name: 'totalValue', label: 'Total Value', value: contract?.totalValue, confidence: 85, source: 'ai' },
-                      { name: 'effectiveDate', label: 'Effective Date', value: contract?.effectiveDate, confidence: 95, source: 'ai' },
-                      { name: 'expirationDate', label: 'Expiration Date', value: contract?.expirationDate, confidence: 90, source: 'ai' },
-                      { name: 'contractType', label: 'Contract Type', value: contract?.contractType, confidence: 78, source: 'ai' },
+                      { name: 'supplierName', label: 'Supplier', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract?.supplierName, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'clientName', label: 'Client', value: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract?.clientName, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'totalValue', label: 'Total Value', value: metadata.tcv_amount ?? contract?.totalValue, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'effectiveDate', label: 'Effective Date', value: metadata.start_date || contract?.effectiveDate, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'expirationDate', label: 'Expiration Date', value: metadata.end_date || contract?.expirationDate, confidence: extractionConfidence, source: 'ai' },
+                      { name: 'contractType', label: 'Contract Type', value: metadata.contract_type || contract?.contractType, confidence: extractionConfidence, source: 'ai' },
                     ].filter(f => f.value !== null && f.value !== undefined)}
                   />
                 </TabsContent>
@@ -1195,7 +1374,7 @@ export default function ContractDetailPage() {
                   <ContractNotes
                     contractId={params.id as string}
                     notes={notes}
-                    currentUserId="current-user" // Would come from auth context
+                    currentUserId={session?.user?.id ?? "anonymous"}
                     onAddNote={async (content) => {
                       const response = await fetch(`/api/contracts/${params.id}/notes`, {
                         method: 'POST',
@@ -1236,7 +1415,7 @@ export default function ContractDetailPage() {
                   <Card className="border-slate-200">
                     <CardHeader className="pb-2">
                       <CardTitle className="text-sm font-semibold text-slate-800 flex items-center gap-2">
-                        <Activity className="h-4 w-4 text-blue-500" />
+                        <Activity className="h-4 w-4 text-violet-500" />
                         Recent Activity
                       </CardTitle>
                     </CardHeader>
@@ -1329,8 +1508,8 @@ export default function ContractDetailPage() {
         contractName={contract?.filename || 'Contract'}
         expirationDate={metadata.end_date}
         currentConfig={{
-          enabled: contract?.reminder_enabled ?? false,
-          daysBeforeExpiry: contract?.reminder_days_before_end ?? 30,
+          enabled: metadata.reminder_enabled ?? contract?.reminder_enabled ?? false,
+          daysBeforeExpiry: metadata.reminder_days_before_end ?? contract?.reminder_days_before_end ?? 30,
           notificationChannels: ['email', 'in-app'],
         }}
         onSave={async (config) => {
@@ -1352,9 +1531,9 @@ export default function ContractDetailPage() {
         contractId={params.id as string}
         filename={contract?.filename || 'Contract'}
         isFavorite={isFavorite}
-        hasReminder={contract?.reminder_enabled ?? false}
+        hasReminder={metadata.reminder_enabled ?? contract?.reminder_enabled ?? false}
         isArchived={contract?.status === 'archived'}
-        isExpired={contract?.expirationDate ? new Date(contract.expirationDate) < new Date() : false}
+        isExpired={metadata.end_date ? new Date(metadata.end_date) < new Date() : false}
         onToggleFavorite={async () => {
           const response = await fetch(`/api/contracts/${params.id}/favorite`, {
             method: 'POST',
@@ -1414,15 +1593,15 @@ export default function ContractDetailPage() {
           onOpenChange={setShowRenewalModal}
           contract={{
             id: contract.id,
-            title: contract.document_title || contract.filename || 'Contract',
+            title: metadata.document_title || contract.filename || 'Contract',
             fileName: contract.filename,
-            effectiveDate: contract.effectiveDate,
-            expirationDate: contract.expirationDate,
-            totalValue: typeof contract.totalValue === 'string' ? parseFloat(contract.totalValue) : contract.totalValue,
-            currency: contract.currency,
-            clientName: contract.clientName,
-            supplierName: contract.supplierName,
-            contractType: contract.contractType,
+            effectiveDate: metadata.start_date || contract.effectiveDate,
+            expirationDate: metadata.end_date || contract.expirationDate,
+            totalValue: metadata.tcv_amount ?? (typeof contract.totalValue === 'string' ? parseFloat(contract.totalValue) : contract.totalValue),
+            currency: metadata.currency || contract.currency,
+            clientName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'client' || p.role?.toLowerCase() === 'buyer')?.legalName || contract.clientName,
+            supplierName: metadata.external_parties?.find(p => p.role?.toLowerCase() === 'supplier' || p.role?.toLowerCase() === 'vendor')?.legalName || contract.supplierName,
+            contractType: metadata.contract_type || contract.contractType,
             status: contract.status,
           }}
           onRenewalCreated={(renewal) => {

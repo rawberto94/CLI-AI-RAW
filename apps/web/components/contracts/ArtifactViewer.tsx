@@ -9,6 +9,19 @@ import {
   Scale, Award, Target, Sparkles
 } from 'lucide-react';
 
+// Unwrap potentially wrapped AI values
+function unwrapValue<T>(val: T | { value: T; source?: string } | undefined): T | undefined {
+  if (val && typeof val === 'object' && 'value' in val) {
+    return (val as { value: T }).value;
+  }
+  return val as T;
+}
+
+function unwrapString(val: string | { value: string; source?: string } | undefined): string {
+  const unwrapped = unwrapValue(val);
+  return typeof unwrapped === 'string' ? unwrapped : '';
+}
+
 interface ArtifactViewerProps {
   type: string;
   data: any;
@@ -20,29 +33,29 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
   const renderOverview = (data: any) => (
     <div className="space-y-6">
       {/* Summary */}
-      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-6 border border-violet-200">
         <div className="flex items-start gap-3">
-          <FileText className="h-6 w-6 text-blue-600 flex-shrink-0 mt-1" />
+          <FileText className="h-6 w-6 text-violet-600 flex-shrink-0 mt-1" />
           <div>
             <h4 className="font-semibold text-gray-900 mb-2">Summary</h4>
-            <p className="text-gray-700 leading-relaxed">{data.summary}</p>
+            <p className="text-gray-700 leading-relaxed">{unwrapString(data.summary)}</p>
           </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-4">
         {/* Contract Details */}
-        <Card className="border-blue-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-600" />
+              <Calendar className="h-4 w-4 text-violet-600" />
               Contract Details
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
               <span className="text-gray-600">Type:</span>
-              <Badge variant="outline" className="bg-blue-50">{data.contractType || 'N/A'}</Badge>
+              <Badge variant="outline" className="bg-violet-50">{data.contractType || 'N/A'}</Badge>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Effective Date:</span>
@@ -60,18 +73,18 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         </Card>
 
         {/* Parties */}
-        <Card className="border-purple-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-600" />
+              <Users className="h-4 w-4 text-violet-600" />
               Parties Involved
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {data.parties?.map((party: any, idx: number) => (
-              <div key={idx} className="bg-purple-50 rounded-lg p-3 border border-purple-200">
-                <div className="font-medium text-gray-900">{party.name || party}</div>
-                {party.role && <div className="text-sm text-gray-600">{party.role}</div>}
+              <div key={idx} className="bg-violet-50 rounded-lg p-3 border border-violet-200">
+                <div className="font-medium text-gray-900">{unwrapString(party.name) || party}</div>
+                {party.role && <div className="text-sm text-gray-600">{unwrapString(party.role)}</div>}
                 {party.address && (
                   <div className="text-sm text-gray-500 flex items-start gap-1 mt-1">
                     <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -113,7 +126,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
   const renderFinancial = (data: any) => (
     <div className="space-y-6">
       {/* Total Value */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+      <div className="bg-gradient-to-br from-violet-50 to-violet-50 rounded-xl p-6 border border-green-200">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Total Contract Value</p>
@@ -135,7 +148,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-blue-600" />
+              <Calendar className="h-4 w-4 text-violet-600" />
               Payment Schedule
             </CardTitle>
           </CardHeader>
@@ -165,7 +178,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Award className="h-4 w-4 text-purple-600" />
+              <Award className="h-4 w-4 text-violet-600" />
               Professional Services Rate Cards
             </CardTitle>
             <p className="text-sm text-gray-600 mt-1">
@@ -175,11 +188,11 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
           <CardContent>
             <div className="grid gap-4">
               {data.rateCards.map((rate: any, idx: number) => (
-                <div key={idx} className="border border-purple-200 rounded-lg p-4 bg-gradient-to-br from-purple-50 to-pink-50 hover:shadow-md transition-shadow">
+                <div key={idx} className="border border-violet-200 rounded-lg p-4 bg-gradient-to-br from-violet-50 to-pink-50 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-semibold text-gray-900">{rate.role}</h4>
+                        <h4 className="font-semibold text-gray-900">{unwrapString(rate.role)}</h4>
                         {rate.seniority && (
                           <Badge variant="outline" className="bg-white">
                             {rate.seniority}
@@ -197,7 +210,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                       )}
                     </div>
                     <div className="text-right">
-                      <div className="text-2xl font-bold text-purple-700">
+                      <div className="text-2xl font-bold text-violet-700">
                         ${typeof rate.dailyRate === 'number' ? rate.dailyRate.toLocaleString() : rate.rate?.toLocaleString()}
                       </div>
                       <div className="text-sm text-gray-600">
@@ -207,7 +220,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                   </div>
                   
                   {rate.skills && rate.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pt-2 border-t border-purple-200">
+                    <div className="flex flex-wrap gap-1 pt-2 border-t border-violet-200">
                       {rate.skills.slice(0, 5).map((skill: string, skillIdx: number) => (
                         <Badge key={skillIdx} variant="outline" className="text-xs bg-white">
                           {skill}
@@ -224,7 +237,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
               ))}
             </div>
             
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <div className="mt-4 p-3 bg-violet-50 rounded-lg border border-violet-200">
               <p className="text-sm text-gray-700">
                 <strong>💡 Tip:</strong> These rates have been automatically extracted and saved to your Rate Card Benchmarking system for market analysis and savings opportunities.
               </p>
@@ -235,7 +248,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
 
       {/* Payment Terms */}
       <div className="grid md:grid-cols-2 gap-4">
-        <Card className="border-blue-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-gray-600">Payment Terms</CardTitle>
           </CardHeader>
@@ -294,7 +307,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                 <div key={idx} className="border rounded-lg p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="bg-blue-50">
+                      <Badge variant="outline" className="bg-violet-50">
                         {risk.category}
                       </Badge>
                       <Badge 
@@ -350,10 +363,10 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
 
       {/* Recommendations */}
       {data.recommendations && data.recommendations.length > 0 && (
-        <Card className="border-blue-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Target className="h-4 w-4 text-blue-600" />
+              <Target className="h-4 w-4 text-violet-600" />
               Recommendations
             </CardTitle>
           </CardHeader>
@@ -361,7 +374,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
             <ul className="space-y-2">
               {data.recommendations.map((rec: string, idx: number) => (
                 <li key={idx} className="flex items-start gap-2 text-sm">
-                  <CheckCircle2 className="h-4 w-4 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <CheckCircle2 className="h-4 w-4 text-violet-600 flex-shrink-0 mt-0.5" />
                   <span className="text-gray-700">{rec}</span>
                 </li>
               ))}
@@ -375,19 +388,19 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
   const renderCompliance = (data: any) => (
     <div className="space-y-6">
       {/* Compliance Score */}
-      <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200">
+      <div className="bg-gradient-to-br from-violet-50 to-purple-50 rounded-xl p-6 border border-violet-200">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-gray-600 mb-1">Compliance Score</p>
-            <p className="text-4xl font-bold text-purple-700">{data.complianceScore}/10</p>
+            <p className="text-4xl font-bold text-violet-700">{data.complianceScore}/10</p>
             <div className="mt-2 w-48 bg-gray-200 rounded-full h-2">
               <div 
-                className="bg-purple-600 h-2 rounded-full transition-all"
+                className="bg-violet-600 h-2 rounded-full transition-all"
                 style={{ width: `${(data.complianceScore / 10) * 100}%` }}
               ></div>
             </div>
           </div>
-          <Scale className="h-16 w-16 text-purple-600 opacity-20" />
+          <Scale className="h-16 w-16 text-violet-600 opacity-20" />
         </div>
       </div>
 
@@ -414,10 +427,10 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
 
       {/* Data Protection */}
       {data.dataProtection && (
-        <Card className="border-blue-200 shadow-sm">
+        <Card className="border-violet-200 shadow-sm">
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
-              <Shield className="h-4 w-4 text-blue-600" />
+              <Shield className="h-4 w-4 text-violet-600" />
               Data Protection
             </CardTitle>
           </CardHeader>
@@ -463,7 +476,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                       className={
                         issue.severity === 'high' ? 'bg-red-100 text-red-700' :
                         issue.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-blue-100 text-blue-700'
+                        'bg-violet-100 text-violet-700'
                       }
                     >
                       {issue.severity}
@@ -471,9 +484,9 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
                     <span className="text-sm text-gray-600">{issue.regulation}</span>
                   </div>
                   <p className="text-gray-900 mb-2">{issue.issue}</p>
-                  <div className="bg-blue-50 rounded-md p-3 border border-blue-200">
+                  <div className="bg-violet-50 rounded-md p-3 border border-violet-200">
                     <p className="text-sm text-gray-700">
-                      <span className="font-medium text-blue-700">Recommendation: </span>
+                      <span className="font-medium text-violet-700">Recommendation: </span>
                       {issue.recommendation}
                     </p>
                   </div>
@@ -540,7 +553,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
             <CardHeader className="pb-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="bg-blue-50">
+                  <Badge variant="outline" className="bg-violet-50">
                     {clause.type}
                   </Badge>
                   <CardTitle className="text-base">{clause.title}</CardTitle>
@@ -563,7 +576,7 @@ export function ArtifactViewer({ type, data, confidence, processingTime }: Artif
             <CardContent className="space-y-3">
               <div>
                 <p className="text-sm font-medium text-gray-600 mb-1">Summary:</p>
-                <p className="text-sm text-gray-700">{clause.summary}</p>
+                <p className="text-sm text-gray-700">{unwrapString(clause.summary)}</p>
               </div>
               <div className="bg-gray-50 rounded-lg p-3 border">
                 <p className="text-sm font-medium text-gray-600 mb-1">Full Text:</p>

@@ -209,7 +209,7 @@ export function TimeSeriesChart({
             <Brush
               dataKey="date"
               height={30}
-              stroke="#3b82f6"
+              stroke="#7c3aed"
               tickFormatter={(value) =>
                 new Date(value).toLocaleDateString('en-US', {
                   month: 'short',

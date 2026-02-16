@@ -7,11 +7,13 @@ This document describes the advanced extraction intelligence features implemente
 ## New Services Created
 
 ### 1. Advanced Extraction Intelligence Service
+
 **File:** `packages/data-orchestration/src/services/advanced-extraction-intelligence.service.ts`
 
 Provides sophisticated contract analysis capabilities:
 
 #### Contract Type Profiles
+
 - **30+ contract types** with specialized extraction rules
 - Types include: NDA, MSA, SOW, EMPLOYMENT, SAAS, LEASE
 - Each profile contains:
@@ -24,6 +26,7 @@ Provides sophisticated contract analysis capabilities:
   - Validation rules
 
 #### Industry Benchmarking
+
 - Compare extracted values against industry standards
 - Supported benchmarks:
   - Payment terms (days)
@@ -35,17 +38,20 @@ Provides sophisticated contract analysis capabilities:
   - Non-compete durations
 
 #### Entity Resolution
+
 - Normalize and match party names
 - Known entity aliases database
 - Fuzzy matching for unknown entities
 - Suggest canonical names
 
 #### Missing Field Prediction
+
 - Predict fields that should be present but weren't extracted
 - Based on contract type profile
 - Suggest where to look in the document
 
 #### Improvement Suggestions
+
 - Identify low-confidence extractions
 - Suggest date normalization
 - Parse currency values
@@ -54,11 +60,13 @@ Provides sophisticated contract analysis capabilities:
 ---
 
 ### 2. Smart Fallback Chain Service
+
 **File:** `packages/data-orchestration/src/services/smart-fallback-chain.service.ts`
 
 Implements a multi-level fallback chain for reliable extraction:
 
 #### Extraction Levels (in order)
+
 1. **Pattern-based extraction** - Fastest, most reliable (regex patterns)
 2. **AI direct extraction** - GPT-based field extraction
 3. **Semantic inference** - Find values near semantic hints
@@ -67,6 +75,7 @@ Implements a multi-level fallback chain for reliable extraction:
 6. **Default value** - Fall back to sensible defaults
 
 #### Features
+
 - Field extraction specifications with:
   - Multiple regex patterns
   - Semantic hints
@@ -80,6 +89,7 @@ Implements a multi-level fallback chain for reliable extraction:
   - Boolean detection
 
 #### Learning from History
+
 - Records extracted values by contract type
 - Learns most common values for fields
 - Uses historical data when other methods fail
@@ -87,16 +97,19 @@ Implements a multi-level fallback chain for reliable extraction:
 ---
 
 ### 3. Extraction Learning Service
+
 **File:** `packages/data-orchestration/src/services/extraction-learning.service.ts`
 
 Enables continuous improvement through feedback:
 
 #### Feedback Recording
+
 - Record user confirmations (extraction was correct)
 - Record user corrections (extraction was wrong)
 - Track extraction source, confidence, and contract type
 
 #### Performance Analytics
+
 - **Field Performance Stats:**
   - Total extractions
   - Accuracy rate
@@ -107,18 +120,21 @@ Enables continuous improvement through feedback:
   - Trend (improving/stable/declining)
 
 #### Confidence Calibration
+
 - Adjust confidence based on historical accuracy
 - Account for source performance
 - Account for contract type performance
 - Learn from user corrections
 
 #### Insights Generation
+
 - Identify low-accuracy fields
 - Detect declining trends
 - Find common error patterns
 - Suggest improvements
 
 #### Export/Import
+
 - Export learning data for backup
 - Import learning data for restoration
 
@@ -127,11 +143,13 @@ Enables continuous improvement through feedback:
 ## API Enhancements
 
 ### Intelligent Analysis API
+
 **File:** `apps/web/app/api/contracts/intelligent-analysis/route.ts`
 
 Enhanced with:
 
 #### New Request Options
+
 ```typescript
 interface AnalysisRequest {
   documentText: string;
@@ -151,6 +169,7 @@ interface AnalysisRequest {
 ```
 
 #### New Response Fields
+
 - **contractTypeProfile** - Contract type info and critical fields
 - **industryBenchmarks** - Comparison to market standards
   - `comparisons` - Field-by-field comparison
@@ -163,10 +182,13 @@ interface AnalysisRequest {
 - Calibrated confidence scores with adjustment notes
 
 ### Extraction Feedback API (NEW)
+
 **File:** `apps/web/app/api/contracts/extraction-feedback/route.ts`
 
 #### POST - Record Feedback
+
 Single feedback:
+
 ```json
 {
   "contractId": "...",
@@ -181,6 +203,7 @@ Single feedback:
 ```
 
 Batch feedback:
+
 ```json
 {
   "contractId": "...",
@@ -192,6 +215,7 @@ Batch feedback:
 ```
 
 #### GET - Retrieve Learning Stats
+
 - `?action=stats` - Overall extraction statistics
 - `?action=field&field=effective_date` - Stats for specific field
 - `?action=insights` - Learning insights and suggestions
@@ -202,6 +226,7 @@ Batch feedback:
 ## UI Enhancements
 
 ### ComprehensiveAIAnalysis Component
+
 **File:** `apps/web/components/artifacts/ComprehensiveAIAnalysis.tsx`
 
 #### New Sections Added
@@ -228,6 +253,7 @@ Batch feedback:
 ## How It Works Together
 
 ### Extraction Flow
+
 ```
 1. Document received
    ↓
@@ -253,6 +279,7 @@ Batch feedback:
 ```
 
 ### Learning Flow
+
 ```
 1. Extraction completed
    ↓
@@ -274,6 +301,7 @@ Batch feedback:
 ## Usage Examples
 
 ### Analyze a Contract
+
 ```typescript
 const response = await fetch('/api/contracts/intelligent-analysis', {
   method: 'POST',
@@ -296,6 +324,7 @@ const result = await response.json();
 ```
 
 ### Record Feedback
+
 ```typescript
 await fetch('/api/contracts/extraction-feedback', {
   method: 'POST',
@@ -313,6 +342,7 @@ await fetch('/api/contracts/extraction-feedback', {
 ```
 
 ### Get Learning Insights
+
 ```typescript
 const response = await fetch('/api/contracts/extraction-feedback?action=insights');
 const { insights } = await response.json();

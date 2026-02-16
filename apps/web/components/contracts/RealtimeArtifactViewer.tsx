@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
-import { useArtifactStream, type ArtifactUpdate } from '@/hooks/useArtifactStream';
+import { useArtifactStream } from '@/hooks/useArtifactStream';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,9 +18,12 @@ import {
   Clock,
   Loader2,
   Wifi,
-  WifiOff,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Eye,
+  Lock,
+  ClipboardList,
+  Scale
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -28,6 +31,7 @@ interface RealtimeArtifactViewerProps {
   contractId: string;
   tenantId?: string;
   onComplete?: () => void;
+  onContractNotFound?: () => void;  // Called when contract returns 404
 }
 
 // Helper to normalize artifact types to uppercase
@@ -37,21 +41,51 @@ const artifactIcons: Record<string, React.ReactNode> = {
   OVERVIEW: <FileText className="h-5 w-5" />,
   FINANCIAL: <DollarSign className="h-5 w-5" />,
   CLAUSES: <FileCheck className="h-5 w-5" />,
-  RATES: <TrendingUp className="h-5 w-5" />,
+  RISK: <AlertTriangle className="h-5 w-5" />,
   COMPLIANCE: <Shield className="h-5 w-5" />,
-  RISK: <AlertTriangle className="h-5 w-5" />
+  OBLIGATIONS: <FileCheck className="h-5 w-5" />,
+  RENEWAL: <Clock className="h-5 w-5" />,
+  NEGOTIATION_POINTS: <TrendingUp className="h-5 w-5" />,
+  AMENDMENTS: <FileText className="h-5 w-5" />,
+  CONTACTS: <FileText className="h-5 w-5" />,
+  PARTIES: <FileText className="h-5 w-5" />,
+  TIMELINE: <Clock className="h-5 w-5" />,
+  DELIVERABLES: <FileCheck className="h-5 w-5" />,
+  EXECUTIVE_SUMMARY: <FileText className="h-5 w-5" />,
+  RATES: <TrendingUp className="h-5 w-5" />,
+  PROACTIVE_RISKS: <AlertTriangle className="h-5 w-5" />,
+  PRICING: <DollarSign className="h-5 w-5" />,
+  INTELLECTUAL_PROPERTY: <Scale className="h-5 w-5" />,
+  DATA_PRIVACY: <Lock className="h-5 w-5" />,
+  AUDIT_TRAIL: <Eye className="h-5 w-5" />,
+  ACTION_ITEMS: <ClipboardList className="h-5 w-5" />,
 };
 
 const artifactLabels: Record<string, string> = {
   OVERVIEW: 'Overview',
   FINANCIAL: 'Financial Analysis',
   CLAUSES: 'Key Clauses',
-  RATES: 'Rate Cards',
+  RISK: 'Risk Assessment',
   COMPLIANCE: 'Compliance Check',
-  RISK: 'Risk Assessment'
+  OBLIGATIONS: 'Obligations',
+  RENEWAL: 'Renewal Terms',
+  NEGOTIATION_POINTS: 'Negotiation Points',
+  AMENDMENTS: 'Amendments',
+  CONTACTS: 'Contacts & Signatories',
+  PARTIES: 'Contract Parties',
+  TIMELINE: 'Timeline & Milestones',
+  DELIVERABLES: 'Deliverables',
+  EXECUTIVE_SUMMARY: 'Executive Summary',
+  RATES: 'Rate Cards',
+  PROACTIVE_RISKS: 'Proactive Risk Detection',
+  PRICING: 'Pricing Analysis',
+  INTELLECTUAL_PROPERTY: 'Intellectual Property',
+  DATA_PRIVACY: 'Data Privacy',
+  AUDIT_TRAIL: 'Audit Trail',
+  ACTION_ITEMS: 'Action Items',
 };
 
-const artifactOrder = ['OVERVIEW', 'CLAUSES', 'FINANCIAL', 'RISK', 'COMPLIANCE', 'RATES'];
+const artifactOrder = ['OVERVIEW', 'EXECUTIVE_SUMMARY', 'CLAUSES', 'FINANCIAL', 'RISK', 'PROACTIVE_RISKS', 'COMPLIANCE', 'OBLIGATIONS', 'PARTIES', 'RENEWAL', 'NEGOTIATION_POINTS', 'AMENDMENTS', 'CONTACTS', 'TIMELINE', 'DELIVERABLES', 'RATES', 'PRICING', 'INTELLECTUAL_PROPERTY', 'DATA_PRIVACY', 'AUDIT_TRAIL', 'ACTION_ITEMS'];
 
 const stageLabels: Record<string, string> = {
   'TEXT_EXTRACTION': 'Extracting text from document...',
@@ -67,7 +101,8 @@ const stageLabels: Record<string, string> = {
 export function RealtimeArtifactViewer({ 
   contractId, 
   tenantId = 'demo',
-  onComplete
+  onComplete,
+  onContractNotFound
 }: RealtimeArtifactViewerProps) {
   const {
     artifacts,
@@ -76,7 +111,8 @@ export function RealtimeArtifactViewer({
     contractStatus,
     processingStage,
     error,
-    disconnect,
+    contractNotFound,
+    disconnect: _disconnect,
     reconnect
   } = useArtifactStream({
     contractId,
@@ -84,19 +120,33 @@ export function RealtimeArtifactViewer({
     onComplete: () => {
       if (onComplete) onComplete();
     },
+    onError: (errorMsg) => {
+      // Log the error but don't trigger onContractNotFound here
+      // The contractNotFound state will handle that via the useEffect below
+      console.warn('[RealtimeArtifactViewer] Error:', errorMsg);
+    },
     enabled: true
   });
 
+  // Notify parent if contract not found (only after retries exhausted)
+  useEffect(() => {
+    if (contractNotFound && onContractNotFound) {
+      console.log('[RealtimeArtifactViewer] Contract not found, notifying parent');
+      onContractNotFound();
+    }
+  }, [contractNotFound, onContractNotFound]);
+
   const [animatingArtifacts, setAnimatingArtifacts] = useState<Set<string>>(new Set());
   const [retryingArtifacts, setRetryingArtifacts] = useState<Set<string>>(new Set());
-  const [localError, setError] = useState<string | null>(null);
+  const [_localError, setError] = useState<string | null>(null);
   const [isPollingFallback, setIsPollingFallback] = useState(false);
   const pollingIntervalRef = React.useRef<NodeJS.Timeout | null>(null);
   const connectionTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Compute completedCount and isEffectivelyComplete early (before callbacks that need them)
   const completedCount = artifacts.filter(a => a.status === 'COMPLETED').length;
-  const isEffectivelyComplete = isComplete || (completedCount >= 10);
+  // Complete when the stream says so, or when all received artifacts are done
+  const isEffectivelyComplete = isComplete || (artifacts.length > 0 && completedCount >= artifacts.length);
 
   // Animate new artifacts
   useEffect(() => {
@@ -112,7 +162,7 @@ export function RealtimeArtifactViewer({
         }, 1000);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [artifacts]);
 
   // Polling fallback when SSE fails
@@ -130,18 +180,28 @@ export function RealtimeArtifactViewer({
           const data = await response.json();
           // Check if all artifacts are complete - response is { success, data: [...] }
           const artifactList = data.data || data.artifacts || [];
-          if (artifactList.length >= 10) {
-            // The artifacts API returns transformed data, count items with content
+          if (artifactList.length > 0) {
+            // Count items with actual content
             const completed = artifactList.filter((a: any) => 
               a.data && Object.keys(a.data || {}).length > 0
             ).length;
-            if (completed >= 10) {
+            if (completed >= artifactList.length) {
+              // All artifacts complete — update state instead of full page reload
               setIsPollingFallback(false);
               if (pollingIntervalRef.current) {
                 clearInterval(pollingIntervalRef.current);
               }
-              // Force reload the page to get fresh state
-              window.location.reload();
+              setArtifacts(artifactList.map((a: any) => ({
+                id: a.id,
+                type: a.type,
+                status: 'COMPLETED',
+                hasContent: true,
+                contentLength: JSON.stringify(a.data).length,
+                metadata: {},
+                createdAt: a.createdAt,
+                updatedAt: a.updatedAt,
+              })));
+              setIsComplete(true);
             }
           }
         }
@@ -229,9 +289,14 @@ export function RealtimeArtifactViewer({
     return aIndex - bIndex;
   });
 
-  // Use actual artifact count, with a minimum of 10 (we generate 10 artifact types)
-  const totalCount = Math.max(10, artifacts.length);
-  const progressPercent = Math.min(100, (completedCount / totalCount) * 100);
+  // Use actual artifact count from the stream (varies by contract type)
+  const totalCount = Math.max(artifacts.length, 1);
+  const progressPercent = totalCount > 0 ? Math.min(100, (completedCount / totalCount) * 100) : 0;
+
+  // Early return if contract not found - don't render anything
+  if (contractNotFound) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -245,28 +310,32 @@ export function RealtimeArtifactViewer({
             </>
           ) : isEffectivelyComplete ? (
             <>
-              <CheckCircle2 className="h-4 w-4 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">Processing Complete</span>
+              <CheckCircle2 className="h-4 w-4 text-violet-600" />
+              <span className="text-sm text-violet-600 font-medium">Processing Complete</span>
             </>
           ) : error ? (
             <>
               <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-red-500">Connection Error</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setError(null);
-                  setIsPollingFallback(false);
-                  if (pollingIntervalRef.current) {
-                    clearInterval(pollingIntervalRef.current);
-                  }
-                  reconnect();
-                }}
-                className="ml-2"
-              >
-                <RefreshCw className="h-3 w-3" />
-              </Button>
+              <span className="text-sm text-red-500">
+                {error.includes('not found') ? 'Contract not found' : 'Connection Error'}
+              </span>
+              {!error.includes('not found') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setError(null);
+                    setIsPollingFallback(false);
+                    if (pollingIntervalRef.current) {
+                      clearInterval(pollingIntervalRef.current);
+                    }
+                    reconnect();
+                  }}
+                  className="ml-2"
+                >
+                  <RefreshCw className="h-3 w-3" />
+                </Button>
+              )}
             </>
           ) : isPollingFallback ? (
             <>
@@ -275,8 +344,8 @@ export function RealtimeArtifactViewer({
             </>
           ) : (
             <>
-              <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
-              <span className="text-sm text-blue-500">Connecting to live updates...</span>
+              <Loader2 className="h-4 w-4 text-violet-500 animate-spin" />
+              <span className="text-sm text-violet-500">Connecting to live updates...</span>
             </>
           )}
         </div>
@@ -303,7 +372,7 @@ export function RealtimeArtifactViewer({
                     {contractStatus === 'PROCESSING' ? 'Analyzing document with AI' : contractStatus}
                   </p>
                 </div>
-                <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                <Loader2 className="h-5 w-5 animate-spin text-violet-600" />
               </div>
               <Progress value={progressPercent} className="h-2" />
               <p className="text-xs text-gray-500 text-right">
@@ -354,7 +423,7 @@ export function RealtimeArtifactViewer({
               key={artifact.id}
               className={cn(
                 "transition-all duration-500",
-                isAnimating && "scale-105 shadow-lg border-blue-500",
+                isAnimating && "scale-105 shadow-lg border-violet-500",
                 isCompleted && "hover:shadow-md",
                 isFailed && "border-red-300 bg-red-50"
               )}
@@ -365,7 +434,7 @@ export function RealtimeArtifactViewer({
                     <div className={cn(
                       "p-2 rounded-lg transition-colors",
                       isCompleted && "bg-green-100 text-green-700",
-                      isProcessing && "bg-blue-100 text-blue-700 animate-pulse",
+                      isProcessing && "bg-violet-100 text-violet-700 animate-pulse",
                       isFailed && "bg-red-100 text-red-700",
                       !isCompleted && !isProcessing && !isFailed && "bg-gray-100 text-gray-400"
                     )}>
@@ -382,7 +451,7 @@ export function RealtimeArtifactViewer({
                   </div>
                   
                   {isAnimating && (
-                    <Sparkles className="h-4 w-4 text-blue-600 animate-pulse" />
+                    <Sparkles className="h-4 w-4 text-violet-600 animate-pulse" />
                   )}
                 </div>
               </CardHeader>
@@ -425,7 +494,7 @@ export function RealtimeArtifactViewer({
                         </p>
                       </div>
                       <button 
-                        className="text-xs text-blue-600 hover:underline font-medium"
+                        className="text-xs text-violet-600 hover:underline font-medium"
                         onClick={() => {
                           // Navigate to detailed view
                           window.location.href = `/contracts/${contractId}?artifact=${artifact.type}`;

@@ -236,7 +236,8 @@ ${orchestratorSuggestions.slice(0, 3).map((s) => `- **${s.type}** (${s.relevance
           throw new Error('Failed to get response');
         }
 
-        const data = await response.json();
+        const rawData = await response.json();
+        const data = rawData.data ?? rawData;
         const botMessage: ChatMessage = {
           id: `bot-${Date.now()}`,
           role: 'assistant',

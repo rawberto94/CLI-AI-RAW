@@ -68,9 +68,9 @@ const SHORTCUTS: Shortcut[] = [
 ];
 
 const CATEGORIES = {
-  global: { label: 'Global', color: 'from-indigo-500 to-purple-500' },
-  navigation: { label: 'Navigation', color: 'from-blue-500 to-cyan-500' },
-  actions: { label: 'Actions', color: 'from-emerald-500 to-teal-500' },
+  global: { label: 'Global', color: 'from-violet-500 to-purple-500' },
+  navigation: { label: 'Navigation', color: 'from-violet-500 to-purple-500' },
+  actions: { label: 'Actions', color: 'from-violet-500 to-violet-500' },
   editing: { label: 'Editing', color: 'from-orange-500 to-amber-500' },
 };
 
@@ -175,7 +175,7 @@ export function KeyboardShortcutsOverlay({ isOpen, onClose }: KeyboardShortcutsO
   return (
     <AnimatePresence>
       {isOpen && (
-        <>
+        <div key="open" className="contents">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -197,7 +197,7 @@ export function KeyboardShortcutsOverlay({ isOpen, onClose }: KeyboardShortcutsO
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg">
+                  <div className="p-2 bg-gradient-to-br from-violet-500 to-purple-500 rounded-lg">
                     <Keyboard className="w-5 h-5 text-white" />
                   </div>
                   <div>
@@ -247,7 +247,7 @@ export function KeyboardShortcutsOverlay({ isOpen, onClose }: KeyboardShortcutsO
               </div>
             </div>
           </motion.div>
-        </>
+        </div>
       )}
     </AnimatePresence>
   );

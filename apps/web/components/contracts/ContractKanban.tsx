@@ -146,7 +146,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
       whileTap={{ scale: 0.98 }}
       className={cn(
         "group relative bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer",
-        isDragging && "shadow-xl ring-2 ring-blue-500"
+        isDragging && "shadow-xl ring-2 ring-violet-500"
       )}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
@@ -160,7 +160,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
       <div className="p-4 pl-6">
         {/* Header */}
         <div className="flex items-start justify-between mb-2">
-          <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 group-hover:text-blue-600 transition-colors pr-2">
+          <h4 className="font-semibold text-slate-900 text-sm line-clamp-2 group-hover:text-violet-600 transition-colors pr-2">
             {contract.title}
           </h4>
           <DropdownMenu>
@@ -227,7 +227,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
         {/* Value & Expiry */}
         <div className="flex items-center justify-between text-xs">
           {contract.totalValue !== undefined && (
-            <div className="flex items-center gap-1 text-emerald-600 font-semibold">
+            <div className="flex items-center gap-1 text-violet-600 font-semibold">
               <DollarSign className="w-3 h-3" />
               {formatCurrency(contract.totalValue, contract.currency)}
             </div>
@@ -258,7 +258,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
                 initial={{ width: 0 }}
                 animate={{ width: `${contract.progress}%` }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ function KanbanCard({ contract, onView, onEdit, onDelete, isDragging }: KanbanCa
               {contract.assignees.slice(0, 3).map((assignee, idx) => (
                 <Tooltip key={idx}>
                   <TooltipTrigger asChild>
-                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 border-2 border-white flex items-center justify-center text-[10px] font-bold text-white">
                       {assignee.charAt(0)}
                     </div>
                   </TooltipTrigger>
@@ -368,7 +368,7 @@ function KanbanColumnComponent({
         <div className="flex-1 p-3 space-y-3 overflow-y-auto max-h-[calc(100vh-280px)]">
           <AnimatePresence mode="popLayout">
             {column.contracts.length === 0 ? (
-              <motion.div
+              <motion.div key="column-contracts"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 className="flex flex-col items-center justify-center py-8 text-center"
@@ -432,7 +432,7 @@ export function ContractKanban({
       id: 'pending_review',
       title: 'Pending Review',
       status: 'pending_review' as const,
-      color: 'bg-gradient-to-r from-blue-500 to-indigo-600',
+      color: 'bg-gradient-to-r from-violet-500 to-purple-600',
       icon: <Clock className="w-4 h-4 text-white" />,
       contracts: contracts.filter(c => c.status === 'pending_review'),
     },
@@ -440,7 +440,7 @@ export function ContractKanban({
       id: 'in_negotiation',
       title: 'In Negotiation',
       status: 'in_negotiation' as const,
-      color: 'bg-gradient-to-r from-purple-500 to-pink-600',
+      color: 'bg-gradient-to-r from-violet-500 to-pink-600',
       icon: <Users className="w-4 h-4 text-white" />,
       contracts: contracts.filter(c => c.status === 'in_negotiation'),
     },
@@ -456,7 +456,7 @@ export function ContractKanban({
       id: 'active',
       title: 'Active',
       status: 'active' as const,
-      color: 'bg-gradient-to-r from-green-500 to-emerald-600',
+      color: 'bg-gradient-to-r from-violet-500 to-violet-600',
       icon: <CheckCircle2 className="w-4 h-4 text-white" />,
       contracts: contracts.filter(c => c.status === 'active'),
     },
@@ -503,14 +503,14 @@ export function ContractKanban({
         <div className="flex items-center justify-between mb-6 px-2">
           <div className="flex items-center gap-6">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-blue-600" />
+              <Sparkles className="w-5 h-5 text-violet-600" />
               <span className="text-sm font-medium text-slate-600">
                 <span className="text-xl font-bold text-slate-900">{totalContracts}</span> contracts
               </span>
             </div>
             <div className="h-6 w-px bg-slate-200" />
             <div className="text-sm text-slate-600">
-              <span className="font-semibold text-emerald-600">{formatCurrency(totalValue)}</span> total value
+              <span className="font-semibold text-violet-600">{formatCurrency(totalValue)}</span> total value
             </div>
             <div className="h-6 w-px bg-slate-200" />
             <div className="flex items-center gap-4 text-sm">

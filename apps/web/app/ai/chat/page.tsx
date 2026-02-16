@@ -14,7 +14,6 @@
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -24,7 +23,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  Send,
   FileText,
   TrendingUp,
   Calendar,
@@ -55,6 +53,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useDataMode } from "@/contexts/DataModeContext";
 import { cn } from "@/lib/utils";
+import { EnhancedChatInput } from "@/components/ai/chat/EnhancedChatInput";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +61,8 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+
+
 
 // Conversation interface from API
 interface Conversation {
@@ -129,7 +130,7 @@ const QUICK_ACTIONS = [
     icon: FileText,
     label: "Analyze Contract",
     query: "Analyze my most recent contract and summarize key terms",
-    color: "text-blue-500",
+    color: "text-violet-500",
   },
   {
     icon: TrendingUp,
@@ -145,32 +146,32 @@ const QUICK_ACTIONS = [
   },
   {
     icon: Shield,
-    label: "Risk Analysis",
-    query: "Identify high-risk clauses in my active contracts",
+    label: "Compliance Check",
+    query: "@compliance Check all contracts for regulatory compliance gaps",
     color: "text-red-500",
   },
   {
     icon: DollarSign,
     label: "Rate Comparison",
     query: "Compare my labor rates against market benchmarks",
-    color: "text-purple-500",
+    color: "text-violet-500",
   },
   {
     icon: Clock,
     label: "Obligation Tracking",
-    query: "What are my upcoming contractual obligations?",
-    color: "text-cyan-500",
+    query: "@obligations What are my upcoming contractual obligations?",
+    color: "text-violet-500",
   },
 ];
 
 // Example conversations
 const EXAMPLE_PROMPTS = [
   "What's the average contract value in my portfolio?",
-  "Show me contracts with auto-renewal clauses",
+  "@health Show me contracts with auto-renewal clauses",
   "Which suppliers have the best rates for IT services?",
-  "Find contracts with termination clauses less than 30 days",
+  "@search Find contracts with termination clauses less than 30 days",
   "Compare pricing across my software licenses",
-  "What are the payment terms in my recent contracts?",
+  "@summarize Summarize my most recent contract",
 ];
 
 // Initial welcome message
@@ -179,7 +180,7 @@ const WELCOME_MESSAGE: Message = {
   role: "assistant",
   content: `👋 **Welcome to the AI Contract Assistant!**
 
-I'm here to help you navigate your contract portfolio with intelligence and ease. I can:
+I'm here to help you navigate your contract portfolio with intelligence and ease, powered by **12 specialist agents**. I can:
 
 • **Analyze Contracts** - Extract key terms, dates, and obligations
 • **Find Savings** - Identify cost optimization opportunities  
@@ -188,13 +189,17 @@ I'm here to help you navigate your contract portfolio with intelligence and ease
 • **Compare Rates** - Benchmark against market standards
 • **Answer Questions** - Natural language queries about your contracts
 
-Try asking me something, or click one of the quick actions below!`,
+💡 **Pro tip:** Type **@** to summon a specialist agent — e.g. \`@compliance\` for regulation checks, \`@health\` for contract scoring, \`@summarize\` for quick summaries, or \`@search\` for semantic lookup.
+
+Try asking me something, or use an @mention to talk to a specific agent!`,
   timestamp: new Date(),
   suggestions: [
     "Summarize my contract portfolio",
-    "What contracts expire this quarter?",
+    "@health Score my portfolio risk",
+    "@compliance Check regulation gaps",
+    "@summarize My latest contract",
     "Find contracts over $100k",
-    "Show me high-risk clauses",
+    "@search Find indemnity clauses",
   ],
 };
 
@@ -222,7 +227,15 @@ function AIChatPageContent() {
 
   // Refs
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  // Cleanup: abort any in-flight streaming request on unmount
+  useEffect(() => {
+    return () => {
+      abortControllerRef.current?.abort();
+    };
+  }, []);
 
   // Load conversation messages when switching conversations
   const loadConversation = useCallback(async (conversationId: string) => {
@@ -395,7 +408,7 @@ function AIChatPageContent() {
       }, 500);
       return () => clearTimeout(timer);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [initialQuery]);
 
   // Keyboard shortcuts
@@ -458,8 +471,13 @@ function AIChatPageContent() {
       await saveMessage(activeConversationId, userMessage);
     }
 
+    // Create abort controller for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     try {
-      const response = await fetch("/api/ai/chat", {
+      // Use streaming endpoint for real-time token-by-token display
+      const response = await fetch("/api/ai/chat/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -469,27 +487,73 @@ function AIChatPageContent() {
           message: messageText,
           contractId,
           conversationId: activeConversationId,
-          history: messages.slice(-10), // Last 10 messages for context
+          conversationHistory: messages.slice(-10),
         }),
+        signal: abortController.signal,
       });
 
       if (!response.ok) {
         throw new Error("Failed to get AI response");
       }
 
-      const data = await response.json();
+      // Parse SSE stream with proper chunk boundary buffering
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let sources: string[] = [];
+      let confidence: number | undefined;
+      let suggestions: string[] = [];
+      let sseBuffer = ''; // Buffer for incomplete SSE lines across chunks
+
+      if (reader) {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            sseBuffer += decoder.decode(value, { stream: true });
+            const lines = sseBuffer.split('\n');
+            // Keep the last (potentially incomplete) line in the buffer
+            sseBuffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  if (data.type === 'content' && data.content) {
+                    fullContent += data.content;
+                    setStreamingContent(fullContent);
+                  } else if (data.content && !data.type) {
+                    fullContent += data.content;
+                    setStreamingContent(fullContent);
+                  }
+                  if (data.sources) sources = data.sources;
+                  if (data.confidence) confidence = data.confidence;
+                  if (data.suggestedActions) {
+                    suggestions = data.suggestedActions.map((a: { label: string }) => a.label);
+                  }
+                  if (data.done || data.type === 'done') break;
+                } catch {
+                  // Ignore parse errors for malformed SSE lines
+                }
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+      }
 
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         role: "assistant",
-        content: data.response || data.message || "I apologize, but I couldn't process that request. Please try again.",
+        content: fullContent || "I apologize, but I couldn't process that request. Please try again.",
         timestamp: new Date(),
-        suggestions: data.suggestions,
+        suggestions: suggestions.length > 0 ? suggestions : undefined,
         conversationId: activeConversationId || undefined,
         metadata: {
-          sources: data.sources,
-          confidence: data.confidence,
-          processingTime: data.processingTime,
+          sources,
+          confidence,
         },
       };
 
@@ -600,7 +664,7 @@ function AIChatPageContent() {
       {/* Conversation History Sidebar */}
       <AnimatePresence mode="wait">
         {sidebarOpen && (
-          <motion.aside
+          <motion.aside key="sidebar-open"
             initial={{ width: 0, opacity: 0 }}
             animate={{ width: 280, opacity: 1 }}
             exit={{ width: 0, opacity: 0 }}
@@ -612,7 +676,7 @@ function AIChatPageContent() {
               <div className="p-4 border-b">
                 <Button
                   onClick={handleNewConversation}
-                  className="w-full gap-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="w-full gap-2 bg-gradient-to-r from-violet-500 to-pink-500 hover:from-violet-600 hover:to-pink-600"
                 >
                   <Plus className="h-4 w-4" />
                   New Chat
@@ -689,6 +753,7 @@ function AIChatPageContent() {
         variant="ghost"
         size="sm"
         onClick={() => setSidebarOpen(!sidebarOpen)}
+        aria-label={sidebarOpen ? "Close conversation sidebar" : "Open conversation sidebar"}
         className="absolute left-0 top-1/2 -translate-y-1/2 z-10 rounded-l-none border border-l-0"
         style={{ left: sidebarOpen ? 280 : 0 }}
       >
@@ -709,7 +774,7 @@ function AIChatPageContent() {
                   </Button>
                 </Link>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center shadow-lg shadow-violet-500/20">
                     <Bot className="h-5 w-5 text-white" />
                   </div>
                   <div>
@@ -774,7 +839,7 @@ function AIChatPageContent() {
         {/* Keyboard Shortcuts Modal */}
         <AnimatePresence>
           {showShortcuts && (
-            <motion.div
+            <motion.div key="shortcuts"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -808,6 +873,14 @@ function AIChatPageContent() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Send message</span>
                     <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">Enter</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Summon agent</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">@handle</kbd>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Quick commands</span>
+                    <kbd className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-xs">/command</kbd>
                   </div>
                 </div>
                 <Button
@@ -861,7 +934,7 @@ function AIChatPageContent() {
           {contractId && (
             <div className="p-4 border-t">
               <div className="flex items-center gap-2 text-sm">
-                <FileText className="h-4 w-4 text-blue-500" />
+                <FileText className="h-4 w-4 text-violet-500" />
                 <span className="text-muted-foreground">Context:</span>
                 <Badge variant="secondary" className="truncate">
                   Contract {contractId}
@@ -875,7 +948,7 @@ function AIChatPageContent() {
         <div className="flex-1 flex flex-col min-w-0">
           {/* Messages */}
           <ScrollArea className="flex-1 p-4">
-            <div ref={scrollRef} className="max-w-3xl mx-auto space-y-4">
+            <div ref={scrollRef} role="log" aria-live="polite" aria-label="Chat messages" className="max-w-3xl mx-auto space-y-4">
               {messages.map((message) => (
                 <motion.div
                   key={message.id}
@@ -887,7 +960,7 @@ function AIChatPageContent() {
                   )}
                 >
                   {message.role === "assistant" && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                       <Bot className="h-4 w-4 text-white" />
                     </div>
                   )}
@@ -896,7 +969,7 @@ function AIChatPageContent() {
                     className={cn(
                       "max-w-[80%] rounded-xl p-4",
                       message.role === "user"
-                        ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white"
+                        ? "bg-gradient-to-br from-violet-500 to-purple-600 text-white"
                         : "bg-white dark:bg-slate-800 border shadow-sm"
                     )}
                   >
@@ -990,29 +1063,36 @@ function AIChatPageContent() {
                   </div>
 
                   {message.role === "user" && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
                       <User className="h-4 w-4 text-white" />
                     </div>
                   )}
                 </motion.div>
               ))}
 
-              {/* Typing indicator */}
+              {/* Typing / Streaming indicator */}
               {isTyping && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-3"
                 >
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
-                  <div className="bg-white dark:bg-slate-800 border shadow-sm rounded-xl p-4">
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
-                    </div>
+                  <div className="bg-white dark:bg-slate-800 border shadow-sm rounded-xl p-4 max-w-[80%]">
+                    {streamingContent ? (
+                      <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
+                        {streamingContent}
+                        <span className="inline-block w-1.5 h-4 bg-violet-500 animate-pulse ml-0.5 align-text-bottom" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    )}
                   </div>
                 </motion.div>
               )}
@@ -1037,55 +1117,22 @@ function AIChatPageContent() {
             </div>
           </div>
 
-          {/* Input Area */}
+          {/* Input Area — Enhanced with @mention persona autocomplete */}
           <div className="flex-shrink-0 border-t bg-white dark:bg-slate-900 p-4">
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleSendMessage();
-              }}
-              className="max-w-3xl mx-auto"
-            >
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    ref={inputRef}
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    placeholder="Ask anything about your contracts..."
-                    className="pr-10 h-12 text-base"
-                    disabled={isLoading}
-                  />
-                  {input && (
-                    <button
-                      type="button"
-                      onClick={() => setInput("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <span className="sr-only">Clear input</span>
-                      ×
-                    </button>
-                  )}
-                </div>
-                <Button
-                  type="submit"
-                  size="lg"
-                  disabled={!input.trim() || isLoading}
-                  className="h-12 px-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                >
-                  {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                  ) : (
-                    <Send className="h-5 w-5" />
-                  )}
-                </Button>
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                Press <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">/</kbd> to focus •{" "}
-                <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">Enter</kbd> to send •{" "}
-                <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[10px]">?</kbd> for shortcuts
-              </p>
-            </form>
+            <div className="max-w-3xl mx-auto">
+              <EnhancedChatInput
+                ref={inputRef}
+                value={input}
+                onChange={setInput}
+                onSend={(message) => handleSendMessage(message)}
+                placeholder="Ask anything about your contracts... Type @ to summon an agent"
+                disabled={isLoading}
+                isLoading={isLoading}
+                suggestions={messages[messages.length - 1]?.suggestions || []}
+                onSuggestionClick={handleUseSuggestion}
+                contractContext={contractId ? { id: contractId, name: `Contract ${contractId}` } : undefined}
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -1121,14 +1168,14 @@ function ConversationItem({
       className={cn(
         "group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer transition-colors",
         isActive
-          ? "bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800"
+          ? "bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800"
           : "hover:bg-slate-100 dark:hover:bg-slate-800"
       )}
       onClick={onSelect}
     >
       <MessageSquare className={cn(
         "h-4 w-4 flex-shrink-0",
-        isActive ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground"
+        isActive ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground"
       )} />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium truncate">{conversation.title}</p>
@@ -1182,7 +1229,7 @@ export default function AIChatPage() {
     <Suspense
       fallback={
         <div className="flex items-center justify-center h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-500" />
+          <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
         </div>
       }
     >

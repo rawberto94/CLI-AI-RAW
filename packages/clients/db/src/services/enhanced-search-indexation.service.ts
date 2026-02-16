@@ -547,7 +547,8 @@ export class EnhancedSearchIndexationService {
         }
       }));
     } catch (error) {
-
+      throw error;
+    }
   }
 
   /**

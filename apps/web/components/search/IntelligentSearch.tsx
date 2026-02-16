@@ -209,7 +209,7 @@ export function IntelligentSearch() {
     <div ref={containerRef} className="relative w-full">
       <div className={cn(
         "relative flex items-center transition-all duration-200",
-        isOpen && "ring-2 ring-blue-500/30 rounded-lg"
+        isOpen && "ring-2 ring-violet-500/30 rounded-lg"
       )}>
         <Search className="absolute left-3 h-4 w-4 text-slate-400 pointer-events-none" />
         <input
@@ -223,7 +223,7 @@ export function IntelligentSearch() {
           onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder="Search contracts, suppliers..."
-          className="w-full h-10 pl-10 pr-20 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-blue-300 transition-all"
+          className="w-full h-10 pl-10 pr-20 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm placeholder:text-slate-400 focus:outline-none focus:bg-white dark:focus:bg-slate-900 focus:border-violet-300 transition-all"
         />
         <div className="absolute right-2 flex items-center gap-1.5">
           {isLoading && <Loader2 className="h-4 w-4 text-slate-400 animate-spin" />}
@@ -240,7 +240,7 @@ export function IntelligentSearch() {
 
       <AnimatePresence>
         {isOpen && (query || recentSearches.length > 0) && (
-          <motion.div
+          <motion.div key="open"
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -262,14 +262,14 @@ export function IntelligentSearch() {
                       className={cn(
                         "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
                         selectedIndex === index 
-                          ? "bg-blue-50 dark:bg-blue-900/30" 
+                          ? "bg-violet-50 dark:bg-violet-900/30" 
                           : "hover:bg-slate-50 dark:hover:bg-slate-800"
                       )}
                     >
                       <div className={cn(
                         "w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0",
                         suggestion.type === 'ai_suggestion' 
-                          ? "bg-gradient-to-br from-purple-500 to-pink-500 text-white"
+                          ? "bg-gradient-to-br from-violet-500 to-pink-500 text-white"
                           : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300"
                       )}>
                         <Icon className="h-4 w-4" />
@@ -310,7 +310,7 @@ export function IntelligentSearch() {
                     className={cn(
                       "w-full flex items-center gap-3 px-3 py-2 text-left transition-colors",
                       selectedIndex === suggestions.length + index
-                        ? "bg-blue-50 dark:bg-blue-900/30"
+                        ? "bg-violet-50 dark:bg-violet-900/30"
                         : "hover:bg-slate-50 dark:hover:bg-slate-800"
                     )}
                   >

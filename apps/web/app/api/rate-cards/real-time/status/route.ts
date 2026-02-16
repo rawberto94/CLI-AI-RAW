@@ -5,26 +5,17 @@
  * Returns the current status of real-time benchmark calculations
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { realTimeBenchmarkService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const rateCardEntryId = searchParams.get('rateCardEntryId');
 
     if (!rateCardEntryId) {
-      return NextResponse.json(
-        { error: 'rateCardEntryId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'rateCardEntryId is required', 400);
     }
 
     // Initialize service
@@ -34,14 +25,14 @@ export async function GET(request: NextRequest) {
     const status = realTimeService.getCalculationStatus(rateCardEntryId);
 
     if (!status) {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         rateCardEntryId,
         status: 'IDLE',
         message: 'No recent calculation activity',
       });
     }
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       rateCardEntryId: status.rateCardEntryId,
       status: status.status,
       startedAt: status.startedAt,
@@ -49,10 +40,4 @@ export async function GET(request: NextRequest) {
       durationMs: status.durationMs,
       error: status.error,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch real-time status' },
-      { status: 500 }
-    );
-  }
-}
+  });

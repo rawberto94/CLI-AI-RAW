@@ -60,9 +60,9 @@ const sizeConfig = {
 };
 
 const colorClasses = {
-  indigo: 'bg-indigo-600',
-  emerald: 'bg-emerald-600',
-  blue: 'bg-blue-600',
+  indigo: 'bg-violet-600',
+  emerald: 'bg-violet-600',
+  blue: 'bg-violet-600',
   amber: 'bg-amber-500',
   red: 'bg-red-600',
 };
@@ -107,9 +107,9 @@ export function Toggle({
         onKeyDown={handleKeyDown}
         disabled={disabled}
         className={cn(
-          'relative inline-flex flex-shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500',
+          'relative inline-flex flex-shrink-0 rounded-full transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500',
           config.track,
-          checked ? colorClasses[color] : 'bg-slate-200',
+          checked ? colorClasses[color] : 'bg-slate-200 dark:bg-slate-700',
           disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
         )}
       >
@@ -129,7 +129,7 @@ export function Toggle({
               exit={{ scale: 0 }}
             >
               {checked ? (
-                <Check className={cn(config.icon, 'text-emerald-600')} />
+                <Check className={cn(config.icon, 'text-violet-600')} />
               ) : (
                 <X className={cn(config.icon, 'text-slate-400')} />
               )}
@@ -180,7 +180,7 @@ export function ToggleGroup({
   return (
     <div
       className={cn(
-        'inline-flex items-center bg-slate-100 rounded-xl p-1',
+        'inline-flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1',
         className
       )}
     >
@@ -196,14 +196,14 @@ export function ToggleGroup({
               'relative inline-flex items-center gap-2 font-medium rounded-lg transition-all',
               paddingClasses[size],
               isSelected
-                ? 'text-slate-900'
-                : 'text-slate-500 hover:text-slate-700'
+                ? 'text-slate-900 dark:text-slate-100'
+                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
             )}
           >
             {isSelected && (
               <motion.div
                 layoutId="toggle-active"
-                className="absolute inset-0 bg-white rounded-lg shadow-sm"
+                className="absolute inset-0 bg-white dark:bg-slate-700 rounded-lg shadow-sm"
                 transition={{ type: 'spring', stiffness: 400, damping: 30 }}
               />
             )}
@@ -249,8 +249,8 @@ export function ToggleCard({
       className={cn(
         'w-full text-left p-4 rounded-xl border-2 transition-all',
         checked
-          ? 'border-indigo-600 bg-indigo-50'
-          : 'border-slate-200 hover:border-slate-300',
+          ? 'border-violet-600 bg-violet-50 dark:bg-violet-950/30'
+          : 'border-slate-200 dark:border-slate-700 hover:border-violet-300 dark:hover:border-violet-700',
         disabled && 'opacity-50 cursor-not-allowed',
         className
       )}
@@ -260,7 +260,7 @@ export function ToggleCard({
           <div
             className={cn(
               'w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0',
-              checked ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'
+              checked ? 'bg-violet-100 dark:bg-violet-900/50 text-violet-600' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
             )}
           >
             <Icon className="w-5 h-5" />
@@ -271,7 +271,7 @@ export function ToggleCard({
             <h3
               className={cn(
                 'font-medium',
-                checked ? 'text-indigo-900' : 'text-slate-900'
+                checked ? 'text-violet-900 dark:text-violet-100' : 'text-slate-900 dark:text-slate-100'
               )}
             >
               {title}

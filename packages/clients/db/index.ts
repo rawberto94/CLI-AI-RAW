@@ -95,9 +95,9 @@ export class DatabaseManager {
     };
 
     this.prisma = new PrismaClient({
-      log: this.config.monitoring.enableQueryLogging 
-        ? ['query', 'info', 'warn', 'error']
-        : ['error'],
+      log: process.env.NODE_ENV === 'production' || !this.config.monitoring.enableQueryLogging
+        ? ['error']
+        : ['warn', 'error'],
       datasources: {
         db: {
           url: process.env.DATABASE_URL,
@@ -192,6 +192,8 @@ export class DatabaseManager {
 
   async executeQuery<T>(query: string, params: any[] = []): Promise<T[]> {
     return this.withRetry(async () => {
+      // $queryRawUnsafe is intentional here — generic executor with parameterized placeholders ($1, $2).
+      // Callers pass pre-built SQL strings with positional params; this is the correct Prisma API for that pattern.
       return await this.prisma.$queryRawUnsafe<T[]>(query, ...params);
     });
   }

@@ -199,7 +199,7 @@ export function ExtractionConfidenceHeatmap({
 
   // Get confidence color
   const getConfidenceColor = (confidence: number): string => {
-    if (confidence >= CONFIDENCE_THRESHOLDS.high) return 'bg-emerald-500';
+    if (confidence >= CONFIDENCE_THRESHOLDS.high) return 'bg-violet-500';
     if (confidence >= CONFIDENCE_THRESHOLDS.medium) return 'bg-yellow-500';
     if (confidence >= CONFIDENCE_THRESHOLDS.low) return 'bg-orange-500';
     return 'bg-red-500';
@@ -207,7 +207,7 @@ export function ExtractionConfidenceHeatmap({
 
   // Get confidence background for heatmap
   const getConfidenceBackground = (confidence: number): string => {
-    if (confidence >= CONFIDENCE_THRESHOLDS.high) return 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100';
+    if (confidence >= CONFIDENCE_THRESHOLDS.high) return 'bg-violet-50 border-violet-200 hover:bg-violet-100';
     if (confidence >= CONFIDENCE_THRESHOLDS.medium) return 'bg-yellow-50 border-yellow-200 hover:bg-yellow-100';
     if (confidence >= CONFIDENCE_THRESHOLDS.low) return 'bg-orange-50 border-orange-200 hover:bg-orange-100';
     return 'bg-red-50 border-red-200 hover:bg-red-100';
@@ -454,10 +454,10 @@ export function ExtractionConfidenceHeatmap({
 
             {/* Explanation */}
             {selectedField.explanation && (
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
                 <div className="flex items-start gap-2">
-                  <Info className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <p className="text-sm text-blue-800">{selectedField.explanation}</p>
+                  <Info className="h-4 w-4 text-violet-600 mt-0.5" />
+                  <p className="text-sm text-violet-800">{selectedField.explanation}</p>
                 </div>
               </div>
             )}
@@ -532,12 +532,12 @@ export function ExtractionConfidenceHeatmap({
       <CardContent className="space-y-4">
         {/* Summary stats */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+          <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-800">High Confidence</span>
+              <CheckCircle2 className="h-4 w-4 text-violet-600" />
+              <span className="text-sm font-medium text-violet-800">High Confidence</span>
             </div>
-            <p className="text-2xl font-bold text-emerald-700">{stats.highConf}</p>
+            <p className="text-2xl font-bold text-violet-700">{stats.highConf}</p>
           </div>
           <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
@@ -553,12 +553,12 @@ export function ExtractionConfidenceHeatmap({
             </div>
             <p className="text-2xl font-bold text-red-700">{stats.lowConf}</p>
           </div>
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
-              <Zap className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">Auto-Corrected</span>
+              <Zap className="h-4 w-4 text-violet-600" />
+              <span className="text-sm font-medium text-violet-800">Auto-Corrected</span>
             </div>
-            <p className="text-2xl font-bold text-blue-700">{stats.correctedCount}</p>
+            <p className="text-2xl font-bold text-violet-700">{stats.correctedCount}</p>
           </div>
         </div>
 
@@ -621,7 +621,7 @@ export function ExtractionConfidenceHeatmap({
         {/* Legend */}
         <div className="flex items-center justify-center gap-6 pt-2 border-t text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-emerald-500" />
+            <div className="w-3 h-3 rounded-full bg-violet-500" />
             <span>High (≥85%)</span>
           </div>
           <div className="flex items-center gap-1.5">

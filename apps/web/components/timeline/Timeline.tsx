@@ -65,18 +65,18 @@ const statusConfig: Record<
 > = {
   completed: {
     icon: Check,
-    colors: 'bg-emerald-500 text-white',
-    lineColor: 'bg-emerald-500',
+    colors: 'bg-violet-500 text-white',
+    lineColor: 'bg-violet-500',
   },
   current: {
     icon: Circle,
-    colors: 'bg-indigo-500 text-white ring-4 ring-indigo-100',
-    lineColor: 'bg-slate-200',
+    colors: 'bg-gradient-to-br from-violet-600 to-purple-600 text-white ring-4 ring-violet-100 dark:ring-violet-900/50',
+    lineColor: 'bg-slate-200 dark:bg-slate-700',
   },
   upcoming: {
     icon: Circle,
-    colors: 'bg-slate-200 text-slate-400',
-    lineColor: 'bg-slate-200',
+    colors: 'bg-slate-200 dark:bg-slate-700 text-slate-400',
+    lineColor: 'bg-slate-200 dark:bg-slate-700',
   },
   error: {
     icon: AlertCircle,

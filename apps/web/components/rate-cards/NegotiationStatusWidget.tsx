@@ -89,11 +89,11 @@ export function NegotiationStatusWidget({
             </div>
             <div className="text-sm text-muted-foreground">Success Rate</div>
           </div>
-          <div className="text-center p-4 rounded-lg bg-blue-50">
-            <div className="text-3xl font-bold text-blue-600">
+          <div className="text-center p-4 rounded-lg bg-violet-50">
+            <div className="text-3xl font-bold text-violet-600">
               {metrics.opportunitiesCount ?? 0}
             </div>
-            <div className="text-sm text-blue-700">Opportunities</div>
+            <div className="text-sm text-violet-700">Opportunities</div>
           </div>
         </div>
 
@@ -182,15 +182,15 @@ export function NegotiationStatusWidget({
 
         {/* Opportunities Alert */}
         {(metrics.opportunitiesCount ?? 0) > 0 && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="p-3 bg-violet-50 border border-violet-200 rounded-lg">
             <div className="flex items-start justify-between">
               <div className="flex items-start gap-2 flex-1">
-                <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+                <FileText className="h-5 w-5 text-violet-600 mt-0.5" />
                 <div>
-                  <div className="font-medium text-blue-900">
+                  <div className="font-medium text-violet-900">
                     Negotiation Opportunities
                   </div>
-                  <div className="text-sm text-blue-700">
+                  <div className="text-sm text-violet-700">
                     {metrics.opportunitiesCount ?? 0} rates ready for negotiation
                   </div>
                 </div>

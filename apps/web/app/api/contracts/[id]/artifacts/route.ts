@@ -7,14 +7,19 @@
  * - Type-safe with consistent error handling
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import { artifactService } from "@/lib/data-orchestration";
 import { getServerTenantId } from "@/lib/tenant-server";
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
   const startTime = Date.now();
 
   try {
@@ -22,10 +27,7 @@ export async function GET(
     const tenantId = await getServerTenantId();
 
     if (!contractId) {
-      return NextResponse.json(
-        { success: false, error: "Contract ID is required" },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'Contract ID is required', 400);
     }
 
     // Use data-orchestration service (handles caching automatically)
@@ -35,14 +37,7 @@ export async function GET(
     );
 
     if (!result.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: result.error?.message ?? 'Unknown error',
-          code: result.error?.code ?? 'UNKNOWN',
-        },
-        { status: 500 }
-      );
+      return createErrorResponse(ctx, 'INTERNAL_ERROR', result.error?.message, 500);
     }
 
     const responseTime = Date.now() - startTime;
@@ -67,8 +62,7 @@ export async function GET(
         };
     });
 
-    return NextResponse.json(
-      {
+    return createSuccessResponse(ctx, {
         success: true,
         data: transformedArtifacts,
         meta: {
@@ -84,16 +78,8 @@ export async function GET(
           "X-Response-Time": `${responseTime}ms`,
           "X-Data-Source": "data-orchestration",
         },
-      }
-    );
+      });
   } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch artifacts",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -226,7 +226,7 @@ export function getSeverityColor(severity: 'high' | 'medium' | 'low'): string {
     case 'medium':
       return 'bg-yellow-100 text-yellow-800'
     case 'low':
-      return 'bg-blue-100 text-blue-800'
+      return 'bg-violet-100 text-violet-800'
   }
 }
 

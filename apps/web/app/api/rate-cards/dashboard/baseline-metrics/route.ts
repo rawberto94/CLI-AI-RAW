@@ -1,35 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-
-// Mock data for when table doesn't exist
-const mockBaselineMetrics = {
-  totalBaselines: 156,
-  baselineTypes: {
-    'market-benchmark': 45,
-    'historical-average': 38,
-    'negotiated-rate': 42,
-    'internal-standard': 31,
-  },
-  compliancePercentage: 87.2,
-  averageVariance: 4.8,
-  atRiskCount: 20,
-  compliantCount: 136,
-};
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
+import { enhancedRateAnalyticsService } from 'data-orchestration/services';
 
 /**
  * GET /api/rate-cards/dashboard/baseline-metrics
  * Get baseline tracking metrics for dashboard
  */
-export async function GET(request: NextRequest) {
-  try {
-    const tenantId = request.headers.get('x-tenant-id');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
 
     // Require tenant ID for security
     if (!tenantId) {
-      return NextResponse.json(
-        { error: 'Tenant ID is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID is required', 400);
     }
 
     // Try to get data from database
@@ -64,7 +47,7 @@ export async function GET(request: NextRequest) {
       const compliancePercentage = totalBaselines > 0 ? (compliantCount / totalBaselines) * 100 : 0;
       const averageVariance = 5.2;
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         totalBaselines,
         baselineTypes,
         compliancePercentage,
@@ -74,16 +57,16 @@ export async function GET(request: NextRequest) {
         source: 'database',
       });
     } catch {
-      // Table doesn't exist or other DB error - return mock data
-      return NextResponse.json({
-        ...mockBaselineMetrics,
-        source: 'mock',
+      // Table doesn't exist or other DB error - return zero-value metrics
+      return createSuccessResponse(ctx, {
+        totalBaselines: 0,
+        baselineTypes: {},
+        compliancePercentage: 0,
+        averageVariance: 0,
+        atRiskCount: 0,
+        compliantCount: 0,
+        source: 'empty',
+        message: 'Baseline metrics unavailable - database error',
       });
     }
-  } catch {
-    return NextResponse.json({
-      ...mockBaselineMetrics,
-      source: 'mock-fallback',
-    });
-  }
-}
+  });

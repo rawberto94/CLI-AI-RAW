@@ -231,7 +231,7 @@ export function useEvent<K extends keyof AppEvents>(
     };
 
     return eventBus.on(event, wrappedHandler as EventHandler<AppEvents[K]>);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [event, ...deps]);
 }
 

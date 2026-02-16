@@ -9,8 +9,8 @@
  * @version 1.0.0
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
 interface ContractMetadata {
   title?: string;
@@ -39,15 +39,9 @@ interface SimilaritySearchOptions {
 /**
  * POST - Generate embedding or find similar contracts
  */
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
-    const services = await import('@repo/data-orchestration/services');
+export const POST = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+    const services = await import('data-orchestration/services');
     const contractSimilarityService = services.contractSimilarityService;
 
     const body = await request.json();
@@ -56,10 +50,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     switch (action) {
       case 'generate-embedding': {
         if (!contractId || !contractText) {
-          return NextResponse.json(
-            { error: 'contractId and contractText are required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId and contractText are required', 400);
         }
 
         const embedding = await contractSimilarityService.generateEmbedding(
@@ -69,12 +60,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           tenantId
         );
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           message: 'Embedding generated',
           contractId,
           metadata: embedding.metadata,
-          createdAt: embedding.createdAt,
-        });
+          createdAt: embedding.createdAt });
       }
 
       case 'find-similar': {
@@ -84,8 +74,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           minSimilarity: body.minSimilarity || 0.5,
           typeFilter: body.typeFilter,
           industryFilter: body.industryFilter,
-          excludeContractIds: body.excludeContractIds,
-        };
+          excludeContractIds: body.excludeContractIds };
 
         let similar;
         
@@ -96,29 +85,21 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           // Find similar by text
           similar = await contractSimilarityService.findSimilarByText(contractText, options);
         } else {
-          return NextResponse.json(
-            { error: 'Either contractId or contractText is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Either contractId or contractText is required', 400);
         }
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           similar: similar.map((s: { contractId: string; similarity: number; metadata: unknown; matchReasons: string[] }) => ({
             contractId: s.contractId,
             similarity: Math.round(s.similarity * 100) / 100,
             metadata: s.metadata,
-            matchReasons: s.matchReasons,
-          })),
-          count: similar.length,
-        });
+            matchReasons: s.matchReasons })),
+          count: similar.length });
       }
 
       case 'recommend-templates': {
         if (!contractText) {
-          return NextResponse.json(
-            { error: 'contractText is required for template recommendations' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contractText is required for template recommendations', 400);
         }
 
         const recommendations = await contractSimilarityService.recommendTemplates(
@@ -126,10 +107,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           tenantId
         );
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           recommendations,
-          count: recommendations.length,
-        });
+          count: recommendations.length });
       }
 
       case 'batch-embedding': {
@@ -140,80 +120,53 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
         }>;
 
         if (!contracts || !Array.isArray(contracts)) {
-          return NextResponse.json(
-            { error: 'contracts array is required' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'contracts array is required', 400);
         }
 
         if (contracts.length > 100) {
-          return NextResponse.json(
-            { error: 'Maximum 100 contracts per batch' },
-            { status: 400 }
-          );
+          return createErrorResponse(ctx, 'BAD_REQUEST', 'Maximum 100 contracts per batch', 400);
         }
 
         const results = await contractSimilarityService.generateBatchEmbeddings({
           contracts: contracts.map(c => ({
             id: c.id,
             text: c.text,
-            metadata: c.metadata || {},
-          })),
-          tenantId,
-        });
+            metadata: c.metadata || {} })),
+          tenantId });
 
-        return NextResponse.json({
+        return createSuccessResponse(ctx, {
           message: 'Batch embeddings generated',
           count: results.length,
           contracts: results.map((r: { contractId: string; createdAt: Date }) => ({
             contractId: r.contractId,
-            createdAt: r.createdAt,
-          })),
-        });
+            createdAt: r.createdAt })) });
       }
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: generate-embedding, find-similar, recommend-templates, batch-embedding' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action. Use: generate-embedding, find-similar, recommend-templates, batch-embedding', 400);
     }
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to process similarity request' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * GET - Get similarity stats or clusters
  */
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const tenantId = session.user.tenantId;
-
-    const services = await import('@repo/data-orchestration/services');
+export const GET = withAuthApiHandler(async (request, ctx) => {
+  const tenantId = ctx.tenantId;
+    const services = await import('data-orchestration/services');
     const contractSimilarityService = services.contractSimilarityService;
 
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
     if (action === 'stats') {
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         embeddingCount: contractSimilarityService.getEmbeddingCount(),
         capabilities: {
           embeddingModel: 'text-embedding-3-small',
           dimensions: 1536,
           maxBatchSize: 100,
-          supportedFilters: ['type', 'industry'],
-        },
-      });
+          supportedFilters: ['type', 'industry'] } });
     }
 
     if (action === 'clusters') {
@@ -223,70 +176,47 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         numClusters
       );
 
-      return NextResponse.json({
+      return createSuccessResponse(ctx, {
         clusters,
-        tenantId,
-      });
+        tenantId });
     }
 
     // Default: API documentation
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       endpoints: {
         'POST /api/ai/similarity': {
           actions: {
             'generate-embedding': 'Create embedding for a contract',
             'find-similar': 'Find similar contracts',
             'recommend-templates': 'Get template recommendations',
-            'batch-embedding': 'Generate embeddings for multiple contracts',
-          },
-        },
+            'batch-embedding': 'Generate embeddings for multiple contracts' } },
         'GET /api/ai/similarity?action=stats': 'Get service statistics',
-        'GET /api/ai/similarity?action=clusters&tenantId=X': 'Get contract clusters',
-      },
+        'GET /api/ai/similarity?action=clusters&tenantId=X': 'Get contract clusters' },
       requiredFields: {
         tenantId: 'Required for all operations',
         contractId: 'Required for generate-embedding and find-similar (by ID)',
-        contractText: 'Required for generate-embedding and find-similar (by text)',
-      },
-    });
+        contractText: 'Required for generate-embedding and find-similar (by text)' } });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch similarity data' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * DELETE - Clear embedding for a contract
  */
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  try {
-    const services = await import('@repo/data-orchestration/services');
+export const DELETE = withAuthApiHandler(async (request, ctx) => {
+    const services = await import('data-orchestration/services');
     const contractSimilarityService = services.contractSimilarityService;
 
     const { searchParams } = new URL(request.url);
     const contractId = searchParams.get('contractId');
 
     if (!contractId) {
-      return NextResponse.json(
-        { error: 'contractId is required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'contractId is required', 400);
     }
 
     const cleared = await contractSimilarityService.clearEmbedding(contractId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       message: cleared ? 'Embedding cleared' : 'Embedding not found',
-      contractId,
-    });
+      contractId });
 
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to clear embedding' },
-      { status: 500 }
-    );
-  }
-}
+  });

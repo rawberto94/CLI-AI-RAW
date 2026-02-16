@@ -5,9 +5,8 @@
 
 import { ChatOpenAI } from '@langchain/openai';
 import { SystemMessage, HumanMessage } from '@langchain/core/messages';
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '../lib/prisma';
 
-const prisma = new PrismaClient();
 
 export interface RoleTaxonomy {
   id: string;
@@ -579,8 +578,13 @@ export const roleStandardizationService = {
   },
   standardizeRole: (role: string, tenantId: string, context?: Parameters<RoleStandardizationService['standardizeRole']>[2]) => 
     getRoleStandardizationService().standardizeRole(role, tenantId, context),
-  standardizeRoles: (roles: string[], tenantId: string) => 
-    getRoleStandardizationService().standardizeRoles(roles, tenantId),
+  standardizeRoles: async (roles: string[], tenantId: string) => {
+    // Batch standardize roles - convenience method
+    const service = getRoleStandardizationService();
+    return Promise.all(roles.map(role => service.standardizeRole(role, tenantId)));
+  },
+  getRoleSuggestions: (query: string, tenantId: string, limit?: number) =>
+    getRoleStandardizationService().getRoleSuggestions(query, tenantId, limit),
   clearCache: () => 
     getRoleStandardizationService().clearCache(),
 };

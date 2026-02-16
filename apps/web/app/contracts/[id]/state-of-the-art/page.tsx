@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ArtifactEditor } from '@/components/contracts/ArtifactEditor';
+import { ArtifactEditor as _ArtifactEditor } from '@/components/contracts/ArtifactEditor';
 import { EnhancedArtifactEditor } from '@/components/contracts/EnhancedArtifactEditor';
 import { RateCardEditor } from '@/components/contracts/RateCardEditor';
 import { EnhancedMetadataEditor } from '@/components/contracts/EnhancedMetadataEditor';
@@ -16,8 +16,8 @@ import { VersionHistoryPanel } from '@/components/contracts/VersionHistoryPanel'
 import { AIAnalysisPanel } from '@/components/contracts/AIAnalysisPanel';
 import { 
   FileText, DollarSign, TrendingUp, AlertCircle, CheckCircle2,
-  RefreshCw, Download, Edit, History, Tags, ChevronLeft,
-  Sparkles, Zap, Target, Clock, Users, Shield, MessageSquare
+  RefreshCw as _RefreshCw, Download, Edit, History, Tags, ChevronLeft,
+  Sparkles, Zap, Target, Clock, Users as _Users, Shield as _Shield, MessageSquare
 } from 'lucide-react';
 
 import { ArtifactViewer } from '@/components/contracts/ArtifactViewer';
@@ -49,7 +49,7 @@ export default function StateOfTheArtContractPage() {
 
   useEffect(() => {
     loadContractData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadContractData = async () => {
@@ -70,7 +70,7 @@ export default function StateOfTheArtContractPage() {
     }
   };
 
-  const handleArtifactSave = async (artifactId: string, updates: any) => {
+  const _handleArtifactSave = async (artifactId: string, updates: any) => {
     try {
       const response = await fetch(`/api/contracts/${contractId}/artifacts/${artifactId}`, {
         method: 'PUT',
@@ -89,7 +89,7 @@ export default function StateOfTheArtContractPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
         <div className="container mx-auto p-6 space-y-6">
           {/* Skeleton Loading */}
           <div className="space-y-4 animate-pulse">
@@ -108,7 +108,7 @@ export default function StateOfTheArtContractPage() {
 
   if (!contract) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50 flex items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -137,7 +137,7 @@ export default function StateOfTheArtContractPage() {
   const artifacts = contract.artifacts ?? [];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50 to-purple-50">
       <div className="container mx-auto p-6 space-y-6">
         
         {/* Breadcrumb */}
@@ -146,7 +146,7 @@ export default function StateOfTheArtContractPage() {
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-2 text-sm text-gray-600"
         >
-          <button onClick={() => router.push('/contracts')} className="hover:text-blue-600 transition-colors">
+          <button onClick={() => router.push('/contracts')} className="hover:text-violet-600 transition-colors">
             Contracts
           </button>
           <span>/</span>
@@ -157,7 +157,7 @@ export default function StateOfTheArtContractPage() {
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 p-8 text-white shadow-2xl"
+          className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-violet-600 via-purple-600 to-purple-600 p-8 text-white shadow-2xl"
         >
           <div className="absolute inset-0 bg-black/10"></div>
           <div className="relative z-10">
@@ -173,7 +173,7 @@ export default function StateOfTheArtContractPage() {
                   </motion.div>
                   <div>
                     <h1 className="text-3xl font-bold">{contract.name}</h1>
-                    <p className="text-blue-100 text-sm mt-1">ID: {contract.id}</p>
+                    <p className="text-violet-100 text-sm mt-1">ID: {contract.id}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
@@ -181,7 +181,7 @@ export default function StateOfTheArtContractPage() {
                     <Sparkles className="h-3 w-3 mr-1" />
                     {contract.status}
                   </Badge>
-                  <span className="text-sm text-blue-100">
+                  <span className="text-sm text-violet-100">
                     <Clock className="h-4 w-4 inline mr-1" />
                     Uploaded {new Date(contract.uploadedAt).toLocaleDateString()}
                   </span>
@@ -192,7 +192,7 @@ export default function StateOfTheArtContractPage() {
                   <Download className="h-4 w-4 mr-2" />
                   Export
                 </Button>
-                <Button className="bg-white text-blue-600 hover:bg-blue-50">
+                <Button className="bg-white text-violet-600 hover:bg-violet-50">
                   <FileText className="h-4 w-4 mr-2" />
                   View PDF
                 </Button>
@@ -202,7 +202,7 @@ export default function StateOfTheArtContractPage() {
           
           {/* Decorative Elements */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/10 rounded-full blur-2xl"></div>
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-violet-500/10 rounded-full blur-2xl"></div>
         </motion.div>
 
         {/* Orchestrator Progress - Real-time updates */}
@@ -218,14 +218,14 @@ export default function StateOfTheArtContractPage() {
               label: 'Artifacts', 
               value: contract.artifacts?.length || 0, 
               icon: FileText, 
-              color: 'from-blue-500 to-cyan-500',
-              bgColor: 'bg-blue-50'
+              color: 'from-violet-500 to-purple-500',
+              bgColor: 'bg-violet-50'
             },
             { 
               label: 'AI Confidence', 
               value: `${Math.round(avgConfidence * 100)}%`, 
               icon: Sparkles, 
-              color: 'from-green-500 to-emerald-500',
+              color: 'from-violet-500 to-violet-500',
               bgColor: 'bg-green-50',
               progress: avgConfidence * 100
             },
@@ -233,8 +233,8 @@ export default function StateOfTheArtContractPage() {
               label: 'Completeness', 
               value: `${Math.round(avgCompleteness)}%`, 
               icon: Target, 
-              color: 'from-purple-500 to-pink-500',
-              bgColor: 'bg-purple-50',
+              color: 'from-violet-500 to-pink-500',
+              bgColor: 'bg-violet-50',
               progress: avgCompleteness
             },
             { 
@@ -325,13 +325,13 @@ export default function StateOfTheArtContractPage() {
                       >
                         <Card className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden group">
                           {/* Gradient Top Border */}
-                          <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+                          <div className="h-1 bg-gradient-to-r from-violet-500 via-purple-500 to-pink-500"></div>
                           
                           <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
                             <div className="flex items-center justify-between">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-3">
-                                  <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600">
+                                  <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
                                     <FileText className="h-5 w-5 text-white" />
                                   </div>
                                   <div>
@@ -349,7 +349,7 @@ export default function StateOfTheArtContractPage() {
                                     <CheckCircle2 className="h-3 w-3 mr-1" />
                                     {Math.round((artifact.confidence || 0) * 100)}% confidence
                                   </Badge>
-                                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                  <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200">
                                     <Target className="h-3 w-3 mr-1" />
                                     {artifact.completeness}% complete
                                   </Badge>
@@ -365,7 +365,7 @@ export default function StateOfTheArtContractPage() {
                                     setSelectedArtifactId(artifactId);
                                     setShowVersionHistory(true);
                                   }}
-                                  className="hover:bg-purple-50 hover:text-purple-700 hover:border-purple-300"
+                                  className="hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300"
                                 >
                                   <History className="h-4 w-4 mr-2" />
                                   History
@@ -375,7 +375,7 @@ export default function StateOfTheArtContractPage() {
                                     variant="outline"
                                     size="sm"
                                     onClick={() => setEditingArtifactId(artifactId)}
-                                    className="hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300"
+                                    className="hover:bg-violet-50 hover:text-violet-700 hover:border-violet-300"
                                   >
                                     <Edit className="h-4 w-4 mr-2" />
                                     Edit
@@ -490,13 +490,13 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg overflow-hidden">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500"></div>
+                  <div className="h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-orange-500"></div>
                   <CardContent className="p-0">
                     <AIAnalysisPanel
                       contractId={contractId}
                       contractName={contract.name}
                       className="h-[600px]"
-                      onAnalysisComplete={(result) => {
+                      onAnalysisComplete={(_result) => {
                         // Analysis completed successfully
                       }}
                     />
@@ -512,10 +512,10 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500"></div>
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <div className="h-1 bg-gradient-to-r from-violet-500 via-pink-500 to-red-500"></div>
+                  <CardHeader className="bg-gradient-to-r from-violet-50 to-pink-50">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-600">
                         <Tags className="h-5 w-5 text-white" />
                       </div>
                       <div>
@@ -559,7 +559,7 @@ export default function StateOfTheArtContractPage() {
                         transition={{ delay: index * 0.1 }}
                       >
                         <Card className="border-0 shadow-lg hover:shadow-xl transition-all">
-                          <div className="h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                          <div className="h-1 bg-gradient-to-r from-violet-500 to-violet-500"></div>
                           <CardHeader>
                             <div className="flex items-start justify-between">
                               <div>
@@ -596,7 +596,7 @@ export default function StateOfTheArtContractPage() {
                 animate={{ opacity: 1, y: 0 }}
               >
                 <Card className="border-0 shadow-lg">
-                  <div className="h-1 bg-gradient-to-r from-indigo-500 to-purple-500"></div>
+                  <div className="h-1 bg-gradient-to-r from-violet-500 to-purple-500"></div>
                   <CardHeader>
                     <CardTitle>AI-Powered Insights</CardTitle>
                     <CardDescription>
@@ -614,7 +614,7 @@ export default function StateOfTheArtContractPage() {
         {/* Version History Modal */}
         <AnimatePresence>
           {showVersionHistory && selectedArtifactId && (
-            <motion.div
+            <motion.div key="version-history"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
@@ -629,11 +629,11 @@ export default function StateOfTheArtContractPage() {
                 className="w-full max-w-4xl"
               >
                 <Card className="border-0 shadow-2xl max-h-[90vh] overflow-auto">
-                  <div className="h-1 bg-gradient-to-r from-purple-500 to-pink-500"></div>
-                  <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50">
+                  <div className="h-1 bg-gradient-to-r from-violet-500 to-pink-500"></div>
+                  <CardHeader className="bg-gradient-to-r from-violet-50 to-pink-50">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500 to-pink-600">
                           <History className="h-5 w-5 text-white" />
                         </div>
                         <CardTitle>Version History</CardTitle>
@@ -689,7 +689,7 @@ export default function StateOfTheArtContractPage() {
         >
           <Button
             onClick={() => setChatbotOpen(true)}
-            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 relative group"
+            className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-br from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 relative group"
           >
             <MessageSquare className="h-6 w-6 text-white" />
             <span className="absolute -top-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse" />

@@ -13,7 +13,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Shield, Download, RefreshCw, FileText } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { toast } from 'sonner';
+
+
 
 interface ComplianceData {
   metrics: Array<{
@@ -49,7 +51,7 @@ export default function ComplianceAnalyticsPage() {
   const fetchComplianceData = useCallback(async () => {
     try {
       setIsRefreshing(true);
-      const response = await fetch('/api/analytics/compliance');
+      const response = await fetch('/api/analytics/compliance?action=report');
       if (!response.ok) throw new Error('Failed to fetch compliance data');
       
       const result = await response.json();
@@ -311,7 +313,7 @@ export default function ComplianceAnalyticsPage() {
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex items-start gap-3 p-3 border rounded-lg">
-            <FileText className="h-5 w-5 text-blue-600 mt-0.5" />
+            <FileText className="h-5 w-5 text-violet-600 mt-0.5" />
             <div className="flex-1">
               <p className="font-medium">Review high-severity issues</p>
               <p className="text-sm text-muted-foreground">

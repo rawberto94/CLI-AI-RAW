@@ -25,7 +25,7 @@ export function PPPAdjustmentToggle({
       <button
         onClick={handleToggle}
         className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-          enabled ? 'bg-blue-600' : 'bg-gray-300'
+          enabled ? 'bg-violet-600' : 'bg-gray-300'
         }`}
       >
         <span
@@ -36,7 +36,7 @@ export function PPPAdjustmentToggle({
       </button>
       <div className="flex items-center gap-2">
         {enabled ? (
-          <Globe className="w-4 h-4 text-blue-600" />
+          <Globe className="w-4 h-4 text-violet-600" />
         ) : (
           <DollarSign className="w-4 h-4 text-gray-600" />
         )}

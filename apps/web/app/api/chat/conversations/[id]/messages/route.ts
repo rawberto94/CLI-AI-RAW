@@ -5,10 +5,10 @@
  * POST /api/chat/conversations/[id]/messages - Add message to conversation
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from '@/lib/auth';
-import { getApiTenantId } from '@/lib/tenant-server';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
+import { aiCopilotService } from 'data-orchestration/services';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,16 +17,13 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id: conversationId } = await params;
     const { searchParams } = new URL(request.url);
     
@@ -38,14 +35,10 @@ export async function GET(
 
     // Verify conversation ownership
     const conversation = await prisma.chatConversation.findFirst({
-      where: { id: conversationId, tenantId, userId: session.user.id },
-    });
+      where: { id: conversationId, tenantId, userId: ctx.userId } });
 
     if (!conversation) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     const whereClause: Record<string, unknown> = { conversationId };
@@ -62,29 +55,20 @@ export async function GET(
         where: whereClause,
         orderBy: { createdAt: order },
         take: limit,
-        skip: offset,
-      }),
+        skip: offset }),
       prisma.chatMessage.count({ where: { conversationId } }),
     ]);
 
-    return NextResponse.json({
-      success: true,
+    return createSuccessResponse(ctx, {
       data: {
         messages,
         pagination: {
           total,
           limit,
           offset,
-          hasMore: offset + messages.length < total,
-        },
-      },
-    });
+          hasMore: offset + messages.length < total } } });
   } catch (error) {
-    console.error('Error fetching messages:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to fetch messages' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }
 
@@ -93,29 +77,22 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      );
-    }
+  const ctx = getAuthenticatedApiContext(request);
+  if (!ctx) {
+    return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+  }
+  const tenantId = ctx.tenantId;
 
-    const tenantId = await getApiTenantId(request);
+  try {
     const { id: conversationId } = await params;
     const body = await request.json();
 
     // Verify conversation ownership
     const conversation = await prisma.chatConversation.findFirst({
-      where: { id: conversationId, tenantId, userId: session.user.id },
-    });
+      where: { id: conversationId, tenantId, userId: ctx.userId } });
 
     if (!conversation) {
-      return NextResponse.json(
-        { success: false, error: 'Conversation not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Conversation not found', 404);
     }
 
     const {
@@ -126,21 +103,14 @@ export async function POST(
       model,
       tokensUsed,
       responseTimeMs,
-      metadata,
-    } = body;
+      metadata: _metadata } = body;
 
     if (!role || !content) {
-      return NextResponse.json(
-        { success: false, error: 'role and content are required' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'BAD_REQUEST', 'role and content are required', 400);
     }
 
     if (!['user', 'assistant', 'system', 'tool'].includes(role)) {
-      return NextResponse.json(
-        { success: false, error: 'Invalid role. Must be user, assistant, system, or tool' },
-        { status: 400 }
-      );
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid role. Must be user, assistant, system, or tool', 400);
     }
 
     const message = await prisma.chatMessage.create({
@@ -152,25 +122,16 @@ export async function POST(
         tokensUsed: tokensUsed || null,
         processingTime: responseTimeMs || null,
         // Store tool calls and results in sources JSON field
-        sources: toolCalls || toolResults ? JSON.stringify({ toolCalls, toolResults }) : undefined,
-      },
-    });
+        sources: toolCalls || toolResults ? JSON.stringify({ toolCalls, toolResults }) : undefined } });
 
     // Update conversation's lastMessageAt
     await prisma.chatConversation.update({
       where: { id: conversationId },
-      data: { lastMessageAt: new Date() },
-    });
+      data: { lastMessageAt: new Date() } });
 
-    return NextResponse.json({
-      success: true,
-      data: { message },
-    });
+    return createSuccessResponse(ctx, {
+      data: { message } });
   } catch (error) {
-    console.error('Error creating message:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to create message' },
-      { status: 500 }
-    );
+    return handleApiError(ctx, error);
   }
 }

@@ -14,7 +14,7 @@ import {
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/30 dark:from-slate-900 dark:via-indigo-950/30 dark:to-purple-950/30 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-violet-50/30 to-violet-50/30 dark:from-slate-900 dark:via-violet-950/30 dark:to-violet-950/30 flex items-center justify-center p-6">
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -29,7 +29,7 @@ export default function NotFound() {
           className="mb-8 motion-reduce:transition-none"
         >
           <div className="relative inline-block">
-            <span className="text-[150px] font-black bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-none">
+            <span className="text-[150px] font-black bg-gradient-to-br from-violet-600 via-purple-600 to-pink-600 bg-clip-text text-transparent leading-none">
               404
             </span>
             <motion.div
@@ -55,7 +55,7 @@ export default function NotFound() {
 
         {/* Quick Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
-          <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700">
+          <Button asChild size="lg" className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700">
             <Link href="/">
               <Home className="w-4 h-4" aria-hidden="true" />
               Go to Dashboard
@@ -77,28 +77,28 @@ export default function NotFound() {
           <nav className="grid grid-cols-2 gap-3" aria-label="Popular pages">
             <Link 
               href="/upload" 
-              className="flex items-center gap-2 p-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               <RefreshCw className="w-4 h-4" aria-hidden="true" />
               Upload Contract
             </Link>
             <Link 
               href="/workflows" 
-              className="flex items-center gap-2 p-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               <FileText className="w-4 h-4" aria-hidden="true" />
               Workflows
             </Link>
             <Link 
               href="/rate-cards" 
-              className="flex items-center gap-2 p-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               <Search className="w-4 h-4" aria-hidden="true" />
               Rate Cards
             </Link>
             <Link 
               href="/analytics" 
-              className="flex items-center gap-2 p-3 rounded-lg hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+              className="flex items-center gap-2 p-3 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/30 transition-colors text-sm text-slate-600 dark:text-slate-400 hover:text-violet-700 dark:hover:text-violet-300"
             >
               <ArrowLeft className="w-4 h-4" aria-hidden="true" />
               Analytics
@@ -109,7 +109,7 @@ export default function NotFound() {
         {/* Back button */}
         <button 
           onClick={() => window.history.back()}
-          className="mt-6 text-sm text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors inline-flex items-center gap-1"
+          className="mt-6 text-sm text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors inline-flex items-center gap-1"
           aria-label="Go back to previous page"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />

@@ -5,19 +5,13 @@
  * Returns notifications for benchmark updates and market shifts
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { benchmarkNotificationService } from 'data-orchestration/services';
 import { getApiTenantId } from '@/lib/security/tenant';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const searchParams = request.nextUrl.searchParams;
     const tenantId = await getApiTenantId(request);
     const limit = parseInt(searchParams.get('limit') || '100');
@@ -25,7 +19,7 @@ export async function GET(request: NextRequest) {
     const type = searchParams.get('type') as any;
 
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     // Initialize service
@@ -41,30 +35,18 @@ export async function GET(request: NextRequest) {
     // Get statistics
     const stats = notificationService.getNotificationStatistics(tenantId);
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       notifications,
       statistics: stats,
       unreadCount: stats.unread,
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch notifications' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
 /**
  * Mark notification as read
  * POST /api/rate-cards/notifications
  */
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const POST = withAuthApiHandler(async (request, ctx) => {
     const body = await request.json();
     const { notificationId, action, tenantId } = body;
 
@@ -72,22 +54,13 @@ export async function POST(request: NextRequest) {
 
     if (action === 'markAsRead' && notificationId) {
       const success = notificationService.markAsRead(notificationId);
-      return NextResponse.json({ success });
+      return createSuccessResponse(ctx, { success });
     }
 
     if (action === 'markAllAsRead' && tenantId) {
       const count = notificationService.markAllAsRead(tenantId);
-      return NextResponse.json({ success: true, count });
+      return createSuccessResponse(ctx, { success: true, count });
     }
 
-    return NextResponse.json(
-      { error: 'Invalid action or missing parameters' },
-      { status: 400 }
-    );
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to update notification' },
-      { status: 500 }
-    );
-  }
-}
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action or missing parameters', 400);
+  });

@@ -81,8 +81,8 @@ interface DeadlineTrackerProps {
 
 const typeConfig: Record<string, { icon: React.ElementType; color: string; bg: string; label: string }> = {
   expiration: { icon: CalendarClock, color: 'text-red-600', bg: 'bg-red-100', label: 'Expiration' },
-  renewal: { icon: RefreshCw, color: 'text-blue-600', bg: 'bg-blue-100', label: 'Renewal' },
-  review: { icon: CheckCircle2, color: 'text-purple-600', bg: 'bg-purple-100', label: 'Review' },
+  renewal: { icon: RefreshCw, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Renewal' },
+  review: { icon: CheckCircle2, color: 'text-violet-600', bg: 'bg-violet-100', label: 'Review' },
   milestone: { icon: Calendar, color: 'text-green-600', bg: 'bg-green-100', label: 'Milestone' },
   payment: { icon: Calendar, color: 'text-orange-600', bg: 'bg-orange-100', label: 'Payment' },
   custom: { icon: CalendarDays, color: 'text-slate-600', bg: 'bg-slate-100', label: 'Custom' },
@@ -211,7 +211,7 @@ export const DeadlineTracker = memo(function DeadlineTracker({
 
   useEffect(() => {
     loadDeadlines();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [contractId]);
 
   const loadDeadlines = async () => {
@@ -329,8 +329,8 @@ export const DeadlineTracker = memo(function DeadlineTracker({
       <Card className={className}>
         <CardContent className="pt-6">
           <div className="flex items-center gap-4 mb-4">
-            <div className="p-2 rounded-lg bg-blue-100">
-              <Calendar className="h-5 w-5 text-blue-600" />
+            <div className="p-2 rounded-lg bg-violet-100">
+              <Calendar className="h-5 w-5 text-violet-600" />
             </div>
             <div>
               <h3 className="font-semibold">Upcoming Deadlines</h3>
@@ -395,7 +395,7 @@ export const DeadlineTracker = memo(function DeadlineTracker({
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5 text-blue-600" />
+              <Calendar className="h-5 w-5 text-violet-600" />
               Deadline Tracker
             </CardTitle>
             <CardDescription>
@@ -568,7 +568,7 @@ export const DeadlineTracker = memo(function DeadlineTracker({
         {/* Deadline List */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-6 w-6 animate-spin text-blue-600 mr-2" />
+            <Loader2 className="h-6 w-6 animate-spin text-violet-600 mr-2" />
             <span>Loading deadlines...</span>
           </div>
         ) : sortedDeadlines.length === 0 ? (

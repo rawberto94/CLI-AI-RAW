@@ -1,16 +1,21 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { prisma } from "@/lib/prisma";
 import { getApiTenantId } from '@/lib/security/tenant';
 import { anomalyExplainerService } from 'data-orchestration/services';
+import { getAuthenticatedApiContext, getApiContext, createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api-middleware';
 
 // Using singleton prisma instance from @/lib/prisma
 
 export async function GET(request: NextRequest, props: { params: Promise<{ id: string }> }) {
   const params = await props.params;
-  try {
+    const ctx = getAuthenticatedApiContext(request);
+    if (!ctx) {
+      return createErrorResponse(getApiContext(request), 'UNAUTHORIZED', 'Authentication required', 401, { retryable: false });
+    }
+try {
     const tenantId = await getApiTenantId(request);
     if (!tenantId) {
-      return NextResponse.json({ error: 'Tenant ID required' }, { status: 400 });
+      return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Tenant ID required', 400);
     }
 
     const { id } = params;
@@ -21,10 +26,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
     });
 
     if (!rateCard) {
-      return NextResponse.json(
-        { error: 'Rate card not found' },
-        { status: 404 }
-      );
+      return createErrorResponse(ctx, 'NOT_FOUND', 'Rate card not found', 404);
     }
 
     // Detect anomalies
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       )
     );
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       success: true,
       data: {
         ...anomalies,
@@ -46,12 +48,7 @@ export async function GET(request: NextRequest, props: { params: Promise<{ id: s
       },
     });
   } catch (error: unknown) {
-    return NextResponse.json(
-      { 
-        error: 'Failed to detect anomalies',
-        message: error instanceof Error ? error.message : 'Unknown error' 
-      },
-      { status: 500 }
-    );
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return createErrorResponse(ctx, 'INTERNAL_ERROR', `Failed to detect anomalies: ${message}`, 500);
   }
 }

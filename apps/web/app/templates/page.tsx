@@ -79,7 +79,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { useTemplates, useDeleteTemplate, useCreateTemplate, useCrossModuleInvalidation } from '@/hooks/use-queries'
+import { useTemplates, useDeleteTemplate, useCrossModuleInvalidation } from '@/hooks/use-queries'
 import { toast } from 'sonner'
 import { SubmitForApprovalModal } from '@/components/collaboration/SubmitForApprovalModal'
 import {
@@ -117,13 +117,13 @@ type ViewMode = 'grid' | 'list'
 
 // Category colors for visual distinction
 const categoryColors: Record<string, { bg: string; text: string; border: string; icon: string; gradient?: string }> = {
-  'Technology': { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200', icon: '💻', gradient: 'from-blue-400 to-blue-200' },
-  'Services': { bg: 'bg-purple-50', text: 'text-purple-700', border: 'border-purple-200', icon: '🛠️', gradient: 'from-purple-400 to-purple-200' },
+  'Technology': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '💻', gradient: 'from-violet-400 to-purple-200' },
+  'Services': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '🛠️', gradient: 'from-violet-400 to-purple-200' },
   'Legal': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: '⚖️', gradient: 'from-red-400 to-red-200' },
-  'HR': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: '👥', gradient: 'from-green-400 to-green-200' },
+  'HR': { bg: 'bg-green-50', text: 'text-green-700', border: 'border-green-200', icon: '👥', gradient: 'from-violet-400 to-purple-200' },
   'Procurement': { bg: 'bg-orange-50', text: 'text-orange-700', border: 'border-orange-200', icon: '📦', gradient: 'from-orange-400 to-orange-200' },
-  'Renewal': { bg: 'bg-cyan-50', text: 'text-cyan-700', border: 'border-cyan-200', icon: '🔄', gradient: 'from-cyan-400 to-cyan-200' },
-  'Finance': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: '💰', gradient: 'from-emerald-400 to-emerald-200' },
+  'Renewal': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-cyan-200', icon: '🔄', gradient: 'from-violet-400 to-purple-200' },
+  'Finance': { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200', icon: '💰', gradient: 'from-violet-400 to-violet-200' },
   'Default': { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', icon: '📄', gradient: 'from-gray-400 to-gray-200' },
 }
 
@@ -160,7 +160,7 @@ const calculateHealthScore = (template: ContractTemplate): number => {
 
 const getHealthScoreColor = (score: number): string => {
   if (score >= 80) return 'text-green-600 bg-green-100'
-  if (score >= 60) return 'text-blue-600 bg-blue-100'
+  if (score >= 60) return 'text-violet-600 bg-violet-100'
   if (score >= 40) return 'text-yellow-600 bg-yellow-100'
   return 'text-red-600 bg-red-100'
 }
@@ -346,7 +346,6 @@ export default function TemplatesPage() {
   // Use React Query for data fetching with caching
   const { data: templatesData, isLoading: loading, refetch } = useTemplates()
   const deleteTemplateMutation = useDeleteTemplate()
-  const createTemplateMutation = useCreateTemplate()
   const crossModule = useCrossModuleInvalidation()
 
   // Use templates from API - no fallback to mock data in production
@@ -421,8 +420,9 @@ export default function TemplatesPage() {
     return `${Math.floor(seconds / 86400)}d ago`
   }
 
-  // Toggle favorite
-  const toggleFavorite = useCallback((templateId: string) => {
+  // Toggle favorite - persists to both localStorage and backend
+  const toggleFavorite = useCallback(async (templateId: string) => {
+    // Optimistic UI update
     setFavorites(prev => {
       const newFavorites = prev.includes(templateId)
         ? prev.filter(id => id !== templateId)
@@ -430,6 +430,17 @@ export default function TemplatesPage() {
       localStorage.setItem('template-favorites', JSON.stringify(newFavorites))
       return newFavorites
     })
+    
+    // Persist to backend
+    try {
+      await fetch(`/api/templates/${templateId}/favorite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      })
+    } catch (error) {
+      console.error('Failed to persist favorite:', error)
+      // UI already updated optimistically, backend sync failed silently
+    }
   }, [])
 
   // Open preview
@@ -475,16 +486,20 @@ export default function TemplatesPage() {
     refetch()
   }
 
-  // Handle template duplication
+  // Handle template duplication - uses dedicated duplicate endpoint to copy all data
   const handleDuplicate = async (template: ContractTemplate) => {
     try {
       toast.info('Duplicating template...')
-      await createTemplateMutation.mutateAsync({
-        name: `${template.name} (Copy)`,
-        description: template.description,
-        category: template.category,
-        status: 'draft',
+      const response = await fetch(`/api/templates/${template.id}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: `${template.name} (Copy)` }),
       })
+      
+      if (!response.ok) {
+        throw new Error('Failed to duplicate')
+      }
+      
       toast.success('Template duplicated successfully')
       addActivity('duplicated', template.name)
       crossModule.onTemplateChange()
@@ -566,11 +581,11 @@ export default function TemplatesPage() {
     try {
       toast.info(`Duplicating ${selectedList.length} templates...`)
       for (const template of selectedList) {
-        await createTemplateMutation.mutateAsync({
-          name: `${template.name} (Copy)`,
-          description: template.description,
-          category: template.category,
-          status: 'draft',
+        // Use the dedicated duplicate endpoint to copy all template data
+        await fetch(`/api/templates/${template.id}/duplicate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: `${template.name} (Copy)` }),
         })
       }
       toast.success(`${selectedList.length} templates duplicated`)
@@ -584,8 +599,23 @@ export default function TemplatesPage() {
 
   const handleBulkArchive = async () => {
     if (selectedTemplates.size === 0) return
-    toast.success(`${selectedTemplates.size} templates archived`)
-    clearSelection()
+    
+    try {
+      toast.info(`Archiving ${selectedTemplates.size} templates...`)
+      for (const id of selectedTemplates) {
+        await fetch(`/api/templates/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'archived', isActive: false }),
+        })
+      }
+      toast.success(`${selectedTemplates.size} templates archived`)
+      clearSelection()
+      crossModule.onTemplateChange()
+      refetch()
+    } catch {
+      toast.error('Failed to archive some templates')
+    }
   }
 
   const handleBulkExport = () => {
@@ -798,16 +828,25 @@ export default function TemplatesPage() {
       toast.info(`Importing ${data.templates.length} templates...`)
       
       for (const template of data.templates) {
-        await createTemplateMutation.mutateAsync({
-          name: template.name,
-          description: template.description,
-          category: template.category,
-          status: 'draft',
+        // Use POST /api/templates with full template data
+        await fetch('/api/templates', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: template.name,
+            description: template.description,
+            category: template.category,
+            content: template.content || '',
+            tags: template.tags || [],
+            clauses: template.clauses || [],
+            status: 'draft',
+          }),
         })
       }
       
       toast.success(`Imported ${data.templates.length} templates`)
       setShowImportModal(false)
+      crossModule.onTemplateChange()
       refetch()
     } catch {
       toast.error('Failed to import templates. Please check the file format.')
@@ -1022,12 +1061,16 @@ export default function TemplatesPage() {
     if (!duplicateTemplate || !duplicateName.trim()) return
     
     try {
-      await createTemplateMutation.mutateAsync({
-        name: duplicateName.trim(),
-        description: duplicateTemplate.description,
-        category: duplicateTemplate.category,
-        status: 'draft',
+      // Use the dedicated duplicate endpoint to copy all template data
+      const response = await fetch(`/api/templates/${duplicateTemplate.id}/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: duplicateName.trim() }),
       })
+      
+      if (!response.ok) {
+        throw new Error('Failed to duplicate')
+      }
       
       toast.success(`Created "${duplicateName.trim()}"`)
       addActivity('duplicated', duplicateTemplate.name)
@@ -1271,7 +1314,7 @@ export default function TemplatesPage() {
       {/* Loading progress bar */}
       <AnimatePresence>
         {loading && (
-          <motion.div
+          <motion.div key="loading"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -1279,7 +1322,7 @@ export default function TemplatesPage() {
           >
             <div className="h-1 bg-slate-100 overflow-hidden">
               <motion.div
-                className="h-full bg-blue-600 rounded-full"
+                className="h-full bg-violet-600 rounded-full"
                 initial={{ width: '0%', x: '-100%' }}
                 animate={{ width: '30%', x: '400%' }}
                 transition={{ duration: 1.5, ease: 'easeInOut', repeat: Infinity }}
@@ -1300,7 +1343,7 @@ export default function TemplatesPage() {
         >
           <div>
             <div className="flex items-center gap-4 mb-3">
-              <div className="p-3 bg-blue-600 rounded-xl">
+              <div className="p-3 bg-violet-600 rounded-xl">
                 <FileText className="h-7 w-7 text-white" />
               </div>
               <div>
@@ -1319,7 +1362,7 @@ export default function TemplatesPage() {
             <Button 
               variant="outline"
               onClick={() => setShowAnalytics(true)}
-              className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-md"
+              className="border-violet-200 text-violet-700 hover:bg-violet-50 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-md"
             >
               <BarChart3 className="h-5 w-5 mr-2" />
               Analytics
@@ -1335,7 +1378,7 @@ export default function TemplatesPage() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-gray-100">
                 <DropdownMenuItem onClick={() => setShowExportModal(true)} className="gap-2 cursor-pointer rounded-lg">
-                  <Download className="h-4 w-4 text-blue-500" />
+                  <Download className="h-4 w-4 text-violet-500" />
                   Export Templates
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowImportModal(true)} className="gap-2 cursor-pointer rounded-lg">
@@ -1368,8 +1411,8 @@ export default function TemplatesPage() {
               >
                 {recentActivity.length > 0 ? (
                   <>
-                    <BellDot className="h-5 w-5 text-blue-600" />
-                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-blue-600 text-white text-[10px] font-bold flex items-center justify-center">
+                    <BellDot className="h-5 w-5 text-violet-600" />
+                    <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-violet-600 text-white text-[10px] font-bold flex items-center justify-center">
                       {recentActivity.length > 9 ? '9+' : recentActivity.length}
                     </span>
                   </>
@@ -1401,7 +1444,7 @@ export default function TemplatesPage() {
             </Button>
             
             <Link href="/templates/new">
-              <Button className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5">
+              <Button className="bg-violet-600 hover:bg-violet-700 text-white rounded-lg px-5">
                 <Plus className="h-5 w-5 mr-2" />
                 Create Template
               </Button>
@@ -1417,24 +1460,24 @@ export default function TemplatesPage() {
           className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4"
         >
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer" onClick={() => { setCategoryFilter('all'); setStatusFilter('all'); }}>
-            <Card className="bg-gradient-to-br from-blue-50 to-blue-100/70 border-blue-200/50 shadow-lg shadow-blue-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-100/70 border-violet-200/50 shadow-lg shadow-violet-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-blue-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl shadow-md">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-blue-700">{templateStats.total}</p>
-                  <p className="text-xs font-medium text-blue-600/80">Total</p>
+                  <p className="text-2xl font-bold text-violet-700">{templateStats.total}</p>
+                  <p className="text-xs font-medium text-violet-600/80">Total</p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer" onClick={() => setStatusFilter('active')}>
-            <Card className="bg-gradient-to-br from-green-50 to-emerald-100/70 border-green-200/50 shadow-lg shadow-green-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-violet-100/70 border-green-200/50 shadow-lg shadow-green-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
                 <div className="absolute top-0 right-0 w-16 h-16 bg-green-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-md">
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-md">
                   <CheckCircle2 className="h-5 w-5 text-white" />
                 </div>
                 <div>
@@ -1486,29 +1529,29 @@ export default function TemplatesPage() {
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer" onClick={() => setShowAnalytics(true)}>
-            <Card className="bg-gradient-to-br from-cyan-50 to-teal-100/70 border-cyan-200/50 shadow-lg shadow-cyan-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-100/70 border-cyan-200/50 shadow-lg shadow-violet-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-cyan-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl shadow-md">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                   <TrendingUp className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-cyan-700">{templateStats.totalUsage}</p>
-                  <p className="text-xs font-medium text-cyan-600/80">Usage</p>
+                  <p className="text-2xl font-bold text-violet-700">{templateStats.totalUsage}</p>
+                  <p className="text-xs font-medium text-violet-600/80">Usage</p>
                 </div>
               </CardContent>
             </Card>
           </motion.div>
           <motion.div whileHover={{ y: -2 }} className="cursor-pointer">
-            <Card className="bg-gradient-to-br from-indigo-50 to-blue-100/70 border-indigo-200/50 shadow-lg shadow-indigo-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
+            <Card className="bg-gradient-to-br from-violet-50 to-purple-100/70 border-indigo-200/50 shadow-lg shadow-violet-100/50 hover:shadow-xl transition-all duration-300 rounded-2xl overflow-hidden">
               <CardContent className="p-4 flex items-center gap-3 relative">
-                <div className="absolute top-0 right-0 w-16 h-16 bg-indigo-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <div className="p-2.5 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-xl shadow-md">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-violet-200/30 rounded-full -translate-y-1/2 translate-x-1/2" />
+                <div className="p-2.5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-md">
                   <Gauge className="h-5 w-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-indigo-700">{templateStats.avgHealth}%</p>
-                  <p className="text-xs font-medium text-indigo-600/80">Avg Health</p>
+                  <p className="text-2xl font-bold text-violet-700">{templateStats.avgHealth}%</p>
+                  <p className="text-xs font-medium text-violet-600/80">Avg Health</p>
                 </div>
               </CardContent>
             </Card>
@@ -1581,18 +1624,18 @@ export default function TemplatesPage() {
         {/* Bulk Actions Toolbar */}
         <AnimatePresence>
           {(bulkActionMode || selectedTemplates.size > 0) && (
-            <motion.div
+            <motion.div key="page-ap-1"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <Card className="shadow-xl border-2 border-purple-200 bg-purple-50/80 backdrop-blur-sm">
+              <Card className="shadow-xl border-2 border-violet-200 bg-violet-50/80 backdrop-blur-sm">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between flex-wrap gap-4">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-2">
-                        <CheckSquare className="h-5 w-5 text-purple-600" />
-                        <span className="font-medium text-purple-900">
+                        <CheckSquare className="h-5 w-5 text-violet-600" />
+                        <span className="font-medium text-violet-900">
                           {selectedTemplates.size} selected
                         </span>
                       </div>
@@ -1673,7 +1716,7 @@ export default function TemplatesPage() {
                     <p className="text-3xl font-bold text-gray-900 mt-1">{stats.total}</p>
                     <p className="text-xs text-gray-400 mt-1">templates</p>
                   </div>
-                  <div className="p-3 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/30">
+                  <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl shadow-lg shadow-violet-500/30">
                     <FileText className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -1696,7 +1739,7 @@ export default function TemplatesPage() {
                       {stats.total > 0 ? Math.round((stats.active / stats.total) * 100) : 0}% of total
                     </p>
                   </div>
-                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg shadow-green-500/30">
+                  <div className="p-3 bg-gradient-to-br from-violet-500 to-violet-600 rounded-xl shadow-lg shadow-green-500/30">
                     <CheckCircle2 className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -1733,10 +1776,10 @@ export default function TemplatesPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Usage</p>
-                    <p className="text-3xl font-bold text-purple-600 mt-1">{stats.totalUsage}</p>
-                    <p className="text-xs text-purple-500 mt-1">total uses</p>
+                    <p className="text-3xl font-bold text-violet-600 mt-1">{stats.totalUsage}</p>
+                    <p className="text-xs text-violet-500 mt-1">total uses</p>
                   </div>
-                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg shadow-purple-500/30">
+                  <div className="p-3 bg-gradient-to-br from-violet-500 to-pink-600 rounded-xl shadow-lg shadow-violet-500/30">
                     <TrendingUp className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -1820,8 +1863,8 @@ export default function TemplatesPage() {
                 {/* Search with suggestions */}
                 <div className="flex-1 min-w-[250px] relative">
                   <div className="relative group">
-                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 to-pink-500/10 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity -m-1" />
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-purple-500 transition-colors" />
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-pink-500/10 rounded-xl opacity-0 group-focus-within:opacity-100 transition-opacity -m-1" />
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-violet-500 transition-colors" />
                     <Input
                       placeholder="Search templates by name, description, or tags..."
                       value={searchQuery}
@@ -1834,7 +1877,7 @@ export default function TemplatesPage() {
                           setShowSearchSuggestions(false)
                         }
                       }}
-                      className="pl-12 pr-12 h-12 text-base rounded-xl border-gray-200 focus:border-purple-300 focus:ring-purple-200 transition-all"
+                      className="pl-12 pr-12 h-12 text-base rounded-xl border-gray-200 focus:border-violet-300 focus:ring-violet-200 transition-all"
                     />
                     {searchQuery && (
                       <button
@@ -1849,7 +1892,7 @@ export default function TemplatesPage() {
                   {/* Search suggestions dropdown */}
                   <AnimatePresence>
                     {showSearchSuggestions && (recentSearches.length > 0 || searchQuery) && (
-                      <motion.div
+                      <motion.div key="search-suggestions"
                         initial={{ opacity: 0, y: -10, scale: 0.98 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: -10, scale: 0.98 }}
@@ -1864,7 +1907,7 @@ export default function TemplatesPage() {
                             </span>
                             <button 
                               onClick={clearRecentSearches}
-                              className="text-blue-500 hover:underline"
+                              className="text-violet-500 hover:underline"
                             >
                               Clear
                             </button>
@@ -1924,7 +1967,7 @@ export default function TemplatesPage() {
                       <Filter className="h-4 w-4 text-gray-500" />
                       <span className="text-gray-700">Category</span>
                       {categoryFilter !== 'all' && (
-                        <Badge className="ml-1 bg-purple-100 text-purple-700 border-purple-200">{categoryFilter}</Badge>
+                        <Badge className="ml-1 bg-violet-100 text-violet-700 border-violet-200">{categoryFilter}</Badge>
                       )}
                     </Button>
                   </DropdownMenuTrigger>
@@ -1954,7 +1997,7 @@ export default function TemplatesPage() {
                       <Settings className="h-4 w-4 text-gray-500" />
                       <span className="text-gray-700">Status</span>
                       {statusFilter !== 'all' && (
-                        <Badge className="ml-1 bg-blue-100 text-blue-700 border-blue-200 capitalize">{statusFilter}</Badge>
+                        <Badge className="ml-1 bg-violet-100 text-violet-700 border-violet-200 capitalize">{statusFilter}</Badge>
                       )}
                     </Button>
                   </DropdownMenuTrigger>
@@ -2014,7 +2057,7 @@ export default function TemplatesPage() {
                     onClick={() => setViewMode('grid')}
                     className={cn(
                       "rounded-none px-4 h-full",
-                      viewMode === 'grid' ? "bg-purple-600 hover:bg-purple-700" : "hover:bg-gray-50"
+                      viewMode === 'grid' ? "bg-violet-600 hover:bg-violet-700" : "hover:bg-gray-50"
                     )}
                   >
                     <Grid3X3 className="h-4 w-4" />
@@ -2025,7 +2068,7 @@ export default function TemplatesPage() {
                     onClick={() => setViewMode('list')}
                     className={cn(
                       "rounded-none px-4 h-full",
-                      viewMode === 'list' ? "bg-purple-600 hover:bg-purple-700" : "hover:bg-gray-50"
+                      viewMode === 'list' ? "bg-violet-600 hover:bg-violet-700" : "hover:bg-gray-50"
                     )}
                   >
                     <List className="h-4 w-4" />
@@ -2051,7 +2094,7 @@ export default function TemplatesPage() {
                   }}
                   className={cn(
                     "h-12 px-4 rounded-xl transition-all gap-2",
-                    bulkActionMode ? 'bg-purple-600 hover:bg-purple-700 text-white' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                    bulkActionMode ? 'bg-violet-600 hover:bg-violet-700 text-white' : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                   )}
                 >
                   <CheckSquare className="h-4 w-4" />
@@ -2065,18 +2108,18 @@ export default function TemplatesPage() {
               <div className="flex gap-3 flex-wrap mt-5 pt-5 border-t border-gray-100 items-center">
                 <span className="text-sm text-gray-500 font-medium">Active filters:</span>
                 {categoryFilter !== 'all' && (
-                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-purple-100 text-purple-700 border-purple-200 hover:bg-purple-200 transition-colors cursor-default">
+                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200 transition-colors cursor-default">
                     <span>{getCategoryColor(categoryFilter).icon}</span>
                     {categoryFilter}
-                    <button onClick={() => setCategoryFilter('all')} className="ml-1 hover:bg-purple-300 rounded-full p-0.5">
+                    <button onClick={() => setCategoryFilter('all')} className="ml-1 hover:bg-violet-300 rounded-full p-0.5">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
                 )}
                 {statusFilter !== 'all' && (
-                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200 transition-colors capitalize cursor-default">
+                  <Badge variant="secondary" className="gap-2 px-3 py-1.5 rounded-lg bg-violet-100 text-violet-700 border-violet-200 hover:bg-violet-200 transition-colors capitalize cursor-default">
                     Status: {statusFilter}
-                    <button onClick={() => setStatusFilter('all')} className="ml-1 hover:bg-blue-300 rounded-full p-0.5">
+                    <button onClick={() => setStatusFilter('all')} className="ml-1 hover:bg-violet-300 rounded-full p-0.5">
                       <X className="h-3 w-3" />
                     </button>
                   </Badge>
@@ -2118,22 +2161,22 @@ export default function TemplatesPage() {
                 <div className="absolute inset-0 -translate-x-full animate-[shimmer_2s_infinite] bg-gradient-to-r from-transparent via-white/60 to-transparent z-10" />
                 <CardContent className="p-0">
                   <div>
-                    <div className="h-1.5 bg-gradient-to-r from-purple-200 via-pink-200 to-purple-200" />
+                    <div className="h-1.5 bg-gradient-to-r from-violet-200 via-pink-200 to-purple-200" />
                     <div className="p-5 space-y-4">
                       <div className="flex items-start justify-between">
                         <div className="space-y-2.5 flex-1">
                           <div className="h-6 bg-gradient-to-r from-gray-200 to-gray-100 rounded-lg w-3/4" />
                           <div className="h-4 bg-gray-100 rounded w-1/2" />
                         </div>
-                        <div className="h-7 w-20 bg-gradient-to-r from-green-100 to-green-50 rounded-full" />
+                        <div className="h-7 w-20 bg-gradient-to-r from-violet-100 to-purple-50 rounded-full" />
                       </div>
                       <div className="space-y-2">
                         <div className="h-3 bg-gray-100 rounded-full w-full" />
                         <div className="h-3 bg-gray-100 rounded-full w-4/5" />
                       </div>
                       <div className="grid grid-cols-2 gap-3">
-                        <div className="h-16 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl" />
-                        <div className="h-16 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl" />
+                        <div className="h-16 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl" />
+                        <div className="h-16 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl" />
                       </div>
                       <div className="flex gap-2 pt-2">
                         <div className="h-8 bg-gray-100 rounded flex-1" />
@@ -2166,7 +2209,7 @@ export default function TemplatesPage() {
                       </div>
                     </div>
                     {/* Floating plus icon */}
-                    <div className="absolute -bottom-2 -right-2 p-1.5 bg-blue-600 rounded-full shadow">
+                    <div className="absolute -bottom-2 -right-2 p-1.5 bg-violet-600 rounded-full shadow">
                       <Plus className="h-4 w-4 text-white" />
                     </div>
                   </div>
@@ -2204,7 +2247,7 @@ export default function TemplatesPage() {
                 ) : (
                   <>
                     <Link href="/templates/new">
-                      <Button className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+                      <Button className="bg-violet-600 hover:bg-violet-700 text-white gap-2">
                         <Plus className="h-4 w-4" />
                         Create Template
                       </Button>
@@ -2243,7 +2286,7 @@ export default function TemplatesPage() {
                       >
                         <span className="text-lg">{icon}</span>
                         <span>{type}</span>
-                        <Sparkles className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-purple-500" />
+                        <Sparkles className="h-3.5 w-3.5 opacity-0 group-hover:opacity-100 transition-opacity text-violet-500" />
                       </Button>
                     ))}
                   </div>
@@ -2271,19 +2314,19 @@ export default function TemplatesPage() {
                   whileHover={{ y: -4 }}
                   className={cn(
                     "rounded-2xl",
-                    focusedTemplateIndex === filteredAndSortedTemplates.indexOf(template) && "ring-2 ring-purple-400 ring-offset-2"
+                    focusedTemplateIndex === filteredAndSortedTemplates.indexOf(template) && "ring-2 ring-violet-400 ring-offset-2"
                   )}
                 >
                   <Card
                     className={cn(
                       "relative overflow-hidden cursor-pointer rounded-2xl",
                       "bg-white/90 backdrop-blur-md border border-gray-100",
-                      "shadow-lg shadow-gray-200/50 hover:shadow-2xl hover:shadow-purple-200/40",
+                      "shadow-lg shadow-gray-200/50 hover:shadow-2xl hover:shadow-violet-200/40",
                       "transition-all duration-300",
                       compactMode && "shadow-md",
                       template.approvalStatus === 'pending' && "border-l-4 border-l-amber-400",
                       favorites.includes(template.id) && "ring-2 ring-amber-300/70 bg-amber-50/30",
-                      selectedTemplates.has(template.id) && "ring-2 ring-purple-500 bg-purple-50/80"
+                      selectedTemplates.has(template.id) && "ring-2 ring-violet-500 bg-violet-50/80"
                     )}
                     onContextMenu={(e) => handleContextMenu(e, template)}
                     onClick={() => !bulkActionMode && openPreviewSidebar(template)}
@@ -2294,7 +2337,7 @@ export default function TemplatesPage() {
                     {/* Quick Action Overlay on Hover */}
                     <AnimatePresence>
                       {hoveredTemplate === template.id && !bulkActionMode && (
-                        <motion.div
+                        <motion.div key="hovered-template"
                           initial={{ opacity: 0 }}
                           animate={{ opacity: 1 }}
                           exit={{ opacity: 0 }}
@@ -2306,27 +2349,27 @@ export default function TemplatesPage() {
                               initial={{ y: 20, opacity: 0 }}
                               animate={{ y: 0, opacity: 1 }}
                               transition={{ delay: 0, type: "spring", stiffness: 300, damping: 24 }}
-                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-purple-50 hover:scale-110 transition-all duration-200"
+                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-violet-50 hover:scale-110 transition-all duration-200"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 openPreviewSidebar(template)
                               }}
                               title="Quick Preview"
                             >
-                              <Eye className="h-5 w-5 text-purple-600" />
+                              <Eye className="h-5 w-5 text-violet-600" />
                             </motion.button>
                             <motion.button
                               initial={{ y: 20, opacity: 0 }}
                               animate={{ y: 0, opacity: 1 }}
                               transition={{ delay: 0.05, type: "spring", stiffness: 300, damping: 24 }}
-                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-blue-50 hover:scale-110 transition-all duration-200"
+                              className="p-3 bg-white/95 rounded-xl shadow-lg hover:bg-violet-50 hover:scale-110 transition-all duration-200"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 window.location.href = `/templates/${template.id}/edit`
                               }}
                               title="Edit Template"
                             >
-                              <Edit2 className="h-5 w-5 text-blue-600" />
+                              <Edit2 className="h-5 w-5 text-violet-600" />
                             </motion.button>
                             <motion.button
                               initial={{ y: 20, opacity: 0 }}
@@ -2386,7 +2429,7 @@ export default function TemplatesPage() {
                       <div 
                         className={cn(
                           "px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 backdrop-blur-sm shadow-sm",
-                          healthScore >= 80 ? "bg-emerald-100/90 text-emerald-700 border border-emerald-200" :
+                          healthScore >= 80 ? "bg-violet-100/90 text-violet-700 border border-violet-200" :
                           healthScore >= 60 ? "bg-amber-100/90 text-amber-700 border border-amber-200" :
                           "bg-red-100/90 text-red-700 border border-red-200"
                         )}
@@ -2394,7 +2437,7 @@ export default function TemplatesPage() {
                       >
                         <div className={cn(
                           "w-1.5 h-1.5 rounded-full",
-                          healthScore >= 80 ? "bg-emerald-500 animate-pulse" :
+                          healthScore >= 80 ? "bg-violet-500 animate-pulse" :
                           healthScore >= 60 ? "bg-amber-500" :
                           "bg-red-500"
                         )} />
@@ -2412,9 +2455,9 @@ export default function TemplatesPage() {
                         className="absolute top-3 left-3 z-10"
                       >
                         {selectedTemplates.has(template.id) ? (
-                          <CheckSquare className="h-5 w-5 text-purple-600 fill-purple-100" />
+                          <CheckSquare className="h-5 w-5 text-violet-600 fill-violet-100" />
                         ) : (
-                          <Square className="h-5 w-5 text-gray-400 hover:text-purple-600" />
+                          <Square className="h-5 w-5 text-gray-400 hover:text-violet-600" />
                         )}
                       </button>
                     )}
@@ -2470,7 +2513,7 @@ export default function TemplatesPage() {
                             </Badge>
                           ))}
                           {template.tags.length > 3 && (
-                            <Badge variant="secondary" className="text-xs bg-purple-100/80 text-purple-600 px-2 py-0.5 rounded-md">
+                            <Badge variant="secondary" className="text-xs bg-violet-100/80 text-violet-600 px-2 py-0.5 rounded-md">
                               +{template.tags.length - 3} more
                             </Badge>
                           )}
@@ -2479,13 +2522,13 @@ export default function TemplatesPage() {
 
                       {!compactMode && (
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3 bg-gradient-to-br from-blue-50 to-blue-100/50 rounded-xl border border-blue-100">
-                            <p className="text-[10px] text-blue-600/70 font-semibold uppercase tracking-wider">Variables</p>
-                            <p className="text-xl font-bold text-blue-700">{template.variables || 0}</p>
+                          <div className="p-3 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl border border-violet-100">
+                            <p className="text-[10px] text-violet-600/70 font-semibold uppercase tracking-wider">Variables</p>
+                            <p className="text-xl font-bold text-violet-700">{template.variables || 0}</p>
                           </div>
-                          <div className="p-3 bg-gradient-to-br from-purple-50 to-purple-100/50 rounded-xl border border-purple-100">
-                            <p className="text-[10px] text-purple-600/70 font-semibold uppercase tracking-wider">Clauses</p>
-                            <p className="text-xl font-bold text-purple-700">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</p>
+                          <div className="p-3 bg-gradient-to-br from-violet-50 to-purple-100/50 rounded-xl border border-violet-100">
+                            <p className="text-[10px] text-violet-600/70 font-semibold uppercase tracking-wider">Clauses</p>
+                            <p className="text-xl font-bold text-violet-700">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</p>
                           </div>
                         </div>
                       )}
@@ -2493,11 +2536,11 @@ export default function TemplatesPage() {
                       {compactMode && (
                         <div className="flex items-center gap-5 text-xs text-gray-500">
                           <span className="flex items-center gap-1.5">
-                            <Variable className="h-3.5 w-3.5 text-blue-500" />
+                            <Variable className="h-3.5 w-3.5 text-violet-500" />
                             <span className="font-medium">{template.variables || 0}</span>
                           </span>
                           <span className="flex items-center gap-1.5">
-                            <FileCode className="h-3.5 w-3.5 text-purple-500" />
+                            <FileCode className="h-3.5 w-3.5 text-violet-500" />
                             <span className="font-medium">{Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}</span>
                           </span>
                           <span className="flex items-center gap-1.5">
@@ -2522,7 +2565,7 @@ export default function TemplatesPage() {
                             <span>Modified <span className="font-medium text-gray-700">{new Date(template.lastModified || template.updatedAt || template.createdAt).toLocaleDateString()}</span></span>
                           </div>
                           <div className="flex items-center gap-2.5">
-                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-100 to-green-200 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-violet-100 to-purple-200 flex items-center justify-center">
                               <Sparkles className="h-3 w-3 text-green-600" />
                             </div>
                             <span>Used <span className="font-medium text-gray-700">{template.usageCount || 0}</span> times</span>
@@ -2538,13 +2581,13 @@ export default function TemplatesPage() {
                             e.stopPropagation()
                             openPreview(template)
                           }}
-                          className="flex-1 rounded-lg hover:bg-purple-50 hover:border-purple-200 hover:text-purple-700 transition-all"
+                          className="flex-1 rounded-lg hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 transition-all"
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Preview
                         </Button>
                         <Link href={`/templates/${template.id}`} className="flex-1" onClick={(e) => e.stopPropagation()}>
-                          <Button variant="outline" className="w-full rounded-lg hover:bg-blue-50 hover:border-blue-200 hover:text-blue-700 transition-all" size="sm">
+                          <Button variant="outline" className="w-full rounded-lg hover:bg-violet-50 hover:border-violet-200 hover:text-violet-700 transition-all" size="sm">
                             <Edit2 className="h-4 w-4 mr-2" />
                             Edit
                           </Button>
@@ -2558,7 +2601,7 @@ export default function TemplatesPage() {
                           <DropdownMenuContent align="end" className="w-56 rounded-xl shadow-xl border-gray-100">
                             {template.status === 'draft' && template.approvalStatus !== 'pending' && (
                               <DropdownMenuItem onClick={() => handleSubmitForApproval(template)} className="gap-2 cursor-pointer">
-                                <SendHorizonal className="h-4 w-4 text-blue-500" />
+                                <SendHorizonal className="h-4 w-4 text-violet-500" />
                                 Submit for Approval
                               </DropdownMenuItem>
                             )}
@@ -2571,7 +2614,7 @@ export default function TemplatesPage() {
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem onClick={() => openVersionHistory(template)} className="gap-2 cursor-pointer">
-                              <History className="h-4 w-4 text-purple-500" />
+                              <History className="h-4 w-4 text-violet-500" />
                               Version History
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => loadAuditTrail(template)}>
@@ -2636,7 +2679,7 @@ export default function TemplatesPage() {
                       {/* Quick Actions Hover Overlay */}
                       <AnimatePresence>
                         {hoveredTemplate === template.id && !bulkActionMode && (
-                          <motion.div
+                          <motion.div key="hovered-template"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
@@ -2654,7 +2697,7 @@ export default function TemplatesPage() {
                               <Link href={`/templates/${template.id}`}>
                                 <Button 
                                   size="sm" 
-                                  className="bg-purple-500 hover:bg-purple-600 text-white shadow-lg"
+                                  className="bg-violet-500 hover:bg-violet-600 text-white shadow-lg"
                                 >
                                   <Edit2 className="h-4 w-4 mr-1" />
                                   Edit
@@ -2680,7 +2723,7 @@ export default function TemplatesPage() {
                     <th className="py-3 px-4 w-10">
                       <button onClick={selectedTemplates.size === templates.length ? clearSelection : selectAllTemplates}>
                         {selectedTemplates.size === templates.length ? (
-                          <CheckSquare className="h-4 w-4 text-purple-600" />
+                          <CheckSquare className="h-4 w-4 text-violet-600" />
                         ) : (
                           <Square className="h-4 w-4 text-gray-400" />
                         )}
@@ -2702,14 +2745,14 @@ export default function TemplatesPage() {
                     key={template.id} 
                     className={cn(
                       "border-b hover:bg-gray-50 transition-colors",
-                      selectedTemplates.has(template.id) && "bg-purple-50"
+                      selectedTemplates.has(template.id) && "bg-violet-50"
                     )}
                   >
                     {bulkActionMode && (
                       <td className="py-3 px-4">
                         <button onClick={() => toggleTemplateSelection(template.id)}>
                           {selectedTemplates.has(template.id) ? (
-                            <CheckSquare className="h-4 w-4 text-purple-600" />
+                            <CheckSquare className="h-4 w-4 text-violet-600" />
                           ) : (
                             <Square className="h-4 w-4 text-gray-400" />
                           )}
@@ -2785,7 +2828,7 @@ export default function TemplatesPage() {
         {/* ============= PREVIEW MODAL ============= */}
         <AnimatePresence>
           {showPreviewModal && previewTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="preview-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -2800,11 +2843,11 @@ export default function TemplatesPage() {
                 className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                   <div className="flex items-center justify-between">
                     <div>
                       <h2 className="text-xl font-bold">{previewTemplate.name}</h2>
-                      <p className="text-purple-100 text-sm mt-1">{previewTemplate.description}</p>
+                      <p className="text-violet-100 text-sm mt-1">{previewTemplate.description}</p>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setShowPreviewModal(false)} className="text-white hover:bg-white/20">
                       <X className="h-5 w-5" />
@@ -2816,14 +2859,14 @@ export default function TemplatesPage() {
                 <div className="p-6 overflow-y-auto flex-1">
                   {/* Template Info */}
                   <div className="grid grid-cols-3 gap-4 mb-6">
-                    <div className="p-4 bg-blue-50 rounded-xl text-center">
-                      <Variable className="h-6 w-6 text-blue-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-blue-700">{previewTemplate.variables || 0}</p>
+                    <div className="p-4 bg-violet-50 rounded-xl text-center">
+                      <Variable className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-violet-700">{previewTemplate.variables || 0}</p>
                       <p className="text-xs text-gray-600">Variables</p>
                     </div>
-                    <div className="p-4 bg-purple-50 rounded-xl text-center">
-                      <FileCode className="h-6 w-6 text-purple-600 mx-auto mb-2" />
-                      <p className="text-2xl font-bold text-purple-700">
+                    <div className="p-4 bg-violet-50 rounded-xl text-center">
+                      <FileCode className="h-6 w-6 text-violet-600 mx-auto mb-2" />
+                      <p className="text-2xl font-bold text-violet-700">
                         {Array.isArray(previewTemplate.clauses) ? previewTemplate.clauses.length : (previewTemplate.clauses || 0)}
                       </p>
                       <p className="text-xs text-gray-600">Clauses</p>
@@ -2889,7 +2932,7 @@ export default function TemplatesPage() {
                 <div className="p-4 border-t bg-gray-50 flex justify-end gap-2">
                   <Button variant="outline" onClick={() => setShowPreviewModal(false)}>Close</Button>
                   <Link href={`/templates/${previewTemplate.id}`}>
-                    <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                    <Button className="bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit Template
                     </Button>
@@ -2903,7 +2946,7 @@ export default function TemplatesPage() {
         {/* ============= AI SUGGESTIONS MODAL ============= */}
         <AnimatePresence>
           {showAISuggestions && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="a-i-suggestions" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -2918,7 +2961,7 @@ export default function TemplatesPage() {
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-6 border-b bg-gradient-to-r from-purple-500 via-pink-500 to-rose-500 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 via-pink-500 to-rose-500 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 rounded-xl">
@@ -2926,7 +2969,7 @@ export default function TemplatesPage() {
                       </div>
                       <div>
                         <h2 className="text-lg font-bold">AI Template Suggestions</h2>
-                        <p className="text-purple-100 text-sm">Get smart recommendations for your templates</p>
+                        <p className="text-violet-100 text-sm">Get smart recommendations for your templates</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setShowAISuggestions(false)} className="text-white hover:bg-white/20">
@@ -2983,9 +3026,9 @@ export default function TemplatesPage() {
                           initial={{ opacity: 0, x: -10 }}
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: idx * 0.1 }}
-                          className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg border border-purple-100"
+                          className="flex items-start gap-3 p-3 bg-violet-50 rounded-lg border border-violet-100"
                         >
-                          <Lightbulb className="h-5 w-5 text-purple-500 mt-0.5 flex-shrink-0" />
+                          <Lightbulb className="h-5 w-5 text-violet-500 mt-0.5 flex-shrink-0" />
                           <p className="text-sm text-gray-700">{suggestion}</p>
                         </motion.div>
                       ))}
@@ -2997,7 +3040,7 @@ export default function TemplatesPage() {
                 <div className="p-4 border-t bg-gray-50 flex justify-between">
                   <Button variant="outline" onClick={() => setShowAISuggestions(false)}>Close</Button>
                   <Link href="/templates/new">
-                    <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white">
+                    <Button className="bg-gradient-to-r from-violet-500 to-pink-600 text-white">
                       <Plus className="h-4 w-4 mr-2" />
                       Create New Template
                     </Button>
@@ -3037,7 +3080,7 @@ export default function TemplatesPage() {
         {/* ============= VERSION HISTORY MODAL ============= */}
         <AnimatePresence>
           {showVersionHistory && versionHistoryTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="version-history" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3051,13 +3094,13 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[80vh] flex flex-col"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <History className="h-6 w-6" />
                       <div>
                         <h2 className="text-lg font-bold">Version History</h2>
-                        <p className="text-blue-100 text-sm">{versionHistoryTemplate.name}</p>
+                        <p className="text-violet-100 text-sm">{versionHistoryTemplate.name}</p>
                       </div>
                     </div>
                     <Button variant="ghost" size="sm" onClick={() => setShowVersionHistory(false)} className="text-white hover:bg-white/20">
@@ -3073,7 +3116,7 @@ export default function TemplatesPage() {
                         key={version.version} 
                         className={cn(
                           "p-4 rounded-xl border",
-                          idx === 0 ? "bg-blue-50 border-blue-200" : "bg-gray-50"
+                          idx === 0 ? "bg-violet-50 border-violet-200" : "bg-gray-50"
                         )}
                       >
                         <div className="flex items-center justify-between mb-2">
@@ -3091,7 +3134,7 @@ export default function TemplatesPage() {
                         <ul className="space-y-1">
                           {version.changes.map((change, i) => (
                             <li key={i} className="text-sm text-gray-700 flex items-start gap-2">
-                              <span className="text-blue-500 mt-1">•</span>
+                              <span className="text-violet-500 mt-1">•</span>
                               {change}
                             </li>
                           ))}
@@ -3124,7 +3167,7 @@ export default function TemplatesPage() {
         {/* ============= COMPARISON MODAL ============= */}
         <AnimatePresence>
           {showComparison && comparisonTemplates.length === 2 && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="comparison" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3138,7 +3181,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <GitCompare className="h-6 w-6" />
@@ -3160,13 +3203,13 @@ export default function TemplatesPage() {
                         </div>
                         
                         <div className="grid grid-cols-2 gap-3">
-                          <div className="p-3 bg-blue-50 rounded-lg text-center">
+                          <div className="p-3 bg-violet-50 rounded-lg text-center">
                             <p className="text-xs text-gray-500">Variables</p>
-                            <p className="text-2xl font-bold text-blue-600">{template.variables || 0}</p>
+                            <p className="text-2xl font-bold text-violet-600">{template.variables || 0}</p>
                           </div>
-                          <div className="p-3 bg-purple-50 rounded-lg text-center">
+                          <div className="p-3 bg-violet-50 rounded-lg text-center">
                             <p className="text-xs text-gray-500">Clauses</p>
-                            <p className="text-2xl font-bold text-purple-600">
+                            <p className="text-2xl font-bold text-violet-600">
                               {Array.isArray(template.clauses) ? template.clauses.length : (template.clauses || 0)}
                             </p>
                           </div>
@@ -3223,7 +3266,7 @@ export default function TemplatesPage() {
         {/* ============= EXPORT MODAL ============= */}
         <AnimatePresence>
           {showExportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="export-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3237,7 +3280,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-violet-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Download className="h-6 w-6" />
@@ -3253,7 +3296,7 @@ export default function TemplatesPage() {
                   {/* Bulk JSON Export */}
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileCode className="h-4 w-4 text-blue-500" />
+                      <FileCode className="h-4 w-4 text-violet-500" />
                       Bulk Export (JSON)
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Export multiple templates as JSON for backup or transfer.</p>
@@ -3281,22 +3324,22 @@ export default function TemplatesPage() {
                   {/* Single Template Document Export */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileType className="h-4 w-4 text-purple-500" />
+                      <FileType className="h-4 w-4 text-violet-500" />
                       Export as Document
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Export a single template as Word or PDF document.</p>
                     
                     {exportingTemplate ? (
-                      <div className="p-4 bg-purple-50 rounded-lg space-y-3">
+                      <div className="p-4 bg-violet-50 rounded-lg space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-purple-800">{exportingTemplate.name}</span>
+                          <span className="font-medium text-violet-800">{exportingTemplate.name}</span>
                           <Button variant="ghost" size="sm" onClick={() => setExportingTemplate(null)}>
                             <X className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="flex gap-2">
                           <Button 
-                            className="flex-1 bg-blue-600 hover:bg-blue-700"
+                            className="flex-1 bg-violet-600 hover:bg-violet-700"
                             onClick={() => exportTemplateAsDocument(exportingTemplate, 'docx')}
                             disabled={isExporting}
                           >
@@ -3338,7 +3381,7 @@ export default function TemplatesPage() {
                   {/* Cloud Sync */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <Cloud className="h-4 w-4 text-cyan-500" />
+                      <Cloud className="h-4 w-4 text-violet-500" />
                       Sync to Cloud Storage
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Upload templates to SharePoint, OneDrive, or Google Drive.</p>
@@ -3369,7 +3412,7 @@ export default function TemplatesPage() {
         {/* ============= IMPORT MODAL ============= */}
         <AnimatePresence>
           {showImportModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="import-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3383,7 +3426,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Upload className="h-6 w-6" />
@@ -3399,12 +3442,12 @@ export default function TemplatesPage() {
                   {/* JSON Import */}
                   <div>
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileCode className="h-4 w-4 text-blue-500" />
+                      <FileCode className="h-4 w-4 text-violet-500" />
                       Import from JSON (Bulk)
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Import templates from a previously exported JSON file.</p>
                     <label className="block">
-                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
                         <FileCode className="h-8 w-8 text-gray-400 mx-auto mb-2" />
                         <p className="text-sm text-gray-600 mb-1">Click to select JSON file</p>
                         <p className="text-xs text-gray-400">.json files only</p>
@@ -3424,22 +3467,22 @@ export default function TemplatesPage() {
                   {/* Word Import */}
                   <div className="border-t pt-6">
                     <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-                      <FileType className="h-4 w-4 text-purple-500" />
+                      <FileType className="h-4 w-4 text-violet-500" />
                       Import from Word Document
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">Create a template from a Word document (.docx, .doc).</p>
                     
                     {!importPreview ? (
                       <label className="block">
-                        <div className="border-2 border-dashed border-purple-300 rounded-xl p-6 text-center cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                        <div className="border-2 border-dashed border-violet-300 rounded-xl p-6 text-center cursor-pointer hover:border-violet-400 hover:bg-violet-50 transition-colors">
                           {isImporting ? (
                             <>
-                              <Loader2 className="h-8 w-8 text-purple-400 mx-auto mb-2 animate-spin" />
+                              <Loader2 className="h-8 w-8 text-violet-400 mx-auto mb-2 animate-spin" />
                               <p className="text-sm text-gray-600">Parsing document...</p>
                             </>
                           ) : (
                             <>
-                              <FileText className="h-8 w-8 text-purple-400 mx-auto mb-2" />
+                              <FileText className="h-8 w-8 text-violet-400 mx-auto mb-2" />
                               <p className="text-sm text-gray-600 mb-1">Click to select Word document</p>
                               <p className="text-xs text-gray-400">.docx or .doc files</p>
                             </>
@@ -3460,9 +3503,9 @@ export default function TemplatesPage() {
                         </div>
                       </label>
                     ) : (
-                      <div className="bg-purple-50 rounded-xl p-4 space-y-4">
+                      <div className="bg-violet-50 rounded-xl p-4 space-y-4">
                         <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-purple-800">Preview</h4>
+                          <h4 className="font-medium text-violet-800">Preview</h4>
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -3488,20 +3531,20 @@ export default function TemplatesPage() {
                           {importPreview.variables && Array.isArray(importPreview.variables) && importPreview.variables.length > 0 && (
                             <div>
                               <span className="font-medium text-gray-700">Variables detected:</span>
-                              <span className="ml-2 text-purple-600">{importPreview.variables.length}</span>
+                              <span className="ml-2 text-violet-600">{importPreview.variables.length}</span>
                             </div>
                           )}
                           {importPreview.clauses && Array.isArray(importPreview.clauses) && importPreview.clauses.length > 0 && (
                             <div>
                               <span className="font-medium text-gray-700">Clauses detected:</span>
-                              <span className="ml-2 text-purple-600">{importPreview.clauses.length}</span>
+                              <span className="ml-2 text-violet-600">{importPreview.clauses.length}</span>
                             </div>
                           )}
                         </div>
                         
                         <div className="flex gap-2 pt-2">
                           <Button 
-                            className="flex-1 bg-purple-600 hover:bg-purple-700"
+                            className="flex-1 bg-violet-600 hover:bg-violet-700"
                             onClick={() => importedFile && handleWordImport(importedFile, true)}
                             disabled={isImporting}
                           >
@@ -3535,7 +3578,7 @@ export default function TemplatesPage() {
         {/* ============= CLOUD SYNC MODAL ============= */}
         <AnimatePresence>
           {showCloudSyncModal && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="cloud-sync-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3549,7 +3592,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Cloud className="h-6 w-6" />
@@ -3568,7 +3611,7 @@ export default function TemplatesPage() {
                       Select Template
                     </label>
                     <select 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-violet-500 focus:border-violet-500"
                       value={cloudSyncTemplate || ''}
                       onChange={(e) => setCloudSyncTemplate(e.target.value)}
                     >
@@ -3595,13 +3638,13 @@ export default function TemplatesPage() {
                         onClick={() => setCloudProvider('sharepoint')}
                         className={`p-4 rounded-xl border-2 transition-all ${
                           cloudProvider === 'sharepoint' 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-violet-500 bg-violet-50' 
+                            : 'border-gray-200 hover:border-violet-300'
                         } ${availableProviders.includes('sharepoint') ? '' : 'opacity-50'}`}
                         disabled={!availableProviders.includes('sharepoint')}
                       >
                         <div className="flex flex-col items-center gap-2">
-                          <svg viewBox="0 0 24 24" className="h-8 w-8 text-blue-600" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-8 w-8 text-violet-600" fill="currentColor">
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                           </svg>
                           <span className="text-xs font-medium">SharePoint</span>
@@ -3616,13 +3659,13 @@ export default function TemplatesPage() {
                         onClick={() => setCloudProvider('onedrive')}
                         className={`p-4 rounded-xl border-2 transition-all ${
                           cloudProvider === 'onedrive' 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-violet-500 bg-violet-50' 
+                            : 'border-gray-200 hover:border-violet-300'
                         } ${availableProviders.includes('onedrive') ? '' : 'opacity-50'}`}
                         disabled={!availableProviders.includes('onedrive')}
                       >
                         <div className="flex flex-col items-center gap-2">
-                          <svg viewBox="0 0 24 24" className="h-8 w-8 text-blue-500" fill="currentColor">
+                          <svg viewBox="0 0 24 24" className="h-8 w-8 text-violet-500" fill="currentColor">
                             <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96z"/>
                           </svg>
                           <span className="text-xs font-medium">OneDrive</span>
@@ -3677,12 +3720,12 @@ export default function TemplatesPage() {
                         onClick={() => setCloudSyncFormat('docx')}
                         className={`flex-1 p-3 rounded-lg border-2 transition-all ${
                           cloudSyncFormat === 'docx' 
-                            ? 'border-blue-500 bg-blue-50' 
-                            : 'border-gray-200 hover:border-blue-300'
+                            ? 'border-violet-500 bg-violet-50' 
+                            : 'border-gray-200 hover:border-violet-300'
                         }`}
                       >
                         <div className="flex items-center gap-2 justify-center">
-                          <FileText className="h-5 w-5 text-blue-600" />
+                          <FileText className="h-5 w-5 text-violet-600" />
                           <span className="font-medium">Word (.docx)</span>
                         </div>
                       </button>
@@ -3710,7 +3753,7 @@ export default function TemplatesPage() {
                     Cancel
                   </Button>
                   <Button 
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600"
                     disabled={!cloudSyncTemplate || !cloudProvider || isSyncing || availableProviders.length === 0}
                     onClick={() => cloudSyncTemplate && syncToCloud(cloudSyncTemplate)}
                   >
@@ -3735,7 +3778,7 @@ export default function TemplatesPage() {
         {/* ============= SCHEDULE MODAL ============= */}
         <AnimatePresence>
           {showScheduleModal && scheduleTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="schedule-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3829,7 +3872,7 @@ export default function TemplatesPage() {
         {/* ============= DEPENDENCIES MODAL ============= */}
         <AnimatePresence>
           {showDependenciesModal && dependenciesTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="dependencies-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3843,7 +3886,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-indigo-500 to-purple-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Link2 className="h-6 w-6" />
@@ -3856,17 +3899,17 @@ export default function TemplatesPage() {
                 </div>
                 
                 <div className="p-6">
-                  <div className="p-4 bg-indigo-50 rounded-lg mb-4">
-                    <p className="text-sm font-medium text-indigo-700">Template</p>
+                  <div className="p-4 bg-violet-50 rounded-lg mb-4">
+                    <p className="text-sm font-medium text-violet-700">Template</p>
                     <p className="font-semibold text-indigo-900">{dependenciesTemplate.name}</p>
-                    <p className="text-sm text-indigo-600 mt-1">
+                    <p className="text-sm text-violet-600 mt-1">
                       Used in {dependenciesTemplate.usageCount || 0} contracts
                     </p>
                   </div>
                   
                   {isLoadingDependencies ? (
                     <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+                      <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
                     </div>
                   ) : templateDependencies.length === 0 ? (
                     <div className="text-center py-8 text-gray-500">
@@ -3915,7 +3958,7 @@ export default function TemplatesPage() {
         {/* ============= AUDIT TRAIL MODAL ============= */}
         <AnimatePresence>
           {showAuditTrail && auditTrailTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="audit-trail" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -3992,7 +4035,7 @@ export default function TemplatesPage() {
         {/* ============= SMART TAGS MODAL ============= */}
         <AnimatePresence>
           {showTagSuggestions && tagSuggestionTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="tag-suggestions" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4078,7 +4121,7 @@ export default function TemplatesPage() {
         {/* ============= QUICK DUPLICATE MODAL ============= */}
         <AnimatePresence>
           {showQuickDuplicate && duplicateTemplate && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="quick-duplicate" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4092,7 +4135,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <Copy className="h-6 w-6" />
@@ -4105,9 +4148,9 @@ export default function TemplatesPage() {
                 </div>
                 
                 <div className="p-6 space-y-4">
-                  <div className="p-4 bg-cyan-50 rounded-lg">
-                    <p className="text-sm text-cyan-700">Duplicating:</p>
-                    <p className="font-semibold text-cyan-900">{duplicateTemplate.name}</p>
+                  <div className="p-4 bg-violet-50 rounded-lg">
+                    <p className="text-sm text-violet-700">Duplicating:</p>
+                    <p className="font-semibold text-violet-900">{duplicateTemplate.name}</p>
                   </div>
                   
                   <div>
@@ -4136,7 +4179,7 @@ export default function TemplatesPage() {
                     Cancel
                   </Button>
                   <Button 
-                    className="bg-gradient-to-r from-cyan-500 to-blue-600"
+                    className="bg-gradient-to-r from-violet-500 to-purple-600"
                     onClick={performQuickDuplicate}
                     disabled={!duplicateName.trim()}
                   >
@@ -4152,7 +4195,7 @@ export default function TemplatesPage() {
         {/* ============= KEYBOARD SHORTCUTS MODAL ============= */}
         <AnimatePresence>
           {showKeyboardShortcuts && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="keyboard-shortcuts" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4226,7 +4269,7 @@ export default function TemplatesPage() {
         {/* ============= ANALYTICS MODAL ============= */}
         <AnimatePresence>
           {showAnalytics && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="analytics" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4240,7 +4283,7 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
               >
-                <div className="p-6 border-b bg-gradient-to-r from-cyan-500 to-blue-600 text-white">
+                <div className="p-6 border-b bg-gradient-to-r from-violet-500 to-purple-600 text-white">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <BarChart3 className="h-6 w-6" />
@@ -4258,7 +4301,7 @@ export default function TemplatesPage() {
                     <Card className="shadow-lg">
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                          <Layers className="h-4 w-4 text-blue-500" />
+                          <Layers className="h-4 w-4 text-violet-500" />
                           Usage by Category
                         </CardTitle>
                       </CardHeader>
@@ -4274,7 +4317,7 @@ export default function TemplatesPage() {
                               </div>
                               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                                 <div 
-                                  className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                                  className="h-full bg-gradient-to-r from-violet-500 to-purple-500 rounded-full"
                                   style={{ width: `${(usage / stats.totalUsage) * 100}%` }}
                                 />
                               </div>
@@ -4320,7 +4363,7 @@ export default function TemplatesPage() {
                     <Card className="shadow-lg">
                       <CardHeader>
                         <CardTitle className="text-base flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-purple-500" />
+                          <Zap className="h-4 w-4 text-violet-500" />
                           Status Distribution
                         </CardTitle>
                       </CardHeader>
@@ -4356,7 +4399,7 @@ export default function TemplatesPage() {
                         <div className="space-y-3">
                           {analyticsData.recentActivity.map((template) => (
                             <div key={template.id} className="flex items-center gap-3 text-sm">
-                              <div className="w-2 h-2 rounded-full bg-blue-500" />
+                              <div className="w-2 h-2 rounded-full bg-violet-500" />
                               <div className="flex-1 min-w-0">
                                 <p className="font-medium text-gray-900 truncate">{template.name}</p>
                               </div>
@@ -4382,7 +4425,7 @@ export default function TemplatesPage() {
         {/* ============= ONBOARDING MODAL ============= */}
         <AnimatePresence>
           {showOnboarding && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div key="onboarding" className="fixed inset-0 z-50 flex items-center justify-center p-4">
               <motion.div 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4396,12 +4439,12 @@ export default function TemplatesPage() {
                 exit={{ scale: 0.9, opacity: 0 }}
                 className="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
               >
-                <div className="p-8 bg-gradient-to-br from-purple-500 via-pink-500 to-rose-500 text-white text-center">
+                <div className="p-8 bg-gradient-to-br from-violet-500 via-pink-500 to-rose-500 text-white text-center">
                   <div className="inline-flex p-4 bg-white/20 rounded-2xl mb-4">
                     <FileText className="h-10 w-10" />
                   </div>
                   <h2 className="text-2xl font-bold mb-2">Welcome to Templates!</h2>
-                  <p className="text-purple-100">Your central hub for managing contract templates</p>
+                  <p className="text-violet-100">Your central hub for managing contract templates</p>
                 </div>
                 
                 <div className="p-6 space-y-4">
@@ -4412,8 +4455,8 @@ export default function TemplatesPage() {
                     { icon: Wand2, title: 'AI Suggestions', desc: 'Get smart recommendations for your templates' },
                   ].map((item, idx) => (
                     <div key={idx} className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-                      <div className="p-2 bg-purple-100 rounded-lg">
-                        <item.icon className="h-5 w-5 text-purple-600" />
+                      <div className="p-2 bg-violet-100 rounded-lg">
+                        <item.icon className="h-5 w-5 text-violet-600" />
                       </div>
                       <div>
                         <p className="font-medium text-gray-900">{item.title}</p>
@@ -4429,7 +4472,7 @@ export default function TemplatesPage() {
                   </Button>
                   <Button 
                     onClick={completeOnboarding}
-                    className="bg-gradient-to-r from-purple-500 to-pink-600 text-white"
+                    className="bg-gradient-to-r from-violet-500 to-pink-600 text-white"
                   >
                     Get Started
                     <ArrowRight className="h-4 w-4 ml-2" />
@@ -4443,7 +4486,7 @@ export default function TemplatesPage() {
         {/* ============= PREVIEW SIDEBAR (Slide-in Panel) ============= */}
         <AnimatePresence>
           {previewSidebarOpen && sidebarTemplate && (
-            <>
+            <div key="preview-sidebar-open" className="contents">
               {/* Backdrop */}
               <motion.div
                 initial={{ opacity: 0 }}
@@ -4462,7 +4505,7 @@ export default function TemplatesPage() {
                 className="fixed right-0 top-0 h-full w-full max-w-lg bg-white shadow-2xl z-50 overflow-hidden"
               >
                 {/* Header */}
-                <div className="p-4 border-b bg-gradient-to-r from-purple-50 to-pink-50">
+                <div className="p-4 border-b bg-gradient-to-r from-violet-50 to-pink-50">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 mr-4">
                       <div className="flex items-center gap-2 mb-2">
@@ -4482,10 +4525,10 @@ export default function TemplatesPage() {
                 
                 {/* Quick Stats */}
                 <div className="p-4 grid grid-cols-3 gap-3 border-b">
-                  <div className="text-center p-2 bg-blue-50 rounded-lg">
-                    <Variable className="h-5 w-5 mx-auto text-blue-600" />
-                    <p className="text-lg font-bold text-blue-700 mt-1">{sidebarTemplate.variables || 0}</p>
-                    <p className="text-xs text-blue-600">Variables</p>
+                  <div className="text-center p-2 bg-violet-50 rounded-lg">
+                    <Variable className="h-5 w-5 mx-auto text-violet-600" />
+                    <p className="text-lg font-bold text-violet-700 mt-1">{sidebarTemplate.variables || 0}</p>
+                    <p className="text-xs text-violet-600">Variables</p>
                   </div>
                   <div className="text-center p-2 bg-green-50 rounded-lg">
                     <FileCode className="h-5 w-5 mx-auto text-green-600" />
@@ -4494,10 +4537,10 @@ export default function TemplatesPage() {
                     </p>
                     <p className="text-xs text-green-600">Clauses</p>
                   </div>
-                  <div className="text-center p-2 bg-purple-50 rounded-lg">
-                    <TrendingUp className="h-5 w-5 mx-auto text-purple-600" />
-                    <p className="text-lg font-bold text-purple-700 mt-1">{sidebarTemplate.usageCount || 0}</p>
-                    <p className="text-xs text-purple-600">Uses</p>
+                  <div className="text-center p-2 bg-violet-50 rounded-lg">
+                    <TrendingUp className="h-5 w-5 mx-auto text-violet-600" />
+                    <p className="text-lg font-bold text-violet-700 mt-1">{sidebarTemplate.usageCount || 0}</p>
+                    <p className="text-xs text-violet-600">Uses</p>
                   </div>
                 </div>
                 
@@ -4536,7 +4579,7 @@ export default function TemplatesPage() {
                       className={cn(
                         "h-2 rounded-full",
                         calculateHealthScore(sidebarTemplate) >= 80 ? "bg-green-500" :
-                        calculateHealthScore(sidebarTemplate) >= 60 ? "bg-blue-500" :
+                        calculateHealthScore(sidebarTemplate) >= 60 ? "bg-violet-500" :
                         calculateHealthScore(sidebarTemplate) >= 40 ? "bg-yellow-500" : "bg-red-500"
                       )}
                       initial={{ width: 0 }}
@@ -4556,7 +4599,7 @@ export default function TemplatesPage() {
                 
                 {/* Actions */}
                 <div className="absolute bottom-0 left-0 right-0 p-4 bg-white border-t flex gap-2">
-                  <Button asChild className="flex-1 bg-purple-600 hover:bg-purple-700">
+                  <Button asChild className="flex-1 bg-violet-600 hover:bg-violet-700">
                     <Link href={`/templates/${sidebarTemplate.id}/edit`}>
                       <Edit2 className="h-4 w-4 mr-2" />
                       Edit
@@ -4577,14 +4620,14 @@ export default function TemplatesPage() {
                   </Button>
                 </div>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
         {/* ============= CONTEXT MENU ============= */}
         <AnimatePresence>
           {contextMenu && (
-            <>
+            <div key="context-menu" className="contents">
               <div 
                 className="fixed inset-0 z-40" 
                 onClick={closeContextMenu}
@@ -4674,14 +4717,14 @@ export default function TemplatesPage() {
                   Delete
                 </button>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
         {/* ============= ACTIVITY PANEL ============= */}
         <AnimatePresence>
           {showActivityPanel && (
-            <>
+            <div key="activity-panel" className="contents">
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -4698,7 +4741,7 @@ export default function TemplatesPage() {
               >
                 <div className="p-4 border-b flex items-center justify-between">
                   <h3 className="font-semibold text-lg flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-purple-600" />
+                    <Activity className="h-5 w-5 text-violet-600" />
                     Recent Activity
                   </h3>
                   <Button variant="ghost" size="icon" onClick={() => setShowActivityPanel(false)}>
@@ -4720,9 +4763,9 @@ export default function TemplatesPage() {
                             "p-1.5 rounded-full",
                             activity.action === 'favorited' ? 'bg-amber-100 text-amber-600' :
                             activity.action === 'unfavorited' ? 'bg-gray-100 text-gray-600' :
-                            activity.action === 'duplicated' ? 'bg-blue-100 text-blue-600' :
+                            activity.action === 'duplicated' ? 'bg-violet-100 text-violet-600' :
                             activity.action === 'deleted' ? 'bg-red-100 text-red-600' :
-                            'bg-purple-100 text-purple-600'
+                            'bg-violet-100 text-violet-600'
                           )}>
                             {activity.action === 'favorited' && <Star className="h-3.5 w-3.5 fill-current" />}
                             {activity.action === 'unfavorited' && <StarOff className="h-3.5 w-3.5" />}
@@ -4741,7 +4784,7 @@ export default function TemplatesPage() {
                   )}
                 </div>
               </motion.div>
-            </>
+            </div>
           )}
         </AnimatePresence>
         
@@ -4751,7 +4794,7 @@ export default function TemplatesPage() {
             <DropdownMenuTrigger asChild>
               <Button 
                 size="lg"
-                className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-purple-500 to-pink-600 hover:from-purple-600 hover:to-pink-700"
+                className="h-14 w-14 rounded-full shadow-2xl bg-gradient-to-r from-violet-500 to-pink-600 hover:from-violet-600 hover:to-pink-700"
               >
                 <Plus className="h-6 w-6" />
               </Button>
@@ -4783,7 +4826,7 @@ export default function TemplatesPage() {
         {/* ============= SCHEDULED ACTIONS INDICATOR ============= */}
         <AnimatePresence>
           {scheduledActions.filter(s => s.status === 'pending').length > 0 && (
-            <motion.div
+            <motion.div key="page-ap-2"
               initial={{ opacity: 0, x: 100 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 100 }}
@@ -4822,7 +4865,7 @@ export default function TemplatesPage() {
         {/* ============= QUICK ACTIONS FLOATING BAR ============= */}
         <AnimatePresence>
           {showQuickActions && templates.length > 0 && (
-            <motion.div
+            <motion.div key="quick-actions"
               initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 50 }}
@@ -4866,7 +4909,7 @@ export default function TemplatesPage() {
                   onClick={() => setBulkActionMode(!bulkActionMode)}
                   title="Bulk Select"
                 >
-                  <CheckSquare className={cn("h-4 w-4", bulkActionMode && "text-blue-600")} />
+                  <CheckSquare className={cn("h-4 w-4", bulkActionMode && "text-violet-600")} />
                 </Button>
                 <Button
                   variant="ghost"
@@ -4913,7 +4956,7 @@ export default function TemplatesPage() {
         {/* Show Quick Actions Toggle when hidden */}
         <AnimatePresence>
           {!showQuickActions && templates.length > 0 && (
-            <motion.button
+            <motion.button key="page-ap-3"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
@@ -4929,7 +4972,7 @@ export default function TemplatesPage() {
         {/* ============= SCROLL TO TOP BUTTON ============= */}
         <AnimatePresence>
           {filteredAndSortedTemplates.length > 6 && (
-            <motion.button
+            <motion.button key="filtered-and-sorted-templates-length"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}

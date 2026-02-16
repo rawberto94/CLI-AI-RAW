@@ -34,24 +34,28 @@
 #### 1. API Validation Gaps - FIXED ✅
 
 **Affected Routes:**
+
 - ✅ `/api/rate-cards/bulk-import/route.ts` - Supplier lookup now tenant-scoped
 - ✅ `/api/rate-cards/baselines/route.ts` - User validation added (GET/POST)
 - ✅ `/api/rate-cards/baselines/compare/route.ts` - User validation added
 - ✅ `/api/ai/chat/route.ts` - Contract hierarchy now tenant-scoped
 
 **Security Impact:**
+
 - ❌ **Before:** Attackers could query any tenant's users/suppliers
 - ✅ **After:** All queries validate tenantId, return 403 for violations
 
 #### 2. TaxonomyCategory FK Validation - FIXED ✅
 
 **Affected Files:**
+
 - ✅ `/api/contracts/[id]/categorize/route.ts` - Added validateCategoryOwnership()
 - ✅ `/api/contracts/[id]/metadata/route.ts` - Category validation before update
 - ✅ `/api/contracts/upload/route.ts` - Category validation in classification
 - ✅ `/lib/categorization-service.ts` - Category ownership check before assignment
 
 **Security Impact:**
+
 - ❌ **Before:** Tenant B could assign Tenant A's categories to their contracts
 - ✅ **After:** Category ID hijacking blocked, returns 403
 
@@ -88,6 +92,7 @@ Duration: 832ms
 **Script:** `/scripts/audit-tenant-isolation.sh`
 
 **Audit Results:**
+
 - ✅ All critical API routes validate tenantId
 - ✅ 0 findFirst issues
 - ✅ 0 findMany issues
@@ -96,6 +101,7 @@ Duration: 832ms
 - ✅ 13 contractCategoryId references (now validated)
 
 **Run Audit:**
+
 ```bash
 ./scripts/audit-tenant-isolation.sh
 ```
@@ -107,9 +113,11 @@ Duration: 832ms
 ### Closed Vulnerabilities ✅
 
 #### 1. Category ID Hijacking Attack
+
 **Status:** ✅ BLOCKED
 
 **Attack Vector (Before):**
+
 ```typescript
 // ❌ Attacker could inject Tenant A's category
 POST /api/contracts/123/categorize
@@ -119,6 +127,7 @@ POST /api/contracts/123/categorize
 ```
 
 **Protection (After):**
+
 ```typescript
 // ✅ Validation prevents cross-tenant assignment
 const isValid = await validateCategoryOwnership(
@@ -135,9 +144,11 @@ if (!isValid) {
 ```
 
 #### 2. Cross-Tenant User/Supplier Lookup
+
 **Status:** ✅ BLOCKED
 
 **Attack Vector (Before):**
+
 ```typescript
 // ❌ Could query any tenant's supplier
 const supplier = await prisma.rateCardSupplier.findFirst({
@@ -146,6 +157,7 @@ const supplier = await prisma.rateCardSupplier.findFirst({
 ```
 
 **Protection (After):**
+
 ```typescript
 // ✅ Supplier lookup now tenant-scoped
 const supplier = await prisma.rateCardSupplier.findFirst({
@@ -157,9 +169,11 @@ const supplier = await prisma.rateCardSupplier.findFirst({
 ```
 
 #### 3. Contract Hierarchy Data Leakage
+
 **Status:** ✅ BLOCKED
 
 **Attack Vector (Before):**
+
 ```typescript
 // ❌ Could see any tenant's contract hierarchy
 const contract = await prisma.contract.findUnique({
@@ -169,6 +183,7 @@ const contract = await prisma.contract.findUnique({
 ```
 
 **Protection (After):**
+
 ```typescript
 // ✅ Hierarchy queries now tenant-scoped
 const contract = await prisma.contract.findFirst({
@@ -417,12 +432,14 @@ git revert HEAD
 **Timeline:** Week 2 (if needed)
 
 **Changes Required:**
+
 1. Add tenantId to Role model
 2. Add tenantId to Permission model
 3. Migrate existing data
 4. Update RBAC APIs
 
 **Reason for Delay:**
+
 - Current global roles work for standard use cases
 - Only needed if clients require custom per-tenant roles
 - Can be done without breaking existing functionality
@@ -463,6 +480,7 @@ git revert HEAD
 **Outcome:** ✅ **APPROVED FOR PRODUCTION**
 
 **Findings:**
+
 - All critical vulnerabilities fixed
 - No residual high-risk issues
 - Comprehensive test coverage
@@ -492,12 +510,14 @@ git revert HEAD
 ### Common Issues
 
 **Issue 1: Tests fail with connection error**
+
 ```bash
 # Solution: Ensure database is running
 docker-compose up -d postgres
 ```
 
 **Issue 2: Audit script reports findUnique queries**
+
 ```bash
 # Solution: Review flagged files
 # Most are admin routes (safe by design)
@@ -505,6 +525,7 @@ docker-compose up -d postgres
 ```
 
 **Issue 3: 403 errors after deployment**
+
 ```bash
 # Solution: Verify x-tenant-id header in requests
 # Check middleware extracts tenantId correctly
@@ -514,9 +535,10 @@ docker-compose up -d postgres
 ### Contact
 
 For questions or issues, see:
+
 - **Implementation Plan:** TENANT_ISOLATION_GAPS_FIX.md
 - **Audit Report:** TENANT_ISOLATION_AUDIT_REPORT.md
-- **Test Suite:** apps/web/__tests__/tenant-isolation.test.ts
+- **Test Suite:** apps/web/**tests**/tenant-isolation.test.ts
 
 ---
 

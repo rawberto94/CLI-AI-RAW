@@ -218,7 +218,7 @@ export function ShareDialog({
 
   return (
     <AnimatePresence>
-      <motion.div
+      <motion.div key="ShareDialog-ap-1"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -236,8 +236,8 @@ export function ShareDialog({
           <div className="px-6 py-4 bg-slate-50 border-b border-slate-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <Share2 className="w-5 h-5 text-blue-600" />
+                <div className="p-2 bg-violet-100 rounded-lg">
+                  <Share2 className="w-5 h-5 text-violet-600" />
                 </div>
                 <div>
                   <h2 className="font-semibold text-slate-900">Share Document</h2>
@@ -270,7 +270,7 @@ export function ShareDialog({
                     onKeyDown={(e) => e.key === 'Enter' && handleAddEmail()}
                     placeholder="Add email addresses"
                     aria-label="Email address to share with"
-                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                   />
                 </div>
                 <button
@@ -289,10 +289,10 @@ export function ShareDialog({
                   {emails.map((e) => (
                     <span
                       key={e}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-violet-100 text-violet-700 rounded-full text-sm"
                     >
                       {e}
-                      <button onClick={() => handleRemoveEmail(e)} className="hover:text-blue-900">
+                      <button onClick={() => handleRemoveEmail(e)} className="hover:text-violet-900">
                         <X className="w-3 h-3" />
                       </button>
                     </span>
@@ -314,12 +314,12 @@ export function ShareDialog({
                       className={cn(
                         'flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all',
                         permission === opt.value
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-violet-500 bg-violet-50'
                           : 'border-slate-200 hover:border-slate-300'
                       )}
                     >
-                      <Icon className={cn('w-4 h-4', permission === opt.value ? 'text-blue-600' : 'text-slate-500')} />
-                      <span className={cn('text-xs font-medium', permission === opt.value ? 'text-blue-700' : 'text-slate-600')}>
+                      <Icon className={cn('w-4 h-4', permission === opt.value ? 'text-violet-600' : 'text-slate-500')} />
+                      <span className={cn('text-xs font-medium', permission === opt.value ? 'text-violet-700' : 'text-slate-600')}>
                         {opt.label}
                       </span>
                     </button>
@@ -351,7 +351,7 @@ export function ShareDialog({
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Add a message to include in the invitation..."
-                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-500 resize-none"
                     rows={2}
                   />
                 </div>
@@ -364,7 +364,7 @@ export function ShareDialog({
                   <select
                     value={expiresIn}
                     onChange={(e) => setExpiresIn(e.target.value)}
-                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
                   >
                     <option value="never">Never</option>
                     <option value="1">1 day</option>
@@ -390,7 +390,7 @@ export function ShareDialog({
             <button
               onClick={handleShare}
               disabled={emails.length === 0 || sharing}
-              className="w-full py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="w-full py-3 bg-violet-600 text-white rounded-lg font-medium hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
             >
               {sharing ? (
                 <>
@@ -447,7 +447,7 @@ export function ShareDialog({
                       className="flex items-center justify-between px-6 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+                        <div className="w-8 h-8 bg-violet-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                           {share.sharedWith.charAt(0).toUpperCase()}
                         </div>
                         <div>
@@ -476,7 +476,7 @@ export function ShareDialog({
                                   onClick={() => handleUpdatePermission(share.id, opt.value)}
                                   className={cn(
                                     'w-full px-3 py-2 text-left text-xs hover:bg-slate-50',
-                                    share.permission === opt.value && 'bg-blue-50 text-blue-600'
+                                    share.permission === opt.value && 'bg-violet-50 text-violet-600'
                                   )}
                                 >
                                   {opt.label}

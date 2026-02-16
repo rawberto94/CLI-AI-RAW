@@ -1,5 +1,9 @@
 # Contract Source Integration System v1.2.0
 
+> **DEPRECATED:** See [docs/TECHNICAL_DOCUMENTATION.md](docs/TECHNICAL_DOCUMENTATION.md) for current integration documentation. Retained for historical reference only.
+
+---
+
 ## Overview
 
 The Contract Source Integration System provides a unified way to sync contracts from external storage systems into the Contigo platform. It supports multiple cloud storage providers and on-premise systems.
@@ -254,6 +258,7 @@ The API implements sliding window rate limiting:
 | Webhooks      | 500             |
 
 Response headers include:
+
 - `X-RateLimit-Limit`: Maximum requests allowed
 - `X-RateLimit-Remaining`: Remaining requests in window
 - `X-RateLimit-Reset`: Unix timestamp when limit resets
@@ -266,6 +271,7 @@ Configure email notifications for sync events:
 ### Failure Alerts
 
 Sent when a sync fails, includes:
+
 - Source details
 - Error message
 - Retry status
@@ -274,6 +280,7 @@ Sent when a sync fails, includes:
 ### Summary Reports
 
 Daily/weekly reports with:
+
 - Total syncs and success rate
 - Files processed
 - Top performing sources

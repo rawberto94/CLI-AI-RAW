@@ -11,12 +11,15 @@
  * - Shared between tenants (if marked as shared)
  */
 
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
+import { withAuthApiHandler, withApiHandler, createSuccessResponse, createErrorResponse, handleApiError } from "@/lib/api-middleware";
+import type { AuthenticatedApiContext } from "@/lib/api-middleware";
+import { taxonomyService } from 'data-orchestration/services';
+import { getApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -150,100 +153,67 @@ function countCategories(categories: PresetCategory[]): number {
 // GET - List custom presets
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    const includeShared = searchParams.get('includeShared') !== 'false';
-    
-    // Build where clause
-    const whereConditions: { tenantId?: string; isShared?: boolean }[] = [{ tenantId }];
-    if (includeShared) {
-      whereConditions.push({ isShared: true });
-    }
-    
-    const presets = await prisma.taxonomyPreset.findMany({
-      where: { OR: whereConditions },
-      orderBy: [{ isShared: 'desc' }, { createdAt: 'desc' }],
-      select: {
-        id: true,
-        name: true,
-        description: true,
-        categoryCount: true,
-        isShared: true,
-        tenantId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
-    
-    return NextResponse.json({
-      success: true,
-      data: presets.map((p) => ({
-        ...p,
-        isOwn: p.tenantId === tenantId,
-      })),
-      total: presets.length,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to fetch custom presets',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+export const GET = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+  const includeShared = searchParams.get('includeShared') !== 'false';
+  
+  // Build where clause
+  const whereConditions: { tenantId?: string; isShared?: boolean }[] = [{ tenantId }];
+  if (includeShared) {
+    whereConditions.push({ isShared: true });
   }
-}
+  
+  const presets = await prisma.taxonomyPreset.findMany({
+    where: { OR: whereConditions },
+    orderBy: [{ isShared: 'desc' }, { createdAt: 'desc' }],
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      categoryCount: true,
+      isShared: true,
+      tenantId: true,
+      createdAt: true,
+      updatedAt: true,
+    },
+  });
+  
+  return createSuccessResponse(ctx, presets.map((p) => ({
+    ...p,
+    isOwn: p.tenantId === tenantId,
+  })));
+});
 
 // ============================================================================
 // POST - Save current taxonomy as preset OR apply a preset
 // ============================================================================
 
-export async function POST(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const body = await request.json();
-    
-    // Check if this is an apply request
-    if ('presetId' in body) {
-      return applyPreset(request, tenantId, body);
-    }
-    
-    // Otherwise it's a save request
-    return savePreset(request, tenantId, body);
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to process preset request',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+export const POST = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const body = await request.json();
+  
+  // Check if this is an apply request
+  if ('presetId' in body) {
+    return applyPreset(ctx, tenantId, body);
   }
-}
+  
+  // Otherwise it's a save request
+  return savePreset(ctx, tenantId, body);
+});
 
 /**
  * Save current taxonomy as a custom preset
  */
 async function savePreset(
-  request: NextRequest,
+  ctx: AuthenticatedApiContext,
   tenantId: string,
   body: unknown
-): Promise<NextResponse> {
+): Promise<Response> {
   // Validate input
   const validation = SavePresetSchema.safeParse(body);
   if (!validation.success) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Invalid input',
-        details: validation.error.errors,
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid input', 400);
   }
   
   const { name, description, isShared } = validation.data;
@@ -254,14 +224,7 @@ async function savePreset(
   });
   
   if (existing) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Duplicate preset name',
-        details: `A preset named "${name}" already exists`,
-      },
-      { status: 409 }
-    );
+    return createErrorResponse(ctx, 'CONFLICT', `A preset named "${name}" already exists`, 409);
   }
   
   // Fetch current taxonomy
@@ -281,14 +244,7 @@ async function savePreset(
   });
   
   if (categories.length === 0) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'No categories to save',
-        details: 'Create some categories first before saving as a preset',
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Create some categories first before saving as a preset', 400);
   }
   
   // Build hierarchical structure
@@ -311,8 +267,7 @@ async function savePreset(
     },
   });
   
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     data: {
       id: preset.id,
       name: preset.name,
@@ -329,21 +284,14 @@ async function savePreset(
  * Apply a custom preset
  */
 async function applyPreset(
-  request: NextRequest,
+  ctx: AuthenticatedApiContext,
   tenantId: string,
   body: unknown
-): Promise<NextResponse> {
+): Promise<Response> {
   // Validate input
   const validation = ApplyPresetSchema.safeParse(body);
   if (!validation.success) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Invalid input',
-        details: validation.error.errors,
-      },
-      { status: 400 }
-    );
+    return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid input', 400);
   }
   
   const { presetId, clearExisting } = validation.data;
@@ -357,10 +305,7 @@ async function applyPreset(
   });
   
   if (!preset) {
-    return NextResponse.json(
-      { success: false, error: 'Preset not found' },
-      { status: 404 }
-    );
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Preset not found', 404);
   }
   
   // Clear existing if requested
@@ -374,8 +319,7 @@ async function applyPreset(
   const categories = preset.categories as unknown as PresetCategory[];
   const createdCount = await createCategoriesFromPreset(categories, tenantId);
   
-  return NextResponse.json({
-    success: true,
+  return createSuccessResponse(ctx, {
     message: `Applied "${preset.name}" preset with ${createdCount} categories`,
     categoriesCreated: createdCount,
   });
@@ -385,55 +329,37 @@ async function applyPreset(
 // DELETE - Delete a custom preset
 // ============================================================================
 
-export async function DELETE(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
-    const { searchParams } = new URL(request.url);
-    const presetId = searchParams.get('id');
-    
-    if (!presetId) {
-      return NextResponse.json(
-        { success: false, error: 'Preset ID is required' },
-        { status: 400 }
-      );
-    }
-    
-    // Only allow deleting own presets
-    const preset = await prisma.taxonomyPreset.findFirst({
-      where: { id: presetId, tenantId },
-    });
-    
-    if (!preset) {
-      return NextResponse.json(
-        { success: false, error: 'Preset not found or not owned by you' },
-        { status: 404 }
-      );
-    }
-    
-    await prisma.taxonomyPreset.delete({
-      where: { id: presetId },
-    });
-    
-    return NextResponse.json({
-      success: true,
-      message: `Deleted preset "${preset.name}"`,
-    });
-  } catch (error: unknown) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: 'Failed to delete preset',
-        details: error instanceof Error ? error.message : 'Unknown error',
-      },
-      { status: 500 }
-    );
+export const DELETE = withAuthApiHandler(async (request: NextRequest, ctx) => {
+  const tenantId = ctx.tenantId;
+  const { searchParams } = new URL(request.url);
+  const presetId = searchParams.get('id');
+  
+  if (!presetId) {
+    return createErrorResponse(ctx, 'BAD_REQUEST', 'Preset ID is required', 400);
   }
-}
+  
+  // Only allow deleting own presets
+  const preset = await prisma.taxonomyPreset.findFirst({
+    where: { id: presetId, tenantId },
+  });
+  
+  if (!preset) {
+    return createErrorResponse(ctx, 'NOT_FOUND', 'Preset not found or not owned by you', 404);
+  }
+  
+  await prisma.taxonomyPreset.delete({
+    where: { id: presetId },
+  });
+  
+  return createSuccessResponse(ctx, {
+    message: `Deleted preset "${preset.name}"`,
+  });
+});
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
-export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+export const OPTIONS = withApiHandler(async (request: NextRequest) => {
   return cors.optionsResponse(request, 'GET, POST, DELETE, OPTIONS');
-}
+});

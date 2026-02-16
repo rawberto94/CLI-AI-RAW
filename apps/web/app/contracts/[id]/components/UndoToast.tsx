@@ -3,7 +3,7 @@
 import React, { memo, useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
+import { cn as _cn } from '@/lib/utils'
 import { X, Undo2 } from 'lucide-react'
 
 interface UndoAction {
@@ -57,7 +57,7 @@ export const UndoToast = memo(function UndoToast({ action, onDismiss }: UndoToas
   return (
     <AnimatePresence>
       {action && (
-        <motion.div
+        <motion.div key="action"
           initial={{ opacity: 0, y: 50, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 20, scale: 0.95 }}
@@ -67,7 +67,7 @@ export const UndoToast = memo(function UndoToast({ action, onDismiss }: UndoToas
             {/* Progress bar */}
             <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-700 rounded-b-lg overflow-hidden">
               <motion.div
-                className="h-full bg-blue-500"
+                className="h-full bg-violet-500"
                 initial={{ width: '100%' }}
                 animate={{ width: `${progress}%` }}
                 transition={{ duration: 0.05 }}

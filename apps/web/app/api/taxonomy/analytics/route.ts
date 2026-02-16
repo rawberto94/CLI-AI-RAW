@@ -12,15 +12,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import cors from "@/lib/security/cors";
 import { prisma } from "@/lib/prisma";
-import { getApiTenantId } from "@/lib/tenant-server";
+import { withAuthApiHandler, createSuccessResponse, handleApiError } from "@/lib/api-middleware";
+import { taxonomyService } from 'data-orchestration/services';
+import { getApiContext } from '@/lib/api-middleware';
 
 // ============================================================================
 // GET - Category Analytics
 // ============================================================================
 
-export async function GET(request: NextRequest): Promise<NextResponse> {
-  try {
-    const tenantId = await getApiTenantId(request);
+export const GET = withAuthApiHandler(async (request, ctx) => {
+    const tenantId = ctx.tenantId;
     const { searchParams } = new URL(request.url);
     const period = searchParams.get("period") || "30d"; // 7d, 30d, 90d, all
 
@@ -167,9 +168,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       none: uncategorizedCount,
     };
 
-    return NextResponse.json({
-      success: true,
-      data: {
+    return createSuccessResponse(ctx, {
         summary: {
           totalContracts: contracts.length,
           categorizedCount: totalCategorized,
@@ -184,24 +183,14 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         levelDistribution,
         trend: trendData,
         period,
-      },
     });
-  } catch (error) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch analytics",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
-  }
-}
+});
 
 // ============================================================================
 // OPTIONS HANDLER FOR CORS
 // ============================================================================
 
 export async function OPTIONS(request: NextRequest): Promise<NextResponse> {
+  const ctx = getApiContext(request);
   return cors.optionsResponse(request, "GET, OPTIONS");
 }

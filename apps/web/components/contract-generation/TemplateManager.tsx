@@ -84,15 +84,15 @@ import type { Template, TemplateCategory, LibraryClause } from '@/types/contract
 // ====================
 
 const categoryConfig: Record<TemplateCategory, { label: string; icon: string; color: string }> = {
-  MSA: { label: 'Master Service Agreement', icon: '📋', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  MSA: { label: 'Master Service Agreement', icon: '📋', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   SOW: { label: 'Statement of Work', icon: '📝', color: 'bg-green-100 text-green-700 border-green-200' },
-  NDA: { label: 'Non-Disclosure Agreement', icon: '🔒', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  NDA: { label: 'Non-Disclosure Agreement', icon: '🔒', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   AMENDMENT: { label: 'Amendment', icon: '📌', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  RENEWAL: { label: 'Renewal', icon: '🔄', color: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+  RENEWAL: { label: 'Renewal', icon: '🔄', color: 'bg-violet-100 text-violet-700 border-cyan-200' },
   ORDER_FORM: { label: 'Order Form', icon: '🛒', color: 'bg-pink-100 text-pink-700 border-pink-200' },
   SLA: { label: 'Service Level Agreement', icon: '⚡', color: 'bg-orange-100 text-orange-700 border-orange-200' },
-  DPA: { label: 'Data Processing Agreement', icon: '🛡️', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  SUBCONTRACT: { label: 'Subcontractor Agreement', icon: '🤝', color: 'bg-teal-100 text-teal-700 border-teal-200' },
+  DPA: { label: 'Data Processing Agreement', icon: '🛡️', color: 'bg-violet-100 text-violet-700 border-indigo-200' },
+  SUBCONTRACT: { label: 'Subcontractor Agreement', icon: '🤝', color: 'bg-violet-100 text-violet-700 border-violet-200' },
   CONSULTING: { label: 'Consulting Agreement', icon: '💼', color: 'bg-rose-100 text-rose-700 border-rose-200' },
   LICENSE: { label: 'License Agreement', icon: '📄', color: 'bg-lime-100 text-lime-700 border-lime-200' },
   OTHER: { label: 'Other', icon: '📁', color: 'bg-gray-100 text-gray-700 border-gray-200' },

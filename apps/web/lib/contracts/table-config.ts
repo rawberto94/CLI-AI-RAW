@@ -98,7 +98,12 @@ export const DEFAULT_COLUMNS: TableColumn[] = [
 ]
 
 export function getNestedValue(obj: any, path: string): any {
-  return path.split('.').reduce((current, key) => current?.[key], obj)
+  const value = path.split('.').reduce((current, key) => current?.[key], obj)
+  // Unwrap potentially wrapped AI values
+  if (value && typeof value === 'object' && 'value' in value) {
+    return value.value
+  }
+  return value
 }
 
 export function setNestedValue(obj: any, path: string, value: any): void {

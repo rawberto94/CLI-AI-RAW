@@ -7,6 +7,8 @@
 
 // AI & Intelligence Components
 export { AISummarizer, QuickSummarizeButton } from './AISummarizer';
+export { ContractAIAnalyst } from './ContractAIAnalyst';
+export type { ContractContext as ContractAIAnalystContext } from './ContractAIAnalyst';
 
 // Enhanced Metadata Section
 export { EnhancedContractMetadataSection } from './EnhancedContractMetadataSection';
@@ -30,8 +32,7 @@ export type { AdvancedSearchFilters } from './AdvancedSearchModal';
 // Report Components
 export { AIReportModal } from './AIReportModal';
 
-// Quick Actions & Insights Components
-export { QuickActionsPanel, FloatingActionsBar, AIInsightsCard } from './QuickActionsPanel';
+
 
 // Health Score Components
 export { ContractHealthScore, HealthScoreWidget } from './ContractHealthScore';
@@ -156,13 +157,7 @@ export type { PaginationProps } from './PaginationControls';
 export { SearchFiltersBar } from './SearchFiltersBar';
 export type { SearchFiltersBarProps } from './SearchFiltersBar';
 
-// Contract Quick Actions
-export { 
-  ContractQuickActions,
-  ContractQuickActionsIcon,
-  ContractQuickActionsMenu,
-} from './ContractQuickActions';
-export type { ContractQuickActionsProps } from './ContractQuickActions';
+// Contract Quick Actions — module removed (was never created)
 
 // Saved Filters Panel
 export { SavedFiltersPanel } from './SavedFiltersPanel';
@@ -221,3 +216,12 @@ export { QuickUploadModal } from './QuickUploadModal';
 
 // AI Draft Assistant
 export { AIDraftAssistant } from './AIDraftAssistant';
+
+// Enhanced Contract Preview Panel
+export { EnhancedContractPreviewPanel } from './EnhancedContractPreviewPanel';
+
+// Contract Comparison Dialog
+export { ContractComparisonDialog } from './ContractComparisonDialog';
+
+// Enhanced Bulk Selection Toolbar
+export { EnhancedBulkSelectionToolbar } from './EnhancedBulkSelectionToolbar';

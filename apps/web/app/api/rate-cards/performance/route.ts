@@ -3,20 +3,13 @@
  * Provides performance metrics and optimization insights
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from '@/lib/auth';
-
+import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { performanceOptimizationService } from 'data-orchestration/services';
 import { queryOptimizerService } from 'data-orchestration/services';
+import { withAuthApiHandler, createSuccessResponse, createErrorResponse, handleApiError, type AuthenticatedApiContext, getApiContext} from '@/lib/api-middleware';
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
+export const GET = withAuthApiHandler(async (request, ctx) => {
     const perfService = new performanceOptimizationService(prisma);
     const queryOptimizer = new queryOptimizerService(prisma);
 
@@ -30,7 +23,7 @@ export async function GET(request: NextRequest) {
     const poolMetrics = await perfService.optimizeConnectionPool();
 
     // Get query performance recommendations
-    const indexSuggestions = await queryOptimizer.suggestMissingIndexes(session.user.tenantId);
+    const indexSuggestions = await queryOptimizer.suggestMissingIndexes(ctx.tenantId);
 
     // Get database statistics
     const dbStats = await prisma.$queryRaw<Array<{
@@ -50,7 +43,7 @@ export async function GET(request: NextRequest) {
       ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC
     `;
 
-    return NextResponse.json({
+    return createSuccessResponse(ctx, {
       cache: cacheStats,
       indexes: indexStats,
       connectionPool: poolMetrics,
@@ -62,19 +55,11 @@ export async function GET(request: NextRequest) {
         indexSize: stat.index_size,
       })),
     });
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to fetch performance metrics' },
-      { status: 500 }
-    );
-  }
-}
+  });
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession();
-    if (!session?.user?.tenantId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+export const POST = withAuthApiHandler(async (request, ctx) => {
+    if (!ctx.tenantId) {
+      return createErrorResponse(ctx, 'UNAUTHORIZED', 'Unauthorized', 401);
     }
 
     const body = await request.json();
@@ -86,36 +71,21 @@ export async function POST(request: NextRequest) {
       case 'invalidate_cache':
         const pattern = body.pattern || 'rate-card:*';
         const invalidated = await perfService.invalidateCache(pattern);
-        return NextResponse.json({ 
+        return createSuccessResponse(ctx, { 
           success: true, 
           invalidated,
           message: `Invalidated ${invalidated} cache entries` 
         });
 
       case 'preload_data':
-        await perfService.preloadCommonData(session.user.tenantId);
-        return NextResponse.json({ 
-          success: true,
-          message: 'Common data preloaded into cache' 
-        });
+        await perfService.preloadCommonData(ctx.tenantId);
+        return createSuccessResponse(ctx, { message: 'Common data preloaded into cache' });
 
       case 'refresh_materialized_views':
         await prisma.$executeRaw`SELECT refresh_market_intelligence_summary()`;
-        return NextResponse.json({ 
-          success: true,
-          message: 'Materialized views refreshed' 
-        });
+        return createSuccessResponse(ctx, { message: 'Materialized views refreshed' });
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action' },
-          { status: 400 }
-        );
+        return createErrorResponse(ctx, 'VALIDATION_ERROR', 'Invalid action', 400);
     }
-  } catch {
-    return NextResponse.json(
-      { error: 'Failed to execute performance action' },
-      { status: 500 }
-    );
-  }
-}
+  });

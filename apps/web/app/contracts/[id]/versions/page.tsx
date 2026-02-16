@@ -6,7 +6,7 @@ import { VersionCompare, DocumentVersion } from '@/components/contracts/VersionC
 import { VersionTimeline, ContractVersion } from '@/components/contracts/VersionTimeline';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs as _Tabs, TabsContent as _TabsContent, TabsList as _TabsList, TabsTrigger as _TabsTrigger } from '@/components/ui/tabs';
 import { ArrowLeft, FileText, History, GitBranch, Clock, Sparkles, GitCompare, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -40,9 +40,10 @@ function useVersions(contractId: string) {
     try {
       setLoading(true);
       const response = await fetch(`/api/contracts/${contractId}/versions`);
-      const json: VersionsResponse = await response.json();
+      const raw: Record<string, unknown> = await response.json();
+      const json = (raw.data ?? raw) as VersionsResponse;
 
-      if (json.success && json.versions) {
+      if (json.success !== false && json.versions) {
         // Store raw versions for timeline
         setTimelineVersions(json.versions);
 
@@ -95,7 +96,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     });
   };
 
-  const handleMergeVersions = (leftId: string, rightId: string) => {
+  const handleMergeVersions = (_leftId: string, _rightId: string) => {
     toast.info('Merge initiated', {
       description: 'Opening merge editor to combine versions...',
     });
@@ -110,9 +111,9 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-violet-50/20">
       {/* Premium Header */}
-      <div className="bg-gradient-to-r from-cyan-600 via-teal-600 to-emerald-600 shadow-xl">
+      <div className="bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 shadow-xl">
         <div className="max-w-7xl mx-auto px-6 py-5">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
@@ -135,7 +136,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
                   <h1 className="text-lg font-bold text-white flex items-center gap-2">
                     Version History
                   </h1>
-                  <div className="flex items-center gap-3 mt-0.5 text-sm text-cyan-100">
+                  <div className="flex items-center gap-3 mt-0.5 text-sm text-violet-100">
                     <span className="flex items-center gap-1">
                       <FileText className="w-3 h-3" />
                       Contract Document
@@ -236,7 +237,7 @@ export default function VersionsPage({ params }: { params: Promise<{ id: string 
               onRevert={(versionId) => {
                 toast.info('Reverting...', { description: `Reverting to version ${versionId}` });
               }}
-              onView={(versionId) => {
+              onView={(_versionId) => {
                 setViewMode('compare');
               }}
               onCreateSnapshot={() => {
