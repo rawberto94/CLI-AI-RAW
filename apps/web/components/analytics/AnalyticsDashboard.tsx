@@ -5,7 +5,7 @@
 
 'use client';
 
-import { memo, useState } from 'react';
+import { memo, useState, useEffect, useCallback } from 'react';
 import {
   BarChart3,
   TrendingUp,
@@ -129,50 +129,98 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
 }: AnalyticsDashboardProps) {
   const [timeRange, setTimeRange] = useState<string>('30d');
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Demo data
-  const categoryData: CategoryData[] = [
-    { name: 'Master Service Agreements', count: 45, value: 12500000, percentage: 35 },
-    { name: 'Vendor Contracts', count: 38, value: 8900000, percentage: 28 },
-    { name: 'NDAs', count: 65, value: 0, percentage: 18 },
-    { name: 'Employment Agreements', count: 22, value: 3200000, percentage: 12 },
-    { name: 'Other', count: 15, value: 1400000, percentage: 7 },
-  ];
+  // State for API data
+  const [totalContracts, setTotalContracts] = useState(0);
+  const [totalValue, setTotalValue] = useState(0);
+  const [avgProcessingTime, setAvgProcessingTime] = useState(0);
+  const [highRiskCount, setHighRiskCount] = useState(0);
+  const [categoryData, setCategoryData] = useState<CategoryData[]>([]);
+  const [timeSeriesData, setTimeSeriesData] = useState<TimeSeriesData[]>([]);
+  const [statusDistribution, setStatusDistribution] = useState<{status: string; count: number; color: string}[]>([]);
+  const [riskDistribution, setRiskDistribution] = useState<{level: string; count: number; color: string; percentage: number}[]>([]);
+  const [upcomingDeadlines, setUpcomingDeadlines] = useState<{contract: string; daysRemaining: number; type: string}[]>([]);
 
-  const timeSeriesData: TimeSeriesData[] = [
-    { period: 'Jan', contracts: 12, value: 2400000 },
-    { period: 'Feb', contracts: 15, value: 3100000 },
-    { period: 'Mar', contracts: 18, value: 2800000 },
-    { period: 'Apr', contracts: 14, value: 3500000 },
-    { period: 'May', contracts: 22, value: 4200000 },
-    { period: 'Jun', contracts: 19, value: 3800000 },
-  ];
-
-  const statusDistribution = [
-    { status: 'Active', count: 85, color: 'bg-green-500' },
-    { status: 'Pending Review', count: 23, color: 'bg-yellow-500' },
-    { status: 'Draft', count: 12, color: 'bg-slate-400' },
-    { status: 'Expired', count: 8, color: 'bg-red-500' },
-  ];
-
-  const riskDistribution = [
-    { level: 'Low', count: 92, color: 'bg-green-500', percentage: 72 },
-    { level: 'Medium', count: 28, color: 'bg-yellow-500', percentage: 22 },
-    { level: 'High', count: 8, color: 'bg-red-500', percentage: 6 },
-  ];
-
-  const upcomingDeadlines = [
-    { contract: 'Acme Corp - MSA', daysRemaining: 7, type: 'expiration' },
-    { contract: 'TechVenture NDA', daysRemaining: 14, type: 'renewal' },
-    { contract: 'Global Supplies Agreement', daysRemaining: 21, type: 'review' },
-    { contract: 'Contractor Agreement - JSmith', daysRemaining: 30, type: 'expiration' },
-  ];
-
-  const handleRefresh = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setIsRefreshing(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsRefreshing(false);
-  };
+    try {
+      const res = await fetch(`/api/analytics/dashboard?timeframe=${timeRange}`);
+      if (!res.ok) return;
+      const json = await res.json();
+      const m = json.metrics || json.data?.metrics || {};
+
+      setTotalContracts(m.totalContracts ?? 0);
+      setTotalValue(m.totalValue ?? 0);
+      setAvgProcessingTime(m.avgProcessingTime ?? m.avgRiskScore ?? 0);
+      setHighRiskCount(m.highRiskContracts ?? 0);
+
+      if (m.statusDistribution) {
+        const colors: Record<string, string> = { active: 'bg-green-500', draft: 'bg-slate-400', pending: 'bg-yellow-500', expired: 'bg-red-500' };
+        setStatusDistribution(
+          Object.entries(m.statusDistribution).map(([status, count]) => ({
+            status: status.charAt(0).toUpperCase() + status.slice(1),
+            count: count as number,
+            color: colors[status.toLowerCase()] || 'bg-slate-400',
+          }))
+        );
+      }
+
+      if (m.trends) {
+        setTimeSeriesData(
+          (Array.isArray(m.trends) ? m.trends : []).map((t: any) => ({
+            period: t.period || t.month || '',
+            contracts: t.contracts || t.count || 0,
+            value: t.value || 0,
+          }))
+        );
+      }
+
+      if (m.categories) {
+        setCategoryData(
+          (Array.isArray(m.categories) ? m.categories : []).map((c: any) => ({
+            name: c.name || c.type || 'Other',
+            count: c.count || 0,
+            value: c.value || 0,
+            percentage: c.percentage || 0,
+          }))
+        );
+      }
+
+      if (m.riskDistribution) {
+        const rcolors: Record<string, string> = { low: 'bg-green-500', medium: 'bg-yellow-500', high: 'bg-red-500' };
+        setRiskDistribution(
+          Object.entries(m.riskDistribution).map(([level, count]) => ({
+            level: level.charAt(0).toUpperCase() + level.slice(1),
+            count: count as number,
+            color: rcolors[level.toLowerCase()] || 'bg-slate-400',
+            percentage: totalContracts > 0 ? Math.round(((count as number) / totalContracts) * 100) : 0,
+          }))
+        );
+      }
+
+      if (m.upcomingDeadlines) {
+        setUpcomingDeadlines(
+          (Array.isArray(m.upcomingDeadlines) ? m.upcomingDeadlines : []).map((d: any) => ({
+            contract: d.contract || d.contractName || 'Unknown',
+            daysRemaining: d.daysRemaining ?? 0,
+            type: d.type || 'expiration',
+          }))
+        );
+      }
+    } catch {
+      // Could not fetch analytics
+    } finally {
+      setIsRefreshing(false);
+      setLoading(false);
+    }
+  }, [timeRange, totalContracts]);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  const handleRefresh = () => fetchAnalytics();
 
   const totalContracts = statusDistribution.reduce((sum, s) => sum + s.count, 0);
   const maxBar = Math.max(...timeSeriesData.map(d => d.contracts));
@@ -219,36 +267,28 @@ export const AnalyticsDashboard = memo(function AnalyticsDashboard({
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Contracts"
-          value="185"
-          change={12}
-          changeLabel="vs last month"
+          value={totalContracts.toLocaleString()}
           icon={FileText}
           trend="up"
           color="blue"
         />
         <MetricCard
           title="Total Value"
-          value="$26M"
-          change={8}
-          changeLabel="vs last month"
+          value={totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(1)}M` : `$${totalValue.toLocaleString()}`}
           icon={DollarSign}
           trend="up"
           color="green"
         />
         <MetricCard
-          title="Avg Processing Time"
-          value="2.4h"
-          change={-15}
-          changeLabel="improvement"
+          title="Avg Risk Score"
+          value={avgProcessingTime.toFixed(1)}
           icon={Clock}
-          trend="up"
+          trend="neutral"
           color="purple"
         />
         <MetricCard
           title="High Risk Contracts"
-          value="8"
-          change={-25}
-          changeLabel="vs last month"
+          value={highRiskCount.toString()}
           icon={AlertTriangle}
           trend="up"
           color="red"

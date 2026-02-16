@@ -62,7 +62,6 @@ import {
 } from './FavoriteContractsWidget';
 import { 
   UpcomingRenewalsWidget, 
-  generateDemoRenewals 
 } from './UpcomingRenewalsWidget';
 import { 
   AIInsightsSummaryWidget, 
@@ -801,7 +800,34 @@ export function ProfessionalDashboard() {
   // Demo data for new widgets (replace with API calls in production)
   const [favoriteContracts] = useState(() => generateDemoFavorites(5));
   const [recentActivity] = useState(() => generateDemoActivities(10));
-  const [upcomingRenewals] = useState(() => generateDemoRenewals(6));
+  // Fetch renewals from API
+  const [upcomingRenewals, setUpcomingRenewals] = useState<any[]>([]);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/renewals');
+        const json = await res.json();
+        if (json.data?.renewals?.length) {
+          setUpcomingRenewals(json.data.renewals.map((r: any) => ({
+            id: r.id || r.contractId,
+            name: r.contractName || r.name || 'Untitled Contract',
+            supplier: r.supplierName || r.counterparty,
+            value: r.contractValue || r.value || 0,
+            currency: r.currency || 'USD',
+            expirationDate: new Date(r.expirationDate || r.endDate),
+            daysRemaining: r.daysUntilExpiry ?? r.daysRemaining ?? 0,
+            autoRenewal: r.autoRenewal ?? false,
+            noticePeriodDays: r.noticePeriodDays,
+            renewalStatus: r.status || 'pending',
+            lastRenewalDate: r.lastRenewalDate ? new Date(r.lastRenewalDate) : undefined,
+            renewalCount: r.renewalCount,
+          })));
+        }
+      } catch {
+        // Could not load renewals
+      }
+    })();
+  }, []);
   const [aiInsights] = useState(() => generateDemoInsights(6));
   const [aiMetrics] = useState(() => generateDemoAIMetrics());
   const [notifications] = useState(() => generateDemoNotifications(12));

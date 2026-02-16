@@ -75,50 +75,6 @@ const getContractValue = (supplier?: string) => {
   return values[supplier || ""] || Math.floor(Math.random() * 500000) + 200000
 }
 
-// Demo data for when API is not available
-const demoContracts: Contract[] = [
-  {
-    id: "deloitte-sow-2024",
-    name: "Deloitte-SOW-2024.pdf",
-    status: "COMPLETED",
-    createdAt: "2024-01-15T10:00:00Z",
-    updatedAt: "2024-01-15T10:30:00Z",
-    supplier: "Deloitte"
-  },
-  {
-    id: "ey-msa-2024",
-    name: "EY-MSA-2024.pdf", 
-    status: "COMPLETED",
-    createdAt: "2024-01-14T14:00:00Z",
-    updatedAt: "2024-01-14T14:45:00Z",
-    supplier: "Ernst & Young"
-  },
-  {
-    id: "kpmg-sow-q1",
-    name: "KPMG-SOW-Q1.pdf",
-    status: "PROCESSING",
-    createdAt: "2024-01-13T09:00:00Z",
-    updatedAt: "2024-01-13T09:15:00Z",
-    supplier: "KPMG"
-  },
-  {
-    id: "pwc-agreement",
-    name: "PwC-Agreement.pdf",
-    status: "COMPLETED",
-    createdAt: "2024-01-12T16:00:00Z",
-    updatedAt: "2024-01-12T16:20:00Z",
-    supplier: "PricewaterhouseCoopers"
-  },
-  {
-    id: "accenture-contract",
-    name: "Accenture-Contract.pdf",
-    status: "INGESTED",
-    createdAt: "2024-01-11T11:00:00Z",
-    updatedAt: "2024-01-11T11:05:00Z",
-    supplier: "Accenture"
-  }
-]
-
 export function RecentContracts() {
   const [contracts, setContracts] = React.useState<Contract[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
@@ -133,27 +89,22 @@ export function RecentContracts() {
         setContracts(items)
         setIsLoading(false)
       } else {
-        // API not available, use demo data
-        setContracts(demoContracts)
+        setContracts([]);
         setIsLoading(false)
       }
     } catch (e) {
-      // API not available, use demo data
-      setContracts(demoContracts)
+      setContracts([]);
       setIsLoading(false)
     }
   }
 
   React.useEffect(() => {
     fetchContracts()
-    // Don't poll if using demo data
     const id = setInterval(() => {
-      if (contracts !== demoContracts) {
-        fetchContracts()
-      }
+      fetchContracts()
     }, 5000)
     return () => clearInterval(id)
-  }, [contracts])
+  }, [])
 
   return (
     <Card>

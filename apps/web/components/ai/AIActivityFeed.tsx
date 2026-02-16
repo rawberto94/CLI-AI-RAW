@@ -163,114 +163,6 @@ const statusConfig = {
 };
 
 // ============================================================================
-// Mock Data Generator (for demo)
-// ============================================================================
-
-function generateMockActivities(): AIActivity[] {
-  const now = new Date();
-  return [
-    {
-      id: '1',
-      type: 'extraction',
-      agentName: 'Smart Extraction Agent',
-      action: 'Extracted 24 fields from contract',
-      contractId: 'contract-001',
-      contractName: 'Acme Corp MSA',
-      status: 'completed',
-      confidence: 0.94,
-      details: 'Payment terms, termination clauses, SLA metrics extracted',
-      timestamp: new Date(now.getTime() - 2 * 60 * 1000),
-      duration: 3400,
-    },
-    {
-      id: '2',
-      type: 'risk_detection',
-      agentName: 'Proactive Risk Detector',
-      action: 'Found 2 high-risk clauses',
-      contractId: 'contract-002',
-      contractName: 'GlobalTech Services Agreement',
-      status: 'needs_review',
-      confidence: 0.89,
-      details: 'Missing limitation of liability, unfavorable auto-renewal terms',
-      timestamp: new Date(now.getTime() - 5 * 60 * 1000),
-      duration: 2100,
-    },
-    {
-      id: '3',
-      type: 'workflow_suggestion',
-      agentName: 'Workflow Suggestion Engine',
-      action: 'Suggested Executive Approval workflow',
-      contractId: 'contract-003',
-      contractName: 'Enterprise License Agreement',
-      status: 'completed',
-      confidence: 0.96,
-      details: 'Contract value $450K triggers executive approval requirement',
-      timestamp: new Date(now.getTime() - 8 * 60 * 1000),
-      duration: 890,
-    },
-    {
-      id: '4',
-      type: 'gap_filling',
-      agentName: 'Smart Gap-Filling Agent',
-      action: 'Auto-filled 3 missing fields',
-      contractId: 'contract-001',
-      contractName: 'Acme Corp MSA',
-      status: 'completed',
-      confidence: 0.87,
-      details: 'Inferred supplier address, payment terms, and contract duration',
-      timestamp: new Date(now.getTime() - 12 * 60 * 1000),
-      duration: 1560,
-    },
-    {
-      id: '5',
-      type: 'classification',
-      agentName: 'Contract Classifier',
-      action: 'Classified as Master Service Agreement',
-      contractId: 'contract-004',
-      contractName: 'TechVendor Partnership',
-      status: 'completed',
-      confidence: 0.98,
-      timestamp: new Date(now.getTime() - 15 * 60 * 1000),
-      duration: 450,
-    },
-    {
-      id: '6',
-      type: 'opportunity_discovery',
-      agentName: 'Opportunity Discovery Engine',
-      action: 'Found consolidation opportunity',
-      status: 'completed',
-      confidence: 0.82,
-      details: '3 similar IT service contracts could be consolidated for $85K savings',
-      timestamp: new Date(now.getTime() - 25 * 60 * 1000),
-      duration: 5200,
-    },
-    {
-      id: '7',
-      type: 'health_check',
-      agentName: 'Contract Health Monitor',
-      action: 'Completed portfolio health scan',
-      status: 'completed',
-      confidence: 0.95,
-      details: '47 contracts analyzed, 3 need attention',
-      timestamp: new Date(now.getTime() - 45 * 60 * 1000),
-      duration: 12400,
-    },
-    {
-      id: '8',
-      type: 'learning',
-      agentName: 'Continuous Learning Agent',
-      action: 'Learned from user correction',
-      contractId: 'contract-005',
-      contractName: 'Annual Support Contract',
-      status: 'completed',
-      details: 'Updated payment terms extraction pattern based on feedback',
-      timestamp: new Date(now.getTime() - 60 * 60 * 1000),
-      duration: 230,
-    },
-  ];
-}
-
-// ============================================================================
 // Component
 // ============================================================================
 
@@ -292,48 +184,70 @@ export function AIActivityFeed({
       setActivities(propActivities);
       setIsLoading(false);
     } else {
-      // Use mock data for demo
-      setTimeout(() => {
-        setActivities(generateMockActivities());
-        setIsLoading(false);
-      }, 500);
+      // Fetch from AI history API
+      const fetchActivities = async () => {
+        try {
+          const response = await fetch('/api/ai/history?limit=20');
+          if (!response.ok) throw new Error('Failed to fetch');
+          const data = await response.json();
+          if (data.history?.length > 0) {
+            const mapped: AIActivity[] = data.history.map((h: any) => ({
+              id: h.id,
+              type: (h.queryType === 'chat' ? 'extraction' : h.queryType === 'analyze' ? 'risk_detection' : h.queryType === 'compare' ? 'classification' : 'extraction') as AIActivityType,
+              agentName: h.model || 'AI Agent',
+              action: h.query?.slice(0, 80) || 'AI operation',
+              status: h.success ? 'completed' as const : 'failed' as const,
+              confidence: h.success ? 0.9 : undefined,
+              details: h.tokensUsed ? `${h.tokensUsed} tokens used` : undefined,
+              timestamp: new Date(h.timestamp),
+              duration: h.responseTime,
+            }));
+            setActivities(mapped);
+          } else {
+            setActivities([]);
+          }
+        } catch {
+          setActivities([]);
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      fetchActivities();
     }
   }, [propActivities]);
 
-  // Simulate real-time updates
+  // Poll for new activities periodically
   useEffect(() => {
-    if (propActivities) return; // Don't simulate if activities are provided
+    if (propActivities) return;
 
-    const interval = setInterval(() => {
-      // Occasionally add a new activity
-      if (Math.random() > 0.7) {
-        const types: AIActivityType[] = ['extraction', 'validation', 'classification', 'risk_detection'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const config = activityConfig[type];
-        
-        const newActivity: AIActivity = {
-          id: `live-${Date.now()}`,
-          type,
-          agentName: `${config.label} Agent`,
-          action: `Processing contract data...`,
-          status: 'running',
-          timestamp: new Date(),
-        };
-
-        setActivities(prev => [newActivity, ...prev].slice(0, maxItems + 5));
-
-        // Complete the activity after a bit
-        setTimeout(() => {
-          setActivities(prev =>
-            prev.map(a =>
-              a.id === newActivity.id
-                ? { ...a, status: 'completed' as const, confidence: 0.85 + Math.random() * 0.15, duration: 1000 + Math.random() * 3000 }
-                : a
-            )
-          );
-        }, 2000 + Math.random() * 2000);
+    const interval = setInterval(async () => {
+      try {
+        const response = await fetch('/api/ai/history?limit=5');
+        if (!response.ok) return;
+        const data = await response.json();
+        if (data.history?.length > 0) {
+          setActivities(prev => {
+            const existingIds = new Set(prev.map(a => a.id));
+            const newItems: AIActivity[] = data.history
+              .filter((h: any) => !existingIds.has(h.id))
+              .map((h: any) => ({
+                id: h.id,
+                type: (h.queryType === 'chat' ? 'extraction' : h.queryType === 'analyze' ? 'risk_detection' : 'extraction') as AIActivityType,
+                agentName: h.model || 'AI Agent',
+                action: h.query?.slice(0, 80) || 'AI operation',
+                status: h.success ? 'completed' as const : 'failed' as const,
+                confidence: h.success ? 0.9 : undefined,
+                details: h.tokensUsed ? `${h.tokensUsed} tokens used` : undefined,
+                timestamp: new Date(h.timestamp),
+                duration: h.responseTime,
+              }));
+            return [...newItems, ...prev].slice(0, maxItems + 5);
+          });
+        }
+      } catch {
+        // Silently fail polling
       }
-    }, 8000);
+    }, 15000);
 
     return () => clearInterval(interval);
   }, [propActivities, maxItems]);

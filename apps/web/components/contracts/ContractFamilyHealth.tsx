@@ -242,35 +242,14 @@ export function ContractFamilyHealth({
       const response = await fetch(`/api/contracts/${contractId}/family-health`)
       
       if (!response.ok) {
-        // Generate mock data for development/demo
-        const mockData: ContractFamilyData = {
-          root: null,
-          members: [],
-          totalContracts: 1,
-          totalValue: 125000,
-          healthScore: 75,
-          completeness: 60,
-          issues: [],
-          suggestedParents: []
-        }
-        setFamilyData(mockData)
+        setError('Failed to load family health data')
         return
       }
       
       const data = await response.json()
       setFamilyData(data)
     } catch {
-      // Provide fallback data
-      setFamilyData({
-        root: null,
-        members: [],
-        totalContracts: 1,
-        totalValue: 0,
-        healthScore: 100,
-        completeness: 100,
-        issues: [],
-        suggestedParents: []
-      })
+      setError('Failed to load family health data')
     } finally {
       setIsLoading(false)
     }

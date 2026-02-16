@@ -60,109 +60,6 @@ interface SLAMonitoringProps {
 }
 
 // ============================================================================
-// Mock Data
-// ============================================================================
-
-const mockSLAMetrics: SLAMetric[] = [
-  {
-    id: 'sla-1',
-    name: 'Response Time',
-    description: 'Average response time for support tickets',
-    category: 'response-time',
-    target: 4,
-    current: 2.5,
-    unit: 'hours',
-    trend: 'down',
-    trendValue: -15,
-    status: 'meeting',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 2 + Math.random() * 2,
-    })),
-  },
-  {
-    id: 'sla-2',
-    name: 'Service Uptime',
-    description: 'Monthly uptime percentage',
-    category: 'uptime',
-    target: 99.9,
-    current: 99.95,
-    unit: '%',
-    trend: 'up',
-    trendValue: 0.05,
-    status: 'meeting',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 99.8 + Math.random() * 0.2,
-    })),
-  },
-  {
-    id: 'sla-3',
-    name: 'Defect Rate',
-    description: 'Number of defects per 1000 deliverables',
-    category: 'quality',
-    target: 5,
-    current: 7.2,
-    unit: 'per 1000',
-    trend: 'up',
-    trendValue: 8,
-    status: 'at-risk',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 5 + Math.random() * 4,
-    })),
-  },
-  {
-    id: 'sla-4',
-    name: 'On-Time Delivery',
-    description: 'Percentage of deliverables completed on schedule',
-    category: 'delivery',
-    target: 95,
-    current: 92,
-    unit: '%',
-    trend: 'down',
-    trendValue: -3,
-    status: 'at-risk',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 88 + Math.random() * 10,
-    })),
-  },
-  {
-    id: 'sla-5',
-    name: 'Customer Satisfaction',
-    description: 'Average CSAT score from surveys',
-    category: 'quality',
-    target: 4.5,
-    current: 4.7,
-    unit: '/5',
-    trend: 'up',
-    trendValue: 5,
-    status: 'meeting',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 4.3 + Math.random() * 0.6,
-    })),
-  },
-  {
-    id: 'sla-6',
-    name: 'Resolution Rate',
-    description: 'First-contact resolution percentage',
-    category: 'support',
-    target: 80,
-    current: 75,
-    unit: '%',
-    trend: 'stable',
-    trendValue: 0,
-    status: 'at-risk',
-    history: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000),
-      value: 72 + Math.random() * 8,
-    })),
-  },
-];
-
-// ============================================================================
 // Status & Category Configs
 // ============================================================================
 
@@ -275,10 +172,37 @@ export function SLAMonitoring({ contractId, className }: SLAMonitoringProps) {
 
   const fetchMetrics = async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 600));
-    setMetrics(mockSLAMetrics);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/workflows/sla?type=overview&contractId=${contractId}`);
+      if (res.ok) {
+        const json = await res.json();
+        const items = json.metrics || json.data?.metrics || [];
+        if (Array.isArray(items) && items.length > 0) {
+          setMetrics(items.map((m: any) => ({
+            id: m.id || `sla-${Math.random().toString(36).substr(2, 6)}`,
+            name: m.name || m.title || 'SLA Metric',
+            description: m.description || '',
+            category: m.category || 'quality',
+            target: m.target ?? m.targetValue ?? 100,
+            current: m.current ?? m.currentValue ?? 0,
+            unit: m.unit || '%',
+            trend: m.trend || 'stable',
+            trendValue: m.trendValue ?? 0,
+            status: m.status || 'meeting',
+            history: (m.history || []).map((h: any) => ({
+              date: new Date(h.date || h.timestamp),
+              value: h.value,
+            })),
+          })));
+        } else {
+          setMetrics([]);
+        }
+      }
+    } catch {
+      // Could not load SLA metrics
+    } finally {
+      setLoading(false);
+    }
   };
 
   const filteredMetrics = selectedCategory === 'all' 

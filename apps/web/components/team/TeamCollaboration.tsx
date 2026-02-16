@@ -139,74 +139,7 @@ const statusColors: Record<UserStatus, string> = {
   inactive: 'bg-slate-100 text-slate-500',
 };
 
-// Demo data
-const demoMembers: TeamMember[] = [
-  {
-    id: '1',
-    name: 'John Smith',
-    email: 'john@company.com',
-    role: 'owner',
-    status: 'active',
-    joinedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
-    lastActive: new Date(Date.now() - 5 * 60 * 1000),
-    contractsAccess: 185,
-    department: 'Executive',
-  },
-  {
-    id: '2',
-    name: 'Sarah Johnson',
-    email: 'sarah@company.com',
-    role: 'admin',
-    status: 'active',
-    joinedAt: new Date(Date.now() - 300 * 24 * 60 * 60 * 1000),
-    lastActive: new Date(Date.now() - 30 * 60 * 1000),
-    contractsAccess: 185,
-    department: 'Legal',
-  },
-  {
-    id: '3',
-    name: 'Michael Chen',
-    email: 'michael@company.com',
-    role: 'manager',
-    status: 'active',
-    joinedAt: new Date(Date.now() - 200 * 24 * 60 * 60 * 1000),
-    lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    contractsAccess: 45,
-    department: 'Finance',
-  },
-  {
-    id: '4',
-    name: 'Emily Davis',
-    email: 'emily@company.com',
-    role: 'member',
-    status: 'active',
-    joinedAt: new Date(Date.now() - 100 * 24 * 60 * 60 * 1000),
-    lastActive: new Date(Date.now() - 24 * 60 * 60 * 1000),
-    contractsAccess: 28,
-    department: 'Operations',
-  },
-  {
-    id: '5',
-    name: 'Robert Wilson',
-    email: 'robert@company.com',
-    role: 'viewer',
-    status: 'active',
-    joinedAt: new Date(Date.now() - 50 * 24 * 60 * 60 * 1000),
-    lastActive: new Date(Date.now() - 48 * 60 * 60 * 1000),
-    contractsAccess: 12,
-    department: 'Sales',
-  },
-  {
-    id: '6',
-    name: 'Lisa Anderson',
-    email: 'lisa@company.com',
-    role: 'member',
-    status: 'invited',
-    joinedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    contractsAccess: 0,
-    department: 'Legal',
-  },
-];
+// Data loaded from API
 
 interface TeamCollaborationProps {
   className?: string;
@@ -215,12 +148,41 @@ interface TeamCollaborationProps {
 export const TeamCollaboration = memo(function TeamCollaboration({
   className,
 }: TeamCollaborationProps) {
-  const [members, setMembers] = useState<TeamMember[]>(demoMembers);
+  const [members, setMembers] = useState<TeamMember[]>([]);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [selectedMember, setSelectedMember] = useState<TeamMember | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch team members from API
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/team');
+        const json = await res.json();
+        const items = json.members || json.data?.members || [];
+        if (items.length > 0) {
+          setMembers(items.map((m: any) => ({
+            id: m.id,
+            name: m.name || m.displayName || 'Unknown',
+            email: m.email || '',
+            role: m.role || 'member',
+            status: m.status || 'active',
+            joinedAt: new Date(m.joinedAt || m.createdAt || Date.now()),
+            lastActive: m.lastActive ? new Date(m.lastActive) : undefined,
+            contractsAccess: m.contractsAccess ?? m.contractCount ?? 0,
+            department: m.department,
+          })));
+        }
+      } catch {
+        // Could not load team data
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   // Invite form state
   const [inviteEmail, setInviteEmail] = useState('');
@@ -261,24 +223,35 @@ export const TeamCollaboration = memo(function TeamCollaboration({
     }
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    try {
+      const res = await fetch('/api/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail, role: inviteRole }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to invite');
 
-    const newMember: TeamMember = {
-      id: `m${Date.now()}`,
-      name: inviteEmail.split('@')[0] || 'Unknown',
-      email: inviteEmail,
-      role: inviteRole,
-      status: 'invited',
-      joinedAt: new Date(),
-      contractsAccess: 0,
-    };
+      const newMember: TeamMember = json.member || {
+        id: `m${Date.now()}`,
+        name: inviteEmail.split('@')[0] || 'Unknown',
+        email: inviteEmail,
+        role: inviteRole,
+        status: 'invited',
+        joinedAt: new Date(),
+        contractsAccess: 0,
+      };
 
-    setMembers(prev => [...prev, newMember]);
-    setShowInviteDialog(false);
-    setInviteEmail('');
-    setInviteRole('member');
-    setIsSubmitting(false);
-    toast.success(`Invitation sent to ${inviteEmail}`);
+      setMembers(prev => [...prev, newMember]);
+    } catch {
+      toast.error('Failed to send invitation');
+    } finally {
+      setShowInviteDialog(false);
+      setInviteEmail('');
+      setInviteRole('member');
+      setIsSubmitting(false);
+      toast.success(`Invitation sent to ${inviteEmail}`);
+    }
   };
 
   const updateMemberRole = (memberId: string, newRole: UserRole) => {

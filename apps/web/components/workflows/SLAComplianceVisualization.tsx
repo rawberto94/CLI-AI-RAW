@@ -111,124 +111,7 @@ const SLA_DEFINITIONS: SLADefinition[] = [
   },
 ];
 
-const generateMockSLAMetrics = (): SLAMetric[] => [
-  {
-    definitionId: 'initial-review',
-    definition: SLA_DEFINITIONS[0]!,
-    total: 156,
-    met: 148,
-    breached: 5,
-    atRisk: 3,
-    avgCompletionTime: 18,
-    trend: 5,
-    recentBreaches: [
-      { contractId: 'c1', contractName: 'Acme Corp MSA', stepName: 'Initial Review', breachTime: '2h ago', excessHours: 4 },
-    ],
-  },
-  {
-    definitionId: 'manager-approval',
-    definition: SLA_DEFINITIONS[1]!,
-    total: 134,
-    met: 125,
-    breached: 6,
-    atRisk: 3,
-    avgCompletionTime: 36,
-    trend: -2,
-    recentBreaches: [
-      { contractId: 'c2', contractName: 'Tech Solutions NDA', stepName: 'Manager Approval', breachTime: '5h ago', excessHours: 8 },
-      { contractId: 'c3', contractName: 'Global Vendor Agreement', stepName: 'Manager Approval', breachTime: '1d ago', excessHours: 12 },
-    ],
-  },
-  {
-    definitionId: 'legal-review',
-    definition: SLA_DEFINITIONS[2]!,
-    total: 89,
-    met: 71,
-    breached: 12,
-    atRisk: 6,
-    avgCompletionTime: 64,
-    trend: -8,
-    recentBreaches: [
-      { contractId: 'c4', contractName: 'Enterprise License', stepName: 'Legal Review', breachTime: '3h ago', excessHours: 24 },
-      { contractId: 'c5', contractName: 'Partnership Agreement', stepName: 'Legal Review', breachTime: '12h ago', excessHours: 18 },
-    ],
-  },
-  {
-    definitionId: 'executive-signoff',
-    definition: SLA_DEFINITIONS[3]!,
-    total: 45,
-    met: 42,
-    breached: 2,
-    atRisk: 1,
-    avgCompletionTime: 72,
-    trend: 3,
-    recentBreaches: [],
-  },
-  {
-    definitionId: 'counterparty-response',
-    definition: SLA_DEFINITIONS[4]!,
-    total: 112,
-    met: 98,
-    breached: 8,
-    atRisk: 6,
-    avgCompletionTime: 96,
-    trend: -5,
-    recentBreaches: [
-      { contractId: 'c6', contractName: 'Supplier Contract', stepName: 'Awaiting Response', breachTime: '1d ago', excessHours: 36 },
-    ],
-  },
-];
 
-const generateMockActiveSteps = (): StepSLAStatus[] => [
-  {
-    stepId: 's1',
-    stepName: 'Legal Review',
-    slaDefinitionId: 'legal-review',
-    status: 'at-risk',
-    startTime: new Date(Date.now() - 60 * 60 * 1000 * 58).toISOString(),
-    targetTime: new Date(Date.now() + 60 * 60 * 1000 * 14).toISOString(),
-    currentElapsed: 58,
-    targetHours: 72,
-    percentComplete: 81,
-    assignee: 'Legal Team',
-  },
-  {
-    stepId: 's2',
-    stepName: 'Manager Approval',
-    slaDefinitionId: 'manager-approval',
-    status: 'breached',
-    startTime: new Date(Date.now() - 60 * 60 * 1000 * 52).toISOString(),
-    targetTime: new Date(Date.now() - 60 * 60 * 1000 * 4).toISOString(),
-    currentElapsed: 52,
-    targetHours: 48,
-    percentComplete: 108,
-    assignee: 'Sarah Manager',
-  },
-  {
-    stepId: 's3',
-    stepName: 'Initial Review',
-    slaDefinitionId: 'initial-review',
-    status: 'on-track',
-    startTime: new Date(Date.now() - 60 * 60 * 1000 * 8).toISOString(),
-    targetTime: new Date(Date.now() + 60 * 60 * 1000 * 16).toISOString(),
-    currentElapsed: 8,
-    targetHours: 24,
-    percentComplete: 33,
-    assignee: 'Review Team',
-  },
-  {
-    stepId: 's4',
-    stepName: 'Executive Sign-off',
-    slaDefinitionId: 'executive-signoff',
-    status: 'on-track',
-    startTime: new Date(Date.now() - 60 * 60 * 1000 * 24).toISOString(),
-    targetTime: new Date(Date.now() + 60 * 60 * 1000 * 72).toISOString(),
-    currentElapsed: 24,
-    targetHours: 96,
-    percentComplete: 25,
-    assignee: 'Executive Office',
-  },
-];
 
 // ============================================================================
 // Components
@@ -490,9 +373,9 @@ export const SLAComplianceVisualization: React.FC = () => {
               excessHours: b.overdue_seconds ? Math.round(b.overdue_seconds / 3600) : 0,
             })),
         }));
-        setSlaMetrics(mapped.length > 0 ? mapped : generateMockSLAMetrics());
+        setSlaMetrics(mapped);
       } else {
-        setSlaMetrics(generateMockSLAMetrics());
+        setSlaMetrics([]);
       }
 
       if (steps.success && steps.data.activeSteps?.length > 0) {
@@ -512,12 +395,11 @@ export const SLAComplianceVisualization: React.FC = () => {
         }));
         setActiveSteps(mappedSteps);
       } else {
-        setActiveSteps(generateMockActiveSteps());
+        setActiveSteps([]);
       }
     } catch {
-      // Fallback to mock data if API is unavailable
-      setSlaMetrics(generateMockSLAMetrics());
-      setActiveSteps(generateMockActiveSteps());
+      setSlaMetrics([]);
+      setActiveSteps([]);
     } finally {
       setLoading(false);
       setIsRefreshing(false);

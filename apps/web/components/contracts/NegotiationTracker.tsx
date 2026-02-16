@@ -83,139 +83,95 @@ interface NegotiationTrackerProps {
 }
 
 // ============================================================================
-// Mock Data
+// API Integration
 // ============================================================================
 
-const mockParties: { initiator: Party; counterparty: Party } = {
-  initiator: {
-    name: 'Acme Corp',
-    role: 'initiator',
-    representative: 'Sarah Johnson',
-    email: 'sarah@acme.com',
-  },
-  counterparty: {
-    name: 'TechVendor Inc',
-    role: 'counterparty',
-    representative: 'Mike Chen',
-    email: 'mike@techvendor.com',
-  },
-};
+async function fetchContractNegotiationData(contractId: string): Promise<{
+  parties: { initiator: Party; counterparty: Party };
+  rounds: NegotiationRound[];
+}> {
+  // Fetch contract data for parties
+  const contractRes = await fetch(`/api/contracts/${contractId}`);
+  let parties: { initiator: Party; counterparty: Party } = {
+    initiator: { name: 'Your Organization', role: 'initiator', representative: 'You', email: '' },
+    counterparty: { name: 'Counterparty', role: 'counterparty', representative: 'TBD', email: '' },
+  };
+  let rounds: NegotiationRound[] = [];
 
-const mockRounds: NegotiationRound[] = [
-  {
-    id: 'round-3',
-    roundNumber: 3,
-    version: 'v3.0',
-    submittedBy: mockParties.counterparty,
-    submittedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    status: 'in-review',
-    responseDeadline: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-    changes: [
-      {
-        id: 'change-1',
-        section: 'Section 5.2',
-        clause: 'Liability Cap',
-        originalText: 'Total liability shall not exceed $500,000',
-        proposedText: 'Total liability shall not exceed $1,000,000',
-        changeType: 'modification',
-        status: 'pending',
-        importance: 'high',
-      },
-      {
-        id: 'change-2',
-        section: 'Section 7.1',
-        clause: 'Termination Notice',
-        originalText: '30 days written notice',
-        proposedText: '60 days written notice',
-        changeType: 'modification',
-        status: 'accepted',
-        importance: 'medium',
-        respondedBy: 'Sarah Johnson',
-        respondedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'change-3',
-        section: 'Section 8.3',
-        clause: 'Indemnification',
-        originalText: '',
-        proposedText: 'Vendor shall indemnify Client against all third-party claims arising from software defects',
-        changeType: 'addition',
-        status: 'pending',
-        importance: 'critical',
-      },
-    ],
-    comments: [
-      {
-        id: 'comment-1',
-        author: 'Mike Chen',
-        authorRole: 'TechVendor Legal',
-        content: 'We have addressed the liability concerns raised in round 2. The increased cap reflects the expanded scope of services.',
-        timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'comment-2',
-        author: 'Sarah Johnson',
-        authorRole: 'Acme Legal',
-        content: 'Thank you. We accept the termination notice change but need to discuss the liability cap internally.',
-        timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      },
-    ],
-  },
-  {
-    id: 'round-2',
-    roundNumber: 2,
-    version: 'v2.0',
-    submittedBy: mockParties.initiator,
-    submittedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    status: 'countered',
-    changes: [
-      {
-        id: 'change-4',
-        section: 'Section 3.1',
-        clause: 'Payment Terms',
-        originalText: 'Net 45 days',
-        proposedText: 'Net 30 days',
-        changeType: 'modification',
-        status: 'accepted',
-        importance: 'medium',
-        respondedBy: 'Mike Chen',
-        respondedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'change-5',
-        section: 'Section 5.2',
-        clause: 'Liability Cap',
-        originalText: 'Total liability shall not exceed contract value',
-        proposedText: 'Total liability shall not exceed $500,000',
-        changeType: 'modification',
-        status: 'countered',
-        importance: 'high',
-        respondedBy: 'Mike Chen',
-        respondedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-        responseNote: 'We propose $1M given the scope of services',
-      },
-    ],
-    comments: [],
-  },
-  {
-    id: 'round-1',
-    roundNumber: 1,
-    version: 'v1.0',
-    submittedBy: mockParties.initiator,
-    submittedAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-    status: 'countered',
-    changes: [],
-    comments: [
-      {
-        id: 'comment-3',
-        author: 'Sarah Johnson',
-        authorRole: 'Acme Legal',
-        content: 'Initial contract draft submitted for review.',
-        timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      },
-    ],
-  },
-];
+  if (contractRes.ok) {
+    const contractData = await contractRes.json();
+    const c = contractData.contract || contractData;
+    // Map contract parties
+    const contractParties = c.parties || c.metadata?.parties || [];
+    if (contractParties.length >= 1) {
+      parties.initiator = {
+        name: contractParties[0]?.name || c.tenantId || 'Your Organization',
+        role: 'initiator',
+        representative: contractParties[0]?.representative || contractParties[0]?.name || 'You',
+        email: contractParties[0]?.email || '',
+      };
+    }
+    if (contractParties.length >= 2) {
+      parties.counterparty = {
+        name: contractParties[1]?.name || c.supplier || 'Counterparty',
+        role: 'counterparty',
+        representative: contractParties[1]?.representative || contractParties[1]?.name || 'TBD',
+        email: contractParties[1]?.email || '',
+      };
+    } else if (c.supplier) {
+      parties.counterparty = {
+        name: c.supplier,
+        role: 'counterparty',
+        representative: c.supplier,
+        email: '',
+      };
+    }
+
+    // Map contract activities as negotiation rounds
+    const activities = c.activities || c.auditLog || [];
+    const negotiationActivities = activities.filter((a: any) =>
+      a.action?.includes('negotiat') || a.action?.includes('redline') ||
+      a.action?.includes('counter') || a.action?.includes('review')
+    );
+
+    if (negotiationActivities.length > 0) {
+      rounds = negotiationActivities.map((a: any, idx: number) => ({
+        id: a.id || `round-${idx + 1}`,
+        roundNumber: idx + 1,
+        version: `v${idx + 1}.0`,
+        submittedBy: idx % 2 === 0 ? parties.initiator : parties.counterparty,
+        submittedAt: new Date(a.createdAt || a.timestamp || Date.now()),
+        status: (a.status === 'accepted' ? 'accepted' :
+                a.status === 'rejected' ? 'rejected' :
+                a.status === 'countered' ? 'countered' :
+                idx === negotiationActivities.length - 1 ? 'in-review' : 'countered') as RoundStatus,
+        responseDeadline: a.dueDate ? new Date(a.dueDate) : undefined,
+        changes: (a.changes || []).map((ch: any, ci: number) => ({
+          id: ch.id || `change-${idx}-${ci}`,
+          section: ch.section || ch.clause || `Section ${ci + 1}`,
+          clause: ch.clause || ch.title || 'Modified Clause',
+          originalText: ch.originalText || ch.before || '',
+          proposedText: ch.proposedText || ch.after || ch.content || '',
+          changeType: (ch.changeType || 'modification') as ChangeType,
+          status: (ch.status || 'pending') as ChangeStatus,
+          importance: (ch.importance || ch.priority || 'medium') as ChangeImportance,
+          respondedBy: ch.respondedBy,
+          respondedAt: ch.respondedAt ? new Date(ch.respondedAt) : undefined,
+          responseNote: ch.responseNote || ch.note,
+        })),
+        comments: (a.comments || []).map((cm: any) => ({
+          id: cm.id || `comment-${Math.random()}`,
+          author: cm.author || cm.userName || 'User',
+          authorRole: cm.authorRole || cm.role || '',
+          content: cm.content || cm.message || '',
+          timestamp: new Date(cm.createdAt || cm.timestamp || Date.now()),
+        })),
+      }));
+    }
+  }
+
+  return { parties, rounds };
+}
 
 // ============================================================================
 // Status & Importance Configs
@@ -259,8 +215,12 @@ const changeTypeConfig: Record<ChangeType, { label: string; color: string }> = {
 
 export function NegotiationTracker({ contractId, className }: NegotiationTrackerProps) {
   const [rounds, setRounds] = useState<NegotiationRound[]>([]);
+  const [parties, setParties] = useState<{ initiator: Party; counterparty: Party }>({
+    initiator: { name: 'Your Organization', role: 'initiator', representative: 'You', email: '' },
+    counterparty: { name: 'Counterparty', role: 'counterparty', representative: 'TBD', email: '' },
+  });
   const [loading, setLoading] = useState(true);
-  const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set(['round-3']));
+  const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
   const [newComment, setNewComment] = useState('');
 
   useEffect(() => {
@@ -269,9 +229,19 @@ export function NegotiationTracker({ contractId, className }: NegotiationTracker
 
   const fetchRounds = async () => {
     setLoading(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setRounds(mockRounds);
-    setLoading(false);
+    try {
+      const data = await fetchContractNegotiationData(contractId);
+      setParties(data.parties);
+      setRounds(data.rounds);
+      // Auto-expand the latest round
+      if (data.rounds.length > 0) {
+        setExpandedRounds(new Set([data.rounds[0].id]));
+      }
+    } catch {
+      // Keep empty state
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleExpanded = (id: string) => {
@@ -376,16 +346,16 @@ export function NegotiationTracker({ contractId, className }: NegotiationTracker
         <div className="grid grid-cols-2 gap-4 mt-4">
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="text-xs text-muted-foreground mb-1">Initiator</div>
-            <div className="font-medium">{mockParties.initiator.name}</div>
+            <div className="font-medium">{parties.initiator.name}</div>
             <div className="text-sm text-muted-foreground">
-              {mockParties.initiator.representative}
+              {parties.initiator.representative}
             </div>
           </div>
           <div className="bg-muted/50 rounded-lg p-3">
             <div className="text-xs text-muted-foreground mb-1">Counterparty</div>
-            <div className="font-medium">{mockParties.counterparty.name}</div>
+            <div className="font-medium">{parties.counterparty.name}</div>
             <div className="text-sm text-muted-foreground">
-              {mockParties.counterparty.representative}
+              {parties.counterparty.representative}
             </div>
           </div>
         </div>

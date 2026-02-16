@@ -71,116 +71,6 @@ interface ComplianceChecklistProps {
 }
 
 // ============================================================================
-// Mock Data
-// ============================================================================
-
-const mockChecklists: ComplianceChecklist[] = [
-  {
-    id: 'cl-1',
-    name: 'GDPR Compliance Review',
-    description: 'Ensure contract meets EU data protection requirements',
-    framework: 'gdpr',
-    status: 'in-progress',
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-    assignee: 'Legal Team',
-    lastUpdated: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    items: [
-      {
-        id: 'item-1',
-        title: 'Data Processing Agreement (DPA)',
-        description: 'Verify DPA is included and properly executed',
-        category: 'Legal',
-        required: true,
-        completed: true,
-        completedBy: 'Sarah Johnson',
-        completedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'item-2',
-        title: 'Data Subject Rights Provisions',
-        description: 'Check provisions for handling data subject requests',
-        category: 'Legal',
-        required: true,
-        completed: true,
-        completedBy: 'Mike Chen',
-        completedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'item-3',
-        title: 'Data Breach Notification Clause',
-        description: 'Verify 72-hour notification requirement is included',
-        category: 'Security',
-        required: true,
-        completed: false,
-      },
-      {
-        id: 'item-4',
-        title: 'Sub-Processor List',
-        description: 'Review and approve list of sub-processors',
-        category: 'Vendor',
-        required: true,
-        completed: false,
-      },
-      {
-        id: 'item-5',
-        title: 'Data Transfer Mechanism',
-        description: 'Confirm SCCs or other transfer mechanism in place',
-        category: 'Legal',
-        required: true,
-        completed: false,
-      },
-      {
-        id: 'item-6',
-        title: 'Data Retention Policy',
-        description: 'Verify data retention terms are defined',
-        category: 'Data',
-        required: true,
-        completed: true,
-        completedBy: 'Emily Davis',
-        completedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-      },
-    ],
-  },
-  {
-    id: 'cl-2',
-    name: 'Internal Contract Checklist',
-    description: 'Standard internal review requirements',
-    framework: 'internal',
-    status: 'completed',
-    lastUpdated: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    items: [
-      {
-        id: 'item-7',
-        title: 'Terms and Conditions Review',
-        category: 'Legal',
-        required: true,
-        completed: true,
-        completedBy: 'Legal Team',
-        completedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'item-8',
-        title: 'Pricing Verification',
-        category: 'Finance',
-        required: true,
-        completed: true,
-        completedBy: 'Finance Team',
-        completedAt: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
-      },
-      {
-        id: 'item-9',
-        title: 'Signatory Authority Check',
-        category: 'Governance',
-        required: true,
-        completed: true,
-        completedBy: 'Operations',
-        completedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-      },
-    ],
-  },
-];
-
-// ============================================================================
 // Framework Config
 // ============================================================================
 
@@ -253,10 +143,42 @@ export function ComplianceChecklist({ contractId, className }: ComplianceCheckli
 
   const fetchChecklists = async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setChecklists(mockChecklists);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/analytics/compliance?action=report&contractId=${contractId}`);
+      if (res.ok) {
+        const json = await res.json();
+        // Map API response to ComplianceChecklist type
+        const items = json.checklists || json.data?.checklists || json.report?.checklists;
+        if (Array.isArray(items) && items.length > 0) {
+          setChecklists(items.map((cl: any) => ({
+            id: cl.id,
+            name: cl.name || cl.title || 'Compliance Review',
+            description: cl.description || '',
+            framework: cl.framework || 'internal',
+            status: cl.status || 'pending',
+            dueDate: cl.dueDate ? new Date(cl.dueDate) : undefined,
+            assignee: cl.assignee,
+            lastUpdated: cl.lastUpdated ? new Date(cl.lastUpdated) : new Date(),
+            items: (cl.items || []).map((item: any) => ({
+              id: item.id,
+              title: item.title || item.name,
+              description: item.description,
+              category: item.category || 'General',
+              required: item.required ?? true,
+              completed: item.completed ?? false,
+              completedBy: item.completedBy,
+              completedAt: item.completedAt ? new Date(item.completedAt) : undefined,
+            })),
+          })));
+        } else {
+          setChecklists([]);
+        }
+      }
+    } catch {
+      // Could not load compliance data
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleExpanded = (id: string) => {

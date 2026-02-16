@@ -277,39 +277,34 @@ export function ApprovalNotificationBell() {
      
   }, [approvalNotifications]);
 
-  // Simulate some notifications for demo purposes when not connected
+  // Fetch pending approvals from API when not connected to WebSocket
   useEffect(() => {
     if (!connected && localNotifications.length === 0) {
-      const demoNotifications: ApprovalNotification[] = [
-        {
-          id: 'demo-1',
-          type: 'new_approval',
-          title: 'New Approval Request',
-          message: 'Master Agreement with CloudTech Solutions requires your approval',
-          approvalId: 'a1',
-          priority: 'high',
-          timestamp: new Date(Date.now() - 5 * 60 * 1000),
-        },
-        {
-          id: 'demo-2',
-          type: 'deadline_reminder',
-          title: 'Deadline Approaching',
-          message: 'GlobalSupply contract renewal decision due in 2 days',
-          approvalId: 'a2',
-          priority: 'urgent',
-          timestamp: new Date(Date.now() - 30 * 60 * 1000),
-        },
-        {
-          id: 'demo-3',
-          type: 'step_completed',
-          title: 'Step Completed',
-          message: 'Legal review completed for Acme Corporation SLA amendment',
-          approvalId: 'a3',
-          priority: 'medium',
-          timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        },
-      ];
-      setLocalNotifications(demoNotifications);
+      (async () => {
+        try {
+          const res = await fetch('/api/approvals');
+          const json = await res.json();
+          if (json.success && json.data?.items) {
+            const pending = json.data.items
+              .filter((item: any) => item.status === 'pending')
+              .slice(0, 10)
+              .map((item: any) => ({
+                id: `notif-${item.id}`,
+                type: 'new_approval' as const,
+                title: item.title || item.contractName || 'Approval Request',
+                message: `${item.supplierName || item.counterparty || 'Contract'} requires your approval`,
+                approvalId: item.id,
+                priority: item.priority || 'medium',
+                timestamp: new Date(item.createdAt || Date.now()),
+              }));
+            if (pending.length > 0) {
+              setLocalNotifications(pending);
+            }
+          }
+        } catch {
+          // Could not load — show empty
+        }
+      })();
     }
      
   }, [connected, localNotifications.length]);

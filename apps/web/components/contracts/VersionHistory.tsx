@@ -76,86 +76,7 @@ interface VersionHistoryProps {
   compact?: boolean;
 }
 
-// Mock version history
-function generateMockVersions(): ContractVersion[] {
-  return [
-    {
-      id: 'v_5',
-      version: '2.1.0',
-      label: 'Final Signed Version',
-      createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-      createdBy: { id: 'u1', name: 'John Doe', email: 'john@example.com' },
-      changes: [
-        { type: 'modify', section: 'Signatures', description: 'Added executed signatures from both parties' },
-      ],
-      fileSize: 2456789,
-      fileUrl: '/documents/contract-v2.1.0.pdf',
-      status: 'current',
-      notes: 'Fully executed version. Ready for storage.',
-      metadata: { wordCount: 8500, pageCount: 24 },
-    },
-    {
-      id: 'v_4',
-      version: '2.0.0',
-      label: 'Major Revision',
-      createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      createdBy: { id: 'u2', name: 'Jane Smith', email: 'jane@example.com' },
-      changes: [
-        { type: 'modify', section: 'Section 4.2', description: 'Updated payment terms from Net 60 to Net 45' },
-        { type: 'add', section: 'Section 12', description: 'Added new data protection clause' },
-        { type: 'modify', section: 'Section 8', description: 'Revised liability cap from $500K to $1M' },
-      ],
-      fileSize: 2398456,
-      fileUrl: '/documents/contract-v2.0.0.pdf',
-      status: 'approved',
-      notes: 'Approved by legal team after counterparty negotiations.',
-      metadata: { wordCount: 8450, pageCount: 23 },
-    },
-    {
-      id: 'v_3',
-      version: '1.2.0',
-      createdAt: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000),
-      createdBy: { id: 'u1', name: 'John Doe', email: 'john@example.com' },
-      changes: [
-        { type: 'modify', section: 'Section 6', description: 'Clarified termination notice period' },
-        { type: 'remove', section: 'Appendix B', description: 'Removed obsolete rate schedule' },
-      ],
-      fileSize: 2245678,
-      fileUrl: '/documents/contract-v1.2.0.pdf',
-      status: 'archived',
-      metadata: { wordCount: 8200, pageCount: 22 },
-    },
-    {
-      id: 'v_2',
-      version: '1.1.0',
-      createdAt: new Date(Date.now() - 21 * 24 * 60 * 60 * 1000),
-      createdBy: { id: 'u3', name: 'Bob Wilson', email: 'bob@example.com' },
-      changes: [
-        { type: 'add', section: 'Appendix A', description: 'Added service level agreement details' },
-        { type: 'modify', section: 'Section 3', description: 'Updated scope of services' },
-      ],
-      fileSize: 2189012,
-      fileUrl: '/documents/contract-v1.1.0.pdf',
-      status: 'archived',
-      metadata: { wordCount: 7800, pageCount: 21 },
-    },
-    {
-      id: 'v_1',
-      version: '1.0.0',
-      label: 'Initial Draft',
-      createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      createdBy: { id: 'u1', name: 'John Doe', email: 'john@example.com' },
-      changes: [
-        { type: 'add', section: 'Full Document', description: 'Initial contract draft created' },
-      ],
-      fileSize: 2045678,
-      fileUrl: '/documents/contract-v1.0.0.pdf',
-      status: 'archived',
-      notes: 'First draft based on standard MSA template.',
-      metadata: { wordCount: 7200, pageCount: 20 },
-    },
-  ];
-}
+// Version history is loaded from API
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B';
@@ -201,15 +122,13 @@ export const VersionHistory = memo(function VersionHistory({
       const response = await fetch(`/api/contracts/${contractId}/versions`);
       if (response.ok) {
         const data = await response.json();
-        setVersions(data.versions.map((v: ContractVersion) => ({
+        setVersions((data.versions || []).map((v: ContractVersion) => ({
           ...v,
           createdAt: new Date(v.createdAt),
         })));
-      } else {
-        setVersions(generateMockVersions());
       }
     } catch {
-      setVersions(generateMockVersions());
+      // Keep empty state — no mock fallback
     } finally {
       setLoading(false);
     }

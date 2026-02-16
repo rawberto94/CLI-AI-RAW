@@ -5,7 +5,7 @@
 
 'use client';
 
-import { memo, useState, useRef } from 'react';
+import { memo, useState, useRef, useEffect, useCallback } from 'react';
 import {
   MessageSquare,
   Send,
@@ -68,15 +68,36 @@ interface Comment {
   clauseReference?: string;
 }
 
-// Demo data
-const currentUser: User = {
-  id: 'user-1',
-  name: 'John Smith',
-  email: 'john@company.com',
-  role: 'Contract Manager',
-};
+interface ContractCommentsProps {
+  contractId: string;
+  className?: string;
+}
 
-const demoComments: Comment[] = [
+function mapApiComment(c: any): Comment {
+  return {
+    id: c.id,
+    content: c.content || '',
+    author: {
+      id: c.authorId || c.author || 'unknown',
+      name: c.author || c.authorName || 'Unknown User',
+      email: c.authorEmail || '',
+      role: c.authorRole,
+    },
+    createdAt: new Date(c.createdAt || Date.now()),
+    updatedAt: c.updatedAt ? new Date(c.updatedAt) : undefined,
+    isPinned: c.isPinned || false,
+    isResolved: c.isResolved || false,
+    reactions: c.reactions || [],
+    replies: (c.replies || []).map(mapApiComment),
+    mentions: c.mentions || [],
+    attachmentName: c.attachmentName,
+    pageReference: c.pageReference,
+    clauseReference: c.clauseReference,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const _legacyDemoData = [
   {
     id: 'c1',
     content: 'The payment terms in Section 4.2 need to be reviewed. The NET-60 doesn\'t align with our standard NET-30 policy.',
@@ -144,16 +165,11 @@ const demoComments: Comment[] = [
   },
 ];
 
-interface ContractCommentsProps {
-  contractId: string;
-  className?: string;
-}
-
 export const ContractComments = memo(function ContractComments({
   contractId,
   className,
 }: ContractCommentsProps) {
-  const [comments, setComments] = useState<Comment[]>(demoComments);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyContent, setReplyContent] = useState('');
@@ -161,7 +177,23 @@ export const ContractComments = memo(function ContractComments({
   const [editContent, setEditContent] = useState('');
   const [filter, setFilter] = useState<'all' | 'unresolved' | 'pinned'>('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const fetchComments = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/contracts/${contractId}/comments`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setComments((data.comments || []).map(mapApiComment));
+    } catch { /* keep existing */ } finally {
+      setLoading(false);
+    }
+  }, [contractId]);
+
+  useEffect(() => {
+    if (contractId) fetchComments();
+  }, [contractId, fetchComments]);
 
   const filteredComments = comments.filter(comment => {
     if (filter === 'unresolved') return !comment.isResolved;
@@ -184,50 +216,49 @@ export const ContractComments = memo(function ContractComments({
     if (!newComment.trim()) return;
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const comment: Comment = {
-      id: `c${Date.now()}`,
-      content: newComment,
-      author: currentUser,
-      createdAt: new Date(),
-      reactions: [],
-      replies: [],
-    };
-
-    setComments(prev => [comment, ...prev]);
-    setNewComment('');
-    setIsSubmitting(false);
-    toast.success('Comment added');
+    try {
+      const res = await fetch(`/api/contracts/${contractId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newComment }),
+      });
+      if (res.ok) {
+        setNewComment('');
+        toast.success('Comment added');
+        await fetchComments();
+      } else {
+        toast.error('Failed to add comment');
+      }
+    } catch {
+      toast.error('Failed to add comment');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmitReply = async (commentId: string) => {
     if (!replyContent.trim()) return;
 
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 500));
-
-    const reply: Comment = {
-      id: `r${Date.now()}`,
-      content: replyContent,
-      author: currentUser,
-      createdAt: new Date(),
-      reactions: [],
-      replies: [],
-    };
-
-    setComments(prev =>
-      prev.map(c =>
-        c.id === commentId
-          ? { ...c, replies: [...c.replies, reply] }
-          : c
-      )
-    );
-
-    setReplyingTo(null);
-    setReplyContent('');
-    setIsSubmitting(false);
-    toast.success('Reply added');
+    try {
+      const res = await fetch(`/api/contracts/${contractId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: replyContent, parentId: commentId }),
+      });
+      if (res.ok) {
+        setReplyingTo(null);
+        setReplyContent('');
+        toast.success('Reply added');
+        await fetchComments();
+      } else {
+        toast.error('Failed to add reply');
+      }
+    } catch {
+      toast.error('Failed to add reply');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleEditComment = async (commentId: string) => {

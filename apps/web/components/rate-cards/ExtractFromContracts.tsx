@@ -23,7 +23,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { FileText, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useToast } from '@/components/ui/toast-provider';
-import { useDataMode } from '@/contexts/DataModeContext';
 
 interface Contract {
   id: string;
@@ -37,30 +36,7 @@ interface ExtractFromContractsProps {
   tenantId?: string;
 }
 
-// Mock data fallback
-const mockContracts: Contract[] = [
-  {
-    id: '1',
-    fileName: 'SOW-2025-IT-Services.pdf',
-    supplierName: 'TechConsult Inc',
-    startDate: '2025-01-01'
-  },
-  {
-    id: '2',
-    fileName: 'MSA-Cloud-Services-2025.pdf',
-    supplierName: 'Cloud Solutions Ltd',
-    startDate: '2025-01-15'
-  },
-  {
-    id: '3',
-    fileName: 'Consulting-Agreement-2025.pdf',
-    supplierName: 'Business Intelligence Corp',
-    startDate: '2025-02-01'
-  }
-];
-
 export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFromContractsProps) {
-  const { useRealData } = useDataMode();
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [selectedContract, setSelectedContract] = useState('');
@@ -79,27 +55,22 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
   const loadContracts = async () => {
     setLoading(true);
     try {
-      if (useRealData) {
-        // Fetch real contracts from API
-        const response = await fetch('/api/contracts?status=COMPLETED&limit=50');
-        if (!response.ok) throw new Error('Failed to fetch contracts');
-        
-        const data = await response.json();
-        if (data.contracts?.length > 0) {
-          setContracts(data.contracts.map((c: any) => ({
-            id: c.id,
-            fileName: c.fileName || c.originalName || 'Untitled Contract',
-            supplierName: c.supplierName,
-            startDate: c.startDate || c.effectiveDate,
-          })));
-        } else {
-          setContracts(mockContracts);
-        }
+      const response = await fetch('/api/contracts?status=COMPLETED&limit=50');
+      if (!response.ok) throw new Error('Failed to fetch contracts');
+      
+      const data = await response.json();
+      if (data.contracts?.length > 0) {
+        setContracts(data.contracts.map((c: any) => ({
+          id: c.id,
+          fileName: c.fileName || c.originalName || 'Untitled Contract',
+          supplierName: c.supplierName,
+          startDate: c.startDate || c.effectiveDate,
+        })));
       } else {
-        setContracts(mockContracts);
+        setContracts([]);
       }
     } catch {
-      setContracts(mockContracts);
+      setContracts([]);
     } finally {
       setLoading(false);
     }
@@ -156,12 +127,10 @@ export function ExtractFromContracts({ onSuccess, tenantId = 'demo' }: ExtractFr
         <DialogHeader>
           <div className="flex items-center gap-2">
             <DialogTitle>Extract Rate Cards from Contracts</DialogTitle>
-            {useRealData && (
-              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Live
-              </Badge>
-            )}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Live
+            </Badge>
           </div>
           <DialogDescription>
             Select a contract to extract rate card information from its artifacts

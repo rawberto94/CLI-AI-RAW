@@ -508,38 +508,8 @@ export function SimpleApprovalsQueue() {
           }
         }
       } catch {
-        // Set demo data if API fails
-        setItems([
-          {
-            id: 'demo-1',
-            contractId: 'contract-001',
-            title: 'Cloud Services Agreement',
-            supplier: 'CloudTech Inc',
-            value: 450000,
-            type: 'contract',
-            priority: 'high',
-            status: 'pending',
-            dueDate: '2024-03-20',
-            requestedBy: 'Sarah Johnson',
-            currentStep: 2,
-            totalSteps: 3,
-          },
-          {
-            id: 'demo-2',
-            contractId: 'contract-002',
-            title: 'Software License Renewal',
-            supplier: 'TechVendor LLC',
-            value: 125000,
-            type: 'renewal',
-            priority: 'urgent',
-            status: 'pending',
-            dueDate: '2024-03-15',
-            requestedBy: 'Mike Chen',
-            currentStep: 1,
-            totalSteps: 2,
-          },
-        ]);
-        setSelectedId('demo-1');
+        // API unavailable — show empty state
+        setItems([]);
       } finally {
         setLoading(false);
       }

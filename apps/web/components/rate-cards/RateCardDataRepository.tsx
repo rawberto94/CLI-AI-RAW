@@ -33,7 +33,6 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { FilterCriteria } from './AdvancedFilters';
-import { useDataMode } from '@/contexts/DataModeContext';
 import { useToast } from '@/hooks/use-toast';
 
 interface RateCardEntry {
@@ -65,7 +64,6 @@ type SortField = keyof RateCardEntry;
 type SortDirection = 'asc' | 'desc';
 
 export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps) {
-  const { useRealData } = useDataMode();
   const { toast } = useToast();
   
   const [data, setData] = useState<RateCardEntry[]>([]);
@@ -86,161 +84,52 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
     ])
   );
 
-  // Mock data for demonstration
-  const mockData: RateCardEntry[] = [
-    {
-      id: '1',
-      roleOriginal: 'Senior Software Engineer',
-      roleStandardized: 'Software Developer',
-      seniority: 'SENIOR',
-      supplierName: 'TechConsult Inc.',
-      supplierTier: 'TIER_1',
-      dailyRateUSD: 920,
-      currency: 'USD',
-      country: 'United States',
-      region: 'North America',
-      lineOfService: 'Software Development',
-      effectiveDate: '2025-01-01',
-      volumeCommitted: 5,
-      isNegotiated: true,
-      confidence: 0.95,
-      source: 'CONTRACT',
-      marketPosition: 'ABOVE_AVERAGE',
-      deviationFromMarket: 95,
-    },
-    {
-      id: '2',
-      roleOriginal: 'Senior DevOps Engineer',
-      roleStandardized: 'DevOps Engineer',
-      seniority: 'SENIOR',
-      supplierName: 'Cloud Solutions Ltd',
-      supplierTier: 'TIER_2',
-      dailyRateUSD: 850,
-      currency: 'USD',
-      country: 'United States',
-      region: 'North America',
-      lineOfService: 'Cloud Services',
-      effectiveDate: '2025-01-15',
-      volumeCommitted: 3,
-      isNegotiated: true,
-      confidence: 0.90,
-      source: 'CONTRACT',
-      marketPosition: 'AVERAGE',
-      deviationFromMarket: 25,
-    },
-    {
-      id: '3',
-      roleOriginal: 'Mid-Level Data Scientist',
-      roleStandardized: 'Data Scientist',
-      seniority: 'MID',
-      supplierName: 'Analytics Partners',
-      supplierTier: 'TIER_1',
-      dailyRateUSD: 750,
-      currency: 'USD',
-      country: 'United States',
-      region: 'North America',
-      lineOfService: 'Data & Analytics',
-      effectiveDate: '2024-12-01',
-      volumeCommitted: 4,
-      isNegotiated: false,
-      confidence: 0.85,
-      source: 'MARKET_DATA',
-      marketPosition: 'BELOW_AVERAGE',
-      deviationFromMarket: -50,
-    },
-    {
-      id: '4',
-      roleOriginal: 'Senior Business Analyst',
-      roleStandardized: 'Business Analyst',
-      seniority: 'SENIOR',
-      supplierName: 'Business Intelligence Corp',
-      supplierTier: 'TIER_2',
-      dailyRateUSD: 680,
-      currency: 'USD',
-      country: 'United Kingdom',
-      region: 'Europe',
-      lineOfService: 'Consulting',
-      effectiveDate: '2025-02-01',
-      volumeCommitted: 2,
-      isNegotiated: true,
-      confidence: 0.92,
-      source: 'CONTRACT',
-      marketPosition: 'AVERAGE',
-      deviationFromMarket: 5,
-    },
-    {
-      id: '5',
-      roleOriginal: 'Lead Software Architect',
-      roleStandardized: 'Solution Architect',
-      seniority: 'LEAD',
-      supplierName: 'Enterprise Solutions Inc',
-      supplierTier: 'TIER_1',
-      dailyRateUSD: 1200,
-      currency: 'USD',
-      country: 'United States',
-      region: 'North America',
-      lineOfService: 'Software Development',
-      effectiveDate: '2025-01-10',
-      volumeCommitted: 1,
-      isNegotiated: true,
-      confidence: 0.98,
-      source: 'CONTRACT',
-      marketPosition: 'ABOVE_AVERAGE',
-      deviationFromMarket: 150,
-    },
-  ];
-
   const fetchRateCards = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
-      if (useRealData) {
-        const params = new URLSearchParams();
-        if (filters?.roles?.length) params.set('roles', filters.roles.join(','));
-        if (filters?.suppliers?.length) params.set('suppliers', filters.suppliers.join(','));
-        if (filters?.regions?.length) params.set('regions', filters.regions.join(','));
+      const params = new URLSearchParams();
+      if (filters?.roles?.length) params.set('roles', filters.roles.join(','));
+      if (filters?.suppliers?.length) params.set('suppliers', filters.suppliers.join(','));
+      if (filters?.regions?.length) params.set('regions', filters.regions.join(','));
 
-        const response = await fetch(`/api/rate-cards/entries?${params.toString()}`);
-        if (!response.ok) throw new Error('Failed to fetch rate cards');
-        
-        const result = await response.json();
-        if (result.success && result.entries?.length > 0) {
-          setData(result.entries.map((entry: any) => ({
-            id: entry.id,
-            roleOriginal: entry.roleOriginal || entry.role,
-            roleStandardized: entry.roleStandardized || entry.standardizedRole,
-            seniority: entry.seniority || 'MID',
-            supplierName: entry.supplierName || 'Unknown',
-            supplierTier: entry.supplierTier || 'TIER_2',
-            dailyRateUSD: entry.dailyRateUSD || entry.rate || 0,
-            currency: entry.currency || 'USD',
-            country: entry.country || 'Unknown',
-            region: entry.region || 'Unknown',
-            lineOfService: entry.lineOfService || 'General',
-            effectiveDate: entry.effectiveDate || new Date().toISOString().split('T')[0],
-            volumeCommitted: entry.volumeCommitted || 0,
-            isNegotiated: entry.isNegotiated || false,
-            confidence: entry.confidence || 0.5,
-            source: entry.source || 'IMPORT',
-            marketPosition: entry.marketPosition,
-            deviationFromMarket: entry.deviationFromMarket,
-          })));
-        } else {
-          setData(mockData);
-        }
+      const response = await fetch(`/api/rate-cards/entries?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch rate cards');
+      
+      const result = await response.json();
+      if (result.success && result.entries?.length > 0) {
+        setData(result.entries.map((entry: any) => ({
+          id: entry.id,
+          roleOriginal: entry.roleOriginal || entry.role,
+          roleStandardized: entry.roleStandardized || entry.standardizedRole,
+          seniority: entry.seniority || 'MID',
+          supplierName: entry.supplierName || 'Unknown',
+          supplierTier: entry.supplierTier || 'TIER_2',
+          dailyRateUSD: entry.dailyRateUSD || entry.rate || 0,
+          currency: entry.currency || 'USD',
+          country: entry.country || 'Unknown',
+          region: entry.region || 'Unknown',
+          lineOfService: entry.lineOfService || 'General',
+          effectiveDate: entry.effectiveDate || new Date().toISOString().split('T')[0],
+          volumeCommitted: entry.volumeCommitted || 0,
+          isNegotiated: entry.isNegotiated || false,
+          confidence: entry.confidence || 0.5,
+          source: entry.source || 'IMPORT',
+          marketPosition: entry.marketPosition,
+          deviationFromMarket: entry.deviationFromMarket,
+        })));
       } else {
-        // Use mock data
-        setData(mockData);
+        setData([]);
       }
     } catch {
       setError('Failed to load rate cards');
-      setData(mockData);
+      setData([]);
     } finally {
       setLoading(false);
     }
     
-  }, [useRealData, filters]);
+  }, [filters]);
 
   useEffect(() => {
     fetchRateCards();
@@ -360,12 +249,10 @@ export function RateCardDataRepository({ filters }: RateCardDataRepositoryProps)
                 <Database className="h-5 w-5" />
                 Rate Card Repository
               </CardTitle>
-              {useRealData && (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                  <CheckCircle2 className="h-3 w-3 mr-1" />
-                  Live Data
-                </Badge>
-              )}
+              <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />
+                Live Data
+              </Badge>
             </div>
             <CardDescription>
               Complete repository of {data.length} rate card entries across all contracts

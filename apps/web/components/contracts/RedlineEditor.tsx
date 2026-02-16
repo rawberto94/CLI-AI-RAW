@@ -156,59 +156,8 @@ interface RedlineEditorProps {
 }
 
 // ============================================================================
-// Mock Data
+// Content Parser & Helpers
 // ============================================================================
-
-const mockVersions: DocumentVersion[] = [
-  { id: 'v1', version: 1, name: 'Original Draft', author: 'John Smith', createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), changeCount: 0, status: 'draft' },
-  { id: 'v2', version: 2, name: 'Legal Review', author: 'Sarah Johnson', createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), changeCount: 12, status: 'review' },
-  { id: 'v3', version: 3, name: 'Final Edits', author: 'Michael Chen', createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), changeCount: 5, status: 'review' },
-];
-
-const createMockChanges = (): Change[] => [
-  {
-    id: 'c1',
-    type: 'deletion',
-    originalText: 'thirty (30)',
-    position: { start: 145, end: 156, paragraph: 1, sectionId: 'section-1' },
-    author: { id: 'u1', name: 'Sarah Johnson' },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    status: 'accepted',
-    comments: [],
-  },
-  {
-    id: 'c2',
-    type: 'insertion',
-    newText: 'sixty (60)',
-    position: { start: 145, end: 145, paragraph: 1, sectionId: 'section-1' },
-    author: { id: 'u1', name: 'Sarah Johnson' },
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    status: 'accepted',
-    comments: [
-      { id: 'cm1', author: { id: 'u2', name: 'Michael Chen' }, content: 'Agreed, 60 days is more reasonable for this type of agreement.', timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000) },
-    ],
-  },
-  {
-    id: 'c3',
-    type: 'deletion',
-    originalText: 'exclusive',
-    position: { start: 320, end: 329, paragraph: 2, sectionId: 'section-2' },
-    author: { id: 'u2', name: 'Michael Chen' },
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    status: 'accepted',
-    comments: [],
-  },
-  {
-    id: 'c4',
-    type: 'insertion',
-    newText: 'non-exclusive',
-    position: { start: 320, end: 320, paragraph: 2, sectionId: 'section-2' },
-    author: { id: 'u2', name: 'Michael Chen' },
-    timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000),
-    status: 'accepted',
-    comments: [],
-  },
-];
 
 // Generate unique IDs
 const generateId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -630,7 +579,7 @@ function VersionHistoryPanel({
 export function RedlineEditor({
   documentId,
   initialContent,
-  versions = mockVersions,
+  versions = [],
   changes: initialChanges,
   currentUser,
   readOnly = false,
@@ -693,7 +642,7 @@ export function RedlineEditor({
 
   const [sections, setSections] = useState<DocumentSection[]>(() => parseContentToSections(initialContent));
   const [originalSections] = useState<DocumentSection[]>(() => parseContentToSections(initialContent));
-  const [changes, setChanges] = useState<Change[]>(initialChanges || createMockChanges());
+  const [changes, setChanges] = useState<Change[]>(initialChanges || []);
   const [selectedChangeId, setSelectedChangeId] = useState<string | null>(null);
   const [showChanges, setShowChanges] = useState(true);
   const [showVersionHistory, setShowVersionHistory] = useState(false);

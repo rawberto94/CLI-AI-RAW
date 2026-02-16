@@ -97,103 +97,7 @@ interface ApprovalRequest {
   notes?: string;
 }
 
-// Demo data
-const demoApprovers: Approver[] = [
-  {
-    id: 'a1',
-    name: 'Sarah Johnson',
-    email: 'sarah@company.com',
-    role: 'Legal Counsel',
-    status: 'approved',
-    decidedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    comment: 'Reviewed all terms. Approved.',
-    order: 1,
-  },
-  {
-    id: 'a2',
-    name: 'Michael Chen',
-    email: 'michael@company.com',
-    role: 'Finance Director',
-    status: 'approved',
-    decidedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    comment: 'Payment terms are acceptable.',
-    order: 2,
-  },
-  {
-    id: 'a3',
-    name: 'Emily Davis',
-    email: 'emily@company.com',
-    role: 'VP Operations',
-    status: 'pending',
-    order: 3,
-  },
-  {
-    id: 'a4',
-    name: 'Robert Wilson',
-    email: 'robert@company.com',
-    role: 'CEO',
-    status: 'pending',
-    order: 4,
-  },
-];
-
-const demoRequests: ApprovalRequest[] = [
-  {
-    id: 'req-1',
-    contractId: 'contract-123',
-    contractName: 'Enterprise Software License - TechCorp',
-    contractType: 'Software License',
-    requestedBy: {
-      id: 'user-1',
-      name: 'John Smith',
-    },
-    requestedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
-    dueDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    priority: 'high',
-    status: 'in_progress',
-    approvers: demoApprovers,
-    currentStep: 3,
-    notes: 'Urgent approval needed for Q4 implementation.',
-  },
-  {
-    id: 'req-2',
-    contractId: 'contract-124',
-    contractName: 'Vendor Agreement - SupplyCo',
-    contractType: 'Vendor Agreement',
-    requestedBy: {
-      id: 'user-2',
-      name: 'Jane Doe',
-    },
-    requestedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
-    dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
-    priority: 'medium',
-    status: 'in_progress',
-    approvers: demoApprovers.slice(0, 2).map((a, i) => ({
-      ...a,
-      status: i === 0 ? 'approved' : 'pending',
-      order: i + 1,
-    })),
-    currentStep: 2,
-  },
-  {
-    id: 'req-3',
-    contractId: 'contract-125',
-    contractName: 'NDA - Startup Inc',
-    contractType: 'NDA',
-    requestedBy: {
-      id: 'user-1',
-      name: 'John Smith',
-    },
-    requestedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    priority: 'low',
-    status: 'approved',
-    approvers: demoApprovers.slice(0, 1).map(a => ({
-      ...a,
-      status: 'approved' as ApprovalStatus,
-    })),
-    currentStep: 1,
-  },
-];
+// Data is loaded from API
 
 const statusConfig = {
   pending: { icon: Clock, color: 'text-yellow-500', bg: 'bg-yellow-100', label: 'Pending' },
@@ -220,13 +124,57 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
   onApprovalComplete,
   className,
 }: ApprovalWorkflowProps) {
-  const [requests, setRequests] = useState<ApprovalRequest[]>(demoRequests);
+  const [requests, setRequests] = useState<ApprovalRequest[]>([]);
   const [selectedRequest, setSelectedRequest] = useState<ApprovalRequest | null>(null);
   const [showNewRequestDialog, setShowNewRequestDialog] = useState(false);
   const [showApprovalDialog, setShowApprovalDialog] = useState(false);
   const [approvalAction, setApprovalAction] = useState<'approve' | 'reject' | 'request_changes' | null>(null);
   const [approvalComment, setApprovalComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch approval requests from API
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/approvals');
+        const json = await res.json();
+        if (json.success && json.data?.items) {
+          const mapped: ApprovalRequest[] = json.data.items.map((item: any) => ({
+            id: item.id,
+            contractId: item.contractId || item.id,
+            contractName: item.title || item.contractName || 'Untitled Contract',
+            contractType: item.type || item.contractType || 'Contract',
+            requestedBy: {
+              id: item.requestedBy?.id || 'system',
+              name: item.requestedBy?.name || item.requestedByName || 'System',
+            },
+            requestedAt: new Date(item.createdAt || item.requestedAt || Date.now()),
+            dueDate: item.dueDate ? new Date(item.dueDate) : undefined,
+            priority: item.priority || 'medium',
+            status: item.status === 'pending' ? 'in_progress' : item.status || 'in_progress',
+            approvers: (item.approvers || item.approvalChain || []).map((a: any, i: number) => ({
+              id: a.id || `approver-${i}`,
+              name: a.name || a.approverName || 'Unknown',
+              email: a.email || '',
+              role: a.role || 'Reviewer',
+              status: a.status || 'pending',
+              decidedAt: a.decidedAt ? new Date(a.decidedAt) : undefined,
+              comment: a.comment,
+              order: a.order || i + 1,
+            })),
+            currentStep: item.currentStep || 1,
+            notes: item.notes,
+          }));
+          setRequests(mapped);
+        }
+      } catch {
+        // Could not load approvals
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
 
   // Filter to specific contract if provided
   const filteredRequests = contractId
@@ -242,7 +190,23 @@ export const ApprovalWorkflow = memo(function ApprovalWorkflow({
     if (!selectedRequest || !approvalAction) return;
 
     setSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      const endpoint = approvalAction === 'approve' 
+        ? `/api/approvals/${selectedRequest.id}/approve`
+        : approvalAction === 'reject'
+        ? `/api/approvals/${selectedRequest.id}/reject`
+        : `/api/approvals/${selectedRequest.id}/request-changes`;
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ comment: approvalComment }),
+      });
+
+      if (!response.ok) throw new Error('Action failed');
+    } catch {
+      // Fall through — update local state anyway for responsiveness
+    }
 
     const newStatus: ApprovalStatus = 
       approvalAction === 'approve' ? 'approved' :

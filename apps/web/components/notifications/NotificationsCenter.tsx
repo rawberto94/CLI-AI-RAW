@@ -5,7 +5,7 @@
 
 'use client';
 
-import { memo, useState, useEffect, useCallback } from 'react';
+import { memo, useState, useEffect, useCallback, useRef } from 'react';
 import {
   Bell,
   Check,
@@ -82,74 +82,25 @@ interface NotificationPreferences {
   frequency: 'instant' | 'hourly' | 'daily';
 }
 
-// Demo notifications
-const demoNotifications: Notification[] = [
-  {
-    id: '1',
-    title: 'Contract Processing Complete',
-    message: 'Master Service Agreement v2 has been processed with 98% accuracy.',
-    type: 'success',
-    category: 'ai',
-    read: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 1000),
-    actionUrl: '/contracts/msa-v2',
-    actionLabel: 'View Contract',
-  },
-  {
-    id: '2',
-    title: 'Contract Expiring Soon',
-    message: 'Vendor Agreement with Acme Corp expires in 15 days.',
-    type: 'warning',
-    category: 'deadline',
-    read: false,
-    createdAt: new Date(Date.now() - 30 * 60 * 1000),
-    actionUrl: '/contracts/vendor-acme',
-    actionLabel: 'Review',
-    metadata: { daysUntilExpiry: 15 },
-  },
-  {
-    id: '3',
-    title: 'High Risk Clause Detected',
-    message: 'Automatic renewal clause found in NDA with TechCorp.',
-    type: 'error',
-    category: 'ai',
-    read: false,
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-    actionUrl: '/contracts/nda-techcorp',
-    actionLabel: 'Review Risk',
-  },
-  {
-    id: '4',
-    title: 'Team Comment',
-    message: 'Sarah added a comment on Supply Agreement draft.',
-    type: 'info',
-    category: 'collaboration',
-    read: true,
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-    actionUrl: '/contracts/supply-agreement',
-    actionLabel: 'View Comment',
-  },
-  {
-    id: '5',
-    title: 'System Maintenance',
-    message: 'Scheduled maintenance on Sunday 2:00 AM - 4:00 AM UTC.',
-    type: 'info',
-    category: 'system',
-    read: true,
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000),
-  },
-  {
-    id: '6',
-    title: 'Bulk Import Complete',
-    message: '45 contracts imported successfully from external database.',
-    type: 'success',
-    category: 'contract',
-    read: true,
-    createdAt: new Date(Date.now() - 48 * 60 * 60 * 1000),
-    actionUrl: '/contracts',
-    actionLabel: 'View Contracts',
-  },
-];
+// Map API notification types to our UI types
+function mapNotificationType(apiType?: string): NotificationType {
+  switch (apiType) {
+    case 'error': case 'alert': return 'error';
+    case 'warning': return 'warning';
+    case 'success': return 'success';
+    default: return 'info';
+  }
+}
+
+function mapNotificationCategory(apiCategory?: string): NotificationCategory {
+  switch (apiCategory) {
+    case 'contract': return 'contract';
+    case 'ai': case 'processing': return 'ai';
+    case 'deadline': case 'renewal': case 'expiry': return 'deadline';
+    case 'collaboration': case 'comment': case 'team': return 'collaboration';
+    default: return 'system';
+  }
+}
 
 const defaultPreferences: NotificationPreferences = {
   emailEnabled: true,
@@ -194,12 +145,50 @@ interface NotificationsCenterProps {
 export const NotificationsCenter = memo(function NotificationsCenter({
   className,
 }: NotificationsCenterProps) {
-  const [notifications, setNotifications] = useState<Notification[]>(demoNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [categoryFilter, setCategoryFilter] = useState<NotificationCategory | 'all'>('all');
   const [showSettings, setShowSettings] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const pollRef = useRef<NodeJS.Timeout | null>(null);
+
+  const fetchNotifications = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notifications');
+      if (!res.ok) return;
+      const data = await res.json();
+      const allNotifications = [
+        ...(data.notifications || []),
+        ...(data.agentNotifications || []),
+      ];
+      setNotifications(
+        allNotifications.map((n: any) => ({
+          id: n.id || String(Math.random()),
+          title: n.title || n.message?.slice(0, 60) || 'Notification',
+          message: n.message || n.body || n.title || '',
+          type: mapNotificationType(n.type || n.level),
+          category: mapNotificationCategory(n.category || n.source),
+          read: n.read ?? n.isRead ?? false,
+          createdAt: new Date(n.createdAt || n.timestamp || Date.now()),
+          actionUrl: n.actionUrl || n.link || (n.contractId ? `/contracts/${n.contractId}` : undefined),
+          actionLabel: n.actionLabel || (n.contractId ? 'View' : undefined),
+          metadata: n.metadata,
+        }))
+      );
+    } catch {
+      // Keep existing notifications on error
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchNotifications();
+    pollRef.current = setInterval(fetchNotifications, 30000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [fetchNotifications]);
 
   const unreadCount = notifications.filter(n => !n.read).length;
   
@@ -209,20 +198,37 @@ export const NotificationsCenter = memo(function NotificationsCenter({
     return true;
   });
 
-  const markAsRead = useCallback((id: string) => {
+  const markAsRead = useCallback(async (id: string) => {
     setNotifications(prev =>
       prev.map(n => n.id === id ? { ...n, read: true } : n)
     );
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, read: true }),
+      });
+    } catch { /* optimistic update, ignore errors */ }
   }, []);
 
-  const markAllAsRead = useCallback(() => {
+  const markAllAsRead = useCallback(async () => {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     toast.success('All notifications marked as read');
+    try {
+      await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ markAllRead: true }),
+      });
+    } catch { /* optimistic */ }
   }, []);
 
-  const deleteNotification = useCallback((id: string) => {
+  const deleteNotification = useCallback(async (id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));
     toast.success('Notification deleted');
+    try {
+      await fetch(`/api/notifications?id=${id}`, { method: 'DELETE' });
+    } catch { /* optimistic */ }
   }, []);
 
   const clearAll = useCallback(() => {
