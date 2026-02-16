@@ -379,30 +379,4 @@ export function TeamActivityWidget({
   );
 }
 
-// ============ Demo Data Generator ============
-
-export function generateDemoTeamData(): { activities: TeamActivity[]; members: TeamMember[] } {
-  const members: TeamMember[] = [
-    { id: '1', name: 'Sarah Chen', email: 'sarah@company.com', role: 'Legal Counsel', isOnline: true },
-    { id: '2', name: 'Mike Johnson', email: 'mike@company.com', role: 'Procurement Manager', isOnline: true },
-    { id: '3', name: 'Emily Davis', email: 'emily@company.com', role: 'Contract Analyst', isOnline: true },
-    { id: '4', name: 'James Wilson', email: 'james@company.com', role: 'Finance Director', isOnline: false, lastActive: new Date(Date.now() - 3600000) },
-    { id: '5', name: 'Lisa Brown', email: 'lisa@company.com', role: 'Legal Analyst', isOnline: false, lastActive: new Date(Date.now() - 7200000) },
-    { id: '6', name: 'David Lee', email: 'david@company.com', role: 'VP Operations', isOnline: true },
-  ];
-
-  const activities: TeamActivity[] = [
-    { id: '1', user: members[0], type: 'approve', target: 'AWS Enterprise Agreement', targetType: 'contract', timestamp: new Date(Date.now() - 300000) },
-    { id: '2', user: members[1], type: 'edit', target: 'Vendor MSA Template', targetType: 'document', timestamp: new Date(Date.now() - 900000), details: 'Updated payment terms section' },
-    { id: '3', user: members[2], type: 'comment', target: 'Salesforce Renewal', targetType: 'contract', timestamp: new Date(Date.now() - 1800000), details: 'Need clarification on auto-renewal clause' },
-    { id: '4', user: members[5], type: 'create', target: 'Q4 Contract Review', targetType: 'workflow', timestamp: new Date(Date.now() - 3600000) },
-    { id: '5', user: members[0], type: 'share', target: 'NDA Analysis Report', targetType: 'document', timestamp: new Date(Date.now() - 5400000) },
-    { id: '6', user: members[3], type: 'view', target: 'Microsoft EA', targetType: 'contract', timestamp: new Date(Date.now() - 7200000) },
-    { id: '7', user: members[1], type: 'upload', target: 'Oracle Support Contract', targetType: 'document', timestamp: new Date(Date.now() - 10800000) },
-    { id: '8', user: members[4], type: 'comment', target: 'Insurance Policy', targetType: 'contract', timestamp: new Date(Date.now() - 14400000), details: 'Verified coverage amounts are accurate' },
-  ];
-
-  return { activities, members };
-}
-
 export default memo(TeamActivityWidget);

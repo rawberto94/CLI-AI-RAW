@@ -426,35 +426,4 @@ export function SavingsTrackerWidget({
   );
 }
 
-// ============ Demo Data Generator ============
-
-export function generateDemoSavingsData(): SavingsData {
-  return {
-    totalSavings: 847500,
-    savingsTarget: 1000000,
-    previousPeriodSavings: 720000,
-    categories: [
-      { id: '1', name: 'Rate Negotiations', amount: 320000, target: 400000, previousAmount: 280000, color: '#22c55e' },
-      { id: '2', name: 'Volume Discounts', amount: 185000, target: 200000, previousAmount: 150000, color: '#3b82f6' },
-      { id: '3', name: 'Term Extensions', amount: 142500, target: 150000, previousAmount: 120000, color: '#8b5cf6' },
-      { id: '4', name: 'Consolidated Vendors', amount: 200000, target: 250000, previousAmount: 170000, color: '#f59e0b' },
-    ],
-    opportunities: [
-      { id: '1', title: 'Renegotiate AWS commitment', potentialSavings: 45000, confidence: 'high', category: 'Rate', contractName: 'AWS Enterprise', status: 'identified' },
-      { id: '2', title: 'Bundle Microsoft licenses', potentialSavings: 32000, confidence: 'high', category: 'Volume', contractName: 'Microsoft EA', status: 'in-progress' },
-      { id: '3', title: 'Early renewal discount', potentialSavings: 18500, confidence: 'medium', category: 'Term', contractName: 'Salesforce', status: 'identified' },
-      { id: '4', title: 'Consolidate SaaS tools', potentialSavings: 25000, confidence: 'medium', category: 'Vendor', status: 'identified' },
-      { id: '5', title: 'Oracle optimization', potentialSavings: 55000, confidence: 'low', category: 'Rate', contractName: 'Oracle DB', status: 'identified' },
-    ],
-    monthlyTrend: [
-      { month: 'Jan', amount: 85000 },
-      { month: 'Feb', amount: 92000 },
-      { month: 'Mar', amount: 78000 },
-      { month: 'Apr', amount: 115000 },
-      { month: 'May', amount: 125000 },
-      { month: 'Jun', amount: 142500 },
-    ],
-  };
-}
-
 export default memo(SavingsTrackerWidget);

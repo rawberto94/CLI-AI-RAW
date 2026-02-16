@@ -5,20 +5,17 @@ export { ProfessionalDashboard } from './ProfessionalDashboard';
 // New Dashboard Widgets
 export { 
   RecentActivityWidget,
-  generateDemoActivities,
   type ActivityItem,
   type ActivityType,
 } from './RecentActivityWidget';
 
 export { 
   FavoriteContractsWidget,
-  generateDemoFavorites,
   type FavoriteContract,
 } from './FavoriteContractsWidget';
 
 export { 
   UpcomingRenewalsWidget,
-  generateDemoRenewals,
   type RenewalContract,
   type RenewalUrgency,
   type RenewalStatus,
@@ -26,8 +23,6 @@ export {
 
 export { 
   AIInsightsSummaryWidget,
-  generateDemoInsights,
-  generateDemoMetrics as generateDemoAIMetrics,
   type AIInsight,
   type AIMetrics,
   type InsightCategory,
@@ -36,7 +31,6 @@ export {
 
 export {
   ContractNotificationsWidget,
-  generateDemoNotifications,
   type ContractNotification,
   type NotificationType,
   type NotificationPriority,
@@ -53,7 +47,6 @@ export {
 
 export {
   SavingsTrackerWidget,
-  generateDemoSavingsData,
   type SavingsCategory,
   type SavingsOpportunity,
   type SavingsData,
@@ -61,7 +54,6 @@ export {
 
 export {
   TeamActivityWidget,
-  generateDemoTeamData,
   type TeamMember,
   type TeamActivity,
   type ActivityType as TeamActivityType,
@@ -69,7 +61,6 @@ export {
 
 export {
   IntegrationStatusWidget,
-  generateDemoIntegrations,
   type Integration,
   type IntegrationStatus,
 } from './IntegrationStatusWidget';

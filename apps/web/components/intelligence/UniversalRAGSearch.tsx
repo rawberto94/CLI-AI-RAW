@@ -30,7 +30,7 @@ import {
   Star,
   Loader2,
 } from 'lucide-react';
-import { useDataMode } from '@/contexts/DataModeContext';
+
 
 // ============================================================================
 // Types
@@ -112,108 +112,6 @@ const mockSuggestions: SearchSuggestion[] = [
   { id: 's5', query: 'Payment terms over 60 days', category: 'suggested', icon: DollarSign },
   { id: 's6', query: 'Termination for convenience clauses', category: 'suggested', icon: FileText },
 ];
-
-const generateMockResults = (query: string): SearchResult[] => {
-  const baseResults: SearchResult[] = [
-    {
-      id: 'r1',
-      type: 'contract',
-      title: 'Master Agreement - Acme Corporation',
-      excerpt: `This agreement contains provisions related to "${query}" with specific terms outlined in Section 4.2...`,
-      relevanceScore: 0.94,
-      metadata: {
-        contractName: 'Master Agreement',
-        supplierName: 'Acme Corporation',
-        date: '2024-01-15',
-        value: 1200000,
-        status: 'Active',
-      },
-      highlights: [query, 'liability', 'termination'],
-      source: {
-        documentId: 'doc1',
-        documentName: 'Acme_Master_Agreement_2024.pdf',
-        page: 12,
-        section: 'Section 4.2 - Liability',
-      },
-    },
-    {
-      id: 'r2',
-      type: 'clause',
-      title: 'Limitation of Liability Clause',
-      excerpt: `The clause specifically addresses ${query} scenarios with aggregate liability capped at 2x annual fees...`,
-      relevanceScore: 0.89,
-      metadata: {
-        contractName: 'SLA - Cloud Services',
-        supplierName: 'Acme Corporation',
-      },
-      highlights: [query, 'aggregate liability', 'annual fees'],
-      source: {
-        documentId: 'doc2',
-        documentName: 'Cloud_Services_SLA.pdf',
-        page: 8,
-        section: 'Clause 7.1',
-      },
-    },
-    {
-      id: 'r3',
-      type: 'obligation',
-      title: 'Quarterly Business Review',
-      excerpt: `Parties shall conduct quarterly reviews addressing ${query} metrics and performance indicators...`,
-      relevanceScore: 0.82,
-      metadata: {
-        contractName: 'Master Agreement',
-        supplierName: 'Acme Corporation',
-        date: '2024-03-31',
-      },
-      highlights: [query, 'quarterly reviews', 'performance'],
-      source: {
-        documentId: 'doc1',
-        documentName: 'Acme_Master_Agreement_2024.pdf',
-        page: 15,
-        section: 'Schedule B',
-      },
-    },
-    {
-      id: 'r4',
-      type: 'risk',
-      title: 'Auto-Renewal Risk Identified',
-      excerpt: `Contract contains auto-renewal clause relevant to ${query}. 90-day notice required to prevent renewal...`,
-      relevanceScore: 0.78,
-      metadata: {
-        contractName: 'Procurement Agreement',
-        supplierName: 'GlobalSupply Ltd',
-        date: '2024-04-01',
-        status: 'At Risk',
-      },
-      highlights: [query, 'auto-renewal', '90-day notice'],
-      source: {
-        documentId: 'doc3',
-        documentName: 'GlobalSupply_Procurement.pdf',
-        page: 3,
-        section: 'Term and Renewal',
-      },
-    },
-    {
-      id: 'r5',
-      type: 'supplier',
-      title: 'GlobalSupply Ltd',
-      excerpt: `Supplier profile shows ${query} related clauses across 2 active contracts with combined value of $780,000...`,
-      relevanceScore: 0.75,
-      metadata: {
-        supplierName: 'GlobalSupply Ltd',
-        value: 780000,
-        status: 'Active',
-      },
-      highlights: [query, '2 active contracts', '$780,000'],
-      source: {
-        documentId: 'profile1',
-        documentName: 'Supplier Profile',
-      },
-    },
-  ];
-
-  return baseResults.sort((a, b) => b.relevanceScore - a.relevanceScore);
-};
 
 // ============================================================================
 // Result Type Icon & Color
@@ -467,7 +365,6 @@ const ChatMessageComponent: React.FC<ChatMessageProps> = ({ message, onFollowUp 
 // ============================================================================
 
 export const UniversalRAGSearch: React.FC = () => {
-  const { isMockData } = useDataMode();
   const [query, setQuery] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(true);
@@ -508,55 +405,46 @@ export const UniversalRAGSearch: React.FC = () => {
     setQuery('');
 
     let results: SearchResult[] = [];
-    
-    // If in demo mode, always use mock results
-    if (isMockData) {
-      results = generateMockResults(searchQuery);
-    } else {
-      try {
-        // Use the new state-of-the-art RAG search API
-        const res = await fetch('/api/search/semantic', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: searchQuery,
-            k: 10,
-            mode: 'hybrid',
-            rerank: true,
-            expandQuery: true,
-            types: filters.types.length > 0 ? filters.types : undefined,
-            dateRange: filters.dateRange || undefined,
-          }),
-        });
-        const json = await res.json();
-        
-        if (json.success && json.results?.length > 0) {
-          results = json.results.map((r: any, idx: number) => ({
-            id: `result-${idx}`,
-            type: detectResultType(r.text),
-            title: r.contractName || 'Contract Match',
-            excerpt: r.text,
-            relevanceScore: r.score || 0.8,
-            metadata: {
-              contractName: r.contractName,
-              status: r.matchType === 'hybrid' ? 'High Match' : 'Match',
-            },
-            highlights: r.highlights || [],
-            source: {
-              documentId: r.contractId,
-              documentName: r.contractName || 'Document',
-              section: `Chunk ${r.chunkIndex}`,
-            },
-          }));
-        } else if (json.error) {
-          results = [];
-        } else {
-          results = [];
-        }
-      } catch {
-        results = [];
-        toast.error('Search service unavailable — please try again later');
+
+    try {
+      // Use the state-of-the-art RAG search API
+      const res = await fetch('/api/search/semantic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          query: searchQuery,
+          k: 10,
+          mode: 'hybrid',
+          rerank: true,
+          expandQuery: true,
+          types: filters.types.length > 0 ? filters.types : undefined,
+          dateRange: filters.dateRange || undefined,
+        }),
+      });
+      const json = await res.json();
+      
+      if (json.success && json.results?.length > 0) {
+        results = json.results.map((r: any, idx: number) => ({
+          id: `result-${idx}`,
+          type: detectResultType(r.text),
+          title: r.contractName || 'Contract Match',
+          excerpt: r.text,
+          relevanceScore: r.score || 0.8,
+          metadata: {
+            contractName: r.contractName,
+            status: r.matchType === 'hybrid' ? 'High Match' : 'Match',
+          },
+          highlights: r.highlights || [],
+          source: {
+            documentId: r.contractId,
+            documentName: r.contractName || 'Document',
+            section: `Chunk ${r.chunkIndex}`,
+          },
+        }));
       }
+    } catch {
+      results = [];
+      toast.error('Search service unavailable — please try again later');
     }
 
     const assistantMessage: ChatMessage = {

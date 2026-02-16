@@ -163,104 +163,6 @@ const HORIZON_CONFIG: Record<TimeHorizon, { label: string; days: number }> = {
 };
 
 // ============================================================================
-// Demo Data Generators
-// ============================================================================
-
-function generateDemoContractPredictions(count: number): ContractPrediction[] {
-  const suppliers = ['Acme Corp', 'TechFlow Inc', 'Global Services', 'DataPro', 'CloudFirst'];
-  const predictions: ContractPrediction[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const renewalProb = 0.4 + Math.random() * 0.55;
-    const riskScore = Math.random() * 0.6;
-    const churnRisk = 1 - renewalProb + Math.random() * 0.1;
-    
-    predictions.push({
-      contractId: `contract-${i + 1}`,
-      contractName: `Contract ${i + 1}`,
-      supplier: suppliers[Math.floor(Math.random() * suppliers.length)],
-      value: Math.floor(50000 + Math.random() * 500000),
-      renewalProbability: Math.min(renewalProb, 0.98),
-      riskScore: Math.min(riskScore, 0.95),
-      churnRisk: Math.min(churnRisk, 0.6),
-      valueOptimization: 0.05 + Math.random() * 0.2,
-      recommendations: [
-        'Consider early renewal negotiations',
-        'Review service levels for optimization',
-        'Benchmark pricing against market rates',
-      ].slice(0, Math.floor(Math.random() * 3) + 1),
-    });
-  }
-
-  return predictions.sort((a, b) => b.value - a.value);
-}
-
-function generateDemoPortfolioPrediction(): PortfolioPrediction {
-  return {
-    totalContracts: 156,
-    totalValue: 12500000,
-    avgRenewalProbability: 0.78,
-    avgRiskScore: 0.32,
-    predictedSavings: 845000,
-    atRiskValue: 1250000,
-    highValueOpportunities: 12,
-    trends: [
-      { period: 'Q1', renewals: 24, churn: 3, value: 2800000 },
-      { period: 'Q2', renewals: 31, churn: 5, value: 3200000 },
-      { period: 'Q3', renewals: 28, churn: 4, value: 3100000 },
-      { period: 'Q4', renewals: 35, churn: 6, value: 3400000 },
-    ],
-  };
-}
-
-function generateDemoPredictions(contracts: ContractPrediction[]): Prediction[] {
-  const types: PredictionType[] = ['renewal', 'risk', 'cost', 'value'];
-  const predictions: Prediction[] = [];
-
-  contracts.forEach(contract => {
-    types.forEach(type => {
-      let value: number;
-      switch (type) {
-        case 'renewal':
-          value = contract.renewalProbability;
-          break;
-        case 'risk':
-          value = contract.riskScore;
-          break;
-        case 'cost':
-          value = 0.02 + Math.random() * 0.08; // 2-10% cost change
-          break;
-        case 'value':
-          value = contract.valueOptimization;
-          break;
-        default:
-          value = Math.random();
-      }
-
-      predictions.push({
-        id: `prediction-${contract.contractId}-${type}`,
-        type,
-        contractId: contract.contractId,
-        contractName: contract.contractName,
-        value,
-        confidence: 0.7 + Math.random() * 0.25,
-        horizon: ['short', 'medium', 'long'][Math.floor(Math.random() * 3)] as TimeHorizon,
-        factors: [
-          { name: 'Historical Performance', impact: 0.3 + Math.random() * 0.4, description: 'Based on past contract performance', category: 'positive' },
-          { name: 'Market Conditions', impact: -0.1 + Math.random() * 0.3, description: 'Current market dynamics', category: Math.random() > 0.5 ? 'positive' : 'negative' },
-          { name: 'Relationship Score', impact: 0.2 + Math.random() * 0.3, description: 'Vendor relationship quality', category: 'positive' },
-        ],
-        trend: ['improving', 'stable', 'declining'][Math.floor(Math.random() * 3)] as Prediction['trend'],
-        generatedAt: new Date(),
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      });
-    });
-  });
-
-  return predictions;
-}
-
-// ============================================================================
 // Sub-Components
 // ============================================================================
 
@@ -542,16 +444,90 @@ export function PredictiveAnalyticsDashboard({ tenantId, className }: Predictive
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const contracts = generateDemoContractPredictions(20);
-      setContractPredictions(contracts);
-      setPortfolio(generateDemoPortfolioPrediction());
-      setPredictions(generateDemoPredictions(contracts));
+      try {
+        const [contractRes, portfolioRes] = await Promise.all([
+          fetch(`/api/ai/predictions?action=at-risk`),
+          fetch(`/api/ai/predictions?action=portfolio&horizon=${horizon}`),
+        ]);
+        const [contractJson, portfolioJson] = await Promise.all([
+          contractRes.json(),
+          portfolioRes.json(),
+        ]);
+
+        if (contractJson.success && contractJson.data) {
+          const contracts: ContractPrediction[] = Array.isArray(contractJson.data)
+            ? contractJson.data.map((c: Record<string, unknown>) => ({
+                contractId: c.contractId as string || c.id as string || '',
+                contractName: c.contractName as string || c.name as string || 'Contract',
+                supplier: c.supplier as string || c.vendor as string || 'Unknown',
+                value: (c.value as number) || (c.totalValue as number) || 0,
+                renewalProbability: (c.renewalProbability as number) ?? 0.5,
+                riskScore: (c.riskScore as number) ?? 0.3,
+                churnRisk: (c.churnRisk as number) ?? 0.2,
+                valueOptimization: (c.valueOptimization as number) ?? 0.1,
+                recommendations: (c.recommendations as string[]) || [],
+              }))
+            : [];
+          setContractPredictions(contracts);
+
+          // Derive detailed predictions from contract data
+          const derivedPredictions: Prediction[] = [];
+          const types: PredictionType[] = ['renewal', 'risk', 'cost', 'value'];
+          contracts.forEach(contract => {
+            types.forEach(type => {
+              let value: number;
+              switch (type) {
+                case 'renewal': value = contract.renewalProbability; break;
+                case 'risk': value = contract.riskScore; break;
+                case 'cost': value = 0.05; break;
+                case 'value': value = contract.valueOptimization; break;
+                default: value = 0;
+              }
+              derivedPredictions.push({
+                id: `prediction-${contract.contractId}-${type}`,
+                type,
+                contractId: contract.contractId,
+                contractName: contract.contractName,
+                value,
+                confidence: 0.85,
+                horizon,
+                factors: [],
+                trend: value > 0.5 ? 'improving' : 'stable',
+                generatedAt: new Date(),
+                expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+              });
+            });
+          });
+          setPredictions(derivedPredictions);
+        } else {
+          setContractPredictions([]);
+          setPredictions([]);
+        }
+
+        if (portfolioJson.success && portfolioJson.data) {
+          const p = portfolioJson.data;
+          setPortfolio({
+            totalContracts: (p.totalContracts as number) || 0,
+            totalValue: (p.totalValue as number) || 0,
+            avgRenewalProbability: (p.avgRenewalProbability as number) ?? 0,
+            avgRiskScore: (p.avgRiskScore as number) ?? 0,
+            predictedSavings: (p.predictedSavings as number) || 0,
+            atRiskValue: (p.atRiskValue as number) || 0,
+            highValueOpportunities: (p.highValueOpportunities as number) || 0,
+            trends: (p.trends as PortfolioPrediction['trends']) || [],
+          });
+        } else {
+          setPortfolio(null);
+        }
+      } catch {
+        setContractPredictions([]);
+        setPortfolio(null);
+        setPredictions([]);
+      }
       setLoading(false);
     };
     loadData();
-  }, [tenantId]);
+  }, [tenantId, horizon]);
 
   const atRiskContracts = contractPredictions.filter(c => c.riskScore > 0.5);
   const highRenewalContracts = contractPredictions.filter(c => c.renewalProbability > 0.8);

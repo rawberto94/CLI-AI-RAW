@@ -123,117 +123,6 @@ const AI_FEATURES = [
   'anomaly_detection',
 ];
 
-const AI_MODELS = ['gpt-4o', 'gpt-4o-mini', 'gpt-3.5-turbo', 'claude-3-5-haiku-20241022'];
-
-function generateDemoDecisions(count: number): AIDecision[] {
-  const outcomes: AIDecision['outcome'][] = ['accepted', 'modified', 'rejected', 'pending'];
-  const decisions: AIDecision[] = [];
-
-  for (let i = 0; i < count; i++) {
-    const feature = AI_FEATURES[Math.floor(Math.random() * AI_FEATURES.length)];
-    const model = AI_MODELS[Math.floor(Math.random() * AI_MODELS.length)];
-    const confidence = 0.7 + Math.random() * 0.28;
-    const hasContract = Math.random() > 0.3;
-
-    decisions.push({
-      id: `decision-${i + 1}`,
-      feature,
-      contractId: hasContract ? `contract-${Math.floor(Math.random() * 50) + 1}` : undefined,
-      contractName: hasContract ? `Contract ${Math.floor(Math.random() * 50) + 1}` : undefined,
-      input: `Input for ${feature} analysis...`,
-      output: `AI generated ${feature} result...`,
-      model,
-      confidence,
-      outcome: outcomes[Math.floor(Math.random() * outcomes.length)],
-      processingTimeMs: 500 + Math.random() * 3000,
-      tokenUsage: {
-        input: Math.floor(500 + Math.random() * 2000),
-        output: Math.floor(200 + Math.random() * 1000),
-        total: 0,
-      },
-      citations: confidence > 0.85 ? [
-        { text: 'Source text excerpt...', location: 'Page 3, Paragraph 2', confidence: 0.9 + Math.random() * 0.1 },
-      ] : [],
-      createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-      userId: `user-${Math.floor(Math.random() * 10) + 1}`,
-      feedback: Math.random() > 0.6 ? {
-        rating: Math.random() > 0.3 ? 'positive' : 'negative',
-        comment: 'User feedback comment',
-      } : undefined,
-    });
-  }
-
-  return decisions.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-}
-
-function generateDemoUsageStats(): UsageStats {
-  return {
-    totalDecisions: 1247,
-    acceptedRate: 0.873,
-    avgConfidence: 0.912,
-    avgProcessingTime: 1850,
-    totalTokens: 2450000,
-    estimatedCost: 124.50,
-    byFeature: {
-      extraction: 423,
-      summarization: 312,
-      classification: 198,
-      comparison: 145,
-      risk_analysis: 102,
-      obligation_detection: 45,
-      anomaly_detection: 22,
-    },
-    byModel: {
-      'gpt-4o': 756,
-      'gpt-4o-mini': 389,
-      'gpt-3.5-turbo': 102,
-    },
-    trend: Array.from({ length: 7 }, (_, i) => ({
-      date: new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000).toLocaleDateString(),
-      count: Math.floor(100 + Math.random() * 100),
-      avgConfidence: 0.85 + Math.random() * 0.1,
-    })),
-  };
-}
-
-function generateDemoComplianceReport(): ComplianceReport {
-  return {
-    overallScore: 94,
-    totalDecisions: 1247,
-    auditedDecisions: 1180,
-    flaggedDecisions: 23,
-    avgConfidence: 0.912,
-    humanReviewRate: 0.156,
-    feedbackRate: 0.342,
-    issues: [
-      { type: 'low_confidence', severity: 'medium', count: 12, description: 'Decisions with confidence below threshold' },
-      { type: 'missing_citations', severity: 'low', count: 8, description: 'Decisions without source citations' },
-      { type: 'high_token_usage', severity: 'low', count: 3, description: 'Unusually high token consumption' },
-    ],
-    recommendations: [
-      'Consider adding human review for low-confidence extractions',
-      'Enable citation tracking for all extraction features',
-      'Implement confidence thresholds for auto-approval',
-    ],
-  };
-}
-
-function generateDemoRiskFlags(): RiskFlag[] {
-  const types = ['low_confidence', 'hallucination_risk', 'inconsistent_output', 'data_leakage_risk'];
-  const severities: RiskFlag['severity'][] = ['low', 'medium', 'high', 'critical'];
-  const statuses: RiskFlag['status'][] = ['open', 'acknowledged', 'resolved'];
-
-  return Array.from({ length: 8 }, (_, i) => ({
-    id: `flag-${i + 1}`,
-    decisionId: `decision-${Math.floor(Math.random() * 100) + 1}`,
-    type: types[Math.floor(Math.random() * types.length)],
-    severity: severities[Math.floor(Math.random() * severities.length)],
-    reason: 'AI decision flagged for review due to potential issues',
-    status: statuses[Math.floor(Math.random() * statuses.length)],
-    createdAt: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-  }));
-}
-
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -430,14 +319,77 @@ export function AIDecisionAuditDashboard({ tenantId, className }: AIDecisionAudi
   const [selectedDecision, setSelectedDecision] = useState<AIDecision | null>(null);
 
   useEffect(() => {
-    // Simulate API loading
     const loadData = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setDecisions(generateDemoDecisions(50));
-      setUsageStats(generateDemoUsageStats());
-      setComplianceReport(generateDemoComplianceReport());
-      setRiskFlags(generateDemoRiskFlags());
+      try {
+        const [decisionsRes, statsRes, complianceRes, riskFlagsRes] = await Promise.all([
+          fetch(`/api/ai/audit?action=decisions&limit=50`),
+          fetch(`/api/ai/audit?action=stats`),
+          fetch(`/api/ai/audit?action=compliance`),
+          fetch(`/api/ai/audit?action=risk-flags`),
+        ]);
+        const [decisionsJson, statsJson, complianceJson, riskFlagsJson] = await Promise.all([
+          decisionsRes.json(),
+          statsRes.json(),
+          complianceRes.json(),
+          riskFlagsRes.json(),
+        ]);
+
+        if (decisionsJson.success && decisionsJson.data?.data) {
+          const raw = Array.isArray(decisionsJson.data.data) ? decisionsJson.data.data : [];
+          setDecisions(raw.map((d: Record<string, unknown>) => ({
+            id: d.id as string,
+            feature: d.feature as string || 'extraction',
+            contractId: d.contractId as string | undefined,
+            contractName: d.contractName as string | undefined,
+            input: d.input as string || '',
+            output: d.output as string || '',
+            model: d.model as string || 'gpt-4o',
+            confidence: (d.confidence as number) ?? 0.85,
+            outcome: (d.outcome as AIDecision['outcome']) || 'pending',
+            processingTimeMs: (d.processingTimeMs as number) ?? 1000,
+            tokenUsage: (d.tokenUsage as AIDecision['tokenUsage']) || { input: 0, output: 0, total: 0 },
+            citations: (d.citations as AIDecision['citations']) || [],
+            createdAt: d.createdAt ? new Date(d.createdAt as string) : new Date(),
+            userId: d.userId as string | undefined,
+            feedback: d.feedback as AIDecision['feedback'] | undefined,
+          })));
+        } else {
+          setDecisions([]);
+        }
+
+        if (statsJson.success && statsJson.data?.data) {
+          setUsageStats(statsJson.data.data as UsageStats);
+        } else {
+          setUsageStats(null);
+        }
+
+        if (complianceJson.success && complianceJson.data?.data) {
+          setComplianceReport(complianceJson.data.data as ComplianceReport);
+        } else {
+          setComplianceReport(null);
+        }
+
+        if (riskFlagsJson.success && riskFlagsJson.data?.data) {
+          const rawFlags = Array.isArray(riskFlagsJson.data.data) ? riskFlagsJson.data.data : [];
+          setRiskFlags(rawFlags.map((f: Record<string, unknown>) => ({
+            id: f.id as string,
+            decisionId: f.decisionId as string || '',
+            type: f.type as string || 'unknown',
+            severity: (f.severity as RiskFlag['severity']) || 'medium',
+            reason: f.reason as string || '',
+            status: (f.status as RiskFlag['status']) || 'open',
+            createdAt: f.createdAt ? new Date(f.createdAt as string) : new Date(),
+          })));
+        } else {
+          setRiskFlags([]);
+        }
+      } catch {
+        setDecisions([]);
+        setUsageStats(null);
+        setComplianceReport(null);
+        setRiskFlags([]);
+      }
       setLoading(false);
     };
     loadData();

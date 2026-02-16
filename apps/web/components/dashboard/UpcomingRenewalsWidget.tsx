@@ -448,38 +448,4 @@ export function UpcomingRenewalsWidget({
   )
 }
 
-// ============ DEMO DATA ============
-
-export function generateDemoRenewals(count: number = 8): RenewalContract[] {
-  const templates = [
-    { name: 'Microsoft Enterprise Agreement', supplier: 'Microsoft', value: 250000, notice: 90 },
-    { name: 'AWS Services Contract', supplier: 'Amazon Web Services', value: 180000, notice: 60 },
-    { name: 'Salesforce CRM License', supplier: 'Salesforce', value: 120000, notice: 30 },
-    { name: 'Adobe Creative Cloud', supplier: 'Adobe', value: 45000, notice: 30 },
-    { name: 'ServiceNow ITSM', supplier: 'ServiceNow', value: 85000, notice: 60 },
-    { name: 'Workday HCM', supplier: 'Workday', value: 150000, notice: 90 },
-    { name: 'Slack Enterprise Grid', supplier: 'Slack', value: 35000, notice: 30 },
-    { name: 'Zoom Business License', supplier: 'Zoom', value: 28000, notice: 30 },
-  ]
-  
-  const statuses: RenewalStatus[] = ['pending', 'initiated', 'in_progress', 'pending', 'pending']
-  
-  return templates.slice(0, count).map((t, i) => {
-    const daysRemaining = i === 0 ? -5 : i === 1 ? 7 : i === 2 ? 25 : 30 + i * 15
-    return {
-      id: `renewal-${i}`,
-      name: t.name,
-      supplier: t.supplier,
-      value: t.value,
-      currency: 'USD',
-      expirationDate: new Date(Date.now() + daysRemaining * 24 * 60 * 60 * 1000),
-      daysRemaining,
-      autoRenewal: i % 3 === 0,
-      noticePeriodDays: t.notice,
-      renewalStatus: statuses[i % statuses.length],
-      renewalCount: Math.floor(Math.random() * 3),
-    }
-  })
-}
-
 export default UpcomingRenewalsWidget

@@ -141,118 +141,6 @@ const RELATION_TYPE_LABELS: Record<RelationType, string> = {
 };
 
 // ============================================================================
-// Demo Data Generators
-// ============================================================================
-
-function generateDemoEntities(count: number): GraphEntity[] {
-  const types: EntityType[] = ['party', 'person', 'organization', 'location', 'obligation', 'clause', 'amount', 'date', 'risk'];
-  const names: Record<EntityType, string[]> = {
-    party: ['Acme Corp', 'TechFlow Inc', 'Global Services Ltd', 'DataPro Solutions'],
-    person: ['John Smith', 'Sarah Johnson', 'Michael Chen', 'Emily Davis'],
-    organization: ['Legal Dept', 'Finance Team', 'Operations', 'Executive Office'],
-    location: ['New York, NY', 'San Francisco, CA', 'London, UK', 'Singapore'],
-    date: ['2024-01-15', '2024-06-30', '2025-01-01', '2023-12-31'],
-    amount: ['$500,000', '$1,200,000', '$250,000', '$3,500,000'],
-    obligation: ['Deliver services', 'Make payment', 'Maintain confidentiality', 'Provide support'],
-    clause: ['Termination Clause', 'Indemnification', 'Force Majeure', 'Limitation of Liability'],
-    term: ['12 months', '36 months', 'Perpetual', 'Auto-renewal'],
-    condition: ['Upon breach', 'Subject to approval', 'Contingent on delivery', 'Prior written consent'],
-    risk: ['Payment default', 'Data breach liability', 'Regulatory non-compliance', 'Service disruption'],
-    contract: ['MSA-2024-001', 'NDA-2024-015', 'SOW-2024-003', 'Amendment-2024-008'],
-  };
-
-  const entities: GraphEntity[] = [];
-  for (let i = 0; i < count; i++) {
-    const type = types[Math.floor(Math.random() * types.length)];
-    const typeNames = names[type] || ['Entity'];
-    entities.push({
-      id: `entity-${i + 1}`,
-      type,
-      name: typeNames[Math.floor(Math.random() * typeNames.length)],
-      properties: {},
-      contractId: `contract-${Math.floor(Math.random() * 10) + 1}`,
-      confidence: 0.7 + Math.random() * 0.3,
-      createdAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-    });
-  }
-  return entities;
-}
-
-function generateDemoRelations(entities: GraphEntity[], count: number): GraphRelation[] {
-  const types: RelationType[] = ['party_to', 'signed_by', 'governed_by', 'related_to', 'contains', 'obligated_to', 'depends_on'];
-  const relations: GraphRelation[] = [];
-  
-  for (let i = 0; i < count && i < entities.length * 2; i++) {
-    const sourceIdx = Math.floor(Math.random() * entities.length);
-    let targetIdx = Math.floor(Math.random() * entities.length);
-    while (targetIdx === sourceIdx) {
-      targetIdx = Math.floor(Math.random() * entities.length);
-    }
-    
-    relations.push({
-      id: `relation-${i + 1}`,
-      sourceId: entities[sourceIdx].id,
-      targetId: entities[targetIdx].id,
-      type: types[Math.floor(Math.random() * types.length)],
-      strength: 0.5 + Math.random() * 0.5,
-      properties: {},
-      bidirectional: Math.random() > 0.7,
-    });
-  }
-  return relations;
-}
-
-function generateDemoStats(): GraphStats {
-  return {
-    totalEntities: 156,
-    totalRelations: 289,
-    entityTypes: {
-      party: 24,
-      person: 18,
-      organization: 12,
-      location: 15,
-      date: 22,
-      amount: 20,
-      obligation: 18,
-      clause: 12,
-      term: 8,
-      condition: 4,
-      risk: 3,
-      contract: 0,
-    },
-    relationTypes: {
-      party_to: 45,
-      signed_by: 32,
-      governed_by: 28,
-      located_in: 24,
-      effective_on: 22,
-      expires_on: 22,
-      obligated_to: 35,
-      references: 20,
-      amends: 12,
-      supersedes: 8,
-      related_to: 25,
-      depends_on: 16,
-      contains: 0,
-      triggers: 0,
-      mitigates: 0,
-      conflicts_with: 0,
-    },
-    avgDegree: 3.7,
-    clusters: 8,
-  };
-}
-
-function generateDemoClusters(): ClusterInfo[] {
-  return [
-    { id: 'cluster-1', name: 'Acme Corp Ecosystem', entityCount: 24, dominantType: 'party', contracts: ['MSA-001', 'SOW-003'] },
-    { id: 'cluster-2', name: 'Financial Obligations', entityCount: 18, dominantType: 'obligation', contracts: ['MSA-001', 'MSA-002'] },
-    { id: 'cluster-3', name: 'Legal Compliance', entityCount: 15, dominantType: 'clause', contracts: ['NDA-001', 'MSA-001'] },
-    { id: 'cluster-4', name: 'Key Personnel', entityCount: 12, dominantType: 'person', contracts: ['SOW-001', 'SOW-002'] },
-  ];
-}
-
-// ============================================================================
 // Graph Node Component
 // ============================================================================
 
@@ -568,15 +456,83 @@ export function KnowledgeGraphVisualization({ tenantId, contractId, className }:
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      const demoEntities = generateDemoEntities(40);
-      const demoRelations = generateDemoRelations(demoEntities, 60);
-      
-      setEntities(demoEntities);
-      setRelations(demoRelations);
-      setStats(generateDemoStats());
-      setClusters(generateDemoClusters());
+      try {
+        const params = new URLSearchParams({ action: 'build' });
+        if (contractId) params.set('contractIds', contractId);
+        const res = await fetch(`/api/knowledge-graph?${params}`);
+        const json = await res.json();
+
+        if (json.success && json.data) {
+          const d = json.data;
+          // Map API graph.nodes → entities, graph.edges → relations
+          const graph = d.graph || d;
+          const nodes: GraphEntity[] = (graph.nodes || []).map((n: Record<string, unknown>, idx: number) => ({
+            id: (n.id as string) || `entity-${idx}`,
+            type: (n.type as EntityType) || 'party',
+            name: (n.name as string) || (n.label as string) || 'Entity',
+            properties: (n.properties as Record<string, unknown>) || {},
+            contractId: n.contractId as string | undefined,
+            confidence: (n.confidence as number) ?? 0.85,
+            sourceLocation: n.sourceLocation as string | undefined,
+            createdAt: n.createdAt ? new Date(n.createdAt as string) : new Date(),
+          }));
+          const edges: GraphRelation[] = (graph.edges || []).map((e: Record<string, unknown>, idx: number) => ({
+            id: (e.id as string) || `relation-${idx}`,
+            sourceId: (e.source as string) || (e.sourceId as string) || '',
+            targetId: (e.target as string) || (e.targetId as string) || '',
+            type: (e.type as RelationType) || 'related_to',
+            strength: (e.strength as number) || (e.weight as number) || 0.5,
+            properties: (e.properties as Record<string, unknown>) || {},
+            bidirectional: (e.bidirectional as boolean) || false,
+          }));
+
+          setEntities(nodes);
+          setRelations(edges);
+
+          // Derive stats from the data
+          const entityTypes = nodes.reduce((acc, n) => {
+            acc[n.type] = (acc[n.type] || 0) + 1;
+            return acc;
+          }, {} as Record<EntityType, number>);
+          const relationTypes = edges.reduce((acc, e) => {
+            acc[e.type] = (acc[e.type] || 0) + 1;
+            return acc;
+          }, {} as Record<RelationType, number>);
+
+          const apiStats = d.stats || {};
+          setStats({
+            totalEntities: (apiStats.nodes as number) || nodes.length,
+            totalRelations: (apiStats.edges as number) || edges.length,
+            entityTypes: { ...({} as Record<EntityType, number>), ...entityTypes, ...(apiStats.nodeTypes as Record<EntityType, number> || {}) },
+            relationTypes: { ...({} as Record<RelationType, number>), ...relationTypes },
+            avgDegree: nodes.length > 0 ? (edges.length * 2) / nodes.length : 0,
+            clusters: (apiStats.clusters as number) || 0,
+          });
+
+          // Derive clusters from entity data
+          const clusterMap = new Map<string, ClusterInfo>();
+          nodes.forEach(n => {
+            if (n.contractId) {
+              const key = n.contractId;
+              if (!clusterMap.has(key)) {
+                clusterMap.set(key, { id: key, name: `Contract ${key}`, entityCount: 0, dominantType: n.type, contracts: [key] });
+              }
+              clusterMap.get(key)!.entityCount++;
+            }
+          });
+          setClusters(Array.from(clusterMap.values()));
+        } else {
+          setEntities([]);
+          setRelations([]);
+          setStats(null);
+          setClusters([]);
+        }
+      } catch {
+        setEntities([]);
+        setRelations([]);
+        setStats(null);
+        setClusters([]);
+      }
       setLoading(false);
     };
     loadData();

@@ -131,204 +131,6 @@ const CAPABILITY_COLORS: Record<ModelCapability, string> = {
 };
 
 // ============================================================================
-// Demo Data Generators
-// ============================================================================
-
-function generateDemoModels(): RegisteredModel[] {
-  const models: RegisteredModel[] = [
-    {
-      id: 'model-1',
-      name: 'GPT-4o',
-      provider: 'openai',
-      modelId: 'gpt-4o',
-      capabilities: ['extraction', 'summarization', 'classification', 'comparison', 'generation', 'chat', 'analysis'],
-      maxTokens: 16384,
-      contextWindow: 128000,
-      currentVersion: '2024-05-13',
-      versions: [
-        {
-          version: '2024-05-13',
-          releaseDate: new Date('2024-05-13'),
-          changelog: 'Latest production release with improved reasoning',
-          isDefault: true,
-          performance: {
-            totalRequests: 125000,
-            successRate: 0.987,
-            avgLatencyMs: 2100,
-            avgTokensPerRequest: 850,
-            costPer1kTokens: 0.015,
-            qualityScore: 0.94,
-            userSatisfaction: 0.92,
-          },
-        },
-      ],
-      status: 'active',
-      isDefault: true,
-      registeredAt: new Date('2024-01-15'),
-      lastUpdatedAt: new Date(),
-    },
-    {
-      id: 'model-2',
-      name: 'GPT-4o-mini',
-      provider: 'openai',
-      modelId: 'gpt-4o-mini',
-      capabilities: ['extraction', 'summarization', 'classification', 'chat'],
-      maxTokens: 16384,
-      contextWindow: 128000,
-      currentVersion: '2024-07-18',
-      versions: [
-        {
-          version: '2024-07-18',
-          releaseDate: new Date('2024-07-18'),
-          changelog: 'Fast and cost-effective model for simpler tasks',
-          isDefault: true,
-          performance: {
-            totalRequests: 89000,
-            successRate: 0.992,
-            avgLatencyMs: 800,
-            avgTokensPerRequest: 420,
-            costPer1kTokens: 0.00015,
-            qualityScore: 0.88,
-            userSatisfaction: 0.90,
-          },
-        },
-      ],
-      status: 'active',
-      isDefault: false,
-      registeredAt: new Date('2024-07-20'),
-      lastUpdatedAt: new Date(),
-    },
-    {
-      id: 'model-3',
-      name: 'GPT-3.5-turbo',
-      provider: 'openai',
-      modelId: 'gpt-3.5-turbo',
-      capabilities: ['summarization', 'classification', 'chat'],
-      maxTokens: 4096,
-      contextWindow: 16385,
-      currentVersion: '0125',
-      versions: [
-        {
-          version: '0125',
-          releaseDate: new Date('2024-01-25'),
-          changelog: 'Latest GPT-3.5 with improved accuracy',
-          isDefault: true,
-          performance: {
-            totalRequests: 45000,
-            successRate: 0.985,
-            avgLatencyMs: 500,
-            avgTokensPerRequest: 320,
-            costPer1kTokens: 0.0005,
-            qualityScore: 0.82,
-            userSatisfaction: 0.85,
-          },
-        },
-      ],
-      status: 'deprecated',
-      isDefault: false,
-      registeredAt: new Date('2023-06-15'),
-      lastUpdatedAt: new Date('2024-06-01'),
-    },
-    {
-      id: 'model-4',
-      name: 'text-embedding-3-small',
-      provider: 'openai',
-      modelId: 'text-embedding-3-small',
-      capabilities: ['embedding'],
-      maxTokens: 8191,
-      contextWindow: 8191,
-      currentVersion: '1.0',
-      versions: [
-        {
-          version: '1.0',
-          releaseDate: new Date('2024-01-25'),
-          changelog: 'Efficient embedding model',
-          isDefault: true,
-          performance: {
-            totalRequests: 250000,
-            successRate: 0.999,
-            avgLatencyMs: 150,
-            avgTokensPerRequest: 200,
-            costPer1kTokens: 0.00002,
-            qualityScore: 0.91,
-            userSatisfaction: 0.95,
-          },
-        },
-      ],
-      status: 'active',
-      isDefault: true,
-      registeredAt: new Date('2024-01-30'),
-      lastUpdatedAt: new Date(),
-    },
-    {
-      id: 'model-5',
-      name: 'Claude Haiku 4.5',
-      provider: 'anthropic',
-      modelId: 'claude-3-5-haiku-20241022',
-      capabilities: ['extraction', 'summarization', 'classification', 'chat'],
-      maxTokens: 8192,
-      contextWindow: 200000,
-      currentVersion: '20241022',
-      versions: [
-        {
-          version: '20241022',
-          releaseDate: new Date('2024-10-22'),
-          changelog: 'Lightning-fast model with excellent comprehension and real-time capabilities',
-          isDefault: true,
-          performance: {
-            totalRequests: 35000,
-            successRate: 0.995,
-            avgLatencyMs: 300,
-            avgTokensPerRequest: 380,
-            costPer1kTokens: 0.0008,
-            qualityScore: 0.90,
-            userSatisfaction: 0.93,
-          },
-        },
-      ],
-      status: 'active',
-      isDefault: false,
-      registeredAt: new Date('2024-10-25'),
-      lastUpdatedAt: new Date(),
-    },
-  ];
-
-  return models;
-}
-
-function generateDemoABTests(): ABTest[] {
-  return [
-    {
-      id: 'ab-1',
-      name: 'GPT-4o vs GPT-4o-mini for Extraction',
-      modelA: 'GPT-4o',
-      modelB: 'GPT-4o-mini',
-      trafficSplit: 0.5,
-      status: 'running',
-      startedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-      results: {
-        modelA: { requests: 1250, successRate: 0.987, avgLatency: 2100, satisfaction: 0.92 },
-        modelB: { requests: 1180, successRate: 0.992, avgLatency: 800, satisfaction: 0.90 },
-      },
-    },
-    {
-      id: 'ab-2',
-      name: 'Summarization Quality Test',
-      modelA: 'GPT-4o',
-      modelB: 'GPT-3.5-turbo',
-      trafficSplit: 0.3,
-      status: 'completed',
-      startedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-      results: {
-        modelA: { requests: 3500, successRate: 0.989, avgLatency: 2200, satisfaction: 0.94 },
-        modelB: { requests: 1500, successRate: 0.985, avgLatency: 520, satisfaction: 0.82 },
-        winner: 'GPT-4o',
-      },
-    },
-  ];
-}
-
-// ============================================================================
 // Sub-Components
 // ============================================================================
 
@@ -646,9 +448,63 @@ export function ModelRegistryDashboard({ tenantId, className }: ModelRegistryDas
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      setModels(generateDemoModels());
-      setABTests(generateDemoABTests());
+      try {
+        const [modelsRes, abTestsRes] = await Promise.all([
+          fetch('/api/ai/models?action=list'),
+          fetch('/api/ai/ab-test'),
+        ]);
+        const [modelsJson, abTestsJson] = await Promise.all([
+          modelsRes.json(),
+          abTestsRes.json(),
+        ]);
+
+        if (modelsJson.success && modelsJson.data) {
+          const raw = Array.isArray(modelsJson.data) ? modelsJson.data : (modelsJson.data.models || modelsJson.data.data || []);
+          setModels(raw.map((m: Record<string, unknown>) => ({
+            id: (m.id as string) || (m.modelId as string) || '',
+            name: (m.name as string) || (m.modelId as string) || 'Model',
+            provider: (m.provider as ModelProvider) || 'openai',
+            modelId: (m.modelId as string) || '',
+            capabilities: (m.capabilities as ModelCapability[]) || [],
+            maxTokens: (m.maxTokens as number) || 4096,
+            contextWindow: (m.contextWindow as number) || 16384,
+            currentVersion: (m.currentVersion as string) || '1.0',
+            versions: ((m.versions as ModelVersion[]) || []).map(v => ({
+              ...v,
+              releaseDate: new Date((v as Record<string, unknown>).releaseDate as string || Date.now()),
+              performance: (v as Record<string, unknown>).performance as ModelPerformance || {
+                totalRequests: 0, successRate: 0, avgLatencyMs: 0,
+                avgTokensPerRequest: 0, costPer1kTokens: 0, qualityScore: 0, userSatisfaction: 0,
+              },
+            })),
+            status: (m.status as ModelStatus) || 'active',
+            isDefault: (m.isDefault as boolean) || false,
+            registeredAt: m.registeredAt ? new Date(m.registeredAt as string) : new Date(),
+            lastUpdatedAt: m.lastUpdatedAt ? new Date(m.lastUpdatedAt as string) : new Date(),
+          })));
+        } else {
+          setModels([]);
+        }
+
+        if (abTestsJson.success && abTestsJson.data) {
+          const rawTests = Array.isArray(abTestsJson.data) ? abTestsJson.data : (abTestsJson.data.tests || abTestsJson.data.data || []);
+          setABTests(rawTests.map((t: Record<string, unknown>) => ({
+            id: (t.id as string) || '',
+            name: (t.name as string) || 'A/B Test',
+            modelA: (t.modelA as string) || '',
+            modelB: (t.modelB as string) || '',
+            trafficSplit: (t.trafficSplit as number) || 0.5,
+            status: (t.status as ABTest['status']) || 'running',
+            startedAt: t.startedAt ? new Date(t.startedAt as string) : new Date(),
+            results: t.results as ABTest['results'] | undefined,
+          })));
+        } else {
+          setABTests([]);
+        }
+      } catch {
+        setModels([]);
+        setABTests([]);
+      }
       setLoading(false);
     };
     loadData();

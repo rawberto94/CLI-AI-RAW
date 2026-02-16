@@ -111,30 +111,6 @@ interface OCRQualityDashboardProps {
 }
 
 // ============================================================================
-// MOCK DATA
-// ============================================================================
-
-const generateMockData = () => {
-  const dailyData: DailyMetric[] = [];
-  const today = new Date();
-  
-  for (let i = 29; i >= 0; i--) {
-    const date = new Date(today);
-    date.setDate(date.getDate() - i);
-    
-    dailyData.push({
-      date: date.toISOString().split('T')[0] || '',
-      documents: Math.floor(Math.random() * 50) + 20,
-      avgConfidence: 0.65 + Math.random() * 0.25,
-      corrections: Math.floor(Math.random() * 30) + 5,
-      reviewTime: Math.random() * 2 + 0.5,
-    });
-  }
-  
-  return dailyData;
-};
-
-// ============================================================================
 // STAT CARD COMPONENT
 // ============================================================================
 

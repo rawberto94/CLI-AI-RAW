@@ -416,33 +416,4 @@ export function FavoriteContractsWidget({
   )
 }
 
-// ============ DEMO DATA ============
-
-export function generateDemoFavorites(count: number = 5): FavoriteContract[] {
-  const contracts = [
-    { name: 'Microsoft Enterprise Agreement', supplier: 'Microsoft', value: 250000, status: 'active' as const },
-    { name: 'AWS Services Contract', supplier: 'Amazon Web Services', value: 180000, status: 'expiring' as const },
-    { name: 'Salesforce Enterprise', supplier: 'Salesforce', value: 120000, status: 'active' as const },
-    { name: 'Google Cloud Platform', supplier: 'Google', value: 95000, status: 'pending' as const },
-    { name: 'Adobe Creative Cloud', supplier: 'Adobe', value: 45000, status: 'active' as const },
-    { name: 'Slack Enterprise Grid', supplier: 'Slack', value: 35000, status: 'draft' as const },
-    { name: 'Zoom Business License', supplier: 'Zoom', value: 28000, status: 'expired' as const },
-  ]
-  
-  return contracts.slice(0, count).map((c, i) => ({
-    id: `fav-${i}`,
-    name: c.name,
-    supplier: c.supplier,
-    value: c.value,
-    status: c.status,
-    expirationDate: c.status === 'expiring' 
-      ? new Date(Date.now() + 20 * 24 * 60 * 60 * 1000)
-      : c.status === 'expired'
-      ? new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
-      : new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
-    lastViewed: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000),
-    addedAt: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000),
-  }))
-}
-
 export default FavoriteContractsWidget

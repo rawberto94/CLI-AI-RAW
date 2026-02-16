@@ -152,74 +152,13 @@ const PRIORITY_CONFIG: Record<ObligationPriority, {
 };
 
 // ============================================================================
-// Demo Data Generators
+// Data Derivation Helpers (compute alerts & summary from real API data)
 // ============================================================================
 
-function generateDemoObligations(count: number): Obligation[] {
-  const types = Object.keys(OBLIGATION_TYPE_CONFIG) as ObligationType[];
-  const statuses: ObligationStatus[] = ['pending', 'in_progress', 'completed', 'overdue', 'at_risk'];
-  const priorities: ObligationPriority[] = ['critical', 'high', 'medium', 'low'];
-  const parties: Obligation['party'][] = ['us', 'counterparty', 'mutual'];
-  
-  const titles: Record<ObligationType, string[]> = {
-    payment: ['Monthly service payment', 'Quarterly license fee', 'Annual maintenance fee'],
-    delivery: ['Deliver Phase 1 milestone', 'Provide monthly deliverables', 'Submit final project'],
-    reporting: ['Monthly status report', 'Quarterly financial report', 'Annual compliance report'],
-    compliance: ['GDPR compliance certification', 'SOC 2 audit completion', 'Security assessment'],
-    confidentiality: ['Maintain NDA terms', 'Secure data handling', 'Employee training completion'],
-    indemnification: ['Third-party claims coverage', 'IP infringement indemnity', 'Data breach liability'],
-    insurance: ['Maintain liability insurance', 'Provide certificate of insurance', 'Renew coverage'],
-    warranty: ['Product warranty obligations', 'Service level guarantee', 'Defect remediation'],
-    termination_notice: ['60-day termination notice', '90-day notice requirement', 'End of term notification'],
-    renewal_notice: ['Auto-renewal opt-out deadline', 'Contract renewal decision', 'Rate negotiation window'],
-    audit_rights: ['Annual audit compliance', 'Provide audit access', 'Documentation availability'],
-    data_protection: ['Data encryption requirements', 'Privacy policy compliance', 'Data retention limits'],
-    performance: ['SLA compliance', 'Uptime guarantee', 'Response time requirements'],
-  };
-
-  const obligations: Obligation[] = [];
-  
-  for (let i = 0; i < count; i++) {
-    const type = types[Math.floor(Math.random() * types.length)];
-    const status = statuses[Math.floor(Math.random() * statuses.length)];
-    const priority = priorities[Math.floor(Math.random() * priorities.length)];
-    const typeTitles = titles[type];
-    
-    const daysOffset = Math.floor(Math.random() * 90) - 30; // -30 to +60 days
-    const dueDate = new Date(Date.now() + daysOffset * 24 * 60 * 60 * 1000);
-    
-    obligations.push({
-      id: `obligation-${i + 1}`,
-      type,
-      title: typeTitles[Math.floor(Math.random() * typeTitles.length)],
-      description: `AI-extracted obligation from contract clause...`,
-      contractId: `contract-${Math.floor(Math.random() * 20) + 1}`,
-      contractName: `Contract ${Math.floor(Math.random() * 20) + 1}`,
-      party: parties[Math.floor(Math.random() * parties.length)],
-      status,
-      priority,
-      dueDate: status !== 'completed' ? dueDate : undefined,
-      completedDate: status === 'completed' ? new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000) : undefined,
-      amount: type === 'payment' ? Math.floor(Math.random() * 100000) + 10000 : undefined,
-      frequency: ['one_time', 'recurring', 'ongoing'][Math.floor(Math.random() * 3)] as Obligation['frequency'],
-      confidence: 0.75 + Math.random() * 0.24,
-      sourceClause: `Section ${Math.floor(Math.random() * 10) + 1}.${Math.floor(Math.random() * 5) + 1}`,
-      createdAt: new Date(Date.now() - Math.random() * 60 * 24 * 60 * 60 * 1000),
-    });
-  }
-  
-  return obligations.sort((a, b) => {
-    if (a.dueDate && b.dueDate) return a.dueDate.getTime() - b.dueDate.getTime();
-    if (a.dueDate) return -1;
-    if (b.dueDate) return 1;
-    return 0;
-  });
-}
-
-function generateDemoAlerts(obligations: Obligation[]): ObligationAlert[] {
+function deriveAlerts(obligations: Obligation[]): ObligationAlert[] {
   const alerts: ObligationAlert[] = [];
   const now = new Date();
-  
+
   obligations.forEach(ob => {
     if (ob.status === 'overdue') {
       alerts.push({
@@ -231,7 +170,7 @@ function generateDemoAlerts(obligations: Obligation[]): ObligationAlert[] {
         acknowledged: false,
         createdAt: now,
       });
-    } else if (ob.dueDate && ob.dueDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000) {
+    } else if (ob.dueDate && ob.dueDate.getTime() - now.getTime() < 7 * 24 * 60 * 60 * 1000 && ob.dueDate.getTime() > now.getTime()) {
       alerts.push({
         id: `alert-approaching-${ob.id}`,
         obligationId: ob.id,
@@ -243,43 +182,43 @@ function generateDemoAlerts(obligations: Obligation[]): ObligationAlert[] {
       });
     }
   });
-  
+
   return alerts.slice(0, 10);
 }
 
-function generateDemoSummary(obligations: Obligation[]): ObligationSummary {
+function deriveSummary(obligations: Obligation[]): ObligationSummary {
   const now = new Date();
   const oneWeek = 7 * 24 * 60 * 60 * 1000;
   const oneMonth = 30 * 24 * 60 * 60 * 1000;
-  
+
   const byStatus = obligations.reduce((acc, ob) => {
     acc[ob.status] = (acc[ob.status] || 0) + 1;
     return acc;
   }, {} as Record<ObligationStatus, number>);
-  
+
   const byType = obligations.reduce((acc, ob) => {
     acc[ob.type] = (acc[ob.type] || 0) + 1;
     return acc;
   }, {} as Record<ObligationType, number>);
-  
+
   const byPriority = obligations.reduce((acc, ob) => {
     acc[ob.priority] = (acc[ob.priority] || 0) + 1;
     return acc;
   }, {} as Record<ObligationPriority, number>);
-  
-  const upcomingThisWeek = obligations.filter(ob => 
-    ob.dueDate && ob.dueDate.getTime() > now.getTime() && 
+
+  const upcomingThisWeek = obligations.filter(ob =>
+    ob.dueDate && ob.dueDate.getTime() > now.getTime() &&
     ob.dueDate.getTime() <= now.getTime() + oneWeek
   ).length;
-  
-  const upcomingThisMonth = obligations.filter(ob => 
-    ob.dueDate && ob.dueDate.getTime() > now.getTime() && 
+
+  const upcomingThisMonth = obligations.filter(ob =>
+    ob.dueDate && ob.dueDate.getTime() > now.getTime() &&
     ob.dueDate.getTime() <= now.getTime() + oneMonth
   ).length;
-  
+
   const completed = obligations.filter(ob => ob.status === 'completed').length;
   const complianceRate = obligations.length > 0 ? (completed / obligations.length) * 100 : 0;
-  
+
   return {
     total: obligations.length,
     byStatus,
@@ -291,7 +230,10 @@ function generateDemoSummary(obligations: Obligation[]): ObligationSummary {
     complianceRate,
   };
 }
-
+  const types = Object.keys(OBLIGATION_TYPE_CONFIG) as ObligationType[];
+  const statuses: ObligationStatus[] = ['pending', 'in_progress', 'completed', 'overdue', 'at_risk'];
+  const priorities: ObligationPriority[] = ['critical', 'high', 'medium', 'low'];
+  const parties: Obligation['party'][] = ['us', 'counterparty', 'mutual'];
 // ============================================================================
 // Sub-Components
 // ============================================================================
@@ -533,12 +475,44 @@ export function ObligationTrackerDashboard({ tenantId, contractId, className }: 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      const demoObligations = generateDemoObligations(30);
-      setObligations(demoObligations);
-      setAlerts(generateDemoAlerts(demoObligations));
-      setSummary(generateDemoSummary(demoObligations));
+      try {
+        const params = new URLSearchParams({ limit: '100' });
+        if (contractId) params.set('contractId', contractId);
+        const res = await fetch(`/api/obligations?${params}`);
+        const json = await res.json();
+
+        if (json.success && json.data?.obligations) {
+          const obs: Obligation[] = json.data.obligations.map((o: Record<string, unknown>) => ({
+            id: o.id as string,
+            type: (o.type as ObligationType) || 'compliance',
+            title: (o.title as string) || 'Untitled Obligation',
+            description: (o.description as string) || '',
+            contractId: o.contractId as string,
+            contractName: (o.contractTitle as string) || (o.contractName as string) || 'Contract',
+            party: (o.party as Obligation['party']) || 'us',
+            status: (o.status as ObligationStatus) || 'pending',
+            priority: (o.priority as ObligationPriority) || 'medium',
+            dueDate: o.dueDate ? new Date(o.dueDate as string) : undefined,
+            completedDate: o.completedDate ? new Date(o.completedDate as string) : undefined,
+            amount: o.amount as number | undefined,
+            frequency: (o.frequency as Obligation['frequency']) || 'one_time',
+            confidence: (o.confidence as number) ?? 0.85,
+            sourceClause: o.sourceClause as string | undefined,
+            createdAt: o.createdAt ? new Date(o.createdAt as string) : new Date(),
+          }));
+          setObligations(obs);
+          setAlerts(deriveAlerts(obs));
+          setSummary(deriveSummary(obs));
+        } else {
+          setObligations([]);
+          setAlerts([]);
+          setSummary(null);
+        }
+      } catch {
+        setObligations([]);
+        setAlerts([]);
+        setSummary(null);
+      }
       setLoading(false);
     };
     loadData();
