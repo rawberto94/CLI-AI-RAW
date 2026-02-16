@@ -13,7 +13,7 @@ import type {
 } from './types';
 import { logger } from '../utils/logger';
 import { openai } from '../lib/openai';
-import clientsDb from 'clients-db';
+import clientsDb, { Prisma } from 'clients-db';
 
 const getClient = typeof clientsDb === 'function' ? clientsDb : (clientsDb as any).default;
 const prisma = getClient();
@@ -252,58 +252,49 @@ export class IntelligentSearchAgent extends BaseAgent {
 
     try {
       // Build intent-specific WHERE conditions
-      const intentConditions: string[] = ['c."tenantId" = $1', 'c."isDeleted" = false'];
-      const params: any[] = [tenantId];
-      let paramIdx = 2;
+      const intentConditions: Prisma.Sql[] = [
+        Prisma.sql`c."tenantId" = ${tenantId}`,
+        Prisma.sql`c."isDeleted" = false`,
+      ];
 
       for (const filter of intent.filters) {
         switch (filter.field) {
           case 'status':
-            intentConditions.push(`c."status" = $${paramIdx}`);
-            params.push(String(filter.value).toUpperCase());
-            paramIdx++;
+            intentConditions.push(Prisma.sql`c."status" = ${String(filter.value).toUpperCase()}`);
             break;
           case 'expirationDate':
             if (filter.operator === 'less_than') {
-              intentConditions.push(`c."expirationDate" < $${paramIdx}`);
-              params.push(new Date(filter.value));
-              paramIdx++;
+              intentConditions.push(Prisma.sql`c."expirationDate" < ${new Date(filter.value as string)}`);
             }
             break;
           case 'totalValue':
             if (filter.operator === 'greater_than') {
-              intentConditions.push(`c."totalValue" > $${paramIdx}`);
-              params.push(Number(filter.value));
-              paramIdx++;
+              intentConditions.push(Prisma.sql`c."totalValue" > ${Number(filter.value)}`);
             }
             break;
           case 'supplierName':
-            intentConditions.push(`c."supplierName" ILIKE $${paramIdx}`);
-            params.push(`%${filter.value}%`);
-            paramIdx++;
+            intentConditions.push(Prisma.sql`c."supplierName" ILIKE ${`%${filter.value}%`}`);
             break;
         }
       }
 
-      const whereClause = intentConditions.join(' AND ');
+      const whereClause = Prisma.join(intentConditions, Prisma.sql` AND `);
 
       // Strategy 1: Full-text search on Contract.searchableText + rawText
       const ftsQuery = query.replace(/[^a-zA-Z0-9\s]/g, ' ').trim().split(/\s+/).filter(Boolean).join(' & ');
       
       if (ftsQuery) {
-        params.push(ftsQuery);
-        const ftsResults = await prisma.$queryRawUnsafe<any[]>(`
+        const ftsResults = await prisma.$queryRaw<any[]>`
           SELECT c.id, c."contractTitle", c."supplierName", c."contractType",
                  c."totalValue", c."expirationDate", c.status,
-                 ts_rank(to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('english', $${paramIdx})) as rank
+                 ts_rank(to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", '')), to_tsquery('english', ${ftsQuery})) as rank
           FROM "Contract" c
           WHERE ${whereClause}
             AND to_tsvector('english', COALESCE(c."searchableText", '') || ' ' || COALESCE(c."rawText", ''))
-                @@ to_tsquery('english', $${paramIdx})
+                @@ to_tsquery('english', ${ftsQuery})
           ORDER BY rank DESC
           LIMIT 20
-        `, ...params);
-        paramIdx++;
+        `;
 
         dbResults = ftsResults.map((r: any) => ({
           id: r.id,
@@ -320,19 +311,17 @@ export class IntelligentSearchAgent extends BaseAgent {
 
       // Strategy 2: If few FTS results, fall back to ILIKE search
       if (dbResults.length < 5) {
-        const likeParams = [...params.slice(0, paramIdx - 1)]; // without fts param
-        likeParams.push(`%${query}%`);
-        const likeIdx = likeParams.length;
+        const likePattern = `%${query}%`;
 
-        const likeResults = await prisma.$queryRawUnsafe<any[]>(`
+        const likeResults = await prisma.$queryRaw<any[]>`
           SELECT c.id, c."contractTitle", c."supplierName", c."contractType",
                  c."totalValue", c."expirationDate", c.status
           FROM "Contract" c
           WHERE ${whereClause}
-            AND (c."contractTitle" ILIKE $${likeIdx} OR c."supplierName" ILIKE $${likeIdx} OR c."rawText" ILIKE $${likeIdx})
+            AND (c."contractTitle" ILIKE ${likePattern} OR c."supplierName" ILIKE ${likePattern} OR c."rawText" ILIKE ${likePattern})
           ORDER BY c."updatedAt" DESC
           LIMIT 10
-        `, ...likeParams);
+        `;
 
         const existingIds = new Set(dbResults.map(r => r.id));
         for (const r of likeResults) {

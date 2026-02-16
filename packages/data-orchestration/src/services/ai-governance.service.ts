@@ -3,32 +3,31 @@
  * Evaluation harness, drift monitoring, training pipeline, policy enforcement
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
 export class AIGovernanceService {
   // ===== Evaluation Datasets =====
   static async createDataset(tenantId: string, data: any) {
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO evaluation_datasets (id, tenant_id, name, description, dataset_type, items, total_items, created_by)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7) RETURNING *`,
-      tenantId, data.name, data.description || null, data.datasetType || 'EXTRACTION',
-      JSON.stringify(data.items || []), (data.items || []).length, data.createdBy
-    );
+    const result = await prisma.$queryRaw`
+      INSERT INTO evaluation_datasets (id, tenant_id, name, description, dataset_type, items, total_items, created_by)
+      VALUES (gen_random_uuid()::text, ${tenantId}, ${data.name}, ${data.description || null}, ${data.datasetType || 'EXTRACTION'},
+      ${JSON.stringify(data.items || [])}, ${(data.items || []).length}, ${data.createdBy}) RETURNING *
+    `;
     return (result as any[])[0];
   }
 
   static async listDatasets(tenantId: string) {
-    return prisma.$queryRawUnsafe(
-      `SELECT * FROM evaluation_datasets WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantId
-    );
+    return prisma.$queryRaw`
+      SELECT * FROM evaluation_datasets WHERE tenant_id = ${tenantId} ORDER BY created_at DESC
+    `;
   }
 
   static async runEvaluation(tenantId: string, datasetId: string) {
-    const datasets = await prisma.$queryRawUnsafe(
-      `SELECT * FROM evaluation_datasets WHERE id = $1 AND tenant_id = $2`, datasetId, tenantId
-    ) as any[];
+    const datasets = await prisma.$queryRaw`
+      SELECT * FROM evaluation_datasets WHERE id = ${datasetId} AND tenant_id = ${tenantId}
+    ` as any[];
     const dataset = datasets[0];
     if (!dataset) throw new Error('Dataset not found');
 
@@ -59,49 +58,48 @@ export class AIGovernanceService {
 
     const results = { accuracy: correct / Math.max(total, 1), precision, recall, f1, total, correct, timestamp: new Date().toISOString() };
 
-    await prisma.$queryRawUnsafe(
-      `UPDATE evaluation_datasets SET last_run_at = NOW(), last_run_results = $1, precision_score = $2, recall_score = $3, f1_score = $4, updated_at = NOW()
-       WHERE id = $5 AND tenant_id = $6`,
-      JSON.stringify(results), precision, recall, f1, datasetId, tenantId
-    );
+    await prisma.$queryRaw`
+      UPDATE evaluation_datasets SET last_run_at = NOW(), last_run_results = ${JSON.stringify(results)}, precision_score = ${precision}, recall_score = ${recall}, f1_score = ${f1}, updated_at = NOW()
+      WHERE id = ${datasetId} AND tenant_id = ${tenantId}
+    `;
 
     return results;
   }
 
   // ===== Drift Monitoring =====
   static async recordMetric(tenantId: string, data: any) {
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO drift_metrics (id, tenant_id, metric_type, model_name, operation, score, baseline_score, sample_size, drift_detected, drift_severity, details)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-      tenantId, data.metricType || 'ACCURACY', data.modelName, data.operation,
-      data.score, data.baselineScore || null, data.sampleSize || 0,
-      data.driftDetected ?? false, data.driftSeverity || null,
-      JSON.stringify(data.details || {})
-    );
+    const result = await prisma.$queryRaw`
+      INSERT INTO drift_metrics (id, tenant_id, metric_type, model_name, operation, score, baseline_score, sample_size, drift_detected, drift_severity, details)
+      VALUES (gen_random_uuid()::text, ${tenantId}, ${data.metricType || 'ACCURACY'}, ${data.modelName}, ${data.operation},
+      ${data.score}, ${data.baselineScore || null}, ${data.sampleSize || 0},
+      ${data.driftDetected ?? false}, ${data.driftSeverity || null},
+      ${JSON.stringify(data.details || {})}) RETURNING *
+    `;
     return (result as any[])[0];
   }
 
   static async getDriftTimeline(tenantId: string, modelName?: string, days: number = 30) {
-    let where = `WHERE tenant_id = $1 AND measured_at > NOW() - INTERVAL '${days} days'`;
-    const params: any[] = [tenantId];
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`tenant_id = ${tenantId}`,
+      Prisma.sql`measured_at > NOW() - ${days} * INTERVAL '1 day'`,
+    ];
     if (modelName) {
-      where += ` AND model_name = $2`;
-      params.push(modelName);
+      conditions.push(Prisma.sql`model_name = ${modelName}`);
     }
+    const where = Prisma.join(conditions, Prisma.sql` AND `);
 
-    return prisma.$queryRawUnsafe(
-      `SELECT * FROM drift_metrics ${where} ORDER BY measured_at DESC`, ...params
-    );
+    return prisma.$queryRaw`
+      SELECT * FROM drift_metrics WHERE ${where} ORDER BY measured_at DESC
+    `;
   }
 
   static async checkForDrift(tenantId: string, modelName: string, currentScore: number) {
     // Get baseline (average of last 30 days)
-    const baseline = await prisma.$queryRawUnsafe(
-      `SELECT AVG(score)::decimal(5,4) as avg_score, STDDEV(score)::decimal(5,4) as std_dev
-       FROM drift_metrics WHERE tenant_id = $1 AND model_name = $2
-       AND measured_at > NOW() - INTERVAL '30 days'`,
-      tenantId, modelName
-    ) as any[];
+    const baseline = await prisma.$queryRaw`
+      SELECT AVG(score)::decimal(5,4) as avg_score, STDDEV(score)::decimal(5,4) as std_dev
+      FROM drift_metrics WHERE tenant_id = ${tenantId} AND model_name = ${modelName}
+      AND measured_at > NOW() - INTERVAL '30 days'
+    ` as any[];
 
     const avgScore = Number(baseline[0]?.avg_score || currentScore);
     const stdDev = Number(baseline[0]?.std_dev || 0.05);
@@ -129,29 +127,28 @@ export class AIGovernanceService {
       confidence: c.confidence,
     }));
 
-    const result = await prisma.$queryRawUnsafe(
-      `INSERT INTO training_exports (id, tenant_id, export_type, model_target, total_records, file_format, status, started_at, completed_at, created_by)
-       VALUES (gen_random_uuid()::text, $1, $2, $3, $4, $5, 'COMPLETED', NOW(), NOW(), $6) RETURNING *`,
-      tenantId, data.exportType || 'CORRECTIONS', data.modelTarget || null,
-      trainingRecords.length, data.fileFormat || 'JSONL', data.createdBy
-    );
+    const result = await prisma.$queryRaw`
+      INSERT INTO training_exports (id, tenant_id, export_type, model_target, total_records, file_format, status, started_at, completed_at, created_by)
+      VALUES (gen_random_uuid()::text, ${tenantId}, ${data.exportType || 'CORRECTIONS'}, ${data.modelTarget || null},
+      ${trainingRecords.length}, ${data.fileFormat || 'JSONL'}, 'COMPLETED', NOW(), NOW(), ${data.createdBy}) RETURNING *
+    `;
 
     return { export: (result as any[])[0], records: trainingRecords };
   }
 
   static async listExports(tenantId: string) {
-    return prisma.$queryRawUnsafe(
-      `SELECT * FROM training_exports WHERE tenant_id = $1 ORDER BY created_at DESC`, tenantId
-    );
+    return prisma.$queryRaw`
+      SELECT * FROM training_exports WHERE tenant_id = ${tenantId} ORDER BY created_at DESC
+    `;
   }
 
   // ===== Governance Summary =====
   static async getGovernanceSummary(tenantId: string) {
     const [datasets, driftAlerts, exports, policy] = await Promise.all([
-      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count, AVG(f1_score)::decimal(5,4) as avg_f1 FROM evaluation_datasets WHERE tenant_id = $1`, tenantId),
-      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count FROM drift_metrics WHERE tenant_id = $1 AND drift_detected = true AND measured_at > NOW() - INTERVAL '7 days'`, tenantId),
-      prisma.$queryRawUnsafe(`SELECT COUNT(*)::int as count, MAX(completed_at) as last_export FROM training_exports WHERE tenant_id = $1`, tenantId),
-      prisma.$queryRawUnsafe(`SELECT * FROM tenant_ai_policies WHERE tenant_id = $1`, tenantId),
+      prisma.$queryRaw`SELECT COUNT(*)::int as count, AVG(f1_score)::decimal(5,4) as avg_f1 FROM evaluation_datasets WHERE tenant_id = ${tenantId}`,
+      prisma.$queryRaw`SELECT COUNT(*)::int as count FROM drift_metrics WHERE tenant_id = ${tenantId} AND drift_detected = true AND measured_at > NOW() - INTERVAL '7 days'`,
+      prisma.$queryRaw`SELECT COUNT(*)::int as count, MAX(completed_at) as last_export FROM training_exports WHERE tenant_id = ${tenantId}`,
+      prisma.$queryRaw`SELECT * FROM tenant_ai_policies WHERE tenant_id = ${tenantId}`,
     ]);
 
     return {

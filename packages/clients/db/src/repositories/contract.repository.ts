@@ -424,22 +424,26 @@ export class ContractRepository extends AbstractRepository<
       offset?: number;
     }
   ): Promise<Contract[]> {
-    const whereClause = options?.tenantId
-      ? `AND "tenantId" = '${options.tenantId}'`
-      : "";
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`"textVector" @@ plainto_tsquery('english', ${query})`,
+    ];
 
-    const results = await this.prisma.$queryRawUnsafe<Contract[]>(
-      `
+    if (options?.tenantId) {
+      conditions.push(Prisma.sql`"tenantId" = ${options.tenantId}`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+    const limit = options?.limit || 10;
+    const offset = options?.offset || 0;
+
+    const results = await this.prisma.$queryRaw<Contract[]>`
       SELECT *
       FROM "Contract"
-      WHERE "textVector" @@ plainto_tsquery('english', $1)
-      ${whereClause}
-      ORDER BY ts_rank("textVector", plainto_tsquery('english', $1)) DESC
-      LIMIT ${options?.limit || 10}
-      OFFSET ${options?.offset || 0}
-    `,
-      query
-    );
+      WHERE ${whereClause}
+      ORDER BY ts_rank("textVector", plainto_tsquery('english', ${query})) DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
 
     return results;
   }
@@ -455,27 +459,31 @@ export class ContractRepository extends AbstractRepository<
       threshold?: number;
     }
   ): Promise<Array<Contract & { similarity: number }>> {
-    const whereClause = options?.tenantId
-      ? `AND c."tenantId" = '${options.tenantId}'`
-      : "";
     const threshold = options?.threshold || 0.7;
+    const embeddingStr = `[${embedding.join(",")}]`;
 
-    const results = await this.prisma.$queryRawUnsafe<
+    const conditions: Prisma.Sql[] = [
+      Prisma.sql`1 - (ce.embedding <=> ${embeddingStr}::vector) > ${threshold}`,
+    ];
+
+    if (options?.tenantId) {
+      conditions.push(Prisma.sql`c."tenantId" = ${options.tenantId}`);
+    }
+
+    const whereClause = Prisma.join(conditions, ' AND ');
+    const limit = options?.limit || 10;
+
+    const results = await this.prisma.$queryRaw<
       Array<Contract & { similarity: number }>
-    >(
-      `
+    >`
       SELECT DISTINCT ON (c.id) c.*, 
-             1 - (ce.embedding <=> $1::vector) as similarity
+             1 - (ce.embedding <=> ${embeddingStr}::vector) as similarity
       FROM "Contract" c
       INNER JOIN "ContractEmbedding" ce ON ce."contractId" = c.id
-      WHERE 1 - (ce.embedding <=> $1::vector) > $2
-      ${whereClause}
+      WHERE ${whereClause}
       ORDER BY c.id, similarity DESC
-      LIMIT ${options?.limit || 10}
-    `,
-      `[${embedding.join(",")}]`,
-      threshold
-    );
+      LIMIT ${limit}
+    `;
 
     return results;
   }
@@ -497,16 +505,14 @@ export class ContractRepository extends AbstractRepository<
       return results.map((r) => ({ ...r, relevance_score: 1.0, snippet: "" }));
     }
 
-    const results = await this.prisma.$queryRawUnsafe<
+    const embeddingStr = `[${embedding.join(",")}]`;
+    const limit = options?.limit || 10;
+
+    const results = await this.prisma.$queryRaw<
       Array<Contract & { relevance_score: number; snippet: string }>
-    >(
-      `
-      SELECT * FROM search_contracts($1, $2::vector, $3)
-    `,
-      query,
-      `[${embedding.join(",")}]`,
-      options?.limit || 10
-    );
+    >`
+      SELECT * FROM search_contracts(${query}, ${embeddingStr}::vector, ${limit})
+    `;
 
     return results;
   }
@@ -683,14 +689,11 @@ export class ContractRepository extends AbstractRepository<
    * Calculate data quality score for a contract
    */
   async calculateQualityScore(id: string): Promise<number> {
-    const result = await this.prisma.$queryRawUnsafe<
+    const result = await this.prisma.$queryRaw<
       Array<{ quality_score: number }>
-    >(
-      `
-      SELECT calculate_contract_quality($1) as quality_score
-    `,
-      id
-    );
+    >`
+      SELECT calculate_contract_quality(${id}) as quality_score
+    `;
 
     return result[0]?.quality_score || 0;
   }
